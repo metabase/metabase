@@ -456,8 +456,7 @@
                 "assertion cannot be satisfied by the source table's own check — that is what makes\n"
                 "this test able to fail.")
     (mt/with-premium-features #{}
-      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :checkins)
-                                                      :definition {}}]
+      (mt/with-temp [:model/Segment {segment-id :id} {:table_id (mt/id :checkins)}]
         (let [checked (atom [])
               record  (fn rec
                         ([obj] obj)

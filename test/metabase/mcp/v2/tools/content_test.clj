@@ -118,7 +118,7 @@
             (is (nil? (:error row)))
             (is (= "M1" (:name row))))))
       (testing "segment"
-        (mt/with-temp [:model/Segment {id :id} {:name "S1" :table_id (mt/id :venues) :definition {}}]
+        (mt/with-temp [:model/Segment {id :id} {:name "S1" :table_id (mt/id :venues)}]
           (let [row (content-one {:items [{:type "segment" :id id}]})]
             (is (nil? (:error row)))
             (is (= "S1" (:name row))))))
@@ -1069,8 +1069,9 @@
                 "and carries the stored aggregation")))))
     (testing "segment — the filter clauses"
       (mt/with-temp [:model/Segment {id :id} {:name       "S1"
-                                              :table_id   (mt/id :venues)
-                                              :definition {:filter [:= [:field-id (mt/id :venues :price)] 2]}}]
+                                              :definition (let [mp (mt/metadata-provider)]
+                                                            (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 2))))}]
         (mt/with-test-user :crowberto
           (let [row (content-one {:items [{:type "segment" :id id}] :include ["definition"]})]
             (is (nil? (:error row)))

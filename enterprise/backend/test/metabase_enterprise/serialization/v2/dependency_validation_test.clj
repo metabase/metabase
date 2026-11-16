@@ -177,7 +177,7 @@
                     :msg-re       #"Field .* is missing from the source database"}]]
             (testing label
               (ts/with-temp-dpc [:model/Field   {field-id :id}   {:table_id table-id :name "F" :base_type :type/Integer}
-                                 :model/Segment {segment-id :id} {:table_id table-id :name "Seg" :definition {}}
+                                 :model/Segment {segment-id :id} {:table_id table-id :name "Seg"}
                                  :model/Card    _ {:name          "Card"
                                                    :collection_id coll-id
                                                    :database_id   db-id

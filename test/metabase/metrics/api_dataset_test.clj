@@ -1297,10 +1297,8 @@
                                               :type          :metric
                                               :dataset_query (-> (lib/query mp orders)
                                                                  (lib/aggregate (lib/count)))}
-                       :model/Segment {sid :id} {:table_id   (mt/id :orders)
-                                                 :definition {:source-table (mt/id :orders)
-                                                              :filter       (lib.convert/->legacy-MBQL
-                                                                             (lib/> total 100))}}]
+                       :model/Segment {sid :id} {:definition (-> (lib/query mp orders)
+                                                                 (lib/filter (lib/> total 100)))}]
           (let [hydrated    (hydrate-metric (:id metric))
                 total-dim   (find-dimension-by-name hydrated "TOTAL")]
             (is (some? total-dim))

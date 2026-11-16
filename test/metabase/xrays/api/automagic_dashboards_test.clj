@@ -7,6 +7,7 @@
    [malli.core :as mc]
    [metabase.api.macros :as api.macros]
    [metabase.indexed-entities.models.model-index :as model-index]
+   [metabase.measures.test-util :as measures.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -125,8 +126,7 @@
                         (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id saved-dashboard)))))))))))))
 
 (deftest segment-xray-test
-  (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                  :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
+  (mt/with-temp [:model/Segment {segment-id :id} {:definition (measures.tu/segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
     (testing "GET /api/automagic-dashboards/segment/:id"
       (is (some? (api-call! "segment/%s" [segment-id]))))
     (testing "GET /api/automagic-dashboards/segment/:id/rule/example/indepth"
@@ -227,8 +227,7 @@
 
 (def ^:private segment
   (delay
-    {:table_id   (mt/id :venues)
-     :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}))
+    {:definition (measures.tu/segment-definition (mt/id :venues) (mt/id :venues :price) 10)}))
 
 (deftest comparisons-test
   (mt/with-temp [:model/Segment {segment-id :id} @segment]
@@ -595,8 +594,7 @@
 
 (deftest ^:parallel segment-xray-show-param-test
   (testing "x-ray of a segment with show set reduces the number of returned cards"
-    (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                    :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
+    (mt/with-temp [:model/Segment {segment-id :id} {:definition (measures.tu/segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
       (let [show-limit 1
             {:keys [base-count show-count]} (card-count-check show-limit "segment/%s" [segment-id])]
         (testing "The non-slimmed dashboard isn't already at \"limit\" cards"

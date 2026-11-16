@@ -246,12 +246,6 @@
   (when (some #(contains? changes %) [:definition :archived])
     (check-non-admin-cannot-affect-sandboxing! :segment segment-id)))
 
-(defenterprise pre-delete-check-sandbox-constraints-for-segment
-  "Refuses a non-admin's deletion of a Segment in the sandbox dependency set."
-  :feature :sandboxes
-  [{segment-id :id}]
-  (check-non-admin-cannot-affect-sandboxing! :segment segment-id))
-
 (defenterprise pre-update-check-sandbox-constraints-for-measure
   "Refuses a non-admin's update to a Measure in the sandbox dependency set when `changes` touches `:definition` or
   `:archived`."

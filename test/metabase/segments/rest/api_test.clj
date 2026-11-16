@@ -3,6 +3,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.segments.rest.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.api.response :as api.response]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -317,12 +318,13 @@
                                               :table_id   (mt/id :users)
                                               :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}
                    :model/Segment {id-2 :id} {:name       "Segment 2"
-                                              :table_id   (mt/id :venues)
-                                              :definition (:query (mt/mbql-query venues
-                                                                    {:filter
-                                                                     [:and
-                                                                      [:= $price 4]
-                                                                      [:= $category_id->categories.name "BBQ"]]}))}
+                                              :definition (let [mp    (mt/metadata-provider)
+                                                                query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+                                                            (-> query
+                                                                (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 4))
+                                                                (lib/filter (lib/= (m/find-first #(= (:id %) (mt/id :categories :name))
+                                                                                                 (lib/filterable-columns query))
+                                                                                   "BBQ"))))}
                    ;; inactive segments shouldn't show up
                    :model/Segment {id-3 :id} {:archived true
                                               :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]

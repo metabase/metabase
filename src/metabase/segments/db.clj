@@ -26,13 +26,11 @@
 
 (mu/defn insert-segment!
   "Insert a Segment and return the inserted instance."
-  [table-id :- ::lib.schema.id/table
-   creator-id :- ::lib.schema.id/user
+  [creator-id :- ::lib.schema.id/user
    segment-name :- :string
    description :- [:maybe :string]
    definition :- ::segments.schema/segment.definition]
   (t2/insert-returning-instance! :model/Segment
-                                 :table_id    table-id
                                  :creator_id  creator-id
                                  :name        segment-name
                                  :description description

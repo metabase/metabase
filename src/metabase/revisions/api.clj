@@ -143,9 +143,11 @@
                                                    {:allow-sensitive-fields? true}))
     (when (contains? #{:model/Transform :model/TransformTest :model/CardTest} model)
       (api/check-403 (mi/can-write? (t2/hydrate (merge instance (:object revision)) :can_write))))
-    ;; for Segments and Measures `table_id` is re-derived from `definition` on update, so when the restored definition
-    ;; specifies a source table, check write perms against that table rather than the revision's stored `table_id`
-    (when (contains? #{:model/Segment :model/Measure} model)
+    (when (= model :model/Segment)
+      (api/update-check instance (:object revision)))
+    ;; for Measures `table_id` is re-derived from `definition` on update, so when the restored definition specifies a
+    ;; source table, check write perms against that table rather than the revision's stored `table_id`
+    (when (= model :model/Measure)
       (let [table-id (some-> (get-in revision [:object :definition])
                              not-empty
                              lib-be/normalize-query

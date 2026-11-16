@@ -17,6 +17,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.measures.test-util :as measures.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.models.card :as card]
@@ -235,11 +236,8 @@
                                       :type :metric)
                                user)
             (mt/with-temp [:model/Segment {:as segment} {:name "Segment on products"
-                                                         :table_id products-id
                                                          :definition (-> (lib/query mp products)
-                                                                         (lib/filter (lib/> price 50))
-                                                                         lib/->legacy-MBQL
-                                                                         :query)}
+                                                                         (lib/filter (lib/> price 50)))}
                            :model/Measure {:as measure} {:name "Measure on products"
                                                          :table_id products-id
                                                          :definition (-> (lib/query mp products)
@@ -879,8 +877,7 @@
         (let [products-id (mt/id :products)
               price-field-id (mt/id :products :price)]
           (mt/with-temp [:model/Segment {segment-id :id :as segment} {:name "High Value Products"
-                                                                      :table_id products-id
-                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}]
+                                                                      :definition (measures.tu/segment-definition products-id price-field-id 50)}]
             (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)})
             (deps.test/synchronously-run-dependency-job!)
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
@@ -901,8 +898,7 @@
         (let [products-id (mt/id :products)
               price-field-id (mt/id :products :price)]
           (mt/with-temp [:model/Segment {segment-id :id :as segment} {:name "High Value Products"
-                                                                      :table_id products-id
-                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}
+                                                                      :definition (measures.tu/segment-definition products-id price-field-id 50)}
                          :model/User user {:email "test@test.com"}]
             (mt/with-test-user :crowberto
               (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)}))
@@ -1502,11 +1498,9 @@
       (let [products-id (mt/id :products)
             price-field-id (mt/id :products :price)]
         (mt/with-temp [:model/Segment {unreffed-segment-id :id :as unreffed-segment} {:name "Unreferenced Segment - archivedtest"
-                                                                                      :table_id products-id
-                                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}
+                                                                                      :definition (measures.tu/segment-definition products-id price-field-id 50)}
                        :model/Segment {archived-segment-id :id :as archived-segment} {:name "Archived Unreferenced Segment - archivedtest"
-                                                                                      :table_id products-id
-                                                                                      :definition {:filter [:> [:field price-field-id nil] 100]}
+                                                                                      :definition (measures.tu/segment-definition products-id price-field-id 100)
                                                                                       :archived true}]
           (events/publish-event! :event/segment-create {:object unreffed-segment :user-id (mt/user->id :crowberto)})
           (events/publish-event! :event/segment-create {:object archived-segment :user-id (mt/user->id :crowberto)})

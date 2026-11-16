@@ -7,6 +7,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.measures.test-util :as measures.tu]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -22,6 +23,11 @@
 (def ^:private rasta-revision-info
   (delay
     {:id (mt/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"}))
+
+(defn- venues-segment-definition
+  "A full query on venues filtered by price greater than 25."
+  []
+  (measures.tu/segment-definition (mt/id :venues) (mt/id :venues :price) 25))
 
 (defn- get-revisions [entity object-id]
   (for [revision (mt/user-http-request :rasta :get "revision" :entity entity, :id object-id)]
@@ -792,8 +798,7 @@
         [:model/Database {database-id :id} {}
          :model/Table    {table-id :id}    {:db_id database-id}
          :model/Segment  {:keys [id]}      {:creator_id (mt/user->id :crowberto)
-                                            :table_id   table-id
-                                            :definition {:filter [:= [:field 2 nil] "cans"]}}
+                                            :definition (venues-segment-definition)}
          :model/Revision _                 {:model       "Segment"
                                             :model_id    id
                                             :object      {:name       "b"
@@ -847,38 +852,33 @@
   (testing "POST /api/revision/revert <Segment>"
     (mt/test-helpers-set-global-values!
       (mt/with-temp
-        [:model/Database {database-id :id} {}
-         :model/Table    {table-id :id}    {:db_id database-id}
-         :model/Segment  {:keys [id]}      {:creator_id              (mt/user->id :crowberto)
-                                            :table_id                table-id
+        [:model/Segment  {:keys [id]}      {:creator_id              (mt/user->id :crowberto)
                                             :name                    "One Segment to rule them all, one segment to define them"
                                             :description             "One segment to bring them all, and in the DataModel bind them"
                                             :show_in_getting_started false
                                             :caveats                 nil
                                             :points_of_interest      nil
-                                            :definition              {:filter [:= [:field 2 nil] "cans"]}}
+                                            :definition              (venues-segment-definition)}
          :model/Revision {revision-id :id} {:model       "Segment"
                                             :model_id    id
                                             :object      {:creator_id              (mt/user->id :crowberto)
-                                                          :table_id                table-id
                                                           :name                    "One Segment to rule them all, one segment to define them"
                                                           :description             "One segment to bring them all, and in the DataModel bind them"
                                                           :show_in_getting_started false
                                                           :caveats                 nil
                                                           :points_of_interest      nil
-                                                          :definition              {:filter [:= [:field 2 nil] "cans"]}}
+                                                          :definition              (venues-segment-definition)}
                                             :is_creation true}
          :model/Revision _                 {:model    "Segment"
                                             :model_id id
                                             :user_id  (mt/user->id :crowberto)
                                             :object   {:creator_id              (mt/user->id :crowberto)
-                                                       :table_id                table-id
                                                        :name                    "Changed Segment Name"
                                                        :description             "One segment to bring them all, and in the DataModel bind them"
                                                        :show_in_getting_started false
                                                        :caveats                 nil
                                                        :points_of_interest      nil
-                                                       :definition              {:filter [:= [:field 2 nil] "cans"]}}
+                                                       :definition              (venues-segment-definition)}
                                             :message  "updated"}]
         (testing "the api response"
           (is (=? {:is_reversion true
@@ -913,9 +913,9 @@
                                    :definition  {:after {:lib/type "mbql/query",
                                                          :stages
                                                          [{:lib/type "mbql.stage/mbql",
-                                                           :source-table table-id
-                                                           :filters [["=" {} ["field" {} 2] "cans"]]}]
-                                                         :database database-id}}}
+                                                           :source-table (mt/id :venues)
+                                                           :filters [[">" {} ["field" {} (mt/id :venues :price)] 25]]}]
+                                                         :database (mt/id)}}}
                     :description  "created this."}]
                   (mt/user-http-request :crowberto :get 200 (format "revision/segment/%d" id)))))))))
 

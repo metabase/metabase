@@ -26,7 +26,9 @@
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.global-system.mutable-component :as mc]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group-membership :as pgm]
@@ -353,11 +355,9 @@
    :model/Segment
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
-             :definition {}
              :description "Lookin' for a blueberry"
              :entity_id (u/generate-nano-id)
-             :name "Toucans in the rainforest"
-             :table_id (data/id :checkins)}))
+             :name "Toucans in the rainforest"}))
 
    ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
    ;; Tech debt issue: #39329
@@ -500,6 +500,22 @@
                     (finally
                       (memoize/memo-clear! @#'collection/user->personal-collection-id))))))
  ::evict-personal-collection-cache)
+
+(defn- basic-definition
+  "A query on the Table with `table-id` with one filter that holds for every row."
+  [table-id]
+  (let [mp (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/filter (lib/= 1 1)))))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Segment
+  "Gives a temporary Segment without a `:definition` a basic one on its `:table_id`, which defaults to `checkins`."
+  [model explicit-attributes f]
+  (next-method model
+               (cond-> (dissoc explicit-attributes :table_id)
+                 (not (contains? explicit-attributes :definition))
+                 (assoc :definition (basic-definition (:table_id explicit-attributes (data/id :checkins)))))
+               f))
 
 (def ^:private dimension-lock
   "Serialises temporary Dimensions against each other.

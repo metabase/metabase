@@ -20,6 +20,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.measures.test-util :as measures.tu]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -938,8 +939,7 @@
      (let [products-id (mt/id :products)
            price-field-id (mt/id :products :price)
            category-field-id (mt/id :products :category)]
-       (mt/with-temp [:model/Segment {segment-id :id} {:table_id products-id
-                                                       :definition {:filter [:> [:field price-field-id nil] 50]}}]
+       (mt/with-temp [:model/Segment {segment-id :id} {:definition (measures.tu/segment-definition products-id price-field-id 50)}]
          (testing "creating a segment creates dependency to its table"
            (assert-pending :segment segment-id)
            (deps.test/synchronously-run-dependency-job!)
@@ -950,7 +950,9 @@
                   (into #{} (map #(dissoc % :id)
                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
          (testing "updating segment definition recalculates dependencies"
-           (t2/update! :model/Segment :id segment-id {:definition {:filter [:= [:field category-field-id nil] "Widget"]}})
+           (t2/update! :model/Segment :id segment-id {:definition (let [mp (mt/metadata-provider)]
+                                                                           (-> (lib/query mp (lib.metadata/table mp products-id))
+                                                                               (lib/filter (lib/= (lib.metadata/field mp category-field-id) "Widget"))))})
            (assert-pending :segment segment-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{{:from_entity_type :segment
@@ -969,8 +971,7 @@
    (fn [_]
      (let [products-id (mt/id :products)
            price-field-id (mt/id :products :price)]
-       (mt/with-temp [:model/Segment {segment-id :id} {:table_id products-id
-                                                       :definition {:filter [:> [:field price-field-id nil] 50]}}]
+       (mt/with-temp [:model/Segment {segment-id :id} {:definition (measures.tu/segment-definition products-id price-field-id 50)}]
          (testing "creating a card using a segment creates dependencies to both segment and table"
            (deps.test/synchronously-run-dependency-job!)
            (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)

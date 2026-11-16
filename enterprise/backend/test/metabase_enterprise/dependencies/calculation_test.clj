@@ -484,22 +484,37 @@
       (is (= {:card #{sandbox-card-id}}
              (calculation/calculate-deps :sandbox sandbox))))))
 
+(defn- segment-definition
+  "A full query on the Table with `table-id` with one filter for each of `filter-fns`, called with the metadata provider and the query."
+  [table-id & filter-fns]
+  (let [mp (mt/metadata-provider)]
+    (reduce (fn [query filter-fn] (lib/filter query (filter-fn mp query)))
+            (lib/query mp (lib.metadata/table mp table-id))
+            filter-fns)))
+
+(defn- field-filter
+  "A filter function for `segment-definition` that compares the Field `field-id` with `value` using `f`."
+  [f field-id value]
+  (fn [mp _query] (f (lib.metadata/field mp field-id) value)))
+
+(defn- segment-filter
+  "A filter function for `segment-definition` that applies the Segment `segment-id`."
+  [segment-id]
+  (fn [mp _query] (lib.metadata/segment mp segment-id)))
+
 (deftest ^:parallel upstream-deps-segment-test
   (let [products-id (mt/id :products)
         price-field-id (mt/id :products :price)
         category-field-id (mt/id :products :category)]
     (testing "segment depending only on table"
-      (mt/with-temp [:model/Segment segment {:table_id products-id
-                                             :definition {:filter [:> [:field price-field-id nil] 50]}}]
+      (mt/with-temp [:model/Segment segment {:definition (segment-definition products-id (field-filter lib/> price-field-id 50))}]
         (is (= {:segment #{} :table #{products-id}}
                (calculation/calculate-deps :segment segment)))))
     (testing "segment depending on another segment"
-      (mt/with-temp [:model/Segment {segment-a-id :id :as segment-a} {:table_id products-id
-                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}
-                     :model/Segment segment-b {:table_id products-id
-                                               :definition {:filter [:and
-                                                                     [:segment segment-a-id]
-                                                                     [:= [:field category-field-id nil] "Widget"]]}}]
+      (mt/with-temp [:model/Segment {segment-a-id :id :as segment-a} {:definition (segment-definition products-id (field-filter lib/> price-field-id 50))}
+                     :model/Segment segment-b {:definition (segment-definition products-id
+                                                                               (segment-filter segment-a-id)
+                                                                               (field-filter lib/= category-field-id "Widget"))}]
         (testing "base segment depends only on table"
           (is (= {:segment #{} :table #{products-id}}
                  (calculation/calculate-deps :segment segment-a))))
@@ -513,10 +528,8 @@
     (let [products-id (mt/id :products)
           price-field-id (mt/id :products :price)
           category-field-id (mt/id :products :category)]
-      (mt/with-temp [:model/Segment {segment-a-id :id} {:table_id products-id
-                                                        :definition {:filter [:> [:field price-field-id nil] 50]}}
-                     :model/Segment {segment-b-id :id} {:table_id products-id
-                                                        :definition {:filter [:= [:field category-field-id nil] "Widget"]}}
+      (mt/with-temp [:model/Segment {segment-a-id :id} {:definition (segment-definition products-id (field-filter lib/> price-field-id 50))}
+                     :model/Segment {segment-b-id :id} {:definition (segment-definition products-id (field-filter lib/= category-field-id "Widget"))}
                      :model/Card card {:dataset_query {:database (mt/id)
                                                        :type :query
                                                        :query {:source-table products-id
@@ -535,15 +548,12 @@
           price-field-id (mt/id :products :price)
           category-field-id (mt/id :products :category)
           rating-field-id (mt/id :products :rating)]
-      (mt/with-temp [:model/Segment {segment-a-id :id} {:table_id products-id
-                                                        :definition {:filter [:> [:field price-field-id nil] 50]}}
-                     :model/Segment {segment-b-id :id} {:table_id products-id
-                                                        :definition {:filter [:= [:field category-field-id nil] "Widget"]}}
-                     :model/Segment segment-c {:table_id products-id
-                                               :definition {:filter [:and
-                                                                     [:segment segment-a-id]
-                                                                     [:segment segment-b-id]
-                                                                     [:> [:field rating-field-id nil] 4]]}}]
+      (mt/with-temp [:model/Segment {segment-a-id :id} {:definition (segment-definition products-id (field-filter lib/> price-field-id 50))}
+                     :model/Segment {segment-b-id :id} {:definition (segment-definition products-id (field-filter lib/= category-field-id "Widget"))}
+                     :model/Segment segment-c {:definition (segment-definition products-id
+                                                                               (segment-filter segment-a-id)
+                                                                               (segment-filter segment-b-id)
+                                                                               (field-filter lib/> rating-field-id 4))}]
         (is (= {:table #{products-id}
                 :segment #{segment-a-id segment-b-id}}
                (calculation/calculate-deps :segment segment-c)))))))
@@ -554,8 +564,14 @@
            venues-id (mt/id :venues)
            venue-fk-field-id (mt/id :checkins :venue_id)
            venue-name-field-id (mt/id :venues :name)]
-      (mt/with-temp [:model/Segment segment {:table_id checkins-id
-                                             :definition {:filter [:= [:field venue-name-field-id {:source-field venue-fk-field-id}] "Bird's Nest"]}}]
+      (mt/with-temp [:model/Segment segment {:definition (segment-definition
+                                                       checkins-id
+                                                       (fn [_mp query]
+                                                         (lib/= (some #(when (and (= (:id %) venue-name-field-id)
+                                                                                  (= (:fk-field-id %) venue-fk-field-id))
+                                                                         %)
+                                                                      (lib/filterable-columns query))
+                                                                "Bird's Nest")))}]
         (is (= {:segment #{}
                 :table #{checkins-id venues-id}}
                (calculation/calculate-deps :segment segment)))))))
@@ -651,8 +667,7 @@
           orders (lib.metadata/table mp orders-id)
           quantity (lib.metadata/field mp (mt/id :orders :quantity))
           total-field-id (mt/id :orders :total)]
-      (mt/with-temp [:model/Segment {segment-id :id} {:table_id orders-id
-                                                      :definition {:filter [:> [:field total-field-id nil] 100]}}]
+      (mt/with-temp [:model/Segment {segment-id :id} {:definition (segment-definition orders-id (field-filter lib/> total-field-id 100))}]
         (let [mp' (mt/metadata-provider)
               segment-meta (lib.metadata/segment mp' segment-id)]
           (mt/with-temp [:model/Measure measure {:name "Quantity Where Total > 100"

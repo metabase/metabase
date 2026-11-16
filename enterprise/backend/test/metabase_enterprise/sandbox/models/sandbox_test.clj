@@ -306,19 +306,34 @@
 
 (deftest only-admins-can-change-a-segment-a-sandbox-is-built-out-of-test
   (mt/with-premium-features #{:sandboxes}
-    (guarded-writes-test
-     with-segment-policy
-     (fn [{:keys [inner outer]}]
-       [["definition"                       segment-msg #(t2/update! :model/Segment :id (:id outer)
-                                                                     {:definition (price-above 4)})]
-        ["archive"                          segment-msg #(t2/update! :model/Segment :id (:id outer) {:archived true})]
-        ["definition of the nested segment" segment-msg #(t2/update! :model/Segment :id (:id inner)
-                                                                     {:definition (price-above 4)})]
-        ["delete"                           segment-msg #(t2/delete! :model/Segment :id (:id outer))]]))
-    (untouched-test
-     with-segment-policy
-     (fn [{:keys [other]}]
-       (t2/update! :model/Segment :id (:id other) {:definition (price-above 5)})))))
+    (letfn [(update-check [segment changes]
+              (api/update-check (t2/select-one :model/Segment :id (:id segment)) changes))
+            (guarded-changes [{:keys [inner outer]}]
+              [["definition"                       outer {:definition (price-above 4)}]
+               ["archive"                          outer {:archived true}]
+               ["definition of the nested segment" inner {:definition (price-above 4)}]])]
+      (testing "a non-admin is refused"
+        (with-segment-policy
+          (fn [policy]
+            (mt/with-test-user :rasta
+              (doseq [[change-name segment changes] (guarded-changes policy)]
+                (testing change-name
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo segment-msg (update-check segment changes)))))))))
+      (testing "an admin may do all of it"
+        (with-segment-policy
+          (fn [policy]
+            (mt/with-test-user :crowberto
+              (doseq [[change-name segment changes] (guarded-changes policy)]
+                (testing change-name
+                  (is (true? (update-check segment changes)))))))))
+      (testing "an unrelated segment is untouched"
+        (with-segment-policy
+          (fn [{:keys [other]}]
+            (mt/with-test-user :crowberto
+              (is (true? (update-check other {:definition (price-above 5)}))))
+            (mt/with-test-user :rasta
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that"
+                                    (update-check other {:definition (price-above 5)}))))))))))
 
 (defn- sum-where-measure-definition
   "A Measure definition summing VENUES.PRICE over the rows matching `segment-id`."
@@ -367,13 +382,17 @@
   (mt/with-premium-features #{:sandboxes}
     (guarded-writes-test
      with-measure-policy
-     (fn [{:keys [segment measure]}]
-       [["definition of the nested segment" segment-msg #(t2/update! :model/Segment :id (:id segment)
-                                                                     {:definition (price-above 3)})]
-        ["definition"                       measure-msg #(t2/update! :model/Measure :id (:id measure)
-                                                                     {:definition (sum-of-price 2)})]
-        ["archive"                          measure-msg #(t2/update! :model/Measure :id (:id measure) {:archived true})]
-        ["delete"                           measure-msg #(t2/delete! :model/Measure :id (:id measure))]]))
+     (fn [{:keys [measure]}]
+       [["definition" measure-msg #(t2/update! :model/Measure :id (:id measure) {:definition (sum-of-price 2)})]
+        ["archive"    measure-msg #(t2/update! :model/Measure :id (:id measure) {:archived true})]
+        ["delete"     measure-msg #(t2/delete! :model/Measure :id (:id measure))]]))
+    (testing "a non-admin is refused a change to the segment the measure reads"
+      (with-measure-policy
+        (fn [{:keys [segment]}]
+          (mt/with-test-user :rasta
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo segment-msg
+                                  (api/update-check (t2/select-one :model/Segment :id (:id segment))
+                                                    {:definition (price-above 3)})))))))
     (untouched-test
      with-measure-policy
      (fn [{:keys [other]}]

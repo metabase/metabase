@@ -482,10 +482,7 @@
                  (select-keys card [:name]))))))))
 
 (deftest filter-by-using-model-segment-metric
-  (mt/with-temp [:model/Database {database-id :id} {}
-                 :model/Table {table-id :id} {:db_id database-id}
-                 :model/Segment {segment-id :id} {:table_id table-id
-                                                  :definition {:filter 100}} ; just a random filter
+  (mt/with-temp [:model/Segment {segment-id :id} {}
                  :model/Card {model-id :id :as model} {:name "Model"
                                                        :type :model
                                                        :dataset_query {:database (mt/id)
@@ -1630,8 +1627,9 @@
                                                              :filter   [:not-null $password]
                                                              :order-by [[:asc $id]]
                                                              :limit    1})}
-                   :model/Segment segment {:table_id   (mt/id :users)
-                                           :definition (mt/mbql-query users {:filter [:starts-with $password "4"]})}]
+                   :model/Segment segment {:definition (let [mp (mt/metadata-provider)]
+                                                         (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                                                             (lib/filter (lib/starts-with (lib.metadata/field mp (mt/id :users :password)) "4"))))}]
       (testing "running the saved card"
         (is (= [[1 "4be68cda-6fd5-4ba7-944e-2b475600bda5"]]
                (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (:id card)))))))

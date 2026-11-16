@@ -1,14 +1,12 @@
 (ns metabase.revisions.impl.segment-test
   (:require
    [clojure.test :refer :all]
+   [metabase.measures.test-util :as measures.tu]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]))
 
 (deftest ^:parallel serialize-segment-test
-  (mt/with-temp [:model/Database {database-id :id} {}
-                 :model/Table    {table-id :id} {:db_id database-id}
-                 :model/Segment  segment        {:table_id   table-id
-                                                 :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]
+  (mt/with-temp [:model/Segment segment {:definition (measures.tu/segment-definition (mt/id :venues) (mt/id :venues :price) 4)}]
     (is (=? {:id                      true
              :table_id                true
              :creator_id              (mt/user->id :rasta)
@@ -20,9 +18,9 @@
              :entity_id               (:entity_id segment)
              :definition              {:lib/type :mbql/query
                                        :stages [{:lib/type :mbql.stage/mbql
-                                                 :source-table table-id
-                                                 :filters [[:> {} [:field {} 4] "2014-10-19"]]}]
-                                       :database database-id}
+                                                 :source-table (mt/id :venues)
+                                                 :filters [[:> {} [:field {} (mt/id :venues :price)] 4]]}]
+                                       :database (mt/id)}
              :archived                false}
             (into {} (-> (revision/serialize-instance :model/Segment (:id segment) segment)
                          (update :id boolean)
@@ -32,15 +30,12 @@
                     (keys (revision/serialize-instance :model/Segment (:id segment) segment)))))))
 
 (deftest ^:parallel diff-segments-test
-  (mt/with-temp [:model/Database {database-id :id} {}
-                 :model/Table    {table-id :id} {:db_id database-id}
-                 :model/Segment  segment        {:table_id   table-id
-                                                 :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]
+  (mt/with-temp [:model/Segment segment {:definition (measures.tu/segment-definition (mt/id :venues) (mt/id :venues :price) 4)}]
     (is (=? {:definition  {:before {:lib/type :mbql/query
                                     :stages [{:lib/type :mbql.stage/mbql
-                                              :source-table table-id
-                                              :filters [[:> {} [:field {} 4] "2014-10-19"]]}]
-                                    :database database-id}
+                                              :source-table (mt/id :venues)
+                                              :filters [[:> {} [:field {} (mt/id :venues :price)] 4]]}]
+                                    :database (mt/id)}
                            :after  {:filter [:between [:field 4 nil] "2014-07-01" "2014-10-19"]}}
              :description {:before "Lookin' for a blueberry"
                            :after  "BBB"}

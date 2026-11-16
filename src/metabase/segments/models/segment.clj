@@ -2,7 +2,6 @@
   "A Segment is a saved MBQL 'macro', expanding to a `:filter` subclause. It is passed in as a `:filter` subclause but is
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require
-   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
@@ -107,18 +106,36 @@
                   (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
          (collection/remote-sync-writable-table? table))))
 
-;; Segments can be created by
-;; a) superusers
-;; b) OR data analysts with unrestricted view-data permissions
-;; but not on a read-only instance that syncs their table
+(defn- definition-table-id
+  "The id of the Table `definition` is built on, or nil when it names none."
+  [definition]
+  (when (seq definition)
+    (case (lib/normalized-mbql-version definition)
+      (:mbql-version/mbql5 :mbql-version/legacy)
+      (lib/primary-source-table-id (lib-be/normalize-query definition))
+      (let [table-id (:source-table (update-keys definition keyword))]
+        (when (pos-int? table-id)
+          table-id)))))
+
 (defmethod mi/can-create? :model/Segment
   [_model instance]
-  (let [table (or (:table instance)
-                  (segments.db/table (:table_id instance)))]
-    (and (or (mi/superuser?)
-             (and (api/entitled-data-analyst?)
-                  (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
-         (collection/remote-sync-writable-table? table))))
+  (boolean
+   (when-let [table (segments.db/table (definition-table-id (:definition instance)))]
+     (segment-writable? {:table table}))))
+
+(defenterprise pre-update-check-sandbox-constraints-for-segment
+  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  metabase-enterprise.sandbox.models.sandbox
+  [_ _])
+
+(defmethod mi/can-update? :model/Segment
+  [instance changes]
+  (let [table-id (definition-table-id (:definition changes))]
+    (pre-update-check-sandbox-constraints-for-segment instance changes)
+    (and (mi/can-write? instance)
+         (or (nil? table-id)
+             (= table-id (:table_id instance))
+             (mi/can-create? :model/Segment changes)))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Segment :can_write]
   "Batched hydration for :can_write on segments, hydrating their tables first."
@@ -136,44 +153,31 @@
                         (segments.db/table-database-id table-id))]
       (normalize-segment-definition definition table-id database-id))))
 
+(defn- with-checked-definition
+  "`segment` with its `:definition` normalized and checked, and its `:table_id` derived from it."
+  [{:keys [id] :as segment}]
+  (let [definition (migrated-segment-definition segment)]
+    (api/check-400 (seq definition) (tru "Segment definition must specify a source table."))
+    (lib/check-segment-overwrite id definition)
+    (assoc segment
+           :definition definition
+           :table_id   (lib/primary-source-table-id definition))))
+
 (t2/define-before-insert :model/Segment
   [segment]
-  (let [definition (migrated-segment-definition segment)]
-    (when (seq definition)
-      (lib/check-segment-overwrite nil definition))
-    (cond-> (assoc segment :definition definition)
-      (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition)))))
+  (with-checked-definition segment))
 
-(defenterprise pre-update-check-sandbox-constraints-for-segment
-  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
-  metabase-enterprise.sandbox.models.sandbox
-  [_ _])
-
-(defenterprise pre-delete-check-sandbox-constraints-for-segment
-  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
-  metabase-enterprise.sandbox.models.sandbox
-  [_])
-
-(t2/define-before-update :model/Segment [{:keys [id] :as segment}]
-  ;; additional checks (Enterprise Edition only)
-  (pre-update-check-sandbox-constraints-for-segment segment (t2/changes segment))
-  ;; throw an Exception if someone tries to update creator_id
-  (when (contains? (t2/changes segment) :creator_id)
-    (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
-  ;; normalize and check for cycles if definition is being updated
-  (if-let [def-change (:definition (t2/changes segment))]
-    (let [definition (migrated-segment-definition (assoc segment :definition def-change))]
-      (when (seq definition)
-        (lib/check-segment-overwrite id definition))
-      (cond-> (assoc segment :definition definition)
-        (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition))))
-    segment))
-
-(t2/define-before-delete :model/Segment
+(t2/define-before-update :model/Segment
   [segment]
-  ;; additional checks (Enterprise Edition only)
-  (pre-delete-check-sandbox-constraints-for-segment segment)
-  segment)
+  (let [changes (t2/changes segment)]
+    (when (contains? changes :creator_id)
+      (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
+    (if (contains? changes :definition)
+      (with-checked-definition segment)
+      (do
+        (api/check-400 (not (contains? changes :table_id))
+                       (tru "The table of a Segment is derived from its definition."))
+        segment))))
 
 (defn- maybe-migrated-segment-definition
   [segment]

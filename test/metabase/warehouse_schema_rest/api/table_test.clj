@@ -14,6 +14,7 @@
    [metabase.events.core :as events]
    [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
@@ -766,8 +767,9 @@
 (deftest ^:parallel table-segment-query-metadata-test
   (testing "GET /api/table/:id/query_metadata"
     (testing "segments include :definition_description"
-      (mt/with-temp [:model/Segment _ {:table_id (mt/id :venues)
-                                       :definition (:query (mt/mbql-query venues {:filter [:= $price 4]}))}]
+      (mt/with-temp [:model/Segment _ {:definition (let [mp (mt/metadata-provider)]
+                                                     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                         (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 4))))}]
         (is (=? {:segments [{:definition_description "Filtered by Price is equal to 4"}]}
                 (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))))))))
 
