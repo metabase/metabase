@@ -36,6 +36,7 @@
   ;; Neither default is universally better without knowing the user's intent.
   :expect {:in-place       [:A :B :C :D]
            :appdb-h2       [:C :D]
+           :appdb-mysql    [:C :D]
            :appdb-postgres [:C :D]
            :semantic       {:keyword [:C :D], :vector [:A :B :C :D]}}
   :comparisons
@@ -44,6 +45,7 @@
     :correct [:A :B :C :D]
     :alternatives
     {:appdb-h2       {:query "revenue", :hits [:A :C :D]}
+     :appdb-mysql    {:query "revenue or region", :hits [:A :B :C :D]}
      :appdb-postgres {:query "revenue or region", :hits [:A :B :C :D]}}}
    {:focus   "revenue broken down by region"
     :correct [:C :D]
@@ -62,6 +64,7 @@
   ;; cannot serve arbitrary substring lookup.
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:A :B :C]
+           :appdb-mysql    [:B :C]
            :appdb-postgres [:B :C]
            :semantic       {:keyword [:B :C], :vector [:B]}}}
  {:id     "two-substrings-one-word"
@@ -76,6 +79,7 @@
   ;; In-place needs only one substring; PostgreSQL's lexemes match only the separate-word card.
   :expect {:in-place       [:A :B :C :D]
            :appdb-h2       [:A :D]
+           :appdb-mysql    [:D]
            :appdb-postgres [:D]
            :semantic       {:keyword [:D], :vector [:A :B :D]}}}
  {:id     "last-word-prefix"
@@ -89,6 +93,7 @@
            :E {:name "Stalled order report"}}
   :expect {:in-place       [:A :B :C :D :E]
            :appdb-h2       [:A :B :C :E]
+           :appdb-mysql    [:A :B :E]
            :appdb-postgres [:A :B :E]
            :semantic       {:keyword [:A :B :E], :vector [:A :B :D :E]}}}
  {:id     "nonfinal-prefix"
@@ -101,6 +106,7 @@
            :D {:name "Renewals"}}
   :expect {:in-place       [:A :B :C :D]
            :appdb-h2       [:A :B :C]
+           :appdb-mysql    [:B]
            :appdb-postgres [:B]
            :semantic       {:keyword [:B], :vector [:A :B :C :D]}}}
  {:id     "or-operator"
@@ -116,6 +122,7 @@
   ;; word, including "or" in "Store".
   :expect {:in-place       [:A :B :C :D :E]
            :appdb-h2       [:D]
+           :appdb-mysql    [:A :B :C :D]
            :appdb-postgres [:A :B :C :D]
            :semantic       {:keyword [:A :B :C :D], :vector [:A :B :C :D]}}
   :comparisons
@@ -123,6 +130,7 @@
     :correct [:D]
     :alternatives
     {:in-place       {:query "or", :hits [:D :E]}
+     :appdb-mysql    {:query "\"refunds or returns\"", :hits [:D]}
      :appdb-postgres {:query "\"refunds or returns\"", :hits [:D]}}}
    {:focus   "anything about refunds or returns"
     :correct [:A :B :C :D]
@@ -141,6 +149,7 @@
   ;; This is a current-behavior contract, not approval.
   :expect {:in-place       [:A :B :D]
            :appdb-h2       [:D]
+           :appdb-mysql    [:A]
            :appdb-postgres [:A]
            :semantic       {:keyword [:A], :vector [:A :B :D]}}
   :comparisons
@@ -162,6 +171,7 @@
            :D {:name "KPI: \"Active users\""}}
   :expect {:in-place       [:D]
            :appdb-h2       [:D]
+           :appdb-mysql    [:A :C :D]
            :appdb-postgres [:A :C :D]
            :semantic       {:keyword [:A :C :D], :vector [:A :B :C :D]}}
   :comparisons
@@ -182,6 +192,7 @@
            :F {:name "Marketing and sales"}}
   :expect {:in-place       [:A :B :C :D :E :F]
            :appdb-h2       [:B :F]
+           :appdb-mysql    [:A :B :F]
            :appdb-postgres [:A :B :F]
            :semantic       {:keyword [:A :B :F], :vector [:A :B :C :F]}}
   :comparisons
@@ -202,6 +213,7 @@
   ;; That generally helps a natural-language query, but not a search intended to find literal text.
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:A]
+           :appdb-mysql    [:A]
            :appdb-postgres [:A :B]
            :semantic       {:keyword [:A :B], :vector [:A]}}
   :comparisons
@@ -212,6 +224,7 @@
     :correct [:A]
     :alternatives
     {:in-place       {:query "office", :hits [:A :B]}
+     :appdb-mysql    {:query "office -supplies", :hits [:A]}
      :appdb-postgres {:query "office -supplies", :hits [:A]}}}]}
  {:id     "simple-stopword"
   :focus  "same documents/query without English stopword removal"
@@ -222,6 +235,7 @@
            :C {:name "Top shows of the year"}}
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:A]
+           :appdb-mysql    [:A]
            :appdb-postgres [:A]
            :semantic       {:keyword [:A], :vector [:A]}}}
  {:id     "english-stemming"
@@ -237,6 +251,7 @@
   ;; This improves recall for inflections while broadening beyond exact-word matching.
   :expect {:in-place       [:A :C :D]
            :appdb-h2       [:A]
+           :appdb-mysql    [:A]
            :appdb-postgres [:A :B]
            :semantic       {:keyword [:A :B], :vector [:A :B :C :D]}}
   :comparisons
@@ -258,6 +273,7 @@
            :E {:name "Refund requests"}}
   :expect {:in-place       [:A :C :D]
            :appdb-h2       [:A]
+           :appdb-mysql    [:A]
            :appdb-postgres [:A]
            :semantic       {:keyword [:A], :vector [:A :B :C :D]}}}
  {:id     "english-stem-prefix"
@@ -274,6 +290,7 @@
   ;; Substring engines need the exact word.
   :expect {:in-place       [:C]
            :appdb-h2       [:C]
+           :appdb-mysql    [:C]
            :appdb-postgres [:A :B :C :D]
            :semantic       {:keyword [:A :B :C :D], :vector [:A :B :C :D]}}
   :comparisons
@@ -295,6 +312,7 @@
            :F {:name "Shopping carts"}}
   :expect {:in-place       [:C]
            :appdb-h2       [:C]
+           :appdb-mysql    [:C]
            :appdb-postgres [:C]
            :semantic       {:keyword [:C], :vector [:A :B :C :D]}}}
  {:id     "not-literal"
@@ -307,6 +325,7 @@
            :D {:name "Not shipped yet"}}
   :expect {:in-place       [:A :B :C :D]
            :appdb-h2       [:B]
+           :appdb-mysql    [:B]
            :appdb-postgres [:B]
            :semantic       {:keyword [:B], :vector [:A :B :D]}}}
  {:id     "english-not-stopword"
@@ -321,6 +340,7 @@
   ;; what the user asked for.
   :expect {:in-place       [:A :B :C :D]
            :appdb-h2       [:B]
+           :appdb-mysql    [:B]
            :appdb-postgres [:A :B]
            :semantic       {:keyword [:A :B], :vector [:A :B :D]}}}
  {:id     "vector-only-match"
@@ -335,6 +355,7 @@
   ;; C is related too, but the model places it outside the cutoff.
   :expect {:in-place       [:A]
            :appdb-h2       [:A]
+           :appdb-mysql    [:A]
            :appdb-postgres [:A]
            :semantic       {:keyword [:A], :vector [:A :B]}}}
  {:id     "english-stopword-only"
@@ -347,6 +368,7 @@
            :D {:name "Product inventory"}}
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:A :B :C]
+           :appdb-mysql    [:A :B]
            :appdb-postgres []
            :semantic       {:keyword [], :vector []}}}
  {:id     "simple-stopword-only"
@@ -359,6 +381,7 @@
            :D {:name "Product inventory"}}
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:A :B :C]
+           :appdb-mysql    [:A :B]
            :appdb-postgres [:A :B]
            :semantic       {:keyword [:A :B], :vector []}}}
  {:id     "percent-punctuation"
@@ -377,6 +400,7 @@
   ;; A and B would match if % were a LIKE wildcard.
   :expect {:in-place       [:C]
            :appdb-h2       [:C]
+           :appdb-mysql    [:C :D :F]
            :appdb-postgres [:C :D :F]
            :semantic       {:keyword [:C :D :F], :vector [:A :B :C :D :E :F :G]}}}
  {:id     "underscore-punctuation"
@@ -391,6 +415,7 @@
   ;; A and D would match if _ were a LIKE wildcard.
   :expect {:in-place       [:B]
            :appdb-h2       [:B]
+           :appdb-mysql    [:A :B :D :E]
            :appdb-postgres [:B :D :E]
            :semantic       {:keyword [:B :D :E], :vector [:A :B :C :D :E]}}}
  {:id     "percent-only"
@@ -403,6 +428,7 @@
            :D {:name "Profiles 100% complete"}}
   :expect {:in-place       [:D]
            :appdb-h2       [:D]
+           :appdb-mysql    []
            :appdb-postgres []
            :semantic       {:keyword [], :vector []}}}
  {:id     "possessive-apostrophe"
@@ -417,6 +443,7 @@
   ;; H2 needs the apostrophe; in-place needs any one word.
   :expect {:in-place       [:A :B :C :D]
            :appdb-h2       [:A]
+           :appdb-mysql    [:A]
            :appdb-postgres [:A]
            :semantic       {:keyword [:A], :vector [:A :B :C :D]}}
   :comparisons
@@ -426,6 +453,7 @@
     :alternatives
     {:in-place       {:query "customer", :hits [:A :B :C]}
      :appdb-h2       {:query "customer orders", :hits [:A :B :C]}
+     :appdb-mysql    {:query "customer", :hits [:A :B :C]}
      :appdb-postgres {:query "customer", :hits [:A :B :C]}
      :semantic       {:query "customer", :hits [:A :B :C]}}}]}
  {:id     "year-in-range"
@@ -442,6 +470,7 @@
   ;; The vector arm returns exactly the 2024 cards.
   :expect {:in-place       [:A :B :C :D]
            :appdb-h2       [:A :B :C :D]
+           :appdb-mysql    [:A :C :D]
            :appdb-postgres [:A :D]
            :semantic       {:keyword [:A :D], :vector [:A :B :C]}}
   :comparisons
@@ -449,7 +478,8 @@
   [{:focus   "cards about 2024"
     :correct [:A :B :C]
     :alternatives
-    {:appdb-postgres {:query "2024 or fy2024", :hits [:A :B]}}}]}
+    {:appdb-mysql    {:query "2024 or fy2024", :hits [:A :B :C]}
+     :appdb-postgres {:query "2024 or fy2024", :hits [:A :B]}}}]}
  {:id     "accent-literal"
   :focus  "only the vector arm matches across an accent"
   :config "simple"
@@ -463,6 +493,7 @@
   ;; The vector arm matches across the accent, and "Coffee orders" by meaning.
   :expect {:in-place       [:B :C]
            :appdb-h2       [:B :C]
+           :appdb-mysql    [:B :C]
            :appdb-postgres [:B :C]
            :semantic       {:keyword [:B :C], :vector [:A :B :D]}}
   :comparisons
@@ -472,6 +503,7 @@
     :alternatives
     {:in-place       {:query "café cafe", :hits [:A :B :C]}
      :appdb-h2       {:query "caf", :hits [:A :B :C]}
+     :appdb-mysql    {:query "cafe or café", :hits [:A :B]}
      :appdb-postgres {:query "cafe or café", :hits [:A :B]}}}]}
  {:id     "hyphenated-compound"
   :focus  "PostgreSQL indexes a hyphenated word and its parts"
@@ -485,6 +517,7 @@
   ;; Each lexical engine finds only the hyphenated spelling; the vector arm finds all three.
   :expect {:in-place       [:A]
            :appdb-h2       [:A]
+           :appdb-mysql    [:A]
            :appdb-postgres [:A]
            :semantic       {:keyword [:A], :vector [:A :B :C]}}
   :comparisons
@@ -495,6 +528,7 @@
     :alternatives
     {:in-place       {:query "commerce", :hits [:A :B :C :D]}
      :appdb-h2       {:query "commerce", :hits [:A :B :C :D]}
+     :appdb-mysql    {:query "e commerce or ecommerce", :hits [:A :B :C]}
      :appdb-postgres {:query "e commerce or ecommerce", :hits [:A :B :C]}}}]}
  {:id     "camel-case-name"
   :focus  "PostgreSQL indexes a camelCase name as one word"
@@ -509,6 +543,7 @@
   ;; Underscores separate PostgreSQL words, so it finds "monthly_revenue".
   :expect {:in-place       [:A :B :C :D :E]
            :appdb-h2       [:A :B :C :D :E]
+           :appdb-mysql    [:C :D :E]
            :appdb-postgres [:C :D :E]
            :semantic       {:keyword [:C :D :E], :vector [:A :C :D :E]}}}
  {:id     "english-phrase-stopword"
@@ -522,6 +557,7 @@
            :E {:name "Searches for \"salt and pepper\""}}
   :expect {:in-place       [:A :D :E]
            :appdb-h2       [:E]
+           :appdb-mysql    [:A :E]
            :appdb-postgres [:A :C :E]
            :semantic       {:keyword [:A :C :E], :vector [:A :B :C :D :E]}}
   :comparisons
@@ -534,6 +570,7 @@
     :alternatives
     {:in-place       {:query "shaker grinder", :hits [:A :B]}
      :appdb-h2       {:query "shaker", :hits [:B]}
+     :appdb-mysql    {:query "shaker or grinder", :hits [:A]}
      :appdb-postgres {:query "shaker or grinder", :hits [:A :B]}
      :semantic       {:query "shakers and grinders", :hits [:A :B]}}}]}
  {:id     "simple-phrase-and"
@@ -547,6 +584,7 @@
            :E {:name "Searches for \"salt and pepper\""}}
   :expect {:in-place       [:A :D :E]
            :appdb-h2       [:E]
+           :appdb-mysql    [:A :E]
            :appdb-postgres [:A :E]
            :semantic       {:keyword [:A :E], :vector [:A :B :C :D :E]}}}
  {:id     "unfinished-quote"
@@ -561,6 +599,7 @@
            :F {:name "Search term: \"customer ref\""}}
   :expect {:in-place       [:A :B :C :D :E :F]
            :appdb-h2       [:D :F]
+           :appdb-mysql    [:A :B :D :E :F]
            :appdb-postgres [:A :B :D :E :F]
            :semantic       {:keyword [:A :B :D :E :F], :vector [:A :B :C :D :E :F]}}
   :comparisons
@@ -581,6 +620,7 @@
            :F {:name "Search term: \"customer ref\""}}
   :expect {:in-place       [:D :F]
            :appdb-h2       [:F]
+           :appdb-mysql    [:D :E :F]
            :appdb-postgres [:D :E :F]
            :semantic       {:keyword [:D :E :F], :vector [:A :B :C :D :E :F]}}}
  {:id     "or-branch-prefix"
@@ -597,6 +637,7 @@
            :H {:name "Store locations"}}
   :expect {:in-place       [:A :B :C :D :E :F :G :H]
            :appdb-h2       [:G]
+           :appdb-mysql    [:B :C :D :F :G]
            :appdb-postgres [:B :C :D :F :G]
            :semantic       {:keyword [:B :C :D :F :G], :vector [:B]}}
   :comparisons
@@ -608,6 +649,7 @@
     :alternatives
     {:in-place       {:query "cust revenue", :hits [:A :B :C :F :G]}
      :appdb-h2       {:query "cust", :hits [:A :B :F :G]}
+     :appdb-mysql    {:query "revenue or cust", :hits [:A :B :C :F :G]}
      :appdb-postgres {:query "revenue or cust", :hits [:A :B :C :F :G]}
      :semantic       {:query "customer or revenue reports", :hits [:A :C :F :G]}}}]}
  {:id     "negated-prefix"
@@ -622,6 +664,7 @@
            :F {:name "Cost estimates"}}
   :expect {:in-place       [:A :B :C :D :E]
            :appdb-h2       [:E]
+           :appdb-mysql    [:A :D]
            :appdb-postgres [:A :D]
            :semantic       {:keyword [:A :D], :vector [:A :B :C :D :E]}}
   :comparisons
@@ -642,6 +685,7 @@
            :F {:name "Cost estimates"}}
   :expect {:in-place       [:B :F]
            :appdb-h2       []
+           :appdb-mysql    []
            :appdb-postgres []
            :semantic       {:keyword [], :vector [:B :C :E]}}}
  {:id     "negation-only"
@@ -657,6 +701,7 @@
   ;; That broad result is likely poor search UX, but is current.
   :expect {:in-place       [:D]
            :appdb-h2       [:D]
+           :appdb-mysql    [:A :E]
            :appdb-postgres [:A :E]
            :semantic       {:keyword [:A :E], :vector []}}}
  {:id     "like-escape-percent"
@@ -669,6 +714,7 @@
            :D {:name "Promo code SAVE"}}
   :expect {:in-place       [:A]
            :appdb-h2       [:A]
+           :appdb-mysql    []
            :appdb-postgres []
            :semantic       {:keyword [], :vector [:A]}}}
  {:id     "or-only-operator"
@@ -683,6 +729,7 @@
   ;; Literal substring engines still find "or", including its occurrences inside words.
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:A :B :C]
+           :appdb-mysql    []
            :appdb-postgres []
            :semantic       {:keyword [], :vector []}}}
  ;; Controls: "or" and "and" as words in ordinary titles.
@@ -696,6 +743,7 @@
            :C {:name "Paid or trial users"}}
   :expect {:in-place       [:A :C]
            :appdb-h2       [:A :C]
+           :appdb-mysql    []
            :appdb-postgres []
            :semantic       {:keyword [], :vector []}}}
  {:id     "and-word-control"
@@ -707,6 +755,7 @@
            :C {:name "Salt and pepper grinders"}}
   :expect {:in-place       [:A :C]
            :appdb-h2       [:A :C]
+           :appdb-mysql    []
            :appdb-postgres []
            :semantic       {:keyword [], :vector []}}}
  ;; Quoting the word makes PostgreSQL search for it instead of parsing an operator.
@@ -721,6 +770,7 @@
            :C {:name "Paid or trial users"}}
   :expect {:in-place       []
            :appdb-h2       []
+           :appdb-mysql    [:A :C]
            :appdb-postgres [:A :C]
            :semantic       {:keyword [:A :C], :vector []}}}
  ;; English, the default on an English-locale instance with a PostgreSQL app db, drops "or" as a stopword, so
@@ -734,6 +784,7 @@
            :C {:name "Paid or trial users"}}
   :expect {:in-place       []
            :appdb-h2       []
+           :appdb-mysql    [:A :C]
            :appdb-postgres []
            :semantic       {:keyword [], :vector []}}}
  {:id     "field-term-agreement"
@@ -746,6 +797,7 @@
   ;; All four engines agree on an exact ordinary term in either field.
   :expect {:in-place       [:A :B]
            :appdb-h2       [:A :B]
+           :appdb-mysql    [:A :B]
            :appdb-postgres [:A :B]
            :semantic       {:keyword [:A :B], :vector [:A :B]}}}
  {:id     "multiword-agreement"
@@ -758,6 +810,7 @@
   ;; With no one-term-only document, OR and AND produce the same result.
   :expect {:in-place       [:A :B]
            :appdb-h2       [:A :B]
+           :appdb-mysql    [:A :B]
            :appdb-postgres [:A :B]
            :semantic       {:keyword [:A :B], :vector [:A :B]}}}
  {:id     "case-agreement"
@@ -770,6 +823,7 @@
            :D {:name "Orders"}}
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:A :B :C]
+           :appdb-mysql    [:A :B :C]
            :appdb-postgres [:A :B :C]
            :semantic       {:keyword [:A :B :C], :vector [:A :B :C]}}}
  {:id     "prefix-agreement"
@@ -782,6 +836,7 @@
   ;; Last-word completion and substring matching coincide on these documents.
   :expect {:in-place       [:A :B]
            :appdb-h2       [:A :B]
+           :appdb-mysql    [:A :B]
            :appdb-postgres [:A :B]
            :semantic       {:keyword [:A :B], :vector [:A :B]}}}
  {:id     "operator-empty-agreement"
@@ -794,6 +849,7 @@
   ;; PostgreSQL discards the operator; the substring engines find no literal.
   :expect {:in-place       []
            :appdb-h2       []
+           :appdb-mysql    []
            :appdb-postgres []
            :semantic       {:keyword [], :vector []}}}
  {:id     "unmatched-term"
@@ -805,6 +861,7 @@
   ;; Unlike operator-empty-agreement, every engine searches for a term but finds no match.
   :expect {:in-place       []
            :appdb-h2       []
+           :appdb-mysql    []
            :appdb-postgres []
            :semantic       {:keyword [], :vector []}}}
  {:id     "lexical-and-vector-union"
@@ -819,6 +876,7 @@
   ;; The vector arm also retrieves each one-word row.
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:C]
+           :appdb-mysql    [:C]
            :appdb-postgres [:C]
            :semantic       {:keyword [:C], :vector [:A :B :C]}}}
  ;; Vector-arm precision and recall on one realistic catalogue.
@@ -839,6 +897,7 @@
   ;; At 0.85, "Deals closed" is farther than five other cards, including "Support tickets".
   :expect {:in-place       [:A :B :E :F :G]
            :appdb-h2       []
+           :appdb-mysql    []
            :appdb-postgres []
            :semantic       {:keyword [], :vector [:E]}}}
  {:id     "vector-paraphrase"
@@ -856,6 +915,7 @@
   ;; "Monthly sales", at 0.86, is farther than "Sales team headcount", at 0.83.
   :expect {:in-place       []
            :appdb-h2       []
+           :appdb-mysql    []
            :appdb-postgres []
            :semantic       {:keyword [], :vector []}}}
  ;; Queries whose words no card contains: a paraphrase, an acronym, another language, a misspelling.
@@ -872,6 +932,7 @@
   ;; In-place matches "customers"; app-db needs every word.
   :expect {:in-place       [:A :C]
            :appdb-h2       []
+           :appdb-mysql    []
            :appdb-postgres []
            :semantic       {:keyword [], :vector [:A]}}
   :comparisons
@@ -881,6 +942,7 @@
     :alternatives
     {:in-place       {:query "churn", :hits [:A]}
      :appdb-h2       {:query "churn", :hits [:A]}
+     :appdb-mysql    {:query "churn", :hits [:A]}
      :appdb-postgres {:query "churn", :hits [:A]}}}]}
  {:id     "vector-acronym"
   :focus  "the vector arm expands an acronym"
@@ -893,6 +955,7 @@
            :E {:name "Marketing spend"}}
   :expect {:in-place       []
            :appdb-h2       []
+           :appdb-mysql    []
            :appdb-postgres []
            :semantic       {:keyword [], :vector [:A :B]}}
   :comparisons
@@ -903,6 +966,7 @@
     :alternatives
     {:in-place       {:query "recurring", :hits [:A :B]}
      :appdb-h2       {:query "monthly recurring revenue", :hits [:A]}
+     :appdb-mysql    {:query "monthly recurring revenue", :hits [:A]}
      :appdb-postgres {:query "monthly recurring revenue", :hits [:A]}}}]}
  {:id     "vector-multilingual"
   :focus  "the vector arm matches a query in another language"
@@ -918,6 +982,7 @@
   ;; The vector arm returns "Monthly sales" at about 0.46, and "Sales by region" at 0.68, inside the cutoff.
   :expect {:in-place       []
            :appdb-h2       []
+           :appdb-mysql    []
            :appdb-postgres []
            :semantic       {:keyword [], :vector [:A :D]}}}
  {:id     "vector-typo"
@@ -932,6 +997,7 @@
   ;; In-place matches the other words; app-db needs the misspelled one too.
   :expect {:in-place       [:A :B :C]
            :appdb-h2       []
+           :appdb-mysql    []
            :appdb-postgres []
            :semantic       {:keyword [], :vector [:A :C]}}}
  {:id     "vector-typo-alone"
@@ -948,5 +1014,6 @@
   ;; A looser cutoff would return them.
   :expect {:in-place       []
            :appdb-h2       []
+           :appdb-mysql    []
            :appdb-postgres []
            :semantic       {:keyword [], :vector []}}}]
