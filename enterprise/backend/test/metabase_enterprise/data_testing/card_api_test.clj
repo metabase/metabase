@@ -277,6 +277,20 @@
                                                                          (assoc :columns [{:name "ID" :cast_type "INTEGER"}]
                                                                                 :rows    [{"ID" 1}]))]))))))))
 
+(deftest the-missing-columns-check-skips-a-table-that-metabase-hides-test
+  ;; Pins the documented exception: the check reads metadata that leaves hidden tables out. Turns red when the check
+  ;; covers them.
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Card {card-id :id} (card)]
+      (mt/with-temp-vals-in-db :model/Table (mt/id :people) {:visibility_type "hidden"}
+        (testing "an input lacking a column the card reads, of a table that Metabase hides, is saved"
+          (t2/delete! :model/CardTest
+                      :id (:id (mt/user-http-request :crowberto :post 200 "ee/card-test"
+                                                     (assoc (body card-id)
+                                                            :inputs [(assoc (first inputs)
+                                                                            :columns [{:name "ID" :cast_type "INTEGER"}]
+                                                                            :rows    [{"ID" 1}])])))))))))
+
 (deftest the-database-s-case-rule-decides-whether-a-declared-column-name-matches-test
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-temp [:model/Card {card-id :id} (card)]

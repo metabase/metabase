@@ -28,15 +28,13 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn table-match? :- :boolean
-  "Do the tables `ref` and `decl` name the same table? Names match case aside. Schemas match case aside, or `ref` has
-  none and `decl` is in `default-schema`. The default applies to `ref` only, as `table-replacements` applies it when
-  it rewrites: a bare reference in a query resolves to the default schema, and a bare declared input does not cover a
-  qualified reference.
+  "Do the tables `ref` and `decl` name the same table? Their names must be equal, case aside. Their schemas must be
+  equal, case aside, unless `ref` has no schema and `decl` is in `default-schema`; a `decl` without a schema matches
+  only a `ref` without one.
 
-  Names match case-agnostically. The parser reports a reference as a bare string, so nothing here can tell a quoted
-  `\"Orders\"` — which an engine reads literally — from an unquoted `ORDERS`, and counting them as the same table is
-  the safe direction: it can only make this guard accept, and the rewrite's own guard still refuses a reference it
-  did not remap."
+  Case is ignored because the parser reports a table name as a bare string: nothing here can tell a quoted
+  `\"Orders\"`, which an engine reads literally, from an unquoted `ORDERS`. The rewrite replaces both with the same
+  input."
   [{ref-schema :schema ref-name :name} :- ::data-testing.schema/table
    {d-schema :schema d-name :name}     :- ::data-testing.schema/table
    default-schema                      :- [:maybe :string]]
