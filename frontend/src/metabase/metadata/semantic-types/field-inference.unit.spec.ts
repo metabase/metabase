@@ -1,5 +1,4 @@
 import type { TableRole } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field } from "metabase-types/api";
 import { createMockField } from "metabase-types/api/mocks";
 
@@ -242,7 +241,7 @@ describe("inferFieldType", () => {
       const id = createField("id", "int", { semantic_type: "type/PK" });
       const managerId = createField("manager_id", "int", {
         semantic_type: "type/FK",
-        fk_target_field_id: getRawTableFieldId(id),
+        fk_target_field_id: id.id,
       });
       expect(setup({ field: managerId, siblings: [id] })?.semanticType).toBe(
         "type/ParentKey",
