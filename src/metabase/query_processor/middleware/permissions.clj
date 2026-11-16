@@ -74,9 +74,7 @@
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
   [query :- ::qp.schema/any-query]
   (if (:lib/type query)
-    ;; the permissions checks only read the query's structure (source tables and cards, native SQL), so a legacy copy
-    ;; without the options legacy MBQL cannot express is fine here.
-    (recur (lib/->legacy-MBQL-lossy query))
+    (recur (lib/->legacy-MBQL query))
     (let [{database-id :database :as outer-query} query]
       (when (and (= audit/audit-db-id database-id)
                  (or (qp.util/userland-query? outer-query)

@@ -83,10 +83,7 @@
   ;; checks in the middleware
   (let [query (cond-> query
                 ;; TODO (Cam 9/15/25) -- update this and downstream code (drivers) to handle MBQL 5
-                ;;
-                ;; the query is already compiled; drivers run `:native` and only read the rest for its structure, so
-                ;; the options legacy MBQL cannot express (`:percentile-type`) can be dropped here.
-                (:lib/type query) lib/->legacy-MBQL-lossy)
+                (:lib/type query) lib/->legacy-MBQL)
         query (cond-> query
                 (not (:native query)) (assoc :native (:qp/compiled query)))]
     (qp.pipeline/*run* query rff)))

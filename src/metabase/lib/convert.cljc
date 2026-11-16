@@ -473,40 +473,10 @@
 ;; TODO (Cam 2026-07-17) Deprecate this in 64
 (defmulti ->legacy-MBQL
   "Coerce something to legacy MBQL (the version of MBQL understood by the query processor and Metabase Lib v1) if it's
-  not already legacy MBQL.
-
-  Throws on anything legacy MBQL cannot express, today the `:percentile-type` option of `:percentile` and `:median`:
-  dropping it would turn a discrete percentile into a continuous one, so such clauses are MBQL 5 only. Code that only
-  reads the structure of the converted query can use [[->legacy-MBQL-lossy]] instead."
+  not already legacy MBQL."
   {:arglists '([x])}
   lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
-
-(defn- strip-options-unsupported-in-legacy
-  "Remove the options legacy MBQL cannot express (`:percentile-type`) from every clause in MBQL 5 `x`, which may be a
-  query, a stage, or a single clause."
-  [x]
-  (cond
-    (and (vector? x) (keyword? (first x)) (map? (second x)))
-    (let [[tag opts & args] x]
-      (into [tag (dissoc opts :percentile-type)] (map strip-options-unsupported-in-legacy) args))
-
-    (vector? x)
-    (mapv strip-options-unsupported-in-legacy x)
-
-    (and (map? x) (not (record? x)))
-    (update-vals x strip-options-unsupported-in-legacy)
-
-    :else
-    x))
-
-(defn ->legacy-MBQL-lossy
-  "Like [[->legacy-MBQL]], but drops what legacy MBQL cannot express (the `:percentile-type` option) instead of
-  throwing. Only for code that reads the converted query's structure, such as the permissions checks and the query
-  processor's execution path, where the query is already compiled. Never use it for a query that is run from the
-  legacy form, saved, or returned to a client: the result can mean something else than `x`."
-  [x]
-  (->legacy-MBQL (strip-options-unsupported-in-legacy x)))
 
 (defn- metabase-lib-keyword?
   "Does keyword `k` have a`:lib/`, `:lib.columns/` or a `:metabase.lib.*/` namespace?"
@@ -527,22 +497,11 @@
   ([m]
    (into {} (disqualify) m)))
 
-(defn- assert-options-convertible-to-legacy
-  "Legacy MBQL has no notion of discrete percentiles, and silently dropping `:percentile-type` would turn a discrete
-  percentile into a continuous one. Discrete percentiles are MBQL 5 only, so refuse rather than guess; code that only
-  reads the converted query's structure can strip the option first with [[->legacy-MBQL-lossy]]. Returns `options`."
-  [options]
-  (when (contains? options :percentile-type)
-    (throw (ex-info (str "The :percentile-type option is not supported in legacy MBQL; discrete percentiles are"
-                         " MBQL 5 only.")
-                    {:type ::unsupported-in-legacy-mbql, :options options})))
-  options)
-
 (mu/defn- options->legacy-MBQL :- [:maybe [:map {:min 1}]]
   "Convert an options map in an MBQL clause to the equivalent shape for legacy MBQL. Remove `:lib/*` keys and
   `:effective-type`, which is not used in options maps in legacy MBQL."
   [m :- [:maybe ::lib.schema.common/clause-options]]
-  (->> (cond-> (assert-options-convertible-to-legacy m)
+  (->> (cond-> m
          ;; Following construct ensures that transformation MBQL 4 -> MBQL 5 -> MBQL 4, does not add base-type where
          ;; those were not present originally. Base types are added in [[metabase.lib.query/add-types-to-fields]].
          (:lib/transformation-added-base-type m)
@@ -588,9 +547,7 @@
     ;; probably something like `:dimension` which is not a 'real' MBQL clause
     clause
     (let [[options & args] args
-          args             (map ->legacy-MBQL args)
-          ;; styles that drop the options map entirely never reach [[options->legacy-MBQL]], so check here too.
-          options          (assert-options-convertible-to-legacy options)]
+          args             (map ->legacy-MBQL args)]
       (loop [style (mbql.s/options-style tag), options options]
         (case style
           ::mbql.s/options-style.none                   (into [tag] args)
