@@ -4,6 +4,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -22,37 +23,37 @@
   {:select [[:db.name :db_name] :blocked.schema [:blocked.name :table_name] [:pg.name :group_name]]
    :from   [[(t2/table-name :model/Table) :blocked]]
    :join   [[(perms/select-tables-and-groups-granting-perm
-              {:user-id user-id :is-superuser? false}
+              {:user-id user-id :is-superuser? false :is-data-analyst? false}
               permissions-blocking) :perm_grant] [:= :blocked.id :perm_grant.id]
             [:metabase_database :db] [:= :blocked.db_id :db.id]
             [:permissions_group :pg] [:= :perm_grant.group_id :pg.id]]
    :where  [:and tables-expr
-            [:not
-             [:in :blocked.id (perms/visible-table-filter-select
-                               :id
-                               {:user-id user-id :is-superuser? false}
-                               permissions-granting)]]]})
+            [:not (perms/visible-tables-filter-clause
+                   :blocked.id
+                   {:user-id user-id :is-superuser? false :is-data-analyst? false}
+                   permissions-granting
+                   {:active-only? false, :include-published-via-collection? false})]]})
 
 (mu/defn blocked-tables-in-database
   "The `[db-name schema table-name group-name]` rows of every Table in the Database with `database-id` blocked (per
   `permissions-blocking`) for the User with `user-id`, excluding those granted (per `permissions-granting`).
 
-  `permissions-blocking`/`permissions-granting` are plain permission-type -> permission-value (or
-  `[value :most|:least]`) mappings, per `perms/PermissionMapping`; db.clj builds the Honey SQL from them."
+  `permissions-blocking`/`permissions-granting` are permission-type -> permission-value mappings, per
+  `::permissions.schema/permission-mapping`; db.clj builds the Honey SQL from them."
   [user-id              :- ::lib.schema.id/user
    database-id          :- ::lib.schema.id/database
-   permissions-blocking :- perms/PermissionMapping
-   permissions-granting :- perms/PermissionMapping]
+   permissions-blocking :- ::permissions.schema/permission-mapping
+   permissions-granting :- ::permissions.schema/permission-mapping]
   (t2/query (blocked-tables-select user-id [:= :blocked.db_id database-id] permissions-blocking permissions-granting)))
 
 (mu/defn blocked-tables-among
   "The `[db-name schema table-name group-name]` rows of the Tables with `table-ids` blocked (per
   `permissions-blocking`) for the User with `user-id`, excluding those granted (per `permissions-granting`).
 
-  `permissions-blocking`/`permissions-granting` are plain permission-type -> permission-value (or
-  `[value :most|:least]`) mappings, per `perms/PermissionMapping`; db.clj builds the Honey SQL from them."
+  `permissions-blocking`/`permissions-granting` are permission-type -> permission-value mappings, per
+  `::permissions.schema/permission-mapping`; db.clj builds the Honey SQL from them."
   [user-id              :- ::lib.schema.id/user
    table-ids            :- [:set ::lib.schema.id/table]
-   permissions-blocking :- perms/PermissionMapping
-   permissions-granting :- perms/PermissionMapping]
+   permissions-blocking :- ::permissions.schema/permission-mapping
+   permissions-granting :- ::permissions.schema/permission-mapping]
   (t2/query (blocked-tables-select user-id [:in :blocked.id table-ids] permissions-blocking permissions-granting)))

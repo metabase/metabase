@@ -208,7 +208,7 @@
               (let [creation (last (revisions/revisions :model/CardTest card-test-id))]
                 (testing "premise: rasta may edit the test as it is now"
                   (mt/with-current-user (mt/user->id :rasta)
-                    (is (true? (boolean (mi/can-write? :model/CardTest card-test-id))))))
+                    (is (true? (boolean (mi/can-write? (t2/hydrate (t2/select-one :model/CardTest :id card-test-id) :can_write)))))))
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :post 403 "revision/revert"
                                              {:entity      "card-test"
@@ -391,7 +391,7 @@
                 (testing "premise: the card has no query and rasta may edit the card"
                   (is (= {} (t2/select-one-fn :dataset_query :model/Card :id card-id)))
                   (mt/with-current-user (mt/user->id :rasta)
-                    (is (true? (boolean (mi/can-write? :model/Card card-id))))))
+                    (is (true? (boolean (mi/can-write? (t2/hydrate (t2/select-one :model/Card :id card-id) :can_write)))))))
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :post 403 "revision/revert" body)))
                 (is (= "Renamed" (t2/select-one-fn :name :model/CardTest :id card-test-id)))
@@ -420,7 +420,7 @@
                                     (apply mt/user-http-request :rasta method status args))))]
               (testing "premise: rasta may not read the test, and the missing id names no test"
                 (mt/with-current-user (mt/user->id :rasta)
-                  (is (false? (boolean (mi/can-read? :model/CardTest card-test-id)))))
+                  (is (false? (boolean (mi/can-read? (t2/hydrate (t2/select-one :model/CardTest :id card-test-id) :can_read))))))
                 (is (not (t2/exists? :model/CardTest :id missing-id))))
               (testing "control: with the feature, the read and write checks refuse rasta"
                 (mt/with-premium-features #{:transforms-testing}

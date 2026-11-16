@@ -7,12 +7,13 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.lib.core :as lib]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.impl :as data.impl]
    [metabase.util.files :as u.files]
+   [metabase.util.json :as json]
    [next.jdbc]
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
@@ -253,8 +254,8 @@
                                                                                 :card_id card-id-nested
                                                                                 ;; this is how click actions on a non-table card work (ex: a chart)
                                                                                 :visualization_settings {:click_behavior {:targetId card-id-nested-query
-                                                                                                                          :linkType :question
-                                                                                                                          :type     :link}}}
+                                                                                                                          :linkType "question"
+                                                                                                                          :type     "link"}}}
                   :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id
                                                 :card_id card-id
                                                 :position 0}
@@ -263,27 +264,23 @@
                                                 :position 1}
                   :model/DashboardCard       {dashcard-with-click-actions :id} {:dashboard_id           dashboard-id
                                                                                 :card_id                card-id-root
-                                                                                :visualization_settings (-> (mb.viz/visualization-settings)
-                                                                                                            (mb.viz/with-entity-click-action
-                                                                                                              numeric-field-id
-                                                                                                              ::mb.viz/card
-                                                                                                              card-id
-                                                                                                              (mb.viz/fk-parameter-mapping
-                                                                                                               "Category"
-                                                                                                               category-field-id
-                                                                                                               numeric-field-id))
-                                                                                                            (mb.viz/with-entity-click-action
-                                                                                                              name-field-id
-                                                                                                              ::mb.viz/dashboard
-                                                                                                              root-dashboard-id
-                                                                                                              nil)
-                                                                                                            (mb.viz/with-click-action
-                                                                                                              (mb.viz/column-name->column-ref "Price Known")
-                                                                                                              (mb.viz/url-click-action "/price-info"))
-                                                                                                            (mb.viz/with-click-action
-                                                                                                              (mb.viz/field-id->column-ref latitude-field-id)
-                                                                                                              (mb.viz/crossfilter-click-action {}))
-                                                                                                            mb.viz/norm->db)}
+                                                                                :visualization_settings {:column_settings
+                                                                                                         {(lib/field-id->column-settings-key numeric-field-id)
+                                                                                                          {:click_behavior {:type             "link"
+                                                                                                                            :linkType         "question"
+                                                                                                                            :targetId         card-id
+                                                                                                                            :parameterMapping (let [id (json/encode ["dimension" ["fk->" ["field" category-field-id nil] ["field" numeric-field-id nil]]])]
+                                                                                                                                                {id {:id     id
+                                                                                                                                                     :source {:type "column" :id "Category" :name "Category"}
+                                                                                                                                                     :target {:type      "dimension"
+                                                                                                                                                              :id        id
+                                                                                                                                                              :dimension ["dimension" [:field numeric-field-id {:source-field category-field-id}]]}}})}}
+                                                                                                          (lib/field-id->column-settings-key name-field-id)
+                                                                                                          {:click_behavior {:type "link" :linkType "dashboard" :targetId root-dashboard-id}}
+                                                                                                          (lib/column-name->column-settings-key "Price Known")
+                                                                                                          {:click_behavior {:type "link" :linkType "url" :linkTemplate "/price-info"}}
+                                                                                                          (lib/field-id->column-settings-key latitude-field-id)
+                                                                                                          {:click_behavior {:type "crossfilter" :parameterMapping {}}}}}}
                   :model/DashboardCardSeries _ {:dashboardcard_id   dashcard-with-click-actions
                                                 :card_id            card-id-root
                                                 :position           2}

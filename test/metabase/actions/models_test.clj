@@ -281,11 +281,11 @@
                                           :table_id      (mt/id :categories)}))
               elsewhere (action/select-action :id (action/insert! (action-in coll-id)))]
           (mt/with-test-user :crowberto
-            (is (true? (mi/can-write? elsewhere)))
+            (is (true? (mi/can-write? (t2/hydrate elsewhere :can_write))))
             (is (true? (mi/can-create? :model/Action (action-in app-id))))
             (is (true? (mi/can-update? elsewhere {:collection_id app-id}))))
           (mt/with-test-user :rasta
-            (is (false? (mi/can-write? elsewhere)))
+            (is (false? (mi/can-write? (t2/hydrate elsewhere :can_write))))
             (is (false? (mi/can-create? :model/Action (action-in app-id))))
             (is (false? (mi/can-update? elsewhere {:collection_id app-id})))))))))
 
