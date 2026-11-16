@@ -218,7 +218,6 @@
    (deferred-tru "Value must be a map.")))
 
 (mr/def ::database-details
-  "Connection details for a Database, keyed by the `connection-properties` of its driver."
   (open-map "database connection details"))
 
 (def DatabaseDetails
@@ -293,7 +292,6 @@
   (open-map "tenant attributes"))
 
 (mr/def ::database-settings
-  "The database-local settings of a Database, keyed by the settings registry."
   (open-map "database settings"))
 
 (def DatabaseSettings

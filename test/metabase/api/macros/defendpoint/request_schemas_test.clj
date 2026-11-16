@@ -109,7 +109,7 @@
   (testing "an open map stays reported next to a declaring conjunct"
     (is (= [:open-map] (kinds [:and [:map [:a ::open]] [:fn map?]])))))
 
-(deftest ^:parallel findings-match-what-the-decoder-keeps-test
+(deftest ^:parallel findings-match-what-decoder-keeps-test
   (let [value {:a 1, :b 2}]
     (are [schema decoded] (= decoded
                              (api.macros/decode-and-validate-params :body schema value))
@@ -121,7 +121,7 @@
       [:and [:map [:a :int]] [:map [:a :int] [::mc/default :any]]]  {:a 1}
       :any                                                          {:a 1, :b 2})))
 
-(deftest ^:parallel internal-keys-the-api-strips-are-skipped-test
+(deftest ^:parallel stripped-internal-keys-are-skipped-test
   (let [strips [:map {:decode/api lib.schema.common/remove-internal-keys}
                 [:a :int]
                 [:qp/internal {:optional true} [:map [:anything :any]]]]]
@@ -152,3 +152,10 @@
                                   (request-schemas/check! :body schema))
     [:map [:bag :any]]
     [:map [:bag [:map-of :keyword :int]]]))
+
+(deftest ^:parallel registered-open-map-keeps-its-error-message-test
+  (is (= {:details "nullable Value must be a map."}
+         (try
+           (api.macros/decode-and-validate-params :body [:map [:details [:maybe ms/DatabaseDetails]]] {:details "x"})
+           (catch clojure.lang.ExceptionInfo e
+             (:errors (ex-data e)))))))

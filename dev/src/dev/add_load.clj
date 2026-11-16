@@ -1,8 +1,7 @@
 (ns dev.add-load
   (:require [clojure.walk :as walk]
             [dev.with-perm :as perm]
-            [metabase.util.malli :as mu]
-            [metabase.util.malli.registry :as mr]))
+            [metabase.util.malli :as mu]))
 
 (def ^:private logical-kw
   "A keyword that starts with a question mark, used to track values created by from-script."

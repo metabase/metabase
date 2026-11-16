@@ -6,7 +6,8 @@
   schema, and touches nothing else. So these let a client send data no schema describes, and are reported:
 
   - `:any`: a schema that accepts a map with a key of ours, or a sequence of such maps, as it arrived: `:any`,
-    `:some`, `map?`, `[:fn map?]` and so on. A `:fn` is never stripped, so it is judged by what it accepts.
+    `:some`, `map?`, `[:fn map?]` and so on. A `:fn` is never stripped; one that rejects both probes is not reported, whatever else it
+    accepts.
   - `:keyword-keyed-map-of`: a `:map-of` whose key schema accepts a keyword.
   - `:open-map`: a `[:map {:closed false} ...]`, which opts out of stripping.
 
@@ -14,10 +15,10 @@
   any other. Every conjunct of an `:and` decodes the value, so one conjunct that types or strips it is enough; a `:fn`
   conjunct is a guard and decides nothing. An alternative of an `:or` or a `:multi` is reported like the schema itself.
 
-  A conjunct that lets nothing through declares the whole value, so what its siblings let through does not count.
+  A conjunct that lets nothing through declares the whole value, so only the open maps of its siblings are reported.
 
   [[check!]] throws on `:any` and `:keyword-keyed-map-of`. An `:open-map` is allowed, and
-  `metabase.api.macros.defendpoint.request-schemas-test` pins every one a request can reach.
+  `metabase.api-routes.request-schemas-test` pins every one a request can reach.
 
   The entries of a map whose `:decode/api` is [[metabase.lib.schema.common/remove-internal-keys]] that are internal
   keys are skipped: the API decoder removes them from every request."
@@ -241,8 +242,8 @@
 
 (defn check!
   "Throw when `schema`, the `schema-type` (`:route`, `:query`, `:body` or `:request`) schema of an endpoint, can reach
-  a schema that lets a value of any shape or a map of any keyword keys through. A `:response` schema is not checked,
-  and nothing is in prod. Impl for [[metabase.api.macros/validate-schema]]."
+  a schema that lets a value of any shape or a map of any keyword keys through; does nothing for a `:response` schema
+  or in prod."
   [schema-type schema]
   (when-not (or config/is-prod? (= schema-type :response))
     (when-let [found (seq (failing (findings schema)))]
