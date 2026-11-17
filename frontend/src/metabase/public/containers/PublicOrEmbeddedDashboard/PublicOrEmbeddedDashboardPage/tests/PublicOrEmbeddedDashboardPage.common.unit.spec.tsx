@@ -1,11 +1,23 @@
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
+import * as embeddingConfig from "metabase/embedding/config";
 import {
   createMockActionDashboardCard,
   createMockImplicitQueryAction,
 } from "metabase-types/api/mocks";
 
 import { type SetupOpts, setup } from "./setup";
+import {
+  RC1,
+  createTimeSeriesDashcard,
+  expectReadOnlyDashboardEvents,
+  setupTimeSeriesChart,
+} from "./timeline-events";
+
+// `timeline-events` registers the interactive visualizations the charts need
+jest.mock("metabase/static-viz/register", () => ({
+  registerStaticVisualizations: jest.fn(),
+}));
 
 const DASHBOARD_TITLE = '"My test dash"';
 
@@ -136,5 +148,19 @@ describe("PublicOrEmbeddedDashboardPage", () => {
     expect(
       screen.getByRole("link", { name: "Powered by Metabase" }),
     ).toBeInTheDocument();
+  });
+
+  describe("timeline events", () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("shows only the saved events, read-only, on a static embed dashboard", async () => {
+      jest.spyOn(embeddingConfig, "isStaticEmbedding").mockReturnValue(true);
+      setupTimeSeriesChart();
+      await setupCommon({ extraDashcards: [createTimeSeriesDashcard([RC1])] });
+
+      await expectReadOnlyDashboardEvents();
+    });
   });
 });
