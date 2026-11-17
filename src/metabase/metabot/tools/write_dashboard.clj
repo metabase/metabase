@@ -784,9 +784,11 @@
      "Tell the user about any you don't connect again."]))
 
 (defn- result
-  "The tool result for the saved `dashboard`, with the `effects` [[dashboard-write/write!]] returned for it."
-  [{:keys [id name collection_id parameters] :as dashboard} {:keys [pushed-dashcard-ids dropped-connections]} action
-   saved-charts profile-id]
+  "The tool result for a save: the `dashboard` and `effects` [[dashboard-write/write!]] returned, the `action` the save
+  took, the `saved-charts` it saved, and the `profile-id` of the Metabot that made it."
+  [{{:keys [id name collection_id parameters] :as dashboard} :dashboard
+    {:keys [pushed-dashcard-ids dropped-connections]}       :effects
+    :keys                                                   [action saved-charts profile-id]}]
   ;; Trashing doesn't navigate, so a trashed dashboard the user is viewing stays in view.
   (let [open?       (and (not= "trashed" action) (contains? opening-profiles profile-id))
         link        (str "metabase://dashboard/" id)
@@ -871,10 +873,10 @@
       (check-cards-curated! ops)
       (check-cards-not-in-other-dashboards! dashboard ops)
       (let [charts (requested-charts ops)
-            {saved :dashboard :keys [before effects saved-charts]}
+            {:keys [before] :as saved}
             (save-entity/do-with-save-rejections
              #(do-with-op-errors dashboard_id (fn [] (save! dashboard attrs ops charts))))]
-        (result saved effects (action before attrs) saved-charts profile-id)))))
+        (result (assoc saved :action (action before attrs) :profile-id profile-id))))))
 
 (def write-dashboard-tool
   "Create, edit, trash or restore a dashboard, saving charts from this conversation onto it."

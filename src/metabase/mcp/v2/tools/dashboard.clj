@@ -129,7 +129,8 @@
   clean dry run can still be rejected. A card that move, resize or an explicit position puts over others pushes
   them down, and pushed_dashcard_ids lists them. A filter connection the ops drop without unwire_parameter, as
   replace_card or wire_parameter on a card with series can, is listed in dropped_connections; connect it again or
-  tell the user. Returns the resulting dashboard, so no follow-up read is needed.
+  tell the user. An entry with series: true is a series card's, which only patch_dashcard's parameter_mappings can
+  connect. Returns the resulting dashboard, so no follow-up read is needed.
   Requires write permission on the dashboard and read permission on each card an op wires. A card an op adds or
   makes a filter's value source needs read permission too, unless the dashboard already uses it."
   {:name           "dashboard_write"
