@@ -115,6 +115,25 @@
        (is (= {:expression "Sum([Total])" :name "Total revenue"}
               (mt/user-http-request :rasta :post 200 endpoint (request-body))))))))
 
+(deftest summary-formula-backticked-equals-test
+  (testing "summary-formula strips a leading = inside backticks"
+    (do-with-llm
+     {:expression "`=Sum([Total])`" :name "Total"}
+     (fn [_calls]
+       (is (= {:expression "Sum([Total])" :name "Total"}
+              (mt/user-http-request :rasta :post 200 endpoint (request-body))))))))
+
+(deftest summary-formula-long-name-test
+  (testing "summary-formula cuts a long prompt to 60 characters for the name, with no trailing space"
+    (do-with-llm
+     {:expression "Count()" :name ""}
+     (fn [_calls]
+       (is (= {:expression "Count()"
+               :name       "count the orders that were placed by the customers who live"}
+              (mt/user-http-request :rasta :post 200 endpoint
+                                    (request-body {:prompt (str "count the orders that were placed by the customers "
+                                                                "who live in Canada last year")}))))))))
+
 (deftest summary-formula-blank-name-test
   (testing "summary-formula names the result after the prompt when nothing is left of the LLM's name"
     (do-with-llm

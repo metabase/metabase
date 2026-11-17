@@ -222,6 +222,8 @@
   (when (string? expression)
     (some-> expression
             str/trim
+            (str/replace #"^`+|`+$" "")
+            str/trim
             (str/replace #"^=\s*" "")
             (str/replace #"^`+|`+$" "")
             str/trim
@@ -234,10 +236,10 @@
             str/trim
             (str/replace #"\s+" " ")
             (str/replace #"^[\"'`]+|[\"'`]+$" "")
+            (u/truncate max-name-chars)
             (str/replace #"[.!?:]+$" "")
             str/trim
-            u/not-blank
-            (u/truncate max-name-chars))))
+            u/not-blank)))
 
 (defn- check-inputs!
   "Throw a 400 unless `request` has the columns, metrics and measures its mode needs."
