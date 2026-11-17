@@ -21,6 +21,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -39,7 +40,7 @@ import { Route } from "metabase/router";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { Collection, CollectionItem } from "metabase-types/api";
+import type { Card, Collection, CollectionItem } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -203,6 +204,15 @@ const findPicker = () => screen.findByTestId("entity-picker-modal");
 const clickItem = async (picker: HTMLElement, name: string) =>
   userEvent.click(await within(picker).findByText(name));
 
+// Waits for the tenant root to load, so that a disabled button is not just a
+// loading state.
+const openTenantRoot = async (picker: HTMLElement) => {
+  await clickItem(picker, TENANT_ROOT_NAME);
+  expect(
+    await within(picker).findByText(TENANT_COLLECTION.name),
+  ).toBeInTheDocument();
+};
+
 // The confirm button stays disabled while the picker loads the picked item,
 // so wait for the expected state instead of reading it once.
 const expectButtonEnabled = (picker: HTMLElement, name: string) =>
@@ -240,22 +250,37 @@ describe("entity picker > shared tenant collections", () => {
   });
 
   describe("moving a question", () => {
+    // Starts outside the root collection: the tenant root also has the id
+    // "root", so a question in Our analytics can't be moved there anyway.
     const card = createMockCard({
       id: 1,
       name: "Orders",
+      collection_id: Number(REGULAR_COLLECTION.id),
+      collection: REGULAR_COLLECTION,
+    });
+
+    // Like the e2e question, so the search scope is "Everywhere".
+    const cardInRoot = createMockCard({
+      id: 2,
+      name: "Orders in Our analytics",
       collection_id: null,
     });
 
-    const setup = (opts: SetupEnvironmentOpts = {}) => {
+    interface SetupOpts extends SetupEnvironmentOpts {
+      cardToMove?: Card;
+    }
+
+    const setup = ({ cardToMove = card, ...opts }: SetupOpts = {}) => {
       const { storeInitialState } = setupEnvironment(opts);
-      fetchMock.put(`path:/api/card/${card.id}`, (call) => ({
-        ...card,
+      fetchMock.put(`path:/api/card/${cardToMove.id}`, (call) => ({
+        ...cardToMove,
         ...JSON.parse(String(call.options.body)),
       }));
       const onClose = jest.fn();
-      renderWithProviders(<MoveCardModal card={card} onClose={onClose} />, {
-        storeInitialState,
-      });
+      renderWithProviders(
+        <MoveCardModal card={cardToMove} onClose={onClose} />,
+        { storeInitialState },
+      );
       return { onClose };
     };
 
@@ -293,7 +318,7 @@ describe("entity picker > shared tenant collections", () => {
       const { onClose } = setup();
       const picker = await findPicker();
 
-      await clickItem(picker, TENANT_ROOT_NAME);
+      await openTenantRoot(picker);
       await expectButtonDisabled(picker, "Move");
 
       await clickItem(picker, TENANT_COLLECTION.name);
@@ -303,6 +328,8 @@ describe("entity picker > shared tenant collections", () => {
       );
 
       await waitFor(() => expect(onClose).toHaveBeenCalled());
+      // The move invalidates the collection items, so the open lists refetch.
+      await act(() => fetchMock.callHistory.flush(true));
       const puts = await findRequestsTo("PUT", `/api/card/${card.id}`);
       expect(puts).toHaveLength(1);
       expect(puts[0].body).toMatchObject({
@@ -312,7 +339,7 @@ describe("entity picker > shared tenant collections", () => {
     });
 
     it("should find tenant collections via search", async () => {
-      setup();
+      setup({ cardToMove: cardInRoot });
       const picker = await findPicker();
 
       await searchFor(picker, TENANT_COLLECTION.name);
@@ -320,9 +347,6 @@ describe("entity picker > shared tenant collections", () => {
       expect(
         await within(picker).findByText(TENANT_COLLECTION.name),
       ).toBeVisible();
-      expect(
-        within(picker).queryByText(REGULAR_COLLECTION.name),
-      ).not.toBeInTheDocument();
       expect(getLastSearchParams().get("q")).toBe(TENANT_COLLECTION.name);
       expect(getLastSearchParams().getAll("models")).toEqual([
         "collection",
@@ -332,11 +356,12 @@ describe("entity picker > shared tenant collections", () => {
   });
 
   describe("moving a dashboard", () => {
+    // Starts outside the root collection, see "moving a question".
     const dashboard = createMockDashboard({
       id: 5,
       name: "Dashboard to Move",
-      collection_id: null,
-      collection: null,
+      collection_id: Number(REGULAR_COLLECTION.id),
+      collection: REGULAR_COLLECTION,
     });
 
     it("should not allow moving to the tenant root, but should allow moving to a tenant collection", async () => {
@@ -349,7 +374,7 @@ describe("entity picker > shared tenant collections", () => {
       );
       const picker = await findPicker();
 
-      await clickItem(picker, TENANT_ROOT_NAME);
+      await openTenantRoot(picker);
       await expectButtonDisabled(picker, "Move");
 
       await clickItem(picker, TENANT_COLLECTION.name);
@@ -359,6 +384,8 @@ describe("entity picker > shared tenant collections", () => {
       );
 
       await waitFor(() => expect(onClose).toHaveBeenCalled());
+      // The move invalidates the collection items, so the open lists refetch.
+      await act(() => fetchMock.callHistory.flush(true));
       const puts = await findRequestsTo(
         "PUT",
         `/api/dashboard/${dashboard.id}`,
@@ -401,10 +428,10 @@ describe("entity picker > shared tenant collections", () => {
         within(picker).getByRole("button", { name: "Cancel" }),
       );
 
-      expect(onClose).toHaveBeenCalledTimes(1);
       expect(
         await findRequestsTo("PUT", `/api/collection/${COLLECTION_TO_MOVE.id}`),
       ).toHaveLength(0);
+      expect(onClose).toHaveBeenCalledTimes(1);
     });
 
     it("should offer the tenant root when moving a tenant collection with the same setup", async () => {
@@ -451,7 +478,7 @@ describe("entity picker > shared tenant collections", () => {
       await userEvent.click(await screen.findByLabelText(/Which collection/));
       const picker = await findPicker();
 
-      await clickItem(picker, TENANT_ROOT_NAME);
+      await openTenantRoot(picker);
       await expectButtonDisabled(picker, "Select");
 
       await clickItem(picker, TENANT_COLLECTION.name);
@@ -523,7 +550,7 @@ describe("entity picker > shared tenant collections", () => {
       );
       const picker = await findPicker();
 
-      await clickItem(picker, TENANT_ROOT_NAME);
+      await openTenantRoot(picker);
       await expectButtonDisabled(picker, "Select this collection");
 
       await clickItem(picker, TENANT_COLLECTION.name);
@@ -568,7 +595,7 @@ describe("entity picker > shared tenant collections", () => {
       );
       const picker = await findPicker();
 
-      await clickItem(picker, TENANT_ROOT_NAME);
+      await openTenantRoot(picker);
       await expectButtonDisabled(picker, "New dashboard");
 
       await clickItem(picker, TENANT_COLLECTION.name);
