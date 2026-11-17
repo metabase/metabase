@@ -42,7 +42,8 @@
    [:previous-object {:optional true} [:maybe [:fn map?]]]
    [:changes   {:optional true} [:maybe [:fn map?]]]
    [:user-id   [:maybe :int]]
-   [:context   {:optional true} [:maybe [:fn map?]]]])
+   [:context   {:optional true} [:maybe [:fn map?]]]
+   [:captures  {:optional true} [:maybe [:fn map?]]]])
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *context*
@@ -50,6 +51,9 @@
   nil)
 
 (defonce ^:private owned-consumers
+  (atom {}))
+
+(defonce ^:private capturers
   (atom {}))
 
 (defonce ^:private publisher
@@ -71,6 +75,23 @@
   (swap! owned-consumers assoc consumer-key {:owner owner :handle handle})
   nil)
 
+(mu/defn register-capture!
+  "Have `capture`, a function of the collected event, called synchronously at the write, in its transaction and, for a
+  delete, before the DELETE runs, so that it can read rows that the delete cascades to. A non-nil value it returns is
+  attached to the event under `consumer-key` in `:captures`, for the handler of the consumer at the end of the batch."
+  [consumer-key :- :keyword
+   capture      :- ifn?]
+  (swap! capturers assoc consumer-key capture)
+  nil)
+
+(defn- capture
+  [event]
+  (into {}
+        (keep (fn [[consumer-key capture]]
+                (when-some [value (capture event)]
+                  [consumer-key value])))
+        @capturers))
+
 (defn- ensure-topic!
   [topic]
   (locking owned-consumers
@@ -86,8 +107,9 @@
         updates (remove #(#{:create :delete} (:operation %)) events)
         fst     (first events)
         lst     (peek events)
-        shared  {:user-id (some :user-id (rseq events))
-                 :context (apply merge (map :context events))}
+        shared  {:user-id  (some :user-id (rseq events))
+                 :context  (apply merge (map :context events))
+                 :captures (apply merge (map :captures events))}
         changes (apply merge (map :changes updates))]
     (cond
       (and create (some #(= :delete (:operation %)) events))
@@ -142,7 +164,8 @@
   "Collect the event of a write of a row, or deliver it at once outside a batch."
   [event :- CollectedEvent]
   (let [topic (lifecycle-topic (:model event) (:operation event))
-        event (assoc event :context *context*)]
+        event (assoc event :context *context*)
+        event (assoc event :captures (capture event))]
     (ensure-topic! topic)
     (if-let [batch *batch*]
       (swap! batch update :events conj event)

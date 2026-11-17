@@ -16,6 +16,7 @@
  [metabase.events.batch
   do-with-batched-events
   lifecycle-topic
+  register-capture!
   register-owned-consumer!
   with-batched-events
   with-event-context]
