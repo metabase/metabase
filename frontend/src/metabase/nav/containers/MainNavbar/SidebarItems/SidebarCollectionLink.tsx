@@ -13,6 +13,7 @@ import type {
 } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
 import { getIsTenantUser } from "metabase/current-user";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { useSelector } from "metabase/redux";
 import { Flex, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -110,6 +111,7 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
         depth={depth}
         isSelected={isSelected}
         className={cx(S.nodeRoot, {
+          [S.protoNodeRoot]: PROTO_NAV_ENABLED,
           [S.selected]: isSelected,
           [S.dropTarget]: isHovered,
         })}
@@ -121,8 +123,12 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
         <TreeNode.ExpandToggleButton
           c="core-brand"
           py="xxs"
-          pl="xxxs"
-          pr={0}
+          // Proto nav: 6px on both sides of the chevron. The 6px gap after it
+          // makes chevron→icon match icon→label (24px), the per-level indent,
+          // so a child's chevron lines up under its parent's icon and its icon
+          // under the label.
+          pl={PROTO_NAV_ENABLED ? 6 : "xxxs"}
+          pr={PROTO_NAV_ENABLED ? 6 : 0}
           hidden={!hasChildren}
           onClick={onToggleExpand}
         >

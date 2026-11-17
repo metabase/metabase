@@ -16,7 +16,6 @@ import {
 } from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
-import { ForwardRefLink } from "metabase/common/components/Link";
 import { Tree } from "metabase/common/components/tree";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
@@ -26,7 +25,6 @@ import {
   getUserCanWriteToCollections,
 } from "metabase/current-user";
 import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
-import PN from "metabase/nav/containers/ProtoNavbar/ProtoNavbar.module.css";
 import {
   SubNavHeading,
   SubNavSection,
@@ -37,14 +35,13 @@ import {
   PLUGIN_REMOTE_SYNC,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
-import { setOpenModal } from "metabase/redux/ui";
+import { useSelector } from "metabase/redux";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
 } from "metabase/selectors/onboarding";
 import { useSetting, useUserSetting } from "metabase/settings";
-import { ActionIcon, Flex, Icon, Menu, Tooltip } from "metabase/ui";
+import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
 import type { Bookmark, Collection } from "metabase-types/api";
@@ -105,7 +102,6 @@ export function MainNavbarView({
     "expand-collections-in-nav",
   );
 
-  const dispatch = useDispatch();
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
   const currentUser = useSelector(getUser);
@@ -240,46 +236,6 @@ export function MainNavbarView({
   const protoCollectionsBlock = (
     <SubNavSection>
       <ErrorBoundary>
-        {canWriteToCollections && !isTenantUser && (
-          <Menu position="bottom-start">
-            <Menu.Target>
-              <button
-                type="button"
-                className={PN.navActionButton}
-                aria-label={t`Create new…`}
-              >
-                <span className={PN.navActionIconCircle}>
-                  <Icon name="add" size={12} />
-                </span>
-                {t`Create`}
-              </button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item
-                leftSection={<Icon name="folder" />}
-                onClick={() => {
-                  trackNewCollectionFromNavInitiated();
-                  handleCreateNewCollection();
-                }}
-              >
-                {t`Collection`}
-              </Menu.Item>
-              <Menu.Item
-                leftSection={<Icon name="dashboard" />}
-                onClick={() => dispatch(setOpenModal("dashboard"))}
-              >
-                {t`Dashboard`}
-              </Menu.Item>
-              <Menu.Item
-                leftSection={<Icon name="document" />}
-                component={ForwardRefLink}
-                to="/document/new"
-              >
-                {t`Document`}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        )}
         <SubNavHeading>{t`Collections`}</SubNavHeading>
         <Tree
           data={protoCollectionsTree}
@@ -307,10 +263,15 @@ export function MainNavbarView({
 
   return (
     <ErrorBoundary>
-      <Flex direction="column" justify="space-between" flex={1}>
+      {/* In the proto nav, don't stretch: History sits right below it. */}
+      <Flex
+        direction="column"
+        justify="space-between"
+        flex={PROTO_NAV_ENABLED ? undefined : 1}
+      >
         <div>
-          {/* Keep Create at the top of the proto Home tab so its spacing
-              matches Query's New query button when switching rails. */}
+          {/* In the proto nav this leads the Explorations tab (collections),
+              with History below it. */}
           {PROTO_NAV_ENABLED && protoCollectionsBlock}
 
           {!PROTO_NAV_ENABLED && (
@@ -366,8 +327,9 @@ export function MainNavbarView({
             </SidebarSection>
           )}
 
-          {/* Tenant users don't see the section about "External collections" */}
-          {showExternalCollectionsSection && (
+          {/* Tenant users don't see the section about "External collections".
+              Hidden in the proto nav's Explorations tab. */}
+          {!PROTO_NAV_ENABLED && showExternalCollectionsSection && (
             <PLUGIN_TENANTS.MainNavSharedCollections
               canAccessTenantSpecificCollections={
                 canAccessTenantSpecificCollections
@@ -436,7 +398,8 @@ export function MainNavbarView({
             </SidebarSection>
           )}
 
-          {PLUGIN_DATA_APPS.isEnabled && (
+          {/* The proto nav lists data apps on the Home tab instead. */}
+          {!PROTO_NAV_ENABLED && PLUGIN_DATA_APPS.isEnabled && (
             <PLUGIN_DATA_APPS.MainNavbarSection onItemSelect={onItemSelect} />
           )}
 

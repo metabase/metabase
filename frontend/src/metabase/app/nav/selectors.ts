@@ -89,6 +89,8 @@ const PATHS_WITHOUT_NAVBAR = [
   // Data apps run full-page with their own custom chrome (a hover-down panel),
   // so neither the left navbar nor the top app bar should be shown.
   new RegExp(`^${Urls.DATA_APP_ROOT_URL}/`),
+  // PROTOTYPE: a full-page mock of an external GitHub repo page.
+  /^\/mocked-github-repo/,
   /\/model\/.*\/query/,
   /\/model\/.*\/columns/,
   /\/model\/.*\/metadata/,

@@ -1,9 +1,4 @@
-export type SectionId =
-  | "collections"
-  | "explore"
-  | "library"
-  | "data"
-  | "monitor";
+export type SectionId = "home" | "explore" | "data" | "monitor";
 
 // Lets navigations from outside ProtoNavbar (e.g. opening a table question
 // from the Data tab) keep the rail on the originating section.
@@ -21,7 +16,8 @@ export function consumeProtoNavSectionPin(): SectionId | null {
 
 // Maps the current URL to the nav section that should appear selected.
 // Returns null when the route doesn't clearly belong to a section so the
-// previously selected section stays put.
+// previously selected section stays put. Content routes map to Explore;
+// ProtoNavbar promotes synced collections to Home.
 export function getActiveSection(pathname: string): SectionId | null {
   if (
     pathname.startsWith("/data-studio/data") ||
@@ -36,20 +32,14 @@ export function getActiveSection(pathname: string): SectionId | null {
   ) {
     return "monitor";
   }
-  if (pathname.startsWith("/data-studio")) {
-    return "library";
+  // The semantic layer (published tables, metrics) lives on the Home tab;
+  // other Data Studio pages (e.g. glossary, events) have no tab of their own.
+  if (pathname === "/" || pathname.startsWith("/data-studio")) {
+    return "home";
   }
   if (
     pathname.startsWith("/metabot") ||
     pathname.startsWith("/explore") ||
-    pathname.startsWith("/question/ask") ||
-    pathname === "/question/new" ||
-    pathname.startsWith("/question/new/")
-  ) {
-    return "explore";
-  }
-  if (
-    pathname === "/" ||
     pathname.startsWith("/collection") ||
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/question") ||
@@ -59,7 +49,7 @@ export function getActiveSection(pathname: string): SectionId | null {
     pathname.startsWith("/document") ||
     pathname.startsWith("/trash")
   ) {
-    return "collections";
+    return "explore";
   }
   return null;
 }

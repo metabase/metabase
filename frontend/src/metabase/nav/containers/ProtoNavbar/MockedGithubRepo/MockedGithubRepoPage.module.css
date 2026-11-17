@@ -1,0 +1,365 @@
+/* PROTOTYPE: GitHub look-alike, values taken from the Figma design (node 5:2).
+   Colors are GitHub's, not Metabase theme tokens, on purpose. */
+/* stylelint-disable color-no-hex */
+
+.page {
+  --gh-fg: #1f2328;
+  --gh-muted: #59636e;
+  --gh-border: #d1d9e0;
+  --gh-canvas-subtle: #f6f8fa;
+  --gh-neutral-muted: #e6eaef;
+
+  min-height: 100vh;
+  background: #fff;
+  color: var(--gh-fg);
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-size: 14px;
+  line-height: normal;
+}
+
+.icon {
+  flex-shrink: 0;
+  display: block;
+}
+
+.muted {
+  color: var(--gh-muted);
+}
+
+.semibold {
+  font-weight: 600;
+}
+
+.small {
+  font-size: 12px;
+}
+
+.spacer {
+  flex: 1 0 0;
+  min-width: 1px;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 64px;
+  padding: 0 24px;
+  background: var(--gh-canvas-subtle);
+}
+
+.menuButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--gh-border);
+  border-radius: 6px;
+}
+
+.siteMark,
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.siteMark {
+  background: var(--gh-fg);
+}
+
+.avatar {
+  background: #8fb8de;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.searchInput {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 320px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--gh-border);
+  border-radius: 6px;
+  background: #fff;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+/* Repo tabs */
+.repoTabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 24px;
+  background: var(--gh-canvas-subtle);
+  border-bottom: 1px solid var(--gh-border);
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 0 8px;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.tabSelected {
+  border-bottom: 2px solid #fd8c73;
+  font-weight: 600;
+}
+
+.counter {
+  display: flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--gh-neutral-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Main */
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 80px 32px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--gh-border);
+}
+
+.orgAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #509ee3;
+  flex-shrink: 0;
+}
+
+.repoName {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.visibility {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--gh-border);
+  border-radius: 11px;
+  box-sizing: border-box;
+  color: var(--gh-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--gh-border);
+  border-radius: 6px;
+  background: var(--gh-canvas-subtle);
+  box-sizing: border-box;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.primaryButton {
+  border-color: #1a7f37;
+  background: #1f883d;
+  color: #fff;
+}
+
+.columns {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.primary {
+  display: flex;
+  flex: 1 0 0;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 1px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.goToFile {
+  width: 240px;
+}
+
+/* File tree */
+.box {
+  border: 1px solid var(--gh-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.commitBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 52px;
+  padding: 0 16px;
+  background: var(--gh-canvas-subtle);
+  white-space: nowrap;
+}
+
+.commitAvatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #8fb8de;
+  flex-shrink: 0;
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 40px;
+  padding: 0 16px;
+  border-top: 1px solid var(--gh-border);
+  white-space: nowrap;
+}
+
+.treeName {
+  width: 280px;
+  flex-shrink: 0;
+}
+
+.treeMessage {
+  flex: 1 0 0;
+  min-width: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--gh-muted);
+}
+
+/* README */
+.readmeHeader {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--gh-border);
+  font-weight: 600;
+}
+
+.readmeBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 32px;
+}
+
+.readmeTitle {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.readmeText {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+/* Sidebar */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 296px;
+  flex-shrink: 0;
+}
+
+.sidebarHeading {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.about {
+  margin: 0;
+  line-height: 21px;
+}
+
+.divider {
+  width: 100%;
+  height: 1px;
+  margin: 0;
+  border: 0;
+  background: var(--gh-border);
+}
+
+.languageBar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.languageLegend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.languageItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.languageDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}

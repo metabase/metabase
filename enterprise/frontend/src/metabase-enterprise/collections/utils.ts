@@ -6,6 +6,7 @@ import type {
 } from "metabase/common/collections/types";
 import type { IconData, ObjectWithModel } from "metabase/common/utils/icon";
 import { useGetIconBase } from "metabase/hooks/use-icon";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { type ItemWithCollection, PLUGIN_LIBRARY } from "metabase/plugins";
 import type {
   Bookmark,
@@ -82,8 +83,9 @@ export const useGetIcon = () => {
           return getIconBase(item);
         }
 
-        // tenant users see the normal icon, they don't know what a synced collection is
-        if (item.is_remote_synced && !isTenantUser) {
+        // tenant users see the normal icon, they don't know what a synced collection is.
+        // The prototype nav shows synced collections with the regular icon.
+        if (item.is_remote_synced && !isTenantUser && !PROTO_NAV_ENABLED) {
           return {
             name: REMOTE_SYNC_COLLECTION.icon,
           };

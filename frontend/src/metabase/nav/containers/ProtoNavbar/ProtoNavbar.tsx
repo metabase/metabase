@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
-  useListCollectionItemsQuery,
   useListCollectionsTreeQuery,
   useListDatabasesQuery,
 } from "metabase/api";
@@ -13,7 +12,8 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
-import { useSelector } from "metabase/redux";
+import { startNewConversation } from "metabase/metabot/state";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { StoreDashboard } from "metabase/redux/store";
 import { type Location, useNavigate } from "metabase/router";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -29,8 +29,10 @@ import {
 import * as Urls from "metabase/urls";
 import type { IconName } from "metabase-types/api";
 
+import { isCollectionPath } from "../MainNavbar/getSelectedItems";
 import { Sidebar } from "../MainNavbar/Sidebar";
 
+import { CreateMenuButton } from "./CreateMenuButton";
 import { NotificationsButton } from "./NotificationsButton";
 import S from "./ProtoNavbar.module.css";
 import {
@@ -38,11 +40,10 @@ import {
   consumeProtoNavSectionPin,
   getActiveSection,
 } from "./getActiveSection";
-import { getLastNewQueryMode, newQueryUrl } from "./newQuery";
-import { CollectionsSection } from "./sections/CollectionsSection";
+import { getLastNewQueryMode, newQueryUrl, withFreshParam } from "./newQuery";
 import { DataSection } from "./sections/DataSection";
 import { ExploreSection } from "./sections/ExploreSection";
-import { LibrarySection } from "./sections/LibrarySection";
+import { HomeSection, useSyncedCollections } from "./sections/HomeSection";
 import { MonitorSection } from "./sections/MonitorSection";
 
 type Props = {
@@ -60,6 +61,7 @@ const WIDTH_STORAGE_KEY = "proto-nav-width";
 export function ProtoNavbar({ isOpen, location, params }: Props) {
   const applicationName = useSelector(getApplicationName);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const buildQuestion = useQuestionFromOptsBuilder();
   const { query: kbarQuery } = useKBar();
   const openSearch = useCallback(() => {
@@ -67,20 +69,15 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
   }, [kbarQuery]);
 
   const sections: { id: SectionId; label: string; icon: IconName }[] = [
-    { id: "collections", label: t`Home`, icon: "home" },
-    { id: "explore", label: t`Query`, icon: "query" },
-    { id: "library", label: t`Library`, icon: "repository" },
+    { id: "home", label: t`Home`, icon: "home" },
+    { id: "explore", label: t`Explorations`, icon: "compass" },
     { id: "data", label: t`Data`, icon: "database" },
     { id: "monitor", label: t`Monitor`, icon: "gauge" },
   ];
 
   // The landing page each section navigates to when its rail icon is clicked.
-  const { data: rootDashboards } = useListCollectionItemsQuery({
-    id: "root",
-    models: ["dashboard"],
-    limit: 1,
-  });
-  const firstDashboard = rootDashboards?.data?.[0];
+  const { syncedTree, syncedIds } = useSyncedCollections();
+  const firstSyncedCollection = syncedTree[0];
 
   const { data: databasesData } = useListDatabasesQuery();
   const firstDatabase = databasesData?.data?.[0];
@@ -97,14 +94,13 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
   );
 
   const defaultPaths: Partial<Record<SectionId, string>> = {
-    collections: firstDashboard
-      ? `/dashboard/${firstDashboard.id}`
-      : "/collection/root",
+    home: firstSyncedCollection
+      ? Urls.collection(firstSyncedCollection)
+      : undefined,
     explore: newQueryUrl(getLastNewQueryMode(), {
       buildQuestion,
       databaseId: lastUsedDatabaseId ?? undefined,
     }),
-    library: Urls.dataStudioLibrary({ library: "tables" }),
     data: firstDatabase
       ? Urls.dataStudioData({ databaseId: firstDatabase.id })
       : undefined,
@@ -115,20 +111,40 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
     () => getActiveSection(location.pathname),
     [location.pathname],
   );
+  // Content routes belong to Explore, except synced collections, which belong
+  // to Home unless the user is already browsing from Explore.
+  const syncedCollectionId = isCollectionPath(location.pathname)
+    ? Urls.extractEntityId(params.slug)
+    : null;
+  const isSyncedRoute =
+    syncedCollectionId != null && syncedIds.has(syncedCollectionId);
   const [activeSection, setActiveSection] = useState<SectionId>(
-    routeSection ?? "collections",
+    routeSection ?? "home",
   );
-  const [collectionsVisitKey, setCollectionsVisitKey] = useState(0);
-  const prevActiveSectionRef = useRef<SectionId>(routeSection ?? "collections");
+  const [exploreVisitKey, setExploreVisitKey] = useState(0);
+  const prevActiveSectionRef = useRef<SectionId>(routeSection ?? "home");
 
   // Lets a section "pin" itself so the next route change doesn't steal the
   // selection away (e.g. launching a SQL query lands on /question, which would
-  // otherwise switch the rail back to Home).
+  // otherwise switch the rail back to Explore's collections).
   const pinnedSectionRef = useRef<SectionId | null>(null);
   const pinSection = useCallback((section: SectionId) => {
     pinnedSectionRef.current = section;
     setActiveSection(section);
   }, []);
+
+  const handleNewQuery = () => {
+    dispatch(startNewConversation({ agentId: "ask" }));
+    pinSection("explore");
+    navigate(
+      withFreshParam(
+        newQueryUrl(getLastNewQueryMode(), {
+          buildQuestion,
+          databaseId: lastUsedDatabaseId ?? undefined,
+        }),
+      ),
+    );
+  };
 
   // Resizable width, clamped to [MIN_WIDTH, MAX_WIDTH] and persisted locally.
   const [width, setWidth] = useState(() => {
@@ -179,19 +195,23 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
       pinnedSectionRef.current = null;
       return;
     }
+    if (isSyncedRoute) {
+      setActiveSection((prev) => (prev === "explore" ? prev : "home"));
+      return;
+    }
     if (routeSection) {
       setActiveSection(routeSection);
     }
-  }, [routeSection]);
+  }, [routeSection, isSyncedRoute]);
 
-  // Remount the collections nav when entering the section so Our Analytics
-  // starts expanded every time.
+  // Remount Explore when entering the section so Our Analytics starts
+  // expanded every time.
   useEffect(() => {
     if (
-      activeSection === "collections" &&
-      prevActiveSectionRef.current !== "collections"
+      activeSection === "explore" &&
+      prevActiveSectionRef.current !== "explore"
     ) {
-      setCollectionsVisitKey((key) => key + 1);
+      setExploreVisitKey((key) => key + 1);
     }
     prevActiveSectionRef.current = activeSection;
   }, [activeSection]);
@@ -231,15 +251,28 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
               {applicationName}
             </Text>
           </Group>
-          <Tooltip label={t`Search`}>
-            <ActionIcon
-              onClick={openSearch}
-              aria-label={t`Search`}
-              c="text-secondary"
-            >
-              <FixedSizeIcon name="search" />
-            </ActionIcon>
-          </Tooltip>
+          <Group gap="0.25rem" wrap="nowrap">
+            <Tooltip label={t`New query`}>
+              <ActionIcon
+                variant="filled"
+                color="brand"
+                onClick={handleNewQuery}
+                aria-label={t`New query`}
+              >
+                <FixedSizeIcon name="query" />
+              </ActionIcon>
+            </Tooltip>
+            <CreateMenuButton />
+            <Tooltip label={t`Search`}>
+              <ActionIcon
+                onClick={openSearch}
+                aria-label={t`Search`}
+                c="text-secondary"
+              >
+                <FixedSizeIcon name="search" />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
         </Box>
 
         <Box className={S.rail} role="tablist" aria-label={t`Sections`}>
@@ -276,22 +309,21 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
         </Box>
 
         <Box className={S.sectionContent}>
-          {activeSection === "collections" && (
-            <CollectionsSection
-              key={collectionsVisitKey}
-              isOpen={isOpen}
+          {activeSection === "home" && (
+            <HomeSection
               location={location}
               params={params}
+              onPin={() => pinSection("home")}
             />
           )}
           {activeSection === "explore" && (
             <ExploreSection
+              key={exploreVisitKey}
+              isOpen={isOpen}
               location={location}
+              params={params}
               onPin={() => pinSection("explore")}
             />
-          )}
-          {activeSection === "library" && (
-            <LibrarySection location={location} />
           )}
           {activeSection === "data" && <DataSection location={location} />}
           {activeSection === "monitor" && (

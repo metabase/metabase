@@ -58,6 +58,19 @@ export function newQueryUrl(
   ).replace(/^\/question/, "/question/new/sql");
 }
 
+// Adds a cache-busting param so starting a new query from the New Query page
+// itself still resets it.
+export function withFreshParam(url: string) {
+  const fresh = `fresh=${Date.now()}`;
+  const hashIndex = url.indexOf("#");
+  const pathPart = hashIndex === -1 ? url : url.slice(0, hashIndex);
+  const hashPart = hashIndex === -1 ? "" : url.slice(hashIndex);
+  const withFresh = pathPart.includes("?")
+    ? `${pathPart}&${fresh}`
+    : `${pathPart}?${fresh}`;
+  return `${withFresh}${hashPart}`;
+}
+
 /** True on the New Query SQL page before the user has typed anything. */
 export function isNewQuerySqlIdle(
   pathname: string,

@@ -103,6 +103,12 @@ const newQueryPage = () =>
     ({ NewQueryPage }) => ({ Component: NewQueryPage }),
   );
 
+// PROTOTYPE: static mock of the GitHub repo remote sync publishes from.
+const mockedGithubRepoPage = () =>
+  import("metabase/nav/containers/ProtoNavbar/MockedGithubRepo").then(
+    ({ MockedGithubRepoPage }) => ({ Component: MockedGithubRepoPage }),
+  );
+
 const metabotQueryBuilder = () =>
   loadMetabotQueryBuilder().then(({ MetabotQueryBuilder }) => ({
     Component: MetabotQueryBuilder,
@@ -278,6 +284,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
       // For compatibility: use the standard setup for embedding
       { path: "/setup/embedding", element: redirect("/setup") },
+
+      // PROTOTYPE: a stand-in for an external GitHub page, so no auth needed.
+      { path: "/mocked-github-repo", lazy: mockedGithubRepoPage },
 
       // APP
       {

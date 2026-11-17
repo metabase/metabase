@@ -1,16 +1,10 @@
-import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
-import { useCanAddData } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/use-can-add-data";
-import { trackAddDataModalOpened } from "metabase/nav/containers/MainNavbar/analytics";
 import type { Location } from "metabase/router";
-import { Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { SidebarLink } from "../../MainNavbar/SidebarItems";
-import S from "../ProtoNavbar.module.css";
 import { SubNavHeading, SubNavSection } from "../SubNav";
 
 type Props = { location: Location };
@@ -22,11 +16,6 @@ export function DataSection({ location }: Props) {
 
   const { data: databasesData } = useListDatabasesQuery();
   const databases = databasesData?.data ?? [];
-  const canPerformMeaningfulActions = useCanAddData();
-  const [
-    addDataModalOpened,
-    { open: openAddDataModal, close: closeAddDataModal },
-  ] = useDisclosure(false);
 
   const isTransforms =
     path.startsWith("/data-studio/transforms") &&
@@ -36,22 +25,6 @@ export function DataSection({ location }: Props) {
   return (
     <>
       <SubNavSection>
-        {canPerformMeaningfulActions && (
-          <button
-            type="button"
-            className={S.navActionButton}
-            aria-label={t`Add data`}
-            onClick={() => {
-              trackAddDataModalOpened("left-nav");
-              openAddDataModal();
-            }}
-          >
-            <span className={S.navActionIconCircle}>
-              <Icon name="add" size={12} />
-            </span>
-            {t`Add data`}
-          </button>
-        )}
         <SubNavHeading>{t`Databases`}</SubNavHeading>
         {databases.map((database) => {
           const url = Urls.dataStudioData({ databaseId: database.id });
@@ -92,8 +65,6 @@ export function DataSection({ location }: Props) {
           {t`Runs`}
         </SidebarLink>
       </SubNavSection>
-
-      <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />
     </>
   );
 }
