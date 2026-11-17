@@ -24,6 +24,27 @@ const charactersOutside = (unicodeRange: string, text: string) => {
   );
 };
 
+// Everything the page can draw: text nodes, hidden ones included, the text of
+// form fields, and the content of pseudo-elements.
+const drawnText = (win: Window) => {
+  const walker = win.document.createTreeWalker(win.document, 4);
+  const parts: string[] = [];
+  while (walker.nextNode()) {
+    parts.push(walker.currentNode.textContent ?? "");
+  }
+  win.document.querySelectorAll("*").forEach((element) => {
+    parts.push(
+      element.getAttribute("placeholder") ?? "",
+      element.getAttribute("value") ?? "",
+      element.getAttribute("alt") ?? "",
+      win.getComputedStyle(element, "::before").content,
+      win.getComputedStyle(element, "::after").content,
+      win.getComputedStyle(element, "::marker").content,
+    );
+  });
+  return parts.join("");
+};
+
 const bundledFaces = (win: Window) => {
   const faces: FontFace[] = [];
   win.document.fonts.forEach((face) => faces.push(face));
@@ -60,12 +81,42 @@ describe("scenarios > admin > fonts", () => {
     // A canvas measurement downloads a chunk just as rendered text does, and
     // leaves nothing in the page to find it by.
     const measuredOnCanvas: string[] = [];
+    const loadedByScript: string[] = [];
     cy.visit("/", {
       onBeforeLoad: (win) => {
-        const measureText = win.CanvasRenderingContext2D.prototype.measureText;
-        win.CanvasRenderingContext2D.prototype.measureText = function (text) {
-          measuredOnCanvas.push(text);
-          return measureText.call(this, text);
+        const recordText = (target: object, method: string) => {
+          const original: (...args: unknown[]) => unknown = Reflect.get(
+            target,
+            method,
+          );
+          Reflect.set(
+            target,
+            method,
+            function (this: unknown, ...args: unknown[]) {
+              measuredOnCanvas.push(String(args[0]));
+              return Reflect.apply(original, this, args);
+            },
+          );
+        };
+        [
+          win.CanvasRenderingContext2D.prototype,
+          win.OffscreenCanvasRenderingContext2D.prototype,
+        ].forEach((context) => {
+          recordText(context, "measureText");
+          recordText(context, "fillText");
+          recordText(context, "strokeText");
+        });
+
+        const caller = () => new Error().stack?.split("\n")[3]?.trim() ?? "";
+        const loadFace = win.FontFace.prototype.load;
+        win.FontFace.prototype.load = function () {
+          loadedByScript.push(`${this.family} ${this.weight} ${caller()}`);
+          return loadFace.call(this);
+        };
+        const loadFont = win.document.fonts.load;
+        win.document.fonts.load = (font, text) => {
+          loadedByScript.push(`${font} "${text ?? ""}" ${caller()}`);
+          return loadFont.call(win.document.fonts, font, text);
         };
       },
     });
@@ -86,10 +137,10 @@ describe("scenarios > admin > fonts", () => {
         expect(latinChunk, "the page drew text in a bundled face").to.exist;
         expect(
           scriptChunks.map((face) => `${face.family} ${face.weight}`),
-          `script chunks downloaded, for these characters in the page or measured on a canvas: ${charactersOutside(
+          `script chunks downloaded. Characters outside the latin chunk: ${charactersOutside(
             latinChunk?.unicodeRange ?? "",
-            win.document.body.innerText + measuredOnCanvas.join(""),
-          ).join(" ")}`,
+            drawnText(win) + measuredOnCanvas.join(""),
+          ).join(" ")}. Faces loaded by a script: ${loadedByScript.join(", ")}`,
         ).to.deep.equal([]);
       }),
     );
