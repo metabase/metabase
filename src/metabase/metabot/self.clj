@@ -335,7 +335,7 @@
                                                                              (:function part)
                                                                              "unknown")}
                                                         (some? iteration) (assoc "step" iteration)
-                                                        (some? repairs)   (assoc "repairs" (vec repairs))
+                                                        (some? repairs)   (assoc "repairs" repairs)
                                                         error             (assoc "error_class" (name class)
                                                                                  "error_code"  (u/qualified-name code)))})))
          part)))
