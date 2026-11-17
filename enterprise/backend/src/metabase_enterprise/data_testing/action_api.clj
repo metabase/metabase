@@ -70,7 +70,8 @@
   (data-testing.db/insert-action-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/action-test
-  "Update an action test. The rules of creating one apply to the updated test."
+  "Update an action test. An update that changes the action, the parameter values, the inputs or the expectations is
+  checked as a new test is; an update of only the name or description is not."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
