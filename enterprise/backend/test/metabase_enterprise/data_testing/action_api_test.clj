@@ -117,6 +117,16 @@
                                                                                 [{:type "equals" :name "e" :format "rows"
                                                                                   :columns [{:name "id" :cast_type "INTEGER"}]
                                                                                   :rows [{"id" 1}]}]))))))
+                             (testing "POST refuses a test of an action on a database with actions turned off"
+                               (mt/with-actions-disabled
+                                 (is (= "action-test.actions-disabled"
+                                        (:error-code (mt/user-http-request :crowberto :post 422 "ee/action-test" (body action-id)))))))
+                             (testing "POST refuses a test of an implicit action"
+                               (do-with-action! nil {:type :implicit :kind "row/update"}
+                                                (fn [implicit-action-id]
+                                                  (is (= "action-test.unsupported-action"
+                                                         (:error-code (mt/user-http-request :crowberto :post 422 "ee/action-test"
+                                                                                            (body implicit-action-id))))))))
                              (testing "PUT refuses a change that makes the test unrunnable, and keeps the test"
                                (is (= "action-test.invalid-parameters"
                                       (:error-code (mt/user-http-request :crowberto :put 400 (str "ee/action-test/" test-id)
