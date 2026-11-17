@@ -2571,7 +2571,8 @@
            util
            util.config}
    :model-exports #{:model/Revision}
-   :model-imports #{:model/ActionTest
+   :model-imports #{:model/Action
+                    :model/ActionTest
                     :model/Card
                     :model/CardTest
                     :model/Collection
