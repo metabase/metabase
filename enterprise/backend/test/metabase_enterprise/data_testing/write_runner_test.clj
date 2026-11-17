@@ -128,7 +128,7 @@
 
 (deftest write-to-an-undeclared-table-is-refused-test
   (mt/test-drivers (drivers-that-write)
-    (testing "an INSERT whose target has no input is refused before any connection, naming the target"
+    (testing "an INSERT whose target has no input is refused, naming the target"
       (let [sql (str "INSERT INTO " (qualified :orders) " (id) SELECT id FROM " (qualified :people) " WHERE id = ?")
             e   (try (run-write! sql [1] [(people-rows)] [(reading refunded-only-1)])
                      nil
@@ -141,7 +141,7 @@
     (let [people (qualified :people)]
       (testing "control: one UPDATE runs"
         (is (nil? (refusal! (refund-1) ["refunded" 1] [(people-rows)] [(reading refunded-only-1)]))))
-      (testing "a procedure call names no table, so the input check cannot see what it writes"
+      (testing "a procedure call is refused: it names no table, so the input check cannot see what it writes"
         (is (= ::data-testing.errors/not-a-single-write
                (refusal! "CALL refund_order(?)" [1] [(people-rows)] [(reading refunded-only-1)]))))
       (testing "a second statement is refused, even when it writes a declared table"
@@ -163,13 +163,14 @@
   (mt/test-drivers (drivers-that-write)
     (testing "`equals` compares an output, and a write has none"
       (let [e (try (run-write! (refund-1) ["refunded" 1] [(people-rows)]
-                               [{:type :equals :name "compares the output" :format :rows
+                               [{:type :equals :name "person 1 only" :format :rows
                                  :columns [{:name "id" :cast_type (first (data-testing.test-util/cast-types))}]
                                  :rows    [{"id" 1}]}])
                    nil
                    (catch ExceptionInfo e e))]
         (is (= ::data-testing.errors/no-output (:error-type (ex-data e))))
-        (is (re-find #"compares the output" (ex-message e)))))))
+        (is (re-find #"\"person 1 only\"" (ex-message e)))
+        (is (re-find #"has no output" (ex-message e)))))))
 
 (deftest parameters-reach-the-subject-plan-test
   (mt/test-drivers (drivers-that-write)
