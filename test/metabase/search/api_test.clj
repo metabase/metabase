@@ -1225,13 +1225,13 @@
 (deftest analytics-collection-card-search-test
   (testing "Search returns questions, models and metrics in the audit app's analytics namespace (#79819)"
     (mt/with-premium-features #{:audit-app}
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Analytics Tree" :namespace "analytics"}
-                     :model/Card       _ {:name "Abandoned alerts" :type :question :collection_id coll-id}
-                     :model/Card       _ {:name "Abandoned alerts model" :type :model :collection_id coll-id}
-                     :model/Card       _ {:name "Abandoned alerts metric" :type :metric :collection_id coll-id}]
-        (is (= #{["card" "Abandoned alerts"]
-                 ["dataset" "Abandoned alerts model"]
-                 ["metric" "Abandoned alerts metric"]}
+      (mt/with-temp [:model/Collection {id :id} {:name "Analytics Tree", :namespace "analytics"}
+                     :model/Card       _        {:name "Abandoned alerts", :type :question, :collection_id id}
+                     :model/Card       _        {:name "Abandoned alerts", :type :model,    :collection_id id}
+                     :model/Card       _        {:name "Abandoned alerts", :type :metric,   :collection_id id}]
+        (is (= #{["card"    "Abandoned alerts"]
+                 ["dataset" "Abandoned alerts"]
+                 ["metric"  "Abandoned alerts"]}
                (into #{}
                      (map (juxt :model :name))
                      (search-request-data :crowberto :q "Abandoned alerts"))))))))
