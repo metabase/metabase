@@ -90,11 +90,6 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one-fn :namespace [:model/Collection :namespace] :id collection-id))
 
-(mu/defn unarchived-collection-exists?
-  "Whether the unarchived Collection with `collection-id` exists."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id :archived false))
-
 (mu/defn action
   "The Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]

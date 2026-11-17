@@ -73,17 +73,6 @@
   [exploration-id new-coll-id]
   (publish-document-updates! (explorations.db/move-summary-documents! exploration-id new-coll-id)))
 
-(defn- cascade-archived-to-documents!
-  "Propagate an Exploration's archive flip to its Summary document.
-  Mirrors `dashboards_rest/api.clj` (parent-archive cascade for dashboard questions):
-  on archive, flip every doc that wasn't already archived directly; on unarchive,
-  flip every doc that was cascade-archived. Docs with `archived_directly=true`
-  (user-archived) are never touched."
-  [exploration-id new-archived?]
-  (publish-document-updates! (if new-archived?
-                               (explorations.db/archive-summary-documents! exploration-id)
-                               (explorations.db/unarchive-summary-documents! exploration-id))))
-
 (defn- insert-summary-document!
   "Insert the auto-created Summary document for a newly created exploration. Explore-further
   must not call this — there is one Summary per exploration."
@@ -579,8 +568,8 @@
   "Columns a client may set through `PUT /api/exploration/:id`. `UpdateExploration` is an open map,
   so extra body keys survive decoding; the request is `select-keys`'d to this set before
   `t2/update!` to prevent mass-assignment of protected columns (`creator_id`, `entity_id`,
-  timestamps, ...). `:archived_directly` is intentionally excluded — it is derived server-side by
-  `updates-with-archived-directly`, never accepted from the client. Keep in sync with
+  timestamps, ...). `:archived_directly` is intentionally excluded — the model derives it, and a
+  client never sets it. Keep in sync with
   `UpdateExploration`."
   #{:name :description :archived :collection_id :collection_position})
 
@@ -811,23 +800,25 @@
   (or the root collection when `collection_id` is nil). Source perms are enforced by
   `api/write-check` against the exploration itself, which reads its Collection.
   Moving an exploration cascades the new `collection_id` onto its Summary document; flipping
-  `archived` cascades to the same document (skipping any that were directly user-archived,
-  mirroring the dashboard / dashboard-question cascade)."
+  `archived` cascades to the same document in the model's hooks (skipping any that were directly
+  user-archived, mirroring the dashboard / dashboard-question cascade)."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    updates :- UpdateExploration]
   (let [existing (get-exploration-or-404 id)
         allowed  (select-keys updates updatable-columns)
-        updates' (api/updates-with-archived-directly existing allowed)]
+        updates' (api/updates-without-collection-when-archiving existing allowed)]
     (api/write-check existing)
     (check-destination-collection-perms! existing updates')
-    (t2/with-transaction [_]
-      (when (seq updates')
-        (explorations.db/update-exploration! id updates')
-        (when (contains? updates' :collection_id)
-          (cascade-collection-id-to-documents! id (:collection_id updates')))
-        (when (contains? updates' :archived)
-          (cascade-archived-to-documents! id (:archived updates')))))
+    (let [archived-document-ids (when (contains? updates' :archived)
+                                  (explorations.db/summary-document-ids-following id (boolean (:archived updates'))))]
+      (t2/with-transaction [_]
+        (when (seq updates')
+          (explorations.db/update-exploration! id updates')
+          (when (contains? updates' :collection_id)
+            (cascade-collection-id-to-documents! id (:collection_id updates')))))
+      (when (seq archived-document-ids)
+        (publish-document-updates! (explorations.db/documents-by-ids archived-document-ids))))
     (let [updated (explorations.db/exploration id)]
       (when (seq updates')
         (events/publish-event! :event/exploration-update

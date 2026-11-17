@@ -1526,112 +1526,6 @@
   [_seed-table-ids]
   nil)
 
-(defn- publish-document-updates!
-  "Publishes `:event/document-update` for the Documents the archive state of the Collections with `collection-ids`
-  just carried over to."
-  [collection-ids]
-  (doseq [document (collections.db/documents-in-collections-not-archived-directly collection-ids)]
-    (events/publish-event! :event/document-update {:object document})))
-
-(mu/defn archive-collection!
-  "Mark a collection as archived, along with all its children."
-  [collection :- CollectionWithLocationAndIDOrRoot]
-  (api/check-403 (can-write-collection-ids? (vec (collection-ids-for-archiving collection))))
-  (api/check-400
-   (or *allow-modifying-tenant-root-collections?*
-       (not= (:type collection) tenant-specific-root-collection-type)))
-  (t2/with-transaction [_conn]
-    (let [archive-operation-id    (str (random-uuid))
-          affected-collection-ids (cons (u/the-id collection)
-                                        (collections.db/not-yet-archived-collection-ids-with-location-like
-                                         (str (children-location collection) "%")))]
-      (collections.db/update-collection! (u/the-id collection)
-                                         {:archive_operation_id archive-operation-id
-                                          :archived_directly    true
-                                          :archived             true})
-      (collections.db/archive-descendant-collections! (str (children-location collection) "%") archive-operation-id)
-      (collections.db/set-pulse-archived-in-collections! affected-collection-ids true)
-      (collections.db/set-native-query-snippet-archived-in-collections! affected-collection-ids true)
-      (collections.db/set-timeline-archived-in-collections! affected-collection-ids true)
-      (collections.db/set-action-archived-in-collections! affected-collection-ids true)
-      (collections.db/set-card-archived-in-collections-not-directly! affected-collection-ids true)
-      (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids true)
-      (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids true)
-      (publish-document-updates! affected-collection-ids)
-      (collections.db/set-exploration-archived-in-collections-not-directly! affected-collection-ids true)
-      (let [library-data-ids (collections.db/collection-ids-of-type affected-collection-ids library-data-collection-type)]
-        (when (seq library-data-ids)
-          (let [published-table-ids (collections.db/published-table-ids-in-collections library-data-ids)]
-            (collections.db/unpublish-tables-in-collections! library-data-ids)
-            (unpublish-downstream-fk-tables! published-table-ids)))))))
-
-(mu/defn unarchive-collection!
-  "Mark a collection as unarchived, along with any children that were archived along with the collection."
-  [collection :- CollectionWithLocationAndIDOrRoot
-   ;; `updates` is a map *possibly* containing `parent_id`. This allows us to distinguish
-   ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
-   updates :- [:map {:closed true}
-               [:parent_id {:optional true} [:maybe ms/PositiveInt]]
-               [:archived  {:optional true} :boolean]]]
-  (assert (:archive_operation_id collection))
-  (let [archive-operation-id    (:archive_operation_id collection)
-        current-parent-id       (:parent_id (t2/hydrate collection :parent_id))
-        new-parent-id           (if (contains? updates :parent_id)
-                                  (:parent_id updates)
-                                  current-parent-id)
-        new-parent              (if new-parent-id
-                                  (collections.db/collection new-parent-id)
-                                  (assoc root-collection :namespace (:namespace collection)))
-        new-parent-is-remote-synced? (:is_remote_synced new-parent)
-        new-location            (children-location new-parent)
-        orig-children-location  (children-location collection)
-        new-children-location   (children-location (assoc collection :location new-location))
-        affected-collection-ids (cons (u/the-id collection)
-                                      (collections.db/archived-collection-ids-in-operation-with-location-like
-                                       (str (children-location collection) "%")
-                                       archive-operation-id))]
-    (api/check-400
-     (and (some? new-parent) (not (:archived new-parent))))
-    (if (contains? updates :parent_id)
-      (api/check-403
-       (and (mi/can-write? (t2/hydrate new-parent :can_write))
-            (can-write-collection-ids? (vec (collection-ids-for-unarchiving collection)))))
-      ;; Restoring to original location, use `can_restore` for a single source of truth
-      (api/check-403
-       (:can_restore (t2/hydrate collection :can_restore))))
-    (t2/with-transaction [_conn]
-      (collections.db/update-collection! (u/the-id collection)
-                                         {:location             new-location
-                                          :is_remote_synced     (boolean new-parent-is-remote-synced?)
-                                          :archive_operation_id nil
-                                          :archived_directly    nil
-                                          :archived             false})
-      (collections.db/unarchive-descendant-collections! orig-children-location
-                                                        new-children-location
-                                                        (boolean new-parent-is-remote-synced?)
-                                                        (:archive_operation_id collection))
-      (collections.db/set-pulse-archived-in-collections! affected-collection-ids false)
-      (collections.db/set-native-query-snippet-archived-in-collections! affected-collection-ids false)
-      (collections.db/set-timeline-archived-in-collections! affected-collection-ids false)
-      (collections.db/set-card-archived-in-collections-not-directly! affected-collection-ids false)
-      (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids false)
-      (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids false)
-      (publish-document-updates! affected-collection-ids)
-      (collections.db/set-exploration-archived-in-collections-not-directly! affected-collection-ids false)
-      (collections.db/set-action-archived-in-collections! affected-collection-ids false))))
-
-(mu/defn archive-or-unarchive-collection!
-  "Archive or un-archive a collection. When unarchiving, you may need to specify a new `parent_id`."
-  [collection :- CollectionWithLocationAndIDOrRoot
-   ;; `updates` is a map *possibly* containing `parent_id`. This allows us to distinguish
-   ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
-   updates :- [:map {:closed true}
-               [:parent_id {:optional true} [:maybe ms/PositiveInt]]
-               [:archived  {:optional true} :boolean]]]
-  (if (:archived updates)
-    (archive-collection! collection)
-    (unarchive-collection! collection updates)))
-
 (mu/defn move-collection!
   "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
   [collection :- CollectionWithLocationAndIDOrRoot
@@ -1663,6 +1557,22 @@
       (when (= :api-key (collections.db/user-type user-id))
         (throw (ex-info "Can't create a personal collection for an API key" {:user user-id}))))))
 
+(defn check-collection-not-archived
+  "Throws a 400 when `archived?` is false and the Collection with `collection-id`, if any, is archived."
+  [archived? collection-id]
+  (when (and collection-id
+             (not archived?)
+             (get (collections.db/collection-archived-flags [collection-id]) collection-id))
+    (throw (ex-info (tru "An archived Collection cannot hold what is not archived.")
+                    {:status-code 400, :errors {:collection_id (tru "archived Collection")}}))))
+
+(defn- check-parent-not-archived
+  "Throws a 400 when `row`, which is not archived, is in `parent`, which is."
+  [row parent]
+  (when (and parent (:archived parent) (not (:archived row)))
+    (throw (ex-info (tru "An archived Collection cannot hold what is not archived.")
+                    {:status-code 400, :errors {:location (tru "archived Collection")}}))))
+
 (defn- check-valid-location
   "Throws a 400 unless the `location` of `row` is a valid path, and the root for a Personal Collection."
   [{:keys [location personal_owner_id]}]
@@ -1678,7 +1588,7 @@
   [{:keys [location]}]
   (let [ids (some-> location location-path->ids)]
     (if (seq ids)
-      (collections.db/collection-columns-by-id [:id :namespace :type :is_remote_synced] ids)
+      (collections.db/collection-columns-by-id [:id :namespace :type :is_remote_synced :archived] ids)
       {})))
 
 (defn- check-ancestors-exist
@@ -1772,6 +1682,7 @@
     (check-type row)
     (check-namespace-columns row)
     (check-parent-namespace row parent)
+    (check-parent-not-archived row parent)
     (when parent
       (check-remote-synced-parent row parent))
     (check-placement row parent)
@@ -2020,6 +1931,68 @@
     :else
     row))
 
+(def ^:private archivable-item-models
+  "The models that follow the `archived` state of their Collection by `collection_id`, in the order their cascades run,
+  Cards before the Dashboards and Documents that cascade to the Cards they hold."
+  [:model/Card :model/Dashboard :model/Document :model/Exploration :model/Timeline :model/NativeQuerySnippet])
+
+(def ^:private restorable-item-models
+  "The models that follow the restore of their Collection by `collection_id`, in the order their restores run, the
+  Dashboards, Explorations and Documents before the Cards and Documents they hold, which stay archived with them."
+  [:model/Dashboard :model/Exploration :model/Document :model/Timeline :model/NativeQuerySnippet :model/Card])
+
+(defn- archive-subtree!
+  "Archives the Collections under `row` and the items in them, along with `row`, in one operation: a statement for the
+  descendants and one for each kind of item."
+  [row]
+  (let [operation-id (:archive_operation_id row)
+        descendants  (collections.db/unarchived-collection-ids-with-location-like (str (children-location row) "%"))
+        ids          (vec (cons (:id row) descendants))]
+    (when (seq descendants)
+      (collections.db/archive-collections! (vec descendants) operation-id))
+    (run! #(collections.db/archive-items-in-collections! % ids) archivable-item-models)
+    (collections.db/archive-pulses-in-collections! ids)
+    (collections.db/archive-items-in-collections! :model/Action ids)
+    (let [library-data-ids (collections.db/collection-ids-of-type ids library-data-collection-type)]
+      (when (seq library-data-ids)
+        (let [published-table-ids (collections.db/published-table-ids-in-collections library-data-ids)]
+          (collections.db/unpublish-tables-in-collections! library-data-ids)
+          (unpublish-downstream-fk-tables! published-table-ids))))))
+
+(defn- restore-subtree!
+  "Restores the Collections under `row` that its archive took down and the items in them that were archived along with
+  them, along with `row`."
+  [row]
+  (let [descendants (collections.db/archived-collection-ids-in-operation-with-location-like
+                     (str (children-location row) "%")
+                     (:archive_operation_id (t2/original row)))
+        ids         (vec (cons (:id row) descendants))]
+    (when (seq descendants)
+      (collections.db/restore-collections! (vec descendants)))
+    (run! #(collections.db/restore-items-in-collections! % ids) restorable-item-models)
+    (collections.db/restore-pulses-in-collections! ids)
+    (collections.db/restore-actions-in-collections! ids)))
+
+(defn- cascade-archived
+  "Writes the archive or restore `row` takes to the Collections under it and the items in them, with the cause that they
+  follow it. A Collection that follows an archive does not cascade: the Collection it follows writes its items."
+  [row]
+  (when (contains? (t2/changes row) :archived)
+    (if (:archived row)
+      (when (:archived_directly row)
+        (mi/with-archived-cause-given (archive-subtree! row)))
+      (when (:archived_directly (t2/original row))
+        (mi/with-archived-cause-given (restore-subtree! row))))))
+
+(defn- archived-columns
+  "`row`, an update, with the `archived_directly` and `archive_operation_id` its change of `archived` gives."
+  [row]
+  (let [row (assoc row :archived_directly (mi/archived-directly row))]
+    (cond-> row
+      (not (contains? (t2/changes row) :archive_operation_id))
+      (assoc :archive_operation_id (when (and (:archived row) (:archived_directly row))
+                                     (str (random-uuid)))))))
+
 (defn- before-update-row
   "`row`, an update, checked, with the columns derived from its new parent, which `ancestors` holds."
   [row ancestors]
@@ -2038,7 +2011,8 @@
     (when (contains? changes :type)
       (check-type row))
     (when moved?
-      (check-parent-namespace row parent))
+      (check-parent-namespace row parent)
+      (check-parent-not-archived row parent))
     (when (or moved? (contains? changes :type))
       (check-placement row parent))
     (check-library-update row parent)
@@ -2046,7 +2020,8 @@
       (update-perms-when-moving-across-personal-boundry! collection-before-updates changes)
       (update-perms-for-tenant-specific-namespace-change! collection-before-updates changes))
     (cond-> (remote-synced-after-update row changes parent)
-      (:name changes) (assoc :slug (slugify (:name changes))))))
+      (:name changes)                     (assoc :slug (slugify (:name changes)))
+      (contains? changes :archived)       archived-columns)))
 
 (defn- remote-synced-type->flag-on-update
   "`row`, an update, with the `remote-synced` type turned into the `is_remote_synced` flag."
@@ -2067,7 +2042,10 @@
       (check-ancestors-exist row ancestors))
     (when (and (contains? changes :type) (= library-collection-type (:type row)))
       (check-single-library [row]))
-    (before-update-row row ancestors)))
+    (u/prog1 (before-update-row row ancestors)
+      (cascade-archived <>))))
+
+(mi/define-update-in-transaction :model/Collection)
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 
@@ -2191,10 +2169,7 @@
     ;; check that we're allowed to modify the new Collection
     (if-let [coll-id (:collection_id object-updates)]
       (api/write-check :model/Collection coll-id)
-      (api/write-check root-collection))
-    ;; check that the new location is not archived. the root can't be archived.
-    (when-let [collection-id (:collection_id object-updates)]
-      (api/check-400 (collections.db/unarchived-collection-exists? collection-id)))))
+      (api/write-check root-collection))))
 
 (defmulti allowed-namespaces
   "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in. By default, only the

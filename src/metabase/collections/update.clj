@@ -8,6 +8,7 @@
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    ;; `metabase.notification.card`, not `notification.core`: `core` pulls the payload/send chain,
    ;; which reaches `queries.core` -> `queries.models.card` -> `collections.core` and so cycles
    ;; back into this module. `notification.card` requires only events, the notification models,
@@ -27,9 +28,7 @@
 
 (def UpdateCollectionArguments
   "The arguments to an update-collection call — what the public API surface accepts. Absent keys
-  are left alone; `:archived` and `:parent_id` are acted on only when present, so a caller that
-  wants the REST endpoint's \"omitted means unarchived\" semantics has to supply that default
-  itself."
+  are left alone; `:archived` and `:parent_id` are acted on only when present."
   [:map {:closed true}
    [:name            {:optional true} [:maybe ms/NonBlankString]]
    [:description     {:optional true} [:maybe ms/NonBlankString]]
@@ -37,14 +36,50 @@
    [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
    [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]])
 
-(defn- maybe-send-archived-notifications!
-  "When a collection is archived, all of it's cards are also marked as archived, but this is down in the model layer
-  which will not cause the archive notification code to fire. This will delete the relevant alerts and notify the
-  users just as if they had be archived individually via the card API."
-  [& {:keys [collection-before-update collection-updates actor]}]
-  (when (api/column-will-change? (:archived collection-before-update) (get collection-updates :archived ::api/not-provided))
-    (doseq [card (collections.db/cards-in-collection (u/the-id collection-before-update))]
-      (notification.card/delete-card-notifications-and-notify! :event/card-update.notification-deleted.card-archived actor card))))
+(defn- stopped-alerts
+  "The `[card notifications]` pairs of the Cards in the Collection with `collection-id` that have alerts, which archiving
+  the Collection deletes."
+  [collection-id]
+  (vec (for [card          (collections.db/cards-in-collection collection-id)
+             :let          [notifications (seq (notification.card/card-notifications card))]
+             :when         notifications]
+         [card notifications])))
+
+(defn- notify-stopped-alerts!
+  "Tells the recipients of the alerts of `stopped`, which archiving a Collection deleted, as archiving their Card does."
+  [stopped actor]
+  (doseq [[card notifications] stopped]
+    (notification.card/notify-card-notifications-deleted!
+     :event/card-update.notification-deleted.card-archived actor card notifications)))
+
+(defn- publish-document-updates!
+  "Publishes `:event/document-update` for the Documents the archive state of the Collections with `collection-ids`
+  just carried over to."
+  [collection-ids]
+  (doseq [document (collections.db/documents-in-collections-not-archived-directly (vec collection-ids))]
+    (events/publish-event! :event/document-update {:object document})))
+
+(defn- check-can-archive
+  "Throws a 403 unless the current user may archive `collection` with everything under it."
+  [collection]
+  (api/check-403 (collection/can-write-collection-ids? (vec (collection/collection-ids-for-archiving collection)))))
+
+(defn- check-can-restore
+  "Throws unless the current user may restore `collection` and what its archive took down, into the Collection that
+  `collection-updates` name or else the one it was in, which must not be archived."
+  [collection collection-updates]
+  (let [parent-id  (if (contains? collection-updates :parent_id)
+                     (:parent_id collection-updates)
+                     (:parent_id collection))
+        new-parent (if parent-id
+                     (api/check-404 (collections.db/collection parent-id))
+                     (collection/parent-or-root (:namespace collection) nil))]
+    (api/check-400 (and (some? new-parent) (not (:archived new-parent))))
+    (if (contains? collection-updates :parent_id)
+      (api/check-403
+       (and (mi/can-write? (t2/hydrate new-parent :can_write))
+            (collection/can-write-collection-ids? (vec (collection/collection-ids-for-unarchiving collection)))))
+      (api/check-403 (:can_restore (t2/hydrate collection :can_restore))))))
 
 (defn- move-collection!
   "If `collection-updates` specifies that we should *move* a Collection, check that the user can move it and move it
@@ -58,37 +93,34 @@
         (api/update-check collection-before-update {:parent_id new-parent-id})
         (collection/move-collection! collection-before-update new-location)))))
 
-(defn- archive-collection!
-  "If `collection-updates` specifies that we should archive a collection, do the appropriate permissions checks and
-  then move it to the trash."
+(defn- archive-or-restore!
+  "Archives or restores the Collection, with what follows it, as `collection-updates` ask, checks permissions first, then
+  moves it for a restore into another parent. Publishes the events the archive carries along."
   [collection-before-update collection-updates]
-  ;; sanity check
-  (when (api/column-will-change? (:archived collection-before-update) (get collection-updates :archived ::api/not-provided))
-    (collection/archive-or-unarchive-collection!
-     collection-before-update
-     (select-keys collection-updates [:parent_id :archived]))
-    (maybe-send-archived-notifications! {:collection-before-update collection-before-update
-                                         :collection-updates       collection-updates
-                                         :actor                    @api/*current-user*})))
-
-(defn- move-or-archive-collection-if-needed!
-  "If `collection-updates` specifies that we should either move or archive the collection (archiving means 'moving to
-  the trash' so it makes sense to deal with them together), do the appropriate permissions checks and changes."
-  [collection-before-update collection-updates]
-  (cond
-    (api/column-will-change? (:archived collection-before-update) (get collection-updates :archived ::api/not-provided))
-    (archive-collection! collection-before-update collection-updates)
-
-    (api/column-will-change? (:parent_id collection-before-update) (get collection-updates :parent_id ::api/not-provided))
-    (move-collection! collection-before-update collection-updates)
-
-    :else :no-op))
+  (let [id          (u/the-id collection-before-update)
+        archive?    (boolean (:archived collection-updates))
+        document-ids (cons id (if archive?
+                                (collections.db/not-yet-archived-collection-ids-with-location-like
+                                 (str (collection/children-location collection-before-update) "%"))
+                                (collections.db/archived-collection-ids-in-operation-with-location-like
+                                 (str (collection/children-location collection-before-update) "%")
+                                 (:archive_operation_id collection-before-update))))]
+    (if archive?
+      (check-can-archive collection-before-update)
+      (check-can-restore collection-before-update collection-updates))
+    (let [stopped (when archive? (stopped-alerts id))]
+      (collections.db/update-collection! id {:archived archive?})
+      (publish-document-updates! document-ids)
+      (when archive?
+        (notify-stopped-alerts! stopped @api/*current-user*))
+      (when-not archive?
+        (move-collection! (collections.db/collection id) collection-updates)))))
 
 (mu/defn update-collection!
   "Modify the collection with `id`, including archiving or unarchiving it, or moving it. Checks that the user can update the collection,
   gates `authority_level` behind superuser plus the Official Collections feature, applies the plain column updates,
-  then moves or archives as `collection-updates` asks, and publishes the update and touch events. Returns the updated
-  collection. The single source of truth for collection updates; REST and agent callers both go through here."
+  then archives, restores or moves as `collection-updates` asks, and publishes the update and touch events. Returns the
+  updated collection. The single source of truth for collection updates; REST and agent callers both go through here."
   [id                 :- ms/PositiveInt
    collection-updates :- UpdateCollectionArguments]
   (let [collection-before-update (t2/hydrate (api/check-404 (collections.db/collection id)) :parent_id)
@@ -103,12 +135,12 @@
                      (:authority_level collection-before-update)))
       (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
       (api/check-403 api/*is-superuser?*))
-    ;; ok, go ahead and update it! Only update keys that were specified in the request. But not `parent_id` since
-    ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (when (seq updates)
-      (collections.db/update-collection! id updates))
-    ;; if we're trying to move or archive the Collection, go ahead and do that
-    (move-or-archive-collection-if-needed! collection-before-update collection-updates)
+    (t2/with-transaction [_conn]
+      (when (seq updates)
+        (collections.db/update-collection! id updates))
+      (if (some-> (:archived collection-updates) boolean (not= (boolean (:archived collection-before-update))))
+        (archive-or-restore! collection-before-update collection-updates)
+        (move-collection! collection-before-update collection-updates)))
     (u/prog1 (collections.db/collection id)
       (events/publish-event! :event/collection-update {:object <> :user-id api/*current-user-id*})
       (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))))

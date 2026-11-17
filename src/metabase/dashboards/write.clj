@@ -331,7 +331,7 @@
           ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
           ;; tests that exclude it. so this only checks for dashcards
           update-dashcards-and-tabs?         (contains? dash-updates :dashcards)
-          dash-updates                       (api/updates-with-archived-directly current-dash dash-updates)]
+          dash-updates                       (api/updates-without-collection-when-archiving current-dash dash-updates)]
       (api/update-check current-dash dash-updates)
       (collection/check-allowed-to-change-collection current-dash dash-updates)
       (check-embedding-enabled current-dash dash-updates)
@@ -344,10 +344,9 @@
            (when-let [updates (not-empty
                                (u/select-keys-when
                                 dash-updates
-                                :present #{:description :position :width :collection_id :collection_position :cache_ttl :archived_directly :embedding_type}
+                                :present #{:description :position :width :collection_id :collection_position :cache_ttl :embedding_type}
                                 :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                            :embedding_params :archived :auto_apply_filters}))]
-             (dashboard/cascade-archived-from-dashboard-update! current-dash dash-updates)
              (dashboards.db/update-dashboard! id updates)
              (when (contains? updates :collection_id)
                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))

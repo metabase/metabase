@@ -45,11 +45,6 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))
 
-(mu/defn unarchived-collection-exists?
-  "Whether an unarchived Collection with `collection-id` exists."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id [:auto/param collection-id] :archived false))
-
 (mu/defn dashboard-collection-rows
   "The Dashboards with `dashboard-ids` narrowed to `:id` and `:collection_id`, the columns their permission hydrations
   read."
@@ -125,10 +120,11 @@
   (t2/select-pks-set :model/Card :dashboard_id dashboard-id))
 
 (mu/defn set-cards-archived!
-  "Set the archived flags of the Cards with `card-ids`, returning the number updated."
+  "Set the `archived` flag of the Cards with `card-ids`, which gives them their `archived_directly`, returning the number
+  updated."
   [card-ids  :- [:sequential ::lib.schema.id/card]
    archived? :- :boolean]
-  (t2/update! :model/Card :id [:in card-ids] {:archived archived? :archived_directly archived?}))
+  (t2/update! :model/Card :id [:in card-ids] {:archived archived?}))
 
 (mu/defn archive-dashboard-questions!
   "Archive the unarchived Cards internal to the Dashboard with `dashboard-id`, not directly, returning the number

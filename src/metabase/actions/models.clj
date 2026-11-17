@@ -136,7 +136,8 @@
   [{collection-id :collection_id, :as action} collection-namespace]
   (when collection-id
     (collection/check-collection-namespace :model/Action collection-id)
-    (collection/check-allowed-content :action collection-id))
+    (collection/check-allowed-content :action collection-id)
+    (collection/check-collection-not-archived (:archived action) collection-id))
   (check-model-less-collection action collection-namespace))
 
 (defn- model-collection-error
@@ -206,7 +207,8 @@
       (check-collection-content action namespace))
     (when placed?
       (check-data-app-action action namespace))
-    (public-sharing/add-public-uuid-prefix-if-changed action)))
+    (cond-> (public-sharing/add-public-uuid-prefix-if-changed action)
+      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly action)))))
 
 (defn- normalized-query
   "The query of `query-action` normalized, or nil when it has none."
@@ -461,10 +463,6 @@
               :implicit (actions.db/update-implicit-action! id type-row)))))
       (when (and (:archived updates) (not (:archived existing-action)))
         (actions.db/delete-dashcards-for-action! id))
-      (when-let [collection-id (and (contains? updates :collection_id)
-                                    (not= (:collection_id updates) (:collection_id existing-action))
-                                    (:collection_id updates))]
-        (api/check-400 (actions.db/unarchived-collection-exists? collection-id)))
       (actions.db/action id))))
 
 (mu/defn update!

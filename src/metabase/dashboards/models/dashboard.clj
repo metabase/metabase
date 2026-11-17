@@ -82,11 +82,22 @@
   #{"fixed" "full"})
 
 (defn- check-collection
-  "Throws unless the Collection of `dashboard`, if any, can hold Dashboards."
-  [{:keys [collection_id]}]
+  "Throws unless the Collection of `dashboard`, if any, can hold Dashboards, and is not archived unless `dashboard` is."
+  [{:keys [collection_id archived]}]
   (when collection_id
     (collection/check-allowed-content :model/Dashboard collection_id)
-    (collection/check-collection-namespace :model/Dashboard collection_id)))
+    (collection/check-collection-namespace :model/Dashboard collection_id)
+    (collection/check-collection-not-archived archived collection_id)))
+
+(defn- cascade-archived
+  "Writes the archive or restore `dashboard`, an update with `changes`, takes to the Cards internal to it, with the cause
+  that they follow it."
+  [dashboard changes]
+  (when (contains? changes :archived)
+    (mi/with-archived-cause-given
+      (if (:archived dashboard)
+        (dashboards.db/archive-dashboard-questions! (:id dashboard))
+        (dashboards.db/unarchive-dashboard-questions! (:id dashboard))))))
 
 (defn- check-name
   "Throws a 400 unless `dashboard` has a name."
@@ -127,9 +138,10 @@
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
-  (let [changes   (t2/changes dashboard)
-        dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
-        changes   (lib/normalize ::dashboards.schema/dashboard changes)]
+  (let [changes             (t2/changes dashboard)
+        archived-directly   (when (contains? changes :archived) (mi/archived-directly dashboard))
+        dashboard           (lib/normalize ::dashboards.schema/dashboard dashboard)
+        changes             (lib/normalize ::dashboards.schema/dashboard changes)]
     (when (contains? changes :collection_id)
       (check-collection dashboard))
     (when (contains? changes :name)
@@ -141,11 +153,15 @@
     (when (contains? changes :collection_id)
       (dashboards.db/move-dashboard-questions! (:id dashboard) (:collection_id dashboard)))
     (u/prog1 (-> dashboard
+                 (cond-> (contains? changes :archived) (assoc :archived_directly archived-directly))
                  maybe-populate-initially-published-at
                  public-sharing/add-public-uuid-prefix-if-changed)
+      (cascade-archived <> changes)
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
         (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))))))
+
+(mi/define-update-in-transaction :model/Dashboard)
 
 (mu/defn- migrate-parameter [p :- ::parameters.schema/parameter]
   (cond-> p
@@ -352,15 +368,6 @@
       (dashboards.db/set-cards-archived! ids true))
     (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
       (dashboards.db/set-cards-archived! ids false))))
-
-(defn cascade-archived-from-dashboard-update!
-  "Mirrors a change of `:archived` onto the dashboard's cards inside the transaction of the dashboard update, archiving or restoring those not archived directly."
-  [current-dash updates]
-  (let [id (:id current-dash)]
-    (when (api/column-will-change? (:archived current-dash) (get updates :archived ::api/not-provided))
-      (if (:archived updates)
-        (dashboards.db/archive-dashboard-questions! id)
-        (dashboards.db/unarchive-dashboard-questions! id)))))
 
 (defn- dashboard-id->param-field-ids
   "Get the set of Field IDs referenced by the parameters in this Dashboard."

@@ -102,13 +102,13 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [archived] :as timeline-updates} :- [:map {:closed true}
-                                               [:name          {:optional true} [:maybe ms/NonBlankString]]
-                                               [:default       {:optional true} [:maybe :boolean]]
-                                               [:description   {:optional true} [:maybe :string]]
-                                               [:icon          {:optional true} [:maybe timeline-event/Icon]]
-                                               [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                               [:archived      {:optional true} [:maybe :boolean]]]]
+   timeline-updates :- [:map {:closed true}
+                        [:name          {:optional true} [:maybe ms/NonBlankString]]
+                        [:default       {:optional true} [:maybe :boolean]]
+                        [:description   {:optional true} [:maybe :string]]
+                        [:icon          {:optional true} [:maybe timeline-event/Icon]]
+                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                        [:archived      {:optional true} [:maybe :boolean]]]]
   (let [existing (api/check-404 (timeline.db/timeline id))
         changes  (u/select-keys-when timeline-updates
                                      :present #{:description :icon :collection_id :default :archived}
@@ -116,8 +116,6 @@
     (api/update-check existing changes)
     (collection/check-allowed-to-change-collection existing timeline-updates)
     (timeline.db/update-timeline! id changes)
-    (when (and (some? archived) (not= (:archived existing) archived))
-      (timeline.db/set-timeline-events-archived! id archived))
     (u/prog1 (t2/hydrate (timeline.db/timeline id) :creator [:collection :can_write] :is_remote_synced)
       (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*}))))
 

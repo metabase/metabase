@@ -5281,3 +5281,56 @@
         (is (= [0 1 2] (t2/select-fn-vec :position :dashboardcard_series :dashboardcard_id dashcard-id {:order-by [[:position :asc]]})))
         (is (= 0 (t2/select-one-fn :position :dashboardcard_series :id other-id)))
         (is (thrown? Exception (insert-series! dashcard-id 2)))))))
+
+(deftest archived-directly-columns-test
+  (testing "pu1a7q, nq3c9x and tl5e3m add archived_directly, and pu2b8r, nq4d1y and tl6f4n mark archived rows whose collection is live"
+    (impl/test-migrations ["pu1a7q" "tl6f4n"] [migrate!]
+      (let [user-id       (t2/insert-returning-pk! :core_user {:first_name  "Archive"
+                                                               :last_name   "Owner"
+                                                               :email       "archive-owner@metabase.com"
+                                                               :password    "superstrong"
+                                                               :entity_id   (u/generate-nano-id)
+                                                               :date_joined :%now})
+            insert-collection! (fn [archived?]
+                                 (t2/insert-returning-pk! :collection {:name      "Collection"
+                                                                       :slug      "collection"
+                                                                       :entity_id (u/generate-nano-id)
+                                                                       :archived  archived?
+                                                                       :location  "/"}))
+            live-id       (insert-collection! false)
+            archived-id   (insert-collection! true)
+            insert-pulse! (fn [collection-id archived?]
+                            (t2/insert-returning-pk! :pulse {:name          "Pulse"
+                                                             :creator_id    user-id
+                                                             :collection_id collection-id
+                                                             :archived      archived?
+                                                             :parameters    "[]"
+                                                             :entity_id     (u/generate-nano-id)
+                                                             :created_at    :%now
+                                                             :updated_at    :%now}))
+            insert-snippet! (fn [collection-id archived?]
+                              (t2/insert-returning-pk! :native_query_snippet {:name          (str (random-uuid))
+                                                                              :content       "1 = 1"
+                                                                              :creator_id    user-id
+                                                                              :collection_id collection-id
+                                                                              :archived      archived?
+                                                                              :entity_id     (u/generate-nano-id)
+                                                                              :created_at    :%now
+                                                                              :updated_at    :%now}))
+            insert-timeline! (fn [collection-id archived?]
+                               (t2/insert-returning-pk! :timeline {:name          "Timeline"
+                                                                   :creator_id    user-id
+                                                                   :collection_id collection-id
+                                                                   :archived      archived?
+                                                                   :icon          "star"
+                                                                   :entity_id     (u/generate-nano-id)
+                                                                   :created_at    :%now
+                                                                   :updated_at    :%now}))
+            rows          {:pulse    [(insert-pulse! live-id true) (insert-pulse! archived-id true) (insert-pulse! live-id false)]
+                           :snippet  [(insert-snippet! live-id true) (insert-snippet! archived-id true) (insert-snippet! live-id false)]
+                           :timeline [(insert-timeline! live-id true) (insert-timeline! archived-id true) (insert-timeline! live-id false)]}]
+        (migrate!)
+        (doseq [[table ids] [[:pulse (:pulse rows)] [:native_query_snippet (:snippet rows)] [:timeline (:timeline rows)]]]
+          (testing (name table)
+            (is (= [true false false]
+                   (mapv #(t2/select-one-fn :archived_directly table :id %) ids)))))))))

@@ -176,12 +176,10 @@
       (is (not= (:entity_id c1) (:entity_id c2))))))
 
 (defn- archive-collection! [col]
-  (mt/with-current-user (mt/user->id :crowberto)
-    (collection/archive-or-unarchive-collection! col {:archived true})))
+  (t2/update! :model/Collection :id (u/the-id col) {:archived true}))
 
 (defn- unarchive-collection! [col]
-  (mt/with-current-user (mt/user->id :crowberto)
-    (collection/archive-or-unarchive-collection! col {:archived false})))
+  (t2/update! :model/Collection :id (u/the-id col) {:archived false}))
 
 (deftest archive-cards-test
   (testing "check that archiving a Collection archives its Cards as well"

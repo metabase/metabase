@@ -102,7 +102,7 @@
 (mu/defn update-exploration!
   "Apply `changes` to the Exploration with `exploration-id`."
   [exploration-id :- ms/PositiveInt
-   changes        :- (mut/select-keys ::explorations.schema/exploration.update [:name :description :archived :archived_directly :collection_id :collection_position])]
+   changes        :- (mut/select-keys ::explorations.schema/exploration.update [:name :description :archived :collection_id :collection_position])]
   (t2/update! :model/Exploration :id exploration-id changes))
 
 (mu/defn delete-exploration!
@@ -755,6 +755,20 @@
     (when (seq ids)
       (t2/update! :model/Document :id [:in ids] changes)
       (t2/select :model/Document :id [:in ids]))))
+
+(mu/defn summary-document-ids-following
+  "The IDs of the Summary Documents of the Exploration with `exploration-id` that an archive of it, when `archive?`, or a
+  restore of it archives or restores along with it."
+  [exploration-id :- ms/PositiveInt
+   archive?       :- :boolean]
+  (if archive?
+    (t2/select-pks-vec :model/Document :exploration_id exploration-id :archived false)
+    (t2/select-pks-vec :model/Document :exploration_id exploration-id :archived true :archived_directly false)))
+
+(mu/defn documents-by-ids
+  "The Documents with `document-ids`."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/Document :id [:in document-ids]))
 
 (mu/defn move-summary-documents!
   "Move the Summary Documents of the Exploration with `exploration-id` to the Collection with `collection-id`,

@@ -1716,7 +1716,7 @@
           (is (true? (:archived doc)))
           (is (true? (:archived_directly doc)))
           (is (true? (:archived card)))
-          (is (true? (:archived_directly card)))))
+          (is (false? (:archived_directly card)))))
       (testing "unarchiving directly archived document works"
         (mt/user-http-request :crowberto
                               :put 200 (format "document/%s" doc-id)
@@ -1756,7 +1756,7 @@
           (is (true? (:archived doc)))
           (is (true? (:archived_directly doc)))
           (is (true? (:archived card)))
-          (is (true? (:archived_directly card))))))))
+          (is (false? (:archived_directly card))))))))
 
 (deftest archived-documents-filtering-test
   (testing "Archived documents are properly filtered from various endpoints"

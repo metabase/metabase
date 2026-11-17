@@ -735,7 +735,7 @@
             (f colls)))))))
 
 (defn- archive-collection! [coll]
-  (collection/archive-collection! (t2/select-one :model/Collection :id (:id coll))))
+  (t2/update! :model/Collection :id (:id coll) {:archived true}))
 
 (defn- archived? [coll]
   (t2/select-one-fn :archived :model/Collection :id (:id coll)))

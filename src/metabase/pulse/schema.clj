@@ -33,6 +33,7 @@
    [:collection_id       {:optional true} [:maybe ::lib.schema.id/collection]]
    [:collection_position {:optional true} [:maybe :int]]
    [:archived            {:optional true} [:maybe :boolean]]
+   [:archived_directly   {:optional true} [:maybe :boolean]]
    [:dashboard_id        {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:parameters          {:optional true} [:maybe [:sequential ::pulse.parameter]]]
    [:entity_id           {:optional true} [:maybe :string]]

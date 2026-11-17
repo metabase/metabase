@@ -5,7 +5,6 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [personal-collection-id]]
-   [metabase.documents.models.document :as document]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -188,15 +187,15 @@
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
           (is (true? (mi/can-create? :model/Document {:collection_id coll-id}))))))))
 
-(deftest check-new-collection-not-archived-test
+(deftest document-does-not-go-into-archived-collection-test
   (mt/with-temp [:model/Collection {archived-id :id} {:archived true}
-                 :model/Document document {}]
-    (testing "moving a Document into an archived Collection is a 400"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid"
-                            (document/check-new-collection-not-archived document {:collection_id archived-id}))))
+                 :model/Document   document          {}]
+    (testing "moving a Document that is not archived into an archived Collection is a 400"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
+                            (t2/update! :model/Document :id (:id document) {:collection_id archived-id}))))
     (testing "a Document that stays where it is, or goes to the root, passes"
-      (is (nil? (document/check-new-collection-not-archived document {})))
-      (is (nil? (document/check-new-collection-not-archived document {:collection_id nil}))))))
+      (is (= 1 (t2/update! :model/Document :id (:id document) {:name "Renamed"})))
+      (is (number? (t2/update! :model/Document :id (:id document) {:collection_id nil}))))))
 
 (deftest name-rules-test
   (testing "a Document name is a non-blank string of at most 254 characters"

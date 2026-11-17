@@ -10,6 +10,7 @@
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.timeline.schema :as timeline.schema]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -48,9 +49,16 @@
   (when (and (contains? columns :icon) (not (mr/validate timeline-event/Icon (:icon columns))))
     (throw (ex-info (tru "Invalid Timeline icon.") {:status-code 400}))))
 
+(defn- cascade-archived
+  "Writes the archive or restore `timeline`, an update with `changes`, takes to its events, which follow it."
+  [timeline changes]
+  (when (contains? changes :archived)
+    (timeline.db/set-timeline-events-archived! (:id timeline) (boolean (:archived timeline)))))
+
 (t2/define-before-insert :model/Timeline
   [row]
   (check-collection (:collection_id row))
+  (collection/check-collection-not-archived (:archived row) (:collection_id row))
   (let [row (cond-> row (nil? (:icon row)) (assoc :icon timeline-event/default-icon))]
     (check-columns (assoc row :name (:name row)))
     row))
@@ -59,8 +67,14 @@
   [row]
   (let [changes (t2/changes row)]
     (check-collection (:collection_id changes))
+    (when (contains? changes :collection_id)
+      (collection/check-collection-not-archived (:archived row) (:collection_id row)))
     (check-columns changes)
-    row))
+    (u/prog1 (cond-> row
+               (contains? changes :archived) (assoc :archived_directly (mi/archived-directly row)))
+      (cascade-archived <> changes))))
+
+(mi/define-update-in-transaction :model/Timeline)
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -119,11 +133,11 @@
 
 (defmethod serialization/spec :model/Timeline [_]
   {:schema    ::timeline.schema/external-timeline
-   :copy      [:archived :default :description :entity_id :icon :name]
+   :copy      [:archived :archived_directly :default :description :entity_id :icon :name]
    :transform {:collection_id (serialization/fk-transform :model/Collection)
                :creator_id    serialization/user-transform}
    :children  {:events :model/TimelineEvent}
-   :defaults  {:archived false :default false}})
+   :defaults  {:archived false :archived_directly false :default false}})
 
 (defmethod serialization/import-dependencies :model/Timeline [_ entities]
   (mapv (fn [{:keys [collection_id]}]

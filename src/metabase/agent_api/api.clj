@@ -897,10 +897,7 @@
 
                       new-query
                       (assoc :dataset_query new-query))
-        ;; Set :archived_directly to mirror :archived (mark as Trash if explicitly archived). The
-        ;; REST endpoint runs this in `update-card!` on every update; we need it too so LLM-archived
-        ;; cards behave the same as UI-archived ones.
-        card-updates (api/updates-with-archived-directly card-before-update raw-updates)]
+        card-updates (api/updates-without-collection-when-archiving card-before-update raw-updates)]
     ;; A move (or archive that retargets the collection) requires write on BOTH the source and the
     ;; target collection. The caller's `api/write-check :model/Card` only covered the source entity.
     ;; Mirror the REST endpoint's `check-allowed-to-move` gate.
@@ -1576,12 +1573,10 @@
                        (contains? body :description)   (assoc :description (:description body))
                        (contains? body :collection_id) (assoc :collection_id (:collection_id body))
                        (contains? body :archived)      (assoc :archived (boolean (:archived body))))
-        ;; Keep `archived_directly` in sync (and drop any `collection_id` sent alongside an
-        ;; archive), mirroring the REST PUT-dashboard path.
         ;; TODO (Chris 2026-07-10) -- the drop is silent: archive + move in one request returns
         ;; 200 but discards the move. Matching REST for now; rejecting the combination with a 400
         ;; may serve LLM callers better.
-        updates      (api/updates-with-archived-directly current-dash updates)
+        updates      (api/updates-without-collection-when-archiving current-dash updates)
         ;; A move requires write on BOTH source and target collection: the update check asks it, and the
         ;; collection check refuses an archived target. Mirror the REST endpoint's gate.
         _            (api/update-check current-dash updates)
@@ -1599,7 +1594,6 @@
                                   [400 "Can't modify dashcards while archiving the dashboard."]))
         result       (t2/with-transaction [_conn]
                        (when (seq updates)
-                         (dashboard/cascade-archived-from-dashboard-update! current-dash updates)
                          (agent-api.db/update-dashboard! id updates)
                          ;; Fire :event/collection-touch with the *target* collection id so the
                          ;; activity feed records the right collection. Note: the dashboards-rest

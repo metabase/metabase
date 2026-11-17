@@ -71,8 +71,16 @@
   (when (and (contains? columns :timestamp) (nil? (:timestamp columns)))
     (throw (ex-info (tru "A Timeline event must have a timestamp.") {:status-code 400}))))
 
+(defn- check-timeline-not-archived
+  "Throws a 400 when `row`, which is not archived, is in an archived Timeline."
+  [{:keys [archived timeline_id]}]
+  (when (and timeline_id (not archived) (timeline.db/timeline-archived? timeline_id))
+    (throw (ex-info (tru "An archived Timeline cannot hold a Timeline event that is not archived.")
+                    {:status-code 400}))))
+
 (t2/define-before-insert :model/TimelineEvent
   [row]
+  (check-timeline-not-archived row)
   (let [row (cond-> row
               (nil? (:icon row)) (assoc :icon (or (some-> (:timeline_id row) timeline.db/timeline-icon) default-icon)))]
     (check-columns (assoc row :name (:name row) :timezone (:timezone row) :timestamp (:timestamp row)))
@@ -83,6 +91,8 @@
   (let [changes (t2/changes event)]
     (when (contains? changes :creator_id)
       (throw (ex-info (tru "You cannot update the creator_id of a Timeline event.") {:status-code 400})))
+    (when (contains? changes :timeline_id)
+      (check-timeline-not-archived event))
     (check-columns changes)
     event))
 

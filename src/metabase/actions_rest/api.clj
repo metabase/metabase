@@ -101,7 +101,7 @@
    _query-params
    action :- ::actions.schema/action.update-request]
   (let [existing-action (api/write-check :model/Action id)
-        action          (api/updates-with-archived-directly existing-action action)]
+        action          (api/updates-without-collection-when-archiving existing-action action)]
     (api/update-check existing-action action)
     (api/check-400 (not (and (:archived action) (get action :model_id (:model_id existing-action))))
                    (tru "A model''s action can''t be archived. Delete it instead."))

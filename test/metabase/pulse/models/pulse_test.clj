@@ -52,6 +52,7 @@
    :dashboard_id        nil
    :skip_if_empty       false
    :archived            false
+   :archived_directly   false
    :parameters          []
    :disable_links       false})
 

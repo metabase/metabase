@@ -145,7 +145,7 @@
                                                    :type   collection/library-data-collection-type}
                      :model/Table      table      {:collection_id (:id archive-me)
                                                    :is_published  true}]
-        (collection/archive-collection! archive-me)
+        (t2/update! :model/Collection :id (:id archive-me) {:archived true})
         (testing "archiving a Library/Data subcollection unpublishes all the tables it contains"
           (is (=? {:is_published  false
                    :collection_id nil
@@ -173,7 +173,7 @@
                      :model/Table      table3     {:collection_id (:id child)
                                                    :is_published  true
                                                    :name          "Child_Table"}]
-        (collection/archive-collection! archive-me)
+        (t2/update! :model/Collection :id (:id archive-me) {:archived true})
         (testing "archiving a Library/Data subcollection unpublishes all the tables it contains **recursively**"
           (is (t2/select-one-fn :archived :model/Collection :id (:id archive-me)))
           (doseq [table [table1 table2 table3]]
@@ -189,7 +189,7 @@
                                                    :type collection/library-metrics-collection-type}
                      :model/Card       metric     {:collection_id (:id archive-me)
                                                    :type          :metric}]
-        (collection/archive-collection! archive-me)
+        (t2/update! :model/Collection :id (:id archive-me) {:archived true})
         (testing "the collection is archived"
           (is (true? (t2/select-one-fn :archived :model/Collection :id (:id archive-me)))))
         (testing "the metric inside is archived"

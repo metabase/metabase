@@ -1834,8 +1834,7 @@
       (perms/revoke-collection-permissions! (perms/all-users-group) collection-id)
       (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)
       (mt/with-current-user (mt/user->id :crowberto)
-        (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id collection-id)
-                                                     {:archived true}))
+        (t2/update! :model/Collection :id collection-id {:archived true}))
       (testing "Sanity check: Lucky should not be able to write our test Collection"
         (mt/with-test-user :lucky
           (is (not (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id collection-id) :can_write))))))

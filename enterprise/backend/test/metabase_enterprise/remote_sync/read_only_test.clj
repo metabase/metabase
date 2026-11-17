@@ -100,7 +100,8 @@
                                                      :location         (str "/" (:id synced) "/")
                                                      :is_remote_synced true
                                                      :archived         true}
-                 :model/Card               card     {:name "Card in archived child" :collection_id (:id archived)}
+                 :model/Card               card     {:name "Card in archived child" :collection_id (:id archived)
+                                                     :archived true :archived_directly false}
                  :model/NativeQuerySnippet snippet  {:name "Archived snippet" :content "1" :archived true}]
     (mt/with-current-user (mt/user->id :crowberto)
       (testing "on read-only instance, archived content that unarchiving would sync can't be written"

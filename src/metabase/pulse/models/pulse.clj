@@ -103,7 +103,8 @@
     (check-parameters <>)
     (check-dashboard-subscription <>)
     (collection/check-allowed-content :model/Pulse (:collection_id <>))
-    (collection/check-collection-namespace :model/Pulse (:collection_id <>))))
+    (collection/check-collection-namespace :model/Pulse (:collection_id <>))
+    (collection/check-collection-not-archived (:archived <>) (:collection_id <>))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-moving-dashboard-subscriptions*
@@ -121,7 +122,8 @@
       (throw (ex-info (tru "collection ID of a dashboard subscription cannot be directly modified") {:status-code 400})))
     (when (contains? changes :collection_id)
       (collection/check-allowed-content :model/Pulse (:collection_id changes))
-      (collection/check-collection-namespace :model/Pulse (:collection_id pulse)))
+      (collection/check-collection-namespace :model/Pulse (:collection_id pulse))
+      (collection/check-collection-not-archived (:archived pulse) (:collection_id pulse)))
     (when (contains? changes :parameters)
       (check-parameters pulse))
     (when (some #(contains? changes %) [:dashboard_id :collection_position :alert_condition :alert_first_only :alert_above_goal])
@@ -130,7 +132,8 @@
       (if (:archived changes)
         (pulse.db/set-pulse-channels-enabled! (u/the-id pulse) false)
         (pulse.db/set-pulse-channels-enabled! (u/the-id pulse) true)))
-    pulse))
+    (cond-> pulse
+      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly pulse)))))
 
 (t2/define-before-delete :model/Pulse
   [pulse]

@@ -199,7 +199,7 @@
                        (contains? args :collection_position) (assoc :collection_position collection_position)
                        (contains? args :archived)            (assoc :archived (boolean archived))
                        new-query                             (assoc :dataset_query new-query))
-        card-updates (api/updates-with-archived-directly card-before raw-updates)]
+        card-updates (api/updates-without-collection-when-archiving card-before raw-updates)]
     (queries/check-allowed-to-update-card! card-before card-updates)
     (queries/update-card! {:card-before-update    card-before
                            :card-updates          card-updates

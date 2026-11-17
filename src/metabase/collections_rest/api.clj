@@ -611,7 +611,7 @@
    collection-updates :- [:map {:closed true}
                           [:name             {:optional true} [:maybe ms/NonBlankString]]
                           [:description      {:optional true} [:maybe ms/NonBlankString]]
-                          [:archived         {:default false} [:maybe ms/BooleanValue]]
+                          [:archived         {:optional true} [:maybe ms/BooleanValue]]
                           [:parent_id        {:optional true} [:maybe ms/PositiveInt]]
                           [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
   (collection-detail (collections/update-collection! id collection-updates)))

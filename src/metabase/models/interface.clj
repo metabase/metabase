@@ -596,6 +596,35 @@
                         {:model model}
                         e))))))
 
+(defmacro define-update-in-transaction
+  "Runs every UPDATE of `model`, with its before-update hooks, in one transaction, which Toucan otherwise opens only
+  after them, so a hook that writes other rows commits or rolls back with the UPDATE."
+  [model]
+  `(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* ~model :default]
+     [rf# query-type# model# parsed-args# resolved-query#]
+     (t2.conn/with-transaction [_conn# nil {:nested-transaction-rule :ignore}]
+       (~'next-method rf# query-type# model# parsed-args# resolved-query#))))
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *archived-cause-given*
+  "Whether the writes in scope carry the `archived_directly` of every row they archive or restore, even when it equals
+  the stored one, which a cascade and an import do."
+  false)
+
+(defmacro with-archived-cause-given
+  "Runs `body` with [[*archived-cause-given*]] true."
+  [& body]
+  `(binding [*archived-cause-given* true]
+     ~@body))
+
+(defn archived-directly
+  "The `archived_directly` of `row`, an update that changes `:archived`: the value the write gives, else whether the
+  row is now archived."
+  [row]
+  (if (or *archived-cause-given* (contains? (t2/changes row) :archived_directly))
+    (:archived_directly row)
+    (boolean (:archived row))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+

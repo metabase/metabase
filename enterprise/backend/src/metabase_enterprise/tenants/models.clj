@@ -112,10 +112,16 @@
     (when (and (contains? changes :name) (tenants.db/other-tenant-named? (:name changes) id))
       (throw (ex-info (tru "This name is already taken.") {:status-code 400})))
     (when (false? (:is_active changes))
-      (tenants.db/deactivate-tenant-users! id))
+      (tenants.db/deactivate-tenant-users! id)
+      (collection/with-allow-modifying-tenant-root-collections
+        (tenants.db/set-collection-archived! (:tenant_collection_id tenant) true)))
     (when (true? (:is_active changes))
-      (tenants.db/reactivate-tenant-users! id))
+      (tenants.db/reactivate-tenant-users! id)
+      (collection/with-allow-modifying-tenant-root-collections
+        (tenants.db/set-collection-archived! (:tenant_collection_id tenant) false)))
     tenant))
+
+(mi/define-update-in-transaction :model/Tenant)
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

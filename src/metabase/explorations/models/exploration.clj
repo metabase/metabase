@@ -48,6 +48,32 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
+(defn- cascade-archived
+  "Writes the archive or restore `exploration`, an update with `changes`, takes to its Summary Documents, with the cause
+  that they follow it."
+  [exploration changes]
+  (when (contains? changes :archived)
+    (mi/with-archived-cause-given
+      (if (:archived exploration)
+        (explorations.db/archive-summary-documents! (:id exploration))
+        (explorations.db/unarchive-summary-documents! (:id exploration))))))
+
+(t2/define-before-insert :model/Exploration
+  [{:keys [archived collection_id] :as exploration}]
+  (collection/check-collection-not-archived archived collection_id)
+  exploration)
+
+(t2/define-before-update :model/Exploration
+  [{:keys [archived collection_id] :as exploration}]
+  (let [changes (t2/changes exploration)]
+    (when (contains? changes :collection_id)
+      (collection/check-collection-not-archived archived collection_id))
+    (u/prog1 (cond-> exploration
+               (contains? changes :archived) (assoc :archived_directly (mi/archived-directly exploration)))
+      (cascade-archived <> changes))))
+
+(mi/define-update-in-transaction :model/Exploration)
+
 (defn- check-can-read-keys
   "Throws unless `exploration` has the columns its `:can_read` and `:can_write` hydrations read."
   [exploration]

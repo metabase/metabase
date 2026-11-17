@@ -22,6 +22,7 @@
    [:icon          {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
    [:archived      {:optional true} [:maybe :boolean]]
+   [:archived_directly {:optional true} [:maybe :boolean]]
    [:creator_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
@@ -55,7 +56,7 @@
   "A Timeline as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
-    [:select-keys ::timeline [:archived :default :description :entity_id :icon :name :collection_id :creator_id]]
+    [:select-keys ::timeline [:archived :archived_directly :default :description :entity_id :icon :name :collection_id :creator_id]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]
      [:events {:optional true} [:maybe [:sequential [:ref ::external-timeline-event]]]]]]])

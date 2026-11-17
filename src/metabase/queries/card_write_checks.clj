@@ -120,7 +120,7 @@
 (mu/defn check-allowed-to-update-card!
   "The post-write permission/validation stack for updating a card, mirroring `PUT /api/card/:id`.
    Run *after* the card's write-check: `card-before-update` is the existing card, `card-updates`
-   the patch (after [[metabase.api.common/updates-with-archived-directly]]). Checks
+   the patch (after [[metabase.api.common/updates-without-collection-when-archiving]]). Checks
    that embedding is enabled when it changes, the update permission, result-metadata data perms,
    collection/dashboard moves, and query-run perms."
   [card-before-update :- ::queries.schema/card

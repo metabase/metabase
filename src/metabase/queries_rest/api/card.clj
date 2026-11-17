@@ -578,7 +578,7 @@
                                              [:moderation_reviews :moderator_details])
           card-updates           (maybe-populate-collection-id
                                   card-before-update
-                                  (api/updates-with-archived-directly card-before-update card-updates))
+                                  (api/updates-without-collection-when-archiving card-before-update card-updates))
           is-model-after-update? (if (nil? card-type)
                                    (queries/model? card-before-update)
                                    (queries/model? card-updates))]
@@ -614,7 +614,7 @@
         ;; reflected synchronously.
         ;; An alternate solution would be to have first class APIs for these views, that don't rely on an
         ;; eventually consistent search index.
-        (when (:archived_directly card-updates)
+        (when (:archived card-updates)
           ;; For now, we hard-code all the possible search-model types, and queue them all as this has no extra overhead.
           ;; Ideally this would be DRY with the actual specification some way, but since this is a stop-gap solution, we
           ;; decided not to complicate the solution further to accomplish this.

@@ -1170,6 +1170,22 @@
   (when (some #(contains? changes %) [:display :visualization_settings :dataset_query])
     (pulse/delete-alerts-if-card-changed! :old-card original :new-card card)))
 
+(defn- check-not-in-archived-container
+  "Throws a 400 when `card`, which is not archived, is in an archived Collection, Dashboard or Document."
+  [{:keys [archived collection_id dashboard_id document_id]}]
+  (collection/check-collection-not-archived archived collection_id)
+  (when (and (not archived)
+             (or (and dashboard_id (queries.db/dashboard-archived? dashboard_id))
+                 (and document_id (queries.db/document-archived? document_id))))
+    (throw (ex-info (tru "An archived Dashboard or Document cannot hold a Card that is not archived.")
+                    {:status-code 400}))))
+
+(defn- delete-notifications-of-card
+  "Deletes the alerts of the Card with `card-id`, which are found before any is deleted."
+  [card-id]
+  (when-let [notification-ids (seq (queries.db/card-notification-ids card-id))]
+    (queries.db/delete-notifications! notification-ids)))
+
 (t2/define-before-insert :model/Card
   [card]
   (check-timeline-settings card)
@@ -1189,6 +1205,7 @@
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix)
     (collection/check-allowed-content (:type <>) (:collection_id <>))
+    (check-not-in-archived-container <>)
     (check-data-app-card <>)))
 
 (t2/define-after-insert :model/Card
@@ -1248,7 +1265,12 @@
       (check-timeline-settings card))
     (when (or (contains? changes :collection_id) (contains? changes :type))
       (collection/check-allowed-content (:type card) (:collection_id card)))
+    (when (some #(contains? changes %) [:collection_id :dashboard_id :document_id])
+      (check-not-in-archived-container card))
+    (when (:archived changes)
+      (delete-notifications-of-card (:id card)))
     (-> card
+        (cond-> (contains? changes :archived) (assoc :archived_directly (mi/archived-directly card)))
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
         (apply-dashboard-question-updates changes)
@@ -1292,11 +1314,7 @@
   (queries.db/delete-card-moderation-reviews! id)
   (queries.db/delete-card-revisions! id)
   (cache/delete-target-configs! "question" [id])
-  ;; delete any card-type notifications for this card — must materialize IDs first because
-  ;; Notification's before-delete deletes the NotificationCard, which would make a subquery
-  ;; return empty by the time the actual DELETE executes.
-  (when-let [notification-ids (seq (queries.db/card-notification-ids id))]
-    (queries.db/delete-notifications! notification-ids)))
+  (delete-notifications-of-card id))
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
   [_model & {:keys [table-alias]}]
@@ -1619,7 +1637,7 @@
     (let [updated-fields (u/select-keys-when card-updates
                                              ;; `collection_id` and `description` can be `nil` (in order to unset them).
                                              ;; Other values should only be modified if they're passed in as non-nil
-                                             :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id :embedding_type}
+                                             :present #{:collection_id :collection_position :description :cache_ttl :dashboard_id :document_id :embedding_type}
                                              :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                         :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                         :result_metadata :verified-result-metadata?})]
@@ -1661,22 +1679,24 @@
   an action event for each action of the card that the update deletes, archives, unarchives, or moves."
   [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
   ;; The card hooks delete, archive, or move a card's actions without events, so compare the actions before and after.
-  (let [actions-before (queries.db/actions-for-model (:id card-before-update))]
+  (let [actions-before         (queries.db/actions-for-model (:id card-before-update))
+        archived-notifications (pulse/alerts-of-card-being-archived card-before-update card-updates)]
     (update-card-in-db! card-before-update card-updates actor delete-old-dashcards?)
     (when (seq actions-before)
       (doseq [[topic action] (changed-action-events actions-before (queries.db/actions-for-model (:id card-before-update)))]
-        (events/publish-event! topic {:object action :user-id api/*current-user-id*}))))
-  ;; Fetch the updated Card from the DB
-  (let [card (queries.db/card (:id card-before-update))]
-    ;;; TODO -- this should be triggered indirectly by `:event/card-update`
-    (pulse/delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor)
-    ;; skip publishing the event if it's just a change in its collection position
-    (when-not (= #{:collection_position}
-                 (set (keys card-updates)))
-      (events/publish-event! :event/card-update {:object card
-                                                 :previous-object card-before-update
-                                                 :user-id api/*current-user-id*}))
-    card))
+        (events/publish-event! topic {:object action :user-id api/*current-user-id*})))
+    ;; Fetch the updated Card from the DB
+    (let [card (queries.db/card (:id card-before-update))]
+      ;;; TODO -- this should be triggered indirectly by `:event/card-update`
+      (pulse/delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor
+                                      :archived-notifications archived-notifications)
+      ;; skip publishing the event if it's just a change in its collection position
+      (when-not (= #{:collection_position}
+                   (set (keys card-updates)))
+        (events/publish-event! :event/card-update {:object card
+                                                   :previous-object card-before-update
+                                                   :user-id api/*current-user-id*}))
+      card)))
 
 (defn sole-dashboard-id
   "Given a card, returns the dashboard_id of the *sole* dashboard it's in, or `nil` if it's not in exactly one dashboard."

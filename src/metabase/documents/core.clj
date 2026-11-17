@@ -27,7 +27,6 @@
   splice]
  [metabase.documents.models.document
   clone-cards-in-document!
-  check-new-collection-not-archived
   create-document!
   DocumentName
   get-document

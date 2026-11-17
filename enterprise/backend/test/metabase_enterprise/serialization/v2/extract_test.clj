@@ -780,8 +780,10 @@
                          {:name     "Active Child Collection"
                           :archived false
                           :location (format "/%d/" parent-id)}
-                         :model/Card       {in-archived-eid :entity_id} {:name          "Card in archived collection"
-                                                                         :collection_id archived-child-id}
+                         :model/Card       {in-archived-eid :entity_id} {:name              "Card in archived collection"
+                                                                         :archived          true
+                                                                         :archived_directly false
+                                                                         :collection_id     archived-child-id}
                          :model/Card       {in-active-eid :entity_id}   {:name          "Card in active collection"
                                                                          :collection_id active-child-id}]
         (let [opts {:targets       [[:model/Collection parent-id]]

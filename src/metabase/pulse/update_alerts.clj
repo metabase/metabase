@@ -54,6 +54,13 @@
            (progress? display))
        (< 1 (count (lib/breakouts query)))))
 
+(defn alerts-of-card-being-archived
+  "The notifications of the alerts of `card`, which `card-updates` archive and the Card hooks then delete, or nil when
+  they don't archive it."
+  [card card-updates]
+  (when (and (not (:archived card)) (:archived card-updates))
+    (seq (models.notification/notifications-for-card (:id card)))))
+
 (defn delete-alert-and-notify!
   "Removes all of the alerts and notifies all of the email recipients of the alerts change."
   [topic actor card]
@@ -72,11 +79,17 @@
 
 ;;; TODO -- consider whether this should be triggered indirectly by an event e.g. `:event/card-update`
 (defn delete-alerts-if-needed!
-  "Delete alerts if the card has been changed in a way that invalidates the alert"
-  [& {:keys [old-card new-card actor]}]
+  "Delete alerts if the card has been changed in a way that invalidates the alert. The Card hooks delete the alerts of an
+  archived card, so `archived-notifications`, which [[alerts-of-card-being-archived]] read before the update, only tell
+  their recipients."
+  [& {:keys [old-card new-card actor archived-notifications]}]
   (cond
     (card-archived? old-card new-card)
-    (delete-alert-and-notify! :event/card-update.notification-deleted.card-archived actor new-card)
+    (when (seq archived-notifications)
+      (events/publish-event! :event/card-update.notification-deleted.card-archived
+                             {:card          new-card
+                              :actor         actor
+                              :notifications archived-notifications}))
 
     (card-change-broke-alert? old-card new-card)
     (delete-alert-and-notify! :event/card-update.notification-deleted.card-changed actor new-card)

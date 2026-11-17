@@ -76,14 +76,26 @@
                         {:status-code 400, :errors {:document (tru "invalid document content")}}))))))
 
 (defn- check-collection
-  "Throws unless a Document may go in the Collection with `collection-id`."
-  [collection-id]
-  (collection/check-collection-namespace :model/Document collection-id)
-  (collection/check-allowed-content :model/Document collection-id))
+  "Throws unless `document` may go in its Collection: it takes one that holds Documents and is not archived, unless
+  `document` is."
+  [{:keys [collection_id archived]}]
+  (collection/check-collection-namespace :model/Document collection_id)
+  (collection/check-allowed-content :model/Document collection_id)
+  (collection/check-collection-not-archived archived collection_id))
+
+(defn- cascade-archived
+  "Writes the archive or restore `document`, an update with `changes`, takes to the Cards in it, with the cause that
+  they follow it."
+  [document changes]
+  (when (contains? changes :archived)
+    (mi/with-archived-cause-given
+      (if (:archived document)
+        (documents.db/archive-document-cards! (:id document))
+        (documents.db/restore-document-cards! (:id document))))))
 
 (t2/define-before-insert :model/Document
   [document]
-  (check-collection (:collection_id document))
+  (check-collection document)
   (check-name (:name document))
   (check-content (:content_type document) (:document document))
   (public-sharing/add-public-uuid-prefix document))
@@ -92,7 +104,7 @@
   [{:keys [id] :as document}]
   (let [changes (t2/changes document)]
     (when (contains? changes :collection_id)
-      (check-collection (:collection_id document)))
+      (check-collection document))
     (when (contains? changes :name)
       (check-name (:name document)))
     (when (some #(contains? changes %) [:document :content_type])
@@ -103,13 +115,11 @@
                       {:status-code 400})))
     (when (contains? changes :collection_id)
       (documents.db/update-cards-for-document! id {:collection_id (:collection_id document)}))
-    (public-sharing/add-public-uuid-prefix-if-changed document)))
+    (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix-if-changed document)
+               (contains? changes :archived) (assoc :archived_directly (mi/archived-directly document)))
+      (cascade-archived <> changes))))
 
-(t2/define-after-update :model/Document
-  [{:keys [id archived archived_directly] :as instance}]
-  (documents.db/update-cards-for-document! id {:archived          (boolean archived)
-                                               :archived_directly (boolean archived_directly)})
-  instance)
+(mi/define-update-in-transaction :model/Document)
 (t2/define-after-select :model/Document
   [document]
   (public-sharing/remove-public-uuid-if-public-sharing-is-disabled document))
@@ -282,12 +292,6 @@
      {:error/message "invalid document name"}
      (complement str/blank?)]]
    (deferred-tru "value must be a non-blank string between 1 and 254 characters.")))
-
-(defn check-new-collection-not-archived
-  "Throws a 400 when `changes` move `document` into an archived or missing Collection."
-  [document changes]
-  (when (and (collection-move? document changes) (:collection_id changes))
-    (api/check-400 (documents.db/unarchived-collection-exists? (:collection_id changes)))))
 
 (def CardCreateSchema
   "Schema for a card created inline with a document (the `cards` map on create/update). The
@@ -518,7 +522,7 @@
        [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
        [:archived {:optional true} [:maybe :boolean]]]]
   (let [document-id (:id existing-document)
-        document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)
+        document-updates (dissoc (api/updates-without-collection-when-archiving existing-document body) :cards)
         ;; The frontend omits `:collection_id` when saving an existing document, so fall back to the document's
         ;; current collection rather than root.
         target-collection-id (if (contains? body :collection_id)

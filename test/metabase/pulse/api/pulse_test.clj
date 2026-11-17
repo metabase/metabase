@@ -63,7 +63,7 @@
    (select-keys
     pulse
     [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :entity_id :archived
-     :skip_if_empty :dashboard_id :parameters :disable_links])
+     :archived_directly :skip_if_empty :dashboard_id :parameters :disable_links])
    {:creator  (user-details (t2/select-one 'User :id (:creator_id pulse)))
     :cards    (map pulse-card-details (:cards pulse))
     :channels (map pulse-channel-details (:channels pulse))}))
@@ -183,6 +183,7 @@
    :skip_if_empty       false
    :updated_at          true
    :archived            false
+   :archived_directly   false
    :dashboard_id        nil
    :entity_id           true
    :parameters          []

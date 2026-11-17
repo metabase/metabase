@@ -437,7 +437,7 @@
                        (contains? args :card_type)              (assoc :type (keyword card_type))
                        (contains? args :archived)               (assoc :archived (boolean archived))
                        new-query                                (assoc :dataset_query new-query))
-        card-updates (api/updates-with-archived-directly card-before raw-updates)
+        card-updates (api/updates-without-collection-when-archiving card-before raw-updates)
         card-updates (force-restore-on-dashboard-move card-before card-updates)]
     ;; the type the card will have once written: the patch's when the caller is converting, else the
     ;; stored one. Never the raw request, which is nil whenever `card_type` is omitted.

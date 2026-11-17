@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -91,21 +90,14 @@
 (mu/defn update-tenant!
   "Updates a tenant, publishing any necessary events after doing so"
   [tenant-id :- ms/PositiveInt
-   {:keys [is_active] :as tenant} :- UpdateTenantArguments]
+   tenant :- UpdateTenantArguments]
   (t2/with-transaction [_cn]
-    (collection/with-allow-modifying-tenant-root-collections
-      (let [tenant-before-update (tenants.db/tenant tenant-id)
-            _                    (tenants.db/update-tenant! tenant-id tenant)
-            tenant-after-update  (tenants.db/tenant tenant-id)]
-        (when (false? is_active)
-          (some-> (tenants.db/collection-with-archived-state (:tenant_collection_id tenant-before-update) false)
-                  collection/archive-collection!))
-        (when (true? is_active)
-          (some-> (tenants.db/collection-with-archived-state (:tenant_collection_id tenant-before-update) true)
-                  (collection/unarchive-collection! {})))
-        (events/publish-event! :event/tenant-update {:object          tenant-after-update
-                                                     :previous-object tenant-before-update})
-        tenant-after-update))))
+    (let [tenant-before-update (tenants.db/tenant tenant-id)
+          _                    (tenants.db/update-tenant! tenant-id tenant)
+          tenant-after-update  (tenants.db/tenant tenant-id)]
+      (events/publish-event! :event/tenant-update {:object          tenant-after-update
+                                                   :previous-object tenant-before-update})
+      tenant-after-update)))
 
 (api.macros/defendpoint :put "/:id" :- Tenant
   "Update a tenant, can set name, attributes, or whether this tenant is active."

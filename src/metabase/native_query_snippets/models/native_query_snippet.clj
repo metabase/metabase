@@ -71,11 +71,12 @@
     (throw (ex-info (str name-error) {:status-code 400, :errors {:name (str name-error)}}))))
 
 (defn- check-collection
-  "Throws unless the Collection of `snippet`, if any, can hold snippets."
-  [{:keys [collection_id]}]
+  "Throws unless the Collection of `snippet`, if any, can hold snippets, and is not archived unless `snippet` is."
+  [{:keys [collection_id archived]}]
   (when collection_id
     (collection/check-allowed-content :model/NativeQuerySnippet collection_id)
-    (collection/check-collection-namespace :model/NativeQuerySnippet collection_id)))
+    (collection/check-collection-namespace :model/NativeQuerySnippet collection_id)
+    (collection/check-collection-not-archived archived collection_id)))
 
 (defn- snippet-tag?
   "Whether `tag` is a reference to a snippet."
@@ -144,7 +145,8 @@
     (when (contains? changes :name)
       (check-name snippet))
     (cond-> snippet
-      (:content snippet) (assoc :template_tags (snippet-template-tags snippet (referenced-snippet-ids snippet))))))
+      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly snippet))
+      (:content snippet)            (assoc :template_tags (snippet-template-tags snippet (referenced-snippet-ids snippet))))))
 
 (t2/define-after-update :model/NativeQuerySnippet
   [snippet]
@@ -233,7 +235,7 @@
 
 (defmethod serialization/spec :model/NativeQuerySnippet [_]
   {:schema    ::native-query-snippets.schema/external-native-query-snippet
-   :copy      [:archived :description :entity_id :name]
+   :copy      [:archived :archived_directly :description :entity_id :name]
    :transform {:collection_id (serialization/fk-transform :model/Collection)
                :creator_id    serialization/user-transform
                :content       {:export (fn [store snippets _ _]
@@ -267,7 +269,7 @@
                                           (fn [visit tags]
                                             (let [{:keys [tags renames]} (walk-import-template-tags visit tags)]
                                               (some-> tags (lib/rename-template-tags renames))))))}}
-   :defaults  {:archived false}})
+   :defaults  {:archived false, :archived_directly false}})
 
 (defmethod serialization/storage-paths :model/NativeQuerySnippet [_ entities ctx]
   (mapv (fn [snippet]

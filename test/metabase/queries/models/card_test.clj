@@ -2306,6 +2306,14 @@
           (t2/update! :model/Card :id card-id {:display :table})
           (is (not (t2/exists? :model/Notification :id (:id notification)))))))))
 
+(deftest alerts-are-deleted-when-card-is-archived-test
+  (testing "an alert is deleted by any writer when its Card is archived, and kept when the Card is restored"
+    (notification.tu/with-card-notification
+      [notification {:card {:display :line}}]
+      (let [card-id (-> notification :payload :card_id)]
+        (t2/update! :model/Card :id card-id {:archived true})
+        (is (not (t2/exists? :model/Notification :id (:id notification))))))))
+
 (deftest can-update-embedding-and-public-link-need-admin-test
   (testing "making a Card embedded or public takes an admin, and making it private again takes the settings permission"
     (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]

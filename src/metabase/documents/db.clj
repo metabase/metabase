@@ -111,16 +111,22 @@
    changes :- (mut/select-keys ::queries.schema/card.update [:archived :archived_directly])]
   (t2/update! :model/Card :id card-id changes))
 
+(mu/defn archive-document-cards!
+  "Archive the unarchived Cards in the Document with `document-id` along with it, returning the number updated."
+  [document-id :- ms/PositiveInt]
+  (t2/update! :model/Card :document_id document-id :archived false {:archived true, :archived_directly false}))
+
+(mu/defn restore-document-cards!
+  "Restore the Cards in the Document with `document-id` that were archived along with it, returning the number
+  updated."
+  [document-id :- ms/PositiveInt]
+  (t2/update! :model/Card :document_id document-id :archived true :archived_directly false {:archived false}))
+
 (mu/defn update-cards-for-document!
   "Apply `changes` to the Cards of the Document with `document-id`, returning the number updated."
   [document-id :- ms/PositiveInt
    changes     :- (mut/select-keys ::queries.schema/card.update [:collection_id :archived :archived_directly])]
   (t2/update! :model/Card :document_id document-id changes))
-
-(mu/defn unarchived-collection-exists?
-  "Whether an unarchived Collection with `collection-id` exists."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id :archived false))
 
 (mu/defn user-columns
   "The id, email, and name of the Users with `user-ids`."
