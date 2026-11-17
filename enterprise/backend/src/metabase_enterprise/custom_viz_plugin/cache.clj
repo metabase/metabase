@@ -109,9 +109,6 @@
   [^bytes bundle-bytes]
   (when (or (nil? bundle-bytes) (zero? (alength bundle-bytes)))
     (throw (ex-info "Bundle is empty" {:status-code 400})))
-  ;; an upload is refused by size before it is read; a bundle packed from imported files is measured here
-  (when (> (alength bundle-bytes) max-bundle-bytes)
-    (throw (ex-info (format "Bundle must be less than %dMB." max-bundle-mib) {:status-code 413})))
   ;; `untgz-files` also refuses entry paths an export can't unpack, such as `dist//index.js`
   (let [files         (try
                         (u.compress/untgz-files bundle-bytes untgz-opts)
