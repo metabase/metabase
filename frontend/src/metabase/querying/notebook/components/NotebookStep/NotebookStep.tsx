@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { ExpandingContent } from "metabase/common/components/ExpandingContent";
@@ -13,6 +13,7 @@ import type {
   NotebookStepAction,
 } from "../../types";
 
+import { InlineEditorStateContext } from "./InlineEditorStateContext";
 import { NotebookActionButton } from "./NotebookActionButton";
 import S from "./NotebookStep.module.css";
 import { NotebookStepPreview } from "./NotebookStepPreview";
@@ -43,6 +44,7 @@ export function NotebookStep({
 }: NotebookStepProps) {
   const [isPreviewOpen, { turnOn: openPreview, turnOff: closePreview }] =
     useToggle(false);
+  const [isInlineEditorOpen, setIsInlineEditorOpen] = useState(false);
 
   const actionButtons = useMemo(() => {
     const actions = [];
@@ -93,9 +95,13 @@ export function NotebookStep({
 
   const { title, color, Step, StepHeader } = getStepConfig(step.type);
 
-  // The custom column editor has its own preview of the columns it uses.
+  // The inline expression editors have their own preview: the custom column
+  // editor always, and the filter and summarize editors while they are open.
   const canPreview =
-    step.previewQuery != null && !readOnly && step.type !== "expression";
+    step.previewQuery != null &&
+    !readOnly &&
+    step.type !== "expression" &&
+    !isInlineEditorOpen;
   const hasPreviewButton = !isPreviewOpen && canPreview;
   const canRevert = step.revert != null && !readOnly;
 
@@ -114,16 +120,18 @@ export function NotebookStep({
 
         <Flex align="center">
           <Box flex={`1 1 ${(11 / 12) * 100}%`} maw="75rem">
-            <Step
-              step={step}
-              query={step.query}
-              stageIndex={step.stageIndex}
-              color={color}
-              updateQuery={updateQuery}
-              isLastOpened={isLastOpened}
-              reportTimezone={reportTimezone}
-              readOnly={readOnly}
-            />
+            <InlineEditorStateContext.Provider value={setIsInlineEditorOpen}>
+              <Step
+                step={step}
+                query={step.query}
+                stageIndex={step.stageIndex}
+                color={color}
+                updateQuery={updateQuery}
+                isLastOpened={isLastOpened}
+                reportTimezone={reportTimezone}
+                readOnly={readOnly}
+              />
+            </InlineEditorStateContext.Provider>
           </Box>
           {!readOnly && (
             <Box flex={`1 1 ${(1 / 12) * 100}%`}>

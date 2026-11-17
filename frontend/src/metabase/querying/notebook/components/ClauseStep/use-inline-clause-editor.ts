@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type * as Lib from "metabase-lib";
 
+import { useReportInlineEditorOpen } from "../NotebookStep/InlineEditorStateContext";
+
 export type InlineEditorTarget =
   | { kind: "clause"; index: number }
   | { kind: "draft" };
@@ -118,6 +120,8 @@ export function useInlineClauseEditor<T>({
     },
     [setOpen],
   );
+
+  useReportInlineEditorOpen(openEditor != null);
 
   const target = openEditor?.target;
   const editedIndex = target?.kind === "clause" ? target.index : undefined;
