@@ -54,9 +54,22 @@
     (with-meta (merge (dissoc schema k) branch)
                (merge (meta schema) (select-keys (meta branch) [::declared])))))
 
+(defn- clashes?
+  "Whether the one branch left of the branching node `schema` under `k` has a constraining key the node also has, with
+  a different value."
+  [schema k]
+  (let [branch   (first (k schema))
+        siblings (dissoc schema k)]
+    ;; an equal value, such as `type: object` on both, merges without losing anything
+    (and (map? branch)
+         (mp/some #(and (contains? siblings %)
+                        (not (annotation-keys %))
+                        (not= (get siblings %) (get branch %)))
+                  (keys branch)))))
+
 (defn- collapse-branches
   "Drop the conjuncts that accept anything and the alternatives that accept nothing, and unwrap a branching node that
-  has one branch left."
+  has one branch left, unless the branch shares a constraining key with the node."
   [schema k]
   (let [schema (cond-> schema
                  (= k :allOf)
@@ -71,7 +84,8 @@
       (and (seq (k schema)) (mp/every? empty-schema? (k schema)))
       (dissoc schema k)
 
-      (= 1 (count (k schema)))
+      ;; merging a branch into a key the node already has would drop one of the two constraints
+      (and (= 1 (count (k schema))) (not (clashes? schema k)))
       (unwrap-branch schema k)
 
       (empty? (k schema))
@@ -96,11 +110,47 @@
     (and (:prefixItems node) (false? (:items node)) (not (:maxItems node)))
     (assoc :maxItems (count (:prefixItems node)))))
 
+(defn- merge-beside
+  "The JSON Schema `replacement` merged with the keywords `siblings` that sat beside the `oneOf` it replaces, theirs
+  winning, except that two string descriptions are joined, the siblings' first."
+  [replacement siblings]
+  ;; a `[:maybe]`'s description and its schema's both describe the property
+  (cond-> (merge replacement siblings)
+    (and (string? (:description siblings))
+         (string? (:description replacement))
+         (not= (:description siblings) (:description replacement)))
+    (assoc :description (str (:description siblings) " " (:description replacement)))))
+
+(defn replace-one-of
+  "Replace the `oneOf` of the JSON Schema `node` with the JSON Schema `replacement`, keeping `node`'s metadata.
+  Where only [[annotation-keys]] sit beside the `oneOf`, `replacement` merges into them (see [[merge-beside]]).
+  Where any other keyword does, `replacement` joins those keywords under `allOf`, and its description, if they have
+  none, stays on the node."
+  [node replacement]
+  (let [siblings (dissoc node :oneOf)]
+    (with-meta
+     ;; A sibling assertion must hold as well, and some read their neighbors (`additionalProperties` reads
+     ;; `properties`, `minContains` reads `contains`), so only `allOf` keeps both meanings intact.
+     (cond
+       (every? annotation-keys (keys siblings))
+       (merge-beside replacement siblings)
+
+       ;; readers look for a property's description at its top level, not inside `allOf`
+       (and (:description replacement) (not (contains? siblings :description)))
+       (-> siblings
+           (assoc :description (:description replacement))
+           (update :allOf (fnil conj []) (dissoc replacement :description)))
+
+       :else
+       (update siblings :allOf (fnil conj []) replacement))
+     (meta node))))
+
 (defn- any-of
   "Malli's branching schemas pass when any branch does, so a `oneOf` whose branches overlap is an `anyOf`."
   [node]
   (if-let [branches (:oneOf node)]
-    (-> node (dissoc :oneOf) (update :anyOf #(concat % branches)))
+    ;; JSON Schema requires a branch in an `anyOf`, and an empty `oneOf` accepts nothing
+    (replace-one-of node (if (seq branches) {:anyOf (vec branches)} {:not {}}))
     node))
 
 (defn- definition-name

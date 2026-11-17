@@ -38,7 +38,27 @@
 (deftest ^:parallel any-of-test
   (testing "overlapping branches pass when any of them does, like malli's"
     (is (= {:anyOf [{:type "string" :format "uuid"} {:type "string" :minLength 1}]}
-           (mu.json-schema/transform [:multi {:dispatch uuid?} [true :uuid] [false [:string {:min 1}]]])))))
+           (mu.json-schema/transform [:multi {:dispatch uuid?} [true :uuid] [false [:string {:min 1}]]]))))
+  (testing "a sibling `anyOf` must hold as well, so the branches join it rather than merging into it"
+    (is (= {:anyOf [{:type "string"} {:type "integer"}]
+            :allOf [{:anyOf [{:minLength 1} {:maxLength 0}]}]}
+           (mu.json-schema/transform
+            [:any {:json-schema {:anyOf [{:type "string"} {:type "integer"}]
+                                 :oneOf [{:minLength 1} {:maxLength 0}]}}]))))
+  (testing "an empty `oneOf` accepts nothing"
+    (is (= {:not {}}
+           (mu.json-schema/transform [:any {:json-schema {:oneOf []}}])))))
+
+(deftest ^:parallel collapse-branches-test
+  (testing "one branch left merges into the node"
+    (is (= {:type "string", :minLength 1}
+           (mu.json-schema/transform [:any {:json-schema {:type "string", :allOf [{:minLength 1}]}}])))
+    ;; a key with the same value on both sides merges without losing anything
+    (is (= {:type "string", :minLength 1}
+           (mu.json-schema/transform [:any {:json-schema {:type "string", :allOf [{:type "string", :minLength 1}]}}]))))
+  (testing "one branch left sharing a constraining key with the node stays, as merging would drop a constraint"
+    (is (= {:type "string", :allOf [{:type "integer"}]}
+           (mu.json-schema/transform [:any {:json-schema {:type "string", :allOf [{:type "integer"}]}}])))))
 
 (deftest ^:parallel tuple-test
   (testing "every tuple item is required"
