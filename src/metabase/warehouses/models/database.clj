@@ -367,7 +367,7 @@
   [database setting-names]
   (doseq [setting-name setting-names
           :when        (setting/registered? setting-name)]
-    (setting/validate-driver-feature-for-db! setting-name database driver-supports-feature?)))
+    (setting/validate-driver-feature-for-db setting-name database driver-supports-feature?)))
 
 (defn- check-destination-overlays
   "Throws a 400 when `database` is a destination and `overlays`, the overlay columns being written, hold a write or an

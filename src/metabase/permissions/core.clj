@@ -177,5 +177,5 @@
 (p/import-def metabase.permissions.models.permissions-group/all-external-users           all-external-users-group)
 
 (p/import-vars [metabase.permissions.models.permissions-group
-                check-tenant-groups-visible!
+                check-tenant-groups-visible
                 hidden-tenant-group-ids])

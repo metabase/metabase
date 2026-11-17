@@ -40,7 +40,7 @@
   (when (and (contains? columns :icon) (not (mr/validate timeline-event/Icon (:icon columns))))
     (throw (ex-info (tru "Invalid Timeline icon.") {:status-code 400}))))
 
-(defmethod mi/after-archived-change! :model/Timeline
+(defmethod mi/after-archived-change :model/Timeline
   [_model rows changes]
   (doseq [{:keys [id]} rows]
     (timeline.db/set-timeline-events-archived! id (boolean (:archived changes)))))

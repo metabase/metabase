@@ -88,7 +88,7 @@
                                   [:force      {:default false} [:maybe ms/BooleanValue]]]
    new-graph :- ::permissions-rest.schema/graph-update-request]
   (api/check-superuser)
-  (perms/check-tenant-groups-visible! (keys (:groups new-graph)))
+  (perms/check-tenant-groups-visible (keys (:groups new-graph)))
   (t2/with-transaction [_conn]
     (let [group-ids (-> new-graph :groups keys)
           old-graph (data-perms.graph/api-graph {:group-ids group-ids})
@@ -293,7 +293,7 @@
                                                    [:is_group_manager {:default false} [:maybe :boolean]]]]
   (let [is_group_manager (boolean is_group_manager)]
     (api/create-check :model/PermissionsGroupMembership {:group_id group_id :user_id user_id :is_group_manager is_group_manager})
-    (perms/check-tenant-groups-visible! [group_id])
+    (perms/check-tenant-groups-visible [group_id])
     (when is_group_manager
       (perms/check-advanced-permissions-enabled :group-manager))
     (perms/add-user-to-group! user_id group_id is_group_manager)
@@ -315,7 +315,7 @@
   ;; currently this API is only used to update the `is_group_manager` flag and it requires advanced-permissions
   (perms/check-advanced-permissions-enabled :group-manager)
   (let [old (api/check-404 (permissions-rest.db/group-membership id))]
-    (perms/check-tenant-groups-visible! [(:group_id old)])
+    (perms/check-tenant-groups-visible [(:group_id old)])
     (api/write-check old)
     (permissions-rest.db/set-group-membership-manager! (:id old) is_group_manager)
     (permissions-rest.db/group-membership (:id old))))
@@ -326,7 +326,7 @@
                           [:group-id ms/PositiveInt]]]
   (api/write-check (permissions-rest.db/permissions-group group-id))
   (api/check-400 (not= group-id (u/the-id (perms/admin-group))))
-  (perms/check-tenant-groups-visible! [group-id])
+  (perms/check-tenant-groups-visible [group-id])
   (perms/remove-all-users-from-group! group-id)
   api/generic-204-no-content)
 
@@ -336,7 +336,7 @@
                     [:id ms/PositiveInt]]]
   (let [membership (permissions-rest.db/group-membership id)]
     (api/check-404 membership)
-    (perms/check-tenant-groups-visible! [(:group_id membership)])
+    (perms/check-tenant-groups-visible [(:group_id membership)])
     (api/write-check membership)
     (perms/remove-user-from-group! (:user_id membership) (:group_id membership))
     api/generic-204-no-content))

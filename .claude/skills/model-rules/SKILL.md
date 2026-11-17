@@ -22,7 +22,7 @@ Copy `metabase.segments.models.segment` (hooks, derived column, permissions), `m
 | Computes a column from other columns of the row | hooks; the caller does not supply it |
 | Reads another entity's column that cannot change | hooks of the referring model |
 | Reads another entity's column that can change | freeze it, cascade from it, or check at use (below) |
-| Keeps other rows in step (cascade, cleanup) | the model whose change causes it: `mi/after-archived-change!` for `archived`, else `before-update` / `before-delete` |
+| Keeps other rows in step (cascade, cleanup) | the model whose change causes it: `mi/after-archived-change` for `archived`, else `before-update` / `before-delete` |
 | Shapes a request (required key, friendly message, status order) | the write function or endpoint |
 | Can only be known when the entity is used | the code that uses it |
 
@@ -80,7 +80,7 @@ that needs the row as stored.
   duplicates (" (2)", " (3)"); decide what a NULL parent means, since an index treats NULLs as distinct. A hook check
   may add the 400 message; the index is the enforcement.
 - **Cascade.** The model whose change causes it writes the followers through their models, so their hooks run and may
-  refuse: in `mi/after-archived-change!` when it follows `archived` (see Archiving), else in `before-update` or
+  refuse: in `mi/after-archived-change` when it follows `archived` (see Archiving), else in `before-update` or
   `before-delete`, only when the causing column is in `(t2/changes row)`. `before-update` runs before Toucan opens its
   transaction, so a model whose update writes other rows declares `(mi/define-update-in-transaction :model/X)`.
 - **Rule on another entity's mutable data.** In this order: freeze the column; cascade from the other entity (archived,
@@ -136,7 +136,7 @@ endpoint's own helper.
   arguments returning whether the parent is archived (its Collection, `collection/archived?`; for a Card also its
   Dashboard or Document, for a Document also its Exploration). A cause given in the changes is kept; a restore is false.
 - The parent is written first and the followers after it, in the same transaction: a model with followers declares
-  `(mi/define-update-in-transaction :model/X)` and a `(defmethod mi/after-archived-change! :model/X [model rows changes])`
+  `(mi/define-update-in-transaction :model/X)` and a `(defmethod mi/after-archived-change :model/X [model rows changes])`
   that writes them through their models, one statement per kind. The followers then find their parent archived and
   derive their cause from it.
 - Collection archives its subtree in a fixed number of statements; a collection that inherits an archive does not

@@ -955,8 +955,8 @@
                                                            (:database-workspace-schema pending-settings))
         (doseq [setting-kw (database/changed-settings settings existing-settings)]
           (try
-            (setting/validate-settable! setting-kw)
-            (setting/validate-settable-for-db! setting-kw pending-db driver-supports?)
+            (setting/validate-settable setting-kw)
+            (setting/validate-settable-for-db setting-kw pending-db driver-supports?)
             (catch Exception e
               (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e)))))
         (warehouses-rest.db/update-database! id updates)

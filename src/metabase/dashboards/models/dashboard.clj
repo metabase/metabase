@@ -81,7 +81,7 @@
   "The widths a Dashboard takes."
   #{"fixed" "full"})
 
-(defmethod mi/after-archived-change! :model/Dashboard
+(defmethod mi/after-archived-change :model/Dashboard
   [_model rows changes]
   (doseq [{:keys [id]} rows]
     (if (:archived changes)

@@ -120,7 +120,7 @@
     (set/intersection (set (map u/the-id group-ids))
                       (permissions.db/tenant-group-ids))))
 
-(defn check-tenant-groups-visible!
+(defn check-tenant-groups-visible
   "Throws a 400 if any of `group-ids` is a tenant group while the Tenants feature is disabled.
   The error payload includes the offending IDs under `[:errors :tenant-group-ids]`."
   [group-ids]

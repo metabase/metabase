@@ -47,7 +47,7 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defmethod mi/after-archived-change! :model/Exploration
+(defmethod mi/after-archived-change :model/Exploration
   [_model rows changes]
   (doseq [{:keys [id]} rows]
     (if (:archived changes)

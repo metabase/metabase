@@ -1059,10 +1059,10 @@
           (audit-setting-change! setting previous-value (audit-value-fn))))
       (setter new-value))))
 
-(defn validate-settable!
-  "Check whether the given setting can be set, in general. For :database-local writes use [[validate-settable-for-db!]]"
+(defn validate-settable
+  "Check whether the given setting can be set, in general. For :database-local writes use [[validate-settable-for-db]]"
   ([setting]
-   (validate-settable! setting false))
+   (validate-settable setting false))
   ([setting-definition-or-name bypass-read-only?]
    (let [{:keys [setter enabled? feature] :as setting} (resolve-setting setting-definition-or-name)
          s-name (setting-name setting)]
@@ -1085,7 +1085,7 @@
        (when (= setter :none)
          (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." s-name))))))))
 
-(defn validate-driver-feature-for-db!
+(defn validate-driver-feature-for-db
   "Throws a 400 unless `database`'s driver has the driver feature the setting needs, as `driver-supports?` answers it."
   [setting-definition-or-name database driver-supports?]
   (let [{:keys [driver-feature] :as setting} (resolve-setting setting-definition-or-name)
@@ -1097,7 +1097,7 @@
                        :required-feature driver-feature
                        :database-id      (:id database)})))))
 
-(defn validate-settable-for-db!
+(defn validate-settable-for-db
   "Throws a 400 unless the setting can be set on `database`, the Database as the write leaves it: a `:string` setting
   holds a string, its driver has the setting's driver feature, and the setting's `:enabled-for-db?` gives no reason
   against it other than warnings."
@@ -1110,7 +1110,7 @@
                       {:status-code 400
                        :setting     s-name
                        :database-id (:id database)})))
-    (validate-driver-feature-for-db! setting database driver-supports?)
+    (validate-driver-feature-for-db setting database driver-supports?)
     ;; Warnings are only for display and shouldn't block writing the setting.
     ;; They imply that the setting won't work until the issue is resolved, but often it is a transient problem.
     (when-let [reasons (disabled-for-db-reasons setting database)]
@@ -1137,7 +1137,7 @@
         new-value                    (cond-> new-value
                                        (and (= (:type setting) :json) (coll? new-value))
                                        walk/keywordize-keys)]
-    (validate-settable! setting bypass-read-only?)
+    (validate-settable setting bypass-read-only?)
     (binding [config/*disable-setting-cache* (not cache?)]
       (set-with-audit-logging! setting new-value bypass-read-only?))))
 

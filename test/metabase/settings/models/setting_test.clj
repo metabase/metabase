@@ -1177,21 +1177,21 @@
     (is (some? test-driver-feature-only-setting))))
 
 (deftest validate-settable-for-db-test
-  (testing "validate-settable-for-db! validates database feature requirements"
+  (testing "validate-settable-for-db validates database feature requirements"
     (let [database                       {:id 1, :engine :h2}
           setting-with-driver-feature    :test-driver-feature-only-setting
           setting-without-driver-feature :test-database-local-allowed-setting
           driver-supports-everything?    (constantly true)
           driver-supports-nothing?       (constantly false)]
       (testing "should succeed when driver supports required feature"
-        (is (nil? (setting/validate-settable-for-db! setting-with-driver-feature database driver-supports-everything?))))
+        (is (nil? (setting/validate-settable-for-db setting-with-driver-feature database driver-supports-everything?))))
       (testing "should throw when driver does not support required feature"
         (is (thrown-with-msg?
              ExceptionInfo
              #"Setting test-driver-feature-only-setting requires driver feature :actions, but the database does not support it"
-             (setting/validate-settable-for-db! setting-with-driver-feature database driver-supports-nothing?))))
+             (setting/validate-settable-for-db setting-with-driver-feature database driver-supports-nothing?))))
       (testing "should succeed for settings without driver-feature requirement"
-        (is (nil? (setting/validate-settable-for-db! setting-without-driver-feature database driver-supports-nothing?)))))))
+        (is (nil? (setting/validate-settable-for-db setting-without-driver-feature database driver-supports-nothing?)))))))
 
 ;;; ------------------------------------------------ Database-enabled Settings ----------------------------------------
 
@@ -1223,24 +1223,24 @@
     (is (some? test-enabled-for-db-setting))))
 
 (deftest validate-settable-for-db-enabled-test
-  (testing "validate-settable-for-db! validates database-specific enablement"
+  (testing "validate-settable-for-db validates database-specific enablement"
     (let [regular-database {:id 1 :engine :h2}
           routed-database  {:id 2 :engine :h2 :router_database_id 3}]
       (testing "should succeed when database passes enabled-for-db? predicate"
-        (is (nil? (setting/validate-settable-for-db! :test-enabled-for-db-setting
-                                                     regular-database
-                                                     (constantly true)))))
+        (is (nil? (setting/validate-settable-for-db :test-enabled-for-db-setting
+                                                    regular-database
+                                                    (constantly true)))))
       (testing "should throw when database fails enabled-for-db? predicate"
         (is (thrown-with-msg?
              ExceptionInfo
              #"Setting test-enabled-for-db-setting is not enabled for this database"
-             (setting/validate-settable-for-db! :test-enabled-for-db-setting
-                                                routed-database
-                                                (constantly true)))))
+             (setting/validate-settable-for-db :test-enabled-for-db-setting
+                                               routed-database
+                                               (constantly true)))))
       (testing "should succeed for settings without enabled-for-db? requirement"
-        (is (nil? (setting/validate-settable-for-db! :test-database-local-allowed-setting
-                                                     routed-database
-                                                     (constantly true))))))))
+        (is (nil? (setting/validate-settable-for-db :test-database-local-allowed-setting
+                                                    routed-database
+                                                    (constantly true))))))))
 
 (defsetting ^:private test-warn-vs-error-setting
   (deferred-tru "test Setting for warnings vs errors")
@@ -1275,14 +1275,14 @@
       (with-database db-with-both
         (testing "configured value is not returned"
           (is (= "default-value" (test-warn-vs-error-setting))))))
-    (testing "validate-settable-for-db! should only throw for error reasons"
+    (testing "validate-settable-for-db should only throw for error reasons"
       (testing "should not throw for warnings"
-        (is (nil? (setting/validate-settable-for-db! :test-warn-vs-error-setting db-with-warning every-feature))))
+        (is (nil? (setting/validate-settable-for-db :test-warn-vs-error-setting db-with-warning every-feature))))
       (testing "should throw for errors"
         (is (thrown-with-msg?
              ExceptionInfo
              #"Setting test-warn-vs-error-setting is not enabled for this database"
-             (setting/validate-settable-for-db! :test-warn-vs-error-setting db-with-error every-feature)))))))
+             (setting/validate-settable-for-db :test-warn-vs-error-setting db-with-error every-feature)))))))
 
 (deftest enabled?-test
   (testing "Settings can be disabled"
@@ -1331,7 +1331,7 @@
            :feature    :test-feature
            :encryption :when-encryption-key-set)))))
 
-(deftest validate-settable!-ex-data-test
+(deftest validate-settable-ex-data-test
   (testing "Settings that can't be written report a status code, so the API doesn't surface them as a 500"
     (testing "premium feature not available"
       (mt/with-premium-features #{}

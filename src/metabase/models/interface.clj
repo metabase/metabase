@@ -597,13 +597,13 @@
                         {:model model}
                         e))))))
 
-(defmulti after-archived-change!
+(defmulti after-archived-change
   "Writes what an UPDATE of a `model` row that changed `:archived` takes to the rows that follow it, called by
   [[define-update-in-transaction]] after the UPDATE with the rows as they were before it, so the parent is written first."
   {:arglists '([model rows changes])}
   (fn [model _rows _changes] model))
 
-(defmethod after-archived-change! :default
+(defmethod after-archived-change :default
   [_model _rows _changes]
   nil)
 
@@ -618,18 +618,18 @@
 (defmacro define-update-in-transaction
   "Runs every UPDATE of `model`, with its before-update hooks, in one transaction, which Toucan otherwise opens only
   after them, so a hook that writes other rows commits or rolls back with the UPDATE, and then calls
-  [[after-archived-change!]] for the rows whose `:archived` it changed."
+  [[after-archived-change]] for the rows whose `:archived` it changed."
   [model]
   `(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* ~model :default]
      [rf# query-type# model# parsed-args# resolved-query#]
      (t2.conn/with-transaction [_conn# nil {:nested-transaction-rule :ignore}]
        (let [changes# (:changes parsed-args#)
              rows#    (when (and (contains? changes# :archived)
-                                 (contains? (methods after-archived-change!) model#))
+                                 (contains? (methods after-archived-change) model#))
                         (rows-changing-archived model# parsed-args# resolved-query# changes#))]
          (u/prog1 (~'next-method rf# query-type# model# parsed-args# resolved-query#)
            (when (seq rows#)
-             (after-archived-change! model# rows# changes#)))))))
+             (after-archived-change model# rows# changes#)))))))
 
 (defn archived-directly
   "The `archived_directly` of `row`, an update that changes `:archived`: the one the write gives, else true when `row` is

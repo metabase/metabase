@@ -76,7 +76,7 @@
                  (format "field_ids may contain at most %d IDs." max-field-ids-for-table-id-lookup))
   {:table_ids (schema.field/field-ids->table-ids field_ids)})
 
-(defn- check-can-point-at-field!
+(defn- check-can-point-at-field
   "Throws a 403 unless the current user manages the metadata of the Table of the Field with `target-field-id`, a new
   target for a foreign key or a remapping."
   [target-field-id current-target-field-id]
@@ -136,7 +136,7 @@
                        :coercion-strategy (keyword coercion-strategy)
                        :effective-type    effective-type
                        :response/keys     #{:base-type :coercion-strategy :effective-type}})))
-    (check-can-point-at-field! (:fk_target_field_id body) (:fk_target_field_id field))
+    (check-can-point-at-field (:fk_target_field_id body) (:fk_target_field_id field))
     (schema.field-user-settings/upsert-field-user-settings!
      field
      (cond-> body
@@ -192,7 +192,7 @@
        [:human_readable_field_id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/write-check :model/Field id)
   (let [existing-dimension (warehouse-schema-rest.db/dimension-for-field id)]
-    (check-can-point-at-field! human-readable-field-id (:human_readable_field_id existing-dimension))
+    (check-can-point-at-field human-readable-field-id (:human_readable_field_id existing-dimension))
     (if-let [dimension existing-dimension]
       (warehouse-schema-rest.db/update-dimension! (u/the-id dimension)
                                                   {:type                    dimension-type

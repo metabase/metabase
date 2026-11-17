@@ -2073,7 +2073,7 @@
     (collections.db/restore-pulses-in-collections! ids)
     (collections.db/restore-actions-in-collections! ids)))
 
-(defmethod mi/after-archived-change! :model/Collection
+(defmethod mi/after-archived-change :model/Collection
   [_model rows changes]
   (doseq [before rows]
     (if (:archived changes)

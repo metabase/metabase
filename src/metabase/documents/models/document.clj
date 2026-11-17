@@ -81,7 +81,7 @@
   (boolean (or (collection/archived? collection_id)
                (and exploration_id (documents.db/exploration-archived? exploration_id)))))
 
-(defmethod mi/after-archived-change! :model/Document
+(defmethod mi/after-archived-change :model/Document
   [_model rows changes]
   (doseq [{:keys [id]} rows]
     (if (:archived changes)

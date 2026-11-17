@@ -188,7 +188,7 @@
                 (not api/*is-superuser?*)
                 (contains? (get (mi/cached-for-update-check ::sandbox-dependency-set sandbox-dependency-set) entity-kind) id))))
 
-(defn- check-result-metadata-still-matches-sandboxed-tables!
+(defn- check-result-metadata-still-matches-sandboxed-tables
   "Throws if `new-result-metadata` would stop matching the Tables the sandboxes built out of this Card sandbox: the
   Card cannot add fields or change types vs. the original Table."
   [card-id new-result-metadata]
@@ -210,7 +210,7 @@
   :feature :sandboxes
   [{new-result-metadata :result_metadata, card-id :id} changes]
   (when (contains? changes :result_metadata)
-    (check-result-metadata-still-matches-sandboxed-tables! card-id new-result-metadata)))
+    (check-result-metadata-still-matches-sandboxed-tables card-id new-result-metadata)))
 
 (defenterprise sandboxes-allow-result-metadata-write?
   "Whether sandboxing lets the current user store result metadata for the Card with `card-id`: only an admin may for one
