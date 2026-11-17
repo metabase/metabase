@@ -4,11 +4,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
-   [metabase-enterprise.data-testing.executor :as data-testing.executor]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.api.common :as api]
-   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -88,64 +86,16 @@
 (deftest segment-output-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (let [run! (fn [input]
-                 ;; TEMPORARY DIAGNOSTIC (Redshift): a refusal carries the messages of its whole cause chain, whether
-                 ;; the run's transaction was already aborted before its first statement (a `SELECT 1` probe), and each
-                 ;; statement the run executed, so a failure report shows the statement that first failed. Remove once
-                 ;; the Redshift failure is understood.
-                 (let [trace   (atom [])
-                       first?  (atom true)
-                       create! (mt/original-fn #'data-testing.executor/create-temp-table!)
-                       query!  (mt/original-fn #'data-testing.executor/run-query)
-                       drop!   (mt/original-fn #'data-testing.executor/drop-temp-table!)
-                       record! (fn [tag thunk]
-                                 (try
-                                   (let [result (thunk)] (swap! trace conj [tag :ok]) result)
-                                   (catch Throwable e (swap! trace conj [tag :failed (ex-message e)]) (throw e))))
-                       probe!  (fn [driver conn]
-                                 ;; Without a row cap twice, then with one, then without: tells a transaction aborted
-                                 ;; by the second statement after a borrow from one aborted by a row cap.
-                                 (when (compare-and-set! first? true false)
-                                   (doseq [[tag sql cap] [[:select-1-no-cap "SELECT 1 AS x" nil]
-                                                          [:select-2-no-cap "SELECT 2 AS x" nil]
-                                                          [:select-3-cap-1  "SELECT 3 AS x" 1]
-                                                          [:select-4-no-cap "SELECT 4 AS x" nil]]]
-                                     (try (record! tag #(driver/query-on-connection driver conn [sql []] {:max-rows cap}))
-                                          (catch Throwable _)))))]
-                   (mt/with-dynamic-fn-redefs [data-testing.executor/create-temp-table!
-                                               (fn [driver conn table query]
-                                                 (probe! driver conn)
-                                                 (record! [:create table] #(create! driver conn table query)))
-                                               data-testing.executor/run-query
-                                               (fn [driver conn query max-rows]
-                                                 (probe! driver conn)
-                                                 (record! [:query (subs (first query) 0 (min 60 (count (first query))))]
-                                                          #(query! driver conn query max-rows)))
-                                               data-testing.executor/drop-temp-table!
-                                               (fn [driver conn table]
-                                                 (record! [:drop table] #(drop! driver conn table)))]
-                     (try
-                       (run-segment-test! (data-testing.test-util/from-google-segment)
-                                          [input]
-                                          [{:type :empty :name "none" :sql "SELECT * FROM {{output}} WHERE 1 = 0"}])
-                       nil
-                       (catch clojure.lang.ExceptionInfo e
-                         {:error-type (:error-type (ex-data e))
-                          :message    (ex-message e)
-                          :trace      @trace
-                          :causes     (loop [c (ex-cause e) acc []]
-                                        (if c
-                                          (recur (or (ex-cause c)
-                                                     (when (instance? java.sql.SQLException c)
-                                                       (.getNextException ^java.sql.SQLException c)))
-                                                 (conj acc (str (.getName (class c)) ": " (ex-message c))))
-                                          acc))})))))]
+                 (data-testing.test-util/refusal #(run-segment-test! (data-testing.test-util/from-google-segment)
+                                                                     [input]
+                                                                     [{:type :empty :name "none" :sql "SELECT * FROM {{output}} WHERE 1 = 0"}])))]
       (testing "an input given as rows needs to declare only the columns the query reads"
         (is (nil? (run! (people-rows three-people)))))
       (testing "an input given as SQL declares no columns, so the output has every column of the table, and its SQL must give them all"
-        (let [{:keys [error-type message] :as refusal} (run! {:table  (table-ref :people)
-                                                              :format :sql
-                                                              :sql    (str "SELECT 1 AS " (field-name :id) ", 'Google' AS "
-                                                                           (field-name :source))})]
+        (let [{:keys [error-type message]} (run! {:table  (table-ref :people)
+                                                  :format :sql
+                                                  :sql    (str "SELECT 1 AS " (field-name :id) ", 'Google' AS "
+                                                               (field-name :source))})]
           (is (= ::data-testing.errors/query-failed error-type))
           ;; The message can also quote the compiled SQL, which names every column, so match only the warehouse's
           ;; naming of the missing column: `column "ADDRESS"` (H2), `column people.address` (Postgres), `column
@@ -153,7 +103,7 @@
           ;; (SQL Server, whose "column name" would otherwise match the NAME column).
           (is (re-find #"(?i)(?:column|identifier)\s+['\"`\[]?(?:\w+\.)*(?:name|email|address|city)\b"
                        (str/replace message #"(?i)column name" "column"))
-              (pr-str message (:causes refusal) (:trace refusal))))))))
+              message))))))
 
 (defn- validated-outcome!
   "What becomes of a test of a Segment with the attributes `segment`, `inputs` and `expectations`, started by crowberto:
