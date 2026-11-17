@@ -1,6 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { Box } from "metabase/ui";
 import { isEmpty } from "metabase/utils/validate";
@@ -12,18 +11,14 @@ import type {
 } from "../SummaryFormulaBar";
 import S from "../SummarySidebar.module.css";
 import type {
+  SummaryDimensionItem,
   SummaryDragItem,
   SummaryField,
   SummaryFieldSection,
   SummaryQueryChangeOptions,
   SummaryWellId,
 } from "../types";
-import {
-  canDropOnWell,
-  getDimensionItems,
-  getValueItems,
-  getWellFieldSections,
-} from "../utils";
+import { canDropOnWell, getValueItems, getWellFieldSections } from "../utils";
 
 import { DimensionChip } from "./DimensionChip";
 import {
@@ -45,6 +40,10 @@ type SummaryWellsProps = {
     | null;
   editingFormulaUuid?: string;
   draggedItem: SummaryDragItem | null;
+  isPivotMode: boolean;
+  rowItems: SummaryDimensionItem[];
+  columnItems: SummaryDimensionItem[];
+  onPivotToggle: () => void;
   onPick: (wellId: SummaryWellId, field: SummaryField) => void;
   onChange: (nextQuery: Lib.Query, options?: SummaryQueryChangeOptions) => void;
 };
@@ -57,25 +56,24 @@ export function SummaryWells({
   draftFormula,
   editingFormulaUuid,
   draggedItem,
+  isPivotMode,
+  rowItems,
+  columnItems,
+  onPivotToggle,
   onPick,
   onChange,
 }: SummaryWellsProps) {
-  const [isPivotMode, setIsPivotMode] = useState(false);
   const isEditing = (clause?: SummaryFormulaClause) =>
     !isEmpty(clause) && Lib.clauseUuid(clause) === editingFormulaUuid;
   const valueItems = useMemo(
     () => getValueItems(query, stageIndex),
     [query, stageIndex],
   );
-  const dimensionItems = useMemo(
-    () => getDimensionItems(query, stageIndex),
-    [query, stageIndex],
-  );
   const valueSections = useMemo(
     () => getWellFieldSections(sections, "values"),
     [sections],
   );
-  const columnSections = useMemo(
+  const dimensionSections = useMemo(
     () => getWellFieldSections(sections, "columns"),
     [sections],
   );
@@ -137,26 +135,23 @@ export function SummaryWells({
         title={isPivotMode ? t`Columns` : t`Group by`}
         dropState={dropStates?.columns ?? null}
         action={
-          <PivotToggle
-            isPivotMode={isPivotMode}
-            onToggle={() => setIsPivotMode(!isPivotMode)}
-          />
+          <PivotToggle isPivotMode={isPivotMode} onToggle={onPivotToggle} />
         }
       >
         <SummaryWellInput
           wellId="columns"
           formulaInput={formulaInputs?.columns}
-          sections={columnSections}
-          hasItems={dimensionItems.length > 0}
+          sections={dimensionSections}
+          hasItems={columnItems.length > 0}
           onPick={(field) => onPick("columns", field)}
           onRemoveLast={() => {
-            const lastItem = dimensionItems.at(-1);
+            const lastItem = columnItems.at(-1);
             if (lastItem) {
               handleRemove(lastItem.clause);
             }
           }}
         >
-          {dimensionItems.map((item) => (
+          {columnItems.map((item) => (
             <DimensionChip
               key={item.key}
               query={query}
@@ -177,11 +172,28 @@ export function SummaryWells({
         <SummaryWell wellId="rows" title={t`Rows`} dropState={null}>
           <SummaryWellInput
             wellId="rows"
-            sections={columnSections}
-            hasItems={false}
-            onPick={_.noop}
-            onRemoveLast={_.noop}
-          />
+            sections={dimensionSections}
+            hasItems={rowItems.length > 0}
+            onPick={(field) => onPick("rows", field)}
+            onRemoveLast={() => {
+              const lastItem = rowItems.at(-1);
+              if (lastItem) {
+                handleRemove(lastItem.clause);
+              }
+            }}
+          >
+            {rowItems.map((item) => (
+              <DimensionChip
+                key={item.key}
+                query={query}
+                stageIndex={stageIndex}
+                item={item}
+                isEditing={false}
+                onChange={onChange}
+                onRemove={() => handleRemove(item.clause)}
+              />
+            ))}
+          </SummaryWellInput>
         </SummaryWell>
       )}
     </Box>

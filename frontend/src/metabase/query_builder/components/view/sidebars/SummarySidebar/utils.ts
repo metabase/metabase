@@ -205,7 +205,7 @@ function getColumnAggregation(
     : null;
 }
 
-function getResultColumnNames(query: Lib.Query, stageIndex: number) {
+export function getResultColumnNames(query: Lib.Query, stageIndex: number) {
   const infos = Lib.returnedColumns(query, stageIndex).map((column) =>
     Lib.displayInfo(query, stageIndex, column),
   );
