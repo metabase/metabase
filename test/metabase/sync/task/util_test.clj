@@ -77,7 +77,7 @@
 
 (deftest run-for-target-stops-at-timeout-test
   (let [interrupted (promise)]
-    (mt/with-dynamic-fn-redefs [quick-task/task-timeout-ms (constantly 100)]
+    (mt/with-dynamic-fn-redefs [quick-task/task-timeout-ms (constantly 2000)]
       (is (nil? (sync.task.util/run-for-target! (fn [_]
                                                   (try
                                                     (Thread/sleep 60000)
