@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.cache.config :as cache.config]
-   [metabase.events.core :as events]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
    [metabase.util :as u]
