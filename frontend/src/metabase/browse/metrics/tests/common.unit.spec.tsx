@@ -364,14 +364,12 @@ describe("BrowseMetrics (OSS)", () => {
         triggered_from: "browse_metrics",
       });
 
-      await waitFor(async () => {
-        menu = await openMetricMenu("Count of orders");
-        expect(
-          within(menu).getByRole("menuitem", {
-            name: menuItemName("Remove from bookmarks"),
-          }),
-        ).toBeInTheDocument();
-      });
+      menu = await openMetricMenu("Count of orders");
+      expect(
+        await within(menu).findByRole("menuitem", {
+          name: menuItemName("Remove from bookmarks"),
+        }),
+      ).toBeInTheDocument();
       await userEvent.click(
         within(menu).getByRole("menuitem", {
           name: menuItemName("Remove from bookmarks"),
@@ -383,14 +381,12 @@ describe("BrowseMetrics (OSS)", () => {
         ).toHaveLength(1),
       );
 
-      await waitFor(async () => {
-        menu = await openMetricMenu("Count of orders");
-        expect(
-          within(menu).getByRole("menuitem", {
-            name: menuItemName("Bookmark"),
-          }),
-        ).toBeInTheDocument();
-      });
+      menu = await openMetricMenu("Count of orders");
+      expect(
+        await within(menu).findByRole("menuitem", {
+          name: menuItemName("Bookmark"),
+        }),
+      ).toBeInTheDocument();
       await userEvent.click(
         within(menu).getByRole("menuitem", {
           name: menuItemName("Move to trash"),
@@ -456,14 +452,12 @@ describe("BrowseMetrics (OSS)", () => {
         ).toHaveLength(1),
       );
 
-      await waitFor(async () => {
-        menu = await openMetricMenu("Count of orders");
-        expect(
-          within(menu).getByRole("menuitem", {
-            name: menuItemName("Remove from bookmarks"),
-          }),
-        ).toBeInTheDocument();
-      });
+      menu = await openMetricMenu("Count of orders");
+      expect(
+        await within(menu).findByRole("menuitem", {
+          name: menuItemName("Remove from bookmarks"),
+        }),
+      ).toBeInTheDocument();
       await userEvent.click(
         within(menu).getByRole("menuitem", {
           name: menuItemName("Remove from bookmarks"),
@@ -475,14 +469,12 @@ describe("BrowseMetrics (OSS)", () => {
         ).toHaveLength(1),
       );
 
-      await waitFor(async () => {
-        menu = await openMetricMenu("Count of orders");
-        expect(
-          within(menu).getByRole("menuitem", {
-            name: menuItemName("Bookmark"),
-          }),
-        ).toBeInTheDocument();
-      });
+      menu = await openMetricMenu("Count of orders");
+      expect(
+        await within(menu).findByRole("menuitem", {
+          name: menuItemName("Bookmark"),
+        }),
+      ).toBeInTheDocument();
       await userEvent.click(
         within(menu).getByRole("menuitem", {
           name: menuItemName("Open collection"),
