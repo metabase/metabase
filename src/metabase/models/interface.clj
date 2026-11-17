@@ -751,41 +751,30 @@
     (str (format "%s does not yet have an implementation for `can-update?`. " (name (models.dispatch/model instance)))
          "Please consider adding one. See dox for `can-update?` for more details."))))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *update-check-cache*
-  "An atom holding what [[cached-for-update-check]] computed, or nil outside [[with-update-check-cache]]."
-  nil)
-
-(defmacro ^:private with-update-check-cache
-  "Runs `body`, a permission check of many rows, in which [[cached-for-update-check]] computes each answer once, in the
-  cache of the check it is nested in if there is one."
-  [& body]
-  `(binding [*update-check-cache* (or *update-check-cache* (atom {}))]
-     ~@body))
-
-(defn cached-for-update-check
-  "The value of `(f)`, which a permission check of many rows computes once for the key `k`."
-  [k f]
-  (if-let [cache *update-check-cache*]
-    (get (swap! cache #(if (contains? % k) % (assoc % k (f)))) k)
-    (f)))
-
 (defn changes-archived?
   "Whether `changes` give `row` another value of `:archived`."
   [row changes]
   (and (contains? changes :archived)
        (not= (boolean (:archived row)) (boolean (:archived changes)))))
 
+(defmulti can-update-all?
+  "Whether the current user may apply `changes` to every one of the `model` `rows`, each hydrated with `:can_write`; a
+  model implements it to answer once for all rows what its [[can-update?]] would ask for each."
+  {:arglists '([model rows changes])}
+  dispatch-on-model)
+
+(defmethod can-update-all? :default
+  [model rows changes]
+  (if (contains? (methods can-update?) model)
+    (every? #(can-update? % changes) rows)
+    (every? can-write? rows)))
+
 (defn can-update-each?
   "Whether the current user may apply `changes` to each of the `model` `rows`, which are hydrated with `:can_write`
-  once together, with the model's [[can-update?]] or, for a model without one, [[can-write?]]."
+  once together and answered by [[can-update-all?]]."
   [model rows changes]
   (or (empty? rows)
-      (with-update-check-cache
-        (let [rows (t2/hydrate (vec rows) :can_write)]
-          (if (contains? (methods can-update?) model)
-            (every? #(can-update? % changes) rows)
-            (every? can-write? rows))))))
+      (can-update-all? model (t2/hydrate (vec rows) :can_write) changes)))
 
 (defn superuser?
   "Is [[metabase.api.common/*current-user*]] is a superuser? Ignores args. Intended for use as an implementation

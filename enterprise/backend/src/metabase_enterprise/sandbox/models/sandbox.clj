@@ -179,14 +179,19 @@
                    cards)
         (select-keys [:card :snippet :segment :measure]))))
 
-(defn- non-admin-affects-sandboxing?
-  "Whether the current user is a non-admin and the `entity-kind` (`:card`, `:snippet`, `:segment`, or `:measure`)
-  entity with `id` is in the sandbox dependency set."
-  [entity-kind id]
-  (boolean (and id
+(defn- non-admin-affects-sandboxing-with-any?
+  "Whether the current user is a non-admin and one of the `entity-kind` (`:card`, `:snippet`, `:segment`, or `:measure`)
+  entities with `ids` is in the sandbox dependency set, which is computed once for all of them."
+  [entity-kind ids]
+  (boolean (and (seq ids)
                 api/*current-user-id*
                 (not api/*is-superuser?*)
-                (contains? (get (mi/cached-for-update-check ::sandbox-dependency-set sandbox-dependency-set) entity-kind) id))))
+                (some (get (sandbox-dependency-set) entity-kind) ids))))
+
+(defn- non-admin-affects-sandboxing?
+  "Whether the current user is a non-admin and the `entity-kind` entity with `id` is in the sandbox dependency set."
+  [entity-kind id]
+  (non-admin-affects-sandboxing-with-any? entity-kind (when id [id])))
 
 (defn- check-result-metadata-still-matches-sandboxed-tables
   "Throws if `new-result-metadata` would stop matching the Tables the sandboxes built out of this Card sandbox: the
@@ -227,6 +232,13 @@
   (not (and (some #(contains? changes %) [:dataset_query :archived :result_metadata])
             (non-admin-affects-sandboxing? :card card-id))))
 
+(defenterprise sandboxes-allow-cards-update?
+  "Whether sandboxing lets the current user change the `:dataset_query`, `:archived` or `:result_metadata` of every one
+  of `cards`: only an admin may when one of them is in the sandbox dependency set."
+  :feature :sandboxes
+  [cards]
+  (not (non-admin-affects-sandboxing-with-any? :card (keep :id cards))))
+
 (defenterprise sandboxes-allow-card-delete?
   "Whether sandboxing lets the current user delete a Card: only an admin may delete one in the sandbox dependency set."
   :feature :sandboxes
@@ -240,6 +252,14 @@
   [{snippet-id :id} changes]
   (not (and (some #(contains? changes %) [:content :name :archived])
             (non-admin-affects-sandboxing? :snippet snippet-id))))
+
+(defenterprise sandboxes-allow-snippets-update?
+  "Whether sandboxing lets the current user apply `changes` to every one of `snippets`: only an admin may change the
+  `:content`, `:name` or `:archived` of one in the sandbox dependency set."
+  :feature :sandboxes
+  [snippets changes]
+  (not (and (some #(contains? changes %) [:content :name :archived])
+            (non-admin-affects-sandboxing-with-any? :snippet (keep :id snippets)))))
 
 (defenterprise sandboxes-allow-segment-update?
   "Whether sandboxing lets the current user apply `changes` to a Segment: only an admin may change the `:definition`

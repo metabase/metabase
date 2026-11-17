@@ -1034,6 +1034,13 @@
   [_card _changes]
   true)
 
+(defenterprise sandboxes-allow-cards-update?
+  "Whether sandboxing lets the current user change the guarded columns of every one of `cards`, which OSS always
+  does."
+  metabase-enterprise.sandbox.models.sandbox
+  [_cards]
+  true)
+
 (defn- changed?
   "Return whether there were any changes in the objects. ONLY keys in `after` are compared. If any are missing from
   `before` an exception will be thrown.
@@ -1136,15 +1143,25 @@
                (shared-dashboard-timelines-readable? (queries.db/dashboard (:dashboard_id changes))
                                                      [(merge card changes)])))))
 
-(defmethod mi/can-update? :model/Card
+(defn- can-update-apart-from-sandboxes?
+  "Whether the current user may apply `changes` to `card` as far as every rule but sandboxing goes."
   [card changes]
   (and (or (changes-only-public-link? card changes) (mi/can-write? card))
        (can-change-public-link? card changes)
        (collection/can-move? card changes)
        (dashboard-move-permitted? card changes)
        (can-change-embedding? card changes)
-       (timeline-selection-readable? (merge card changes) card)
+       (timeline-selection-readable? (merge card changes) card)))
+
+(defmethod mi/can-update? :model/Card
+  [card changes]
+  (and (can-update-apart-from-sandboxes? card changes)
        (sandboxes-allow-card-update? card (changing-columns card changes sandbox-guarded-columns))))
+
+(defmethod mi/can-update-all? :model/Card
+  [_model cards changes]
+  (and (every? #(can-update-apart-from-sandboxes? % changes) cards)
+       (sandboxes-allow-cards-update? (filterv #(seq (changing-columns % changes sandbox-guarded-columns)) cards))))
 
 (defn- data-app-card-error
   "A 400 error for a card in a data app's collection, with `message`."

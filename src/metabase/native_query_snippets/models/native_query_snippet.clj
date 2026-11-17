@@ -176,18 +176,34 @@
   [_snippet _changes]
   true)
 
+(defenterprise sandboxes-allow-snippets-update?
+  "Whether sandboxing lets the current user apply `changes` to every one of `snippets`, which OSS always does."
+  metabase-enterprise.sandbox.models.sandbox
+  [_snippets _changes]
+  true)
+
 (defn- unsynced-change?
   "Whether `changes` touch no synced column of `snippet`, which a read-only instance still accepts from a user the
   other rules of the update allow."
   [snippet changes]
   (not (remote-sync/synced-changes? :model/NativeQuerySnippet snippet changes)))
 
-(defmethod mi/can-update? :model/NativeQuerySnippet
+(defn- can-update-apart-from-sandboxes?
+  "Whether the current user may apply `changes` to `snippet` as far as every rule but sandboxing goes."
   [snippet changes]
   (and (or (mi/can-write? snippet)
            (unsynced-change? snippet changes))
-       (snippet.perms/can-update? snippet changes)
+       (snippet.perms/can-update? snippet changes)))
+
+(defmethod mi/can-update? :model/NativeQuerySnippet
+  [snippet changes]
+  (and (can-update-apart-from-sandboxes? snippet changes)
        (sandboxes-allow-snippet-update? snippet changes)))
+
+(defmethod mi/can-update-all? :model/NativeQuerySnippet
+  [_model snippets changes]
+  (and (every? #(can-update-apart-from-sandboxes? % changes) snippets)
+       (sandboxes-allow-snippets-update? snippets changes)))
 
 ;;; ---------------------------------------------------- Serialization ----------------------------------------------------
 
