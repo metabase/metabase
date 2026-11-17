@@ -1287,10 +1287,11 @@
   order.
 
   Options: `:batch-error`, thrown by `executeBatch`; `:real-transaction?`, to run the real `jdbc/db-transaction*` on
-  the fake connection; `:rollback-error`, thrown by that connection's `rollback`."
+  the fake connection; `:commit-error`, thrown by that connection's `commit`; `:rollback-error`, thrown by that
+  connection's `rollback`."
   ([answer f]
    (run-with-fake-jdbc answer f {}))
-  ([answer f {:keys [batch-error real-transaction? rollback-error]}]
+  ([answer f {:keys [batch-error real-transaction? commit-error rollback-error]}]
    (let [log        (atom [])
          autocommit (atom true)
          stmt       (reify java.sql.Statement
@@ -1312,7 +1313,8 @@
                       (setHoldability [_ _])
                       (isReadOnly [_] false)
                       (setReadOnly [_ _])
-                      (commit [_])
+                      (commit [_]
+                        (when commit-error (throw commit-error)))
                       (rollback [_]
                         (swap! log conj [:rollback])
                         (when rollback-error (throw rollback-error)))
@@ -1674,3 +1676,27 @@
                  (map ex-message (.getSuppressed ^Throwable error)))))
         (testing "and the connection discarded, not returned to the pool"
           (is (some #{[:discard]} log)))))))
+
+(deftest workspace-init-connection-error-during-checks-test
+  (testing "a connection error during the checks, before any change, is marked so that the caller does not tear down"
+    (let [{:keys [log error]} (run-with-fake-jdbc
+                               (fn [sql]
+                                 (if (str/includes? sql "FROM pg_namespace WHERE")
+                                   (throw (java.sql.SQLException. "An I/O error occurred while sending to the backend." "08006"))
+                                   ((answer-with {}) sql)))
+                               #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace))]
+      (is (= "An I/O error occurred while sending to the backend." (ex-message error)))
+      (is (=? {:workspace/cleanup? false} (ex-data error)))
+      (is (= ["SET LOCAL search_path TO pg_catalog"] (executed log))))))
+
+(deftest workspace-init-connection-error-at-commit-test
+  (testing "a connection error at COMMIT is not marked: the transaction may have committed, so the caller must tear down"
+    (let [commit-error        (java.sql.SQLException. "An I/O error occurred while sending to the backend." "08006")
+          {:keys [log error]} (run-with-fake-jdbc
+                               (answer-with {})
+                               #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace)
+                               {:real-transaction? true
+                                :commit-error      commit-error})]
+      (is (some #{"CREATE SCHEMA \"mb__isolation_ws_1\""} (executed log)))
+      (is (= commit-error error))
+      (is (not (contains? (ex-data error) :workspace/cleanup?))))))
