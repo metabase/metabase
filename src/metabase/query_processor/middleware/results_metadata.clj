@@ -12,6 +12,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.row-restricted-metadata :as row-restricted-metadata]
@@ -63,6 +64,12 @@
                :else m))]
      (mapv standardize-metadata metadata))))
 
+(defenterprise sandboxes-allow-result-metadata-write?
+  "Whether sandboxing lets the current user store result metadata for the Card with `card-id`, which OSS always does."
+  metabase-enterprise.sandbox.models.sandbox
+  [_card-id]
+  true)
+
 (mu/defn- record-metadata!
   [{{:keys [card-id]} :info, :as query} :- ::lib.schema/query
    metadata                             :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
@@ -88,6 +95,7 @@
                  ;; A row-restricted run (sandbox, impersonation, DB routing) returns metadata without fingerprints.
                  ;; Persisting it would erase the whole-table fingerprints an unrestricted run stored for every reader.
                  (not (row-restricted-metadata/row-restricted? query))
+                 (sandboxes-allow-result-metadata-write? card-id)
                  ;; Only update changed metadata; a non-default parameterized run writes only on
                  ;; parameter-independent column changes, not fingerprint drift (#83734, see also #72007).
                  (let [parameter-independent? (boolean (:qp/non-default-parameterized? query))]

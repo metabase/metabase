@@ -284,7 +284,9 @@
                       {:kind :dashboard :id dashboard-id}
                       (tools/with-entity {:kind :dashboard :id dashboard-id}
                         (api/read-check :model/Dashboard dashboard-id)))]
-    (check-writable! {:kind :dashboard :id dashboard-id} #(api/write-check dashboard))
+    (check-writable! {:kind :dashboard :id dashboard-id}
+                     #(do (api/write-check dashboard)
+                          (api/create-check :model/Card {:collection_id (:collection_id dashboard)})))
     (let [card (queries/create-card!
                 {:name                   name
                  :description            description
@@ -306,7 +308,9 @@
                      {:kind :document :id document-id}
                      (tools/with-entity {:kind :document :id document-id}
                        (documents/get-document document-id :log-view? false)))]
-    (check-writable! {:kind :document :id document-id} #(api/write-check document))
+    (check-writable! {:kind :document :id document-id}
+                     #(do (api/write-check document)
+                          (api/create-check :model/Card {:collection_id (:collection_id document)})))
     (let [card (queries/create-card!
                 {:name                   name
                  :description            description

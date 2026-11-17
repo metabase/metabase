@@ -173,7 +173,7 @@
       :table         (api/read-check :model/Database (queries-rest.db/table-database-id model-id))
       :using_model   (api/read-check :model/Card model-id)
       :using_segment (api/read-check :model/Database (queries-rest.db/segment-database-id model-id))))
-  (let [cards          (filterv mi/can-read? (t2/hydrate (cards-for-filter-option f model-id) :can_read))
+  (let [cards          (mi/readable (cards-for-filter-option f model-id))
         last-edit-info (:card (revisions/fetch-last-edited-info {:card-ids (map :id cards)}))]
     (into []
           (map (fn [{:keys [id] :as card}]
@@ -360,7 +360,7 @@
                          ;; compatible + do not have permissions to read
                          ;; this is just a heuristic, but it should be good enough
                          (when page-size (+ 10 page-size)))
-        compatible-cards (->> (filterv mi/can-read? (t2/hydrate matching-cards :can_read))
+        compatible-cards (->> (mi/readable matching-cards)
                               (filter #(or
                                         ;; columns name on native query are not match with the column name in viz-settings. why??
                                         ;; so we can't use series-are-compatible? to filter out incompatible native cards.
@@ -497,11 +497,11 @@
     ;; the table nor its ids, while the generic run-permissions error carries the query (and its
     ;; :source-table) in ex-data. Reversing these leaks that through the parameter path.
     (check-parameter-permissions (:parameters card) query)
-    ;; The full create stack (can-be-saved, run-permissions, collection create-check, cycle
-    ;; detection) lives in `queries` so MCP's question_write runs the identical checks.
-    (queries/check-allowed-to-create-card! card card-type)
-    (let [created-card (queries/with-copy-source-card source-card
-                         (queries/create-card! card @api/*current-user*))]
+    ;; The full create stack (run-permissions, create-check) lives in `queries` so MCP's question_write runs the
+    ;; identical checks.
+    (queries/with-copy-source-card source-card
+      (queries/check-allowed-to-create-card! card card-type))
+    (let [created-card (queries/create-card! card @api/*current-user*)]
       (when (and (some? (:result_metadata card))
                  (= (name (:type created-card)) "question"))
         (events/publish-event! :event/card-create-with-result-metadata
@@ -522,9 +522,9 @@
   (let [orig-card (api/read-check :model/Card id)
         new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
-    (api/create-check :model/Card new-card)
-    (-> (queries/with-copy-source-card orig-card
-          (queries/create-card! new-card @api/*current-user*))
+    (queries/with-copy-source-card orig-card
+      (api/create-check :model/Card new-card))
+    (-> (queries/create-card! new-card @api/*current-user*)
         hydrate-card-details
         (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 
@@ -574,13 +574,11 @@
     (queries/check-card-can-be-saved! query card-type)
     (check-parameter-permissions (:parameters card-updates)
                                  (or query (queries-rest.db/card-query id)))
-    (when-some [query (:dataset_query card-updates)]
-      (queries/check-no-save-cycle! id query))
     (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
                                              [:moderation_reviews :moderator_details])
           card-updates           (maybe-populate-collection-id
                                   card-before-update
-                                  (api/updates-with-archived-directly card-before-update card-updates))
+                                  (api/updates-without-collection-when-archiving card-before-update card-updates))
           is-model-after-update? (if (nil? card-type)
                                    (queries/model? card-before-update)
                                    (queries/model? card-updates))]
@@ -594,11 +592,6 @@
                                                  :entity-id         (or (:entity_id card-updates)
                                                                         (:entity_id card-before-update))})
             card-updates                       (merge card-updates
-                                                      (when (and (some? card-type)
-                                                                 is-model-after-update?
-                                                                 ;; leave display unchanged if explicitly set to "list"
-                                                                 (not (= :list (keyword (get card-updates :display)))))
-                                                        {:display :table})
                                                       (when (and
                                                              (api/column-will-change? (:dashboard_id card-before-update)
                                                                                       (get card-updates :dashboard_id ::api/not-provided))
@@ -621,7 +614,7 @@
         ;; reflected synchronously.
         ;; An alternate solution would be to have first class APIs for these views, that don't rely on an
         ;; eventually consistent search index.
-        (when (:archived_directly card-updates)
+        (when (:archived card-updates)
           ;; For now, we hard-code all the possible search-model types, and queue them all as this has no extra overhead.
           ;; Ideally this would be DRY with the actual specification some way, but since this is a stop-gap solution, we
           ;; decided not to complicate the solution further to accomplish this.
@@ -671,6 +664,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [card    (api/write-check :model/Card id)
+        _       (api/check-403 (queries/can-delete? card))
         ;; the database deletes the card's actions through the foreign key, with no events of their own
         actions (queries-rest.db/actions-for-model id)]
     (queries-rest.db/delete-card! id)
@@ -723,8 +717,10 @@
           ;; whole, as the update event's previous object: a listener reads a card's metadata from it
           before (when (seq cards) (queries-rest.db/cards-by-id (map u/the-id cards)))]
       ;; ...check that we have write permissions for it...
-      (doseq [card (t2/hydrate cards :can_write)]
-        (api/write-check card))
+      (doseq [card (t2/hydrate (vec cards) :can_write)]
+        (when-not (mi/can-update? card {:collection_id new-collection-id-or-nil})
+          (events/publish-event! :event/update-permission-failure {:user-id api/*current-user-id* :object card})
+          (api/check-403 false)))
       ;; ...and check that we have write permissions for the old collections, root included
       (doseq [old-collection-id (set (map :collection_id cards))]
         (write-check-collection-or-root old-collection-id))
@@ -871,22 +867,24 @@
   be enabled."
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
-  (api/check-superuser)
-  (public-sharing.validation/check-public-sharing-enabled)
-  (api/check-not-archived (api/read-check :model/Card card-id))
-  (let [{existing-public-uuid :public_uuid} (queries-rest.db/card-public-uuid-columns card-id)
-        uuid (or existing-public-uuid
-                 (u/prog1 (str (random-uuid))
-                   ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
-                   (t2/with-transaction [_conn]
-                     (queries-rest.db/update-card! card-id
-                                                   {:public_uuid       <>
-                                                    :made_public_by_id api/*current-user-id*})
-                     (events/publish-event! :event/card-public-link-created
-                                            {:object    (queries-rest.db/card card-id)
-                                             :object-id card-id
-                                             :user-id   api/*current-user-id*}))))]
-    {:uuid uuid}))
+  (let [new-uuid (str (random-uuid))
+        card     (api/read-check :model/Card card-id)]
+    (api/update-check card {:public_uuid new-uuid, :made_public_by_id api/*current-user-id*})
+    (public-sharing.validation/check-public-sharing-enabled)
+    (api/check-not-archived card)
+    (let [{existing-public-uuid :public_uuid} (queries-rest.db/card-public-uuid-columns card-id)
+          uuid (or existing-public-uuid
+                   (u/prog1 new-uuid
+                     ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
+                     (t2/with-transaction [_conn]
+                       (queries-rest.db/update-card! card-id
+                                                     {:public_uuid       <>
+                                                      :made_public_by_id api/*current-user-id*})
+                       (events/publish-event! :event/card-public-link-created
+                                              {:object    (queries-rest.db/card card-id)
+                                               :object-id card-id
+                                               :user-id   api/*current-user-id*}))))]
+      {:uuid uuid})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -895,7 +893,7 @@
   "Delete the publicly-accessible link to this Card."
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
-  (perms/check-has-application-permission :setting)
+  (api/update-check (api/check-404 (queries-rest.db/card card-id)) {:public_uuid nil, :made_public_by_id nil})
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil], :archived false)
   (t2/with-transaction [_conn]

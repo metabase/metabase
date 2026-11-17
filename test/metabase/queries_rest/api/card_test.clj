@@ -482,10 +482,7 @@
                  (select-keys card [:name]))))))))
 
 (deftest filter-by-using-model-segment-metric
-  (mt/with-temp [:model/Database {database-id :id} {}
-                 :model/Table {table-id :id} {:db_id database-id}
-                 :model/Segment {segment-id :id} {:table_id table-id
-                                                  :definition {:filter 100}} ; just a random filter
+  (mt/with-temp [:model/Segment {segment-id :id} {}
                  :model/Card {model-id :id :as model} {:name "Model"
                                                        :type :model
                                                        :dataset_query {:database (mt/id)
@@ -1630,8 +1627,9 @@
                                                              :filter   [:not-null $password]
                                                              :order-by [[:asc $id]]
                                                              :limit    1})}
-                   :model/Segment segment {:table_id   (mt/id :users)
-                                           :definition (mt/mbql-query users {:filter [:starts-with $password "4"]})}]
+                   :model/Segment segment {:definition (let [mp (mt/metadata-provider)]
+                                                         (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                                                             (lib/filter (lib/starts-with (lib.metadata/field mp (mt/id :users :password)) "4"))))}]
       (testing "running the saved card"
         (is (= [[1 "4be68cda-6fd5-4ba7-944e-2b475600bda5"]]
                (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (:id card)))))))
@@ -3527,6 +3525,28 @@
                                                                :model "card" :archived "false")))
                   (name->position (:data (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-2)
                                                                :model "card" :archived "false"))))))))
+
+(deftest bulk-move-hydrates-card-permissions-once-test
+  (testing "POST /api/card/collections reads the write permissions of all the cards together"
+    (let [hydrations (fn [card-count]
+                       (mt/with-temp [:model/Collection {from-id :id} {}
+                                      :model/Collection {to-id :id}   {}]
+                         (let [card-ids (mapv :id (t2/insert-returning-instances!
+                                                   :model/Card
+                                                   (for [i (range card-count)]
+                                                     (assoc (mt/with-temp-defaults :model/Card)
+                                                            :collection_id from-id
+                                                            :name (str "bulk move " i)))))
+                               calls    (atom 0)
+                               original (mt/original-fn #'collection/content-writable-collection-ids)]
+                           (mt/with-dynamic-fn-redefs [collection/content-writable-collection-ids
+                                                       (fn [& args]
+                                                         (swap! calls inc)
+                                                         (apply original args))]
+                             (mt/user-http-request :rasta :post 200 "card/collections"
+                                                   {:collection_id to-id, :card_ids card-ids}))
+                           @calls)))]
+      (is (= 1 (hydrations 2) (hydrations 8))))))
 
 (deftest moving-a-card-without-a-collection-position-keeps-the-collection-position-nil
   (mt/with-temp [:model/Collection  {coll-id-1 :id}      {:name "Old Collection"}

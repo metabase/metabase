@@ -309,18 +309,6 @@
      (message/msg [(str "Pass either collection_id or dashboard_id, not both — a "
                         "dashboard question's collection is the dashboard's collection.")]))))
 
-(defn- normalize-model-display
-  "Force `display` to table when a patch retypes a card to a model, as `PUT /api/card/:id` does. A
-   model's display is not inert: the query processor runs the pivot QP when it is `:pivot`, and a
-   chart display also drives subscription rendering, dashcard sizing, and the search display filter.
-   An explicit `list` is left alone, as REST leaves it: the list view is one of the two displays the
-   model editor offers, so it is a real choice rather than a leftover chart display."
-  [card-updates]
-  (cond-> card-updates
-    (and (= :model (:type card-updates))
-         (not= :list (:display card-updates)))
-    (assoc :display :table)))
-
 (defn- resolve-dashboard!
   "Resolve `dashboard_id` to `{:dashboard-id id :collection-id (its collection_id)}`, or nil when
    `dashboard_id` is absent. Read-checked, so a dashboard that doesn't exist and one the caller
@@ -346,7 +334,10 @@
         collection-id (if dashboard
                         (:collection-id dashboard)
                         (v2.resolve/resolve-collection-id-or-personal (:collection_id args)))]
-    (queries/check-allowed-to-create-card! {:dataset_query dataset-query :collection_id collection-id}
+    (queries/check-allowed-to-create-card! {:dataset_query          dataset-query
+                                            :collection_id          collection-id
+                                            :display                (keyword (or display "table"))
+                                            :visualization_settings (or visualization_settings {})}
                                            (keyword (or card_type "question")))
     (let [result-metadata (when (seq column_metadata)
                             (resolve-result-metadata dataset-query
@@ -410,7 +401,7 @@
    `archived`; moving into a dashboard via `dashboard_id`, which forces the card's collection to
    the dashboard's — the model layer enforces the dashboard-question move rules), then run the
    shared REST update check stack ([[metabase.queries.core/check-allowed-to-update-card!]] plus the
-   save-cycle guard) before persisting. Returns [[update-card-response]].
+   metric validity guard) before persisting. Returns [[update-card-response]].
 
    Moving a card OUT of a dashboard isn't expressible here: a `nil` `dashboard_id` is
    indistinguishable from an omitted one once JSON-RPC args are stripped of nulls."
@@ -446,15 +437,12 @@
                        (contains? args :card_type)              (assoc :type (keyword card_type))
                        (contains? args :archived)               (assoc :archived (boolean archived))
                        new-query                                (assoc :dataset_query new-query))
-        card-updates (api/updates-with-archived-directly card-before raw-updates)
-        card-updates (force-restore-on-dashboard-move card-before card-updates)
-        card-updates (normalize-model-display card-updates)]
+        card-updates (api/updates-without-collection-when-archiving card-before raw-updates)
+        card-updates (force-restore-on-dashboard-move card-before card-updates)]
     ;; the type the card will have once written: the patch's when the caller is converting, else the
     ;; stored one. Never the raw request, which is nil whenever `card_type` is omitted.
     (queries/check-card-can-be-saved! (:dataset_query card-updates)
                                       (or (:type card-updates) (:type card-before)))
-    (when-some [query (:dataset_query card-updates)]
-      (queries/check-no-save-cycle! card-id query))
     (queries/check-allowed-to-update-card! card-before card-updates)
     ;; Result-metadata inference runs the query's preprocess over whatever tables and cards the query
     ;; names, and its teaching errors name the columns it found — so it must come AFTER a permission

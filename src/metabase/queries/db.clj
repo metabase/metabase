@@ -270,6 +270,16 @@
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (t2/select :model/Dashboard :id [:in dashboard-ids]))
 
+(mu/defn dashboard-archived?
+  "Whether the Dashboard with `dashboard-id` is archived."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/exists? :model/Dashboard :id dashboard-id :archived true))
+
+(mu/defn document-archived?
+  "Whether the Document with `document-id` is archived."
+  [document-id :- ms/PositiveInt]
+  (t2/exists? :model/Document :id document-id :archived true))
+
 (mu/defn dashboard-collection-id
   "The `:collection_id` of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]

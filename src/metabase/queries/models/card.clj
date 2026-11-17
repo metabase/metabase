@@ -219,10 +219,6 @@
                              (and (nil? (:exploration_id document))
                                   (mi/can-write? (t2/hydrate document :can_write)))))))))))))
 
-(defmethod mi/can-create? :model/Card
-  [_model {collection-id :collection_id}]
-  (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
-
 (def card-read-check-columns
   "The columns the `:can_read` hydration reads from a Card."
   [:id :collection_id :document_id])
@@ -324,8 +320,7 @@
   (mi/instances-with-hydrated-data
    cards k
    #(group-by :source_card_id
-              (->> (t2/hydrate (queries.db/metric-cards-for-source-cards (map :id cards)) :can_read)
-                   (filter mi/can-read?)))
+              (mi/readable (queries.db/metric-cards-for-source-cards (map :id cards))))
    :id))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
@@ -493,14 +488,23 @@
       (collection/check-collection-namespace :model/Card (:collection_id card)))))
 
 (defenterprise pre-update-check-sandbox-constraints
-  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  "Throws when a change of the result metadata of a Card stops it matching the Tables of its sandboxes, which OSS never
+  does."
   metabase-enterprise.sandbox.models.sandbox
   [_ _])
 
-(defenterprise pre-delete-check-sandbox-constraints
-  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+(defenterprise sandboxes-allow-card-delete?
+  "Whether sandboxing lets the current user delete `card`: only an admin may delete one a sandbox is built out of. OSS
+  always does."
   metabase-enterprise.sandbox.models.sandbox
-  [_])
+  [_card]
+  true)
+
+(defn can-delete?
+  "Whether the current user may hard delete `card`: they write it and sandboxing lets them."
+  [card]
+  (and (mi/can-write? (t2/hydrate card :can_write))
+       (sandboxes-allow-card-delete? card)))
 
 (defn- value-field-gone?
   [metadata-columns value-field]
@@ -916,34 +920,43 @@
               (filter selected-ids)
               (models.db/timeline-ids-of-events unhidden-ids))))))
 
-(defn- check-id-setting!
+(def ^:private timeline-visibility-keys
+  "The `visualization_settings` keys that select the timelines and timeline events a Card shows."
+  [:timeline.selected_timeline_ids :timeline.excluded_timeline_event_ids :timeline_events.enabled])
+
+(defn- check-id-setting
+  "Throws a 400 with `message` unless the value under `k` in `visibility`, when there is one, is a sequence of
+  positive integers."
   [visibility k message]
   (when-some [ids (get visibility k)]
     (api/check-400 (and (sequential? ids) (every? pos-int? ids)) message)))
 
-(defn- check-timeline-visibility-permissions!
+(defn- check-timeline-settings
+  "Throws a 400 unless the timeline ids in the `visualization_settings` of `card` are sequences of positive integers."
+  [card]
+  (let [visibility (select-keys (:visualization_settings card) timeline-visibility-keys)]
+    (check-id-setting visibility :timeline.excluded_timeline_event_ids
+                      (tru "Excluded timeline event IDs must be a sequence of positive integers."))
+    (check-id-setting visibility :timeline.selected_timeline_ids
+                      (tru "Selected timeline IDs must be a sequence of positive integers."))))
+
+(defn- timeline-selection-readable?
+  "Whether the current user can read every timeline `card` newly shows compared to `previous-card`, which is nil for a
+  new Card."
   [card previous-card]
-  ;; No bound user means an internal write (serdes import, migrations, tasks) rather than a request.
-  (when api/*current-user-id*
-    (let [visibility-keys     [:timeline.selected_timeline_ids :timeline.excluded_timeline_event_ids
-                               :timeline_events.enabled]
-          visibility          (select-keys (:visualization_settings card) visibility-keys)
-          previous-visibility (select-keys (:visualization_settings previous-card) visibility-keys)
-          draws-events?       (fn [visibility display]
-                                (and (events-enabled? visibility) (timeline-events-supported-display? display)))
-          reveals-all?        (and (draws-events? visibility (:display card))
-                                   (not (draws-events? previous-visibility (:display previous-card))))]
-      (when (or reveals-all? (not= visibility previous-visibility))
-        (check-id-setting! visibility :timeline.excluded_timeline_event_ids
-                           (tru "Excluded timeline event IDs must be a sequence of positive integers."))
-        (when (check-id-setting! visibility :timeline.selected_timeline_ids
-                                 (tru "Selected timeline IDs must be a sequence of positive integers."))
-          ;; Timelines the card already showed stay visible whatever the user saves, so only the difference is
-          ;; checked. Deleted timelines are skipped when rendering, so a stale id must not block saving the card.
-          (doseq [timeline (t2/hydrate (queries.db/timelines
-                                        (newly-revealed-timeline-ids visibility previous-visibility reveals-all?))
-                                       :can_read)]
-            (api/read-check timeline)))))))
+  (let [visibility          (select-keys (:visualization_settings card) timeline-visibility-keys)
+        previous-visibility (select-keys (:visualization_settings previous-card) timeline-visibility-keys)
+        draws-events?       (fn [visibility display]
+                              (and (events-enabled? visibility) (timeline-events-supported-display? display)))
+        reveals-all?        (and (draws-events? visibility (:display card))
+                                 (not (draws-events? previous-visibility (:display previous-card))))]
+    (or (not (or reveals-all? (not= visibility previous-visibility)))
+        ;; Timelines the card already showed stay visible whatever the user saves, so only the difference is
+        ;; checked. Deleted timelines are skipped when rendering, so a stale id must not block saving the card.
+        (every? mi/can-read?
+                (t2/hydrate (queries.db/timelines
+                             (newly-revealed-timeline-ids visibility previous-visibility reveals-all?))
+                            :can_read)))))
 
 (defn card-exposed-timeline-ids
   "The ids of the timelines whose events `card` shows on a dashboard."
@@ -961,6 +974,14 @@
     (or (contains? settings :visualization)
         (some? (:action_id dashcard))
         (some? (:virtual_card settings)))))
+
+(defn- shared-dashboard-timelines-readable?
+  "Whether the current user reads the timelines of `cards` that a public or embedded `dashboard` shows to anyone."
+  [dashboard cards]
+  (or (not (and api/*current-user-id*
+                (or (:public_uuid dashboard) (:enable_embedding dashboard))))
+      (every? mi/can-read?
+              (t2/hydrate (queries.db/timelines (into #{} (mapcat card-exposed-timeline-ids) cards)) :can_read))))
 
 (defn check-shared-dashboard-timeline-permissions!
   "Placing `cards` on `dashboard` shows their selected timeline events to anyone who opens it when the dashboard is
@@ -988,19 +1009,137 @@
         new-card-ids      (into #{} (comp exposed-card-ids (remove existing-card-ids)) new-dashcards)]
     (check-shared-dashboard-timeline-permissions-for-card-ids! dashboard new-card-ids)))
 
-;; before-insert can't take arguments, so the copy source is passed through a binding
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *copy-source-card*
-  "The Card a new Card is being copied from, if any. Its timeline visibility settings count as the previous state, so
-  copying a Card does not require read access to the timelines it already selects."
+  "The Card a new Card is being copied from, if any, bound because the create check takes only the new Card, so that
+  the timelines the source already selects need no read access."
   nil)
 
 (defmacro with-copy-source-card
-  "Runs `body`, treating a Card inserted within it as a copy of `source-card`: an inherited timeline selection does
+  "Runs `body`, treating a Card created within it as a copy of `source-card`: an inherited timeline selection does
   not require read access to those timelines. `source-card` must be a Card the current user has already passed a
-  read check on, and `body` should perform only the single copy insert."
+  read check on, and `body` should perform only the create permission check and the single copy insert."
   [source-card & body]
   `(binding [*copy-source-card* ~source-card] ~@body))
+
+(defenterprise sandboxes-allow-card-update?
+  "Whether sandboxing lets the current user apply `changes`, the guarded columns of a Card that really change, to
+  `card`, which OSS always does."
+  metabase-enterprise.sandbox.models.sandbox
+  [_card _changes]
+  true)
+
+(defn- changed?
+  "Return whether there were any changes in the objects. ONLY keys in `after` are compared. If any are missing from
+  `before` an exception will be thrown.
+
+  returns false, `description` has not changed:
+  (changed? {:collection_id 1 :description \"foo\"}
+            {:description \"foo\"})
+
+  returns true, `description` has changed:
+  (changed? {:collection_id 1 :description \"foo\"}
+            {:description \"diff\"})
+
+  throws an exception, `before` is missing keys from `after`:
+  (changed? {:collection_id 1}
+            {:collection_id 1 :description \"foobar\"})
+
+  For keys that will be transformed before we insert them in the database, automatically runs
+  `(out-transform (in-transform ...))` before comparing to make sure we are comparing the canonical form."
+  [card-before updates]
+  ;; normalize the query before comparison
+  (let [transforms (t2/transforms :model/Card)
+        after (->> updates
+                   (map (fn [[k v]]
+                          (let [tvi (get-in transforms [k :in] identity)
+                                tvo (get-in transforms [k :out] identity)
+                                tv (tvo (tvi v))]
+                            [k tv])))
+                   (into {}))
+        before  (select-keys card-before (keys after))]
+    (when-not (set/subset? (set (keys after))
+                           (set (keys before)))
+      (throw (ex-info "`before-card` card is missing keys from `updates`"
+                      {:missing-keys (apply disj
+                                            (set (keys after))
+                                            (set (keys before)))})))
+    (boolean (some (fn [k] (api/column-will-change? (get before k) (get after k))) (keys after)))))
+
+(def ^:private sandbox-guarded-columns
+  "The columns of a Card only an admin may change while a sandbox depends on the Card."
+  [:dataset_query :archived :result_metadata])
+
+(def ^:private embedding-columns
+  "The columns that make a Card embedded, which only an admin may change."
+  [:enable_embedding :embedding_type :embedding_params])
+
+(def ^:private public-link-columns
+  "The columns that make a Card publicly shared."
+  #{:public_uuid :made_public_by_id})
+
+(defn- changing-columns
+  "The entries of `changes` for `columns` whose value differs from the one `card` has."
+  [card changes columns]
+  (into {} (filter (fn [[k v]] (changed? card {k v}))) (select-keys changes columns)))
+
+(defn- changes-embedding?
+  "Whether `changes` change the embedding of `card`."
+  [card changes]
+  (boolean (some #(api/column-will-change? (get card %) (get changes % ::api/not-provided)) embedding-columns)))
+
+(defn- can-change-embedding?
+  "Whether the current user may do what `changes` do to the embedding of `card`: only a superuser changes it."
+  [card changes]
+  (or (not (changes-embedding? card changes))
+      (boolean (mi/superuser?))))
+
+(defn- public-link-change
+  "Whether `changes` set, `:set`, or clear, `:clear`, the public link of `card`, and nil when they leave it."
+  [card changes]
+  (when (some #(api/column-will-change? (get card %) (get changes % ::api/not-provided)) public-link-columns)
+    (if (:public_uuid changes) :set :clear)))
+
+(defn- can-change-public-link?
+  "Whether the current user may do what `changes` do to the public link of `card`: a superuser sets it, and one with
+  the application permission to change settings clears it."
+  [card changes]
+  (case (public-link-change card changes)
+    :set   (boolean (mi/superuser?))
+    :clear (boolean (or (mi/superuser?) (perms/current-user-has-application-permissions? :setting)))
+    true))
+
+(defn- changes-only-public-link?
+  "Whether `changes` change the public link of `card` and nothing else, the one change that needs no write access to
+  it: a settings manager may remove the link of a Card they cannot write."
+  [card changes]
+  (boolean (and (public-link-change card changes)
+                (every? public-link-columns (keys changes)))))
+
+(defmethod mi/can-create? :model/Card
+  [_model {collection-id :collection_id :as card}]
+  (and (collection/can-write-collection-or-root? collection-id {:root-namespace nil})
+       (timeline-selection-readable? card *copy-source-card*)))
+
+(defn- dashboard-move-permitted?
+  "Whether the current user may do what `changes` do to the Dashboard of `card`: write the Dashboards it appears in,
+  and read the timelines it shows on the Dashboard it moves into when that is shared."
+  [card changes]
+  (or (not (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided)))
+      (and (every? mi/can-write? (t2/hydrate (queries.db/card-dashboards card) :can_write))
+           (or (nil? (:dashboard_id changes))
+               (shared-dashboard-timelines-readable? (queries.db/dashboard (:dashboard_id changes))
+                                                     [(merge card changes)])))))
+
+(defmethod mi/can-update? :model/Card
+  [card changes]
+  (and (or (changes-only-public-link? card changes) (mi/can-write? card))
+       (can-change-public-link? card changes)
+       (collection/can-move? card changes)
+       (dashboard-move-permitted? card changes)
+       (can-change-embedding? card changes)
+       (timeline-selection-readable? (merge card changes) card)
+       (sandboxes-allow-card-update? card (changing-columns card changes sandbox-guarded-columns))))
 
 (defn- data-app-card-error
   "A 400 error for a card in a data app's collection, with `message`."
@@ -1050,9 +1189,66 @@
   #{:collection_id :dashboard_id :document_id :type :archived :public_uuid :enable_embedding :embedding_params
     :embedding_type :dataset_query :parameters})
 
+(defn- card-query
+  "The query of `card` with the metadata provider of its Database."
+  [{:keys [dataset_query]}]
+  (lib/query (lib-be/application-database-metadata-provider (:database dataset_query)) dataset_query))
+
+(defn- check-no-save-cycle
+  "Throws a 400 when the query of `card` depends on `card` itself through the Cards it reads."
+  [{:keys [id dataset_query] :as card}]
+  (when (and id (seq dataset_query))
+    (try
+      (lib/check-card-overwrite id (card-query card))
+      (catch clojure.lang.ExceptionInfo e
+        (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))))
+
+(defn- derive-model-display
+  "`card` with the `:table` display a model has, unless it is a `:list`."
+  [card]
+  (cond-> card
+    (and (model? card) (not= :list (keyword (:display card)))) (assoc :display :table)))
+
+(defn- delete-alerts-if-changed
+  "Deletes the alerts of `card`, which `changes` turn from `original`, that its new display, goal or breakouts no
+  longer fit."
+  [card original changes]
+  (when (some #(contains? changes %) [:display :visualization_settings :dataset_query])
+    (pulse/delete-alerts-if-card-changed! :old-card original :new-card card)))
+
+(defn- check-not-in-archived-container
+  "Throws a 400 when `card`, which is not archived, is in an archived Collection, Dashboard or Document."
+  [{:keys [archived collection_id dashboard_id document_id]}]
+  (collection/check-collection-not-archived archived collection_id)
+  (when (and (not archived)
+             (or (and dashboard_id (queries.db/dashboard-archived? dashboard_id))
+                 (and document_id (queries.db/document-archived? document_id))))
+    (throw (ex-info (tru "You cannot put an unarchived Card in an archived Dashboard or Document.")
+                    {:status-code 400}))))
+
+(defn- card-parent-archived?
+  "Whether the Collection, Dashboard or Document that `card` is in is archived."
+  [{:keys [collection_id dashboard_id document_id]}]
+  (boolean (or (collection/archived? collection_id)
+               (and dashboard_id (queries.db/dashboard-archived? dashboard_id))
+               (and document_id (queries.db/document-archived? document_id)))))
+
+(defn- delete-notifications-of-card
+  "Deletes the alerts of the Card with `card-id`, which are found before any is deleted."
+  [card-id]
+  (when-let [notification-ids (seq (queries.db/card-notification-ids card-id))]
+    (queries.db/delete-notifications! notification-ids)))
+
+(defn- delete-alerts-if-archived-directly
+  "Deletes the alerts of `card`, which `changes` archive on its own: the Card hooks leave the alerts of a Card that
+  follows the archive of its Collection, Dashboard or Document."
+  [card changes]
+  (when (and (:archived changes) (:archived_directly card))
+    (delete-notifications-of-card (:id card))))
+
 (t2/define-before-insert :model/Card
   [card]
-  (check-timeline-visibility-permissions! card *copy-source-card*)
+  (check-timeline-settings card)
   (u/prog1
     (-> card
         (assoc :metabase_version config/mb-version-string
@@ -1063,11 +1259,13 @@
         (u/assoc-default :entity_id (u/generate-nano-id))
         (u/assoc-default :type :question)
         card.metadata/populate-result-metadata
+        derive-model-display
         pre-insert
         populate-query-fields
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix)
     (collection/check-allowed-content (:type <>) (:collection_id <>))
+    (check-not-in-archived-container <>)
     (check-data-app-card <>)))
 
 (t2/define-after-insert :model/Card
@@ -1116,6 +1314,8 @@
     (assoc card :metabot_conversation_id nil :metabot_chart_id nil)
     card))
 
+(mi/define-update-in-transaction :model/Card)
+
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
   (let [changes  (some-> card t2/changes normalize-card)
@@ -1123,14 +1323,21 @@
         ;; normalization preserving the instance's original.
         original (t2/original card)
         card     (normalize-card card)]
-    (when (or (contains? changes :visualization_settings) (contains? changes :display))
-      (check-timeline-visibility-permissions! card original))
-    (collection/check-allowed-content (:type card) (:collection_id changes))
+    (when (contains? changes :visualization_settings)
+      (check-timeline-settings card))
+    (when (or (contains? changes :collection_id) (contains? changes :type))
+      (collection/check-allowed-content (:type card) (:collection_id card)))
+    (when (some #(contains? changes %) [:collection_id :dashboard_id :document_id])
+      (check-not-in-archived-container card))
     (-> card
+        (cond-> (contains? changes :archived) (assoc :archived_directly (mi/archived-directly card #(card-parent-archived? card))))
+        (doto (delete-alerts-if-archived-directly changes))
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
         (apply-dashboard-question-updates changes)
         (m/update-existing :dataset_query lib-be/normalize-query)
+        (cond-> (contains? changes :type) derive-model-display)
+        (cond-> (contains? changes :dataset_query) (doto check-no-save-cycle))
         (populate-result-metadata changes verified-result-metadata?)
         ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
         ;; Only allow it to nil out a stale table_id when the query itself is changing.
@@ -1138,6 +1345,7 @@
         (cond-> (some data-app-card-columns (keys changes)) (doto check-data-app-card))
         (clear-metabot-origin changes)
         (pre-update changes)
+        (doto (delete-alerts-if-changed original changes))
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))
 
@@ -1154,8 +1362,7 @@
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
-  [{:keys [id] :as card}]
-  (pre-delete-check-sandbox-constraints card)
+  [{:keys [id]}]
   ;; The `card_test.card_id` FK is ON DELETE CASCADE, but a cascade runs no hook, and the CardTest hook is what sets the
   ;; test id of the test's runs to null. A delete of cards that skips this hook leaves those runs' test id naming no
   ;; test.
@@ -1166,11 +1373,8 @@
   (queries.db/delete-parameter-cards-for-card! id)
   (queries.db/delete-card-moderation-reviews! id)
   (queries.db/delete-card-revisions! id)
-  ;; delete any card-type notifications for this card — must materialize IDs first because
-  ;; Notification's before-delete deletes the NotificationCard, which would make a subquery
-  ;; return empty by the time the actual DELETE executes.
-  (when-let [notification-ids (seq (queries.db/card-notification-ids id))]
-    (queries.db/delete-notifications! notification-ids)))
+  (cache/delete-target-configs! "question" [id])
+  (delete-notifications-of-card id))
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
   [_model & {:keys [table-alias]}]
@@ -1333,43 +1537,6 @@
   [card]
   (-> card :moderation_reviews first :status #{"verified"} boolean))
 
-(defn- changed?
-  "Return whether there were any changes in the objects. ONLY keys in `after` are compared. If any are missing from
-  `before` an exception will be thrown.
-
-  returns false, `description` has not changed:
-  (changed? {:collection_id 1 :description \"foo\"}
-            {:description \"foo\"})
-
-  returns true, `description` has changed:
-  (changed? {:collection_id 1 :description \"foo\"}
-            {:description \"diff\"})
-
-  throws an exception, `before` is missing keys from `after`:
-  (changed? {:collection_id 1}
-            {:collection_id 1 :description \"foobar\"})
-
-  For keys that will be transformed before we insert them in the database, automatically runs
-  `(out-transform (in-transform ...))` before comparing to make sure we are comparing the canonical form."
-  [card-before updates]
-  ;; normalize the query before comparison
-  (let [transforms (t2/transforms :model/Card)
-        after (->> updates
-                   (map (fn [[k v]]
-                          (let [tvi (get-in transforms [k :in] identity)
-                                tvo (get-in transforms [k :out] identity)
-                                tv (tvo (tvi v))]
-                            [k tv])))
-                   (into {}))
-        before  (select-keys card-before (keys after))]
-    (when-not (set/subset? (set (keys after))
-                           (set (keys before)))
-      (throw (ex-info "`before-card` card is missing keys from `updates`"
-                      {:missing-keys (apply disj
-                                            (set (keys after))
-                                            (set (keys before)))})))
-    (boolean (some (fn [k] (api/column-will-change? (get before k) (get after k))) (keys after)))))
-
 (def ^:private card-compare-keys
   "When comparing a card to possibly unverify, only consider these keys as changing something 'important' about the
   query."
@@ -1530,7 +1697,7 @@
     (let [updated-fields (u/select-keys-when card-updates
                                              ;; `collection_id` and `description` can be `nil` (in order to unset them).
                                              ;; Other values should only be modified if they're passed in as non-nil
-                                             :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id :embedding_type}
+                                             :present #{:collection_id :collection_position :description :cache_ttl :dashboard_id :document_id :embedding_type}
                                              :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                         :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                         :result_metadata :verified-result-metadata?})]
@@ -1572,22 +1739,24 @@
   an action event for each action of the card that the update deletes, archives, unarchives, or moves."
   [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
   ;; The card hooks delete, archive, or move a card's actions without events, so compare the actions before and after.
-  (let [actions-before (queries.db/actions-for-model (:id card-before-update))]
+  (let [actions-before (queries.db/actions-for-model (:id card-before-update))
+        notifications  (pulse/alerts-of-card-being-changed card-before-update card-updates)]
     (update-card-in-db! card-before-update card-updates actor delete-old-dashcards?)
     (when (seq actions-before)
       (doseq [[topic action] (changed-action-events actions-before (queries.db/actions-for-model (:id card-before-update)))]
-        (events/publish-event! topic {:object action :user-id api/*current-user-id*}))))
-  ;; Fetch the updated Card from the DB
-  (let [card (queries.db/card (:id card-before-update))]
-    ;;; TODO -- this should be triggered indirectly by `:event/card-update`
-    (pulse/delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor)
-    ;; skip publishing the event if it's just a change in its collection position
-    (when-not (= #{:collection_position}
-                 (set (keys card-updates)))
-      (events/publish-event! :event/card-update {:object card
-                                                 :previous-object card-before-update
-                                                 :user-id api/*current-user-id*}))
-    card))
+        (events/publish-event! topic {:object action :user-id api/*current-user-id*})))
+    ;; Fetch the updated Card from the DB
+    (let [card (queries.db/card (:id card-before-update))]
+      ;;; TODO -- this should be triggered indirectly by `:event/card-update`
+      (pulse/delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor
+                                      :notifications notifications)
+      ;; skip publishing the event if it's just a change in its collection position
+      (when-not (= #{:collection_position}
+                   (set (keys card-updates)))
+        (events/publish-event! :event/card-update {:object card
+                                                   :previous-object card-before-update
+                                                   :user-id api/*current-user-id*}))
+      card)))
 
 (defn sole-dashboard-id
   "Given a card, returns the dashboard_id of the *sole* dashboard it's in, or `nil` if it's not in exactly one dashboard."
@@ -1929,13 +2098,13 @@
                             metadata stored)))))
 
 (defn- with-model-metadata
-  "The load `item` of a Card that updates a model, without the exported overrides of its metadata when the local row
+  "The load `item` of a Card that writes a model, without the exported overrides of its metadata when the local row
   stores them, with the exported metadata of a native query, whose columns can't be inferred without running it, or
   with the overrides applied to freshly inferred metadata, as an update of its query would store them."
   [{:keys [row local] :as item}]
   (let [{query :dataset_query metadata :result_metadata card-type :type} row]
     (cond
-      (not (and local query (seq metadata) (= :model (keyword card-type)) (not-any? :id metadata)))
+      (not (and query (seq metadata) (= :model (keyword card-type)) (not-any? :id metadata)))
       item
 
       (overrides-stored? metadata (:result_metadata local))
