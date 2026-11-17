@@ -57,6 +57,17 @@ export function setupTimelineServer({
   // Same as above, for the collection update endpoint.
   const asCollectionFields = (body: unknown) => body as Partial<Collection>;
 
+  // The required keys of the backend's POST schemas
+  // (`metabase.timeline.api.timeline` and `metabase.timeline.api.timeline-event`)
+  const missingFields = (body: object, fields: string[]) => {
+    const values = new Map(Object.entries(body ?? {}));
+    return fields.filter((field) => values.get(field) == null);
+  };
+  const badRequest = (fields: string[]) => ({
+    status: 400,
+    body: { errors: Object.fromEntries(fields.map((f) => [f, "required"])) },
+  });
+
   const getParam = (url: string, name: string) =>
     new URL(url, "http://localhost").searchParams.get(name);
 
@@ -138,6 +149,10 @@ export function setupTimelineServer({
 
   fetchMock.post(/\/api\/timeline$/, (call) => {
     const body = asTimelineFields(log("POST", call.url, call.options.body));
+    const missing = missingFields(body, ["name"]);
+    if (missing.length > 0) {
+      return badRequest(missing);
+    }
     const timeline = createMockTimeline({
       ...body,
       id: nextId++,
@@ -187,6 +202,15 @@ export function setupTimelineServer({
 
   fetchMock.post(/\/api\/timeline-event$/, (call) => {
     const body = asEventFields(log("POST", call.url, call.options.body));
+    const missing = missingFields(body, [
+      "name",
+      "timestamp",
+      "timezone",
+      "timeline_id",
+    ]);
+    if (missing.length > 0) {
+      return badRequest(missing);
+    }
     const event = createMockTimelineEvent({
       ...body,
       id: nextId++,

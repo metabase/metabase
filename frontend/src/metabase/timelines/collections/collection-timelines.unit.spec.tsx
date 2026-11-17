@@ -4,6 +4,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { act, renderRoutes, screen, waitFor, within } from "__support__/ui";
 import { collectionApi } from "metabase/api";
+import { dayjs } from "metabase/dayjs";
 import { Outlet } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type {
@@ -130,8 +131,17 @@ async function setTime(time: string) {
   await userEvent.type(timeInput, time);
 }
 
+// New events are saved with the browser's time zone; a zone that is not the
+// test runner's own makes sure the form sends the guessed one.
+const BROWSER_TIMEZONE = "America/Toronto";
+
+beforeEach(() => {
+  jest.spyOn(dayjs.tz, "guess").mockReturnValue(BROWSER_TIMEZONE);
+});
+
 afterEach(() => {
   mockSettings();
+  jest.restoreAllMocks();
 });
 
 describe("collection timelines", () => {
@@ -175,6 +185,7 @@ describe("collection timelines", () => {
           path: "/api/timeline-event",
           body: expect.objectContaining({
             name: "RC1",
+            timezone: BROWSER_TIMEZONE,
             description: "*1.0-rc1* release",
             timestamp: "2026-10-20T00:00:00.000Z",
             time_matters: false,
@@ -209,6 +220,7 @@ describe("collection timelines", () => {
         path: "/api/timeline-event",
         body: expect.objectContaining({
           name: "RC2",
+          timezone: BROWSER_TIMEZONE,
           timestamp: "2027-05-12T00:00:00.000Z",
           icon: "cake",
           timeline_id: 100,
@@ -266,7 +278,11 @@ describe("collection timelines", () => {
         {
           method: "POST",
           path: "/api/timeline-event",
-          body: expect.objectContaining({ name: "RC1", timeline_id: 100 }),
+          body: expect.objectContaining({
+            name: "RC1",
+            timeline_id: 100,
+            timezone: BROWSER_TIMEZONE,
+          }),
         },
       ]);
     });
@@ -298,6 +314,7 @@ describe("collection timelines", () => {
         path: "/api/timeline-event",
         body: expect.objectContaining({
           name: "RC1",
+          timezone: BROWSER_TIMEZONE,
           timestamp: "2026-10-20T10:20:00.000Z",
           time_matters: true,
         }),
@@ -327,6 +344,7 @@ describe("collection timelines", () => {
         method: "POST",
         path: "/api/timeline-event",
         body: expect.objectContaining({
+          timezone: BROWSER_TIMEZONE,
           timestamp: "2026-10-20T00:00:00.000Z",
           time_matters: true,
         }),
