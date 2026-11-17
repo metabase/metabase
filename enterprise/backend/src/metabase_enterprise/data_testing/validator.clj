@@ -231,7 +231,7 @@
                 {}))
         (throw (data-testing.errors/ex
                 ::data-testing.errors/uncheckable-write
-                (tru "The SQL under test writes, and the test cannot check which tables it writes to in this database''s SQL dialect.")
+                (tru "The SQL under test writes, and the test cannot check which tables it writes to: this database''s SQL dialect is not supported, or the SQL holds a list of values too long to parse.")
                 {:reason reason}))))))
 
 (def ^:private compares-output
