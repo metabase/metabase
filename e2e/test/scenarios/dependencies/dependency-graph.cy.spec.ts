@@ -5,7 +5,6 @@ import type {
   CardId,
   CardType,
   CollectionId,
-  DashboardId,
   DependencyId,
   DependencyType,
   IconName,
@@ -28,6 +27,9 @@ const TABLE_NAME = "scoreboard_actions";
 const TABLE_DISPLAY_NAME = "Scoreboard Actions";
 const TABLE_ID_ALIAS = "tableId";
 const TRANSFORM_TABLE_NAME = "transform_table";
+const MEASURE_BASED_TRANSFORM_TABLE_NAME = "measure_based_transform_table";
+const METRIC_BASED_TRANSFORM_TABLE_NAME = "metric_based_transform_table";
+const SNIPPET_BASED_TRANSFORM_TABLE_NAME = "snippet_based_transform_table";
 const TRANSFORM_TABLE_DISPLAY_NAME = "Transform Table";
 const TABLE_BASED_QUESTION_NAME = "Table-based question";
 const TABLE_BASED_MEASURE_NAME = "Table-based measure";
@@ -465,23 +467,13 @@ function createCardFromStage({
   name,
   type,
   stage,
-  collectionId,
-  dashboardId,
 }: {
   name: string;
   type: CardType;
   stage: TestStageWithSourceSpec;
-  collectionId?: CollectionId | null;
-  dashboardId?: DashboardId | null;
 }) {
   return createWritableQuery(stage).then((query) =>
-    H.createCard({
-      name,
-      type,
-      dataset_query: query,
-      collection_id: collectionId,
-      dashboard_id: dashboardId,
-    }),
+    H.createCard({ name, type, dataset_query: query }),
   );
 }
 
@@ -526,42 +518,26 @@ function createTableBasedCard({
   name,
   type,
   tableId,
-  collectionId,
-  dashboardId,
 }: {
   name: string;
   type: CardType;
   tableId: TableId;
-  collectionId?: CollectionId | null;
-  dashboardId?: DashboardId | null;
 }) {
   return createCardFromStage({
     name,
     type,
     stage: { source: { type: "table", id: tableId } },
-    collectionId,
-    dashboardId,
   });
 }
 
 function createTableBasedQuestion({
   name = TABLE_BASED_QUESTION_NAME,
   tableId,
-  collectionId = null,
-  dashboardId = null,
 }: {
   name?: string;
   tableId: TableId;
-  collectionId?: CollectionId | null;
-  dashboardId?: DashboardId | null;
 }) {
-  return createTableBasedCard({
-    name,
-    type: "question",
-    tableId,
-    collectionId,
-    dashboardId,
-  });
+  return createTableBasedCard({ name, type: "question", tableId });
 }
 
 function createMetricBasedCard({
@@ -636,7 +612,7 @@ function createMetricBasedTransform({
   }).then((query) =>
     createTransformFromQuery({
       name: METRIC_BASED_TRANSFORM_NAME,
-      tableName: TRANSFORM_TABLE_NAME,
+      tableName: METRIC_BASED_TRANSFORM_TABLE_NAME,
       query,
     }),
   );
@@ -657,7 +633,7 @@ function createSnippetBasedTransform({
   }).then((query) =>
     createTransformFromQuery({
       name: SNIPPET_BASED_TRANSFORM_NAME,
-      tableName: TRANSFORM_TABLE_NAME,
+      tableName: SNIPPET_BASED_TRANSFORM_TABLE_NAME,
       query,
     }),
   );
@@ -857,7 +833,7 @@ function createMeasureBasedTransform({
   }).then((query) =>
     createTransformFromQuery({
       name: MEASURE_BASED_TRANSFORM_NAME,
-      tableName: TRANSFORM_TABLE_NAME,
+      tableName: MEASURE_BASED_TRANSFORM_TABLE_NAME,
       query,
     }),
   );
