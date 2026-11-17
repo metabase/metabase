@@ -67,20 +67,6 @@ export const assertOnlyTheseTranslationsAreStored = (
     });
 };
 
-export const generateLargeCSV = ({
-  sizeInMebibytes,
-}: {
-  sizeInMebibytes: number;
-}) => {
-  const oneMebibyte = 2 ** 20;
-  const row = "de,data2,data3\n";
-  const charsPerRow = row.length;
-  const totalRows = Math.floor((sizeInMebibytes * oneMebibyte) / charsPerRow);
-  const header = "locale,string,translation\n";
-  const largeCSV = header + row.repeat(totalRows);
-  return largeCSV;
-};
-
 export const parseCSVFromString = (str: string): DictionaryArray => {
   try {
     const strings: unknown = parse(str, {
