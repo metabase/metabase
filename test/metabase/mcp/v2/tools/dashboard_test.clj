@@ -447,6 +447,32 @@
               "a user who can read the series card is told")
           (is (not (contains? (call :rasta) :dropped_connections))))))))
 
+(deftest remove-parameter-reports-archived-subscriptions-test
+  (mt/with-fake-inbox
+    (mt/with-temp [:model/Dashboard    dash         {:name       "Sales"
+                                                     :parameters [{:id   "gone"
+                                                                   :name "Gone"
+                                                                   :slug "gone"
+                                                                   :type "category"}]}
+                   :model/Pulse        {pulse-id :id} {:dashboard_id (:id dash)
+                                                       :creator_id   (mt/user->id :rasta)
+                                                       :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}
+                   :model/PulseChannel {channel-id :id} {:channel_type :email, :pulse_id pulse-id, :enabled true}
+                   :model/PulseChannelRecipient _ {:pulse_channel_id channel-id, :user_id (mt/user->id :crowberto)}]
+      (testing "removing a filter a subscription uses reports the subscription it archived, without its values"
+        (is (= [{:id              pulse-id
+                 :filters         [{:id "gone", :name "Gone"}]
+                 :already_broken  false
+                 :creator         "Rasta Toucan"
+                 :channels        ["email"]
+                 :recipient_count 1}]
+               (-> (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
+                               (wire {:method "update"
+                                      :id     (:id dash)
+                                      :ops    [{:op "remove_parameter", :parameter_id "gone"}]}))
+                   tool-result
+                   :archived_subscriptions)))))))
+
 (deftest validate-only-reports-the-replacement-card-test
   (testing "a dry run of replace_card must name the NEW card: the projection prefers the hydrated `:card` over
             `:card_id`, so a stale one would report the replace as a no-op and an agent validating before

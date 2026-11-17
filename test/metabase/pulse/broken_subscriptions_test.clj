@@ -3,7 +3,8 @@
    [clojure.test :refer :all]
    [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
    [metabase.pulse.models.pulse :as models.pulse]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest broken-subscription-data-logic-test
   (testing "Ensure underlying logic of fixing broken pulses works (#30100)"
@@ -122,3 +123,42 @@
               (is (false? (:archived bad-pulse))))
             (testing "Pulse is now archived"
               (is (true? (:archived (models.pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
+
+(deftest handle-broken-subscriptions-returns-what-it-archived-test
+  (testing "the handler archives each broken subscription and returns what a caller may report about it"
+    (mt/with-fake-inbox
+      (mt/with-temp [:model/Dashboard           {dash-id :id}      {:name       "Sales"
+                                                                    :parameters [{:id "kept", :name "Kept", :slug "kept"
+                                                                                  :type "category"}]}
+                     :model/Pulse               {removed-id :id}   {:name         "Removed filter"
+                                                                    :dashboard_id dash-id
+                                                                    :creator_id   (mt/user->id :rasta)
+                                                                    :parameters   [{:id "gone", :name "Gone"
+                                                                                    :value ["secret"]}]}
+                     :model/PulseChannel        {channel-id :id}   {:channel_type :email
+                                                                    :pulse_id     removed-id
+                                                                    :enabled      true}
+                     :model/PulseChannelRecipient _                {:pulse_channel_id channel-id
+                                                                    :user_id          (mt/user->id :crowberto)}
+                     :model/Pulse               {stale-id :id}     {:name         "Stale filter"
+                                                                    :dashboard_id dash-id
+                                                                    :creator_id   (mt/user->id :rasta)
+                                                                    :parameters   [{:id "stale", :name "Stale"
+                                                                                    :value ["x"]}]}]
+        (is (= [{:id              removed-id
+                 :creator-name    "Rasta Toucan"
+                 :parameters      [{:id "gone", :name "Gone"}]
+                 :channels        [:email]
+                 :recipient-count 1
+                 :already-broken? false}
+                {:id              stale-id
+                 :creator-name    "Rasta Toucan"
+                 :parameters      [{:id "stale", :name "Stale"}]
+                 :channels        []
+                 :recipient-count 0
+                 :already-broken? true}]
+               (sort-by :id (pulse.broken-subscriptions/handle-broken-subscriptions!
+                             dash-id
+                             {"kept" {:id "kept"}, "gone" {:id "gone"}}))))
+        (is (= #{removed-id stale-id}
+               (t2/select-pks-set :model/Pulse :dashboard_id dash-id :archived true)))))))

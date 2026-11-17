@@ -783,12 +783,39 @@
        "You can't connect a filter to a series again.")
      "Tell the user about any you don't connect again."]))
 
+(defn- archived-subscriptions-text
+  "The lines telling the model which subscriptions the save archived, and what to tell the user.
+  A subscription the user can't read is counted, not described."
+  [subscriptions]
+  (let [describe          (fn [{:keys [creator-name channels recipient-count parameters]}]
+                            (str "  - " creator-name "'s subscription"
+                                 (if (seq channels)
+                                   (str " by " (str/join " and " (map name channels)) " to " recipient-count
+                                        (if (= 1 recipient-count) " recipient" " recipients"))
+                                   " with no recipients")
+                                 ", which used " (str/join ", " (map (comp pr-str :name) parameters))))
+        lines             (fn [group]
+                            (let [{readable true unreadable false} (group-by (comp boolean :readable?) group)]
+                              (concat (map describe readable)
+                                      (when (seq unreadable)
+                                        [(str "  - " (count unreadable) " the user can't see")]))))
+        {broken true
+         caused false}   (group-by (comp boolean :already-broken?) subscriptions)]
+    [(when (seq caused)
+       (cons "The change removed filters that these subscriptions set values for, so they were archived:"
+             (lines caused)))
+     (when (seq broken)
+       (cons "These subscriptions already used filters the dashboard no longer had, and were archived too:"
+             (lines broken)))
+     (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email is set "
+          "up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]))
+
 (defn- result
   "The tool result for a save: the `dashboard` and `effects` [[dashboard-write/write!]] returned, the `action` the save
   took, the `saved-charts` it saved, and the `profile-id` of the Metabot that made it."
-  [{{:keys [id name collection_id parameters] :as dashboard} :dashboard
-    {:keys [pushed-dashcard-ids dropped-connections]}       :effects
-    :keys                                                   [action saved-charts profile-id]}]
+  [{{:keys [id name collection_id parameters] :as dashboard}                 :dashboard
+    {:keys [pushed-dashcard-ids dropped-connections archived-subscriptions]} :effects
+    :keys                                                                    [action saved-charts profile-id]}]
   ;; Trashing doesn't navigate, so a trashed dashboard the user is viewing stays in view.
   (let [open?       (and (not= "trashed" action) (contains? opening-profiles profile-id))
         link        (str "metabase://dashboard/" id)
@@ -817,6 +844,8 @@
                             " moved down to make room for the cards you placed. Mention it to the user."))
                      (when (seq dropped-connections)
                        (dropped-connections-text parameters dropped-connections))
+                     (when (seq archived-subscriptions)
+                       (archived-subscriptions-text archived-subscriptions))
                      (str "Link it as " (te/link name link) "."))]
     {:output            output
      :structured-output {:result-type  :dashboard-saved

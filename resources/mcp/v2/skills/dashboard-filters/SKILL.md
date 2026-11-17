@@ -65,6 +65,7 @@ Two hard constraints: linked filters read **table-metadata foreign keys only** �
 ## Don't
 
 - Don't add a parameter without wiring it — the widget renders and filters nothing.
+- Don't remove a filter a subscription sets a value for without telling the user. The save archives that subscription, and restoring the dashboard from its history doesn't bring it back. The write response lists archived subscriptions in `archived_subscriptions`, with the creator and recipients only for ones the caller can read.
 - Don't set `required: true` without a `default` — viewers are blocked until they pick a value.
 - Don't link a child filter that has a static-list/card source, or across a question/model join — the cascade silently doesn't apply.
 - Don't pass null to clear a default or link — it reads as omitted; use `clear`.

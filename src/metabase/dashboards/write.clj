@@ -300,7 +300,9 @@
   "Update the Dashboard with `id` and return the saved row. `dash-updates` may carry
   dashboard attributes plus `:dashcards` and `:tabs`, which fully replace the current layout — entries
   with negative ids are created, missing entries are deleted. Requires write permission on the dashboard;
-  runs in one transaction and may notify owners of broken subscriptions."
+  runs in one transaction and may notify owners of broken subscriptions.
+  The row carries `:archived-subscriptions` when the update archived any, as
+  [[pulse.broken-subscriptions/handle-broken-subscriptions!]] returns them."
   [id {:keys [dashcards tabs parameters] :as dash-updates}]
   (span/with-span!
     {:name       "update-dashboard"
@@ -315,6 +317,7 @@
                                                 [:dashcards :card]
                                                 :resolved-params))
           changes-stats                      (atom nil)
+          archived-subscriptions             (atom nil)
           ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
           ;; tests that exclude it. so this only checks for dashcards
           update-dashcards-and-tabs?         (contains? dash-updates :dashcards)
@@ -338,7 +341,8 @@
                                            (events/publish-event! :event/collection-touch {:collection-id (:collection_id updates) :user-id api/*current-user-id*}))
                                          ;; Handle broken subscriptions, if any, when parameters changed
                                          (when parameters
-                                           (pulse.broken-subscriptions/handle-broken-subscriptions! id original-params)))
+                                           (reset! archived-subscriptions
+                                                   (pulse.broken-subscriptions/handle-broken-subscriptions! id original-params))))
                                        (when update-dashcards-and-tabs?
                                          (when (not (false? (:archived dash-updates)))
                                            (api/check-not-archived current-dash))
@@ -379,7 +383,8 @@
          true))
       (let [dashboard (dashboards.db/dashboard id)]
         (track-dashcard-and-tab-events! dashboard @changes-stats)
-        dashboard))))
+        (cond-> dashboard
+          (seq @archived-subscriptions) (assoc :archived-subscriptions @archived-subscriptions))))))
 
 (def DashUpdates
   "Schema for the `dash-updates` argument to [[update-dashboard!]]: dashboard attributes plus the

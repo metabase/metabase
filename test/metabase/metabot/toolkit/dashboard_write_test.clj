@@ -257,3 +257,25 @@
                                                              :validate-only? true})]
             (is (=? [{:id (:id hidden), :name "Hidden"}]
                     (:series (u/find-first-map (:dashcards result) [:id] (:id dc)))))))))))
+
+(deftest archived-subscriptions-effect-test
+  (testing "a save that archives subscriptions returns them, marked by whether the user can read each one"
+    (mt/with-fake-inbox
+      (mt/with-temp [:model/Dashboard dash      {:name       "Sales"
+                                                 :parameters [{:id   "gone"
+                                                               :name "Gone"
+                                                               :slug "gone"
+                                                               :type "category"}]}
+                     :model/Pulse     {own :id} {:dashboard_id (:id dash)
+                                                 :creator_id   (mt/user->id :rasta)
+                                                 :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}
+                     :model/Pulse     {other :id} {:dashboard_id (:id dash)
+                                                   :creator_id   (mt/user->id :crowberto)
+                                                   :parameters   [{:id "gone", :name "Gone", :value ["b"]}]}]
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (=? {:effects {:archived-subscriptions [{:id own, :readable? true, :already-broken? false}
+                                                      {:id other, :readable? false}]}}
+                  (update-in (dashboard-write/write! {:dashboard (hydrated (:id dash))
+                                                      :ops       [{:op "remove_parameter" :parameter_id "gone"}]})
+                             [:effects :archived-subscriptions]
+                             (partial sort-by :id)))))))))

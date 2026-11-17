@@ -1840,7 +1840,7 @@
            parameters
            parameters.schema
            util}
-   :model-imports #{:model/Card :model/Dashboard}}
+   :model-imports #{:model/Card :model/Dashboard :model/Pulse}}
 
   metrics
   {:team "UX West"

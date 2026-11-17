@@ -395,6 +395,24 @@
                       {:parameter_id "cat", :dashcard_id 4, :card_id 41, :series true}
                       {:parameter_id "cat", :dashcard_id 5, :card_id 51, :series true}]))))))
 
+(deftest ^:parallel archived-subscriptions-text-test
+  (testing "subscriptions this change broke and ones already broken are listed apart, and one the user can't read is
+            only counted"
+    (is (= ["The change removed filters that these subscriptions set values for, so they were archived:"
+            "  - Rasta Toucan's subscription by email and slack to 3 recipients, which used \"Region\""
+            "  - 1 the user can't see"
+            "These subscriptions already used filters the dashboard no longer had, and were archived too:"
+            "  - Lucky's subscription with no recipients, which used \"Old\""
+            (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email "
+                 "is set up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]
+           (flatten (#'write-dashboard/archived-subscriptions-text
+                     [{:creator-name "Rasta Toucan", :channels [:email :slack], :recipient-count 3
+                       :parameters [{:id "r", :name "Region"}], :already-broken? false, :readable? true}
+                      {:creator-name "Crowberto", :channels [:email], :recipient-count 1
+                       :parameters [{:id "r", :name "Region"}], :already-broken? false, :readable? false}
+                      {:creator-name "Lucky", :channels [], :recipient-count 0
+                       :parameters [{:id "o", :name "Old"}], :already-broken? true, :readable? true}]))))))
+
 (deftest replace-chart-on-dashboard-test
   (sales-dashboard!
    (fn [{:keys [card-id dash-id dashcard-id other-id]}]
