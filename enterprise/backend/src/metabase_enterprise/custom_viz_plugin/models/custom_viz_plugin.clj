@@ -186,23 +186,30 @@
 
 (defn- bundle-columns
   "Validates the imported bundle against its identifier using upload checks. Returns `:active` with manifest metadata,
-  or `:error` with the reason and identifier as display name. Stores bytes and hash in either case, unless oversized."
+  or `:error` with the reason and identifier as display name. Stores bytes and hash in either case."
   [{:keys [identifier ^bytes bundle]}]
   (try
     (->> (cache/validate-bundle! bundle)
          (cache/check-bundle-identifier! identifier)
          cache/derived-columns)
     (catch Exception e
-      (let [storable (when (and bundle (<= (alength bundle) cache/max-bundle-bytes)) bundle)]
-        ;; the manifest-derived columns are cleared, not kept from a bundle the row no longer holds
-        {:status           :error
-         :error_message    (ex-message e)
-         :display_name     identifier
-         :bundle           storable
-         :bundle_hash      (some-> storable cache/bytes-hash)
-         :manifest         nil
-         :icon             nil
-         :metabase_version nil}))))
+      ;; the manifest-derived columns are cleared, not kept from a bundle the row no longer holds
+      {:status           :error
+       :error_message    (ex-message e)
+       :display_name     identifier
+       :bundle           bundle
+       :bundle_hash      (some-> bundle cache/bytes-hash)
+       :manifest         nil
+       :icon             nil
+       :metabase_version nil})))
+
+(defn- check-bundle-size!
+  "Throws if the imported `row`'s bundle is over the upload limit."
+  [{:keys [identifier ^bytes bundle]}]
+  (when (and bundle (> (alength bundle) cache/max-bundle-bytes))
+    (throw (ex-info (format "The bundle of custom viz plugin \"%s\" is larger than %dMB. Shrink its files and import again."
+                            identifier cache/max-bundle-mib)
+                    {:identifier identifier :status-code 413}))))
 
 (defn check-identifier-free!
   "Throws a 400 if a plugin other than `except-id` (nil for none) already holds `identifier`, ignoring case, so
@@ -229,6 +236,7 @@
 (defmethod serialization/before-load :model/CustomVizPlugin [_ items]
   (mapv (fn [{:keys [row local] :as item}]
           (check-registration! row local)
+          (check-bundle-size! row)
           (if (and local (some-> ^bytes (:bundle row) cache/bytes-hash (= (:bundle_hash local))))
             (update item :row dissoc :bundle)
             (update item :row #(merge % (bundle-columns %)))))

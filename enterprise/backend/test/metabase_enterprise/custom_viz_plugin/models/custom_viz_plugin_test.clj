@@ -262,6 +262,26 @@
       (is (=? {:status :error :error_message #(str/includes? % "metabase-plugin.json not found")}
               (load-plugin! (ingested-plugin "bundleless-viz" nil)))))))
 
+(deftest load-rejects-oversized-bundle-test
+  (testing "an import whose files pack into a bundle over the upload limit fails, rather than loading as dev-only"
+    (let [rng      (java.util.Random. 0)
+          ;; random text compresses poorly, so the packed bundle stays over the limit
+          big-js   (apply str (repeatedly (* 8 1024 1024) #(char (+ 33 (.nextInt rng 94)))))
+          ingested (ingested-plugin "big-viz" nil :serdes/resources (assoc (as-text (bundle-files {:name "big-viz"}))
+                                                                           "dist/index.js" big-js))]
+      (testing "as a new plugin"
+        (mt/with-model-cleanup [:model/CustomVizPlugin]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"big-viz\" is larger than 5MB"
+                                (load-plugin! ingested)))
+          (is (not (t2/exists? :model/CustomVizPlugin :identifier "big-viz")))))
+      (testing "over an existing plugin, which keeps its bundle"
+        (let [bundle (cv.tu/valid-bundle-bytes "big-viz")]
+          (mt/with-temp [:model/CustomVizPlugin {id :id entity-id :entity_id} (active-plugin-row "big-viz" bundle)]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"big-viz\" is larger than 5MB"
+                                  (load-plugin! (assoc ingested :entity_id entity-id))))
+            (is (=? {:status :active :bundle_hash (cv.tu/bundle-hash bundle)}
+                    (t2/select-one :model/CustomVizPlugin :id id)))))))))
+
 (deftest load-leaves-enabled-to-the-instance-test
   (let [bundle (cv.tu/valid-bundle-bytes "toggled-viz")]
     (testing "a new plugin loads enabled, as an upload does"
