@@ -2278,13 +2278,18 @@
   [_ _]
   true)
 
+(def searchable-namespaces
+  "The Collection namespaces search indexes, with the content inside them.
+  Kept apart from [[default-allowed-namespaces]]: where content may be saved and what search finds are separate
+  decisions, so a new placement namespace isn't indexed by accident."
+  #{nil :analytics :shared-tenant-collection :tenant-specific})
+
 (defn searchable-namespace-clause
-  "HoneySQL clause matching rows whose `namespace-column` holds one of the [[default-allowed-namespaces]].
-  Search specs use it to index the Collections in these namespaces and the content inside them.
+  "HoneySQL clause matching rows whose `namespace-column` holds one of the [[searchable-namespaces]].
   The appdb and in-place engines also hide `analytics` content at query time unless the audit app is enabled."
   [namespace-column]
   (into [:or]
-        (for [collection-namespace default-allowed-namespaces]
+        (for [collection-namespace searchable-namespaces]
           [:= namespace-column (some-> collection-namespace name)])))
 
 (defn check-collection-namespace

@@ -491,6 +491,11 @@
   [context]
   (get context->normalized-context context context))
 
+(def analytics-card-contexts
+  "Normalized search contexts that return questions, models and metrics from the audit app's `analytics` namespace.
+  Every other context, pickers and the embedding setup among them, leaves them out."
+  #{:global :search-bar})
+
 (assert (every? (partial mr/validate NormalizedContext) (keys static-context-weights))
         "static-context-weights must be keyed by normalized contexts")
 
