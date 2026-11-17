@@ -55,7 +55,7 @@
     (let [orders (table-query :orders)
           query  (lib/aggregate orders (lib/sum (column orders :orders :total)))]
       (mt/with-temp [:model/Card {card-id :id} {:name "Total revenue" :dataset_query query}]
-        (let [plan (data-testing.subject/subject-plan :card (saved-card card-id))]
+        (let [plan (data-testing.subject/subject-plan :card (saved-card card-id) [])]
           (testing "a saved MBQL card runs on its query's database"
             (is (= (mt/id) (get-in plan [:database :id]))))
           (testing "its compiled SQL reads the table of its query"
@@ -67,7 +67,7 @@
             (is (= "Total revenue" (:output-label plan)))))
         (testing "a card that is not saved is not a subject"
           (is (thrown-with-msg? ExceptionInfo #"Invalid input"
-                                (data-testing.subject/subject-plan :card {:dataset_query (:dataset_query (saved-card card-id))}))))))))
+                                (data-testing.subject/subject-plan :card {:dataset_query (:dataset_query (saved-card card-id))} []))))))))
 
 (deftest mbql-card-implicit-join-plan-test
   (mt/test-driver :h2
@@ -77,7 +77,7 @@
                                                                    (lib/breakout (column orders :products :category))))}]
       (testing "an implicit join reads the joined table too"
         (is (= #{(table-ref :orders) (table-ref :products)}
-               (tables-read (data-testing.subject/subject-plan :card (saved-card card-id)))))))))
+               (tables-read (data-testing.subject/subject-plan :card (saved-card card-id) []))))))))
 
 (deftest mbql-card-with-a-foreign-key-remap-plan-test
   (mt/test-driver :h2
@@ -87,7 +87,7 @@
                                                                                           (column orders :orders :product_id)]))}]
         (testing "a foreign-key remap adds no join: the test need not declare the remapped table"
           (is (= #{(table-ref :orders)}
-                 (tables-read (data-testing.subject/subject-plan :card (saved-card card-id))))))))))
+                 (tables-read (data-testing.subject/subject-plan :card (saved-card card-id) [])))))))))
 
 (deftest native-card-plan-test
   (mt/test-driver :h2
@@ -95,7 +95,7 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (native-query (str "SELECT * FROM " schema "." name))}]
         (testing "a native card reads the tables its SQL names"
           (is (= #{(table-ref :people)}
-                 (tables-read (data-testing.subject/subject-plan :card (saved-card card-id))))))))))
+                 (tables-read (data-testing.subject/subject-plan :card (saved-card card-id) [])))))))))
 
 (deftest native-card-with-card-reference-plan-test
   (mt/test-driver :h2
@@ -110,7 +110,7 @@
                                                                                 :card-id      referenced-id})}]
         (testing "a `{{#ref}}` reads the tables of the card it names"
           (is (= #{(table-ref :products)}
-                 (tables-read (data-testing.subject/subject-plan :card (saved-card card-id))))))))))
+                 (tables-read (data-testing.subject/subject-plan :card (saved-card card-id) [])))))))))
 
 (deftest native-card-with-snippet-plan-test
   (mt/test-driver :h2
@@ -126,7 +126,7 @@
                                                                           :snippet-id   snippet-id})}]
         (testing "a snippet reads the tables its content names"
           (is (= #{(table-ref :venues)}
-                 (tables-read (data-testing.subject/subject-plan :card (saved-card card-id))))))))))
+                 (tables-read (data-testing.subject/subject-plan :card (saved-card card-id) [])))))))))
 
 (deftest metric-and-model-card-plan-test
   (mt/test-driver :h2
@@ -139,22 +139,13 @@
                                                                          (lib/aggregate (lib/count))))}]
       (testing "a metric card reads the tables of its query"
         (is (= #{(table-ref :orders)}
-               (tables-read (data-testing.subject/subject-plan :card (saved-card metric-id))))))
+               (tables-read (data-testing.subject/subject-plan :card (saved-card metric-id) [])))))
       (testing "a model card reads the tables of its query"
         (is (= #{(table-ref :venues)}
-               (tables-read (data-testing.subject/subject-plan :card (saved-card model-id))))))
+               (tables-read (data-testing.subject/subject-plan :card (saved-card model-id) [])))))
       (testing "an MBQL question over a model reads the model's tables"
         (is (= #{(table-ref :venues)}
-               (tables-read (data-testing.subject/subject-plan :card (saved-card over-model-id)))))))))
-
-(defn- refusal
-  "The `:error-type` and message of the refusal `thunk` throws, or nil when it does not throw."
-  [thunk]
-  (try
-    (thunk)
-    nil
-    (catch ExceptionInfo e
-      {:error-type (:error-type (ex-data e)) :message (ex-message e)})))
+               (tables-read (data-testing.subject/subject-plan :card (saved-card over-model-id) []))))))))
 
 (deftest card-with-a-parameter-that-needs-a-value-is-refused-test
   (mt/test-driver :h2
@@ -167,7 +158,7 @@
                                     {:type :card :name tag-name :display-name tag-name :card-id card-id}))
           plan-of               (fn [query]
                                   (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
-                                    (refusal #(data-testing.subject/subject-plan :card (saved-card card-id)))))
+                                    (data-testing.test-util/refusal #(data-testing.subject/subject-plan :card (saved-card card-id) []))))
           needs-a-value         (fn [tag-names]
                                   {:error-type ::data-testing.errors/uncompilable-subject
                                    :message    (str "This card's query has a parameter that needs a value and has no "
@@ -212,4 +203,4 @@
                                                        (supports? driver feature database)))]
           (testing "a card on a database whose driver cannot run tests is refused"
             (is (= ::data-testing.errors/unsupported-driver
-                   (data-testing.test-util/refusal-type #(data-testing.subject/subject-plan :card (saved-card card-id)))))))))))
+                   (data-testing.test-util/refusal-type #(data-testing.subject/subject-plan :card (saved-card card-id) []))))))))))

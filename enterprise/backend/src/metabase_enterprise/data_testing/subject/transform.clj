@@ -13,7 +13,8 @@
 
 (mu/defmethod data-testing.subject/subject-plan :transform :- ::data-testing.subject/subject-plan
   [_subject-type
-   transform :- ::transforms.schema/transform]
+   transform :- ::transforms.schema/transform
+   _inputs]
   (when-not (transforms-base.u/query-transform? transform)
     (throw (data-testing.errors/ex
             ::data-testing.errors/unsupported-transform

@@ -540,7 +540,12 @@
   [driver stmt params]
   ;; `getParameterMetaData` costs a server round trip on some drivers -- Snowflake describes the statement -- so only
   ;; ask when there are parameters that could outnumber the placeholders.
+  ;; Nor inside an explicit transaction: on Postgres and Redshift the describe runs on the server, and a failed describe
+  ;; aborts the transaction, so the statement's own execution would report "current transaction is aborted" instead of
+  ;; its error.
   (when (and (seq params)
+             (try (.getAutoCommit (.getConnection ^PreparedStatement stmt))
+                  (catch Throwable _ true))
              (< (try (.. ^PreparedStatement stmt getParameterMetaData getParameterCount)
                      (catch Throwable _ (count params)))
                 (count params)))
@@ -1047,7 +1052,8 @@
    ;; The session reads dates in the report timezone, as a query run does; without the option it keeps whatever
    ;; timezone the pooled connection last had.
    {:write?           true
-    :session-timezone (driver-api/report-timezone-id-if-supported driver database)}
+    :session-timezone (driver-api/report-timezone-id-if-supported
+                       driver (cond-> database (integer? database) driver.u/lib-database))}
    (fn [^Connection conn]
      (.setAutoCommit conn false)
      (try
@@ -1072,10 +1078,10 @@
 (defmethod driver/query-on-connection :sql-jdbc
   [driver conn [sql params] {:keys [max-rows]}]
   (with-open [stmt (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))]
-    (when (and max-rows (pos? max-rows))
-      ;; The cap is the statement's only bound. Every statement otherwise carries the streaming fetch size, and
-      ;; Redshift aborts the transaction when a row cap is asked of a cursor; `setMaxRows` bounds the memory a
-      ;; cursor would have bounded anyway.
+    (when (and max-rows (pos? max-rows) (driver/database-supports? driver :jdbc/set-max-rows nil))
+      ;; With the fetch size cleared, `setMaxRows` is the statement's only bound, and it bounds the memory a cursor's
+      ;; fetch size would have bounded. A driver without `:jdbc/set-max-rows` keeps its cursor, and the loop below stops
+      ;; reading at the cap.
       (try
         (.setFetchSize stmt 0)
         (catch Throwable e

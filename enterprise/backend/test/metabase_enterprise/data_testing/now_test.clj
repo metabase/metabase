@@ -189,6 +189,7 @@
           card-compiled (try
                           (:compiled (#'data-testing.runner/subject-plan
                                       :card {:id 1 :dataset_query (get-in subject [:source :query]) :name "probe"}
+                                      (:inputs definition)
                                       (some-> (:now definition) t/offset-date-time)))
                           (catch Throwable e (ex-message e)))]
       (str "SQL: " (:query compiled) "\nParameters: " (pr-str (:params compiled))

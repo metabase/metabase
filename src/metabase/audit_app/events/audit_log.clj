@@ -369,6 +369,17 @@
   [topic event]
   (audit-log/record-event! topic event))
 
+(events/derive! ::segment-test-event ::event)
+(events/derive! :event/segment-test-create ::segment-test-event)
+(events/derive! :event/segment-test-update ::segment-test-event)
+(events/derive! :event/segment-test-delete ::segment-test-event)
+(events/derive! :event/segment-test-run-start ::segment-test-event)
+(events/derive! :event/segment-test-run-timeout ::segment-test-event)
+
+(methodical/defmethod events/publish-event! ::segment-test-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
 (events/derive! ::glossary-event ::event)
 (events/derive! :event/glossary-create ::glossary-event)
 (events/derive! :event/glossary-update ::glossary-event)

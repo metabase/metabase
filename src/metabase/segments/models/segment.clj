@@ -169,10 +169,19 @@
         (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition))))
     segment))
 
+(defenterprise delete-segment-tests!
+  "Delete the tests of the segment `segment-id` through Toucan, so that each test's delete hook runs. No-op in OSS."
+  metabase-enterprise.data-testing.models.segment-test
+  [_segment-id]
+  nil)
+
 (t2/define-before-delete :model/Segment
   [segment]
   ;; additional checks (Enterprise Edition only)
   (pre-delete-check-sandbox-constraints-for-segment segment)
+  ;; The `segment_test.segment_id` FK is ON DELETE CASCADE, but a cascade runs no hook, and the SegmentTest hook is
+  ;; what sets the test id of the test's runs to null.
+  (delete-segment-tests! (:id segment))
   segment)
 
 (defn- maybe-migrated-segment-definition

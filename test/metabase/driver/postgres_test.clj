@@ -3000,3 +3000,16 @@
           (is (= ["timestamp with time zone '2020-06-17 21:00:00.000 +09:00'"]
                  (sql.qp/format-honeysql :postgres form)))
           (is (= "timestamptz" (h2x/database-type form))))))))
+
+(deftest failed-parameterized-query-in-a-test-transaction-reports-its-own-error-test
+  (mt/test-driver :postgres
+    (testing "inside a transaction, a parameterized query that fails reports its own error, not \"current transaction is aborted\""
+      ;; The `:sql-jdbc` test connection, without the autosave the `:postgres` one adds: the transaction Redshift runs.
+      ((get-method driver/do-with-test-connection :sql-jdbc)
+       :postgres
+       (mt/id)
+       (fn [conn]
+         ;; The driver opens the transaction with the first statement it executes.
+         (driver/query-on-connection :postgres conn ["SELECT 1" []] {})
+         (is (thrown-with-msg? Exception #"column \"no_such_column\" does not exist"
+                               (driver/query-on-connection :postgres conn ["SELECT no_such_column WHERE 1 = ?" [1]] {}))))))))

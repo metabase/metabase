@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  findRequests,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
@@ -383,6 +385,55 @@ describe("NewModals > shared tenant collections", () => {
       expect(within(modal).queryByText("Official")).not.toBeInTheDocument();
     },
   );
+
+  it("should create a collection directly in the Shared collections root", async () => {
+    setupSharedCollection(regularCollection);
+    fetchMock.post("path:/api/collection", (call) =>
+      createMockCollection({
+        id: 100,
+        ...JSON.parse(String(call.options.body)),
+      }),
+    );
+
+    const modal = await openNewCollectionModal();
+    await userEvent.type(
+      within(modal).getByLabelText("Name"),
+      "New Collection In Tenant Root",
+    );
+    await userEvent.click(
+      within(modal).getByTestId("collection-picker-button"),
+    );
+    const picker = await screen.findByTestId("entity-picker-modal");
+    await within(picker).findByText(regularCollection.name);
+    await userEvent.click(
+      await within(picker).findByText("Shared collections"),
+    );
+    await within(picker).findByText(sharedCollection.name);
+    await clickSelect(picker);
+
+    await waitFor(() =>
+      expect(
+        within(modal).getByTestId("collection-picker-button"),
+      ).toHaveTextContent("Shared collections"),
+    );
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Create" }),
+    );
+
+    const findCollectionPosts = async () =>
+      (await findRequests("POST")).filter(
+        ({ url }) => new URL(url).pathname === "/api/collection",
+      );
+    await waitFor(async () =>
+      expect(await findCollectionPosts()).toHaveLength(1),
+    );
+    const [post] = await findCollectionPosts();
+    expect(post.body).toMatchObject({
+      name: "New Collection In Tenant Root",
+      namespace: "shared-tenant-collection",
+      parent_id: null,
+    });
+  });
 
   it("should offer the official controls for a regular collection with the same setup", async () => {
     setupSharedCollection(regularCollection);
