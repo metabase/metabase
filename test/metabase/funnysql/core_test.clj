@@ -1755,3 +1755,19 @@
     (is (thrown? clojure.lang.ExceptionInfo (funnysql/format {:analyze-table :idx} engine))))
   (is (thrown? clojure.lang.ExceptionInfo
                (funnysql/format {:analyze-table (keyword "idx; DROP TABLE card")} :mysql))))
+
+(deftest ^:parallel mysql-table-defaults-test
+  (is (= [(str "CREATE TABLE `idx` (`id` integer) ENGINE InnoDB "
+               "CHARACTER SET `utf8mb4` COLLATE `utf8mb4_unicode_ci`")]
+         (funnysql/format {:create-table  [:idx]
+                           :with-columns  [[:id :integer]]
+                           :engine        :innodb
+                           :character-set :utf8mb4
+                           :collate       :utf8mb4_unicode_ci}
+                          :mysql)))
+  (doseq [option [:character-set :collate]
+          engine [:h2 :postgres]]
+    (is (thrown? clojure.lang.ExceptionInfo (funnysql/format {option :utf8mb4} engine))))
+  (doseq [option [:character-set :collate]]
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (funnysql/format {option (keyword "utf8mb4; DROP TABLE card")} :mysql)))))

@@ -213,6 +213,16 @@
         :if-not-exists (append-sql! context "IF NOT EXISTS ")))
     (compile! identifier context)))
 
+(defn- charset-or-collation! [option identifier context]
+  (check-identifier-form identifier)
+  (append-sql! context (if (= option :collate) "COLLATE " "CHARACTER SET "))
+  (compile! identifier context))
+
+(defn- mysql-table-option! [option identifier context]
+  (when-not (= (engine context) :mysql)
+    (throw (ex-info "Table charset and collation options require MySQL" {:option option})))
+  (charset-or-collation! option identifier context))
+
 (defn- table-engine! [storage-engine context]
   (when-not (and (= (engine context) :mysql) (= storage-engine :innodb))
     (throw (ex-info "Table engine must be :innodb on MySQL" {:storage-engine storage-engine})))
@@ -295,9 +305,7 @@
                 (do
                   (when-not (= 1 (count args))
                     (throw (ex-info "Column charset and collation options require one identifier" {:option option})))
-                  (check-identifier-form (first args))
-                  (append-sql! context (if (= option :collate) "COLLATE " "CHARACTER SET "))
-                  (compile! (first args) context))
+                  (charset-or-collation! option (first args) context))
 
                 :not-null
                 (append-sql! context "NOT NULL")
@@ -579,6 +587,8 @@
    :create-table    create-table!
    :with-columns    with-columns!
    :engine          table-engine!
+   :character-set   (partial mysql-table-option! :character-set)
+   :collate         (partial mysql-table-option! :collate)
    :analyze-table   analyze-table!
    :insert-into     insert-into!
    :columns         identifier-list!
