@@ -58,24 +58,56 @@
     (when-let [emitted (families-the-build-emitted)]
       (is (= emitted (set (u.fonts/available-fonts)))))))
 
-(deftest hashed-font-url-path-test
-  (if (u.fonts/bundled-fonts-available?)
-    (do
-      (testing "hashed files resolve to a web path"
-        (is (re-matches #"/app/dist/fonts/Lato/lato-v16-latin-regular\.[a-f0-9]+\.woff2"
-                        (u.fonts/hashed-font-url-path "Lato" "lato-v16-latin-regular" "woff2")))
-        (is (re-matches #"/app/dist/fonts/PT_Serif/PTSerif-Bold\.[a-f0-9]+\.woff2"
-                        (u.fonts/hashed-font-url-path "PT Serif" "PTSerif-Bold" "woff2"))))
-      (testing "the chunk that carries no latin glyphs is never the one resolved"
-        (is (not (str/includes? (u.fonts/hashed-font-url-path "Lato" "lato-v16-latin-regular" "woff2")
-                                ".rest."))))
-      (testing "a face the build does not split still resolves"
-        (is (re-matches #"/app/dist/fonts/Lato/lato-v16-latin-regular\.[a-f0-9]+\.ttf"
-                        (u.fonts/hashed-font-url-path "Lato" "lato-v16-latin-regular" "ttf"))))
-      (testing "a face that does not exist resolves to nil rather than a broken URL"
-        (is (nil? (u.fonts/hashed-font-url-path "Slabo 27px" "Slabo27px-Bold" "woff2")))))
+(def ^:private ranges
+  {"latin" "U+20-FF" "rest" "U+100-10FFFF"})
+
+(defn- sources-among
+  "What [[u.fonts/font-face-sources]] returns when the build emitted `filenames` for Roboto."
+  [filenames stem]
+  (with-redefs [u.fonts/emitted-filenames (delay {"Roboto" filenames})
+                u.fonts/unicode-ranges    (delay ranges)]
+    (u.fonts/font-face-sources "Roboto" stem "woff2")))
+
+(deftest font-face-sources-test
+  (testing "a split face returns every chunk, each with the range it covers"
+    (is (= [{:path "/app/dist/fonts/Roboto/Roboto-Bold.a1b2c3d4.woff2"      :unicode-range "U+20-FF"}
+            {:path "/app/dist/fonts/Roboto/Roboto-Bold.rest.e5f6a7b8.woff2" :unicode-range "U+100-10FFFF"}]
+           (sources-among ["Roboto-Bold.rest.e5f6a7b8.woff2"
+                           "Roboto-Bold.a1b2c3d4.woff2"
+                           "Roboto-Regular.c3d4e5f6.woff2"
+                           "Roboto-Bold.a1b2c3d4.woff"]
+                          "Roboto-Bold"))))
+  (testing "a face the build does not split has no range, so it claims every codepoint"
+    (is (= [{:path "/app/dist/fonts/Roboto/Roboto-Bold.a1b2c3d4.woff2"}]
+           (sources-among ["Roboto-Bold.a1b2c3d4.woff2"] "Roboto-Bold"))))
+  (testing "a hash made only of letters is not read as a chunk name"
+    (is (= [{:path "/app/dist/fonts/Roboto/Roboto-Bold.deadbeef.woff2"}]
+           (sources-among ["Roboto-Bold.deadbeef.woff2"] "Roboto-Bold"))))
+  (testing "a chunk the build published no range for throws rather than claim every codepoint"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no unicode-range for font chunk \"cyrillic\""
+                          (sources-among ["Roboto-Bold.a1b2c3d4.woff2"
+                                          "Roboto-Bold.cyrillic.e5f6a7b8.woff2"]
+                                         "Roboto-Bold"))))
+  (testing "a face that does not exist has no sources rather than a broken URL"
+    (is (= [] (sources-among ["Roboto-Bold.a1b2c3d4.woff2"] "Roboto-Black")))))
+
+(deftest font-face-sources-match-the-build-output-test
+  (testing "every woff2 the build emitted is a source of its face, and a split face has a range on each chunk"
+    (when (u.fonts/bundled-fonts-available?)
+      (doseq [[dirname filenames] @@#'u.fonts/emitted-filenames
+              filename            filenames
+              :when               (str/ends-with? filename ".woff2")]
+        (testing (str dirname "/" filename)
+          (let [[_ stem] (re-matches #"(.+?)(?:\.[a-z]+)?\.[a-f0-9]+\.woff2" filename)
+                sources  (u.fonts/font-face-sources (str/replace dirname "_" " ") stem "woff2")]
+            (is (some #(str/ends-with? (:path %) (str "/" filename)) sources))
+            (is (or (= 1 (count sources))
+                    (every? :unicode-range sources)))))))))
+
+(deftest font-face-sources-without-a-build-test
+  (when-not (u.fonts/bundled-fonts-available?)
     (testing "without a frontend build there is no file to point at"
-      (is (nil? (u.fonts/hashed-font-url-path "Lato" "lato-v16-latin-regular" "woff2"))))))
+      (is (= [] (u.fonts/font-face-sources "Lato" "lato-v16-latin-regular" "woff2"))))))
 
 ;;; ------------------------------------- Concurrency against a jar --------------------------------------
 
@@ -92,7 +124,7 @@
       (doseq [^String entry [(str jar-fonts-dir "/")
                              (str jar-fonts-dir "/Lato/")
                              (str jar-fonts-dir "/Lato/" jar-font-filename)
-                             (str jar-fonts-dir "/Lato/lato-v16-latin-regular.b2c3d4e5.rest.woff2")
+                             (str jar-fonts-dir "/Lato/lato-v16-latin-regular.rest.b2c3d4e5.woff2")
                              (str jar-fonts-dir "/PT_Serif/")
                              (str jar-fonts-dir "/PT_Serif/PTSerif-Bold.c3d4e5f6.woff2")]]
         (.putNextEntry out (JarEntry. entry))
@@ -134,11 +166,16 @@
                     (swap! reads inc)
                     (#'u.fonts/read-emitted-filenames jar-fonts-dir))
           threads 8]
-      (with-redefs [u.fonts/emitted-filenames index]
+      (with-redefs [u.fonts/emitted-filenames index
+                    u.fonts/unicode-ranges    (delay ranges)]
         (let [results (lookups-in-parallel!
                        threads loader
-                       #(u.fonts/find-hashed-file "Lato" "lato-v16-latin-regular" "woff2"))]
-          (is (= (repeat threads jar-font-filename) results)
+                       #(u.fonts/font-face-sources "Lato" "lato-v16-latin-regular" "woff2"))]
+          (is (= (repeat threads [{:path          (str "/app/dist/fonts/Lato/" jar-font-filename)
+                                   :unicode-range "U+20-FF"}
+                                  {:path          "/app/dist/fonts/Lato/lato-v16-latin-regular.rest.b2c3d4e5.woff2"
+                                   :unicode-range "U+100-10FFFF"}])
+                 results)
               "a thread that saw a closed filesystem would have returned its exception here")
           (is (= 1 @reads)
               "the jar is listed once, however many lookups arrive together"))))))
@@ -156,7 +193,7 @@
             ;; Sets: the order Files/list walks a jar is not guaranteed, and the lookup does not
             ;; depend on it.
             (is (= {"Lato"     #{jar-font-filename
-                                 "lato-v16-latin-regular.b2c3d4e5.rest.woff2"}
+                                 "lato-v16-latin-regular.rest.b2c3d4e5.woff2"}
                     "PT_Serif" #{"PTSerif-Bold.c3d4e5f6.woff2"}}
                    (update-vals (#'u.fonts/read-emitted-filenames jar-fonts-dir) set)))
             (is (.isOpen shared)
