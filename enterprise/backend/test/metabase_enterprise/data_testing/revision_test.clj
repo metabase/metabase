@@ -525,6 +525,35 @@
             (is (=? {:name "Original" :parameters {"id" 1}}
                     (t2/select-one :model/ActionTest :id action-test-id)))))))))
 
+(deftest action-test-revision-history-hides-revisions-about-unreadable-actions-test
+  (mt/with-premium-features #{:transforms-testing}
+    (testing "A non-admin who may read the test's current action does not see a revision about an older action they may not read"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {readable :id} {}
+                       :model/Collection {hidden :id}   {}]
+          (mt/with-actions [_                     {:type :model :dataset_query (data-testing.test-util/categories-query)
+                                                   :collection_id hidden}
+                            {hidden-action :action-id} {}]
+            (mt/with-actions [_                      {:type :model :dataset_query (data-testing.test-util/categories-query)
+                                                      :collection_id readable}
+                              {visible-action :action-id} {}]
+              (perms/grant-collection-read-permissions! (perms-group/all-users) readable)
+              (mt/with-current-user (mt/user->id :crowberto)
+                (mt/with-temp [:model/ActionTest {action-test-id :id} {:action_id hidden-action :name "Hidden name"}]
+                  (t2/update! :model/ActionTest :id action-test-id {:action_id visible-action :name "Visible name"})
+                  (testing "control: an admin sees both revisions"
+                    (let [history (mt/user-http-request :crowberto :get 200 (str "revision/action-test/" action-test-id))]
+                      (is (= 2 (count history)))
+                      (is (re-find #"Hidden name" (pr-str history)))))
+                  (let [history (mt/user-http-request :rasta :get 200 (str "revision/action-test/" action-test-id))]
+                    (is (=? [{:is_creation false :diff nil}] history))
+                    (is (= 1 (count history)))
+                    (is (not (re-find #"Hidden name" (pr-str history)))))
+                  (testing "a user who cannot read the test's action cannot read the history"
+                    (t2/update! :model/ActionTest :id action-test-id {:action_id hidden-action})
+                    (is (= "You don't have permissions to do that."
+                           (mt/user-http-request :rasta :get 403 "revision" :entity "action-test" :id action-test-id)))))))))))))
+
 (deftest action-test-revert-requires-feature-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/categories-query)}

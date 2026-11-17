@@ -226,6 +226,36 @@
                                            (finally
                                              (t2/delete! :model/DataTestRun :test_type "action" :test_id test-id))))))))))))
 
+(deftest lists-show-only-the-tests-of-readable-actions-test
+  (mt/with-premium-features data-testing.test-util/data-analyst-features
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id}        {}
+                     :model/Collection {hidden-coll-id :id} {}]
+        (do-with-action!
+         coll-id
+         (fn [action-id]
+           (do-with-action!
+            hidden-coll-id
+            (fn [hidden-action-id]
+              (mt/with-temp [:model/ActionTest  {test-id :id}        {:action_id action-id}
+                             :model/ActionTest  {hidden-test-id :id} {:action_id hidden-action-id}
+                             :model/DataTestRun {run-id :id}         {:test_type :action :test_id test-id}
+                             :model/DataTestRun {hidden-run-id :id}  {:test_type :action :test_id hidden-test-id}]
+                (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+                (mt/with-data-analyst-role! (mt/user->id :lucky)
+                  (testing "the list holds the tests of the actions the user can read, and only those"
+                    (let [listed (set (map :id (mt/user-http-request :lucky :get 200 "ee/action-test")))]
+                      (is (contains? listed test-id))
+                      (is (not (contains? listed hidden-test-id)))))
+                  (testing "the list of one action's tests is empty for an action the user cannot read"
+                    (is (= [test-id] (map :id (mt/user-http-request :lucky :get 200 "ee/action-test" :action-id action-id))))
+                    (is (= [] (mt/user-http-request :lucky :get 200 "ee/action-test" :action-id hidden-action-id))))
+                  (testing "the run history without a test id holds the runs of readable tests, and only those"
+                    (let [listed (set (map :id (:data (mt/user-http-request :lucky :get 200 "ee/data-test-run"
+                                                                            :test-type "action"))))]
+                      (is (contains? listed run-id))
+                      (is (not (contains? listed hidden-run-id)))))))))))))))
+
 (deftest runs-of-an-action-including-an-unreadable-card-are-refused-test
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-non-admin-groups-no-root-collection-perms
