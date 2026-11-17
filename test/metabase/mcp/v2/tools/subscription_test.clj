@@ -350,6 +350,20 @@
         {:schedule_type "monthly" :schedule_hour 9
          :schedule_frame "mid" :schedule_day "mon"}                 #"schedule_day"))))
 
+(deftest schedule-columns-follow-pulse-channel-schema-test
+  (testing "schedule values outside the PulseChannel schema entries are refused by the argument schema"
+    (are [schedule field]
+         (let [error (tool-error (call-tool! :crowberto v2.tu/all-scopes
+                                             (wire {:method       "create"
+                                                    :dashboard_id 1
+                                                    :schedule     schedule})))]
+           (and (str/starts-with? error "Invalid arguments: ")
+                (str/includes? error field)))
+      {:schedule_type "yearly"}                                          "schedule_type"
+      {:schedule_type "daily" :schedule_hour 24}                         "schedule_hour"
+      {:schedule_type "weekly" :schedule_hour 9 :schedule_day "monday"}  "schedule_day"
+      {:schedule_type "monthly" :schedule_hour 9 :schedule_frame "end"}  "schedule_frame")))
+
 (deftest monthly-schedule-test
   (testing "GHY-4156: a monthly schedule stores frame and day — \"the first Monday of the month\""
     (mt/with-model-cleanup [:model/Pulse]

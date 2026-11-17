@@ -109,8 +109,12 @@
 (mr/def ::pulse-channel.channel-type
   [:or [:enum "email" "slack" "http"] [:enum :email :slack :http]])
 
+(mr/def ::pulse-channel.schedule-type-name
+  "The `:schedule_type` of a PulseChannel as a string, the form a JSON request carries."
+  [:enum "hourly" "daily" "weekly" "monthly"])
+
 (mr/def ::pulse-channel.schedule-type
-  [:or [:enum "hourly" "daily" "weekly" "monthly"] [:enum :hourly :daily :weekly :monthly]])
+  [:or ::pulse-channel.schedule-type-name [:enum :hourly :daily :weekly :monthly]])
 
 (mr/def ::pulse-channel.schedule-hour
   [:int {:min 0 :max 23}])
@@ -118,8 +122,12 @@
 (mr/def ::pulse-channel.schedule-day
   [:enum "sun" "mon" "tue" "wed" "thu" "fri" "sat"])
 
+(mr/def ::pulse-channel.schedule-frame-name
+  "The `:schedule_frame` of a PulseChannel as a string, the form a JSON request carries."
+  [:enum "first" "mid" "last"])
+
 (mr/def ::pulse-channel.schedule-frame
-  [:or [:enum "first" "mid" "last"] [:enum :first :mid :last]])
+  [:or ::pulse-channel.schedule-frame-name [:enum :first :mid :last]])
 
 (defn schedule-fits-type?
   "Whether the hour, day and frame of the PulseChannel `channel` are those its `:schedule_type` takes."
