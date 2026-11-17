@@ -938,12 +938,13 @@
 
 (defn- product-data-source
   "A data source whose connections report `product`, counting its `getConnection` calls in `calls`.
-  The first call throws when `fail-first?` is set."
-  [product calls fail-first?]
+  Calls `on-connect`, when given, with the call's number before connecting."
+  [product calls on-connect]
   (reify DataSource
     (getConnection [_]
-      (when (and (= 1 (swap! calls inc)) fail-first?)
-        (throw (SQLException. "unreachable")))
+      (let [n (swap! calls inc)]
+        (when on-connect
+          (on-connect n)))
       (reify Connection
         (getMetaData [_] (reify DatabaseMetaData (getDatabaseProductName [_] product)))
         (close [_])))))
@@ -951,11 +952,11 @@
 (defn- do-with-product-app-db
   "Bind an application DB of `db-type` whose connections report `product`, and call `f` with a function returning
   how many connections it has opened.
-  The first connection throws when `fail-first?` is set."
-  [db-type product fail-first? f]
+  Calls `on-connect`, when given, with the connection's number before connecting."
+  [db-type product on-connect f]
   (let [calls (atom 0)]
     (mdb.connection/with-application-db
-      (mdb.connection/application-db db-type (product-data-source product calls fail-first?))
+      (mdb.connection/application-db db-type (product-data-source product calls on-connect))
       (f #(deref calls)))))
 
 (deftest mariadb?-test
@@ -968,7 +969,7 @@
                 {:answers [(mdb.connection/mariadb?) (mdb.connection/mariadb?)], :calls (calls)}))))))
   (testing "a failed read is not cached, so the next call tries again"
     (do-with-product-app-db
-     :mysql "MariaDB" true
+     :mysql "MariaDB" #(when (= 1 %) (throw (SQLException. "unreachable")))
      (fn [calls]
        (is (thrown? SQLException (mdb.connection/mariadb?)))
        (is (true? (mdb.connection/mariadb?)))
@@ -983,27 +984,21 @@
 (deftest mariadb?-concurrent-first-calls-test
   (testing "concurrent first callers share one read"
     ;; Callers are held inside `getConnection` until `release`, so with the lock only one of them gets there.
-    (let [calls   (atom 0)
-          entered (CountDownLatch. 2)
-          release (CountDownLatch. 1)
-          held-ds (reify DataSource
-                    (getConnection [_]
-                      (swap! calls inc)
-                      (.countDown entered)
-                      (.await release 5 TimeUnit/SECONDS)
-                      (reify Connection
-                        (getMetaData [_] (reify DatabaseMetaData (getDatabaseProductName [_] "MariaDB")))
-                        (close [_]))))]
-      (mdb.connection/with-application-db (mdb.connection/application-db :mysql held-ds)
-        (let [first-call  (future (mdb.connection/mariadb?))
-              second-call (future (mdb.connection/mariadb?))]
-          (try
-            (is (false? (.await entered 300 TimeUnit/MILLISECONDS)))
-            (finally
-              (.countDown release)))
-          (is (= {:answers [true true], :calls 1}
-                 {:answers [(deref first-call 5000 ::timed-out) (deref second-call 5000 ::timed-out)]
-                  :calls   @calls})))))))
+    ;; Without it, the second caller gets there at once.
+    (let [entered (CountDownLatch. 2)
+          release (CountDownLatch. 1)]
+      (do-with-product-app-db
+       :mysql "MariaDB" (fn [_] (.countDown entered) (.await release 5 TimeUnit/SECONDS))
+       (fn [calls]
+         (let [first-call  (future (mdb.connection/mariadb?))
+               second-call (future (mdb.connection/mariadb?))]
+           (try
+             (is (false? (.await entered 300 TimeUnit/MILLISECONDS)))
+             (finally
+               (.countDown release)))
+           (is (= {:answers [true true], :calls 1}
+                  {:answers [(deref first-call 5000 ::timed-out) (deref second-call 5000 ::timed-out)]
+                   :calls   (calls)}))))))))
 
 (deftest record-mariadb!-test
   (testing "a recorded answer is used without connecting"
