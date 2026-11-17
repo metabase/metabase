@@ -264,7 +264,7 @@ describe("embedding_sdk_first_component_performance", () => {
     });
 
     describe("when a card query fails", () => {
-      it("sends a success event with error `card_query`, because the rest of the dashboard is on screen", async () => {
+      it("sends a partial event, because the rest of the dashboard is on screen", async () => {
         await setupSdkDashboard({
           component: InteractiveDashboard,
           tableCardQueryResponse: createMockDataset({
@@ -272,15 +272,14 @@ describe("embedding_sdk_first_component_performance", () => {
           }),
         });
 
-        expect(await waitForSinglePerformanceEvent()).toMatchObject({
-          result: "success",
-          error: "card_query",
-        });
+        const event = await waitForSinglePerformanceEvent();
+        expect(event).toMatchObject({ result: "partial" });
+        expect(event.error).toBeUndefined();
       });
     });
 
     describe("when the dashboard request fails", () => {
-      it("sends a failure event with error `load`", async () => {
+      it("sends a failure event without an error", async () => {
         const dashboard = createMockDashboard({ id: TEST_DASHBOARD_ID });
         setupDashboardNotFoundEndpoint(dashboard);
         setupDashboardQueryMetadataEndpoint(
@@ -293,10 +292,9 @@ describe("embedding_sdk_first_component_performance", () => {
         );
 
         expect(await screen.findByRole("alert")).toBeInTheDocument();
-        expect(await waitForSinglePerformanceEvent()).toMatchObject({
-          result: "failure",
-          error: "load",
-        });
+        const event = await waitForSinglePerformanceEvent();
+        expect(event).toMatchObject({ result: "failure" });
+        expect(event.error).toBeUndefined();
       });
     });
   });
@@ -339,16 +337,15 @@ describe("embedding_sdk_first_component_performance", () => {
     });
 
     describe("when the card request fails", () => {
-      it("sends a failure event with error `load`", async () => {
+      it("sends a failure event without an error", async () => {
         setupNotFoundCardEndpoints(TEST_CARD.id);
 
         renderSdkComponent(<StaticQuestion questionId={TEST_CARD.id} />);
 
         expect(await screen.findByRole("alert")).toHaveTextContent("not found");
-        expect(await waitForSinglePerformanceEvent()).toMatchObject({
-          result: "failure",
-          error: "load",
-        });
+        const event = await waitForSinglePerformanceEvent();
+        expect(event).toMatchObject({ result: "failure" });
+        expect(event.error).toBeUndefined();
       });
     });
   });

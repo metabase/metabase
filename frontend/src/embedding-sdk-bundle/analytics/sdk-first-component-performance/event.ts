@@ -42,10 +42,16 @@ type SdkComponentMarkName =
 
 type SdkComponentMarks = Partial<Record<SdkComponentMarkName, number>>;
 
-// `failure`: an error replaced the content. A `success` can still have a failed dashboard card.
 export type SdkComponentPerformanceOutcome =
-  | { result: "success"; error?: "card_query" }
-  | { result: "failure"; error: "load" | "query" };
+  | { result: "success" }
+  /** An error that does not completely break the experience, e.g. a failed dashboard card */
+  | { result: "partial" }
+  | {
+      /** An error is on screen instead of the content */
+      result: "failure";
+      /** What error we ran into, at the moment we only send `query` when the question fails at the query level */
+      error?: "query";
+    };
 
 type SdkBundleMode = "chunked" | "monolithic" | "unknown";
 
@@ -168,7 +174,7 @@ function sendIfComplete(): void {
       ssoLogin?.method === "jwt" ? ssoLogin.isJwtProviderUriPassed : undefined,
     client: getSdkClient(),
     bundle_mode: bundleMode,
-    error: outcome.error,
+    error: outcome.result === "failure" ? outcome.error : undefined,
     ...getRoundedMarks({ ...pageMarks, ...component.marks }),
   });
 }

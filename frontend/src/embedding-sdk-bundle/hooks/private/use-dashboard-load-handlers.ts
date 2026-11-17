@@ -56,11 +56,9 @@ export const useDashboardLoadHandlers = ({
   const handleLoadingComplete = useCallback(() => {
     componentPerformance?.recordMark("query_end");
     componentPerformance?.finish({
-      result: "success",
-      // A failed card still leaves the rest of the dashboard on screen
-      error: hasCardWithError(getDashcardDataMap(store.getState()))
-        ? "card_query"
-        : undefined,
+      result: hasCardWithError(getDashcardDataMap(store.getState()))
+        ? "partial"
+        : "success",
     });
   }, [componentPerformance, store]);
 
