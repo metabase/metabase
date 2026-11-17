@@ -587,16 +587,17 @@ describe("QB Actions > initializeQB", () => {
       const location = getLocationForCard(card);
       const url = `${location.pathname}${location.hash}`;
 
-      it("records the SQL it loaded as Metabot's", async () => {
+      it("records the question it loaded as Metabot's", async () => {
         const { dispatch, result } = await setup({
           card,
           location,
           pendingMetabotCard: { url },
         });
 
-        expect(result.uiControls.metabotSqlBaseline).toEqual({
-          sql: "select * from orders",
-          databaseId: SAMPLE_DB_ID,
+        expect(result.uiControls.metabotCardBaseline).toEqual({
+          dataset_query: result.card.dataset_query,
+          display: result.card.display,
+          visualization_settings: result.card.visualization_settings,
         });
         expect(dispatch).toHaveBeenCalledWith(
           sharedQB.setPendingMetabotCard(null),
@@ -610,7 +611,7 @@ describe("QB Actions > initializeQB", () => {
           pendingMetabotCard: { url: "/question#another-card" },
         });
 
-        expect(result.uiControls.metabotSqlBaseline).toBeUndefined();
+        expect(result.uiControls.metabotCardBaseline).toBeUndefined();
         expect(dispatch).toHaveBeenCalledWith(
           sharedQB.setPendingMetabotCard(null),
         );
@@ -619,7 +620,7 @@ describe("QB Actions > initializeQB", () => {
       it("records nothing when Metabot did not open it", async () => {
         const { result } = await setup({ card, location });
 
-        expect(result.uiControls.metabotSqlBaseline).toBeUndefined();
+        expect(result.uiControls.metabotCardBaseline).toBeUndefined();
       });
     });
   });
@@ -627,7 +628,7 @@ describe("QB Actions > initializeQB", () => {
   describe("unsaved structured questions opened by Metabot", () => {
     const { card } = TEST_CASE.UNSAVED_STRUCTURED_QUESTION;
 
-    it("records no SQL", async () => {
+    it("records nothing", async () => {
       const location = getLocationForCard(card);
       const { result } = await setup({
         card,
@@ -635,7 +636,7 @@ describe("QB Actions > initializeQB", () => {
         pendingMetabotCard: { url: `${location.pathname}${location.hash}` },
       });
 
-      expect(result.uiControls.metabotSqlBaseline).toBeUndefined();
+      expect(result.uiControls.metabotCardBaseline).toBeUndefined();
     });
   });
 

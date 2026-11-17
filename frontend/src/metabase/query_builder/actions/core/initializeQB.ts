@@ -52,6 +52,7 @@ import { isSavedCard } from "metabase-types/guards";
 import { resetQB } from "../../store/actions";
 import {
   getIsEditingInDashboard,
+  getMetabotCardBaseline,
   getNotebookNativePreviewSidebarWidth,
   getPendingMetabotCard,
 } from "../../store/selectors";
@@ -490,10 +491,7 @@ async function handleQBInit(
       pendingMetabotCard.url === `${location.pathname}${location.hash}`;
     if (isNative && isMetabotCard) {
       // after the tag renames above, so it matches the question as loaded
-      uiControls.metabotSqlBaseline = {
-        sql: Lib.rawNativeQuery(question.query()),
-        databaseId: Lib.databaseID(question.query()),
-      };
+      uiControls.metabotCardBaseline = getMetabotCardBaseline(question);
     }
   }
 

@@ -24,7 +24,7 @@ import {
   useMetabotConversation,
   useUserMetabotPermissions,
 } from "../../hooks";
-import { type MetabotAgentId, keepLatestGeneratedCards } from "../../state";
+import type { MetabotAgentId } from "../../state";
 import type { MetabotChatConfig } from "../Metabot";
 import { METABOT_HOVER_CARD_BOUNDARY_ATTR } from "../MetabotHoverCard";
 
@@ -78,15 +78,7 @@ export const MetabotChat = ({
 
   const hasMessages = metabot.messages.length > 0;
 
-  // outside the full page, an edited chart shows only its latest version
   const isFullPageMetabot = useIsFullPageMetabot();
-  const messages = useMemo(
-    () =>
-      isFullPageMetabot
-        ? metabot.messages
-        : keepLatestGeneratedCards(metabot.messages),
-    [metabot.messages, isFullPageMetabot],
-  );
 
   const { scrollContainerRef, fillerRef } = useScrollManager(
     hasMessages,
@@ -218,7 +210,7 @@ export const MetabotChat = ({
             >
               {/* conversation messages */}
               <Messages
-                messages={messages}
+                messages={metabot.messages}
                 chartsAsLinks={!isFullPageMetabot}
                 onRetryMessage={metabot.retryMessage}
                 onContinueMessage={metabot.continueResponse}

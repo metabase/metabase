@@ -25,6 +25,7 @@ import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { createAsyncThunk } from "metabase/redux/utils";
 import {
+  getIsNavigationPending,
   getRouterLocation,
   hasUnsavedChanges,
   matchPath,
@@ -504,6 +505,12 @@ const findCodeEditBuffer = (
   return buffers.find((buffer) => buffer.id === bufferId);
 };
 
+/** The URL the user is on, with its search and hash. */
+const getRouterUrl = (): string | undefined => {
+  const location = getRouterLocation();
+  return location && `${location.pathname}${location.search}${location.hash}`;
+};
+
 const getViewedDashboardId = (): DashboardId | undefined => {
   const pathname = getRouterLocation()?.pathname ?? "";
   // the router's pathname keeps the basename of a subpath deployment
@@ -536,17 +543,19 @@ type TurnDestination =
 /**
  * Navigates to the last place a sidebar turn proposed, once the turn has ended.
  * It leaves the user where they are when:
- * - they moved while the turn ran;
+ * - they moved while the turn ran, or are moving now;
  * - they already see the saved dashboard;
  * - the proposal is a chart and they are on a dashboard (the chart stays in the
  *   conversation as a link);
  * - leaving would discard unsaved work.
  */
 const openTurnDestination =
-  (destination: TurnDestination, startPathname: string | undefined) =>
+  (destination: TurnDestination, startUrl: string | undefined) =>
   (dispatch: Dispatch) => {
     const viewedDashboardId = getViewedDashboardId();
-    const hasUserMoved = getRouterLocation()?.pathname !== startPathname;
+    // ad-hoc questions share a pathname and differ in the hash
+    const hasUserMoved =
+      getRouterUrl() !== startUrl || getIsNavigationPending();
     const isChartFromDashboard =
       destination.type === "generated-entity" &&
       destination.entity.type === "card" &&
@@ -583,7 +592,7 @@ export const sendAgentRequest = createAsyncThunk<
     const conversationId = request.conversation_id;
     // full-page Metabot and the embedding SDK don't open saved dashboards
     const canOpenDashboards = !isFullPageMetabot && !isEmbeddingSdk();
-    const startPathname = getRouterLocation()?.pathname;
+    const startUrl = getRouterUrl();
     // the last chart or dashboard the turn proposed, opened when it ends
     let destination: TurnDestination | undefined;
 
@@ -844,7 +853,7 @@ export const sendAgentRequest = createAsyncThunk<
       }
 
       if (destination) {
-        dispatch(openTurnDestination(destination, startPathname));
+        dispatch(openTurnDestination(destination, startUrl));
       }
 
       const shouldPollForTitle =

@@ -15,6 +15,7 @@ import {
   isQuestionDirty,
   isQuestionRunnable,
 } from "metabase/querying/common/utils/question";
+import type { MetabotCardBaseline } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import { filterTimelinesByXAxes } from "metabase/timelines/panel/utils";
@@ -637,6 +638,15 @@ export const isResultsMetadataDirty = createSelector(
   },
 );
 
+/**
+ * The parts of a question that saving it keeps, for comparing a question
+ * Metabot opened with what the user has made of it since.
+ */
+export const getMetabotCardBaseline = (
+  question: Question,
+): MetabotCardBaseline =>
+  _.pick(question.card(), "dataset_query", "display", "visualization_settings");
+
 export const getShouldShowUnsavedChangesWarning = createSelector(
   [
     getQueryBuilderMode,
@@ -668,12 +678,11 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
       const rawQuery = Lib.rawNativeQuery(question.query());
 
       if (isNewQuestion) {
-        const baseline = uiControls.metabotSqlBaseline;
-        const isUntouchedMetabotSql =
+        const baseline = uiControls.metabotCardBaseline;
+        const isUntouchedMetabotCard =
           baseline != null &&
-          rawQuery === baseline.sql &&
-          Lib.databaseID(question.query()) === baseline.databaseId;
-        return rawQuery.length > 0 && !isUntouchedMetabotSql;
+          _.isEqual(getMetabotCardBaseline(question), baseline);
+        return rawQuery.length > 0 && !isUntouchedMetabotCard;
       }
 
       const rawOriginalQuery = Lib.rawNativeQuery(originalQuestion.query());

@@ -39,29 +39,6 @@ export const isGeneratedCardPart = (
   part.part.type === "data-generated_entity" &&
   part.part.data.type === "card";
 
-/**
- * The messages with only the last generated part of each chart. An edit
- * redraws a chart under its id, so an earlier part shows a version it replaced.
- */
-export const keepLatestGeneratedCards = (
-  messages: MetabotMessage[],
-): MetabotMessage[] => {
-  const lastPartByChartId = new Map(
-    messages
-      .flatMap((message) => message.parts)
-      .filter(isGeneratedCardPart)
-      .map((part) => [part.part.data.id, part]),
-  );
-  return messages.map((message) => ({
-    ...message,
-    parts: message.parts.filter(
-      (part) =>
-        !isGeneratedCardPart(part) ||
-        lastPartByChartId.get(part.part.data.id) === part,
-    ),
-  }));
-};
-
 // The error codes whose server-written message the chat shows as is.
 const SERVER_MESSAGE_ERROR_CODES = [
   "ai_usage_limit_reached",

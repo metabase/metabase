@@ -36,7 +36,7 @@ export const createMockQueryBuilderUIControlsState = (
   isShowingListViewConfiguration: false,
   questionDetailsTimelineDrawerState: null,
   nativeEditorSelectedRange: [],
-  metabotSqlBaseline: null,
+  metabotCardBaseline: null,
   ...opts,
 });
 

@@ -17,6 +17,7 @@ import type {
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { State } from "metabase/redux/store";
 import {
+  getIsNavigationPending,
   getRouterLocation,
   hasUnsavedChanges,
   navigate,
@@ -50,6 +51,7 @@ jest.mock("metabase/router", () => ({
   ...jest.requireActual("metabase/router"),
   navigate: jest.fn(),
   getRouterLocation: jest.fn(),
+  getIsNavigationPending: jest.fn(() => false),
   hasUnsavedChanges: jest.fn(() => false),
 }));
 
@@ -58,6 +60,7 @@ const mockedNavigate = jest.mocked(navigate);
 const mockedGetRouterLocation = jest.mocked(getRouterLocation);
 const mockedHasUnsavedChanges = jest.mocked(hasUnsavedChanges);
 const mockedIsEmbeddingSdk = jest.mocked(isEmbeddingSdk);
+const mockedGetIsNavigationPending = jest.mocked(getIsNavigationPending);
 
 const datasetQuery = Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
 
@@ -91,10 +94,10 @@ const dashboardSavedPart = (
   },
 });
 
-const viewing = (pathname: string) => ({
+const viewing = (pathname: string, hash = "") => ({
   pathname,
   search: "",
-  hash: "",
+  hash,
   state: null,
   key: "default",
 });
@@ -169,6 +172,7 @@ describe("metabot > where a sidebar turn leaves the user", () => {
     mockedAiStreamingQuery.mockReset();
     mockedNavigate.mockReset();
     mockedHasUnsavedChanges.mockReturnValue(false);
+    mockedGetIsNavigationPending.mockReturnValue(false);
     mockedIsEmbeddingSdk.mockReturnValue(false);
     mockedGetRouterLocation.mockReturnValue(viewing("/collection/root"));
     jest.mocked(findMatchingInflightAiStreamingRequests).mockReturnValue([]);
@@ -231,6 +235,29 @@ describe("metabot > where a sidebar turn leaves the user", () => {
       parts: [cardPart(createCard())],
       duringTurn: () =>
         mockedGetRouterLocation.mockReturnValue(viewing("/browse/databases")),
+    });
+
+    expect(mockedNavigate).not.toHaveBeenCalled();
+  });
+
+  it("doesn't move a user who opened another question at the same path", async () => {
+    mockedGetRouterLocation.mockReturnValue(viewing("/question", "#chart-a"));
+
+    await streamTurn({
+      parts: [cardPart(createCard({ id: "chart-b" }))],
+      duringTurn: () =>
+        mockedGetRouterLocation.mockReturnValue(
+          viewing("/question", "#chart-c"),
+        ),
+    });
+
+    expect(mockedNavigate).not.toHaveBeenCalled();
+  });
+
+  it("doesn't move a user whose navigation is still loading", async () => {
+    await streamTurn({
+      parts: [cardPart(createCard())],
+      duringTurn: () => mockedGetIsNavigationPending.mockReturnValue(true),
     });
 
     expect(mockedNavigate).not.toHaveBeenCalled();

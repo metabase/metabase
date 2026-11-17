@@ -2,7 +2,6 @@ import type { Widget } from "metabase/viz-core";
 import type {
   Card,
   CollectionItemModel,
-  DatabaseId,
   Dataset,
   Field,
   NativeQuerySnippet,
@@ -85,16 +84,16 @@ export interface QueryBuilderUIControls {
   recentlySaved?: boolean;
   nativeEditorSelectedRange: Range[];
   /**
-   * The SQL and database of a native question Metabot opened, as loaded. While
-   * the question still matches it, leaving does not warn about unsaved changes.
+   * The saveable parts of a native question Metabot opened, as loaded. While
+   * the question still matches them, leaving does not warn about unsaved changes.
    */
-  metabotSqlBaseline: MetabotSqlBaseline | null;
+  metabotCardBaseline: MetabotCardBaseline | null;
 }
 
-export type MetabotSqlBaseline = {
-  sql: string;
-  databaseId: DatabaseId | null;
-};
+export type MetabotCardBaseline = Pick<
+  Card,
+  "dataset_query" | "display" | "visualization_settings"
+>;
 
 /** A question Metabot is opening; the query builder init of `url` consumes it. */
 export type PendingMetabotCard = {

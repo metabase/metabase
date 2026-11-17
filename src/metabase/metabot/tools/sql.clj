@@ -106,15 +106,6 @@
                        :display display
                        :title title}))
 
-(defn- chart-id-for-query
-  "The id of a chart in `memory` that draws the query `query-id`, or nil.
-  When several charts draw it, any one of them."
-  [memory query-id]
-  (some (fn [[chart-id chart]]
-          (when (= query-id (:query_id chart))
-            chart-id))
-        (get-in memory [:state :charts])))
-
 (defn- query-delivery
   "Returns how a query reaches the user.
    That is `:hidden` when `hide?`, so the user is not shown it at all.
@@ -221,11 +212,7 @@
   (let [action-result (sql.common/validated-sql-action! operation-result {:edit? edit?})
         query-id      (:query-id action-result)
         structured    (assoc action-result :result-type :query)
-        memory        (some-> (:memory-atom ctx) deref)
-        buffer-id     (first-code-editor-buffer-id memory)
-        ;; The edit is stored under the query's old id, which redraws its chart (see [[memory/set-query]]), so the
-        ;; edit is shown under that chart's id.
-        chart-id      (chart-id-for-query memory query-id)
+        buffer-id     (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
         hide-asked?   (false? show-chart)
         ;; The user's own query is always shown: the edit is stored under its ID, which stands for what is on their
         ;; screen, so a hidden edit would change it unseen.
@@ -240,9 +227,7 @@
     (some-> (:memory-atom ctx) (swap! memory/set-query query-id (:query action-result)))
     (m/assoc-some {:output            (format-query-output structured instr)
                    :structured-output structured}
-                  :data-parts (delivery-parts delivery buffer-id
-                                              (m/assoc-some action-result :chart-id chart-id)
-                                              title))))
+                  :data-parts (delivery-parts delivery buffer-id action-result title))))
 
 (defrecord EditSqlQueryTool []
   tools/Tool

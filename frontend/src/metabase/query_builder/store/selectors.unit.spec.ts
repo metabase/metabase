@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { createMockMetadata } from "__support__/metadata";
 import {
   createMockQueryBuilderState,
@@ -20,6 +22,7 @@ import {
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
+  Card,
   TableId,
   TestNativeQuerySpec,
   TestStageWithSourceSpec,
@@ -580,40 +583,55 @@ describe("getShouldShowUnsavedChangesWarning", () => {
     });
 
     describe("that Metabot opened", () => {
-      const card = getNativeCard("SELECT 1");
-      const databaseId = card.dataset_query.database;
+      const tagQuery = (type: "text" | "number") =>
+        Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+          query: "SELECT {{x}}",
+          templateTags: { x: { type, name: "x" } },
+        });
+      const card = createMockCard({
+        query_type: "native",
+        display: "table",
+        dataset_query: tagQuery("text"),
+      });
+      const baseline = _.pick(
+        card,
+        "dataset_query",
+        "display",
+        "visualization_settings",
+      );
 
-      it("does not warn while the query is Metabot's", () => {
-        const state = getBaseState({
-          card,
+      const getState = (changes: Partial<Card>) =>
+        getBaseState({
+          card: { ...card, ...changes },
           uiControls: {
             queryBuilderMode: "view",
-            metabotSqlBaseline: { sql: "SELECT 1", databaseId },
+            metabotCardBaseline: baseline,
           },
         });
-        expect(getShouldShowUnsavedChangesWarning(state)).toBe(false);
+
+      it("does not warn while the question is Metabot's", () => {
+        expect(getShouldShowUnsavedChangesWarning(getState({}))).toBe(false);
       });
 
-      it("warns once the user changes the query", () => {
-        const state = getBaseState({
-          card: getNativeCard("SELECT 2"),
-          uiControls: {
-            queryBuilderMode: "view",
-            metabotSqlBaseline: { sql: "SELECT 1", databaseId },
+      it.each<[string, Partial<Card>]>([
+        [
+          "the query",
+          {
+            dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+              query: "SELECT 2",
+            }),
           },
-        });
-        expect(getShouldShowUnsavedChangesWarning(state)).toBe(true);
-      });
-
-      it("warns once the user changes the database", () => {
-        const state = getBaseState({
-          card,
-          uiControls: {
-            queryBuilderMode: "view",
-            metabotSqlBaseline: { sql: "SELECT 1", databaseId: -1 },
-          },
-        });
-        expect(getShouldShowUnsavedChangesWarning(state)).toBe(true);
+        ],
+        ["a variable", { dataset_query: tagQuery("number") }],
+        ["the display", { display: "bar" }],
+        [
+          "the visualization settings",
+          { visualization_settings: { "table.pivot": true } },
+        ],
+      ])("warns once the user changes %s", (_name, changes) => {
+        expect(getShouldShowUnsavedChangesWarning(getState(changes))).toBe(
+          true,
+        );
       });
     });
   });
