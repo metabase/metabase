@@ -1,9 +1,41 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
+import { setupContentTranslationEndpoints } from "__support__/server-mocks/content-translation";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 
 import { ContentTranslationConfiguration } from "../ContentTranslationConfiguration";
 
+const UPLOAD_DICTIONARY_PATH =
+  "path:/api/ee/content-translation/upload-dictionary";
+
 const setup = () => {
+  setupContentTranslationEndpoints();
   renderWithProviders(<ContentTranslationConfiguration />);
+};
+
+const MEBIBYTE = 2 ** 20;
+
+const createCsvFile = ({ sizeInMebibytes }: { sizeInMebibytes: number }) => {
+  const header = "locale,string,translation\n";
+  const row = "de,data2,data3\n";
+  const rowCount = Math.floor((sizeInMebibytes * MEBIBYTE) / row.length);
+  return new File([header + row.repeat(rowCount)], "file.csv", {
+    type: "text/csv",
+  });
+};
+
+const uploadFile = async (file: File) => {
+  await userEvent.upload(
+    screen.getByTestId("content-translation-dictionary-upload-input"),
+    file,
+  );
+  const dialog = await screen.findByRole("dialog", {
+    name: /upload new dictionary/i,
+  });
+  await userEvent.click(
+    within(dialog).getByRole("button", { name: "Replace existing dictionary" }),
+  );
 };
 
 describe("ContentTranslationConfiguration", () => {
@@ -68,6 +100,43 @@ describe("ContentTranslationConfiguration", () => {
           name: /Upload edited translation dictionary/i,
         }),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("uploading", () => {
+    it("rejects a file larger than 1.5 MB without calling the upload endpoint", async () => {
+      setup();
+
+      await uploadFile(createCsvFile({ sizeInMebibytes: 1.6 }));
+
+      await waitFor(() =>
+        expect(
+          screen.getAllByRole("alert").map((alert) => alert.textContent),
+        ).toEqual(
+          expect.arrayContaining([
+            "We couldn't upload the file due to this error:",
+            "The file is larger than 1.5 MB",
+          ]),
+        ),
+      );
+      expect(fetchMock.callHistory.calls(UPLOAD_DICTIONARY_PATH)).toHaveLength(
+        0,
+      );
+    });
+
+    it("sends a file of up to 1.5 MB to the upload endpoint", async () => {
+      setup();
+
+      await uploadFile(createCsvFile({ sizeInMebibytes: 1.4 }));
+
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls(UPLOAD_DICTIONARY_PATH),
+        ).toHaveLength(1),
+      );
+      expect(
+        screen.queryByText(/The file is larger than/),
+      ).not.toBeInTheDocument();
     });
   });
 });
