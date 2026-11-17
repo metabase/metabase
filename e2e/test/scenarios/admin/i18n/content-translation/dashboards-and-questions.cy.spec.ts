@@ -213,7 +213,9 @@ describe("scenarios > content translation > dashboards and questions", () => {
             { locale: "fr", msgid: "Widget", msgstr: "Le widget" },
           ]);
 
-          cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+          cy.intercept("GET", "/api/embed/dashboard/**/card/*").as(
+            "embedCardQuery",
+          );
           cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
 
           cy.signInAsAdmin();
@@ -268,8 +270,8 @@ describe("scenarios > content translation > dashboards and questions", () => {
           );
 
           cy.wait("@dashboard");
-          cy.wait("@cardQuery");
-          cy.wait("@cardQuery");
+          cy.wait("@embedCardQuery");
+          cy.wait("@embedCardQuery");
 
           H.getDashboardCard(0).within(() => {
             cy.findAllByText("Le gadget").should("exist");

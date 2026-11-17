@@ -746,7 +746,7 @@ describe("PublicOrEmbeddedDashboardPage > content translation", () => {
         within(screen.getByTestId("parameter-widget")).getByText("Kategorie"),
       );
       const popover = await screen.findByTestId("parameter-value-dropdown");
-      expect(within(popover).getByText("Gerät")).toBeInTheDocument();
+      expect(await within(popover).findByText("Gerät")).toBeInTheDocument();
       expect(within(popover).getByText("Dingsbums")).toBeInTheDocument();
       expect(within(popover).getByText("Apparat")).toBeInTheDocument();
       expect(within(popover).queryByText("Gadget")).not.toBeInTheDocument();

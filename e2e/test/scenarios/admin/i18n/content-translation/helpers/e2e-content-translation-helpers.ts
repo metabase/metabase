@@ -1,9 +1,6 @@
-import { parse } from "csv-parse/browser/esm/sync";
-
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 import { getCSVWithHeaderRow } from "e2e/support/helpers/e2e-content-translation-helpers";
 import type { DictionaryArray, DictionaryResponse } from "metabase-types/api";
-import { isDictionaryArray } from "metabase-types/guards/content-translation";
 
 export const uploadTranslationDictionary = (rows: DictionaryArray) => {
   cy.intercept("POST", "/api/ee/content-translation/upload-dictionary").as(
@@ -65,24 +62,4 @@ export const assertOnlyTheseTranslationsAreStored = (
         );
       });
     });
-};
-
-export const parseCSVFromString = (str: string): DictionaryArray => {
-  try {
-    const strings: unknown = parse(str, {
-      delimiter: [",", "\t", "\n"],
-      skip_empty_lines: true,
-      relax_column_count: true,
-      relax_quotes: true,
-      trim: true,
-      quote: '"',
-      escape: "\\",
-    }).flat();
-    if (isDictionaryArray(strings)) {
-      return strings;
-    }
-    throw new Error("Invalid dictionary");
-  } catch (err) {
-    return [];
-  }
 };
