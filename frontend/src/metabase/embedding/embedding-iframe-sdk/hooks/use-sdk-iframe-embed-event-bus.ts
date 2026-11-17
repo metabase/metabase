@@ -6,6 +6,7 @@ import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 
 import type {
+  SdkIframeEmbedNavigateToDataAppPathMessage,
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
 } from "../types/embed";
@@ -31,9 +32,13 @@ export function useSdkIframeEmbedEventBus({
 }) {
   const [embedSettings, setEmbedSettings] =
     useState<SdkIframeEmbedSettings | null>(null);
+
   const [usageAnalytics, setUsageAnalytics] = useState<UsageAnalytics | null>(
     null,
   );
+
+  const [dataAppPathNavigationRequest, setDataAppPathNavigationRequest] =
+    useState<SdkIframeEmbedNavigateToDataAppPathMessage["data"] | null>(null);
 
   useEffect(() => {
     const removeMessageListener = listenForEajsMessages({
@@ -44,6 +49,9 @@ export function useSdkIframeEmbedEventBus({
             setEmbedSettings(data);
             onSettingsChanged?.(data);
           })
+          .with({ type: "metabase.embed.navigateToDataAppPath" }, ({ data }) =>
+            setDataAppPathNavigationRequest(data),
+          )
           .with({ type: "metabase.embed.reportAnalytics" }, ({ data }) => {
             setUsageAnalytics({
               usage: data.usageAnalytics,
@@ -84,7 +92,7 @@ export function useSdkIframeEmbedEventBus({
     }
   }, [embedSettings?.instanceUrl, usageAnalytics]);
 
-  return { sendMessage, embedSettings };
+  return { sendMessage, embedSettings, dataAppPathNavigationRequest };
 }
 
 export function isMetabaseInstance(instanceUrl: string, embedHostUrl: string) {

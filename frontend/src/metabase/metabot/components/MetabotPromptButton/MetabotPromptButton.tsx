@@ -1,21 +1,15 @@
-import cx from "classnames";
 import { t } from "ttag";
 
-import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useSetting } from "metabase/settings";
-import { Icon, Tooltip } from "metabase/ui";
-
-import S from "./MetabotPromptButton.module.css";
+import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 
 interface MetabotPromptButtonProps {
-  size: number;
   isPromptInputOpen?: boolean;
   onClick?: () => void;
 }
 
 export const MetabotPromptButton = ({
-  size,
   isPromptInputOpen,
   onClick,
 }: MetabotPromptButtonProps) => {
@@ -30,16 +24,15 @@ export const MetabotPromptButton = ({
 
   return (
     <Tooltip label={label}>
-      <IconButtonWrapper
+      <ActionIcon
+        variant="subtle"
         aria-label={label}
         aria-pressed={isPromptInputOpen}
-        className={cx(S.button, {
-          [S.isSelected]: isPromptInputOpen,
-        })}
+        selected={isPromptInputOpen}
         onClick={onClick}
       >
-        <Icon name="metabot" size={size} />
-      </IconButtonWrapper>
+        <Icon name="metabot" />
+      </ActionIcon>
     </Tooltip>
   );
 };

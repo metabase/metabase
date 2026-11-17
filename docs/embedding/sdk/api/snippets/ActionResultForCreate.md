@@ -10,8 +10,8 @@ Response from a single-row create — the inserted row.
 
 <!-- [<snippet properties>] -->
 
-| Property                               | Type                                                                                                                                     |
-| :------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------- |
-| <a id="created-row"></a> `created-row` | [`Record`](https://www.typescriptlang.org/docs/handbook/utility-types.html#recordkeys-type)\<`string`, [`RowValue`](./api/RowValue.md)\> |
+| Property                               | Type                                                                                                                                                              |
+| :------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <a id="created-row"></a> `created-row` | [`Record`](https://www.typescriptlang.org/docs/handbook/utility-types.html#recordkeys-type)\<`string`, [`RowValue`](/docs/latest/embedding/sdk/api/RowValue.md)\> |
 
 <!-- [<endsnippet properties>] -->

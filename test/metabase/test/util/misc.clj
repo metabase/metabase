@@ -47,7 +47,7 @@
     (try
       (thunk temp-admin)
       (finally
-        (t2/delete! :model/User (:id temp-admin))
+        (t2/delete! :model/User :id (:id temp-admin))
         (when (seq existing-admin-ids)
           (t2/update! (t2/table-name :model/User) {:id [:in existing-admin-ids]} {:is_superuser true}))
         (perms/add-users-to-groups! (for [{:keys [user_id group_id is_group_manager]} existing-admin-memberships]

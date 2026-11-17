@@ -85,8 +85,7 @@ export function useExplorationClickActionsMode({
             if (error) {
               trackExplorationExploreFurtherClicked(explorationId, "failure");
               sendToast({
-                icon: "warning_triangle_filled",
-                iconColor: "warning",
+                variant: "negative",
                 message: t`Couldn't start a new exploration`,
               });
             } else {
@@ -129,8 +128,7 @@ export function useExplorationClickActionsMode({
             });
             if (error) {
               sendToast({
-                icon: "warning_triangle_filled",
-                iconColor: "warning",
+                variant: "negative",
                 message: t`Failed to add comment`,
               });
             } else {

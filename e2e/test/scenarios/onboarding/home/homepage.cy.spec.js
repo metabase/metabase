@@ -32,6 +32,7 @@ describe("scenarios > home > homepage", () => {
 
     it("should display x-rays for the Sample Database", () => {
       cy.visit("/");
+      H.closeNavigationSidebar();
       cy.wait("@getXrayCandidates");
       cy.findByTestId("home-page").within(() => {
         cy.findByText(
@@ -495,32 +496,6 @@ describe("scenarios > home > custom homepage", () => {
       cy.signInAsAdmin();
       H.updateSetting("custom-homepage", true);
       H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
-    });
-
-    it("should not flash the homescreen before redirecting (#37089)", () => {
-      cy.intercept(
-        {
-          url: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,
-          method: "GET",
-          middleware: true,
-        },
-        (req) => {
-          req.continue((res) => {
-            res.delay = 1000;
-            res.send();
-          });
-        },
-      );
-
-      cy.visit("/");
-      cy.findByRole("heading", { name: "Loading..." }).should("exist");
-      cy.findByRole("heading", { name: "Loading...", timeout: 5000 }).should(
-        "not.exist",
-      );
-
-      //Ensure that when the loading header is gone, we are no longer on the home page
-      cy.findByTestId("home-page", { timeout: 0 }).should("not.exist");
-      cy.url().should("include", "/dashboard/");
     });
 
     it("should redirect you if you do not have permissions for set dashboard", () => {

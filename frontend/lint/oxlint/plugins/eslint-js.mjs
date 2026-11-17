@@ -1,4 +1,5 @@
 import { builtinRules } from "eslint/use-at-your-own-risk";
+
 import { jsRules } from "../config.mjs";
 import { moduleScopeContext } from "../module-scope.mjs";
 import { wrap } from "../plugin.mjs";

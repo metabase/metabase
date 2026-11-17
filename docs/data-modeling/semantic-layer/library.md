@@ -21,23 +21,24 @@ The Library helps you create a source of truth for analytics by providing a cent
 
 ![The Library in Data Studio](./images/library-in-data-studio.png)
 
-The Library has two parts, both of which you manage in [Data Studio](../data-studio.md):
+The Library includes these parts, which you manage in [Data Studio](../data-studio.md):
 
-- **[Semantic layer](#semantic-layer)**: Curated tables, metrics, and SQL snippets.
+- **[Semantic layer](#semantic-layer)**: Curated tables and metrics.
+- **[SQL snippets](#sql-snippets)**: Reusable bits of SQL.
 - **[Glossary](#glossary)**: Definitions of your business terms.
 
 Once you [create the Library](#create-the-library):
 
-- A **Library** section appears in the navigation sidebar of the main app, listing the tables and metrics in your semantic layer.
+- A **Library** section appears in the navigation sidebar of the main app, with the **Data** and **Metrics** collections of your semantic layer.
 - The data picker in the query builder defaults to showing tables and metrics from the Library to encourage people to use your vetted content.
 - If you turn on Metabot's [Verified or curated content](../../ai/settings.md#verified-or-curated-content) setting, Metabot will only use content that's verified, in an official collection, or published to the Library.
-- You can [sync the Library to Git](#versioning-the-library) to version your semantic layer and glossary.
+- You can [sync the Library to Git](#versioning-the-library) to version your semantic layer, SQL snippets, and glossary.
 
 ### Semantic layer
 
 _Data Studio > Semantic layer_
 
-The semantic layer is a collection of curated tables (together with their [segments](segments.md) and [measures](measures.md)), [metrics](metrics.md), and [SQL snippets](../../questions/native-editor/snippets.md) that people and AI can use to build authoritative questions and dashboards.
+The semantic layer is a collection of curated tables (together with their [segments](segments.md) and [measures](measures.md)) and [metrics](metrics.md) that people and AI can use to build authoritative questions and dashboards.
 
 The semantic layer is what people see in the **Library** section of the main app's navigation sidebar, and in the data picker.
 
@@ -53,7 +54,7 @@ Before you can add items to the semantic layer, you'll need to create the Librar
 
 1. Click the **grid** icon in the upper right and select **Data Studio**.
 2. In the left sidebar, click **Semantic layer**.
-3. Click **Create my Library**.
+3. Click **Create my semantic layer**.
 
 Metabase will create the Library with its **Data** and **Metrics** collections. By default, everyone can view the Library, and people in the Data Analysts group can curate it. See [Library permissions](#library-permissions).
 
@@ -71,20 +72,20 @@ The **+ New** menu has options to:
 
 - **Published table**: [Publish a table](published-tables.md#publish-a-table-from-the-semantic-layer) to the Library.
 - **Metric**: [Create a metric](#metrics) in the Library.
-- **Snippet**: [Create a SQL snippet](#sql-snippets).
-- **Collection**: [Create a subcollection or snippet folder](#library-organization).
+- **Collection**: [Create a subcollection](#library-organization).
 
-To manage the glossary, see [Glossary](glossary.md).
+To add a snippet, see [SQL snippets](#sql-snippets). To manage the glossary, see [Glossary](glossary.md).
 
 ## Library organization
 
-![Library organization](./images/library-org.png)
+![The semantic layer in a development Metabase in Read-write mode, with subcollections in Data and Metrics](./images/library-org.png)
 
-The semantic layer lives in a special collection called Library, which has three root sections:
+The semantic layer lives in a special collection called Library, which has two root sections:
 
 - **Data**: For [published tables](published-tables.md).
 - **Metrics**: For [official metrics](#metrics).
-- **SQL snippets**: For all the [SQL snippets](#sql-snippets) on your instance.
+
+[SQL snippets](#sql-snippets) are part of your Library. They have their own page at **Data Studio > SQL snippets**.
 
 These root sections are predefined. You can't rename or archive them, but you can use [permissions](#library-permissions) to control who sees them.
 
@@ -98,6 +99,10 @@ To create a subcollection in one of the Library's sections:
 2. Click **+ New** and select **Collection**.
 3. Under **Collection it's saved in**, select the parent collection.
 4. Add the name and description for the collection and click **Create**.
+
+If you use [Remote sync](./remote-sync.md), your production Metabase has the same organization as your development Metabase. But in Read-only mode, the semantic layer has no **+ New** button or branch menu, because you make your changes in your development Metabase.
+
+![The semantic layer in a production Metabase in Read-only mode, with no New button or branch menu](./images/library-org-read-only.png)
 
 ## Publishing tables
 
@@ -121,11 +126,13 @@ To create a new Library metric, go to **Data Studio > Semantic layer** and selec
 
 ## SQL snippets
 
-[SQL snippets](../../questions/native-editor/snippets.md) are reusable bits of code. All snippets in your Metabase are available to the library, including snippets created elsewhere in your Metabase. You can also create snippet folders in the Library.
+[SQL snippets](../../questions/native-editor/snippets.md) are reusable bits of code. All snippets in your Metabase are available to the library, including snippets created elsewhere in your Metabase.
+
+To create a snippet or a snippet folder, go to **Data Studio > SQL snippets** and click **+ New**.
 
 ## Versioning the Library
 
-You can [sync Library content to version control](../../installation-and-operation/remote-sync.md), giving you change history and the ability to publish content across environments. When you sync the Library, Metabase also syncs your SQL snippets and [glossary](glossary.md) terms.
+You can [sync Library content to version control](./remote-sync.md), giving you change history and the ability to publish content across environments. When you sync the Library, Metabase also syncs your SQL snippets, [data actions](../data-actions.md), and [glossary](glossary.md) terms.
 
 ## Library permissions
 
@@ -179,7 +186,7 @@ There are some caveats though, depending on which part of the Library you're wor
 
   - Snippet management is controlled by [snippet permissions](../../permissions/snippets.md) - not regular collection permissions.
 
-The root sections (Data, Metrics, SQL snippets) have fixed properties and can't be renamed or deleted. Subcollections you create follow the normal collection permission rules.
+The root sections (Data and Metrics) have fixed properties and can't be renamed or deleted. Subcollections you create follow the normal collection permission rules.
 
 ## Permissions to use Library content
 
@@ -208,6 +215,6 @@ People who have View or Curate collection permissions to the **Library** subcoll
 - [Published tables](./published-tables.md)
 - [Glossary](./glossary.md)
 - [Dependency graph](../tools/graph.md)
-- [Remote sync](../../installation-and-operation/remote-sync.md)
+- [Remote sync](./remote-sync.md)
 - [Metrics](./metrics.md)
 - [Snippets](../../questions/native-editor/snippets.md).

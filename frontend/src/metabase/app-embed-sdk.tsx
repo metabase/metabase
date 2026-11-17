@@ -20,7 +20,7 @@ import {
 EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = true;
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "embedding-simple";
-EMBEDDING_SDK_CONFIG.enableEmbeddingSettingKey = "enable-embedding-simple";
+EMBEDDING_SDK_CONFIG.enableEmbeddingSettingKey = "enable-embedding-modular";
 EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";
 
 // load the embedding_iframe_sdk EE plugin
@@ -30,8 +30,12 @@ import "sdk-iframe-embedding-ee-plugins";
 // Must be imported after the EE plugins are loaded
 // oxfmt-ignore
 import { SdkIframeEmbedRoute } from "metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute";
+import { applyDocumentLocales } from "metabase/utils/boot-locale";
 
-function _init() {
+async function _init() {
+  // This page is served from our own document, which carries the catalogues.
+  await applyDocumentLocales();
+
   document.body.style.margin = "0";
   document.body.style.backgroundColor = "transparent";
   document.documentElement.style.overflow = "hidden";

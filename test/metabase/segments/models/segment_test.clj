@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.request.session :as session]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -69,21 +69,21 @@
         (is (thrown-with-msg?
              Exception
              #"You cannot update the creator_id of a Segment"
-             (t2/update! :model/Segment id {:creator_id (mt/user->id :crowberto)}))))
+             (t2/update! :model/Segment :id id {:creator_id (mt/user->id :crowberto)}))))
       (testing "you shouldn't be able to set it to `nil` either"
         (is (thrown-with-msg?
              Exception
              #"You cannot update the creator_id of a Segment"
-             (t2/update! :model/Segment id {:creator_id nil}))))
+             (t2/update! :model/Segment :id id {:creator_id nil}))))
       (testing "calling `update!` with a value that is the same as the current value shouldn't throw an Exception"
         (is (= 0
-               (t2/update! :model/Segment id {:creator_id (mt/user->id :rasta)})))))))
+               (t2/update! :model/Segment :id id {:creator_id (mt/user->id :rasta)})))))))
 
 (deftest definition-description-missing-definition-test
   (testing "Do not hydrate definition description if definition is nil"
     (mt/with-temp [:model/Segment {id :id} {:name "Segment"
                                             :table_id (mt/id :users)}]
-      (is (nil? (-> (t2/select-one :model/Segment id)
+      (is (nil? (-> (t2/select-one :model/Segment :id id)
                     (t2/hydrate :definition_description)
                     :definition_description))))))
 
@@ -124,7 +124,7 @@
                      :set {:definition (json/encode {:filter
                                                      [:= [:wheat-field Integer/MAX_VALUE nil] 4]})}
                      :where [:= :id id]})
-      (is (nil? (-> (t2/select-one :model/Segment id)
+      (is (nil? (-> (t2/select-one :model/Segment :id id)
                     (t2/hydrate :definition_description)
                     :definition_description))))))
 
@@ -153,7 +153,7 @@
       (is (thrown-with-msg?
            Exception
            #"does not exist"
-           (t2/update! :model/Segment segment-id {:definition {:filter [:segment 99999]}})))))
+           (t2/update! :model/Segment :id segment-id {:definition {:filter [:segment 99999]}})))))
   (testing "Updating a segment to reference itself should fail"
     (mt/with-temp [:model/Segment {segment-id :id} {:name "Segment"
                                                     :table_id (mt/id :venues)
@@ -161,7 +161,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Segment segment-id {:definition {:filter [:segment segment-id]}})))))
+           (t2/update! :model/Segment :id segment-id {:definition {:filter [:segment segment-id]}})))))
   (testing "Updating a segment to create an indirect cycle should fail"
     (mt/with-temp [:model/Segment {segment-1-id :id} {:name "Segment 1"
                                                       :table_id (mt/id :venues)
@@ -172,7 +172,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Segment segment-1-id {:definition {:filter [:segment segment-2-id]}}))))))
+           (t2/update! :model/Segment :id segment-1-id {:definition {:filter [:segment segment-2-id]}}))))))
 
 ;;; ------------------------------------------------ Permission Tests ------------------------------------------------
 
@@ -184,10 +184,10 @@
                                            :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
       (mt/with-test-user :crowberto
         (mt/with-premium-features #{:advanced-permissions}
-          (is (true? (mi/can-write? segment))))
+          (is (true? (mi/can-write? (t2/hydrate segment :can_write)))))
         (testing "including without the advanced-permissions feature"
           (mt/with-premium-features #{}
-            (is (true? (mi/can-write? segment)))))))))
+            (is (true? (mi/can-write? (t2/hydrate segment :can_write))))))))))
 
 (deftest can-write?-analyst-unrestricted-test
   (testing "Data analysts with unrestricted view-data can write segments"
@@ -203,10 +203,10 @@
         (session/with-current-user analyst-id
           (mt/when-ee-evailable
            (mt/with-premium-features #{:advanced-permissions}
-             (is (mi/can-write? segment))))
+             (is (mi/can-write? (t2/hydrate segment :can_write)))))
           (testing "but not once the advanced-permissions feature is gone"
             (mt/with-premium-features #{}
-              (is (not (mi/can-write? segment))))))))))
+              (is (not (mi/can-write? (t2/hydrate segment :can_write)))))))))))
 
 (deftest can-write?-analyst-restricted-test
   (testing "Data analysts without unrestricted view-data cannot write segments"
@@ -217,7 +217,7 @@
                                              :creator_id (mt/user->id :rasta)
                                              :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
         (session/with-current-user analyst-id
-          (is (false? (mi/can-write? segment))))))))
+          (is (false? (mi/can-write? (t2/hydrate segment :can_write)))))))))
 
 (deftest can-write?-non-analyst-test
   (testing "Non-data-analysts cannot write segments"
@@ -226,7 +226,7 @@
                                            :creator_id (mt/user->id :rasta)
                                            :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
       (mt/with-test-user :rasta
-        (is (false? (mi/can-write? segment)))))))
+        (is (false? (mi/can-write? (t2/hydrate segment :can_write))))))))
 
 (deftest can-create?-superuser-test
   (testing "Superusers can create segments"

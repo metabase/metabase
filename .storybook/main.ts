@@ -111,9 +111,11 @@ const config: StorybookConfig = {
         rules: [
           SIDE_EFFECT_FREE_RULE,
           ...(config.module?.rules ?? []).filter(
-            (rule) => !isCSSRule(rule) && !isSvgRule(rule),
+            (rule) => !isCSSRule(rule) && !isImageAssetRule(rule),
           ),
-          ...appConfig.module.rules.filter((rule: any) => isSvgRule(rule)),
+          ...appConfig.module.rules.filter((rule: any) =>
+            isImageAssetRule(rule),
+          ),
           // We use MiniCssExtractPlugin, because Storybook can't properly work with `rspack.CssExtractRspackPlugin`
           {
             test: /\.css$/,
@@ -134,4 +136,7 @@ const config: StorybookConfig = {
 export default config;
 
 const isCSSRule = (rule: any) => rule.test?.toString() === "/\\.css$/";
-const isSvgRule = (rule: any) => rule.test?.test(".svg");
+// The app config handles SVG and PNG in separate rules, and Storybook drops its
+// own image rules in favour of both.
+const isImageAssetRule = (rule: any) =>
+  rule.test?.test(".svg") || rule.test?.test(".png");

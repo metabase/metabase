@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import cx from "classnames";
-import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -111,10 +111,8 @@ function updateParameter(
 
   const index = _.findIndex(dashboard.parameters, (p) => p.id === id);
   if (index >= 0) {
-    const parameters = assoc(
-      dashboard.parameters,
-      index,
-      parameterUpdater(dashboard.parameters[index]),
+    const parameters = dashboard.parameters.map((parameter, i) =>
+      i === index ? parameterUpdater(parameter) : parameter,
     );
     dispatch(
       setDashboardAttributes({ id: dashboard.id, attributes: { parameters } }),
@@ -383,6 +381,108 @@ export function removeParameterAndReferences(
         return parameter;
       });
   });
+}
+
+/**
+ * Undoes `removeParameterAndReferences` for `parameterIds`, given the
+ * `originalParameters` from before the removal:
+ * - those parameters come back as they were, right after the parameter they
+ *   originally followed, minus references to parameters that no longer exist
+ * - other parameters get back their references to them, and otherwise keep
+ *   any changes made since, including their order, additions and removals
+ */
+export function restoreParametersAndReferences(
+  dispatch: Dispatch,
+  getState: GetState,
+  originalParameters: Parameter[],
+  parameterIds: ParameterId[],
+) {
+  const restoredIds = new Set(parameterIds);
+  const parametersToRestore = originalParameters.filter(({ id }) =>
+    restoredIds.has(id),
+  );
+
+  updateParameters(dispatch, getState, (parameters) => {
+    const nextParameters = parametersToRestore.reduce(
+      (result, parameter) =>
+        insertAfterOriginalPredecessor(result, parameter, originalParameters),
+      parameters.map((parameter) =>
+        restoreReferences(parameter, originalParameters, restoredIds),
+      ),
+    );
+
+    const nextIds = new Set(nextParameters.map(({ id }) => id));
+    return nextParameters.map((parameter) =>
+      restoredIds.has(parameter.id) && parameter.filteringParameters
+        ? {
+            ...parameter,
+            filteringParameters: parameter.filteringParameters.filter((id) =>
+              nextIds.has(id),
+            ),
+          }
+        : parameter,
+    );
+  });
+}
+
+/**
+ * Returns `parameters` with `parameter` inserted right after the nearest
+ * parameter that came before it in `originalParameters` and is still present,
+ * or at the start if there is none. Unchanged if `parameter` is already there.
+ */
+function insertAfterOriginalPredecessor(
+  parameters: Parameter[],
+  parameter: Parameter,
+  originalParameters: Parameter[],
+): Parameter[] {
+  const isPresent = (id: ParameterId) =>
+    parameters.some((current) => current.id === id);
+  if (isPresent(parameter.id)) {
+    return parameters;
+  }
+
+  const originalIndex = originalParameters.findIndex(
+    ({ id }) => id === parameter.id,
+  );
+  const predecessor = originalParameters
+    .slice(0, Math.max(originalIndex, 0))
+    .reverse()
+    .find(({ id }) => isPresent(id));
+  const insertAt = predecessor
+    ? parameters.findIndex(({ id }) => id === predecessor.id) + 1
+    : 0;
+
+  return [
+    ...parameters.slice(0, insertAt),
+    parameter,
+    ...parameters.slice(insertAt),
+  ];
+}
+
+/**
+ * Returns `parameter` with the references to `restoredIds` it had in
+ * `originalParameters` added back to its current ones.
+ */
+function restoreReferences(
+  parameter: Parameter,
+  originalParameters: Parameter[],
+  restoredIds: Set<ParameterId>,
+): Parameter {
+  const original = originalParameters.find(({ id }) => id === parameter.id);
+  const removedReferences = (original?.filteringParameters ?? []).filter((id) =>
+    restoredIds.has(id),
+  );
+  if (removedReferences.length === 0) {
+    return parameter;
+  }
+
+  return {
+    ...parameter,
+    filteringParameters: [
+      ...(parameter.filteringParameters ?? []),
+      ...removedReferences,
+    ],
+  };
 }
 
 export const removeParameter = createThunkAction(
@@ -845,16 +945,17 @@ export const setParameterFilteringParameters = createThunkAction(
 
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
-  (parameterId: ParameterId, value: unknown) => (_dispatch, getState) => {
-    const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
-    const isValueEmpty = isParameterValueEmpty(value);
+  (parameterId: ParameterId, value: ParameterValuesMap[ParameterId]) =>
+    (_dispatch, getState) => {
+      const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
+      const isValueEmpty = isParameterValueEmpty(value);
 
-    return {
-      id: parameterId,
-      value: isValueEmpty ? PULSE_PARAM_EMPTY : value,
-      isDraft: isSettingDraftParameterValues,
-    };
-  },
+      return {
+        id: parameterId,
+        value: isValueEmpty ? PULSE_PARAM_EMPTY : value,
+        isDraft: isSettingDraftParameterValues,
+      };
+    },
 );
 
 // Auto-apply filters

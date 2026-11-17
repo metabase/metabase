@@ -1,6 +1,5 @@
 (ns metabase.notification.payload.core
   (:require
-   [clojure.walk :as w]
    [malli.util :as mut]
    [metabase.appearance.core :as appearance]
    [metabase.channel.models.channel :as models.channel]
@@ -11,9 +10,11 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.premium-features.core :as premium-features]
    [metabase.system.core :as system]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [potemkin :as p]))
 
 (p/import-vars
@@ -21,6 +22,7 @@
   dashcard-link-card->part
   execute-dashboard
   execute-dashboard-subscription-card
+  link-card-entities
   process-virtual-dashcard
   virtual-card-of-type?]
  [notification.payload.temp-storage
@@ -54,7 +56,8 @@
                [:template        {:optional true} [:maybe ::models.channel/ChannelTemplate]]
                [:recipients      {:optional true} [:sequential ::models.notification/NotificationRecipient]]
                [:attachment_only {:optional true} [:maybe :boolean]]
-               [:include_pdf     {:optional true} [:maybe :boolean]]]]]]]
+               [:include_pdf     {:optional true} [:maybe :boolean]]
+               [:subject         {:optional true} [:maybe :string]]]]]]]
    [:payload_id              {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private NotificationBase
@@ -177,11 +180,8 @@
   [notification :- ::Notification]
   (assoc (select-keys notification [:payload_type :creator_id])
          :creator (notification.db/user-summary (:creator_id notification))
-         :payload (w/prewalk (fn [x]
-                               (if (and (map? x) (:lib/metadata x))
-                                 (dissoc x :lib/metadata)
-                                 x))
-                             (payload notification))
+         :payload (match/replace-all (payload notification)
+                    {:lib/metadata _} (dissoc &match :lib/metadata))
          :context (default-context)))
 
 (defmulti skip-reason
@@ -192,3 +192,9 @@
 (defmethod skip-reason :default
   [_notification-payload]
   nil)
+
+(def skip-reason->message
+  "Warning message for why a notification send was skipped"
+  {:empty        (deferred-tru "No results")
+   :archived     (deferred-tru "Archived")
+   :goal-not-met (deferred-tru "Goal not met")})

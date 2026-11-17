@@ -10,7 +10,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -60,6 +59,13 @@
              (substitute
               ["select * from foobars " (optional " where bird_type = " (lib/parsed-param "bird_type"))]
               {"bird_type" "Steller's Jay"})))))
+  (testing "required param not present"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Cannot run the query: missing required parameters: #\{\"category\"\}"
+         (substitute
+          ["select * from products where category = " (lib/parsed-param "category")]
+          {}))))
   (testing "optional substitution -- param not present"
     (is (= ["select * from foobars" nil]
            (substitute
@@ -386,6 +392,56 @@
               (substitute query {"snippet: outer" (lib/parsed-referenced-query-snippet-param 123 "{{snippet:symbol_is_A}}")
                                  "snippet: symbol_is_A" (lib/parsed-referenced-query-snippet-param 124 "symbol = 'A'")}))))))
 
+(deftest ^:parallel substitute-repeated-native-query-snippets-test
+  (testing "The same snippet can be used more than once, including from within other snippets"
+    (let [query ["SELECT * FROM test_scores WHERE " (lib/parsed-param "snippet: outer")
+                 " OR " (lib/parsed-param "snippet: symbol_is_A")]]
+      (is (=? ["SELECT * FROM test_scores WHERE (symbol = 'A' AND symbol = 'A') OR symbol = 'A'" nil]
+              (substitute query {"snippet: outer"       (lib/parsed-referenced-query-snippet-param
+                                                         123 "({{snippet:symbol_is_A}} AND {{snippet:symbol_is_A}})")
+                                 "snippet: symbol_is_A" (lib/parsed-referenced-query-snippet-param 124 "symbol = 'A'")}))))))
+
+(deftest ^:parallel substitute-circular-native-query-snippets-test
+  (testing "Snippets that (directly or indirectly) reference themselves are rejected"
+    (let [query ["SELECT * FROM test_scores WHERE " (lib/parsed-param "snippet: a")]]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"circular"
+           (substitute query {"snippet: a" (lib/parsed-referenced-query-snippet-param 1 "{{snippet: a}}")})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"circular"
+           (substitute query {"snippet: a" (lib/parsed-referenced-query-snippet-param 1 "x {{snippet: b}}")
+                              "snippet: b" (lib/parsed-referenced-query-snippet-param 2 "y {{snippet: a}}")}))))))
+
+(defn- doubling-snippets
+  "Snippets `s0` ... `s<depth>` where each references the next one twice, and the last one has `leaf-content`."
+  [depth leaf-content]
+  (into {(str "snippet: s" depth) (lib/parsed-referenced-query-snippet-param (inc depth) leaf-content)}
+        (for [i (range depth)
+              :let [next-tag (str "{{snippet: s" (inc i) "}}")]]
+          [(str "snippet: s" i) (lib/parsed-referenced-query-snippet-param (inc i) (str next-tag next-tag))])))
+
+(deftest ^:parallel substitute-native-query-snippets-expansion-limit-test
+  (testing "Snippets that expand into too many nested snippets are rejected"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"too many"
+         (substitute ["SELECT " (lib/parsed-param "snippet: s0")]
+                     (doubling-snippets 20 ""))))))
+
+(deftest ^:parallel substitute-native-query-snippets-length-limit-test
+  (testing "Snippets that expand into a huge query are rejected"
+    (let [leaf (str/join (repeat 10000 "x"))]
+      (is (= (+ (count "SELECT ") (* 512 (count leaf)))
+             (count (first (substitute ["SELECT " (lib/parsed-param "snippet: s0")]
+                                       (doubling-snippets 9 leaf))))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"too long"
+           (substitute ["SELECT " (lib/parsed-param "snippet: s0")]
+                       (doubling-snippets 10 leaf)))))))
+
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 
 (defn- substitute-e2e [sql params]
@@ -610,7 +666,7 @@
                                                :display-name "Checkin Date"
                                                :type         :dimension
                                                :widget-type  :date/all-options
-                                               :dimension    [:field (meta/id :checkins :date) nil]}}}
+                                               :field-id     (meta/id :checkins :date)}}}
           :parameters (when field-filter-param
                         [(merge {:target [:dimension [:template-tag "date"]]}
                                 field-filter-param)])}
@@ -723,7 +779,7 @@
                                                :display-name "Created At"
                                                :type         :dimension
                                                :widget-type  :date/all-options
-                                               :dimension    [:field (meta/id :orders :created-at) nil]}}}
+                                               :field-id     (meta/id :orders :created-at)}}}
           :parameters (when field-filter-param
                         [(merge {:target [:dimension [:template-tag "date"]]}
                                 field-filter-param)])}
@@ -962,7 +1018,7 @@
                                                            :display-name "Checkin Date"
                                                            :type         :dimension
                                                            :widget-type  :date/range
-                                                           :dimension    [:field (mt/id :checkins :date) nil]}}}
+                                                           :field-id     (mt/id :checkins :date)}}}
               :parameters [{:type   :date/range
                             :target [:dimension [:template-tag "checkin_date"]]
                             :value  "2015-04-01~2015-05-01"}])))))))
@@ -980,7 +1036,7 @@
                                                              :display-name "Checkin Date"
                                                              :type         :dimension
                                                              :widget-type  :date/all-options
-                                                             :dimension    [:field (mt/id :checkins :date) nil]}}}
+                                                             :field-id     (mt/id :checkins :date)}}}
                 :parameters []))))))))
 
 (deftest ^:parallel e2e-relative-dates-test
@@ -999,7 +1055,7 @@
                                                              :display-name "Checkin Date"
                                                              :type         :dimension
                                                              :widget-type  :date/relative
-                                                             :dimension    [:field (mt/id :checkins :date) nil]}}}
+                                                             :field-id     (mt/id :checkins :date)}}}
                 :parameters [{:type   :date/relative
                               :target [:dimension [:template-tag "checkin_date"]]
                               :value  "thismonth"}]))))))))
@@ -1033,7 +1089,7 @@
                                                                     :display-name "Last Login Date"
                                                                     :type         :dimension
                                                                     :widget-type  :date/all-options
-                                                                    :dimension    [:field (mt/id :users :last_login) nil]}}}
+                                                                    :field-id     (mt/id :users :last_login)}}}
                     :parameters [{:type   :date/all-options
                                   :target [:dimension [:template-tag "last_login_date"]]
                                   :value  exclusion-string}]))))))))))
@@ -1052,7 +1108,7 @@
                                                              :display-name "Checkin Date"
                                                              :type         :dimension
                                                              :widget-type  :date/all-options
-                                                             :dimension    [:field (mt/id :checkins :date) nil]}}}
+                                                             :field-id     (mt/id :checkins :date)}}}
                 :parameters [{:type   :date/range
                               :target [:dimension [:template-tag "checkin_date"]]
                               :value  "2015-01-01~2016-09-01"}
@@ -1110,7 +1166,7 @@
                                                               :display-name "Created At"
                                                               :type         :dimension
                                                               :widget-type  :date/all-options
-                                                              :dimension    [:field (meta/id :checkins :date) nil]}}}
+                                                              :field-id     (meta/id :checkins :date)}}}
                    :parameters [{:type   :date/month-year
                                  :target [:dimension [:template-tag "created_at"]]
                                  :value  "2017-03"}]}))))
@@ -1184,7 +1240,7 @@
                                                                     :display-name "Checkin Date"
                                                                     :type         :dimension
                                                                     :widget-type  :date/all-options
-                                                                    :dimension    [:field (meta/id :checkins :date) nil]}}}
+                                                                    :field-id     (meta/id :checkins :date)}}}
                        :parameters [{:type   :date/range
                                      :target [:dimension [:template-tag "checkin_date"]]
                                      :value  "past5days"}]}))))))
@@ -1206,7 +1262,7 @@
                                 :template-tags {"checkin_date" {:name         "checkin_date"
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
-                                                                :dimension    [:field (meta/id :checkins :date) nil]
+                                                                :field-id     (meta/id :checkins :date)
                                                                 :default      "past5days"
                                                                 :widget-type  :date/all-options}}}}))))))
 
@@ -1224,7 +1280,7 @@
                               :template-tags {"checkin_date" {:name         "checkin_date"
                                                               :display-name "Checkin Date"
                                                               :type         :dimension
-                                                              :dimension    [:field (meta/id :checkins :date) nil]
+                                                              :field-id     (meta/id :checkins :date)
                                                               :default      "2017-11-14"
                                                               :widget-type  :date/all-options}}}})))))
 
@@ -1244,7 +1300,7 @@
                                :display-name "Checkin Date"
                                :type         :dimension
                                :widget-type  :date/all-options
-                               :dimension    (lib/ref (lib.metadata/field mp (meta/id :checkins :date)))}})
+                               :field-id     (meta/id :checkins :date)}})
                     (assoc :parameters [{:type   :date/single
                                          :target [:dimension [:template-tag "date"]]
                                          :value  "2016-07-01"}])))))))))
@@ -1258,7 +1314,7 @@
                           {"cat" {:name         "cat"
                                   :display-name "Cat"
                                   :type         :dimension
-                                  :dimension    (lib/ref (meta/field-metadata :products :category))
+                                  :field-id     (meta/id :products :category)
                                   :widget-type  :string/=
                                   :required     true
                                   :default      ["Doohickey"]}})))))))
@@ -1306,6 +1362,19 @@
                            :target [:variable [:template-tag "names_list"]]
                            :value  ["BBQ" "Bakery" "Bar"]}]})))))
 
+(deftest ^:parallel multiple-value-number-array-test
+  (testing "an array of values for a number variable is substituted as a list of numbers"
+    (is (= {:query  "SELECT * FROM CATEGORIES where id IN (10, 20)"
+            :params []}
+           (expand*
+            {:native     {:query         "SELECT * FROM CATEGORIES [[where id IN ({{ids_list}})]]"
+                          :template-tags {"ids_list" {:name         "ids_list"
+                                                      :display-name "Ids list"
+                                                      :type         :number}}}
+             :parameters [{:type   "number/="
+                           :target [:variable [:template-tag "ids_list"]]
+                           :value  [10 20]}]})))))
+
 (deftest ^:parallel multiple-value-test-3
   (testing "Make sure arrays of values also work for 'field filter' params"
     (is (= {:query  "SELECT * FROM CATEGORIES WHERE \"PUBLIC\".\"CATEGORIES\".\"NAME\" IN (?, ?, ?)",
@@ -1315,7 +1384,7 @@
                           :template-tags {"names_list" {:name         "names_list"
                                                         :display-name "Names List"
                                                         :type         :dimension
-                                                        :dimension    [:field (meta/id :categories :name) nil]
+                                                        :field-id     (meta/id :categories :name)
                                                         :widget-type  :text}}}
              :parameters [{:type   :text
                            :target [:dimension [:template-tag "names_list"]]

@@ -13,7 +13,7 @@
 
 (defn merge-states
   "Merge two partial states. Map entries (e.g. :queries) merge entry-wise;
-  scalar/vector entries (e.g. :todos) take the later value."
+  other entries (e.g. :client-ids) take the later value."
   [a b]
   (merge-with (fn [x y] (if (every? map? [x y]) (merge x y) y)) a b))
 
@@ -27,7 +27,7 @@
     :steps-taken    []
     :context        context
     :state          (metabot.schema/normalize-state
-                     (or state {:queries {} :charts {} :todos [] :link-registry {}}))
+                     (or state {:queries {} :charts {} :link-registry {}}))
     :turn-state     {}}))
 
 (defn add-step
@@ -83,12 +83,18 @@
 ;;; Query Management
 
 (defn set-query
-  "Store a query in state by its query-id.
+  "Store a query in state by its query-id, and redraw every chart that holds a copy of the query under that id.
+  The SQL edit tools store an edited query under its old id, and a chart saved later must show the edited query.
   Query should be an MBQL 4 (legacy) or MBQL 5 query map."
   [memory query-id query]
-  (-> memory
-      (record [:queries query-id] query)
-      (record-client-id query-id)))
+  (reduce (fn [memory [chart-id chart]]
+            (cond-> memory
+              (and (= query-id (:query_id chart)) (seq (:queries chart)))
+              (record [:charts chart-id] (assoc chart :queries [query]))))
+          (-> memory
+              (record [:queries query-id] query)
+              (record-client-id query-id))
+          (get-in memory [:state :charts])))
 
 (defn find-query
   "Retrieve a query by its query-id. Throws if not found."
@@ -123,11 +129,6 @@
                       {:agent-error? true
                        :chart-id chart-id
                        :available-charts (keys charts)})))))
-
-(defn set-todos
-  "Set the todo list (a vector of todo item maps)."
-  [memory todos]
-  (record memory [:todos] (vec todos)))
 
 (defn add-client-ids
   "Mark `ids` as the queries and charts the client supplied this turn.

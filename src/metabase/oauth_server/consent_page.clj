@@ -5,7 +5,8 @@
    [clojure.string :as str]
    [hiccup2.core :as h]
    [metabase.appearance.core :as appearance]
-   [metabase.system.core :as system]))
+   [metabase.system.core :as system]
+   [metabase.util.fonts :as u.fonts]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,19 +31,18 @@
    bundled font directory. Returns an empty string for custom (non-bundled) fonts since
    they are loaded via application-font-files."
   [font-name]
-  (let [dir-name      (str/replace font-name " " "_")
-        file-stem     (str/replace font-name " " "")
+  (let [file-stem     (if (= font-name "Lato") "lato-v16-latin" (str/replace font-name " " ""))
+        stem-for      (fn [weight]
+                        (if (= font-name "Lato")
+                          (str file-stem "-" (if (= weight 400) "regular" "700"))
+                          (str file-stem "-" (if (= weight 400) "Regular" "Bold"))))
         css-font-name (css-escape-font-name font-name)
-        fonts-url     (absolute-url "/app/fonts")]
-    (if (= font-name "Lato")
-      (str "@font-face { font-family: 'Lato'; font-weight: 400; font-style: normal; font-display: swap;"
-           " src: url('" fonts-url "/Lato/lato-v16-latin-regular.woff2') format('woff2'); }\n"
-           "@font-face { font-family: 'Lato'; font-weight: 700; font-style: normal; font-display: swap;"
-           " src: url('" fonts-url "/Lato/lato-v16-latin-700.woff2') format('woff2'); }\n")
-      (str "@font-face { font-family: '" css-font-name "'; font-weight: 400; font-style: normal; font-display: swap;"
-           " src: url('" fonts-url "/" dir-name "/" file-stem "-Regular.woff2') format('woff2'); }\n"
-           "@font-face { font-family: '" css-font-name "'; font-weight: 700; font-style: normal; font-display: swap;"
-           " src: url('" fonts-url "/" dir-name "/" file-stem "-Bold.woff2') format('woff2'); }\n"))))
+        face          (fn [weight]
+                        (when-let [path (u.fonts/hashed-font-url-path font-name (stem-for weight) "woff2")]
+                          (str "@font-face { font-family: '" css-font-name "'; font-weight: " weight
+                               "; font-style: normal; font-display: swap;"
+                               " src: url('" (absolute-url path) "') format('woff2'); }\n")))]
+    (str (face 400) (face 700))))
 
 (def ^:private default-logo-url "app/assets/img/logo.svg")
 
@@ -91,8 +91,8 @@
    `{:scope <string> :description <localized-string-or-raw-scope> :full-access? <bool> :locked? <bool>}` maps, rendered
    in order.
 
-   A `:locked?` scope is ticked, disabled, and labelled as always granted; every other scope starts unticked and can be
-   ticked. A `:full-access?` scope carries the full-access warning in its own row.
+   Every scope starts ticked. A `:locked?` scope is also disabled and labelled as always granted; every other scope can
+   be unticked. A `:full-access?` scope carries the full-access warning in its own row.
 
    Shows the human description and the raw scope string: the description is readable, the raw string
    is the precise, unambiguous grant the token will carry — both matter when approving a broad scope.
@@ -104,8 +104,7 @@
      (for [{:keys [scope description full-access? locked?]} scopes]
        [:li {:class (not-empty (str/join " " (cond-> [] full-access? (conj "full") locked? (conj "locked"))))}
         [:label
-         [:input (cond-> {:type "checkbox" :name "granted_scope" :value scope}
-                   locked? (assoc :checked true :disabled true))]
+         [:input {:type "checkbox" :name "granted_scope" :value scope :checked true :disabled locked?}]
          [:span.text
           (if full-access? [:strong description] [:span description])
           (when (not= description scope)
@@ -183,9 +182,9 @@
 (defn render-consent-page
   "Render a server-side HTML consent page for the OAuth authorization flow.
 
-   `scopes` is a vector of `{:scope :description :full-access? :locked?}` maps describing what the client is
-   requesting, in display order; each is shown as a `granted_scope` checkbox (see [[render-scope-list]]) so a broad
-   grant (e.g. full account access) is never approved blindly."
+  `scopes` is a vector of `{:scope :description :full-access? :locked?}` maps describing what the client is
+  requesting, in display order; each is shown as a `granted_scope` checkbox (see [[render-scope-list]]) which can be
+  unchecked, except for the MCP baseline, which cannot be unchecked."
   [{:keys [client-name oauth-params nonce csrf-token params-sig scopes]}]
   (let [{:keys [font-family logo-url default-logo? brand-color]} (appearance-settings)
         css-font-family (css-escape-font-name font-family)]
@@ -195,6 +194,10 @@
       [:html {:lang "en"}
        [:head
         [:meta {:charset "UTF-8"}]
+        ;; Prevent the browser from sending the (very long) authorization URL as the Referer
+        ;; header when the consent form is submitted, which could exceed the server's header
+        ;; size limit and cause a 431. The Referer is not used by the decision endpoint.
+        [:meta {:name "referrer" :content "no-referrer"}]
         [:meta {:name "viewport" :content "width=device-width, initial-scale=1.0"}]
         [:title "Authorize " (or client-name "Unknown Application")]
         [:style {:nonce nonce} (h/raw

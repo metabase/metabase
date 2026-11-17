@@ -46,7 +46,7 @@ describe("scenarios > dashboard > filters > location", () => {
     cy.findByTestId("dashcard").should("contain", "39.72");
 
     Object.entries(DASHBOARD_LOCATION_FILTERS).forEach(
-      ([filter, { value, representativeResult }], index) => {
+      ([filter, { value, representativeResult, negativeAssertion }], index) => {
         // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         // The "Is" value matches its default, so the widget offers "Set to default"
@@ -59,6 +59,9 @@ describe("scenarios > dashboard > filters > location", () => {
         cy.findByTestId("dashcard")
           .should("contain", representativeResult)
           .and("not.contain", "39.72");
+        if (negativeAssertion) {
+          cy.findByTestId("dashcard").should("not.contain", negativeAssertion);
+        }
 
         H.clearFilterWidget(index);
         cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);

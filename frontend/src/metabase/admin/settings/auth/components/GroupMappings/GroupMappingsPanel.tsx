@@ -72,7 +72,7 @@ export function GroupMappingsPanel({
         <Text c="text-secondary">{t`Using ${lockedEnvName}`}</Text>
       )}
       {groupLookup.loadFailed && (
-        <Text c="error">{t`Groups could not be loaded`}</Text>
+        <Text c="feedback-negative">{t`Groups could not be loaded`}</Text>
       )}
       <GroupMappingList
         mappings={mappings}

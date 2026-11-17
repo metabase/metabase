@@ -10,6 +10,7 @@ export {
   PLUGIN_ADMIN_USER_FORM_FIELDS,
   type AuthSettingsPageProps,
   type AuthSettingsPageTab,
+  type SettingsJWTFormProps,
 } from "./oss/auth";
 export {
   PLUGIN_CACHING,
@@ -83,7 +84,6 @@ export {
 } from "./oss/notifications-sdk";
 export {
   PLUGIN_LIBRARY,
-  type CollectionPermissionsModalProps,
   type CreateLibraryModalProps,
   type PublishTablesModalProps,
   type UnpublishTablesModalProps,
@@ -127,7 +127,14 @@ export {
   type PermissionOption,
   type PostActionFunction,
 } from "./oss/permissions";
-export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
+export {
+  PLUGIN_REMOTE_SYNC,
+  type RemoteSyncChangesArea,
+  type RemoteSyncChangesBadgeProps,
+  type RemoteSyncChangesTarget,
+  type RemoteSyncSettingsModalProps,
+  type RemoteSyncSetupMenuItemProps,
+} from "./oss/remote-sync";
 export {
   PLUGIN_REPLACEMENT,
   type SourceReplacementButtonChildProps,
@@ -146,11 +153,14 @@ export { PLUGIN_SMTP_OVERRIDE } from "./oss/smtp-override";
 export {
   PLUGIN_SNIPPET_FOLDERS,
   type MoveSnippetModalProps,
-  type SnippetCollectionPermissionsModalProps,
   type SnippetCollectionPickerModalProps,
   type SnippetSidebarContext,
   type SnippetSidebarMenuOption,
 } from "./oss/snippets";
+export {
+  PLUGIN_DATA_TESTING,
+  type DataTestingPlugin,
+} from "./oss/data-testing";
 export {
   PLUGIN_TRANSFORMS,
   PLUGIN_TRANSFORMS_PYTHON,
@@ -178,12 +188,7 @@ export { PLUGIN_TENANTS } from "./oss/tenants";
 export { definePluginSlot } from "./slot";
 
 // Re-export types that are used by other files
-export type {
-  GetAuthProviders,
-  GitSyncSetupMenuItemProps,
-  PluginGroupManagersType,
-  SyncedCollectionsSidebarSectionProps,
-} from "./types";
+export type { GetAuthProviders, PluginGroupManagersType } from "./types";
 
 import { reinitializeRequestHandlers } from "metabase/api/client";
 

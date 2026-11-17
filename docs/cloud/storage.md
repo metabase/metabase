@@ -1,5 +1,6 @@
 ---
 title: Metabase Cloud Storage
+summary: Store spreadsheet data in Metabase Cloud Storage and query it with the query builder or SQL, even if you don't have a data warehouse.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true
@@ -86,4 +87,4 @@ To remove Metabase Cloud Storage, use the following steps:
 
 ## Syncing Google Sheets with Metabase
 
-If you set up Metabase Cloud Storage, you can [sync Google Sheets with your Metabase](./google-sheets.md).
+If you set up Metabase Cloud Storage, you can [sync Google Sheets with your Metabase](https://www.metabase.com/docs/latest/cloud/google-sheets).

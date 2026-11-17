@@ -75,11 +75,11 @@ const CopyResultsButton = ({
     <Flex visibleFrom="sm">
       <Tooltip label={ineligibleReason ?? label}>
         <ActionIcon
+          variant="subtle"
           data-testid="question-results-copy-button"
           onClick={copyResults}
           aria-label={label}
           disabled={ineligibleReason !== null}
-          variant="viewFooter"
         >
           <Icon name="clipboard" />
         </ActionIcon>

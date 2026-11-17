@@ -591,7 +591,7 @@ function ExplorationPageForId({ view }: ExplorationPageProps) {
       <Stack
         flex={1}
         mih={0}
-        bg="background-secondary"
+        bg="background_page-secondary"
         pl="1.5rem"
         pt="1rem"
         data-test-id="exploration-page"

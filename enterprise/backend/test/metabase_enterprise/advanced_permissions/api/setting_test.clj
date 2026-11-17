@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.channel.email :as email]
    [metabase.channel.slack :as slack]
-   [metabase.geojson.api-test :as geojson-test]
+   [metabase.geojson.rest.api-test :as geojson-test]
    [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -146,7 +146,7 @@
 (deftest dashboard-api-test
   (testing "/api/dashboard"
     (mt/with-temporary-setting-values [enable-public-sharing true
-                                       enable-embedding-static true]
+                                       enable-embedding-modular true]
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]
@@ -219,7 +219,7 @@
 (deftest card-api-test
   (testing "/api/card"
     (mt/with-temporary-setting-values [enable-public-sharing true
-                                       enable-embedding-static true]
+                                       enable-embedding-modular true]
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]

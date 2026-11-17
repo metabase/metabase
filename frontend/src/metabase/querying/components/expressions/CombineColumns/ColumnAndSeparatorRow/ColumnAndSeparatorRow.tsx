@@ -2,7 +2,7 @@ import type { FocusEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Button, Flex, Icon, Text, TextInput, rem } from "metabase/ui";
+import { ActionIcon, Flex, Icon, Text, TextInput, rem } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { formatSeparator, label } from "../util";
@@ -58,19 +58,17 @@ export const ColumnAndSeparatorRow = ({
           onChange(index, column, separator);
         }}
       />
-      {/* TODO: replace with ActionIcon (GDGT-2457) */}
       {showRemove && (
-        <Button
+        <ActionIcon
           variant="subtle"
-          color="neutral"
-          size="sm"
-          mb="sm"
+          size="lg"
           aria-label={t`Remove column`}
-          leftSection={<Icon name="close" />}
           onClick={() => {
             onRemove(index);
           }}
-        />
+        >
+          <Icon name="close" />
+        </ActionIcon>
       )}
     </Flex>
   );

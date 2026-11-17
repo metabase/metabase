@@ -11,10 +11,8 @@ const DEFAULT_MODAL_SPACING = "xl";
 import Styles from "./Modal.module.css";
 
 export const modalOverrides = {
+  // `Modal` is built from the `Root` parts, so its defaults go on `ModalRoot`
   Modal: Modal.extend({
-    defaultProps: {
-      padding: DEFAULT_MODAL_SPACING,
-    },
     classNames: {
       root: Styles.root,
       title: Styles.title,
@@ -22,6 +20,7 @@ export const modalOverrides = {
       content: cx(Styles.content, ZIndex.Overlay, Animation.popInFromBottom),
       inner: cx(ZIndex.Overlay, Layout.left, Animation.popInFromBottom),
       header: Styles.header,
+      body: Styles.body,
       close: Styles.ModalCloseButton,
     },
   }),
@@ -31,15 +30,16 @@ export const modalOverrides = {
       centered: true,
       size: "lg",
       shadow: "lg_outline",
-      radius: "xs",
-      padding: "lg",
+      radius: "lg",
+      padding: DEFAULT_MODAL_SPACING,
       withinPortal: true,
     },
   }),
 
-  ModalHeader: Modal.Header.extend({
+  // The content is a Paper, which would otherwise use the Paper theme radius
+  ModalContent: Modal.Content.extend({
     defaultProps: {
-      pb: "sm",
+      radius: "lg",
     },
   }),
 

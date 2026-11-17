@@ -5,6 +5,7 @@ import {
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
 import {
+  PLUGIN_DATA_TESTING,
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
@@ -40,6 +41,15 @@ function getTabs(id: TransformId): PillTab[] {
       to: Urls.transformIndexes(id),
     },
   ];
+
+  if (PLUGIN_DATA_TESTING.isEnabled) {
+    const testListUrl = Urls.transformTestList(id);
+    tabs.push({
+      label: t`Tests`,
+      to: testListUrl,
+      isSelected: (pathname: string) => pathname.startsWith(testListUrl),
+    });
+  }
 
   if (PLUGIN_TRANSFORMS_PYTHON.shouldShowInspectTab) {
     tabs.push({

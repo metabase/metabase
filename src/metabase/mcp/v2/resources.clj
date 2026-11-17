@@ -132,5 +132,5 @@
     :name        "Fields Catalog"
     :description "The dot-paths each content type supports in `fields` arguments (e.g. get_content), keyed by type."
     :mimeType    "application/json"
-    :scope       metabot.scope/agent-resource-read
+    :scope       metabot.scope/agent-content-read
     :render-fn   (fn [_opts] (json/encode (projections/all-catalogs)))}))

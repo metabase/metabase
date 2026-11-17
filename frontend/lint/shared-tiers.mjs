@@ -71,12 +71,15 @@ const SHARED_PLATFORM_LEVELS = [
 
 const SHARED_DOMAIN = [
   "shared/custom-viz",
+  "shared/data-app-embedding",
+  "shared/data-app-embedding-sdk-shared",
   "shared/documents",
   "shared/embedding-ee",
   "shared/metrics-ui",
   "shared/nav",
   "shared/notifications",
   "shared/palette",
+  "shared/permissions",
   "shared/segments",
   "shared/static-viz",
   "shared/status",

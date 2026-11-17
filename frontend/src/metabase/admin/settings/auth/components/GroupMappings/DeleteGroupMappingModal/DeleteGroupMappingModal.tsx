@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Box, Button, Group, Modal, Radio, Stack, Text } from "metabase/ui";
+import { Box, Button, Modal, Radio, Stack, Text } from "metabase/ui";
 
 import S from "../GroupMappings.module.css";
 import type { DeleteMappingModalValueType } from "../types";
@@ -78,7 +78,7 @@ export const DeleteGroupMappingModal = ({
 
   return (
     <Modal opened onClose={onHide} title={t`Remove this group mapping?`}>
-      <Stack gap="xl" mt="sm">
+      <Stack gap="xl">
         <Box>
           <Text fw="bold" className={S.wrappableText}>
             {mappingName}
@@ -152,14 +152,13 @@ export const DeleteGroupMappingModal = ({
             </Radio.Group>
           </Box>
         )}
-
-        <Group justify="flex-end">
-          <Button onClick={onHide}>{t`Cancel`}</Button>
-          <Button variant="filled" color="negative" onClick={handleConfirm}>
-            {submitButtonLabels[value]}
-          </Button>
-        </Group>
       </Stack>
+      <Modal.Footer>
+        <Button onClick={onHide}>{t`Cancel`}</Button>
+        <Button variant="filled" color="negative" onClick={handleConfirm}>
+          {submitButtonLabels[value]}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 };

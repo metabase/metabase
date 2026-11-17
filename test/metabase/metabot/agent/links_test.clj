@@ -7,9 +7,14 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.query-repair-test :as query-repair-test]
+   [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.tools.charts :as charts]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- decode-question-url
   "Decode a `/question#<base64>` URL into its JSON-decoded pseudo-card map."
@@ -39,19 +44,8 @@
                                                    :base-type     :type/DateTime}]]}}
              (links/->legacy-mbql rehydrated))))))
 
-(defn- strip-lib-keys
-  "Recursively remove all namespaced `:lib/*` keys from a query, mimicking how a
-  pMBQL query that round-trips through the frontend's viewing context comes back:
-  structurally pMBQL (`:stages`, pMBQL-order field clauses, `:effective-type`s)
-  but stripped of its internal `:lib/type`, `:lib/uuid`, and `:lib/metadata`."
-  [x]
-  (cond
-    (map? x)        (into {} (keep (fn [[k v]]
-                                     (when-not (and (keyword? k) (= "lib" (namespace k)))
-                                       [k (strip-lib-keys v)])))
-                          x)
-    (sequential? x) (mapv strip-lib-keys x)
-    :else           x))
+(def ^:private strip-lib-keys query-repair-test/strip-lib-keys)
+(def ^:private stripped-aggregated-query query-repair-test/stripped-aggregated-query)
 
 (deftest ^:parallel ->legacy-mbql-lib-type-less-pmbql-test
   (testing "converts pMBQL stripped of :lib/* keys (frontend viewing-context round-trip) to legacy MBQL"
@@ -71,21 +65,116 @@
         (is (map? (:query legacy)))
         (is (some? (:database legacy)))))))
 
-(deftest ^:parallel ->legacy-mbql-stripped-query-with-aggregation-ref-falls-back-test
-  (testing "falls back to the raw query instead of throwing when the stripped query's positional aggregation ref can't be resolved after normalize"
-    ;; Regression: `strip-lib-keys` drops the aggregation's `:lib/uuid`, but an
-    ;; `[:aggregation {} <uuid>]` ref elsewhere in the query (e.g. an order-by on the
-    ;; query's own aggregation) still points at the old uuid. `normalize` mints a fresh
-    ;; uuid, the ref lookup misses, and conversion throws — this used to take down the
-    ;; whole agent turn instead of just producing a broken link.
-    (let [q        (-> (lib.tu/venues-query) (lib/aggregate (lib/count)))
-          q2       (lib/order-by q (lib/aggregation-ref q 0) :desc)
-          stripped (strip-lib-keys q2)]
+(deftest ^:parallel ->legacy-mbql-stripped-query-with-aggregation-ref-test
+  (testing "points the stripped query's aggregation ref at the stage's only aggregation, then converts (BOT-2410)"
+    ;; `normalize` mints a fresh `:lib/uuid` for the aggregation, so the ref in the order-by names a uuid that no
+    ;; aggregation carries. With one aggregation the ref can only mean that one.
+    (let [stripped (stripped-aggregated-query (lib/count))
+          legacy   (links/->legacy-mbql stripped)]
       (is (not (contains? stripped :lib/type)))
+      (is (= :query (:type legacy)))
+      (is (= [[:desc [:aggregation 0]]] (-> legacy :query :order-by)))))
+  (testing "falls back to the raw query instead of throwing when the ref could mean any of several aggregations"
+    ;; Conversion throws on the dangling ref. This used to take down the whole agent turn instead of just
+    ;; producing a broken link.
+    (let [stripped (stripped-aggregated-query (lib/count) (lib/sum (meta/field-metadata :venues :price)))]
       (is (= stripped (links/->legacy-mbql stripped))))))
 
+(deftest ^:parallel pseudo-card->link-keeps-mbql5-temporal-filters-test
+  (testing "temporal filters survive JSON serialization in the /question# hash (BOT-1972)"
+    (let [date  (meta/field-metadata :checkins :date)
+          query (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+          year  (fn [y] (lib/between date
+                                     (lib/absolute-datetime (str y "-01-01") :day)
+                                     (lib/absolute-datetime (str y "-12-31") :day)))]
+      (doseq [[desc filter-clause] {"between with absolute-datetime bounds"
+                                    (lib/between date
+                                                 (lib/absolute-datetime "2025-01-01" :day)
+                                                 (lib/absolute-datetime "2026-12-31" :day))
+                                    "during"
+                                    [:during {:lib/uuid (str (random-uuid))} (lib/ref date) "2026-07-01" :month]
+                                    "or combines between filters for each year"
+                                    (lib/or (year 2025) (year 2026))
+                                    "and combines an equality with a during filter"
+                                    (lib/and (lib/= (meta/field-metadata :checkins :user-id) 5)
+                                             [:during {:lib/uuid (str (random-uuid))} (lib/ref date) "2026-07-01" :month])}
+              [query-desc ->sent strip] [["MBQL 5 query" identity identity]
+                                         ["MBQL 5 query stripped of its :lib/* keys" strip-lib-keys strip-lib-keys]]]
+        (testing (str desc ", " query-desc)
+          (let [query         (lib/filter query filter-clause)
+                dataset-query (:dataset_query (decode-question-url (links/pseudo-card->link {:dataset_query (->sent query)})))]
+            (is (= "mbql/query" (:lib/type dataset-query)))
+            (testing "the frontend keeps the filter when it normalizes the hash"
+              (is (= (strip (lib/filters query))
+                     (strip (-> dataset-query lib/normalize :stages first :filters)))))))))))
+
+(deftest ^:parallel ->frontend-query-stripped-query-with-aggregation-ref-test
+  (testing "a query without :lib/* keys goes out as valid MBQL 5 with its aggregation ref pointed at the stage's only aggregation (BOT-2410)"
+    (let [sent  (links/->frontend-query (stripped-aggregated-query (lib/count)))
+          stage (-> sent :stages first)]
+      (is (= :mbql/query (:lib/type sent)))
+      (is (mr/validate :metabase.lib.schema/query sent))
+      (is (= (-> stage :aggregation first second :lib/uuid)
+             (-> stage :order-by first (nth 2) (nth 2))))))
+  (testing "a dangling ref in the stage of a join is repaired the same way"
+    (let [sent       (links/->frontend-query (query-repair-test/stripped-query-with-aggregated-join))
+          join-stage (-> sent :stages first :joins first :stages first)]
+      (is (= :mbql/query (:lib/type sent)))
+      (is (mr/validate :metabase.lib.schema/query sent))
+      (is (= (-> join-stage :aggregation first second :lib/uuid)
+             (-> join-stage :order-by first (nth 2) (nth 2))))))
+  (testing "goes out as the raw MBQL 5 query when the ref could mean any of several aggregations"
+    ;; Normalization gives each aggregation a new uuid, the ref resolves to none of them, and ->legacy-mbql cannot
+    ;; convert the query either.
+    (let [stripped (stripped-aggregated-query (lib/count) (lib/sum (meta/field-metadata :venues :price)))]
+      (is (= stripped (links/->frontend-query stripped))))))
+
+(deftest ^:parallel ->frontend-query-sends-native-queries-as-legacy-test
+  (let [native     (lib/native-query meta/metadata-provider "SELECT * FROM CHECKINS")
+        structured (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                       (lib/filter (lib/between (meta/field-metadata :checkins :date)
+                                                (lib/absolute-datetime "2025-01-01" :day)
+                                                (lib/absolute-datetime "2025-12-31" :day))))]
+    (testing "the SDK receives a native query as legacy MBQL and opens it in its SQL editor"
+      (doseq [[desc sent] {"MBQL 5"                             native
+                           "MBQL 5 stripped of its :lib/* keys" (strip-lib-keys native)
+                           "MBQL 5 after a JSON round trip"     (-> native lib/prepare-for-serialization json/encode json/decode+kw)}]
+        (testing desc
+          (is (= (lib/->legacy-MBQL native)
+                 (links/->frontend-query sent))))))
+    (testing "a structured query with a date filter stays MBQL 5"
+      (let [sent (links/->frontend-query structured)]
+        (is (= :mbql/query (:lib/type sent)))
+        (is (= (lib/filters structured) (-> sent :stages first :filters)))))))
+
+(deftest ^:parallel ->frontend-query-keeps-parameters-test
+  (testing "a structured query keeps its :parameters in the /question# link and in the chart data part"
+    (let [parameters [{:id     "checkins-month"
+                       :type   :date/month-year
+                       :target [:dimension [:field (meta/id :checkins :date) nil]]
+                       :value  "2014-07"}]
+          query      (assoc (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                            :parameters parameters)
+          expected   (json/decode+kw (json/encode parameters))]
+      (testing "in the link"
+        (is (= expected
+               (-> (links/pseudo-card->link {:dataset_query query})
+                   decode-question-url
+                   :dataset_query
+                   :parameters))))
+      (testing "in the chart data part"
+        (is (= expected
+               (-> (binding [shared/*memory-atom* (atom {:state {:queries {"q-1" query}}})]
+                     (test-util/call-tool charts/create-chart-tool {:data_source  {:query_id "q-1"}
+                                                                    :viz_settings {:chart_type "table"}
+                                                                    :title        "Check-ins in July"
+                                                                    :description  "Check-ins during July 2014."}))
+                   (get-in [:data-parts 0 :data :query :query :parameters])
+                   json/encode
+                   json/decode+kw)))))))
+
 (deftest ^:parallel resolve-chart-link-lib-type-less-query-test
-  (testing "chart link whose query lost :lib/type resolves to a renderable legacy /question# URL"
+  (testing "a chart link resolves to an MBQL 5 /question# URL even when the query has no :lib/type"
     (let [chart-id     "chart-fe-1"
           fe-query     (strip-lib-keys (lib.tu/venues-query))
           charts-state {chart-id {:chart_id               chart-id
@@ -94,10 +183,11 @@
           result       (links/resolve-metabase-uri (str "metabase://chart/" chart-id) {} charts-state)
           decoded      (decode-question-url result)]
       (is (str/starts-with? result "/question#"))
-      (testing "decoded dataset_query is legacy MBQL — raw pMBQL :stages would crash the FE"
-        (is (= "query" (get-in decoded [:dataset_query :type])))
-        (is (not (contains? (:dataset_query decoded) :stages)))
-        (is (map? (get-in decoded [:dataset_query :query])))))))
+      (testing "the decoded dataset_query is normalized MBQL 5"
+        (is (= "mbql/query" (get-in decoded [:dataset_query :lib/type])))
+        (is (some? (get-in decoded [:dataset_query :database])))
+        (is (= (:stages (strip-lib-keys fe-query))
+               (:stages (strip-lib-keys (:dataset_query decoded)))))))))
 
 ;;; resolve-metabase-uri tests
 
@@ -138,6 +228,42 @@
     (is (= "/question/101" (links/resolve-metabase-uri "metabase://question/101" {} {})))
     (is (= "/data-studio/transforms/202" (links/resolve-metabase-uri "metabase://transform/202" {} {})))))
 
+(deftest ^:parallel resolve-links-unknown-question-id-shows-link-text-test
+  (testing "an unknown ID that is no card ID leaves only the link text, so no dead or wrong link reaches the user"
+    (is (= "Failed charges"
+           (links/resolve-links "[Failed charges](metabase://question/TQVDPycvL8DIo3fryAgS0)" {} {} (atom {}))))))
+
+(deftest ^:parallel resolve-metabase-uri-every-entity-type-test
+  (let [query {:database 1 :lib/type :mbql.stage/native}
+        chart {:queries [query] :visualization_settings {:chart_type "bar"}}]
+    (doseq [[entity-type path] [["question" "/question"]
+                                ["model" "/model"]
+                                ["metric" "/metric"]
+                                ["dashboard" "/dashboard"]
+                                ["document" "/document"]
+                                ["table" "/table"]
+                                ["transform" "/data-studio/transforms"]]
+            :let [resolve-id (fn [id & [queries charts]]
+                               (links/resolve-metabase-uri (str "metabase://" entity-type "/" id) queries charts))]]
+      (testing entity-type
+        (testing "a numeric ID stays an entity link, also when a chart seeded from that entity has the ID"
+          (is (= (str path "/157") (resolve-id "157")))
+          (is (= (str path "/157") (resolve-id "157" {} {"157" chart}))))
+        (testing "a slug, a sub-path, or a query string resolves to the page of the numeric ID"
+          (doseq [id ["157-orders-by-month" "157/fields" "157/sources?page=2" "157?page=2" "157#tab"]]
+            (is (= (str path "/157") (resolve-id id)) id)))
+        (testing "the ID of a query or a chart from this conversation opens it"
+          (doseq [id ["TQVDPycvL8DIo3fryAgS0" "3QVDPycvL8DIo3fryAgS0" "12-abcdefghijklmnopq"
+                      "12345678-9abc-def0-1234-56789abcdef0"]]
+            (is (str/starts-with? (resolve-id id {id query}) "/question#") id)
+            (is (str/starts-with? (resolve-id id {} {id chart}) "/question#") id)))
+        (testing "an unknown ID that is not numeric does not resolve, because the frontend reads a leading digit as the ID"
+          (doseq [id ["TQVDPycvL8DIo3fryAgS0" "3QVDPycvL8DIo3fryAgS0" "12-VDPycvL8DIo3fryAg" "card__157"
+                      "12345678-9abc-def0-1234-56789abcdef0"]]
+            (is (nil? (resolve-id id)) id)))
+        (testing "a slug made only of hex groups that do not form a canonical UUID stays a slug"
+          (is (= (str path "/157") (resolve-id "157-bad-cafe-dead-beef"))))))))
+
 (deftest ^:parallel resolve-metabase-uri-table-link-test
   (testing "resolves table links to the table page"
     (is (= (str "/table/" (mt/id :venues))
@@ -170,7 +296,11 @@
 
 (deftest ^:parallel resolve-metabase-uri-unknown-entity-type-test
   (testing "returns nil for unknown entity types"
-    (is (nil? (links/resolve-metabase-uri "metabase://unknown/123" {} {})))))
+    (is (nil? (links/resolve-metabase-uri "metabase://unknown/123" {} {}))))
+  (testing "an unknown entity type does not open a query from this conversation"
+    (is (nil? (links/resolve-metabase-uri "metabase://collection/q1"
+                                          {"q1" {:database 1 :lib/type :mbql.stage/native}}
+                                          {})))))
 
 (deftest ^:parallel resolve-metabase-uri-non-metabase-uris-test
   (testing "returns nil for non-metabase URIs"

@@ -21,8 +21,7 @@ export const useMetadataToasts = () => {
   const sendErrorToast = useCallback(
     (message: string) => {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message,
       });
     },

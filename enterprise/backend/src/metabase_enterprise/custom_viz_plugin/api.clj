@@ -265,17 +265,14 @@
         tempfile (check-upload! file)]
     (try
       (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
-            validated    (cache/validate-bundle! bundle-bytes)
-            new-name     (get-in validated [:manifest :name])]
-        (api/check-400 (= new-name (:identifier existing))
-                       (format "Bundle manifest \"name\" (%s) does not match the plugin's identifier (%s)."
-                               new-name (:identifier existing)))
-        (let [result (cache/save-bundle! existing validated)]
-          (events/publish-event! :event/custom-viz-plugin-update
-                                 {:object          result
-                                  :previous-object existing
-                                  :user-id         api/*current-user-id*})
-          (plugin->response (dissoc result :bundle))))
+            validated    (->> (cache/validate-bundle! bundle-bytes)
+                              (cache/check-bundle-identifier! (:identifier existing)))
+            result       (cache/save-bundle! existing validated)]
+        (events/publish-event! :event/custom-viz-plugin-update
+                               {:object          result
+                                :previous-object existing
+                                :user-id         api/*current-user-id*})
+        (plugin->response (dissoc result :bundle)))
       (finally
         (try (.delete tempfile) (catch Exception _))))))
 

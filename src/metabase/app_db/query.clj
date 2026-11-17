@@ -21,9 +21,10 @@
   (:refer-clojure :exclude [compile])
   (:require
    [clojure.string :as str]
-   [honey.sql :as sql]
+   [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.db :as app-db.db]
    [metabase.app-db.format :as app-db.format]
+   [metabase.funnysql.core :as funnysql]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -104,18 +105,8 @@
   sql-args)
 
 (defmethod compile clojure.lang.IPersistentMap
-  [honey-sql]
-  (let [sql-args (try
-                   (sql/format honey-sql {:quoted true, :dialect :metabase.app-db.setup/application-db, :quoted-snake false})
-                   (catch Throwable e
-                     ;; this is not i18n'ed because it (hopefully) shouldn't be user-facing -- we shouldn't be running
-                     ;; in to unexpected Honey SQL compilation errors at run time -- if we are it means we're not being
-                     ;; careful enough with the Honey SQL forms we create which is a bug in the Metabase code we should
-                     ;; have caught in tests.
-                     (throw (ex-info (str "Error compiling Honey SQL: " (ex-message e))
-                                     {:honey-sql honey-sql}
-                                     e))))]
-    sql-args))
+  [honeysql]
+  (funnysql/format honeysql (mdb.connection/db-type)))
 
 (defn current-timestamp-string
   "The application DB's own current timestamp, as a string. Read from the DB rather than from this machine's clock,
@@ -272,7 +263,8 @@
       (if-let [existing (apply t2/select-one model select-kvs)]
         (let [pk (pk-of existing)]
           (if-let [updated (update-fn existing)]
-            (do (t2/update! model pk updated)
+            ;; `model` is any model, so match on its own primary key, which may not be `:id` or may be composite.
+            (do (t2/update! model :toucan/pk pk updated)
                 ;; the primary key may have been changed by the update, and this is OK.
                 (pk-of (merge existing updated)))
             ;; update-fn returned nil — no update needed, return existing pk.

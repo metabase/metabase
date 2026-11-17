@@ -29,7 +29,7 @@ describe("HomeGreeting", () => {
     });
 
     expect(screen.getByText(/John/)).toBeInTheDocument();
-    expect(screen.getAllByRole("img")).toHaveLength(2);
+    expect(screen.getAllByRole("img", { name: "Metabot" })).toHaveLength(2);
   });
 
   it("should render nothing when the welcome message is turned off", () => {

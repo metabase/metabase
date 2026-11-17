@@ -188,7 +188,7 @@
                 rotated   (encryption-test/with-secret-key k2
                             (encryption/maybe-encrypt plaintext))]
             (is (encryption/possibly-encrypted-string? raw) "sanity: stored under key A as ciphertext")
-            (t2/update! :auth_identity ai-id {:credentials rotated}))
+            (t2/update! :auth_identity :id ai-id {:credentials rotated}))
           (encryption-test/with-secret-key k2
             (is (true? (boolean (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti))))
                 "the rotated enrollment verifies under the new key"))

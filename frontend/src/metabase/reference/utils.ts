@@ -4,11 +4,11 @@ import { serializeCardForUrl } from "metabase/common/utils/card";
 import { dayjs } from "metabase/dayjs";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   Field,
   NormalizedField,
+  UnsavedCard,
   VisualizationDisplay,
 } from "metabase-types/api";
 import type { SegmentId } from "metabase-types/api/segment";
@@ -46,7 +46,7 @@ export const getQuestion = ({
   segmentId,
   getCount,
   visualization,
-}: GetQuestionArgs): Card | undefined => {
+}: GetQuestionArgs): UnsavedCard | undefined => {
   const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
   if (table == null) {
     return;
@@ -65,12 +65,11 @@ export const getQuestion = ({
     query = filterBySegmentId(query, segmentId);
   }
 
-  let question = Question.create({ dataset_query: Lib.toJsQuery(query) });
-  if (visualization) {
-    question = question.setDisplay(visualization);
-  }
-
-  return question.card();
+  return {
+    display: visualization ?? "table",
+    visualization_settings: {},
+    dataset_query: Lib.toJsQuery(query),
+  };
 };
 
 function breakoutWithDefaultTemporalBucket(

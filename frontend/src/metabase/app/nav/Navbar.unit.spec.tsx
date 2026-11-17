@@ -11,6 +11,7 @@ import {
 } from "__support__/server-mocks";
 import {
   createMockAppState,
+  createMockDashboardState,
   createMockEmbedOptions,
   createMockEmbedState,
   createMockState,
@@ -19,20 +20,18 @@ import {
   act,
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import {
-  CLOSE_NAVBAR,
-  OPEN_NAVBAR,
-  isNavbarOpenForPathname,
-} from "metabase/redux/app";
-import type { State } from "metabase/redux/store";
+import { CLOSE_NAVBAR, OPEN_NAVBAR } from "metabase/redux/app";
+import type { DashboardState, State } from "metabase/redux/store";
 import { Route } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
-import type { User } from "metabase-types/api";
+import type { Collection, User } from "metabase-types/api";
 import {
   createMockCollection,
+  createMockDashboard,
   createMockDatabase,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -45,6 +44,9 @@ type SetupOpts = {
   pathname?: string;
   user?: User | null;
   embedOptions?: Record<string, string | boolean>;
+  collections?: Collection[];
+  trashCollection?: Collection;
+  dashboardState?: DashboardState;
 };
 
 async function setup({
@@ -53,8 +55,11 @@ async function setup({
   route = pathname,
   user = createMockUser(),
   embedOptions = {},
+  collections = [],
+  trashCollection,
+  dashboardState,
 }: SetupOpts = {}) {
-  setupCollectionsEndpoints({ collections: [] });
+  setupCollectionsEndpoints({ collections, trashCollection });
   setupDatabasesEndpoints([createMockDatabase()]);
   setupSearchEndpoints([]);
   setupCollectionItemsEndpoint({
@@ -71,12 +76,13 @@ async function setup({
 
   const storeInitialState = createMockState({
     app: createMockAppState({
-      isNavbarOpen: isOpen ?? isNavbarOpenForPathname(pathname, true),
+      isNavbarOpen: isOpen ?? true,
     }),
     embed: createMockEmbedState({
       options: createMockEmbedOptions(embedOptions),
     }),
     currentUser: user,
+    ...(dashboardState ? { dashboard: dashboardState } : {}),
   });
 
   const { store } = renderWithProviders(
@@ -119,35 +125,23 @@ describe("nav > containers > Navbar > Core App", () => {
   });
 
   ["question/1", "model/1", "dashboard/1"].forEach((pathname) => {
-    it(`should be hidden on initial load for a ${pathname}`, async () => {
+    it(`should be open on initial load for a ${pathname}`, async () => {
       await setup({ pathname: `/${pathname}` });
-      await expectNavbarClosed();
+      await expectNavbarOpen();
     });
   });
 
-  it("should hide when visiting a question", async () => {
+  it("should stay open when visiting a question", async () => {
     const store = await setup({ pathname: "/" });
     await expectNavbarOpen();
     dispatchLocationChange({ store, pathname: "/question/1" });
+    await expectNavbarOpen();
+  });
+
+  it("should stay closed when visiting a question after being closed manually", async () => {
+    const store = await setup({ isOpen: false, pathname: "/collection/1" });
     await expectNavbarClosed();
-  });
-
-  it("should stay open when navigating to the database reference questions page (metabase#72001)", async () => {
-    const store = await setup({ pathname: "/reference/databases/1" });
-    await expectNavbarOpen();
-    dispatchLocationChange({
-      store,
-      pathname: "/reference/databases/1/tables/2/questions",
-    });
-    await expectNavbarOpen();
-  });
-
-  it("should hide when visiting a question and stay hidden when returning to collection", async () => {
-    const store = await setup({ pathname: "/collection/1" });
-    await expectNavbarOpen();
     dispatchLocationChange({ store, pathname: "/question/1" });
-    await expectNavbarClosed();
-    dispatchLocationChange({ store, pathname: "/collection/1" });
     await expectNavbarClosed();
   });
 
@@ -167,29 +161,91 @@ describe("nav > containers > Navbar > Core App", () => {
     await expectNavbarOpen();
   });
 
-  it("should preserve state when navigating collections", async () => {
+  it("should only change state on explicit open/close actions, not navigation", async () => {
     const store = await setup({ pathname: "/collection/1" });
     await expectNavbarOpen();
     dispatchLocationChange({ store, pathname: "/collection/2" });
     await expectNavbarOpen();
     dispatchLocationChange({ store, pathname: "/question/1" });
+    await expectNavbarOpen();
+    dispatchLocationChange({ store, pathname: "/dashboard/1" });
+    await expectNavbarOpen();
+    // act(...) flushes the connected Navbar re-render caused by the dispatch
+    act(() => {
+      store.dispatch({ type: CLOSE_NAVBAR });
+    });
     await expectNavbarClosed();
     dispatchLocationChange({ store, pathname: "/collection/3" });
     await expectNavbarClosed();
-    dispatchLocationChange({ store, pathname: "/collection/4" });
+    dispatchLocationChange({ store, pathname: "/question/2" });
     await expectNavbarClosed();
-    // act(...) flushes the connected Navbar re-render caused by the dispatch
     act(() => {
       store.dispatch({ type: OPEN_NAVBAR });
     });
     await expectNavbarOpen();
-    dispatchLocationChange({ store, pathname: "/collection/5" });
+    dispatchLocationChange({ store, pathname: "/collection/4" });
     await expectNavbarOpen();
-    act(() => {
-      store.dispatch({ type: CLOSE_NAVBAR });
+  });
+
+  describe("trash highlight on a dashboard", () => {
+    const DASHBOARD_ID = 42;
+    const dashboardCollection = createMockCollection({
+      id: 2,
+      name: "Dashboard collection",
     });
-    dispatchLocationChange({ store, pathname: "/collection/6" });
-    await expectNavbarClosed();
+    const trashCollection = createMockCollection({
+      id: 20000000,
+      name: "Trash",
+      type: "trash",
+    });
+
+    function setupDashboardPage({ archived }: { archived: boolean }) {
+      const dashboard = createMockDashboard({
+        id: DASHBOARD_ID,
+        collection_id: Number(dashboardCollection.id),
+        archived,
+      });
+      return setup({
+        route: "/dashboard/:slug",
+        pathname: `/dashboard/${DASHBOARD_ID}`,
+        collections: [dashboardCollection],
+        trashCollection,
+        dashboardState: createMockDashboardState({
+          dashboardId: DASHBOARD_ID,
+          dashboards: {
+            [DASHBOARD_ID]: { ...dashboard, dashcards: [] },
+          },
+        }),
+      });
+    }
+
+    const getTrashItem = () => screen.getByRole("treeitem", { name: /Trash/ });
+    const getDashboardCollectionItem = () =>
+      screen.getByRole("treeitem", { name: /Dashboard collection/ });
+
+    it("should highlight the dashboard's collection when the dashboard in the store is not archived", async () => {
+      await setupDashboardPage({ archived: false });
+
+      await waitFor(() => {
+        expect(getDashboardCollectionItem()).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
+      });
+      expect(getTrashItem()).toHaveAttribute("aria-selected", "false");
+    });
+
+    it("should highlight the trash when the dashboard in the store is archived", async () => {
+      await setupDashboardPage({ archived: true });
+
+      await waitFor(() => {
+        expect(getTrashItem()).toHaveAttribute("aria-selected", "true");
+      });
+      expect(getDashboardCollectionItem()).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+    });
   });
 
   describe("embedded", () => {

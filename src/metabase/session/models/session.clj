@@ -75,14 +75,24 @@
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
 
-(t2/define-before-update :model/Session [_model]
-  (throw (RuntimeException. "You cannot update a Session.")))
+(def ^:private ending-columns
+  "The only columns an update of a Session may touch: the ones [[metabase.session.db/end-sessions!]] writes to record
+  that the session ended. Everything else on the row is immutable."
+  #{:ended_at :end_reason :ended_by_user_id :key_hashed})
+
+(t2/define-before-update :model/Session [session]
+  (when-not (every? ending-columns (keys (t2/changes session)))
+    (throw (RuntimeException. "You cannot update a Session.")))
+  ;; a recorded ending is final
+  (when (some? (:ended_at (t2/original session)))
+    (throw (RuntimeException. "You cannot change a Session that has ended.")))
+  session)
 
 (t2/define-before-insert :model/Session
   [{session-key :session_key :as session}]
-  (when (or (uuid? (:id session)) (string/valid-uuid? (:id session)))
+  (when (or (uuid? (:id session)) (u/uuid-string? (:id session)))
     (throw (ex-info "Session id should not be stored plaintext in the session table." {})))
-  (when (or (uuid? (:key_hashed session)) (string/valid-uuid? (:key_hashed session)))
+  (when (or (uuid? (:key_hashed session)) (u/uuid-string? (:key_hashed session)))
     (throw (ex-info "Session key should not be stored plaintext in the session table." {})))
   ;; Check auth identity provider if provided
   (when-let [auth-identity-id (:auth_identity_id session)]

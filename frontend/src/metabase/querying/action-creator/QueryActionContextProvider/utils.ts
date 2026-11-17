@@ -1,14 +1,15 @@
+import {
+  getVariableTemplateTags,
+  setTemplateTag,
+} from "metabase/querying/native";
 import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   ActionFormSettings,
   Card,
   FieldType,
   InputSettingType,
-  NativeDatasetQuery,
   Parameter,
   ParameterType,
-  TemplateTag,
   TemplateTagType,
   VisualizationSettings,
   WritebackQueryAction,
@@ -55,24 +56,16 @@ export const setTemplateTagTypesFromFieldSettings = (
   settings: ActionFormSettings,
 ): Question => {
   const fields = settings.fields || {};
-  // Unjustified type cast. FIXME
-  const query = question.legacyNativeQuery() as NativeQuery;
-  let tempQuestion = question.clone();
-
-  query.variableTemplateTags().forEach((tag: TemplateTag) => {
-    // Unjustified type cast. FIXME
-    const currentQuery = tempQuestion.legacyNativeQuery() as NativeQuery;
+  const query = question.query();
+  const newQuery = getVariableTemplateTags(query).reduce((query, tag) => {
     const fieldType = fields[tag.id]?.fieldType ?? "string";
-    const nextTag = {
+    return setTemplateTag(query, {
       ...tag,
       type: getTagTypeFromFieldSettings(fieldType),
-    };
-    tempQuestion = tempQuestion.setLegacyQuery(
-      currentQuery.setTemplateTag(tag.name, nextTag),
-    );
-  });
+    });
+  }, query);
 
-  return tempQuestion;
+  return question.setQuery(newQuery);
 };
 
 export const setParameterTypesFromFieldSettings = (
@@ -93,7 +86,7 @@ export const setParameterTypesFromFieldSettings = (
 
 export function convertActionToQuestionCard(
   action: WritebackQueryAction,
-): Card<NativeDatasetQuery> {
+): Card {
   return {
     id: action.id,
     entity_id: action.entity_id,
@@ -107,6 +100,7 @@ export function convertActionToQuestionCard(
       // Unjustified type cast. FIXME
       action.visualization_settings as VisualizationSettings,
     type: "question",
+    query_type: "native",
     can_write: true,
     can_restore: false,
     can_delete: false,

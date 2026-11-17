@@ -15,7 +15,6 @@
         "graph.show_values": true,
         "graph.metrics": ["10"]
       },
-      "collection_preview": true,
       "entity_id": "4fDtCOoGI3hgWqykf-fch",
       "display": "waterfall",
       "parameter_mappings": [],

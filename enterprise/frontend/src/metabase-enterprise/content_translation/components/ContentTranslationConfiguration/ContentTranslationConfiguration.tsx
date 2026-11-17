@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import cx from "classnames";
 import {
   type ChangeEvent,
@@ -275,7 +276,7 @@ const UploadForm = ({
       if (errorMessages.length) {
         return sendToast({
           message: t`Could not upload dictionary`,
-          icon: "warning",
+          variant: "negative",
         });
       }
     },

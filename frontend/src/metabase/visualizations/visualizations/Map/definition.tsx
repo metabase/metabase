@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,6 +13,7 @@ import {
   getDefaultMapDimension,
   getDefaultMapMetric,
   getDefaultSize,
+  getLegendPositionSetting,
   getMinSize,
   metricSetting,
 } from "metabase/viz-core";
@@ -26,7 +28,6 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type { CustomGeoJSONMap } from "metabase-types/api";
 
-import { CustomMapFooter } from "./CustomMapFooter";
 import { getColorplethColorScale } from "./map-color-scale";
 import { isMapSensible, isPinMapType } from "./utils";
 
@@ -168,7 +169,7 @@ export const MAP_VIZ_DEFINITION: VisualizationDefinition = {
       get title() {
         return t`Region map`;
       },
-      widget: "select",
+      widget: "mapRegion",
       getDefault: ([{ card, data }]) => {
         const display: string = card.display;
         if (display === "state" || _.any(data.cols, isState)) {
@@ -188,7 +189,6 @@ export const MAP_VIZ_DEFINITION: VisualizationDefinition = {
           .sortBy((x) => x.name.toLowerCase())
           .value(),
         placeholder: t`Select a region`,
-        footer: <CustomMapFooter />,
         hiddenIcons: true,
       }),
       getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "region",
@@ -237,6 +237,10 @@ export const MAP_VIZ_DEFINITION: VisualizationDefinition = {
       getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "region",
       readDependencies: ["map.metric"],
     },
+    "legend.position": getLegendPositionSetting({
+      getHidden: (_series, settings) => settings["map.type"] !== "region",
+      readDependencies: ["map.type"],
+    }),
     "map.zoom": {},
     "map.center_latitude": {},
     "map.center_longitude": {},

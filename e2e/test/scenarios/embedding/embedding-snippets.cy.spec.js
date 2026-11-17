@@ -24,14 +24,15 @@ tokens.forEach((token) => {
       H.activateToken(token);
     });
 
-    it("dashboard should have the correct embed snippet", () => {
+    it("dashboard and question should have the correct embed snippets", () => {
       const defaultDownloadsValue =
         token === "pro-self-hosted" ? true : undefined;
+
+      cy.log("Dashboard");
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.openLegacyStaticEmbeddingModal({
         resource: "dashboard",
         resourceId: ORDERS_DASHBOARD_ID,
-        acceptTerms: false,
       });
 
       H.modal().within(() => {
@@ -125,16 +126,12 @@ tokens.forEach((token) => {
           highlightedTexts().should("have.length", 1);
         }
       });
-    });
 
-    it("question should have the correct embed snippet", () => {
-      const defaultDownloadsValue =
-        token === "pro-self-hosted" ? true : undefined;
+      cy.log("Question");
       H.visitQuestion(ORDERS_QUESTION_ID);
       H.openLegacyStaticEmbeddingModal({
         resource: "question",
         resourceId: ORDERS_QUESTION_ID,
-        acceptTerms: false,
       });
 
       H.modal().within(() => {

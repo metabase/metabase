@@ -1,7 +1,9 @@
 (ns metabase.warehouses.schema
   "Malli schemas for the warehouses module."
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util.cron]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -27,7 +29,8 @@
    [:semantic-version {:optional true} [:or
                                         [:sequential :int]
                                         [:map {:closed true} [:major :int] [:minor :int]]]]
-   [:cloud            {:optional true} :boolean]])
+   [:cloud            {:optional true} :boolean]
+   [:single-node      {:optional true} :boolean]])
 
 (mr/def ::database.write-data-details
   "The `:write_data_details` column of a Database, decoded."
@@ -46,6 +49,8 @@
     [:features                    {:optional true} [:maybe [:set :keyword]]]
     [:can-manage                  {:optional true} [:maybe :boolean]]
     [:can_upload                  {:optional true} [:maybe :boolean]]
+    [:can_write                   {:optional true} [:maybe :boolean]]
+    [:can_query                   {:optional true} [:maybe :boolean]]
     [:tables                      {:optional true} [:maybe [:sequential [:ref :metabase.warehouse-schema.schema/table]]]]
     [:native_permissions          {:optional true} [:maybe [:enum :write :none]]]
     [:router_user_attribute       {:optional true} [:maybe :string]]
@@ -62,7 +67,7 @@
    [:name                        {:optional true} [:maybe :string]]
    [:description                 {:optional true} [:maybe :string]]
    [:details                     {:optional true} [:maybe ::database.details]]
-   [:engine                      {:optional true} [:maybe [:or :keyword :string]]]
+   [:engine                      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:is_sample                   {:optional true} [:maybe :boolean]]
    [:is_full_sync                {:optional true} [:maybe :boolean]]
    [:points_of_interest          {:optional true} [:maybe :string]]
@@ -75,7 +80,7 @@
    [:auto_run_queries            {:optional true} [:maybe :boolean]]
    [:refingerprint               {:optional true} [:maybe :boolean]]
    [:cache_ttl                   {:optional true} [:maybe :int]]
-   [:initial_sync_status         {:optional true} [:maybe [:or :keyword :string]]]
+   [:initial_sync_status         {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:initial_sync_error          {:optional true} [:maybe :string]]
    [:creator_id                  {:optional true} [:maybe ::lib.schema.id/user]]
    [:settings                    {:optional true} [:maybe ::database.settings]]
@@ -96,3 +101,17 @@
   [:multi {:dispatch (fn [x] (if (:lib/type x) :lib-metadata :row))}
    [:lib-metadata :metabase.lib.schema.metadata/database]
    [:row          ::database]])
+
+(mr/def ::external-database
+  "A Database as serialization writes it, with portable references in place of ids. Connection details and sync
+  schedules are never exported, but older files may carry them."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::database [:auto_run_queries :caveats :description :engine :is_audit :is_attached_dwh
+                              :is_full_sync :is_on_demand :default_schema :name :points_of_interest :provider_name
+                              :refingerprint :settings :timezone :uploads_enabled :uploads_schema_name
+                              :uploads_table_prefix :cache_field_values_schedule :metadata_sync_schedule :details
+                              :write_data_details :admin_details :creator_id :router_database_id :initial_sync_status
+                              :is_sample :is_stub]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

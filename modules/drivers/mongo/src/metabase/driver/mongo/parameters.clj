@@ -15,7 +15,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [get-in]])
+   [metabase.util.match :as match]
+   [metabase.util.performance :refer [get-in]])
   (:import
    (java.time ZoneOffset)
    (java.time.temporal Temporal)))
@@ -251,9 +252,6 @@
    stage-number :- :int]
   (let [param->value (params.values/stage->params-map query (lib/query-stage query stage-number))
         update-stage (fn [native-stage]
-                       (perf/postwalk (fn [x]
-                                        (if (string? x)
-                                          (parse-and-substitute query stage-number param->value x)
-                                          x))
-                                      native-stage))]
+                       (match/replace-all native-stage
+                         #'string? (parse-and-substitute query stage-number param->value &match)))]
     (lib/update-query-stage query stage-number update :native update-stage)))

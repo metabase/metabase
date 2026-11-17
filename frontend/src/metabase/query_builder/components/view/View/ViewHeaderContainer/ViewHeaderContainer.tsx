@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import type { CollectionPickerValueItem } from "metabase/common/components/Pickers/CollectionPicker";
 import CS from "metabase/css/core/index.css";
+import { hasPrimarySource } from "metabase/querying/common/utils";
 import { Box, Flex, Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -32,7 +33,7 @@ export const ViewHeaderContainer = (props: ViewHeaderContainerProps) => {
   const card = question.card();
   const { isNative } = Lib.queryDisplayInfo(query);
 
-  const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
+  const isNewQuestion = !isNative && !hasPrimarySource(query);
 
   return (
     <Box className={ViewHeaderContainerS.QueryBuilderViewHeaderContainer}>

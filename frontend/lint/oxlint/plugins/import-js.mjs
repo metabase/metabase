@@ -1,5 +1,7 @@
 import { createRequire } from "node:module";
+
 import plugin from "eslint-plugin-import-x";
+
 import { wrap } from "../plugin.mjs";
 import { resolver } from "../resolver.mjs";
 

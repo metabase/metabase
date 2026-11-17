@@ -53,7 +53,7 @@ export const PaginationControls = ({
         {rangeStart} - {rangeEnd}
         {showTotal && (
           <>
-            <Text component="span" c="text-disabled">
+            <Text component="span" c="text-secondary">
               &nbsp;
               {c(
                 "Appears in phrases like '1-10 of 100', referring to a page of results",
@@ -67,7 +67,7 @@ export const PaginationControls = ({
         )}
       </Text>
       <ActionIcon
-        variant="viewHeader"
+        variant="subtle"
         onClick={onPreviousPage ?? undefined}
         disabled={isPreviousDisabled}
         data-testid="previous-page-btn"
@@ -77,7 +77,7 @@ export const PaginationControls = ({
       </ActionIcon>
 
       <ActionIcon
-        variant="viewHeader"
+        variant="subtle"
         onClick={onNextPage ?? undefined}
         disabled={isNextDisabled}
         data-testid="next-page-btn"

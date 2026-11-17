@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase-enterprise.test :as met]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -62,6 +62,13 @@
         (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
           (mt/with-full-data-perms-for-all-users!
             (is (not (sandbox.api.util/sandboxed-user?)))))))))
+
+(deftest sandboxed-user?-without-sandboxes-feature-test
+  (testing "A configured sandbox is still reported when the `:sandboxes` feature is unavailable (e.g. token check failing)"
+    (mt/with-temp [:model/User user {}]
+      (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
+        (mt/with-premium-features #{}
+          (is (sandbox.api.util/sandboxed-user?)))))))
 
 (defn- has-segmented-perms-when-segmented-db-exists?! [user-kw]
   (testing "User is sandboxed when they are not in any other groups that provide unrestricted access"

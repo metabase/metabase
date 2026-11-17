@@ -6,10 +6,12 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { Route } from "metabase/router";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
-  createMockField,
+  createMockColumn,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -22,7 +24,7 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { MetricTabs } from "./MetricTabs";
 
 const urls: MetricUrls = {
-  about: (id) => `/metric/${id}/about`,
+  about: (id) => `/metric/${id}`,
   overview: (id) => `/metric/${id}/overview`,
   query: (id) => `/metric/${id}/query`,
   dimensions: (id) => `/metric/${id}/dimensions`,
@@ -48,17 +50,20 @@ describe("MetricTabs", () => {
     hasDimensions = true,
     hasDataPermissions = true,
     role = "consumer",
+    initialRoute = "/",
   }: {
     card?: Partial<Card>;
     hasDimensions?: boolean;
     hasDataPermissions?: boolean;
     role?: "admin" | "analyst" | "consumer";
+    initialRoute?: string;
   } = {}) {
     const card = createMockCard({
       type: "metric",
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
       can_write: true,
       last_query_start: "2024-01-01T00:00:00Z",
-      result_metadata: [createMockField({ base_type: "type/Integer" })],
+      result_metadata: [createMockColumn({ base_type: "type/Integer" })],
       ...cardOverrides,
     });
 
@@ -85,13 +90,14 @@ describe("MetricTabs", () => {
       <Route path="*" element={<MetricTabs card={card} urls={urls} />} />,
       {
         withRouter: true,
+        initialRoute,
         storeInitialState: state,
       },
     );
   }
 
   function getTabLabels() {
-    return screen.queryAllByRole("link").map((link) => link.textContent);
+    return screen.queryAllByRole("tab").map((link) => link.textContent);
   }
 
   it("does not show the caching tab in the tabs row regardless of write access", async () => {
@@ -149,6 +155,42 @@ describe("MetricTabs", () => {
       expect(getTabLabels()).toContain("Dimensions");
     });
   });
+
+  it.each([
+    ["About", "/metric/9-revenue"],
+    ["Overview", "/metric/9-revenue/overview"],
+    ["Definition", "/metric/9-revenue/query"],
+    ["Dimensions", "/metric/9-revenue/dimensions"],
+    ["History", "/metric/9-revenue/history"],
+    ["Dependencies", "/metric/9-revenue/dependencies"],
+  ])(
+    "marks %s as the current tab for a slugged metric URL (#83344)",
+    async (label, initialRoute) => {
+      setup({ card: { id: 9 }, initialRoute, role: "admin" });
+
+      expect(await screen.findByRole("tab", { name: label })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(
+        screen
+          .getAllByRole("tab")
+          .filter((link) => link.getAttribute("aria-selected") === "true"),
+      ).toHaveLength(1);
+    },
+  );
+
+  it.each(["/metric/9-revenue/query", "/metric/90-revenue"])(
+    "does not mark About as current at %s (#83344)",
+    async (initialRoute) => {
+      setup({ card: { id: 9 }, initialRoute });
+
+      expect(await screen.findByRole("tab", { name: "About" })).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+    },
+  );
 
   describe("Dependencies tab (role-gated)", () => {
     it("shows for admins", async () => {

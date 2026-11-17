@@ -8,6 +8,7 @@ import {
   setupDatabasesEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -20,7 +21,14 @@ import { useCommandPalette } from "metabase/palette/hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "metabase/palette/hooks/useCommandPaletteBasicActions";
 import { Route, useLocation, useParams } from "metabase/router";
 import { parseSearchQuery } from "metabase/utils/browser";
-import type { CollectionItem, RecentItem, Settings } from "metabase-types/api";
+import type {
+  CollectionItem,
+  Database,
+  RecentItem,
+  SearchResult,
+  Settings,
+  UserMetabotPermissions,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -28,6 +36,7 @@ import {
   createMockRecentCollectionItem,
   createMockTokenFeatures,
   createMockUser,
+  createMockUserMetabotPermissions,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
 
@@ -131,9 +140,11 @@ export interface CommonSetupProps {
   query?: string;
   settings?: Partial<Settings>;
   recents?: RecentItem[];
-  searchItems?: CollectionItem[];
+  searchItems?: (CollectionItem | SearchResult)[];
   isEE?: boolean;
   isAdmin?: boolean;
+  databases?: Database[];
+  metabotPermissions?: Partial<UserMetabotPermissions>;
 }
 
 export const commonSetup = ({
@@ -143,8 +154,13 @@ export const commonSetup = ({
   searchItems = [model_1, model_2, dashboard],
   isEE,
   isAdmin = false,
+  databases = [DATABASE],
+  metabotPermissions,
 }: CommonSetupProps = {}) => {
-  setupDatabasesEndpoints([DATABASE]);
+  setupDatabasesEndpoints(databases);
+  setupUserMetabotPermissionsEndpoint(
+    createMockUserMetabotPermissions(metabotPermissions),
+  );
   setupSearchEndpoints(searchItems);
   setupRecentViewsEndpoints(recents);
   setupCollectionByIdEndpoint({

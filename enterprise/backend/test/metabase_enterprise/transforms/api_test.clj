@@ -20,7 +20,7 @@
 (defn- query-transform-payload
   [table-name]
   {:name   "Test Transform"
-   :source {:type  "query"
+   :source {:type  :query
             :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
    :target {:type   "table"
             :schema (get-test-schema)
@@ -29,7 +29,7 @@
 (defn- python-transform-map
   [table-name]
   {:name   "Python Transform"
-   :source {:type            "python"
+   :source {:type            :python
             :body            "print('hello world')"
             :source-tables   []
             :source-database (mt/id)}
@@ -442,7 +442,7 @@
               ;; if harbormaster somehow sends lock state for such a customer, or the setting gets tampered.
               ;; (Note: pure OSS doesn't reach this branch because check-feature-enabled! 402s earlier on
               ;; missing premium features.)
-              (with-redefs [premium-features/transform-metered-as (constantly nil)]
+              (mt/with-dynamic-fn-redefs [premium-features/transform-metered-as (constantly nil)]
                 (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs    true
                                                                   :transform-advanced-runs true}]
                   (mt/user-http-request :crowberto :post 202

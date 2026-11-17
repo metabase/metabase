@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { memo, useCallback, useMemo } from "react";
+import { type JSX, memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,6 +8,8 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useCurrentRef } from "metabase/common/hooks/use-current-ref";
 import { Box, Button, Flex, Group } from "metabase/ui";
 import { color } from "metabase/ui/colors";
+import type { ColorPalette } from "metabase/ui/colors/types";
+import type { ColorSettings, ColorSettingsAccentKey } from "metabase-types/api";
 
 import S from "./ChartColorSettings.module.css";
 import {
@@ -18,9 +20,9 @@ import {
 } from "./utils";
 
 export interface ChartColorSettingsProps {
-  colors: Record<string, string>;
-  colorPalette: Record<string, string>;
-  onChange: (colors: Record<string, string>) => void;
+  colors: ColorSettings;
+  colorPalette: ColorPalette;
+  onChange: (colors: ColorSettings) => void;
 }
 
 export const ChartColorSettings = ({
@@ -36,7 +38,7 @@ export const ChartColorSettings = ({
   }, [colors, colorGroups]);
 
   const handleChange = useCallback(
-    (colorName: string, color?: string) => {
+    (colorName: ColorSettingsAccentKey, color?: string) => {
       if (color) {
         onChange({ ...colorsRef.current, [colorName]: color });
       } else {
@@ -68,11 +70,11 @@ export const ChartColorSettings = ({
 };
 
 interface ChartColorTableProps {
-  colors: Record<string, string>;
-  colorPalette: Record<string, string>;
-  colorGroups: string[][];
+  colors: ColorSettings;
+  colorPalette: ColorPalette;
+  colorGroups: ColorSettingsAccentKey[][];
   hasCustomColors: boolean;
-  onChange: (name: string, color?: string) => void;
+  onChange: (name: ColorSettingsAccentKey, color?: string) => void;
   onReset: () => void;
   onGenerate: () => void;
 }
@@ -136,8 +138,8 @@ const ChartColorTable = ({
 interface ChartColorCellProps {
   color?: string;
   originalColor: string;
-  colorName: string;
-  onChange: (colorName: string, color?: string) => void;
+  colorName: ColorSettingsAccentKey;
+  onChange: (colorName: ColorSettingsAccentKey, color?: string) => void;
 }
 
 const ChartColorCell = memo(function ChartColorCell({

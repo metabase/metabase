@@ -3,8 +3,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
+   [metabase.initialization-status.core :as init-status]
+   [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.ui-surface :as mcp.ui-surface]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]))
@@ -49,14 +52,18 @@
         dataset   #(mcp.ui-surface/scope-satisfied? :post "/api/dataset" %)]
     (testing "a route off the surface is never satisfied"
       (is (nil? (mcp.ui-surface/scope-satisfied?
-                 :get "/api/user/current" {:token-scopes #{::scope/unrestricted}}))))
+                 :get "/api/user/current" {:token-scopes #{"agent:query:run"}}))))
     (testing "a route that costs no scope needs only a valid credential"
       (is (true? (bootstrap {:token-scopes #{}}))))
     (testing "a route that costs a scope needs the minting session to have held it"
       (is (false? (dataset {:token-scopes #{"agent:search"}})))
-      (is (true? (dataset {:token-scopes #{"agent:query:run"}})))
-      (is (true? (dataset {:token-scopes #{"agent:query:*"}})))
-      (is (true? (dataset {:token-scopes #{::scope/unrestricted}}))))
+      (is (true? (dataset {:token-scopes #{"agent:query:run"}}))))
+    (testing "GHY-4942: the unrestricted sentinel is not an MCP scope, so it satisfies no route that costs one"
+      (is (false? (dataset {:token-scopes #{::scope/unrestricted}}))))
+    (testing "GHY-4942: a wildcard covers no route; only the scope named exactly does"
+      (is (false? (dataset {:token-scopes #{"agent:query:*"}})))
+      (is (false? (dataset {:token-scopes #{"agent:*"}})))
+      (is (false? (dataset {:token-scopes #{"*"}}))))
     (testing "a v2 credential minted before the scope claim existed reaches only the free routes"
       (is (true? (bootstrap {})))
       (is (false? (dataset {}))))
@@ -69,6 +76,20 @@
   (client/client-full-response method expected-status url
                                {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
                                                             "mcp-session-id" session-id}}}))
+
+(deftest ui-credential-authenticates-with-auth-method-mcp-ui-test
+  (init-status/set-complete!)
+  (testing "a resolvable credential on the surface authenticates its user with auth method \"mcp-ui\""
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id)
+          credential (mcp.session/issue-ui-credential session-id user-id #{"agent:query:run"})]
+      (is (=? {:metabase-user-id      user-id
+               :embedding/auth-method "mcp-ui"}
+              (#'mw.session/merge-current-user-info
+               mcp.http-handler/options
+               {:request-method :get
+                :uri            "/api/embed-mcp/bootstrap"
+                :headers        {"x-metabase-mcp-ui-auth" credential}}))))))
 
 (deftest ui-credential-cannot-read-the-profile-test
   (testing "GHY-4400: `refresh_ui_credential` is not a scope-escalation primitive — the credential cannot read
@@ -104,7 +125,7 @@
                                                               session-id user-id scopes)
                                     "mcp-session-id" session-id}}}
                         {:encodedQuery "ZW5jb2RlZA=="}))]
-      (is (= 403 (:status (post! #{"agent:search"} 403))))
+      (is (= 403 (:status (post! #{"agent:content:read"} 403))))
       (is (= 200 (:status (post! #{"agent:query:run"} 200)))))))
 
 (deftest dataset-routes-cost-the-query-scope-test
@@ -123,7 +144,7 @@
                         {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
                                                      "mcp-session-id" session-id}}}
                         query))]
-      (is (= 403 (:status (post! (mcp.session/issue-ui-credential session-id user-id #{"agent:search"})
+      (is (= 403 (:status (post! (mcp.session/issue-ui-credential session-id user-id #{"agent:content:read"})
                                  403))))
       (is (= 202 (:status (post! (mcp.session/issue-ui-credential session-id user-id #{"agent:query:run"})
                                  202)))))))

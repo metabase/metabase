@@ -4,7 +4,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -72,7 +71,6 @@
         (is (= ["similar" "broken"]
                (map :name (#'related/rank-by-similarity reference [broken similar]))))))))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *world* {})
 
 (defn- do-with-world [f]
@@ -174,7 +172,7 @@
         (is (= 1
                (count-related-fields))))
       (exec! "ALTER TABLE blueberries_consumed DROP COLUMN weight")
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (testing "after"
         (is (= 0
                (count-related-fields)))))))
@@ -190,8 +188,7 @@
                                                      :object   {}}
                  :model/DashboardCard _             {:card_id (:id card-1), :dashboard_id dash-id}
                  :model/DashboardCard _             {:card_id (:id card-2), :dashboard_id dash-id}]
-    (binding [api/*current-user-id*              (mt/user->id :rasta)
-              api/*current-user-permissions-set* (atom #{"/"})]
+    (mt/with-test-user :crowberto
       (is (=? [{:id dash-id}]
               ;; filter out dashboards unrelated to this test
               (filter #(= (:id %) dash-id)

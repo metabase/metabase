@@ -53,7 +53,7 @@
 (defn- get-content-fields
   "`get_content` on `card-id` with the `fields` include, as the current test user."
   [card-id]
-  (let [{:keys [result error]} (registry/call-tool nil "test-session" "get_content"
+  (let [{:keys [result error]} (registry/call-tool v2.tu/all-scopes "test-session" "get_content"
                                                    {:items [{:type "question" :id card-id}]
                                                     :include ["fields"]})]
     (when error

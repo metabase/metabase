@@ -13,13 +13,13 @@
 (set! *warn-on-reflection* true)
 
 (defsetting warehouse-allowed-networks
-  (deferred-tru (str "Controls which networks Metabase may connect to for warehouse connections.\n"
-                     "Options:\n"
-                     "- external-only (only globally reachable public addresses)\n"
-                     "- allow-private (external + private networks but NOT loopback or link-local)\n"
-                     "- allow-all (no restrictions).\n"
-                     "Defaults to external-only on Metabase Cloud and allow-all when self-hosted.\n"
-                     "Also covers the SSH tunnel host and the database auth-provider URLs."))
+  (str "Controls which networks Metabase may connect to for warehouse connections.\n"
+       "Options:\n"
+       "- external-only (only globally reachable public addresses)\n"
+       "- allow-private (external + private networks but NOT loopback or link-local)\n"
+       "- allow-all (no restrictions).\n"
+       "Defaults to external-only on Metabase Cloud and allow-all when self-hosted.\n"
+       "Also covers the SSH tunnel host and the database auth-provider URLs.")
   :type       :keyword
   :visibility :internal
   :export?    false
@@ -232,6 +232,26 @@
   Sample Database (sync, schema refresh, fingerprinting, etc.) bind this to `true`."
   false)
 
+(def ^:private sqlite-sample-database-path
+  "The exact `:db` path string of the bundled Sample Database, registered by the sample-data module when it extracts
+  the file, or nil before then. On a hosted instance, SQLite may open no other file; on self-hosted, this one is exempt
+  from the `readable-paths` and `writable-paths` allowlists. Exact-string match is enough: a stored Database row
+  carries the registered string verbatim, so a match can only name the Sample Database file itself."
+  (atom nil))
+
+(defn register-sqlite-sample-database-path!
+  "Record `path` as the bundled Sample Database's file, replacing any path recorded before. Called by the sample-data
+  module each time it extracts the file."
+  [path]
+  (reset! sqlite-sample-database-path path))
+
+(defn sqlite-sample-database-path?
+  "Whether `db` (a SQLite `:db` connection detail) is exactly the path registered via
+  [[register-sqlite-sample-database-path!]]."
+  [db]
+  (boolean (and (string? db)
+                (= db @sqlite-sample-database-path))))
+
 (defn- -jdbc-data-warehouse-unreturned-connection-timeout-seconds []
   (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
       (long (/ *query-timeout-ms* 1000))))
@@ -270,18 +290,17 @@
   :visibility :internal)
 
 (defsetting nested-field-columns-value-length-limit
-  (deferred-tru (str "Maximum length of a JSON string before skipping it during sync for JSON unfolding. If this is set "
-                     "too high it could lead to slow syncs or out of memory errors."))
+  (str "Maximum length of a JSON string before skipping it during sync for JSON unfolding. If this is set "
+       "too high it could lead to slow syncs or out of memory errors.")
   :visibility :internal
   :export?    true
   :type       :integer
   :default    50000)
 
 (defsetting sync-leaf-fields-limit
-  (deferred-tru
-   (str "Maximum number of leaf fields synced per collection of document database. Currently relevant for Mongo."
-        " Not to be confused with total number of synced fields. For every chosen leaf field, all intermediate fields"
-        " from root to leaf are synced as well."))
+  (str "Maximum number of leaf fields synced per collection of document database. Currently relevant for Mongo."
+       " Not to be confused with total number of synced fields. For every chosen leaf field, all intermediate fields"
+       " from root to leaf are synced as well.")
   :visibility :internal
   :export? true
   :type :integer

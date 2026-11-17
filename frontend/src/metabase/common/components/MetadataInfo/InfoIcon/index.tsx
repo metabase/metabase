@@ -1,1 +1,1 @@
-export * from "./InfoIcon.styled";
+export * from "./InfoIcon";

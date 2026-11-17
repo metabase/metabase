@@ -4,24 +4,10 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
-   [metabase.permissions.core :as perms]
-   [metabase.util :as u]
+   [metabase.metabot.usage-controls :as usage-controls]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(defn- default-group-ids
-  "The IDs of the groups visible only in simple mode: All Users and, on tenant instances, All tenant users."
-  []
-  [(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))])
-
-(defn- visible-groups-expr
-  "Matches the groups the admin UI shows in the mode selected by `advanced?`: Administrators, All Users, and All
-  tenant users in simple mode, every other group in group-level mode."
-  [advanced?]
-  (if advanced?
-    [:not-in :group_id (default-group-ids)]
-    [:in :group_id (conj (default-group-ids) (u/the-id (perms/admin-group)))]))
 
 (mu/defn all-groups
   "Every PermissionsGroup, in ID order."
@@ -44,7 +30,7 @@
                        {:select [:group_id]
                         :from   [(t2/table-name :model/PermissionsGroupMembership)]
                         :where  [:= :user_id user-id]}]
-                      (visible-groups-expr advanced?)]}))
+                      (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
 (mu/defn permission-exists?
   "Whether the group with `group-id` has a MetabotPermissions row of `perm-type`."
@@ -71,7 +57,8 @@
 (mu/defn delete-hidden-group-permissions!
   "Delete the MetabotPermissions rows of the groups the mode selected by `advanced?` hides."
   [advanced? :- :boolean]
-  (t2/delete! :model/MetabotPermissions {:where [:not (visible-groups-expr advanced?)]}))
+  (t2/delete! :model/MetabotPermissions
+              {:where [:not (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
 (mu/defn group-limits
   "Every MetabotGroupLimit, in group order."
@@ -107,7 +94,7 @@
   "Set the maximum usage of the MetabotGroupLimit with `limit-id`."
   [limit-id  :- ms/PositiveInt
    max-usage :- [:maybe :int]]
-  (t2/update! :model/MetabotGroupLimit limit-id {:max_usage max-usage}))
+  (t2/update! :model/MetabotGroupLimit :id limit-id {:max_usage max-usage}))
 
 (mu/defn delete-group-limit!
   "Delete the MetabotGroupLimit of the group with `group-id`."
@@ -136,7 +123,7 @@
   "Set the maximum usage of the MetabotInstanceLimit with `limit-id`."
   [limit-id  :- ms/PositiveInt
    max-usage :- [:maybe :int]]
-  (t2/update! :model/MetabotInstanceLimit limit-id {:max_usage max-usage}))
+  (t2/update! :model/MetabotInstanceLimit :id limit-id {:max_usage max-usage}))
 
 (mu/defn delete-instance-limit!
   "Delete the MetabotInstanceLimit of the Tenant with `tenant-id`."
@@ -165,13 +152,22 @@
                  :where  (usage-window-expr period-start user-id tenant-id)}))
 
 (mu/defn usage-message-count
-  "The `:cnt` row of messages logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`."
+  "The `:cnt` row of messages sent since `period-start`, narrowed by the optional `user-id` and `tenant-id`.
+
+  A message is one agent loop. The LLM calls of a loop log one `ai_usage_log` row each, under the loop's
+  `request_id`, so the count is the number of distinct ids among the rows from `sources`. The loop that asks,
+  `request-id`, is left out, so a turn's earlier calls do not count against its later ones; nil leaves every loop
+  in. Rows without a `request_id` do not count."
   [period-start :- ms/TemporalInstant
+   sources      :- [:set :string]
+   request-id   :- [:maybe :string]
    user-id      :- [:maybe ::lib.schema.id/user]
    tenant-id    :- [:maybe ms/PositiveInt]]
-  (t2/query-one {:select [[[:count :*] :cnt]]
+  (t2/query-one {:select [[[:count [:distinct :request_id]] :cnt]]
                  :from   [:ai_usage_log]
-                 :where  (usage-window-expr period-start user-id tenant-id)}))
+                 :where  (cond-> (usage-window-expr period-start user-id tenant-id)
+                           (seq sources) (conj [:in :source sources])
+                           request-id    (conj [:not= :request_id request-id]))}))
 
 (mu/defn delete-usage-logs-created-before!
   "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."

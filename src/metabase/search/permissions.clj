@@ -1,46 +1,31 @@
 (ns metabase.search.permissions
   (:require
-   [metabase.api.common :as api]
-   [metabase.collections.models.collection :as collection]
-   [metabase.models.interface :as mi]
+   [metabase.data-apps.core :as data-apps]
    [metabase.permissions.core :as perms]
    [metabase.search.config :refer [SearchContext]]
    [metabase.util.malli :as mu]))
 
-(defn- assert-current-user! [missing-param]
-  (assert @api/*current-user*
-          (format "metabase.api.common/*current-user* must be bound if %s is missing from search-ctx" missing-param)))
-
-(defn- impersonated-user? [{:keys [is-impersonated-user?] :as _search-ctx}]
-  (or is-impersonated-user?
-      ;; TODO Make this parameter non-optional, and fix code paths that omit it. Then remove this fallback.
-      (when (nil? is-impersonated-user?)
-        (assert-current-user! :is-impersonated-user?)
-        (perms/impersonated-user?))))
-
-(defn- sandboxed-user? [{:keys [is-sandboxed-user?] :as _search-ctx}]
-  (or is-sandboxed-user?
-      ;; TODO Make this parameter non-optional, and fix code paths that omit it. Then remove this fallback.
-      (when (nil? is-sandboxed-user?)
-        (assert-current-user! :is-sandboxed-user?)
-        (perms/sandboxed-user?))))
-
-(defn sandboxed-or-impersonated-user?
-  "Is the current user sandboxed or impersonated?"
-  [search-ctx]
-  (or (impersonated-user? search-ctx) (sandboxed-user? search-ctx)))
+(defn sandboxed-impersonated-or-routed-user?
+  "Is the current user's view of warehouse data narrowed by a lens -- sandboxing, connection impersonation, or database
+  routing? Content captured under the unrestricted lens (e.g. indexed entity values) must not be shown to such a user.
+  The three flags are computed once, when the search context is built, see [[metabase.search.impl/search-context]].
+  Fails closed: a flag the caller left unset (nil) counts as restricted rather than unrestricted, so we don't depend
+  on the `SearchContext` schema being enforced."
+  [{:keys [is-impersonated-user? is-sandboxed-user? is-routed-user?] :as _search-ctx}]
+  (not (and (false? is-impersonated-user?)
+            (false? is-sandboxed-user?)
+            (false? is-routed-user?))))
 
 (mu/defn permitted-collections-clause
   "Build the WHERE clause corresponding to which collections the given user has access to."
-  [{:keys [archived current-user-id is-superuser?]} :- SearchContext collection-id-col :- :keyword]
+  [{:keys [archived current-user-id is-superuser? is-data-analyst?]} :- SearchContext collection-id-col :- :keyword]
   [:and
-   (collection/visible-collection-filter-clause
-    collection-id-col
-    {:include-archived-items    :all
-     :include-trash-collection? true
-     :permission-level          (if archived :write :read)}
-    {:current-user-id current-user-id
-     :is-superuser?   is-superuser?})
+   (perms/visible-collections-filter-clause collection-id-col {:user-id          current-user-id
+                                                               :is-superuser?    (boolean is-superuser?)
+                                                               :is-data-analyst? (boolean is-data-analyst?)} {:include-archived-items    :all
+                                                                                                              :include-trash-collection? true
+                                                                                                              :permission-level          (if archived :write :read)
+                                                                                                              :root-namespace            nil})
    ;; This is to allow the set of namespaces indexed by the search spec for appdb-based search to also apply to
    ;; legacy search so it performs the same on MySQL
    ;; TODO(edpaget 2025-12-04): this should be a default value of the search context and then search can be restricted
@@ -48,16 +33,21 @@
    (perms/namespace-clause :collection.namespace nil true)])
 
 (mu/defn permitted-tables-clause
-  "Build the WHERE clause and optional CTEs for table permission filtering.
-   Returns a map with :clause (WHERE clause fragment) and :with (optional CTE definitions)."
-  [{:keys [current-user-id is-superuser? is-data-analyst?]} :- SearchContext table-id-col :- [:or :keyword [:vector :keyword]]]
-  (mi/visible-filter-clause
-   :model/Table
+  "The WHERE clause keeping the Tables the user of `search-ctx` can query, by `table-id-col`."
+  [{:keys [current-user-id is-superuser? is-data-analyst?]} :- SearchContext table-id-col :- [:or :keyword vector?]]
+  (perms/visible-tables-filter-clause
    table-id-col
-   {:user-id current-user-id
-    :is-superuser? is-superuser?
+   {:user-id          current-user-id
+    :is-superuser?    is-superuser?
     :is-data-analyst? is-data-analyst?}
-   {:perms/view-data :unrestricted
+   {:perms/view-data      :unrestricted
     :perms/create-queries :query-builder}
-   {:include-published-via-collection? true
-    :active-only? true}))
+   {:active-only? true, :include-published-via-collection? true}))
+
+(mu/defn permitted-data-apps-clause
+  "Build the WHERE clause that keeps the data apps the given user can read: none without the data apps feature."
+  [{:keys [current-user-id is-superuser?]} :- SearchContext data-app-id-col :- [:or :keyword [:vector :keyword]]]
+  (if-let [readable-ids (data-apps/visible-data-app-filter-select {:user-id       current-user-id
+                                                                   :is-superuser? is-superuser?})]
+    [:in data-app-id-col readable-ids]
+    [:= [:inline 0] [:inline 1]]))

@@ -3,15 +3,19 @@ import fetchMock from "fetch-mock";
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/router";
+import type { Table } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
-
-const TABLE = createMockTable({ id: 10, db_id: 1, display_name: "Orders" });
-
-const DATABASE = createMockDatabase({ id: 1, tables: [TABLE] });
 
 import TableDetailContainer from "./TableDetailContainer";
 
-function setup() {
+const TABLE = createMockTable({ id: 10, db_id: 1, display_name: "Orders" });
+
+interface SetupOpts {
+  table?: Table;
+}
+
+function setup({ table = TABLE }: SetupOpts = {}) {
+  const DATABASE = createMockDatabase({ id: 1, tables: [table] });
   setupDatabaseEndpoints(DATABASE);
   fetchMock.get(`path:/api/database/${DATABASE.id}/metadata`, DATABASE);
 
@@ -22,7 +26,7 @@ function setup() {
     />,
     {
       withRouter: true,
-      initialRoute: `/reference/databases/${DATABASE.id}/tables/${TABLE.id}`,
+      initialRoute: `/reference/databases/${DATABASE.id}/tables/${table.id}`,
     },
   );
 }
@@ -35,5 +39,18 @@ describe("TableDetailContainer", () => {
     expect(
       await screen.findByText("Actual name in database"),
     ).toBeInTheDocument();
+  });
+
+  it("shows the description of the table", async () => {
+    setup({ table: { ...TABLE, description: "New description" } });
+
+    expect(await screen.findByText("New description")).toBeInTheDocument();
+    expect(screen.queryByText("No description yet")).not.toBeInTheDocument();
+  });
+
+  it("shows a placeholder when the table description is cleared", async () => {
+    setup({ table: { ...TABLE, description: "" } });
+
+    expect(await screen.findByText("No description yet")).toBeInTheDocument();
   });
 });

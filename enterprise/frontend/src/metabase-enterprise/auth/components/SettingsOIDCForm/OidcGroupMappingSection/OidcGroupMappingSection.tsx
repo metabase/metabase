@@ -91,8 +91,7 @@ export function OidcGroupMappingSection({
       if (showErrorToast) {
         sendToast({
           message: error,
-          icon: "warning",
-          toastColor: "feedback-negative",
+          variant: "negative",
         });
       }
       return { ok: false, error };

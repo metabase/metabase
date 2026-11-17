@@ -5,7 +5,7 @@ import { Form, FormSubmitButton } from "metabase/forms";
 import {
   Button,
   type ComboboxItem,
-  Group,
+  Modal,
   Select,
   SelectItemWithDescription,
   Stack,
@@ -44,7 +44,7 @@ export function IndexEditorForm({
 
   return (
     <Form>
-      <Stack gap="xl" mt="sm">
+      <Stack gap="xl">
         {firstField && (
           <IndexFieldInput
             key={firstField.name}
@@ -86,16 +86,15 @@ export function IndexEditorForm({
             disabled={isEditing && field.name === "name"}
           />
         ))}
-
-        <Group justify="flex-end">
-          <Button
-            variant="subtle"
-            color="neutral"
-            onClick={onClose}
-          >{t`Cancel`}</Button>
-          <FormSubmitButton label={submitLabel} variant="filled" />
-        </Group>
       </Stack>
+      <Modal.Footer>
+        <Button
+          variant="subtle"
+          color="neutral"
+          onClick={onClose}
+        >{t`Cancel`}</Button>
+        <FormSubmitButton label={submitLabel} variant="filled" />
+      </Modal.Footer>
     </Form>
   );
 }

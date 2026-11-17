@@ -94,6 +94,8 @@ If you're self-hosting, you can configure a provider with [environment variables
 
 An environment variable can also override a single field of a connection you manage in the UI. For example, if you set only `MB_LLM_ANTHROPIC_API_BASE_URL`, the base URL comes from the environment, and the rest of the connection stays editable.
 
+A connection's credentials and its address have to come from the same place. For Ollama, if `MB_LLM_OLLAMA_API_BASE_URL` points a connection at a different server (such as Ollama Cloud at `https://ollama.com/v1`), Metabase won't send an API key entered in the UI there: set `MB_LLM_OLLAMA_API_KEY` too.
+
 To put the whole list under environment control, set [`MB_LLM_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_llm_providers) to a JSON array of connections. The provider list is then read-only, so manage your connections by editing `MB_LLM_PROVIDERS` and restarting.
 
 On Metabase Cloud, [contact support](https://www.metabase.com/help-premium) if you want environment variables set for your instance.
@@ -134,6 +136,22 @@ When enabled, Metabot is available to help people create questions, analyze data
 
 Toggling off Metabot only turns off in-app Metabot features. People can still use the [MCP server](./mcp.md) and [Agent API](./agent-api.md) if those are enabled.
 
+### Allow Metabot to read query results
+
+_Internal tab._
+
+This setting determines whether Metabot can run queries and read their _results_, so Metabot can answer questions about values in the results.
+
+Metabot runs queries with the permissions of the person asking, and may send the result rows to your AI provider in order to respond to a prompt.
+
+When this setting is off, Metabot can still build queries and charts for you, but it can't read their results.
+
+Metabot in Slack and in embedded apps doesn't read query results, regardless of this setting.
+
+See [AI privacy](./privacy.md#by-default-metabot-sends-query-results-to-the-ai-provider).
+
+If [`MB_METABOT_QUERY_EXECUTION_ENABLED`](../configuring-metabase/environment-variables.md#mb_metabot_query_execution_enabled) is set, the toggle shows its value and is locked.
+
 ### Enable Embedded Metabot
 
 _Embedded tab._
@@ -157,7 +175,7 @@ _Internal tab._
 
 Select a collection (including its subcollections) to limit which collections Metabot searches during [AI exploration](../ai/metabot.md#ai-exploration). Click **Pick a different collection** to change the selection.
 
-This setting only affects conversations started from **+ New > AI exploration**.
+This setting affects conversations started from **+ New > AI exploration**, and the models and metrics **Ask Metabot** uses in [documents](../documents/introduction.md).
 
 People can still @-mention items outside of this collection when prompting in AI exploration. Metabot can also see the person's current context (for example, Metabot will know about the dashboard they're currently viewing, even if the dashboard is outside the selected collection).
 
@@ -189,37 +207,9 @@ For more granular options, check out [AI usage controls](./usage-controls.md).
 
 ## Tips for making the most of Metabot
 
-The best thing you can do to improve Metabot's performance is to prep your data like you would for onboarding a new (human) hire to your data. In practice, this means you should:
+The best thing you can do to improve Metabot's answers is to prep your data like you would for a new (human) hire: describe your tables, columns, models, and metrics, define company terms in the glossary, and mark foreign keys.
 
-- [Add descriptions for your data and content](#add-descriptions-for-your-data-and-content)
-- [Make sure the semantic types for each field are correct](#make-sure-the-semantic-types-for-each-field-are-correct)
-- [Define domain-specific terms in the glossary](#define-domain-specific-terms-in-the-glossary)
-
-### Add descriptions for your data and content
-
-Add descriptions to your [models](../data-modeling/models/models.md#add-metadata-to-columns-in-a-model), [metrics](../data-modeling/semantic-layer/metrics.md), [dashboards](../dashboards/introduction.md), and [questions](../questions/introduction.md). Write descriptions to provide context, define terms, and explain business logic.
-
-Admins can also curate [table metadata](../data-modeling/metadata/metadata-editing.md) by adding descriptions for tables and their fields.
-
-For example, here's a decent description for an ID field that provides additional context for the data:
-
-```txt
-This is a unique ID for the product. It is also called the "Invoice number" or "Confirmation number" in customer facing emails and screens.
-```
-
-You can even ask Metabot to write descriptions for you. But Metabot will only have access to the data in the database. It can't know things like "this ID is called the 'Invoice number' in the web app", which is the kind of contextual information worth documenting.
-
-### Make sure the semantic types for each field are correct
-
-Make sure the semantic types for each field accurately describe the field's "meaning". For example, if you have a field like `created_at`, you'd want the column type to be Creation date.
-
-Metabase will try to set semantic types automatically, but you should confirm that each field has the relevant semantic type. See [Data types and semantic types](../data-modeling/metadata/semantic-types.md). You can also set semantic types for [models](../data-modeling/models/models.md#add-metadata-to-columns-in-a-model).
-
-### Define domain-specific terms in the glossary
-
-Add your organization's terminology, acronyms, and business-specific terms to the [glossary](../data-modeling/semantic-layer/glossary.md). Metabot can look up terms in the glossary to better understand your request.
-
-For example, if you define "MRR" as "Monthly Recurring Revenue" in your glossary, Metabot will know what you mean when you ask "What's our MRR for Q4?" This is especially helpful for industry-specific jargon, internal product names, or abbreviations unique to your organization.
+For what to change and how each change affects Metabot, see [Configure Metabot context](./configure-metabot-context.md).
 
 ## Metabot permissions are Metabase permissions
 
@@ -231,7 +221,7 @@ In other words, to restrict what data Metabot can see for each person, simply ap
 
 If you're using the Metabase AI service, you can see how many Metabot requests people have made this month by going to **Admin > AI**.
 
-If you aren't logged into the [Metabase Store](../cloud/accounts-and-billing.md), you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
+If you aren't logged into the [Metabase Store](https://www.metabase.com/docs/latest/cloud/accounts-and-billing), you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
 
 If you're using your own provider credentials, you can track usage and costs through that provider's dashboard.
 
@@ -240,6 +230,7 @@ On Metabase Pro/Enterprise, you also get access to detailed [AI usage auditing](
 ## Further reading
 
 - [Using Metabot](metabot.md)
+- [Configure Metabot context](configure-metabot-context.md)
 - [Supported AI providers](providers.md)
 - [MCP server](mcp.md)
 - [AI privacy](privacy.md)

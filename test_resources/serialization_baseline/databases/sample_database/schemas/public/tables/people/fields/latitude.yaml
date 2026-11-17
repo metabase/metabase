@@ -1,6 +1,5 @@
 name: LATITUDE
 display_name: Latitude
-created_at: '2024-08-28T14:38:42.774331Z'
 visibility_type: normal
 table_id:
 - Sample Database
@@ -13,12 +12,5 @@ semantic_type: type/Latitude
 position: 11
 database_position: 11
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: PEOPLE
-  model: Table
-- id: LATITUDE
-  model: Field
+- model: Field
 database_indexed: false

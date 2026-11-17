@@ -8,6 +8,7 @@
    [java-time.clock]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
+   [metabase.api-keys.usage :as api-keys.usage]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
@@ -26,6 +27,7 @@
    [metabase.search.task.search-index :as task.search-index]
    [metabase.security-center.schema :as security-center.schema]
    [metabase.session.api :as session.api]
+   [metabase.settings.core :as setting]
    [metabase.testing-api.db :as testing-api.db]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
@@ -34,7 +36,6 @@
    [metabase.util.malli.schema :as ms])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
-   (java.util Queue)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (set! *warn-on-reflection* true)
@@ -162,7 +163,9 @@
                              [:name ms/NonBlankString]]]
   ;; reset the system clock, in case `/set-time` was called without cleanup
   (alter-var-root #'java-time.clock/*clock* (constantly nil))
-  (.clear ^Queue @#'search.ingestion/queue)
+  (search.ingestion/clear-queue!)
+  (api/check (search.ingestion/await-pending-updates! 30000)
+             [500 "Timed out waiting for search indexing before restoring a snapshot."])
   (restore-snapshot! snapshot-name)
   (search/sync-from-restored-db!)
   nil)
@@ -221,7 +224,9 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 (api.macros/defendpoint :post "/mark-stale"
-  "Mark the card or dashboard as stale"
+  "Backdate an entity's activity so the staleness checks treat it as stale. Cards and dashboards carry
+  the timestamp directly, a document is stale once it has not been viewed since the cutoff, and a
+  transform is stale once it was created before the cutoff with no later run. Intended only for E2E tests."
   [_route-params
    _query-params
    {:keys [id model date-str]} :- [:map {:closed true}
@@ -234,11 +239,18 @@
                       (throw (ex-info (str "invalid date: '"
                                            date-str
                                            "' expected format: 'yyyy-MM-dd'")
-                                      {:status 400}))))
+                                      {:status-code 400}))))
                (t/minus (t/local-date) (t/months 7)))]
     (case model
       "card"      (testing-api.db/set-card-last-used-at! id date)
-      "dashboard" (testing-api.db/set-dashboard-last-viewed-at! id date))))
+      "dashboard" (testing-api.db/set-dashboard-last-viewed-at! id date)
+      "document"  (testing-api.db/set-document-last-viewed-at! id date)
+      "transform" (do
+                    (testing-api.db/set-transform-created-at! id date)
+                    ;; collapsed to a zero-length run so backdating staleness can't also make the
+                    ;; transform look slow
+                    (testing-api.db/set-transform-run-times! id date))
+      (throw (ex-info (str "unknown model: '" model "'") {:status-code 400})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -254,11 +266,21 @@
   metabase-enterprise.cache.task.refresh-cache-configs
   [])
 
-(defenterprise clear-metabot-limit-cache!
-  "Clears the metabot usage limit memoization cache on EE so that limit checks re-evaluate immediately.
-  No-op on OSS."
-  metabase-enterprise.metabot.usage
+(defenterprise run-content-diagnostics-scan!
+  "Runs a content diagnostics scan on EE and returns its topline. No-op on OSS."
+  metabase-enterprise.content-diagnostics.scan
   [])
+
+(api.macros/defendpoint :post "/content-diagnostics/scan"
+  :- [:maybe [:map
+              [:scan_id       :string]
+              [:finding_count :int]
+              [:duration_ms   :int]]]
+  "Run a content diagnostics scan synchronously and return its topline. Findings only reach the UI
+  through a scan, and the production trigger is a nightly job, so E2E tests need a way to run one on
+  demand. Intended only for E2E tests."
+  []
+  (run-content-diagnostics-scan!))
 
 (defenterprise reset-mfa-throttlers-for-testing!
   "Clears the accumulated MFA management throttle state (enroll/disable/regenerate) on EE.
@@ -285,6 +307,15 @@
   (let [value (mapv #(update % :config update-keys keyword) value)]
     (run! validate-llm-provider-fixture! value)
     (llm.settings/set-llm-providers! value))
+  nil)
+
+(api.macros/defendpoint :put "/isolated-origin" :- :nil
+  "Set `MB_ISOLATED_ORIGIN`, or unset it with a nil `value`. It is an environment-only setting, and the E2E backend is
+  one process for every spec, so a spec turns the isolated origin on here. A snapshot restore unsets it."
+  [_route-params
+   _query-params
+   {:keys [value]} :- [:map {:closed true} [:value [:maybe ms/NonBlankString]]]]
+  (setting/set! :isolated-origin value :bypass-read-only? true)
   nil)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -337,8 +368,6 @@
       (lib/test-native-query (walk/keywordize-keys native-query-spec))))
 
 ;;;; Metabot AI usage seeding
-
-(def ^:private e2e-usage-source "e2e-test")
 
 (def ^:private e2e-usage-auditing-group-name "E2E Usage Auditing")
 
@@ -549,38 +578,6 @@
      {:inserted (count e2e-usage-auditing-conversation-ids)
       :date     (str (t/local-date today))})))
 
-(api.macros/defendpoint :post "/metabot/seed-ai-usage"
-  :- [:map [:inserted :int]]
-  "Insert `count` rows into `ai_usage_log` for the given `user_id`, then clear the metabot limit
-  cache so limit checks re-evaluate immediately.  Intended only for E2E tests."
-  [_route-params
-   _query-params
-   {:keys [user_id count]} :- [:map {:closed true}
-                               [:user_id ms/PositiveInt]
-                               [:count   ms/PositiveInt]]]
-  (dotimes [_ count]
-    (testing-api.db/insert-ai-usage-log!
-     {:source            e2e-usage-source
-      :model             "test/model"
-      :prompt_tokens     0
-      :completion_tokens 0
-      :total_tokens      0
-      :user_id           user_id}))
-  (clear-metabot-limit-cache!)
-  {:inserted count})
-
-(api.macros/defendpoint :delete "/metabot/seed-ai-usage"
-  :- [:map [:deleted :int]]
-  "Delete all `ai_usage_log` rows inserted by the seeding endpoint for the given `user_id`, then
-  clear the metabot limit cache.  Intended only for E2E tests."
-  [_route-params
-   _query-params
-   {:keys [user_id]} :- [:map {:closed true}
-                         [:user_id ms/PositiveInt]]]
-  (let [deleted (testing-api.db/delete-ai-usage-logs-for-user-and-source! user_id e2e-usage-source)]
-    (clear-metabot-limit-cache!)
-    {:deleted deleted}))
-
 (api.macros/defendpoint :post "/metabot/seed-usage-auditing"
   :- [:map
       [:inserted :int]
@@ -631,3 +628,32 @@
       :error-code    error_code
       :error-message error_message})
     {:session_id session-id :tool_name tool-name}))
+
+(api.macros/defendpoint :post "/api-keys/seed-usage"
+  :- [:map [:inserted :int]]
+  "Record one completed API-key-authenticated request so the API-key usage E2E page has a visible
+  row, then force an immediate flush of the usage-log and last_used_at batches (both normally
+  flushed on a scheduled interval) so the row is queryable without waiting. Routes through the
+  production `metabase.api-keys.usage/record-api-key-usage!` path (rather than a hand-rolled insert)
+  so the seeded row can't drift from real writes. Intended only for E2E tests."
+  [_route-params
+   _query-params
+   {:keys [api_key_id user_id created_by_id route_template status duration_ms]}
+   :- [:map {:closed true}
+       [:api_key_id     ms/PositiveInt]
+       [:user_id        ms/PositiveInt]
+       [:created_by_id  ms/PositiveInt]
+       [:route_template {:optional true} [:maybe ms/NonBlankString]]
+       [:status         {:optional true} [:maybe :int]]
+       [:duration_ms    {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]
+  (api-keys.usage/record-api-key-usage!
+   {:api-key-id          api_key_id
+    :metabase-user-id    user_id
+    :api-key-creator-id  created_by_id
+    :request-method      :get
+    :headers             {"user-agent" "curl/8.0.1"}}
+   {:status (or status 200)}
+   {:route-template (or route_template "/api/testing/api-keys/seed-usage")
+    :duration-ms    (or duration_ms 42)})
+  (api-keys.usage/flush-pending-writes!)
+  {:inserted 1})

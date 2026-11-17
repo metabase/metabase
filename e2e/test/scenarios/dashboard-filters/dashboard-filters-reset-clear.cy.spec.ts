@@ -528,6 +528,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     ]);
 
     checkDashboardParameters({
+      defaultValue: ["1", "2"],
       defaultValueFormatted: "2 selections",
       otherValue: ["3", "4"],
       otherValueFormatted: "2 selections",
@@ -536,6 +537,9 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
       updateValue: (label, [firstValue, secondValue]) => {
         updateRangeFilter(label, firstValue, secondValue);
+      },
+      assertValue: (label, [firstValue, secondValue]) => {
+        assertRangeFilterValue(label, firstValue, secondValue);
       },
     });
   });
@@ -802,6 +806,7 @@ function checkStatusIcon(
 }
 
 function checkDashboardParameters<T = string>({
+  defaultValue,
   defaultValueFormatted,
   otherValue,
   otherValueFormatted,
@@ -809,7 +814,9 @@ function checkDashboardParameters<T = string>({
   updateValue = setValue,
   setDefaultValue = setValue,
   updateDefaultValue = updateValue,
+  assertValue,
 }: {
+  defaultValue?: T;
   defaultValueFormatted: string;
   otherValue: T;
   otherValueFormatted: string;
@@ -817,14 +824,25 @@ function checkDashboardParameters<T = string>({
   updateValue?: (label: string, value: T) => void;
   setDefaultValue?: (label: string, value: T) => void;
   updateDefaultValue?: (label: string, value: T) => void;
+  /**
+   * Use when the formatted value does not tell the default and the other value apart.
+   */
+  assertValue?: (label: string, value: T) => void;
 }) {
+  const checkValue = (label: string, formatted: string, value?: T) => {
+    filter(label).should("contain.text", formatted);
+    if (assertValue && value !== undefined) {
+      assertValue(label, value);
+    }
+  };
+
   cy.log("no default value, non-required, no current value");
   checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
   checkResetAllFiltersHidden();
 
   cy.log("no default value, non-required, has current value");
   setValue(NO_DEFAULT_NON_REQUIRED, otherValue);
-  filter(NO_DEFAULT_NON_REQUIRED).should("contain.text", otherValueFormatted);
+  checkValue(NO_DEFAULT_NON_REQUIRED, otherValueFormatted, otherValue);
   checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "clear");
   checkResetAllFiltersShown();
 
@@ -854,7 +872,7 @@ function checkDashboardParameters<T = string>({
 
   cy.log("has default value, non-required, current value same as default");
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
-  filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
+  checkValue(DEFAULT_NON_REQUIRED, defaultValueFormatted, defaultValue);
 
   checkResetAllFiltersHidden();
 
@@ -867,7 +885,7 @@ function checkDashboardParameters<T = string>({
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
-  filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
+  checkValue(DEFAULT_NON_REQUIRED, defaultValueFormatted, defaultValue);
 
   // revert so that we can try resetting with status button as well
   clearButton(DEFAULT_NON_REQUIRED).click();
@@ -879,7 +897,7 @@ function checkDashboardParameters<T = string>({
 
   // reset with status button
   resetButton(DEFAULT_NON_REQUIRED).click();
-  filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
+  checkValue(DEFAULT_NON_REQUIRED, defaultValueFormatted, defaultValue);
 
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
   checkResetAllFiltersHidden();
@@ -889,14 +907,14 @@ function checkDashboardParameters<T = string>({
   );
 
   updateValue(DEFAULT_NON_REQUIRED, otherValue);
-  filter(DEFAULT_NON_REQUIRED).should("contain.text", otherValueFormatted);
+  checkValue(DEFAULT_NON_REQUIRED, otherValueFormatted, otherValue);
   checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
   checkResetAllFiltersShown();
 
   // reset all filters
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
-  filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
+  checkValue(DEFAULT_NON_REQUIRED, defaultValueFormatted, defaultValue);
 
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
   checkResetAllFiltersHidden();
@@ -906,26 +924,26 @@ function checkDashboardParameters<T = string>({
 
   // reset with status button
   resetButton(DEFAULT_NON_REQUIRED).click();
-  filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
+  checkValue(DEFAULT_NON_REQUIRED, defaultValueFormatted, defaultValue);
 
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
   checkResetAllFiltersHidden();
 
   cy.log("has default value, required, value same as default");
-  filter(DEFAULT_REQUIRED).should("contain.text", defaultValueFormatted);
+  checkValue(DEFAULT_REQUIRED, defaultValueFormatted, defaultValue);
   checkStatusIcon(DEFAULT_REQUIRED, "none");
   checkResetAllFiltersHidden();
 
   cy.log("has default value, required, current value different than default");
   updateValue(DEFAULT_REQUIRED, otherValue);
-  filter(DEFAULT_REQUIRED).should("contain.text", otherValueFormatted);
+  checkValue(DEFAULT_REQUIRED, otherValueFormatted, otherValue);
   checkStatusIcon(DEFAULT_REQUIRED, "reset");
   checkResetAllFiltersShown();
 
   // reset all filters
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
-  filter(DEFAULT_REQUIRED).should("contain.text", defaultValueFormatted);
+  checkValue(DEFAULT_REQUIRED, defaultValueFormatted, defaultValue);
   checkStatusIcon(DEFAULT_REQUIRED, "none");
   checkResetAllFiltersHidden();
 
@@ -934,7 +952,7 @@ function checkDashboardParameters<T = string>({
 
   // reset with status button
   resetButton(DEFAULT_REQUIRED).click();
-  filter(DEFAULT_REQUIRED).should("contain.text", defaultValueFormatted);
+  checkValue(DEFAULT_REQUIRED, defaultValueFormatted, defaultValue);
   checkStatusIcon(DEFAULT_REQUIRED, "none");
   checkResetAllFiltersHidden();
 
@@ -1224,6 +1242,19 @@ function addRangeFilter(
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
   H.popover().button("Add filter").click();
+}
+
+function assertRangeFilterValue(
+  label: string,
+  firstValue: string,
+  secondValue: string,
+) {
+  filter(label).click();
+  H.popover().findAllByRole("textbox").first().should("have.value", firstValue);
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
+  H.popover().findAllByRole("textbox").last().should("have.value", secondValue);
+  cy.realPress("Escape");
+  cy.findByTestId("parameter-value-dropdown").should("not.exist");
 }
 
 function updateRangeFilter(

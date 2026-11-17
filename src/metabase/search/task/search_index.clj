@@ -13,8 +13,7 @@
    [metabase.util.queue :as queue])
   (:import
    (java.time Instant)
-   (java.util Date)
-   (org.quartz DisallowConcurrentExecution)))
+   (java.util Date)))
 
 (set! *warn-on-reflection* true)
 
@@ -40,15 +39,19 @@
       (cluster-lock/with-cluster-lock cluster-lock-name
         (search/init-index! {:force-reset? false, :re-populate? false})))))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc                        "Populate a new Search Index"}
-  SearchIndexReindex [_ctx]
+(task/defjob SearchIndexReindex
+  "Populate a new Search Index"
+  {:saved-class "metabase.search.task.search_index.SearchIndexReindex"
+   :concurrent? false}
+  [_ctx]
   (cluster-lock/with-cluster-lock cluster-lock-name
     (search/reindex! {:async? false})))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc                        "Ensure indexes exist for the active engines"}
-  SearchIndexInit [_ctx]
+(task/defjob SearchIndexInit
+  "Ensure indexes exist for the active engines"
+  {:saved-class "metabase.search.task.search_index.SearchIndexInit"
+   :concurrent? false}
+  [_ctx]
   (init!))
 
 ;; Atom holding a promise that is delivered when the background init thread finishes.

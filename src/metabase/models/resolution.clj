@@ -16,13 +16,16 @@
     :model/AgentApiCallLog                   metabase.agent-api.models.agent-api-call-log
     :model/AnalysisFinding                   metabase-enterprise.dependencies.models.analysis-finding
     :model/AnalysisFindingError              metabase-enterprise.dependencies.models.analysis-finding-error
+    :model/AnalysisFindingStatus             metabase-enterprise.dependencies.models.analysis-finding-status
     :model/ApiKey                            metabase.api-keys.models.api-key
+    :model/ApiKeyUsageLog                    metabase.api-keys.models.api-key-usage-log
     :model/ApplicationPermissionsRevision    metabase.permissions.models.application-permissions-revision
     :model/AuditLog                          metabase.audit-app.models.audit-log
     :model/AuthIdentity metabase.auth-identity.models.auth-identity
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
     :model/CacheConfig                       metabase.cache.models.cache-config
     :model/Card                              metabase.queries.models.card
+    :model/CardTest                          metabase-enterprise.data-testing.models.card-test
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
@@ -33,6 +36,7 @@
     :model/Comment                           metabase.comments.models.comment
     :model/CommentReaction                   metabase.comments.models.comment-reaction
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.models
+    :model/ContentDiagnosticsFinding         metabase-enterprise.content-diagnostics.models.finding
     :model/ContentTranslation                metabase.content-translation.models
     :model/CustomVizPlugin                   metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
     :model/DataApp                           metabase-enterprise.data-apps.models.data-app
@@ -42,6 +46,7 @@
     :model/DashboardCardSeries               metabase.dashboards.models.dashboard-card-series
     :model/DashboardTab                      metabase.dashboards.models.dashboard-tab
     :model/DataPermissions                   metabase.permissions.models.data-permissions
+    :model/DataTestRun                       metabase-enterprise.data-testing.models.data-test-run
     :model/Database                          metabase.warehouses.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.models
     :model/Dependency                        metabase-enterprise.dependencies.models.dependency
@@ -49,6 +54,7 @@
     :model/Dimension                         metabase.warehouse-schema.models.dimension
     :model/Document                          metabase.documents.models.document
     :model/DocumentBookmark                  metabase.bookmarks.models.bookmark
+    :model/EmbeddingSdkReact18Host           metabase.embedding.models.sdk-react-18-host
     :model/EmbeddingTheme                    metabase.embedding.models.theme
     :model/Exploration                       metabase.explorations.models.exploration
     :model/ExplorationBlock                  metabase.explorations.models.exploration-block
@@ -65,8 +71,10 @@
     :model/Glossary                          metabase.glossary.models.glossary
     :model/Sandbox                           metabase-enterprise.sandbox.models.sandbox
     :model/ImplicitAction                    metabase.actions.models
+    :model/ImpersonationQueryCache           metabase-enterprise.impersonation.models.impersonation-query-cache
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/McpFeedback                       metabase.mcp.models.mcp-feedback
+    :model/McpGroupPermission                metabase.mcp.models.mcp-group-permission
     :model/McpQueryHandle                    metabase.mcp.models.mcp-query-handle
     :model/McpSessionLog                     metabase.mcp.models.mcp-session-log
     :model/McpToolCallLog                    metabase.mcp.models.mcp-tool-call-log
@@ -118,15 +126,15 @@
     :model/QueryField                        metabase.queries.models.query-field
     :model/QueryTable                        metabase.queries.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
-    :model/RemoteSyncObject                  metabase-enterprise.remote-sync.models.remote-sync-object
     :model/RemoteSyncTask                    metabase-enterprise.remote-sync.models.remote-sync-task
     :model/ReplacementRun                    metabase-enterprise.replacement.models.replacement-run
+    :model/ResultMetadataStatus              metabase-enterprise.dependencies.models.result-metadata-status
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.secrets.models.secret
     :model/SecurityAdvisory                  metabase-enterprise.security-center.models.security-advisory
     :model/Segment                           metabase.segments.models.segment
-    :model/SemanticSearchTokenTracking       metabase-enterprise.semantic-search.models.token-tracking
+    :model/SemanticSearchTokenTracking       metabase-enterprise.search.semantic.models.token-tracking
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
     :model/SsoRelayState                     metabase-enterprise.sso.models.relay-state
@@ -134,6 +142,7 @@
     :model/StoredResultUse                   metabase.queries.models.stored-result-use
     :model/SupportAccessGrantLog metabase-enterprise.support-access-grants.models.support-access-grant-log
     :model/Table                             metabase.warehouse-schema.models.table
+    :model/TableRemapping                    metabase-enterprise.workspaces.models.table-remapping
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/TaskRun                           metabase.task-history.models.task-run
     :model/Tenant                            metabase-enterprise.tenants.models
@@ -147,8 +156,7 @@
     :model/TransformRun                      metabase.transforms.models.transform-run
     :model/TransformRunCancelation           metabase.transforms.models.transform-run-cancelation
     :model/TransformTag                      metabase.transforms.models.transform-tag
-    :model/TransformTest                     metabase-enterprise.transform-testing.models
-    :model/TransformTestRun                  metabase-enterprise.transform-testing.models.transform-test-run
+    :model/TransformTest                     metabase-enterprise.data-testing.models
     :model/TransformTransformTag             metabase.transforms.models.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/SourceDimensionDaily              metabase.usage-metadata.models.source-dimension-daily
@@ -159,7 +167,9 @@
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.users.models.user-parameter-value
-    :model/ViewLog                           metabase.view-log.models.view-log})
+    :model/ViewLog                           metabase.view-log.models.view-log
+    :model/Workspace                         metabase-enterprise.workspaces.models.workspace
+    :model/WorkspaceDatabase                 metabase-enterprise.workspaces.models.workspace-database})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!

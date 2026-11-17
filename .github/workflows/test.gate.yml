@@ -5,10 +5,16 @@ name: Test gate
 #
 # `force-run` and `force-skip` are global overrides; `defer` hands the decision
 # to the paths filter, which is the only path that pays for a checkout.
+# `stack-skip` runs nothing, but callers still enter each suite so that its
+# result job reports the required check.
 #
-# Only the lowest unmerged PR of a stack runs CI: it is the one whose base ref
-# is the stack base. Every PR above it is force-skipped and gets tested once it
-# reaches the bottom of the stack.
+# In a stack of PRs, only the ends run CI: the lowest unmerged PR (the one whose
+# base ref is the stack base) and the top PR (the one at the last position).
+# Every PR in between receives a verdict of `stack-skip` which skips tests so it
+# is only tested once it reaches the bottom of the stack, unless it carries the
+# `ci:run-all` label. The top diffs against `diff-base`, the newest base-branch
+# commit its merge commit contains, so the whole stack decides what runs and not
+# just the top PR's own slice.
 on:
   workflow_call:
     inputs:
@@ -24,6 +30,7 @@ on:
         description: Whether the calling suite should run.
         value: >-
           ${{ jobs.should-run.outputs.verdict != 'force-skip'
+          && jobs.should-run.outputs.verdict != 'stack-skip'
           && (inputs.filters == ''
           || jobs.should-run.outputs.verdict == 'force-run'
           || jobs.files-changed.outputs.any == 'true') }}
@@ -38,8 +45,14 @@ on:
         description: Whether the suite should run in full, ignoring the diff.
         value: ${{ jobs.should-run.outputs.verdict == 'force-run' }}
       verdict:
-        description: force-run, force-skip, or defer.
+        description: force-run, force-skip, stack-skip, or defer.
         value: ${{ jobs.should-run.outputs.verdict }}
+      diff-base:
+        description: >-
+          The commit to diff against instead of the PR's own base: set only on the top PR of a
+          stack, to the newest base-branch commit its merge commit contains. Callers that narrow by
+          diff should diff the checkout against it when it is set.
+        value: ${{ jobs.should-run.outputs.diff-base }}
 
 jobs:
   should-run:
@@ -49,6 +62,7 @@ jobs:
     outputs:
       verdict: ${{ steps.decide.outputs.verdict }}
       filters: ${{ steps.decide.outputs.filters }}
+      diff-base: ${{ steps.diff-base.outputs.sha }}
     steps:
       - name: Decide
         id: decide
@@ -59,12 +73,39 @@ jobs:
             ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x.')) && 'force-run'
             || contains(github.event.pull_request.labels.*.name, 'ci:run-all') && 'force-run'
             || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'force-skip'
-            || (github.event.pull_request.stack != null && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref) && 'force-skip'
+            || (github.event.pull_request.stack != null
+            && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref
+            && github.event.pull_request.stack.position != github.event.pull_request.stack.size) && 'stack-skip'
             || 'defer' }}
         run: |
           echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
           # Echoed back as JSON so a force-run can report every requested filter as matched.
           echo "filters=$(jq -Rc 'split("[,\\s]+";"") | map(select(length > 0))' <<< "$FILTERS")" | tee -a "$GITHUB_OUTPUT"
+      # A stacked PR that defers is the bottom or the top, and only the top has a base ref other
+      # than the stack's. Callers diff the checkout, which is the PR's merge commit, so the base is
+      # the newest commit of the stack's base branch that the merge commit contains. Where the stack
+      # forked would count every commit the base gained since as a change in the stack. Not the
+      # merge commit's first parent either: GitHub sometimes builds a stacked PR's merge commit on
+      # the PR below it, and that parent would leave the lower PRs' changes out of the diff.
+      - name: Find the base-branch commit the checkout contains
+        id: diff-base
+        if: >-
+          ${{ steps.decide.outputs.verdict == 'defer'
+          && github.event.pull_request.stack != null
+          && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref }}
+        uses: actions/github-script@v9
+        env:
+          STACK_BASE_REF: ${{ github.event.pull_request.stack.base.ref }}
+        with:
+          script: | # js
+            // On a pull_request event, `context.sha` is the merge commit the checkout holds.
+            const { data } = await github.rest.repos.compareCommitsWithBasehead({
+              ...context.repo,
+              basehead: `${process.env.STACK_BASE_REF}...${context.sha}`,
+              per_page: 1,
+            });
+            core.info(`diff-base: ${data.merge_base_commit.sha}`);
+            core.setOutput('sha', data.merge_base_commit.sha);
 
   files-changed:
     name: Detect changed files
@@ -87,7 +128,10 @@ jobs:
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
         with:
-          token: ${{ github.token }}
+          # The API only lists the PR's own files, so a `diff-base` needs git, which an empty token
+          # switches paths-filter to. It fetches the commit itself.
+          token: ${{ needs.should-run.outputs.diff-base == '' && github.token || '' }}
+          base: ${{ needs.should-run.outputs.diff-base }}
           filters: .github/file-paths.yaml
       - name: Match the diff against the requested filters
         id: match

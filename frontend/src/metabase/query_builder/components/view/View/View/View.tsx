@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- FIXME: any-typed values */
 import cx from "classnames";
 import { type ComponentProps, forwardRef } from "react";
 import { match } from "ts-pattern";
@@ -18,6 +19,7 @@ import {
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
+import { hasPrimarySource } from "metabase/querying/common/utils";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
 import { connect, useDispatch } from "metabase/redux";
 import { updateQuestionCard } from "metabase/redux/cards";
@@ -77,7 +79,6 @@ type ViewProps = Omit<
   onDismissToast: () => void;
   onConfirmToast: () => void;
   modal: QueryModalType;
-  modalContext: number;
   card: Card;
   originalQuestion: Question;
   reportTimezone: string;
@@ -157,7 +158,6 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
       onSave,
       onChangeLocation,
       modal,
-      modalContext,
       card,
       onCloseModal,
       onOpenModal,
@@ -180,7 +180,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
     const query = question.query();
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
-    const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
+    const isNewQuestion = !isNative && !hasPrimarySource(query);
     const isModel = question.type() === "model";
     const isMetric = question.type() === "metric";
 
@@ -228,7 +228,6 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
             onSave={onSave}
             onCreate={onCreate}
             modal={modal}
-            modalContext={modalContext}
             card={card}
             question={question}
             onCloseModal={onCloseModal}
@@ -324,7 +323,6 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
           onSave={onSave}
           onCreate={onCreate}
           modal={modal}
-          modalContext={modalContext}
           card={card}
           question={question}
           onCloseModal={onCloseModal}

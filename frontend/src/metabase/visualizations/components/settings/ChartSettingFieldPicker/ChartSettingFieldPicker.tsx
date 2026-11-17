@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import cx from "classnames";
 import type { ComponentPropsWithoutRef, Ref } from "react";
 import { useMemo } from "react";
@@ -180,7 +181,12 @@ export const ChartSettingFieldPicker = ({
         rightSection={
           <>
             {!disabled && (
-              <ActionIcon c="text-secondary" size="sm" radius="xl" p={0}>
+              <ActionIcon
+                variant="subtle"
+                c="text-secondary"
+                size="sm"
+                radius="xl"
+              >
                 <Icon name="chevrondown" />
               </ActionIcon>
             )}

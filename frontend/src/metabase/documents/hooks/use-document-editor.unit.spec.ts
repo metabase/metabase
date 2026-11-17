@@ -1,18 +1,38 @@
 import { renderHook } from "@testing-library/react";
+import { Editor, Node } from "@tiptap/core";
+import TiptapDocument from "@tiptap/extension-document";
+import Paragraph from "@tiptap/extension-paragraph";
+import Text from "@tiptap/extension-text";
 import fetchMock from "fetch-mock";
 
+import { setupCreateDocumentEndpoint } from "__support__/server-mocks";
 import { act, getTestStoreAndWrapper, waitFor } from "__support__/ui";
 import { documentApi } from "metabase/api/document";
-import type { Document } from "metabase-types/api";
+import { buildDraftCard } from "metabase/rich_text_editing/tiptap/extensions/shared/draft-card";
+import type {
+  Card,
+  CardParameterMapping,
+  Document,
+  DocumentId,
+} from "metabase-types/api";
 import {
+  createMockCard,
   createMockDocument,
   createMockDocumentContent,
 } from "metabase-types/api/mocks";
+
+import { createDraftCard } from "../documents.slice";
 
 import { useDocumentEditor } from "./use-document-editor";
 
 const DOCUMENT_ID = 1;
 const UPDATE_CACHE_KEY = `document:${DOCUMENT_ID}`;
+
+const PARAMETER_MAPPING: CardParameterMapping = {
+  parameter_id: "abc123",
+  card_id: 10,
+  target: ["dimension", ["template-tag", "category"]],
+};
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -34,7 +54,11 @@ function setupEndpoints(doc: Document) {
   return put;
 }
 
-function renderEditorHook() {
+interface SetupOpts {
+  documentId?: DocumentId | "new";
+}
+
+function renderEditorHook({ documentId = DOCUMENT_ID }: SetupOpts = {}) {
   const { wrapper, store } = getTestStoreAndWrapper({
     initialRoute: "/",
     withRouter: true,
@@ -43,7 +67,7 @@ function renderEditorHook() {
   });
 
   const { result, unmount } = renderHook(
-    () => useDocumentEditor({ documentId: DOCUMENT_ID }),
+    () => useDocumentEditor({ documentId }),
     { wrapper },
   );
 
@@ -71,6 +95,62 @@ function startUpdate(store: ReturnType<typeof renderEditorHook>["store"]) {
       ),
     );
   });
+}
+
+interface SaveDraftCardsOpts extends SetupOpts {
+  draftCards: { draftId: number; originalCard: Card }[];
+  embeddedCardId: number;
+}
+
+async function saveDraftCards({
+  documentId = DOCUMENT_ID,
+  draftCards,
+  embeddedCardId,
+}: SaveDraftCardsOpts): Promise<unknown> {
+  const doc = createMockDocument({ id: DOCUMENT_ID });
+  setupEndpoints(doc).resolve(doc);
+  setupCreateDocumentEndpoint(doc);
+
+  const isNewDocument = documentId === "new";
+  const { result, store } = renderEditorHook({ documentId });
+  if (!isNewDocument) {
+    await waitForDocument(result);
+  }
+
+  const CardEmbed = Node.create({
+    name: "cardEmbed",
+    group: "block",
+    addAttributes: () => ({ id: { default: null } }),
+    renderHTML: () => ["div"],
+  });
+  const editor = new Editor({
+    extensions: [TiptapDocument, Paragraph, Text, CardEmbed],
+    content: {
+      type: "doc",
+      content: [{ type: "cardEmbed", attrs: { id: embeddedCardId } }],
+    },
+  });
+
+  act(() => {
+    result.current.setEditorInstance(editor);
+    draftCards.forEach(({ draftId, originalCard }) => {
+      store.dispatch(
+        createDraftCard({ originalCard, modifiedData: {}, draftId }),
+      );
+    });
+  });
+
+  await act(() => result.current.handleSave());
+  await waitFor(() => {
+    expect(result.current.isSaving).toBe(false);
+  });
+
+  const saveCall = isNewDocument
+    ? fetchMock.callHistory.lastCall("path:/api/document", { method: "POST" })
+    : fetchMock.callHistory.lastCall(`path:/api/document/${DOCUMENT_ID}`, {
+        method: "PUT",
+      });
+  return JSON.parse(String(saveCall?.options.body));
 }
 
 describe("useDocumentEditor", () => {
@@ -141,5 +221,114 @@ describe("useDocumentEditor", () => {
 
     expect(result.current.isDocumentLoading).toBe(false);
     expect(result.current.documentData?.name).toBe("Current");
+  });
+
+  it("sends the saved card id as source_card_id when a chart is edited twice", async () => {
+    const body = await saveDraftCards({
+      draftCards: [
+        { draftId: -1, originalCard: createMockCard({ id: 5 }) },
+        { draftId: -2, originalCard: createMockCard({ id: -1 }) },
+      ],
+      embeddedCardId: -2,
+    });
+
+    expect(body).toHaveProperty(["cards", "-2", "source_card_id"], 5);
+  });
+
+  it("sends only the fields a new card takes when saving a drafted chart", async () => {
+    const { name, display, dataset_query, visualization_settings } =
+      createMockCard();
+    const body = await saveDraftCards({
+      draftCards: [
+        {
+          draftId: -1,
+          originalCard: buildDraftCard({
+            id: -1,
+            name,
+            display,
+            dataset_query,
+            visualization_settings,
+          }),
+        },
+      ],
+      embeddedCardId: -1,
+    });
+
+    expect(body).toHaveProperty(["cards", "-1"], {
+      name,
+      display,
+      dataset_query,
+      visualization_settings,
+      description: null,
+      result_metadata: [],
+      cache_ttl: null,
+    });
+  });
+
+  it.each<{ path: string; documentId: DocumentId | "new" }>([
+    { path: "create", documentId: "new" },
+    { path: "update", documentId: DOCUMENT_ID },
+  ])(
+    "keeps a saved question's parameter mappings on $path",
+    async ({ documentId }) => {
+      const body = await saveDraftCards({
+        documentId,
+        draftCards: [
+          {
+            draftId: -1,
+            originalCard: createMockCard({
+              id: 5,
+              parameter_mappings: [PARAMETER_MAPPING],
+            }),
+          },
+        ],
+        embeddedCardId: -1,
+      });
+
+      expect(body).toHaveProperty(
+        ["cards", "-1", "parameter_mappings"],
+        [PARAMETER_MAPPING],
+      );
+    },
+  );
+
+  it("sends a default name and no description when a draft has blank ones", async () => {
+    const { display, dataset_query, visualization_settings } = createMockCard();
+    const body = await saveDraftCards({
+      draftCards: [
+        {
+          draftId: -1,
+          originalCard: buildDraftCard({
+            id: -1,
+            name: "",
+            description: "",
+            display,
+            dataset_query,
+            visualization_settings,
+          }),
+        },
+      ],
+      embeddedCardId: -1,
+    });
+
+    expect(body).toMatchObject({
+      cards: { "-1": { name: "Untitled question", description: null } },
+    });
+  });
+
+  it("sends a nonblank name and description as written", async () => {
+    const name = " Orders ";
+    const description = "    SELECT 1";
+    const body = await saveDraftCards({
+      draftCards: [
+        {
+          draftId: -1,
+          originalCard: createMockCard({ id: 5, name, description }),
+        },
+      ],
+      embeddedCardId: -1,
+    });
+
+    expect(body).toMatchObject({ cards: { "-1": { name, description } } });
   });
 });

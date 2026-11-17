@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
@@ -249,7 +250,7 @@ export function BasicAdminSettingInput({
       return (
         <TextInput
           id={name}
-          value={localValue}
+          value={localValue ?? ""}
           placeholder={placeholder}
           onChange={(e) => setLocalValue(e.target.value)}
           onBlur={() => onChange(localValue)}

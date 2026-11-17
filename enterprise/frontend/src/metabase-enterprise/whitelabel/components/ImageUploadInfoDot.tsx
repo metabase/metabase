@@ -28,7 +28,7 @@ export const ImageUploadInfoDot = ({ type }: CustomFileUploadInfoDot) => {
   return (
     <HoverCard position="top-start">
       <HoverCard.Target>
-        <Icon name="info" c="text-disabled" />
+        <Icon name="info" c="text-secondary" />
       </HoverCard.Target>
       <HoverCard.Dropdown>
         <Stack p="lg" gap="sm" maw={DESCRIPTIONS_WIDTHS[type]}>

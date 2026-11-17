@@ -281,10 +281,10 @@ Remove the old styled file entirely. Remove all imports of it from other files.
 
 - `--mb-color-text-primary`, `--mb-color-text-secondary`, `--mb-color-text-disabled`
 - `--mb-color-background_page-primary`, `--mb-color-background_page-secondary`, `--mb-color-background_surface-hover`
-- `--mb-color-border`, `--mb-color-border-strong`, `--mb-color-border-subtle`
+- `--mb-color-border-neutral`, `--mb-color-border-neutral-strong`, `--mb-color-border-neutral-subtle`
 - `--mb-color-core-brand`, `--mb-color-core-brand-hover`
 - `--mb-color-feedback-negative`, `--mb-color-feedback-positive`, `--mb-color-feedback-warning`
-- `--mb-color-shadow`, `--mb-color-focus`
+- `--mb-color-shadow-default`, `--mb-color-input-focus`
 - `--mb-color-accent0` through `--mb-color-accent7`
 
 **Mantine spacing** — `var(--mantine-spacing-<size>)`:
@@ -574,7 +574,7 @@ export const Spinner = styled.div`
 | -------------------------- | ----------------------------------------------------------------- | ------------------------------------- |
 | `color("core-brand")`      | `var(--mb-color-core-brand)`                                      | `c="core-brand"` or `bg="core-brand"` |
 | `color("text-primary")`    | `var(--mb-color-text-primary)`                                    | `c="text-primary"`                    |
-| `color("border-neutral")`          | `var(--mb-color-border-neutral)`                                          | N/A (use CSS module)                  |
+| `color("border-neutral")`  | `var(--mb-color-border-neutral)`                                  | N/A (use CSS module)                  |
 | `alpha("core-brand", 0.2)` | `color-mix(in srgb, var(--mb-color-core-brand), transparent 80%)` | N/A (use CSS module)                  |
 
 ### Pattern 7: Responsive Spacing/Sizing → Responsive Style Props (NOT CSS Media Queries)
@@ -623,9 +623,9 @@ export const Bar = styled.div<{ width: number }>`
 
 ### Pattern 9: Core CSS Utility Classes (Discouraged)
 
-**Do NOT introduce new `CS` utility class usage.** Core CSS utilities (`CS` from `metabase/css/core/index.css`) are legacy and discouraged for new code. Prefer Mantine style props or CSS modules instead.
+**Don't use `CS` utility classes in new, moved, or otherwise edited code.** Core CSS utilities (`CS` from `metabase/css/core/index.css`) are legacy. Prefer Mantine style props or CSS modules instead.
 
-If existing code already uses `CS` classes and you're not migrating that specific code, leave them alone. But when migrating Emotion → Mantine, replace with the proper alternative:
+Existing `CS` usage may remain on lines this change neither edits nor moves; editing a neighboring line doesn't require migrating untouched usage. When moving or editing the usage itself, including during an Emotion → Mantine migration, replace it with the proper alternative:
 
 | Instead of `CS.*`   | Use                                                          |
 | ------------------- | ------------------------------------------------------------ |
@@ -801,7 +801,6 @@ After switching, reload the page for the theme to take effect.
 For each state (**after** = migrated code, **before** = stashed original), capture screenshots in both themes at both viewport widths. This produces **8 screenshots total**.
 
 1. **Take "after" screenshots first** (migrated code is already in place):
-
    - Navigate to the page that renders the migrated components (`browser_navigate`)
    - Wait for content to load (`browser_wait_for` with key text, or `textGone: "Loading..."`)
    - Close the sidebar if it overlaps content on narrow viewports (`browser_click` the toggle button)
@@ -813,7 +812,6 @@ For each state (**after** = migrated code, **before** = stashed original), captu
      - Narrow (640x900), close sidebar: `after-dark-narrow.png`
 
 2. **Stash changes to capture "before" screenshots**:
-
    - Run `git stash --include-untracked` to temporarily revert to the Emotion version
    - Repeat the same 4 screenshots with `before-` prefix:
      - `before-light-desktop.png`, `before-light-narrow.png`

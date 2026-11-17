@@ -4,7 +4,6 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn collection
@@ -29,11 +28,20 @@
                        :from            [:report_card]
                        :where           [:= :archived false]}))
 
+(mu/defn unarchived-action-collection-ids
+  "The distinct `:collection_id`s of the unarchived Actions."
+  []
+  (t2/query {:select-distinct [:collection_id]
+             :from            [:action]
+             :where           [:and
+                               [:= :archived false]
+                               [:not= :collection_id nil]]}))
+
 (mu/defn published-table-collection-ids
   "The distinct `:collection_id`s of the published, unarchived Tables."
   []
   (t2/query {:select-distinct [:collection_id]
-             :from            [(warehouse-schema-overlay/table-query)]
+             :from            [(t2/table-name :model/Table)]
              :where           [:and
                                [:= :is_published true]
                                [:= :archived_at nil]]}))

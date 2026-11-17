@@ -1,22 +1,19 @@
+import cx from "classnames";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { Button } from "metabase/ui";
+import SidebarContentS from "metabase/common/components/SidebarContent/SidebarContent.module.css";
+import CS from "metabase/css/core/index.css";
+import { Box, Button, Flex, Stack } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
-import {
-  ActionCreatorBodyContainer,
-  EditorContainer,
-  ModalActions,
-  ModalLeft,
-  ModalRight,
-  ModalRoot,
-} from "./ActionCreator.styled";
-import ActionCreatorHeader from "./ActionCreatorHeader";
+import { ActionCreatorHeader } from "./ActionCreatorHeader";
+import S from "./ActionCreatorView.module.css";
 import { FormCreator } from "./FormCreator";
-import InlineActionSettings, {
+import {
   ActionSettingsTriggerButton,
+  InlineActionSettings,
 } from "./InlineActionSettings";
 import type {
   ActionCreatorUIProps,
@@ -24,7 +21,7 @@ import type {
   SideView,
 } from "./types";
 
-interface ActionCreatorProps extends ActionCreatorUIProps {
+interface ActionCreatorViewProps extends ActionCreatorUIProps {
   action: Partial<WritebackAction>;
   formSettings: ActionFormSettings;
 
@@ -43,8 +40,7 @@ interface ActionCreatorProps extends ActionCreatorUIProps {
 
 const DEFAULT_SIDE_VIEW: SideView = "actionForm";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function ActionCreatorView({
+export function ActionCreatorView({
   action,
   formSettings,
   canSave,
@@ -58,7 +54,7 @@ export default function ActionCreatorView({
   onChangeFormSettings,
   onClickSave,
   onCloseModal,
-}: ActionCreatorProps) {
+}: ActionCreatorViewProps) {
   const [activeSideView, setActiveSideView] =
     useState<SideView>(DEFAULT_SIDE_VIEW);
 
@@ -87,9 +83,14 @@ export default function ActionCreatorView({
   }, []);
 
   return (
-    <ModalRoot data-testid="action-creator">
-      <ActionCreatorBodyContainer>
-        <ModalLeft>
+    <Stack
+      // 2px less for the modal content border, which would otherwise add a scrollbar
+      h="calc(90dvh - 2px)"
+      gap={0}
+      data-testid="action-creator"
+    >
+      <Box className={cx(S.columns, CS.overflowYAuto)} flex={1}>
+        <Stack className={S.borderRight} pos="relative" gap={0}>
           <ActionCreatorHeader
             name={action.name ?? t`New Action`}
             canRename={canRename}
@@ -106,8 +107,20 @@ export default function ActionCreatorView({
               />,
             ].filter(isNotNull)}
           />
-          <EditorContainer>{children}</EditorContainer>
-          <ModalActions>
+          <Box
+            className={CS.overflowYAuto}
+            flex="1 1 0"
+            bg="background_page-secondary"
+          >
+            {children}
+          </Box>
+          <Flex
+            className={S.borderTop}
+            flex="0 0 auto"
+            justify="space-between"
+            gap="lg"
+            p="lg"
+          >
             <Button onClick={onCloseModal} variant="subtle" color="neutral">
               {t`Cancel`}
             </Button>
@@ -120,9 +133,13 @@ export default function ActionCreatorView({
                 {isNew ? t`Save` : t`Update`}
               </Button>
             )}
-          </ModalActions>
-        </ModalLeft>
-        <ModalRight>
+          </Flex>
+        </Stack>
+        <Stack
+          className={cx(SidebarContentS.stickyHeader, CS.overflowHidden)}
+          pos="relative"
+          gap={0}
+        >
           {activeSideView === "actionForm" ? (
             <FormCreator
               actionType={action.type ?? "query"}
@@ -147,8 +164,8 @@ export default function ActionCreatorView({
               onBack={closeSideView}
             />
           ) : null}
-        </ModalRight>
-      </ActionCreatorBodyContainer>
-    </ModalRoot>
+        </Stack>
+      </Box>
+    </Stack>
   );
 }

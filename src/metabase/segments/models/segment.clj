@@ -4,18 +4,19 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -24,6 +25,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
+
+(set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/Segment [_model] :segment)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
@@ -77,83 +80,54 @@
 (doto :model/Segment
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/dependencies))
 
-(defmethod mi/can-read? :model/Segment
-  ([instance]
-   (let [table (:table (t2/hydrate instance :table))]
-     (mi/can-read? table)))
-  ([_model pk]
-   (mi/can-read? (segments.db/segment pk))))
+(methodical/defmethod t2/batched-hydrate [:model/Segment :can_read]
+  "Whether the current user can read each of `segments`, which they can when they read its Table, the Tables answered
+  together."
+  [_model k segments]
+  (let [rows  (t2/hydrate (into [] (remove nil?) segments) [:table :can_read])
+        flags (into {} (map (juxt :id (comp mi/can-read? :table))) rows)]
+    (for [segment segments]
+      (when segment
+        (vary-meta segment assoc k (get flags (:id segment) false))))))
+
+;; Segments can be written by
+;; a) superusers
+;; b) OR data analysts with unrestricted view-data permissions
+;; but not on a read-only instance that syncs their table
+(defn- segment-writable?
+  "Whether the current user can write `instance`, a Segment with or without its `:table`."
+  [instance]
+  (let [table (or (:table instance)
+                  (segments.db/table (:table_id instance)))]
+    (and (or (mi/superuser?)
+             (and (api/entitled-data-analyst?)
+                  (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
+         (collection/remote-sync-writable-table? table))))
 
 ;; Segments can be created by
 ;; a) superusers
 ;; b) OR data analysts with unrestricted view-data permissions
-;; But ONLY if the parent table is editable (not in a remote-synced collection in read-only mode).
-(defmethod mi/can-write? :model/Segment
-  ([instance]
-   (let [table (or (:table instance)
-                   (segments.db/table (:table_id instance)))]
-     (and (or (mi/superuser?)
-              (and (api/entitled-data-analyst?)
-                   (perms/user-has-permission-for-table?
-                    api/*current-user-id*
-                    :perms/view-data
-                    :unrestricted
-                    (:db_id table)
-                    (u/the-id table))))
-          (remote-sync/table-editable? table))))
-  ([_model pk]
-   (mi/can-write? (segments.db/segment pk))))
-
-;; Segments can be created by
-;; a) superusers
-;; b) OR data analysts with unrestricted view-data permissions
-;; But ONLY if the parent table is editable (not in a remote-synced collection in read-only mode).
+;; but not on a read-only instance that syncs their table
 (defmethod mi/can-create? :model/Segment
   [_model instance]
   (let [table (or (:table instance)
                   (segments.db/table (:table_id instance)))]
     (and (or (mi/superuser?)
              (and (api/entitled-data-analyst?)
-                  (perms/user-has-permission-for-table?
-                   api/*current-user-id*
-                   :perms/view-data
-                   :unrestricted
-                   (:db_id table)
-                   (u/the-id table))))
-         (remote-sync/table-editable? table))))
+                  (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
+         (collection/remote-sync-writable-table? table))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Segment :can_write]
-  "Batched hydration for :can_write on segments. First hydrates :table for all segments,
-   then pre-fetches collection is_remote_synced values for those tables, and calls can-write?
-   on each segment. This avoids N+1 queries when checking permissions for multiple segments."
+  "Batched hydration for :can_write on segments, hydrating their tables first."
   [_model k segments]
-  (let [segments-with-tables (t2/hydrate (remove nil? segments) :table)
-        ;; Get all unique collection IDs from the hydrated tables
-        collection-ids (->> segments-with-tables
-                            (keep (comp :collection_id :table))
-                            distinct)
-        ;; Batch fetch is_remote_synced for all collections
-        collection-synced-map (if (seq collection-ids)
-                                (into {}
-                                      (map (juxt :id :is_remote_synced))
-                                      (segments.db/collections collection-ids))
-                                {})
-        ;; Associate collection info with each segment's table
-        segments-with-collection (for [segment segments-with-tables
-                                       :let [table (:table segment)
-                                             coll-id (:collection_id table)]]
-                                   (if (and table coll-id)
-                                     (assoc-in segment [:table :collection]
-                                               {:id coll-id
-                                                :is_remote_synced (get collection-synced-map coll-id false)})
-                                     segment))]
-    (mi/instances-with-hydrated-data
-     segments k
-     #(u/index-by :id mi/can-write? segments-with-collection)
-     :id
-     {:default false})))
+  (mi/instances-with-hydrated-data
+   segments k
+   #(u/index-by :id (comp boolean segment-writable?) (t2/hydrate (remove nil? segments) :table))
+   :id
+   {:default false}))
 
 (defn- migrated-segment-definition
   [{:keys [definition], table-id :table_id}]
@@ -201,12 +175,6 @@
   (pre-delete-check-sandbox-constraints-for-segment segment)
   segment)
 
-(defmethod mi/perms-objects-set :model/Segment
-  [segment read-or-write]
-  (let [table (or (:table segment)
-                  (segments.db/table-perms-columns (u/the-id (:table_id segment))))]
-    (mi/perms-objects-set table read-or-write)))
-
 (defn- maybe-migrated-segment-definition
   [segment]
   (try
@@ -237,22 +205,20 @@
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
-(defmethod serdes/deserialization-dependencies "Segment" [{:keys [definition]}]
-  (serdes/mbql-deps false definition))
+(defmethod serialization/storage-paths :model/Segment [_ entities _ctx]
+  (mapv (fn [segment]
+          (let [table-path (-> segment :definition serialization/serialized-query-source-table)]
+            (into (serialization/storage-path-prefixes table-path)
+                  [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}])))
+        entities))
 
-(defmethod serdes/storage-path "Segment" [segment _ctx]
-  (let [table-path (-> segment :definition serdes/serialized-query-source-table)]
-    (into (serdes/storage-path-prefixes (serdes/table->path table-path))
-          [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}])))
-
-(defmethod serdes/make-spec "Segment" [_model-name _opts]
-  {:copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
-   :skip      [;; always re-derived from definition by before-insert via lib/primary-source-table-id
-               :table_id]
-   :transform {:created_at (serdes/date)
-               :creator_id (serdes/fk :model/User)
-               :definition {:export serdes/export-mbql :import serdes/import-mbql}}
-   :defaults {:archived false :show_in_getting_started false}})
+(defmethod serialization/spec :model/Segment [_]
+  {:schema    ::segments.schema/external-segment
+   :copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
+   :skip      [:table_id]
+   :transform {:creator_id serialization/user-transform
+               :definition serialization/mbql-transform}
+   :defaults  {:archived false :show_in_getting_started false}})
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
@@ -264,11 +230,34 @@
            :database-id :table.db_id
            ;; should probably change this, but will break legacy search tests
            :created-at false
-           :updated-at true}
+           :updated-at true
+           ;; A segment on a Library table inherits the table's library ranking boost and curated status.
+           :root-collection-type {:fn collection/table-root-collection-type}}
    :search-terms [:name :description]
-   :render-terms {:table-id :table_id
-                  :table_description :table.description
-                  :table_name :table.name
-                  :table_display_name :table.display_name
-                  :table_schema :table.schema}
-   :joins {:table [:model/Table [:= :table.id :this.table_id]]}})
+   :render-terms {:table-id                  :table_id
+                  :table_description         :table.description
+                  :table_name                :table.name
+                  :table_display_name        :table.display_name
+                  :table_schema              :table.schema
+                  ;; The parent table's collection, for [[collection/table-root-collection-type]].
+                  ;; Listing these terms also reindexes a segment when its table moves into or out of the Library.
+                  :table-collection-id       :table.collection_id
+                  :table-is-published        :table.is_published
+                  :table-collection-location :collection.location
+                  :table-collection-type     :collection.type}
+   ;; Only published tables count as library content, matching the table spec's own collection join.
+   :joins {:table      [:model/Table [:= :table.id :this.table_id]]
+           :collection [:model/Collection
+                        [:and
+                         [:= :table.is_published true]
+                         [:= :collection.id :table.collection_id]]]}})
+
+(defmethod serialization/import-dependencies :model/Segment [_ entities]
+  (mapv (fn [{:keys [definition]}]
+          (serialization/import-mbql-dependencies definition))
+        entities))
+
+(defmethod remote-sync/spec :model/Segment
+  [_model]
+  {:synced-items         segments.db/synced-segment-items
+   :synced-filter-clause segments.db/synced-segments-clause})

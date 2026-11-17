@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import {
   type PayloadAction,
   type UnknownAction,
@@ -48,11 +49,16 @@ import type {
   MetabotAgentId,
   MetabotMessage,
   MetabotMessagePart,
+  MetabotSavedDashboard,
   MetabotState,
   MetabotToolCall,
   MetabotUserTextChatMessage,
 } from "./types";
-import { createMessageId, hasInProgressMessage } from "./utils";
+import {
+  createMessageId,
+  hasInProgressMessage,
+  withServerErrorDisplay,
+} from "./utils";
 
 const isLocationChange = (
   action: UnknownAction,
@@ -366,6 +372,12 @@ export const metabot = createSlice({
     setNavigateToPath: (state, action: PayloadAction<string | null>) => {
       state.reactions.navigateToPath = action.payload;
     },
+    dashboardSaved: (
+      state,
+      { payload }: PayloadAction<MetabotSavedDashboard>,
+    ) => {
+      state.reactions.dashboardSaveIds[payload.dashboardId] = payload.saveId;
+    },
     addSuggestedCodeEdit: (
       state,
       { payload: codeEdit }: PayloadAction<MetabotCodeEdit>,
@@ -405,7 +417,9 @@ export const metabot = createSlice({
         castDraft(createConversation({ conversationId }));
 
       convo.messages = castDraft(
-        messages.map((t) => ({ ...t, parts: [...t.parts] })),
+        messages.map((message) =>
+          withServerErrorDisplay({ ...message, parts: [...message.parts] }),
+        ),
       );
       convo.state = snapshotState ?? {};
       convo.activeToolCalls = activeToolCalls ?? [];
@@ -534,7 +548,7 @@ export const metabot = createSlice({
         )?.params.convoId;
         if (convoId) {
           attachAgent(state, "ask", convoId);
-        } else if (matchPath(Urls.newQuestion({ mode: "ask" }), pathname)) {
+        } else if (matchPath(Urls.askQuestion(), pathname)) {
           startNewConversationForAgent(state, "ask");
         }
       });

@@ -13,7 +13,8 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -102,26 +103,20 @@
      param-map)))
 
 (defn- apply-mapping [{:keys [mapping] :as action} params inputs]
-  (let [mapping (hydrate-mapping mapping)
-        tag?    #(and (vector? %2) (= %1 (first %2)))]
+  (let [mapping (hydrate-mapping mapping)]
     (if-not mapping
       (if (or params (:param-map action))
         (map #(augment-params action % params) inputs)
         inputs)
       (for [input inputs
             :let [root (augment-params action input params)]]
-        (walk/postwalk
-         (fn [x]
-           (cond
-             (= ::root x)   root
-             (= ::input x)  input
-             (= ::params x) params
-             ;; specific key
-             (tag? ::key x)   (get root (second x))
-             (tag? ::param x) (get params (second x))
-             :else
-             x))
-         mapping)))))
+        (match/replace-all mapping
+          ::root   root
+          ::input  input
+          ::params params
+          ;; specific key
+          [::key k & _]   (get root k)
+          [::param k & _] (get params k))))))
 
 (defn- apply-mapping-nested [{:keys [inner-action] :as outer-action} params inputs-before]
   (let [inputs-after (apply-mapping outer-action params inputs-before)]
@@ -216,11 +211,7 @@
                           :user-id api/*current-user-id*})
   {:outputs (execute!* action scope params inputs)})
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/execute-form"
+(api.macros/defendpoint :post "/execute-form" :- ::data-editing.execute-form/action-description
   "Temporary endpoint for describing an actions parameters
   such that they can be presented correctly in a modal ahead of execution."
   [{}
@@ -231,7 +222,6 @@
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
        [:input {:optional true} ::action-value-map]]]
-  :- :metabase-enterprise.action-v2.execute-form/action-description
   ;; This check should be redundant in practice with the permission checks within perform-action!
   ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
   (api/check-superuser)

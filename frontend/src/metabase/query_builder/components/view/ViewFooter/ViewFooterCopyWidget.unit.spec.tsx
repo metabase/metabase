@@ -99,7 +99,7 @@ describe("ViewFooterCopyWidget", () => {
     setup({ card: TABLE_CARD, result: TABLE_RESULT });
 
     await userEvent.click(
-      screen.getByLabelText("Copy these results to clipboard"),
+      await screen.findByLabelText("Copy these results to clipboard"),
     );
 
     await waitFor(() => expect(write).toHaveBeenCalledTimes(1));

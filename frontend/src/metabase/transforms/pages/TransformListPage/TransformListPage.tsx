@@ -1,5 +1,6 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import {
@@ -8,6 +9,7 @@ import {
   useListCollectionsTreeQuery,
   useListTransformsQuery,
 } from "metabase/api";
+import { CollectionRowModal } from "metabase/common/collections/components/CollectionRowModal";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
@@ -16,7 +18,11 @@ import { UpsellGem } from "metabase/common/components/upsells/components/UpsellG
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import {
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_REPLACEMENT,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -45,30 +51,25 @@ import { getUserName } from "metabase/utils/user";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
 import { CreateTransformMenu } from "./CreateTransformMenu";
+import { DeleteTransformsFolderModal } from "./DeleteTransformsFolderModal";
 import S from "./TransformListPage.module.css";
-import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
+import {
+  type TransformsFolderModalState,
+  type TreeNode,
+  getCollectionNodeId,
+  isCollectionNode,
+} from "./types";
 import {
   buildTreeData,
   getDefaultExpandedIds,
-  useGetNodeSyncColor,
+  getFolderTransforms,
+  getRemoteSyncChangesTarget,
   useGetTransformWarnings,
 } from "./utils";
 
 const getNodeId = (node: TreeNode) => node.id;
 const getSubRows = (node: TreeNode) => node.children;
 const isFilterable = (node: TreeNode) => node.nodeType === "transform";
-
-const countTransforms = (node: TreeNode): number => {
-  if (!node.children) {
-    return 0;
-  }
-  return node.children.reduce((count, child) => {
-    if (child.nodeType === "transform") {
-      return count + 1;
-    }
-    return count + countTransforms(child);
-  }, 0);
-};
 
 const isRowDisabled = (row: Row<TreeNode>) => {
   return row.original.can_read === false;
@@ -124,6 +125,15 @@ export const TransformListPage = () => {
     ) ?? null;
   const hasScrolledRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [collectionModal, setCollectionModal] =
+    useState<TransformsFolderModalState>();
+  // A delete that ends after the user cancelled and opened another modal must not close that one.
+  const currentModalRef = useLatest(collectionModal);
+  const closeModal = (modal: TransformsFolderModalState) => {
+    if (currentModalRef.current === modal) {
+      setCollectionModal(undefined);
+    }
+  };
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
   const isMeterLocked = useSetting("transforms-meter-locked");
 
@@ -156,7 +166,6 @@ export const TransformListPage = () => {
   );
 
   const warningsByTransformId = useGetTransformWarnings(transforms);
-  const getNodeSyncColor = useGetNodeSyncColor();
 
   const treeData = useMemo(() => {
     const data = buildTreeData(collections, transforms);
@@ -205,7 +214,6 @@ export const TransformListPage = () => {
             row,
             hasPythonTransformsFeature,
             warningsByTransformId,
-            syncColor: getNodeSyncColor(row.original),
           }),
       },
       {
@@ -273,13 +281,14 @@ export const TransformListPage = () => {
         cell: ({ row }) =>
           isCollectionNode(row.original) ? (
             <CollectionRowMenu
-              collection={row.original.collection}
-              transformCount={countTransforms(row.original)}
+              folder={row.original}
+              transforms={getFolderTransforms(row.original, transforms ?? [])}
+              onOpenModal={setCollectionModal}
             />
           ) : null,
       },
     ];
-  }, [hasPythonTransformsFeature, warningsByTransformId, getNodeSyncColor]);
+  }, [hasPythonTransformsFeature, warningsByTransformId, transforms]);
 
   const treeTableInstance = useTreeTableInstance({
     data: treeData,
@@ -361,6 +370,17 @@ export const TransformListPage = () => {
           )}
         </Card>
       </Stack>
+      {collectionModal?.type === "delete" ? (
+        <DeleteTransformsFolderModal
+          folder={collectionModal.folder}
+          onClose={() => closeModal(collectionModal)}
+        />
+      ) : (
+        <CollectionRowModal
+          modal={collectionModal}
+          onClose={() => setCollectionModal(undefined)}
+        />
+      )}
       <Outlet />
     </PageContainer>
   );
@@ -370,12 +390,10 @@ function getNameCell({
   row,
   hasPythonTransformsFeature,
   warningsByTransformId,
-  syncColor,
 }: {
   row: Row<TreeNode>;
   hasPythonTransformsFeature: boolean;
   warningsByTransformId: Map<number, string>;
-  syncColor: ColorName | undefined;
 }) {
   const getTooltipProps = (message: string | undefined) => {
     if (!message) {
@@ -407,8 +425,9 @@ function getNameCell({
 
   const hasWarning = !!getWarningMessage();
   const iconColor = hasWarning
-    ? "warning"
-    : (syncColor ?? getNodeIconColor(row.original));
+    ? "feedback-warning"
+    : getNodeIconColor(row.original);
+  const changesTarget = getRemoteSyncChangesTarget(row.original);
 
   return (
     <Group gap="sm" wrap="nowrap" miw={0}>
@@ -416,10 +435,12 @@ function getNameCell({
         data-testid="tree-node-name"
         icon={hasWarning ? "warning" : row.original.icon}
         iconColor={iconColor}
-        nameColor={syncColor}
         name={row.original.name}
         ellipsifiedProps={{ ...getTooltipProps(getWarningMessage()) }}
       />
+      {changesTarget && (
+        <PLUGIN_REMOTE_SYNC.ChangesBadge target={changesTarget} />
+      )}
       {isLibraryWithoutFeature && <UpsellGem.New size={14} />}
     </Group>
   );

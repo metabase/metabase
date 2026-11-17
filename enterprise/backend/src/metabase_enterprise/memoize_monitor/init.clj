@@ -20,7 +20,6 @@
    [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.core :as analytics]
    [metabase.audit-app.impl :as audit-app.impl]
-   [metabase.collections.models.collection :as collection]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
@@ -41,7 +40,6 @@
    #'driver.u/memoized-supports?*
    #'driver.u/memoized-features*
    #'mi/cached-encrypted-json-out
-   #'collection/can-access-root-collection?
    #'serialization.dump/serialization-sorted-map])
 
 (defn- cache-object

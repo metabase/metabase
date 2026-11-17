@@ -117,7 +117,7 @@ export function JWTGroupMappingSection({
       )}
 
       {modeSwitch.mode === "manual" && groupLookup.loadFailed && (
-        <Text c="error">{t`Groups could not be loaded`}</Text>
+        <Text c="feedback-negative">{t`Groups could not be loaded`}</Text>
       )}
 
       {modeSwitch.mode === "manual" && (

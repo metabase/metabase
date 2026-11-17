@@ -130,6 +130,21 @@
             (is (= "Monthly revenue trend over the past year" (:chart-description out)))
             (is (= "Total monthly revenue from completed orders" (:metric-description out)))))))))
 
+(deftest score-and-describe-uses-mini-model-test
+  (testing "scoring runs on the quick-task model, not the Metabot chat model"
+    (let [model (atom nil)]
+      (mt/with-temporary-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"
+                                         llm-mini-model       "anthropic/claude-haiku-4-5-20251001"]
+        (mt/with-dynamic-fn-redefs
+          [metabot.self/call-llm-structured
+           (fn [provider-and-model & _]
+             (reset! model provider-and-model)
+             {:score 0.5 :chart_description "c" :reasoning "x"})]
+          (with-llm-configured!
+            (fn []
+              (call {})
+              (is (= "anthropic/claude-haiku-4-5-20251001" @model)))))))))
+
 (deftest score-and-describe-with-card-description-test
   (testing "When card-description is provided, the schema does not require metric_description and parse-response surfaces it as nil"
     (mt/with-dynamic-fn-redefs
@@ -264,11 +279,11 @@
   (testing "when the caller already has chart stats, the prompt is built from them without recomputing"
     ;; The explorations runner computes deep stats for every chart it persists; the scorer used to
     ;; throw those away and run the whole stats pipeline again (shallow) just to render the prompt.
-    (let [real-compute interestingness/compute-chart-stats
+    (let [real-compute (mt/original-fn #'interestingness/compute-chart-stats)
           stats        (real-compute chart-config {:deep? true})
           computes     (atom 0)]
-      (with-redefs [interestingness/compute-chart-stats
-                    (fn [config opts] (swap! computes inc) (real-compute config opts))]
+      (mt/with-dynamic-fn-redefs [interestingness/compute-chart-stats
+                                  (fn [config opts] (swap! computes inc) (real-compute config opts))]
         (let [msg (#'contextual-interestingness.llm/build-user-message
                    {:chart-config   chart-config
                     :context-string "Why is revenue down this month?"
@@ -279,10 +294,10 @@
 
 (deftest build-user-message-computes-stats-when-not-supplied-test
   (testing "callers that pass no :stats still get a stats-backed representation"
-    (let [real-compute interestingness/compute-chart-stats
+    (let [real-compute (mt/original-fn #'interestingness/compute-chart-stats)
           computes     (atom 0)]
-      (with-redefs [interestingness/compute-chart-stats
-                    (fn [config opts] (swap! computes inc) (real-compute config opts))]
+      (mt/with-dynamic-fn-redefs [interestingness/compute-chart-stats
+                                  (fn [config opts] (swap! computes inc) (real-compute config opts))]
         (let [msg (#'contextual-interestingness.llm/build-user-message
                    {:chart-config   chart-config
                     :context-string "Why is revenue down this month?"})]
@@ -291,10 +306,10 @@
 
 (deftest score-and-describe-threads-stats-to-the-prompt-test
   (testing ":stats passed to the public entry point reaches the prompt builder"
-    (let [real-compute interestingness/compute-chart-stats
+    (let [real-compute (mt/original-fn #'interestingness/compute-chart-stats)
           computes     (atom 0)]
-      (with-redefs [interestingness/compute-chart-stats
-                    (fn [config opts] (swap! computes inc) (real-compute config opts))]
+      (mt/with-dynamic-fn-redefs [interestingness/compute-chart-stats
+                                  (fn [config opts] (swap! computes inc) (real-compute config opts))]
         (let [stats (real-compute chart-config {:deep? true})]
           (reset! computes 0)
           (is (some? (message-content (captured-messages! {:stats stats}) "user")))

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import cx from "classnames";
 import {
   Children,
@@ -65,6 +66,7 @@ const MarkdownCodeBlock = ({
             opened={copied || undefined}
           >
             <ActionIcon
+              variant="subtle"
               aria-label={t`Copy code`}
               className={S.copyCodeButton}
               data-testid="metabot-code-block-copy"
@@ -101,6 +103,10 @@ const parseEntityLink = (
   return path && { ...path, href };
 };
 
+// Excludes `//host`, which browsers resolve to another origin
+const isRelativePath = (href?: string): href is string =>
+  href != null && /^\/(?!\/)/.test(href);
+
 const getComponents = ({
   onInternalLinkClick,
 }: Pick<AIMarkdownProps, "onInternalLinkClick">) => ({
@@ -126,7 +132,7 @@ const getComponents = ({
       );
     }
 
-    if (href?.startsWith("/")) {
+    if (isRelativePath(href)) {
       return (
         <InternalLink
           onInternalLinkClick={onInternalLinkClick}

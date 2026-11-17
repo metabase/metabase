@@ -7,6 +7,7 @@ import {
   useLazyListDatabaseSchemasQuery,
   useLazyListDatabasesQuery,
 } from "metabase/api";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import { UNNAMED_SCHEMA_NAME } from "metabase-lib/v1/metadata/utils/schema";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
@@ -42,7 +43,10 @@ export function useTableLoader(path: TreePath) {
   const [tree, setTree] = useState<TreeNode>(rootNode());
 
   const getDatabases = useCallback(async () => {
-    const response = await fetchDatabases({ "can-write-metadata": true }, true);
+    const response = await fetchDatabases(
+      PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+      true,
+    );
 
     if (databasesRef.current.isError) {
       // Do not refetch when this call failed previously.
@@ -74,7 +78,7 @@ export function useTableLoader(path: TreePath) {
         id: databaseId,
         schema: schemaName,
         include_hidden: true,
-        "can-write-metadata": true,
+        ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
       };
 
       if (
@@ -112,7 +116,7 @@ export function useTableLoader(path: TreePath) {
       const newArgs = {
         id: databaseId,
         include_hidden: true,
-        "can-write-metadata": true,
+        ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
       };
 
       if (

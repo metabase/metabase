@@ -70,6 +70,13 @@
   transition: opacity 0.15s linear;
 }
 
+/* editable cards outline their content while their dashcard is hovered, focused or being resized */
+.DashCard:hover .DashCardEditOutline,
+.DashCard:focus-within .DashCardEditOutline,
+.DashCard:global(.resizing) .DashCardEditOutline {
+  border-color: var(--mb-color-core-brand);
+}
+
 .DashEditing:not(.Mobile) .DashCard {
   cursor: move;
 }

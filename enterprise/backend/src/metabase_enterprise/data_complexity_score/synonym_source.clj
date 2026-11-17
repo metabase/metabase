@@ -8,7 +8,7 @@
   (:require
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase-enterprise.data-complexity-score.settings :as settings]
-   [metabase-enterprise.semantic-search.core :as semantic-search]))
+   [metabase-enterprise.search.semantic.core :as semantic-search]))
 
 (defn- configured-model-descriptor
   "`{:provider :model-name :model-dimensions}` from the synonym-axis settings."

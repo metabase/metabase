@@ -4,7 +4,6 @@
    [clj-http.fake :as fake]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [clojure.zip :as zip]
    [hiccup.core :refer [html]]
    [hickory.select :as hik.s]
@@ -20,7 +19,8 @@
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -236,10 +236,10 @@
 
 (def ^:private header-alignment-table-columns
   "Viz settings naming every column, in result order. Their presence masked the bug (#71069)."
-  {:metabase.models.visualization-settings/table-columns
+  {:table.columns
    (vec (for [col-name (map :name header-alignment-cols)]
-          {:metabase.models.visualization-settings/table-column-name    col-name
-           :metabase.models.visualization-settings/table-column-enabled true}))})
+          {:name    col-name
+           :enabled true}))})
 
 (defn- rendered-table-headers
   "The titles actually rendered into the <th> cells of a `:table` part."
@@ -482,15 +482,9 @@
       (testing "the placeholder is styled in the secondary/muted color, not left blank"
         (is (str/includes? html-str style/color-gray-3))))))
 
-(defn- replace-style-maps [hiccup-map]
-  (walk/postwalk (fn [maybe-map]
-                   (if (and (map? maybe-map)
-                            (contains? maybe-map :style))
-                     :style-map
-                     maybe-map)) hiccup-map))
-
-(def ^:private render-truncation-warning'
-  (comp replace-style-maps #'body/render-truncation-warning))
+(defn render-truncation-warning' [row-limit row-count]
+  (match/replace-all (#'body/render-truncation-warning row-limit row-count)
+    {:style _} :style-map))
 
 (deftest no-truncation-warnig-for-style
   (is (nil? (render-truncation-warning' 10 5))))
@@ -812,7 +806,7 @@
                 card-b-doc (render.tu/render-card-as-hickory! card-b-id)]
             ;; The test asserts that all 4 slices exist by seeing that each path element has the colour assigned to that category
             ;; we should expect to see each of the 4 (and only those 4) colours.
-            ;; This is also true of the colours for the legend circle elements.
+            ;; This is also true of the colours for the legend marker elements.
             ;; When legend and Totals are disabled, we should expect those elements not to exist in the render
             (doseq [[doc test-str expectations] [[card-a-doc "Renders with legend and 'total'."
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
@@ -822,7 +816,7 @@
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :total-els-text     #{}}]]]
-              (let [legend-elements (->> (hik.s/select (hik.s/tag :circle) doc)
+              (let [legend-elements (->> (hik.s/select (hik.s/child (hik.s/class "visx-group") (hik.s/tag :rect)) doc)
                                          (map #(get-in % [:attrs :fill]))
                                          set)
                     slice-elements  (->> (hik.s/select (hik.s/tag :path) doc)
@@ -876,6 +870,34 @@
             (testing "The underlying add-dashcard-timeline-events call adds the timeline events to the card"
               (is (=? [tl-a tl-b] (:timeline_events (#'body/add-dashcard-timeline-events {:card card})))))
             (is (= 2 (count (:timeline_events (first cards-with-data)))))))))))
+
+(deftest subscription-render-omits-timeline-events-test
+  (testing "A chart saved with timeline events renders in a subscription, without showing any of the events"
+    (mt/dataset test-data
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [event-name "Kilroy Was Here"]
+          (mt/with-temp [:model/Collection {collection-id :id} {:name "Timeline Collection"}
+                         :model/Timeline {timeline-id :id} {:name          "Releases"
+                                                            :collection_id collection-id}
+                         :model/TimelineEvent _ {:timeline_id timeline-id
+                                                 :name        event-name
+                                                 :timestamp   #t "2019-05-15T00:00:00Z"}
+                         :model/Card {card-id :id}
+                         {:display                :line
+                          :collection_id          collection-id
+                          :dataset_query          (mt/mbql-query orders
+                                                    {:aggregation [[:count]]
+                                                     :breakout    [!month.created_at]})
+                          :visualization_settings {:timeline.selected_timeline_ids [timeline-id]}}
+                         :model/Dashboard {dash-id :id} {:collection_id collection-id}
+                         :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id
+                                                                 :card_id      card-id}]
+            (let [doc (render.tu/render-dashcard-as-hickory! dashcard-id)]
+              (testing "the line chart itself renders"
+                (is (seq (hik.s/select (hik.s/tag :path) doc))))
+              (testing "the saved event is nowhere in the rendered chart"
+                (is (empty? (hik.s/select (hik.s/find-in-text (re-pattern event-name)) doc)))
+                (is (not (str/includes? (pr-str doc) event-name)))))))))))
 
 (deftest unknown-column-settings-test
   (testing "Unknown `:column_settings` keys don't break static-viz rendering with a Null Pointer Exception (#27941)."
@@ -1281,6 +1303,24 @@
             (testing "Renders with at least one category name visible"
               (is (= "Doohickey" category-text)))))))))
 
+(deftest render-region-map-static-viz-test
+  (testing "The static-viz region (choropleth) map renders as an image, not an error card.
+            React 19's scheduler references MessageChannel, which the GraalJS render context must polyfill."
+    (mt/with-temp [:model/Card card
+                   {:name                   "region-map-test"
+                    :display                :map
+                    :visualization_settings {:map.type      "region"
+                                             :map.region    "us_states"
+                                             :map.dimension "STATE"
+                                             :map.metric    "METRIC"}
+                    :dataset_query          (mt/native-query
+                                             {:query (str "SELECT 'CA' AS state, 99999 AS metric "
+                                                          "UNION ALL SELECT 'NY' AS state, 11111 AS metric")})}]
+      (let [data (:data (qp/process-query (:dataset_query card)))
+            part (body/render :region_map :attachment "UTC" card nil data)]
+        (is (= :img (-> part :content second first))
+            "Region map renders as an image, not a degraded table or an error card")))))
+
 (deftest render-correct-day-of-week-test
   (testing "The static-viz bar chart renders with the correct start of the week."
     (mt/with-temporary-setting-values [start-of-week "monday"]
@@ -1296,10 +1336,11 @@
                                              :graph.metrics ["sum"]}}]
           (mt/with-temp [:model/Card {card-id :id} card]
             (let [doc            (render.tu/render-card-as-hickory! card-id)
+                  weekday-names  #{"Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday"}
                   first-day-text (->> (hik.s/select (hik.s/tag :text) doc)
                                       (map (fn [el] (-> el :content first)))
-                                      (take-last 4)
                                       (map str/trim)
+                                      (filter weekday-names)
                                       first)]
               (testing "Renders with correct day of week first"
                 (is (= "Monday" first-day-text))))))))))
@@ -1326,7 +1367,7 @@
                               (map str/trim)
                               first)]
               (testing "Renders with correct day of week first"
-                (is (= "2017/1" label))))))))))
+                (is (= "2018/4" label))))))))))
 
 (deftest render-correct-whitelabel-colors
   (when config/ee-available?
@@ -1355,13 +1396,13 @@
           test-rows [[1 "Alice"] [2 "Bob"]]
           test-data {:cols test-cols :rows test-rows}
           ;; Simulate duplicated table columns viz settings
-          viz-settings {:metabase.models.visualization-settings/table-columns
-                        [{:metabase.models.visualization-settings/table-column-name "ID"
-                          :metabase.models.visualization-settings/table-column-enabled true}
-                         {:metabase.models.visualization-settings/table-column-name "ID" ; duplicate
-                          :metabase.models.visualization-settings/table-column-enabled true}
-                         {:metabase.models.visualization-settings/table-column-name "NAME"
-                          :metabase.models.visualization-settings/table-column-enabled true}]}
+          viz-settings {:table.columns
+                        [{:name "ID"
+                          :enabled true}
+                         {:name "ID" ; duplicate
+                          :enabled true}
+                         {:name "NAME"
+                          :enabled true}]}
           [ordered-cols ordered-rows] (#'body/order-data test-data viz-settings)]
       (testing "should return cols without errors"
         (is (= 2 (count ordered-cols)))
@@ -1382,10 +1423,10 @@
           test-rows [[1 "Alice" "alice@example.com" "555-1234" "123 Main St" "Boston" "MA" "02101" "USA" "2024-01-01"]]
           test-data {:cols test-cols :rows test-rows}
           reordered-names ["EMAIL" "NAME" "CITY" "STATE" "ZIP" "ID" "PHONE" "ADDRESS" "COUNTRY" "CREATED_AT"]
-          viz-settings {:metabase.models.visualization-settings/table-columns
+          viz-settings {:table.columns
                         (vec (for [col-name reordered-names]
-                               {:metabase.models.visualization-settings/table-column-name col-name
-                                :metabase.models.visualization-settings/table-column-enabled true}))}
+                               {:name col-name
+                                :enabled true}))}
           [ordered-cols ordered-rows] (#'body/order-data test-data viz-settings)]
       (testing "cols should follow table-columns order"
         (is (= reordered-names (map :name ordered-cols))))
@@ -1397,10 +1438,10 @@
   (mt/with-column-remappings [orders.product_id products.title]
     (testing "order-data respect table-columns order from viz-settings and keep remapped columns (#62053)"
       (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders {:limit 1})
-                                       :visualization_settings {:metabase.models.visualization-settings/table-columns
+                                       :visualization_settings {:table.columns
                                                                 (vec (for [col-name ["QUANTITY" "CREATED_AT" "DISCOUNT" "TOTAL" "TAX" "SUBTOTAL" "USER_ID" "ID" "PRODUCT_ID"]]
-                                                                       {:metabase.models.visualization-settings/table-column-name col-name
-                                                                        :metabase.models.visualization-settings/table-column-enabled true}))}}]
+                                                                       {:name col-name
+                                                                        :enabled true}))}}]
         ;; trigger render to gather prep-data for rendering
         (let [table (body/render :table nil "UTC" card nil  (:data (:result (notification.execute/execute-card (mt/user->id :crowberto) (:id card)))))]
           (is (=  ["Quantity"
@@ -1572,15 +1613,33 @@
                                  ["pivot and cell alike" (assoc simple-pivot-settings :table.cell_column "SOURCE")]]]
         (testing reason
           (is (= flat (html (:content (render-simple-pivot settings)))))))))
-  (testing "a result with four columns stays flat"
-    (let [cols (conj simple-pivot-cols {:name "extra" :display_name "Extra" :base_type :type/Text})
-          rows (mapv #(conj % "x") simple-pivot-rows)]
-      (is (= [["Category" "Source"    "Count" "Extra"]
-              ["Gizmo"    "Google"    "1"     "x"]
-              ["Gizmo"    "Organic"   "2"     "x"]
-              ["Widget"   "Affiliate" "3"     "x"]
-              ["Widget"   "Google"    "4"     "x"]]
-             (rendered-grid (render-simple-pivot simple-pivot-settings cols rows)))))))
+  (testing "a result with fewer than three columns stays flat"
+    (let [cols [{:name "SOURCE" :display_name "Source" :base_type :type/Text}
+                {:name "count"  :display_name "Count"  :base_type :type/Integer}]
+          rows [["Google" 1] ["Organic" 2]]]
+      (is (= [["Source" "Count"] ["Google" "1"] ["Organic" "2"]]
+             (rendered-grid (render-simple-pivot simple-pivot-settings cols rows))))))
+  (testing "a result with more than three columns pivots, ignoring the extra columns (#84401)"
+    (let [cols (into [(first simple-pivot-cols)
+                      (second simple-pivot-cols)
+                      {:name "extra" :display_name "Extra" :base_type :type/Text}]
+                     (drop 2 simple-pivot-cols))
+          rows (mapv (fn [[category source cnt]] [category source "x" cnt]) simple-pivot-rows)]
+      (is (= [["Category" "Affiliate" "Google" "Organic"]
+              ["Gizmo"    ""          "1"      "2"]
+              ["Widget"   "3"         "4"      ""]]
+             (rendered-grid (render-simple-pivot simple-pivot-settings cols rows))))))
+  (testing "the first column that is neither the pivot nor the cell column holds the row labels"
+    (let [cols (into [{:name "extra" :display_name "Extra" :base_type :type/Text}] simple-pivot-cols)
+          rows (mapv #(into ["x"] %) simple-pivot-rows)]
+      (is (= [["Extra" "Google" "Organic" "Affiliate"]
+              ["x"     "4"      "2"       "3"]]
+             (rendered-grid (render-simple-pivot simple-pivot-settings cols rows))))))
+  (testing "a repeated (normal, pivot) pair shows the last row's value, as in the browser"
+    (is (= [["Category" "Google"]
+            ["Gizmo"    "2"]]
+           (rendered-grid (render-simple-pivot simple-pivot-settings simple-pivot-cols
+                                               [["Gizmo" "Google" 1] ["Gizmo" "Google" 2]]))))))
 
 (deftest simple-pivot-row-limit-test
   (testing "the grid is built from every row, not only the first attachment-table-row-limit rows"

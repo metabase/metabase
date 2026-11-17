@@ -27,20 +27,23 @@
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
-   [metabase.util.performance :as perf :refer [get-in mapv not-empty some]]
+   [metabase.util.performance :refer [get-in mapv not-empty some]]
    [metabase.warehouses.schema :as warehouses.schema]
    [next.jdbc :as next.jdbc])
   (:import
    (java.io File)
-   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData SQLException Types)
+   (java.net MalformedURLException URL URLDecoder)
+   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData SQLException Statement Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
    (java.time.format DateTimeFormatter)))
 
@@ -53,11 +56,15 @@
 
 (driver/register! :mysql, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
-(defmethod driver/host-carrying-parameters :mysql [_driver] [])
+(defmethod driver/host-carrying-parameters :mysql
+  [_driver]
+  ;; the client fetches `serverSslCert` when it is a URL, and a `file:` URL naming a host other than localhost is
+  ;; fetched over FTP
+  ["serverSslCert"])
 
 (defmethod driver/non-host-parameters :mysql
   [_driver]
-  ["disableSslHostnameVerification" "localSocketAddress" "serverRsaPublicKeyFile" "serverSslCert" "serverTimezone"
+  ["disableSslHostnameVerification" "localSocketAddress" "serverRsaPublicKeyFile" "serverTimezone"
    "tcpNoDelay" "trustServerCertificate" "useServerPrepStmts"])
 
 (def ^:private ^:const min-supported-mysql-version 5.7)
@@ -105,20 +112,21 @@
                               :transforms/index-ddl                   true
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
-                              :describe-is-generated                  true}]
+                              :describe-is-generated                  true
+                              :workspace                              true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :mysql
   [_driver]
   ;; MySQL's "schema" doesn't exist; its "database" is what other engines call a schema and
   ;; what JDBC calls a catalog. We populate the `:db` AST slot (= SQLGlot `Table.catalog`)
-  ;; with the connection's bound DB so table remapping can record both canonical and remapped
+  ;; with the connection's bound DB so workspace remap can record both canonical and iso
   ;; DB names on `TableRemapping` rows and the QP can rewrite identifiers across DBs.
   ;; Production SELECTs continue to emit unqualified `t` because the SQL compiler reads
   ;; the per-driver `quote-name` rules, not this multimethod.
   [:db])
 
-;;; MySQL has no schema layer. Table remapping stores `:db.table` -- the `:db`
+;;; MySQL has no schema layer. Workspace remap stores `:db.table` -- the `:db`
 ;;; slot carries the connection's bound DB so cross-DB routing works. Production
 ;;; SELECTs emit unqualified `t` because the SQL compiler reads `quote-name`
 ;;; rules, not this multimethod.
@@ -223,13 +231,10 @@
                                "All Metabase features may not work properly when using an unsupported version."
                                "\n********************************************************************************\n"))))))))
 
-(def ^:private disallowed-additional-opts #"(?:allowLocalInfile|allowLoadLocalInfile|allowLoadLocalInfileInPath|allowUrlInLocalInfile|autoDeserialize|serverRSAPublicKeyFile)")
-
-(defmethod driver/validate-db-details! :mysql
-  [_driver details]
-  (sql-jdbc/reject-dangerous-additional-options! details)
-  (when-let [match (some->> (:additional-options details) (re-find disallowed-additional-opts))]
-    (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
+(defmethod driver/disallowed-connection-parameters :mysql
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        ["allowLocalInfile" "allowLoadLocalInfile" "allowUrlInLocalInfile" "autoDeserialize" "serverRSAPublicKeyFile" "allowLoadLocalInfileInPath"]))
 
 (defmethod driver/can-connect? :mysql
   [driver details]
@@ -298,6 +303,11 @@
 (defmethod sql.qp/add-interval-honeysql-form :mysql
   [driver hsql-form amount unit]
   (h2x/add-interval-honeysql-form driver hsql-form amount unit))
+
+(defmethod driver/database-supports? [:mysql :stage-ctes]
+  [_driver _feature db]
+  (not (and (mysql? db)
+            (some-> db :dbms-version :semantic-version first (< 8)))))
 
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql
@@ -540,10 +550,8 @@
       honeysql-expr
 
       :else
-      (perf/postwalk #(if (h2x/identifier? %)
-                        (sql.qp/json-query :mysql % stored-field)
-                        %)
-                     honeysql-expr))))
+      (match/replace-all honeysql-expr
+        #'h2x/identifier? (sql.qp/json-query :mysql &match stored-field)))))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
@@ -751,6 +759,29 @@
   [spec allowed?]
   (sql-jdbc.common/handle-additional-options spec {:additional-options (str "allowLocalInfile=" allowed?)}))
 
+(defn- ssl-cert-url-local-path
+  "The local path a `file:` URL reads, or nil if `url` reads from somewhere else. A `file:` URL naming any host but
+  `localhost` is fetched over FTP."
+  [^URL url]
+  (when (and (= "file" (.getProtocol url))
+             (#{"" "localhost"} (u/lower-case-en (.getHost url))))
+    ;; the URL path is percent-encoded, but a `+` in it is a literal `+`
+    (URLDecoder/decode (str/replace (.getPath url) "+" "%2B") "UTF-8")))
+
+(defn- ensure-ssl-cert-readable!
+  "Throw unless `readable-paths` allows what the client reads for `ssl-cert`. Mirrors the client's own reading of
+  `serverSslCert`: inline PEM only when it starts with exactly `-----BEGIN CERTIFICATE-----`, a classpath resource
+  with `classpath:`, then a URL if it parses as one, and only otherwise a file on the Metabase host. A `file:` URL
+  reads its local path; any other URL reads from outside the allowlist, so is allowed only if every path is."
+  [^String ssl-cert]
+  (when-not (or (str/starts-with? ssl-cert "-----BEGIN CERTIFICATE-----")
+                (str/starts-with? ssl-cert "classpath:"))
+    (if-let [url (try (URL. ssl-cert) (catch MalformedURLException _ nil))]
+      (when-not (driver-api/readable-path? (or (ssl-cert-url-local-path url) "/"))
+        (throw (ex-info (tru "Reading from path is disallowed: {0}" ssl-cert)
+                        {:file-path ssl-cert, :access :read, :status-code 400})))
+      (driver-api/ensure-readable-path! ssl-cert))))
+
 (defmethod sql-jdbc.conn/connection-details->spec :mysql
   [_ {ssl? :ssl, :keys [additional-options ssl-cert auth-provider], :as details}]
   ;; In versions older than 0.32.0 the MySQL driver did not correctly save `ssl?` connection status. Users worked
@@ -765,6 +796,8 @@
       (log/info "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL."))
     (when (and use-iam? (not ssl?))
       (throw (ex-info "You must enable SSL in order to use AWS IAM authentication" {})))
+    (when (and ssl-cert? (string? ssl-cert))
+      (ensure-ssl-cert-readable! ssl-cert))
     (when (and use-iam?
                (contains? addl-opts-map "sslMode")
                (not= (get addl-opts-map "sslMode") "VERIFY_CA"))
@@ -999,26 +1032,26 @@
     (t/local-date-time offset-time zone-id)))
 
 (defmulti ^:private value->string
-  "Convert a value into a string that's safe for insertion"
-  {:arglists '([driver val])}
-  (fn [_ val] (type val)))
+  "Convert a value into a string that's safe for insertion into `database`."
+  {:arglists '([driver database val])}
+  (fn [_ _ val] (type val)))
 
 (defmethod value->string :default
-  [_driver val]
+  [_driver _database val]
   (str val))
 
 (defmethod value->string nil
-  [_driver _val]
+  [_driver _database _val]
   nil)
 
 (defmethod value->string Boolean
-  [_driver val]
+  [_driver _database val]
   (if val
     "1"
     "0"))
 
 (defmethod value->string LocalDateTime
-  [_driver val]
+  [_driver _database val]
   (t/format :iso-local-date-time val))
 
 (let [zulu-fmt         "yyyy-MM-dd'T'HH:mm:ss"
@@ -1026,14 +1059,13 @@
       zulu-formatter   (DateTimeFormatter/ofPattern zulu-fmt)
       offset-formatter (DateTimeFormatter/ofPattern (str zulu-fmt offset-fmt))]
   (defmethod value->string OffsetDateTime
-    [driver ^OffsetDateTime val]
-    (let [uploads-db (driver-api/current-database)]
-      (if (mariadb? uploads-db)
-        (offset-datetime->unoffset-datetime driver uploads-db val)
-        (t/format (if (.equals (.getOffset val) ZoneOffset/UTC)
-                    zulu-formatter
-                    offset-formatter)
-                  val)))))
+    [driver database ^OffsetDateTime val]
+    (if (mariadb? database)
+      (offset-datetime->unoffset-datetime driver database val)
+      (t/format (if (.equals (.getOffset val) ZoneOffset/UTC)
+                  zulu-formatter
+                  offset-formatter)
+                val))))
 
 (defn- sanitize-value
   ;; Per https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-field-line-handling
@@ -1049,11 +1081,11 @@
                                    "\t" "\\t"})))
 
 (defn- row->tsv
-  [driver column-count row]
+  [driver database column-count row]
   (when (not= column-count (count row))
     (throw (Exception. (format "ERROR: missing data in row \"%s\"" (str/join "," row)))))
   (->> row
-       (map (comp sanitize-value (partial value->string driver)))
+       (map (comp sanitize-value (partial value->string driver database)))
        (str/join "\t")))
 
 (defn- get-global-variable
@@ -1062,7 +1094,7 @@
   [db-id var-name]
   (:value
    (first
-    (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-id)
+    (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))
                 ["show global variables like ?" var-name]))))
 
 (defmethod driver/insert-into! :mysql
@@ -1075,7 +1107,8 @@
     (let [temp-file (File/createTempFile (name table-name) ".tsv")
           file-path (.getAbsolutePath temp-file)]
       (try
-        (let [tsvs    (map (partial row->tsv driver (count column-names)) values)
+        (let [database (driver.u/lib-database db-id)
+              tsvs     (map (partial row->tsv driver database (count column-names)) values)
               dialect (sql.qp/quote-style driver)
               sql     (sql/format {::load   [file-path (keyword table-name)]
                                    :columns (quote-columns driver column-names)}
@@ -1283,6 +1316,14 @@
                :order-by [:a.table_name]}
               :dialect (sql.qp/quote-style driver)))
 
+(def ^:private ^:const mariadb-json-table-field-error-code 4176)
+
+(defmethod sql-jdbc.execute/impl-error-in-query? :mysql
+  [driver ^SQLException e]
+  (or ((get-method sql-jdbc.execute/impl-error-in-query? :sql-jdbc) driver e)
+      (and (= "HY000" (.getSQLState e))
+           (= mariadb-json-table-field-error-code (.getErrorCode e)))))
+
 (defmethod sql-jdbc/impl-query-canceled? :mysql [_ ^SQLException e]
   ;; ok to hardcode driver name here because this function only supports app DB types
   (driver-api/query-canceled-exception? :mysql e))
@@ -1349,6 +1390,330 @@
 (defmethod driver/extra-info :mysql
   [_driver]
   nil)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- quote-schema [s] (sql.u/quote-name :mysql :schema s))
+(defn- quote-field  [s] (sql.u/quote-name :mysql :field s))
+
+(defn- grant-db-wildcards?
+  "Whether `_` and `%` are wildcards in the database of a `GRANT ... ON db.*`. They are, unless MySQL's
+  `partial_revokes` is ON, which makes them literal. MariaDB has no `partial_revokes`."
+  [conn]
+  (not= "ON" (:value (first (jdbc/query conn ["SHOW GLOBAL VARIABLES LIKE 'partial_revokes'"])))))
+
+(defn- quote-grant-db
+  "`db` quoted as the database of a `GRANT ... ON db.*`. When `_` and `%` are wildcards there, a grant on `mb_ws`
+  would also cover `mbXws`: they are escaped, so the grant covers `db` alone. `\\` is the escape character there,
+  so it is escaped too."
+  [wildcards? db]
+  (quote-schema (cond-> db
+                  wildcards? (str/replace #"[\\\\_%]" "\\\\$0"))))
+
+(defn- mysql-user-exists?
+  "Check if a MySQL user exists."
+  [conn username]
+  (seq (jdbc/query conn ["SELECT 1 FROM mysql.user WHERE user = ?" username])))
+
+(defn- database-exists? [conn db-name]
+  (seq (jdbc/query conn ["SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?" db-name])))
+
+(defn- workspace-object-exists-error [kind quoted-name]
+  (ex-info (format "The warehouse already has a %s named %s. It may belong to another workspace, so it was left unchanged."
+                   kind quoted-name)
+           {:status-code 409, :workspace/cleanup? false}))
+
+(defn- init-workspace-isolation-sqls
+  "The three statements that create the workspace database `db-name`, create the user `user` with the password
+  `escaped-password`, and grant the user DML and DDL privileges on that database. `escaped-password` must already be
+  escaped for a SQL string literal. `wildcards?` says whether `_` and `%` are wildcards in the database name of the
+  GRANT. No statement uses IF NOT EXISTS: an object that is already there may belong to another workspace."
+  [wildcards? db-name user escaped-password]
+  (let [quoted-user (quote-field user)]
+    [(format "CREATE DATABASE %s" (quote-schema db-name))
+     (format "CREATE USER %s@'%%' IDENTIFIED BY '%s'" quoted-user escaped-password)
+     ;; Least-privilege grant on the workspace's own DB (vs. ALL PRIVILEGES,
+     ;; dropping GRANT OPTION, CREATE VIEW/ROUTINE, TRIGGER, etc.):
+     ;;   SELECT, INSERT, UPDATE, DELETE - full DML on its own tables
+     ;;   CREATE - transform target / CTAS
+     ;;   DROP   - swap/cleanup
+     ;;   ALTER  - required (with DROP/CREATE) for RENAME TABLE swaps
+     (format "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER ON %s.* TO %s@'%%'"
+             (quote-grant-db wildcards? db-name) quoted-user)]))
+
+(defn- execute-init-sql!
+  "Runs the init statement `sql`. A server error whose code is a key of `refusals` means that another session created
+  the object after the existence check: the error becomes the refusal that the code's function returns. Any other
+  error is rethrown with `secrets` scrubbed from it."
+  [^Statement stmt ^String sql secrets refusals]
+  (try
+    (.execute stmt sql)
+    (catch java.sql.SQLException e
+      (if-let [refusal (get refusals (.getErrorCode e))]
+        (throw (refusal))
+        (throw (driver.u/scrub-exceptions e secrets))))))
+
+(defn- drop-created-database!
+  "Drops the database `db-name` that this init has just created, before it refuses a user that another session
+  created. When the drop fails, the refusal still stands, so that provisioning does not run teardown on the other
+  session's user: the database is left behind, with a warning."
+  [^Statement stmt db-name]
+  (try
+    (.execute stmt (format "DROP DATABASE %s" (quote-schema db-name)))
+    (catch java.sql.SQLException e
+      (log/warnf "Cannot drop workspace database %s after a user of the same workspace appeared: %s"
+                 db-name (ex-message e)))))
+
+(defn- kill-privileges
+  "The global privileges that each let a login end another user's session on the server `metadata` describes. The
+  first one is the one to grant. MySQL accepts CONNECTION_ADMIN or the deprecated SUPER. MariaDB has CONNECTION ADMIN
+  from 10.5, and from 11.0 SUPER no longer includes it."
+  [^DatabaseMetaData metadata]
+  (let [version [(.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata)]]
+    (cond
+      (not= "MariaDB" (.getDatabaseProductName metadata)) ["CONNECTION_ADMIN" "SUPER"]
+      (neg? (compare version [10 5]))                     ["SUPER"]
+      (neg? (compare version [11 0]))                     ["CONNECTION ADMIN" "SUPER"]
+      :else                                               ["CONNECTION ADMIN"])))
+
+(defn- global-privileges
+  "The privileges that `grants`, the lines of `SHOW GRANTS`, grant on `*.*`."
+  [grants]
+  (into #{}
+        (comp (keep #(second (re-find #"^GRANT ([^`]+?) ON \*\.\* TO " %)))
+              (mapcat #(str/split % #","))
+              (map str/trim))
+        grants))
+
+(defn- missing-session-privileges
+  "The privileges to grant a login with the global `privileges` so that it can see other users' sessions (PROCESS) and
+  end them (one of `kill-privileges`). Empty when it has them."
+  [privileges kill-privileges]
+  (if (contains? privileges "ALL PRIVILEGES")
+    []
+    (cond-> []
+      (not (contains? privileges "PROCESS")) (conj "PROCESS")
+      (not-any? privileges kill-privileges)  (conj (first kill-privileges)))))
+
+(defn- quote-account
+  "`account`, a `user@host` as `CURRENT_USER()` returns it, quoted for a GRANT."
+  [account]
+  (let [at (str/last-index-of account "@")]
+    (str (quote-field (subs account 0 at)) "@" (quote-field (subs account (inc at))))))
+
+(defn- check-admin-can-end-sessions!
+  "Throws a 412 unless the admin connection's login can see and end other users' sessions: teardown ends the workspace
+  user's sessions, which otherwise keep their access to the bound database after DROP USER. `SHOW GRANTS` without FOR
+  lists the grants of the login and of its active roles, including the roles those roles hold, so a privilege held
+  through a role counts. When the lines cannot be read, the check finds no privilege and refuses."
+  [^Connection conn]
+  (let [grants  (map (comp first vals) (jdbc/query {:connection conn} ["SHOW GRANTS"]))
+        missing (missing-session-privileges (global-privileges grants) (kill-privileges (.getMetaData conn)))]
+    (when (seq missing)
+      (let [login (quote-account (:login (first (jdbc/query {:connection conn} ["SELECT CURRENT_USER() AS login"]))))]
+        (throw (ex-info (format (str "The admin connection's login %s lacks %s, which it needs to see and end the workspace "
+                                     "user's sessions when it removes the workspace. Have an administrator run "
+                                     "`GRANT %s ON *.* TO %s;` and retry.")
+                                login (str/join " and " missing) (str/join ", " missing) login)
+                        {:status-code 412, :workspace/cleanup? false}))))))
+
+(defn- public-role-supported?
+  "Whether the server has MariaDB's PUBLIC role, which every login holds: MariaDB has it from 10.11, MySQL never."
+  [^DatabaseMetaData metadata]
+  (and (= "MariaDB" (.getDatabaseProductName metadata))
+       (>= (compare [(.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata)] [10 11]) 0)))
+
+(defn- public-revoke-sql
+  "The statement that revokes the grant on the line `grant` of `SHOW GRANTS FOR PUBLIC`, or nil when the grantee of
+  the line is not PUBLIC, as on the lines that list the grants of a role granted to PUBLIC."
+  [grant]
+  (when-let [[_ privileges] (re-matches #"^GRANT (.+) TO PUBLIC.*$" grant)]
+    (str "REVOKE " privileges " FROM PUBLIC;")))
+
+(defn- check-no-roles-for-every-login!
+  "Throws a 412 when the server gives every login, the workspace user included, the privileges of some role: a role
+  named in MySQL's `mandatory_roles`, which a login can activate with SET ROLE even when it is not active at login, or
+  a grant to MariaDB's PUBLIC role. Through them the workspace user could reach beyond its own database. Any such role
+  counts, whatever it grants. `mandatory_roles` does not exist on MariaDB, and the PUBLIC role exists only from
+  MariaDB 10.11; any login can read both."
+  [^Connection conn]
+  (let [mandatory (:value (first (jdbc/query {:connection conn} ["SHOW GLOBAL VARIABLES LIKE 'mandatory_roles'"])))]
+    (when-not (str/blank? mandatory)
+      (throw (ex-info (format (str "The warehouse's `mandatory_roles` setting names %s, which every login holds, so a "
+                                   "workspace user could use their privileges outside its own database. Have an "
+                                   "administrator run `SET PERSIST mandatory_roles = '';` and retry.")
+                              mandatory)
+                      {:status-code 412, :workspace/cleanup? false}))))
+  (when (public-role-supported? (.getMetaData conn))
+    (when-let [grants (seq (map (comp first vals) (jdbc/query {:connection conn} ["SHOW GRANTS FOR PUBLIC"])))]
+      (throw (ex-info (format (str "The warehouse grants privileges to PUBLIC, which every login holds, so a workspace "
+                                   "user could use them outside its own database. Have an administrator run `%s` and "
+                                   "retry.")
+                              (str/join " " (keep public-revoke-sql grants)))
+                      {:status-code 412, :workspace/cleanup? false})))))
+
+(defn- account-lock-supported?
+  "Whether the server has `ACCOUNT LOCK`. MySQL has it in every supported version, and MariaDB has it from 10.4."
+  [^DatabaseMetaData metadata]
+  ;; not `db-version`: it parses the version as a double, and the double 10.11 is less than 10.4
+  (or (not= "MariaDB" (.getDatabaseProductName metadata))
+      (>= (compare [(.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata)] [10 4]) 0)))
+
+(defn- check-account-lock-supported!
+  "Throws a 412 on MariaDB before 10.4, which has no ACCOUNT LOCK: without it a workspace user can open a session between
+  the kills and the drops of teardown, and that session keeps reading the bound database."
+  [^DatabaseMetaData metadata]
+  (when-not (account-lock-supported? metadata)
+    (throw (ex-info (format (str "The warehouse runs MariaDB %d.%d. Workspaces need MariaDB 10.4 or later, because "
+                                 "earlier versions cannot lock the workspace user's login during teardown.")
+                            (.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata))
+                    {:status-code 412, :workspace/cleanup? false}))))
+
+(defmethod driver/init-workspace-isolation! :mysql
+  [driver database workspace]
+  ;; MySQL doesn't have schemas in the PostgreSQL sense - each database is its own namespace.
+  ;; We create a separate database for workspace isolation.
+  (let [db-name          (:schema workspace)
+        {:keys [user password]} (:database_details workspace)
+        escaped-password (sql.u/escape-sql password :ansi)]
+    ;; No transaction: MySQL DDL (CREATE DATABASE/USER, GRANT) implicitly commits
+    ;; per statement, so a transaction wrapper would be decorative. Failure
+    ;; recovery is compensation via the idempotent destroy, not rollback.
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver (driver.u/ensure-lib-database database) {:write? true}
+     (fn [^Connection conn]
+       ;; refused before any DDL, so the refusal leaves nothing to tear down
+       (check-account-lock-supported! (.getMetaData conn))
+       (check-admin-can-end-sessions! conn)
+       (check-no-roles-for-every-login! conn)
+       (when (mysql-user-exists? {:connection conn} user)
+         (throw (workspace-object-exists-error "user" (quote-field user))))
+       (when (database-exists? {:connection conn} db-name)
+         (throw (workspace-object-exists-error "database" (quote-schema db-name))))
+       ;; One statement at a time, not a batch: the connector runs the rest of a batch after a failed statement, so
+       ;; a CREATE that fails on another session's object would still reach the GRANT.
+       (with-open [^Statement stmt (.createStatement conn)]
+         (let [[create-database create-user grant] (init-workspace-isolation-sqls (grant-db-wildcards? {:connection conn})
+                                                                                  db-name user escaped-password)
+               secrets [password escaped-password]]
+           ;; 1007 ER_DB_CREATE_EXISTS and 1396 ER_CANNOT_USER: another session created the object after the check
+           (execute-init-sql! stmt create-database secrets
+                              {1007 #(workspace-object-exists-error "database" (quote-schema db-name))})
+           (execute-init-sql! stmt create-user secrets
+                              {1396 (fn []
+                                      (drop-created-database! stmt db-name)
+                                      (workspace-object-exists-error "user" (quote-field user)))})
+           (execute-init-sql! stmt grant secrets {})))))
+    nil))
+
+(defn- lock-workspace-user-sql
+  "The statement that locks the account of the workspace user `user`, so that the user cannot open a session between
+  the kills and the drops of teardown."
+  [user]
+  (format "ALTER USER IF EXISTS %s@'%%' ACCOUNT LOCK" (quote-field user)))
+
+(defn- drop-workspace-isolation-sqls [db-name user user-exists?]
+  (cond-> [(format "DROP DATABASE IF EXISTS %s" (quote-schema db-name))]
+    user-exists? (conj (format "DROP USER IF EXISTS %s@'%%'" (quote-field user)))))
+
+(def ^:private workspace-lock-wait-timeout
+  "The most seconds a teardown statement waits for a lock that another session holds, such as a session of a user other
+  than the workspace user on one of the workspace's tables. A lower `lock_wait_timeout` of the connection stays."
+  30)
+
+(defn- kill-user-sessions!
+  "Ends each session of `user` that the admin login can see (it needs PROCESS) and may end (it needs one of
+  [[kill-privileges]]). Init refuses an admin login without these privileges. When the login has lost one since init,
+  a session it cannot see stays open, and a KILL it may not run is logged and skipped; either session keeps its access
+  until it disconnects. Init also refuses MariaDB before 10.4, which has no ACCOUNT LOCK; there, the user can open a new
+  session after the kills. A session open in a transaction holds metadata locks on the tables it used, and DROP DATABASE waits for them,
+  for at most [[workspace-lock-wait-timeout]] seconds; DROP USER leaves its sessions open."
+  [conn ^Statement stmt user]
+  (doseq [id (map :id (jdbc/query conn ["SELECT ID AS id FROM information_schema.PROCESSLIST WHERE USER = ?" user]))]
+    (try
+      (.execute stmt (format "KILL %d" (long id)))
+      (catch java.sql.SQLException e
+        (case (.getErrorCode e)
+          ;; ER_NO_SUCH_THREAD: the session ended on its own
+          1094 nil
+          ;; ER_KILL_DENIED_ERROR: the admin lacks the kill privilege. The drops still succeed while the session is
+          ;; idle; DROP DATABASE waits only if it holds a metadata lock.
+          1095 (log/warnf (str "Cannot end session %d of workspace user %s: the admin connection's login lacks %s. The "
+                               "session keeps its access until it disconnects, and teardown may wait for its locks: %s")
+                          (long id) user
+                          (str/join " or " (kill-privileges (.getMetaData ^Connection (jdbc/db-connection conn))))
+                          (ex-message e))
+          (throw e))))))
+
+(defmethod driver/destroy-workspace-isolation! :mysql
+  [driver database workspace]
+  (let [db-name  (:schema workspace)
+        username (-> workspace :database_details :user)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver (driver.u/ensure-lib-database database) {:write? true}
+     (fn [^Connection conn]
+       (let [user-exists? (boolean (mysql-user-exists? {:connection conn} username))]
+         (with-open [^Statement stmt (.createStatement conn)]
+           (when (and user-exists? (account-lock-supported? (.getMetaData conn)))
+             (.execute stmt (lock-workspace-user-sql username)))
+           ;; also when the user is gone: its sessions outlive DROP USER, and hold the locks DROP DATABASE waits for
+           (kill-user-sessions! {:connection conn} stmt username)
+           ;; The drops wait for a lock at most [[workspace-lock-wait-timeout]] seconds. The connection returns to the
+           ;; pool, so its own timeout is restored afterwards.
+           (let [previous (:t (first (jdbc/query {:connection conn} ["SELECT @@SESSION.lock_wait_timeout AS t"])))]
+             (.execute stmt (format "SET SESSION lock_wait_timeout = %d"
+                                    (min (long previous) workspace-lock-wait-timeout)))
+             (try
+               ;; One statement at a time, not a batch: the connector runs DROP USER after a failed DROP DATABASE, and a
+               ;; retry would then find no user while the database stays.
+               (doseq [sql (drop-workspace-isolation-sqls db-name username user-exists?)]
+                 (try
+                   (.execute stmt ^String sql)
+                   (catch java.sql.SQLException e
+                     ;; ER_LOCK_WAIT_TIMEOUT
+                     (if (= 1205 (.getErrorCode e))
+                       (throw (ex-info (str "Another session holds a lock that removing this workspace needs, such as a "
+                                            "session on one of its tables. Retry once that session ends.")
+                                       {:status-code 409} e))
+                       (throw e)))))
+               (finally
+                 (.execute stmt (format "SET SESSION lock_wait_timeout = %d" (long previous))))))))))))
+
+(defn- grant-workspace-read-access-sqls
+  "The statements that grant `username` SELECT on all tables in `bound-db`, the database that the Metabase `Database`
+  connects to, and in each database named in `schemas`. MySQL has no schema layer, so each entry of `schemas` is a
+  database name. `schemas` may be empty. The grant on `bound-db` is always made, because the workspace reads that
+  database and the JDBC handshake of the workspace user needs access to it. `wildcards?` says whether `_` and `%`
+  are wildcards in the database name of a GRANT."
+  [wildcards? username bound-db schemas]
+  (let [quoted-user (quote-field username)]
+    (mapv (fn [db]
+            (format "GRANT SELECT ON %s.* TO %s@'%%'"
+                    (quote-grant-db wildcards? db) quoted-user))
+          (distinct (cons bound-db schemas)))))
+
+(defmethod driver/grant-workspace-read-access! :mysql
+  [driver database workspace schemas]
+  ;; Each entry in `schemas` is interpreted as a MySQL database name. The
+  ;; workspace SA gets database-wide SELECT via `GRANT SELECT ON db.*`. The
+  ;; Metabase `Database` row's `:details.db` is the bound database, but MySQL
+  ;; itself allows `GRANT SELECT ON other_db.*` as long as the admin has it,
+  ;; so we don't reject inputs that don't equal `:details.db`.
+  (let [username (-> workspace :database_details :user)
+        bound-db (driver.sql/db-slot-value driver database)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver (driver.u/ensure-lib-database database) {:write? true}
+     (fn [^Connection conn]
+       (with-open [^Statement stmt (.createStatement conn)]
+         (doseq [sql (grant-workspace-read-access-sqls (grant-db-wildcards? {:connection conn})
+                                                       username bound-db schemas)]
+           (.addBatch ^Statement stmt ^String sql))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/batch-exception t)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Indexes (Index Manager)                                               |

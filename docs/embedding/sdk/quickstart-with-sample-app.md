@@ -110,7 +110,7 @@ docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:latest
 You can also [download the JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar), and run it like so:
 
 ```bash
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+java -jar metabase.jar
 ```
 
 By default, Metabase will run at `http://localhost:3000`.
@@ -123,11 +123,11 @@ To enable SSO with JWT when self-hosting, you'll need to [activate your license]
 
 ## Enable embedding in Metabase
 
-From any Metabase page, click the **grid** icon in the upper right and select **Admin** > **Embedding**.
+From any Metabase page, click the **grid** icon in the upper right and select **Embedding hub**. Go to **Security**.
 
 Turn on:
 
-- Modular embedding SDK
+- Modular embedding React SDK
 
 Otherwise, this whole thing is hopeless.
 
@@ -135,9 +135,7 @@ Otherwise, this whole thing is hopeless.
 
 We'll also need to update our JWT Provider URI in Metabase. By default, this URI is where the SDK will redirect login requests.
 
-From any Metabase page, click the **grid** icon in the upper right and select **Admin** > **Settings** > **Authentication**.
-
-On the card that says **JWT**, click the **Setup** button.
+From any Metabase page, click the **grid** icon in the upper right, select **Embedding hub**, and go to **Authentication**.
 
 ### JWT Identity provider URI
 

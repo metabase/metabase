@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.mcp.v2.resolve :as v2.resolve]
@@ -142,3 +143,55 @@
     (mt/with-temp [:model/Collection {coll-id :id} {}]
       (mt/with-test-user :crowberto
         (is (= coll-id (v2.resolve/resolve-collection-id (str coll-id))))))))
+
+(defn- thrown-error
+  "The message and ex-data of the exception `(f id)` throws, or nil when it returns."
+  [f id]
+  (try
+    (f id)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      {:message (ex-message e) :data (ex-data e)})))
+
+(defn- with-id
+  "`error` with every occurrence of `from` written as `to`."
+  [error from to]
+  (-> error
+      (update :message str/replace (str from) (str to))
+      (update :data #(walk/postwalk-replace {from to} %))))
+
+(deftest resolve-and-read-hides-transform-folders-test
+  (mt/with-temp [:model/Collection folder   {:name "Transform folder" :namespace "transforms"}
+                 :model/Collection child    {:name      "Transform subfolder"
+                                             :namespace "transforms"
+                                             :location  (str "/" (:id folder) "/")}
+                 :model/Collection trashed  {:name              "Trashed transform folder"
+                                             :namespace         "transforms"
+                                             :archived          true
+                                             :archived_directly true}
+                 :model/Collection normal   {:name "Normal collection"}
+                 :model/Collection snippets {:name "Snippet folder" :namespace "snippets"}]
+    (let [missing-id  13371337
+          missing-eid (u/generate-nano-id)
+          resolvers   {"resolve-and-read"      #(v2.resolve/resolve-and-read :model/Collection %)
+                       "resolve-collection-id" v2.resolve/resolve-collection-id}]
+      (doseq [user                     [:crowberto :rasta]
+              [resolver-name resolve!] resolvers]
+        (mt/with-test-user user
+          (testing (str user " " resolver-name)
+            (testing "GHY-4746: a transform folder gives the same not-found error as a missing id"
+              (doseq [[label coll] {"folder" folder "child folder" child "trashed folder" trashed}]
+                (testing label
+                  (testing "by numeric id"
+                    (is (= (with-id (thrown-error resolve! missing-id) missing-id (:id coll))
+                           (thrown-error resolve! (:id coll)))))
+                  (testing "by entity_id"
+                    (is (= (with-id (thrown-error resolve! missing-eid) missing-eid (:entity_id coll))
+                           (thrown-error resolve! (:entity_id coll))))))))
+            (testing "GHY-4746: the missing-id error is the collapsed not-found"
+              (is (str/includes? (:message (thrown-error resolve! missing-id)) "not found")))
+            (testing "GHY-4746: a normal collection and a snippet folder still resolve"
+              (doseq [coll [normal snippets]
+                      id   [(:id coll) (:entity_id coll)]]
+                (is (= (:id coll)
+                       (u/the-id (resolve! id))))))))))))

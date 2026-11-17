@@ -23,7 +23,7 @@
   [search-ctx {:keys [visibility] :as _spec}]
   (case visibility
     :all       true
-    :app-user  (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))
+    :app-user  (not (search.permissions/sandboxed-impersonated-or-routed-user? search-ctx))
     :superuser (:is-superuser? search-ctx)))
 
 (def ^:private context-key->filter
@@ -200,7 +200,7 @@
               [:in :search_index.model_id (map str ids)]
               ;; NOTE: we limit id-based search to only a subset of the models
               ;; TODO this should just become part of the model spec e.g. :search-by-id?
-              [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]]])
+              [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action" "data-app"]]]]])
     [[:dashboard-questions [:and
                             [:or
                              ;; leverage the fact that only card-related models populate this attribute

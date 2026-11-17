@@ -11,12 +11,12 @@
    this namespace is OSS."
   [& {:as extra}]
   (let [app-name (mt/random-name)]
-    (t2/insert! :data_app (merge {:name         app-name
-                                  :entity_id    (u/generate-nano-id)
-                                  :display_name "App"
-                                  :bundle_path  "data_apps/app/index.js"
-                                  :created_at   :%now
-                                  :updated_at   :%now}
+    (t2/insert! :data_app (merge {:slug        app-name
+                                  :entity_id   (u/generate-nano-id)
+                                  :name        "App"
+                                  :bundle_path "data_apps/app/index.js"
+                                  :created_at  :%now
+                                  :updated_at  :%now}
                                  extra))
     app-name))
 
@@ -32,9 +32,6 @@
           (is (= 2 (- (:data-app-count (sut/data-app-stats)) before))))
         (testing "an app the admin disabled is out of service, so it doesn't count"
           (create! :enabled false)
-          (is (= 2 (- (:data-app-count (sut/data-app-stats)) before))))
-        (testing "a draft is not served, so it doesn't count even when enabled"
-          (create! :draft true)
           (is (= 2 (- (:data-app-count (sut/data-app-stats)) before)))))
       (finally
-        (t2/delete! :data_app :name [:in @app-names])))))
+        (t2/delete! :data_app :slug [:in @app-names])))))

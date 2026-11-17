@@ -468,8 +468,8 @@
       str/trim))
 
 (mu/defn add-summary-clause :- ::lib.schema/query
-  "If the given stage has no summary, it will drop :fields, :order-by, and :join :fields from it,
-   as well as dropping any subsequent stages."
+  "If the given stage has no summary, it will drop :order-by from it and drop any subsequent stages.
+   :fields is preserved so that the user's field selection survives toggling an aggregation on and off (#62539)."
   [query :- ::lib.schema/query
    stage-number :- :int
    location :- [:enum :breakout :aggregation]

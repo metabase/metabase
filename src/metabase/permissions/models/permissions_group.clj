@@ -11,8 +11,8 @@
    [clojure.set :as set]
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
-   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -31,7 +31,8 @@
 
 (doto :model/PermissionsGroup
   (derive :metabase/model)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/change-log))
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
@@ -73,6 +74,13 @@
 (def data-analyst-magic-group-type
   "The magic-group type of the \"Data Analysts\" magic group."
   "data-analyst")
+
+(defn group-display-name
+  "The group's display name, with internal membership explicit when tenants are enabled."
+  [{:keys [magic_group_type name]} using-tenants?]
+  (if (and (= magic_group_type all-users-magic-group-type) using-tenants?)
+    "All internal users"
+    name))
 
 (def ^{:arglists '([])} data-analyst
   "Fetch the `Data Analysts` permissions group"

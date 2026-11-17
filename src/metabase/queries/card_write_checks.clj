@@ -9,10 +9,12 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.queries.db :as queries.db]
+   [metabase.queries.models.card :as card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -60,7 +62,7 @@
       :else nil)))
 
 (defn- check-allowed-to-remove-from-existing-dashboards [card]
-  (let [dashboards (queries.db/card-dashboards card)]
+  (let [dashboards (t2/hydrate (queries.db/card-dashboards card) :can_write)]
     (doseq [dashboard dashboards]
       (api/write-check dashboard))))
 
@@ -85,7 +87,10 @@
   [card-before-update :- ::queries.schema/card
    card-updates       :- ::queries.schema/card]
   (when (api/column-will-change? (:dashboard_id card-before-update) (get card-updates :dashboard_id ::api/not-provided))
-    (check-allowed-to-remove-from-existing-dashboards card-before-update))
+    (check-allowed-to-remove-from-existing-dashboards card-before-update)
+    (when-let [dashboard-id (:dashboard_id card-updates)]
+      (card/check-shared-dashboard-timeline-permissions! (queries.db/dashboard dashboard-id)
+                                                         [(merge card-before-update card-updates)])))
   (collection/check-allowed-to-change-collection card-before-update card-updates))
 
 (mu/defn- check-update-result-metadata-data-perms

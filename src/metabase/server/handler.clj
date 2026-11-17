@@ -4,12 +4,14 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
    [metabase.config.core :as config]
+   [metabase.embedding.sdk-react-18 :as embedding.sdk-react-18]
    [metabase.metabot.agent-api.usage :as agent-api.usage]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.body-limit :as mw.body-limit]
    [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
    [metabase.server.middleware.data-app-scope :as mw.data-app-scope]
    [metabase.server.middleware.exceptions :as mw.exceptions]
+   [metabase.server.middleware.isolated-origin :as mw.isolated-origin]
    [metabase.server.middleware.json :as mw.json]
    [metabase.server.middleware.log :as mw.log]
    [metabase.server.middleware.metadata-provider-cache :as mw.mp-cache]
@@ -17,6 +19,7 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.server.middleware.premium-features-cache :as mw.pf-cache]
    [metabase.server.middleware.request-id :as mw.request-id]
+   [metabase.server.middleware.route-template-carrier :as mw.route-template-carrier]
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.middleware.settings-cache :as mw.settings-cache]
@@ -88,6 +91,7 @@
         #(#'mw.exceptions/catch-api-exceptions % cors) ; catch exceptions and return them in our expected format
         #'mw.log/log-api-call                        ; log info about the request, db call counts etc.
         #'agent-api.usage/wrap-record-cli-usage      ; record CLI usage analytics for metabase-cli REST API calls
+        #'embedding.sdk-react-18/wrap-record-react-18-sdk-host ; record host apps that use the React SDK with React 18; must run after auth
         #'mw.browser-cookie/ensure-browser-id-cookie ; add cookie to identify browser; add `:browser-id` to the request
         #(#'mw.security/add-security-headers % cors) ; Add HTTP headers to API responses to prevent them from being cached
         #'mw.json/wrap-json-body                     ; extracts json POST/PUT body and makes it available on request
@@ -115,8 +119,12 @@
         #'wrap-gzip                                  ; GZIP response if client can handle it
         #'mw.trace/wrap-trace                         ; Create root OpenTelemetry span per request (after request-id is available)
         #'mw.request-id/wrap-request-id              ; Add a unique request ID to the request
+        #'mw.route-template-carrier/wrap-route-template-carrier ; Install a carrier so routing can report which route matched
         #'mw.misc/bind-request                       ; bind `metabase.middleware.misc/*request*` for the duration of the request
         #'mw.ssl/redirect-to-https-middleware
+        ;; Outside the HTTPS redirect, so the isolated origin's own rules answer first: the redirect would send a
+        ;; request to the site URL's host.
+        #'mw.isolated-origin/isolated-origin-middleware
         wrap-reload-dev-mw                           ; reloads outdated clojure code when --hot flag is passed with the :dev-start alias
         wrap-remote-api-proxy-dev-mw                 ; proxies /api/* to remote backend if MB_REMOTE_API_URL is set (dev only)
         ;; Outside of middleware onion

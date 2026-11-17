@@ -14,15 +14,12 @@ export const QuestionDisplayToggle = ({
   isShowingRawTable,
   onToggleRawTable,
 }: QuestionDisplayToggleProps) => {
-  useRegisterShortcut(
-    [
-      {
-        id: "query-builder-toggle-visualization",
-        perform: () => onToggleRawTable(!isShowingRawTable),
-      },
-    ],
-    [isShowingRawTable, onToggleRawTable],
-  );
+  useRegisterShortcut([
+    {
+      id: "query-builder-toggle-visualization",
+      perform: () => onToggleRawTable(!isShowingRawTable),
+    },
+  ]);
 
   return (
     <SegmentedControl

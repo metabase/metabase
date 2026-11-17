@@ -1,9 +1,7 @@
 import type { CyHttpMessages } from "cypress/types/net-stubbing";
 
 import {
-  entityPickerModal,
   miniPicker,
-  miniPickerBrowseAll,
   popover,
 } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import type { NotebookStepType } from "metabase/querying/notebook/types";
@@ -187,40 +185,6 @@ export function joinTable(
   }
 }
 
-/**
- * Open a saved question and join it with another saved question.
- *
- * Depends on a `startNewQuestion()` helper to work properly!
- *
- * @todo Either decouple this dependency or use `startNewQuestion()` directly here.
- *
- * @example
- * startNewQuestion();
- * selectSavedQuestionsToJoin("Q1", "Q2");
- */
-export function selectSavedQuestionsToJoin(
-  firstQuestionName: string,
-  secondQuestionName: string,
-) {
-  cy.intercept("GET", "/api/table/*/query_metadata").as("joinedTableMetadata");
-  miniPickerBrowseAll().click();
-  entityPickerModal().within(() => {
-    cy.findByText("Our analytics").click();
-    cy.findByText(firstQuestionName).click();
-  });
-
-  cy.wait("@joinedTableMetadata");
-
-  // join to question b
-  cy.icon("join_left_outer").click();
-
-  miniPickerBrowseAll().click();
-  entityPickerModal().within(() => {
-    cy.findByText("Our analytics").click();
-    cy.findByText(secondQuestionName).click();
-  });
-}
-
 export function selectFilterOperator(operatorName: string) {
   cy.findByLabelText("Filter operator").click();
   cy.findByRole("menu").findByText(operatorName).click();
@@ -241,6 +205,7 @@ export type Stage = {
   }[];
   expressions?: string[];
   filters?: string[];
+  filtersInAnyOrder?: boolean;
   aggregations?: string[];
   breakouts?: string[];
   sort?: {
@@ -258,6 +223,7 @@ export function verifyNotebookQuery(dataSource: string, stages: Stage[] = []) {
       joins,
       expressions,
       filters,
+      filtersInAnyOrder,
       aggregations,
       breakouts,
       sort,
@@ -266,7 +232,7 @@ export function verifyNotebookQuery(dataSource: string, stages: Stage[] = []) {
 
     verifyNotebookJoins(stageIndex, joins);
     verifyNotebookExpressions(stageIndex, expressions);
-    verifyNotebookFilters(stageIndex, filters);
+    verifyNotebookFilters(stageIndex, filters, filtersInAnyOrder);
     verifyNotebookAggregations(stageIndex, aggregations, breakouts);
     verifyNotebookBreakouts(stageIndex, aggregations, breakouts);
     verifyNotebookSort(stageIndex, sort);
@@ -355,8 +321,17 @@ function verifyNotebookExpressions(
 function verifyNotebookFilters(
   stageIndex: number,
   filters: string[] | undefined,
+  inAnyOrder = false,
 ) {
-  if (Array.isArray(filters)) {
+  if (Array.isArray(filters) && inAnyOrder) {
+    getFilterItems(stageIndex).should(($items) => {
+      const filterTexts = $items
+        .toArray()
+        .slice(0, -1)
+        .map((item) => item.textContent ?? "");
+      expect(filterTexts.sort()).to.deep.equal([...filters].sort());
+    });
+  } else if (Array.isArray(filters)) {
     getFilterItems(stageIndex).should(
       "have.length",
       filters.length + 1, // +1 because of add button

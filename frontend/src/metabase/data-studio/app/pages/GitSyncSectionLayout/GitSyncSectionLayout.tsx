@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { RemoteSyncUpsellPage } from "metabase/data-studio/upsells/pages";
+import { RemoteSyncUpsellPage } from "metabase/data-studio/upsells/pages/RemoteSyncUpsellPage";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 
 export function GitSyncSectionLayout() {

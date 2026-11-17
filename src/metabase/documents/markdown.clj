@@ -1134,14 +1134,15 @@
   (let [start (.length sb)
         child-extents
         (if (container-types type)
-          (do (.append sb ^String (case type
-                                    "resizeNode"     (resize-fence attrs)
-                                    "flexContainer"  (flex-fence attrs)
-                                    "supportingText" "::: supporting"))
-              (.append sb "\n")
-              (let [extents (emit-blocks! ctx content)]
-                (.append sb "\n:::")
-                extents))
+          (let [^String fence (case type
+                                "resizeNode"     (resize-fence attrs)
+                                "flexContainer"  (flex-fence attrs)
+                                "supportingText" "::: supporting")]
+            (.append sb fence)
+            (.append sb "\n")
+            (let [extents (emit-blocks! ctx content)]
+              (.append sb "\n:::")
+              extents))
           (if-let [body (block-body node)]
             (do (.append sb ^String body) nil)
             (throw (ex-info (format "Cannot serialize unknown block node type %s to Markdown." (pr-str type))

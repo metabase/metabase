@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useField } from "formik";
-import { useCallback } from "react";
+import { type JSX, useCallback } from "react";
 import { t } from "ttag";
 
-import { FormField } from "metabase/common/components/FormField";
-import { Button, Icon } from "metabase/ui";
+import { Box, Button, Icon } from "metabase/ui";
 
 export interface DatabaseSectionFieldProps {
   name: string;
@@ -19,7 +19,7 @@ const DatabaseSectionField = ({
   }, [value, setValue]);
 
   return (
-    <FormField>
+    <Box mb="xl">
       <Button
         w="fit-content"
         type="button"
@@ -30,7 +30,7 @@ const DatabaseSectionField = ({
       >
         {value ? t`Hide advanced options` : t`Show advanced options`}
       </Button>
-    </FormField>
+    </Box>
   );
 };
 

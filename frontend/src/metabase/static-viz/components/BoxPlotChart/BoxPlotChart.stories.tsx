@@ -1,5 +1,4 @@
 import type { StoryFn } from "@storybook/react";
-import { updateIn } from "icepick";
 
 import {
   measureTextHeight,
@@ -13,6 +12,7 @@ import {
 
 import type { StaticChartProps } from "../StaticVisualization";
 import { StaticVisualization } from "../StaticVisualization";
+import { withVisualizationSettings } from "../stories-utils";
 
 import { data } from "./stories-data";
 
@@ -35,6 +35,7 @@ const renderingContext: RenderingContext = {
     measureTextWidth(text, Number(style.size), Number(style.weight)),
   measureTextHeight: (_, style) => measureTextHeight(Number(style.size)),
   fontFamily: "Lato",
+  isStatic: true,
   theme: DEFAULT_VISUALIZATION_THEME,
 };
 
@@ -230,17 +231,11 @@ export const MultiSeriesTwoMetricsWithAxisSplitFormatting = {
 export const CustomYAxisRangeOffScreen = {
   render: Template,
   args: {
-    // Unjustified type cast. FIXME
-    rawSeries: updateIn(
-      data.distributionShapes,
-      [0, "card", "visualization_settings"],
-      (val) => ({
-        ...val,
-        "graph.y_axis.auto_range": false,
-        "graph.y_axis.min": 200,
-        "graph.y_axis.max": 300,
-      }),
-    ) as any,
+    rawSeries: withVisualizationSettings(data.distributionShapes, {
+      "graph.y_axis.auto_range": false,
+      "graph.y_axis.min": 200,
+      "graph.y_axis.max": 300,
+    }),
     renderingContext,
   },
 };

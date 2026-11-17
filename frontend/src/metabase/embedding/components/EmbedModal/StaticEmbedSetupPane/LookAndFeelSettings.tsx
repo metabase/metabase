@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
@@ -16,36 +17,34 @@ import { getSetting } from "metabase/settings";
 import {
   Divider,
   SegmentedControl,
+  type SegmentedControlItem,
   Select,
   Stack,
   Switch,
   Text,
 } from "metabase/ui";
 
+import { DisplayOptionSection } from "./DisplayOptionSection";
 import {
   DashboardDownloadSettings,
   QuestionDownloadSettings,
 } from "./DownloadSettings";
-import { DisplayOptionSection } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
-const THEME_OPTIONS = [
+const THEME_OPTIONS: readonly SegmentedControlItem<DisplayTheme>[] = [
   {
     get label() {
       return t`Light`;
     },
-    // Unjustified type cast. FIXME
-    value: "light" as DisplayTheme,
+    value: "light",
   },
   {
     get label() {
       return t`Dark`;
     },
-    // Unjustified type cast. FIXME
-    value: "night" as DisplayTheme,
+    value: "night",
   },
-] as const;
-type ThemeOptions = (typeof THEME_OPTIONS)[number]["value"];
+];
 
 interface AppearanceSettingsProps {
   resourceType: EmbedResourceType;
@@ -59,8 +58,8 @@ export const LookAndFeelSettings = ({
   onChangeDisplayOptions,
 }: AppearanceSettingsProps): JSX.Element => {
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Only appear to admins
-  const { url: docsUrl } = useDocsUrl("embedding/static-embedding", {
-    anchor: "customizing-the-appearance-of-static-embeds",
+  const { url: docsUrl } = useDocsUrl("embedding/guest-embedding", {
+    anchor: "customizing-appearance-of-guest-embeds",
     utm: {
       utm_source: "product",
       utm_medium: "docs",
@@ -130,9 +129,9 @@ export const LookAndFeelSettings = ({
           <DisplayOptionSection title={t`Theme`}>
             <SegmentedControl
               value={displayOptions.theme ?? undefined}
-              data={[...THEME_OPTIONS]}
+              data={THEME_OPTIONS}
               fullWidth
-              onChange={(value: ThemeOptions) => {
+              onChange={(value) => {
                 onChangeDisplayOptions({
                   ...displayOptions,
                   theme: value,

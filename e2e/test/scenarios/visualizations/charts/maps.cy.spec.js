@@ -78,11 +78,8 @@ describe("scenarios > visualizations > maps", () => {
       { visitQuestion: true },
     );
 
-    cy.button("Visualization").click();
-
-    cy.findByTestId("chart-type-settings").within(() => {
-      cy.findByText("Map").should("be.visible");
-    });
+    // A saved question resets to the default display on load when its display is not sensible
+    H.queryBuilderMain().find(".leaflet-marker-icon").should("have.length", 10);
   });
 
   it("should wrap markers around the international date line correctly (metabase#5369)", () => {
@@ -205,10 +202,10 @@ describe("scenarios > visualizations > maps", () => {
     cy.get("@texas").trigger("mousemove");
 
     // check tooltip content
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("State:"); // column name key
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Texas"); // feature name as value
+    H.tooltip().within(() => {
+      cy.findByText("State:").should("be.visible"); // column name key
+      cy.findByText("Texas").should("be.visible"); // feature name as value
+    });
 
     // open drill-through menu and drill within it
     cy.get("@texas").click();
@@ -221,48 +218,6 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByText("State is TX");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("171 Olive Oyle Lane"); // Address in the first row
-  });
-
-  it("should display pins when a breakout column sets a base-type (metabase#59984)", () => {
-    cy.intercept("/api/tiles/**").as("tiles");
-
-    H.visitQuestionAdhoc({
-      display: "map",
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": PEOPLE_ID,
-          aggregation: ["count"],
-          breakout: [
-            [
-              "field",
-              PEOPLE.LONGITUDE,
-              {
-                "base-type": "type/Float",
-              },
-            ],
-            [
-              "field",
-              PEOPLE.LATITUDE,
-              {
-                "base-type": "type/Float",
-              },
-            ],
-          ],
-        },
-      },
-      visualization_settings: {
-        "map.type": "pin",
-        "map.latitude_column": "LATITUDE",
-        "map.longitude_column": "LONGITUDE",
-      },
-    });
-
-    // this should not create a 400 error
-    cy.wait("@tiles").then((xhr) => {
-      expect(xhr.response.statusCode).to.equal(200);
-    });
   });
 
   it("should display a tooltip for a grid map without a metric column (metabase#17940)", () => {
@@ -305,12 +260,11 @@ describe("scenarios > visualizations > maps", () => {
 
     cy.get(".leaflet-interactive").trigger("mousemove");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Latitude: 10°:");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Longitude: 10°:");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("1");
+    H.tooltip().within(() => {
+      cy.findByText("Latitude: 10°:").should("be.visible");
+      cy.findByText("Longitude: 10°:").should("be.visible");
+      cy.findByText("1").should("be.visible");
+    });
   });
 
   it("should render grid map visualization for native questions (metabase#8362)", () => {
@@ -335,18 +289,11 @@ describe("scenarios > visualizations > maps", () => {
       },
     });
 
-    // Ensure chart is rendered
-    cy.get(".leaflet-interactive");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").click();
-
-    cy.findByTestId("chart-type-settings").within(() => {
-      cy.findByTestId("Map-button").should("be.visible");
-    });
+    // An ad-hoc question resets to the default display when its display is not sensible
+    H.queryBuilderMain().find(".leaflet-interactive").should("exist");
   });
 
-  it("should display pins type viz setting (metabase#40999)", () => {
+  it("should display pins when a breakout column sets a base-type and support the pin type viz setting (metabase#40999) (metabase#59984)", () => {
     cy.intercept("/api/tiles/**").as("tiles");
 
     H.visitQuestionAdhoc({
@@ -382,7 +329,8 @@ describe("scenarios > visualizations > maps", () => {
       },
     });
 
-    cy.wait("@tiles");
+    // this should not create a 400 error (metabase#59984)
+    cy.wait("@tiles").its("response.statusCode").should("eq", 200);
 
     cy.findByTestId("viz-settings-button").click();
 
@@ -394,7 +342,7 @@ describe("scenarios > visualizations > maps", () => {
     });
 
     cy.findByTestId("visualization-root")
-      .get(".leaflet-marker-icon")
+      .find(".leaflet-marker-icon")
       .should("have.length.greaterThan", 10);
   });
 
@@ -478,6 +426,322 @@ describe("scenarios > visualizations > maps", () => {
       });
     },
   );
+
+  describe("issue 18061", () => {
+    const questionDetails = {
+      name: "18061",
+      query: {
+        "source-table": PEOPLE_ID,
+        expressions: {
+          CClat: [
+            "case",
+            [
+              [
+                [">", ["field", PEOPLE.ID, null], 1],
+                ["field", PEOPLE.LATITUDE, null],
+              ],
+            ],
+          ],
+          CClong: [
+            "case",
+            [
+              [
+                [">", ["field", PEOPLE.ID, null], 1],
+                ["field", PEOPLE.LONGITUDE, null],
+              ],
+            ],
+          ],
+        },
+        filter: ["<", ["field", PEOPLE.ID, null], 3],
+      },
+      display: "map",
+      visualization_settings: {
+        "map.latitude_column": "CClat",
+        "map.longitude_column": "CClong",
+      },
+    };
+
+    const filter = {
+      name: "Category",
+      slug: "category",
+      id: "749a03b5",
+      type: "category",
+    };
+
+    const dashboardDetails = { name: "18061D", parameters: [filter] };
+
+    function addFilter(filter) {
+      H.filterWidget().click();
+      H.popover().contains(filter).click();
+      cy.button("Add filter").click();
+    }
+
+    beforeEach(() => {
+      H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+        ({ body: dashboardCard }) => {
+          const { dashboard_id, card_id } = dashboardCard;
+
+          // Enable sharing
+          cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`).then(
+            ({ body: { uuid } }) => {
+              cy.wrap(`/public/dashboard/${uuid}`).as("publicLink");
+            },
+          );
+
+          cy.wrap(`/question/${card_id}`).as("questionUrl");
+          cy.wrap(`/dashboard/${dashboard_id}`).as("dashboardUrl");
+
+          cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
+          cy.intercept(
+            "POST",
+            `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
+          ).as("dashCardQuery");
+          cy.intercept("GET", `/api/card/${card_id}`).as("getCard");
+
+          const mapFilterToCard = {
+            parameter_mappings: [
+              {
+                parameter_id: filter.id,
+                card_id,
+                target: ["dimension", ["field", PEOPLE.SOURCE, null]],
+              },
+            ],
+          };
+
+          H.editDashboardCard(dashboardCard, mapFilterToCard);
+        },
+      );
+    });
+
+    it("should handle data sets that contain only null values for longitude/latitude (metabase#18061)", () => {
+      cy.log("scenario 1: question with a filter (metabase#18061-1)");
+      H.visitAlias("@questionUrl");
+
+      cy.wait("@getCard");
+      cy.wait("@cardQuery");
+
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.window().then((w) => (w.beforeReload = true));
+
+      H.queryBuilderHeader().findByTestId("filters-visibility-control").click();
+      cy.findByTestId("qb-filters-panel")
+        .findByText("ID is less than 3")
+        .click();
+      H.popover().within(() => {
+        cy.findByDisplayValue("3").type("{backspace}2");
+        cy.button("Update filter").click();
+      });
+      cy.wait("@dataset");
+
+      H.assertQueryBuilderRowCount(1);
+      H.queryBuilderMain()
+        .findByText("Something went wrong")
+        .should("not.exist");
+
+      cy.findByTestId("qb-filters-panel")
+        .findByText("ID is less than 2")
+        .should("be.visible");
+      cy.get("[data-element-id=pin-map]").should("be.visible");
+
+      cy.window().should("have.prop", "beforeReload", true);
+
+      cy.log("scenario 2: dashboard with a filter (metabase#18061-2)");
+      H.visitAlias("@dashboardUrl");
+
+      cy.wait("@dashCardQuery");
+      cy.window().then((w) => (w.beforeReload = true));
+
+      addFilter("Twitter");
+
+      cy.wait("@dashCardQuery");
+      cy.location("search").should("eq", "?category=Twitter");
+
+      // The only matching row has null coordinates, so the dashcard shows no results.
+      H.getDashboardCard(0).findByTestId("no-results-image").should("exist");
+      H.getDashboardCard(0)
+        .findByText("Something went wrong")
+        .should("not.exist");
+      cy.window().should("have.prop", "beforeReload", true);
+
+      cy.log(
+        "scenario 3: publicly shared dashboard with a filter (metabase#18061-3)",
+      );
+      H.visitAlias("@publicLink");
+
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("18061D");
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("18061");
+      cy.get("[data-element-id=pin-map]");
+
+      addFilter("Twitter");
+      cy.location("search").should("eq", "?category=Twitter");
+      cy.findAllByTestId("no-results-image");
+      cy.get("[data-element-id=pin-map]").should("not.exist");
+    });
+  });
+
+  describe("issue 18063", () => {
+    const questionDetails = {
+      name: "18063",
+      native: {
+        query:
+          'select null "LATITUDE", null "LONGITUDE", null "COUNT", \'NULL ROW\' "NAME"\nunion all select 55.6761, 12.5683, 1, \'Copenhagen\'\n',
+        "template-tags": {},
+      },
+      display: "map",
+    };
+
+    function selectFieldValue(field, value) {
+      toggleFieldSelectElement(field);
+      H.popover().findByText(value).click();
+    }
+
+    beforeEach(() => {
+      H.createNativeQuestion(questionDetails, { visitQuestion: true });
+
+      // Select a Pin map
+      H.openVizSettingsSidebar();
+      cy.findByTestId("chart-settings-widget-map.type")
+        .findByDisplayValue("Region map")
+        .click();
+      H.popover().contains("Pin map").click();
+
+      // Click on the popovers to close both popovers that open automatically.
+      // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
+      ["Latitude field", "Longitude field"].forEach((field) =>
+        H.leftSidebar().within(() => {
+          cy.get(`[data-field-title="${field}"]`)
+            .findByPlaceholderText("Select a field")
+            .should("exist");
+          toggleFieldSelectElement(field);
+        }),
+      );
+    });
+
+    it("should show the correct tooltip details for pin map even when some locations are null (metabase#18063)", () => {
+      selectFieldValue("Latitude field", "LATITUDE");
+      selectFieldValue("Longitude field", "LONGITUDE");
+
+      cy.get(".leaflet-marker-icon").trigger("mousemove");
+
+      H.tooltip().within(() => {
+        H.testPairedTooltipValues("LATITUDE", "55.68");
+        H.testPairedTooltipValues("LONGITUDE", "12.57");
+        H.testPairedTooltipValues("COUNT", "1");
+        H.testPairedTooltipValues("NAME", "Copenhagen");
+      });
+    });
+  });
+
+  describe("issues 32075, 30058", () => {
+    const testQuery = {
+      type: "query",
+      query: {
+        "source-query": {
+          "source-table": PEOPLE_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PEOPLE.LATITUDE,
+              { "base-type": "type/Float", binning: { strategy: "default" } },
+            ],
+            [
+              "field",
+              PEOPLE.LONGITUDE,
+              { "base-type": "type/Float", binning: { strategy: "default" } },
+            ],
+          ],
+        },
+      },
+      database: SAMPLE_DB_ID,
+    };
+
+    const addCountGreaterThan2Filter = () => {
+      H.openNotebook();
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
+      cy.findAllByTestId("action-buttons").last().button("Filter").click();
+      H.popover().findByText("Count").click();
+      H.selectFilterOperator("Greater than");
+      H.popover().within(() => {
+        cy.findByPlaceholderText("Enter a number").type("2");
+        cy.button("Add filter").click();
+      });
+    };
+
+    beforeEach(() => {
+      cy.signInAsNormalUser();
+    });
+
+    it("should still display visualization as a map after adding a filter (metabase#32075)", () => {
+      H.visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
+
+      H.visualize();
+      addCountGreaterThan2Filter();
+      H.visualize();
+
+      H.assertQueryBuilderRowCount(21);
+      H.tableInteractive().should("not.exist");
+      cy.get("[data-element-id=pin-map]").should("exist");
+    });
+
+    it("should still display visualization as a map after adding another column to group by", () => {
+      H.visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
+
+      H.visualize();
+      H.openNotebook();
+      H.addSummaryGroupingField({ field: "Birth Date" });
+      H.visualize();
+
+      H.assertQueryBuilderRowCount(1965);
+      H.tableInteractive().should("not.exist");
+      cy.get("[data-element-id=pin-map]").should("exist");
+    });
+
+    it("should still display visualization as a map after adding another aggregation", () => {
+      H.visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
+
+      H.visualize();
+      H.openNotebook();
+      H.addSummaryField({ metric: "Average of ...", field: "Longitude" });
+      H.visualize();
+
+      // The row count does not change, so wait until the query stops running
+      H.queryBuilderMain()
+        .findByText(/^Doing science/)
+        .should("not.exist");
+      H.tableInteractive().should("not.exist");
+      cy.get("[data-element-id=pin-map]").should("exist");
+    });
+
+    it("should change display to default after removing a column to group by when map is not sensible anymore", () => {
+      H.visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
+
+      H.visualize();
+      H.openNotebook();
+      H.removeSummaryGroupingField({ field: "Latitude: Auto binned" });
+      H.visualize();
+
+      cy.get("[data-element-id=pin-map]").should("not.exist");
+      H.echartsContainer().should("exist");
+    });
+
+    it("should not crash visualization after adding a filter (metabase#30058)", () => {
+      H.visitQuestionAdhoc({
+        dataset_query: testQuery,
+        display: "map",
+        displayIsLocked: true,
+      });
+
+      addCountGreaterThan2Filter();
+      H.visualize();
+
+      H.assertQueryBuilderRowCount(21);
+      cy.get("[data-element-id=pin-map]").should("exist");
+      cy.get(".Icon-warning").should("not.exist");
+    });
+  });
 });
 
 function toggleFieldSelectElement(field) {

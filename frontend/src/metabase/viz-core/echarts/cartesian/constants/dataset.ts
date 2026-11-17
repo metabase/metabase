@@ -27,6 +27,9 @@ export const X_AXIS_RAW_VALUE_DATA_KEY = `${NULL_CHAR}_x_raw` as const;
 // Key for the "other" series created by the `graph.max_categories` setting
 export const OTHER_DATA_KEY = `${NULL_CHAR}_other` as const;
 
+// Marks the summed "Other" row a row chart folds its overflow rows into.
+export const IS_FOLDED_ROW_DATA_KEY = `${NULL_CHAR}_is_folded` as const;
+
 // Stores the index that links this data point to its source in the original dataset (chartModel.dataset)
 // This reference allows tracking the origin of each point after dataset transformations are applied.
 export const INDEX_KEY = `${NULL_CHAR}_index` as const;

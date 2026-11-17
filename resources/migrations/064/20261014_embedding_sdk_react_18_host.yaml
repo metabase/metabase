@@ -1,0 +1,43 @@
+## Adds embedding_sdk_react_18_host: the host apps that use the React embedding SDK with React 18, so admins can
+## update them before Metabase 66 drops React 18. Temporary: a later release drops this table.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.g8il3a
+      author: npretto
+      comment: Add embedding_sdk_react_18_host
+      changes:
+        - createTable:
+            tableName: embedding_sdk_react_18_host
+            remarks: Host apps that used the React embedding SDK with React 18
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: host
+                  type: varchar(512)
+                  remarks: Hostname of the host app page, or an empty string when the page URL has no hostname
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_embedding_sdk_react_18_host_host
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the host was first recorded
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_seen_at
+                  type: ${timestamp_type}
+                  remarks: When the host was last recorded
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false

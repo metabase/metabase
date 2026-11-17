@@ -1,5 +1,6 @@
 ---
 title: MBQL Library changelog
+summary: Changes to the MBQL library API in `metabase.lib.js`, listed by release.
 ---
 
 # MBQL Library Changelog

@@ -8,6 +8,7 @@
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.agent-api.validation :as agent-api.validation]
    [metabase.ai-tracing.core :as ait]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
@@ -25,8 +26,11 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.metabot.core :as metabot]
+   [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.tools.construct :as metabot-construct]
+   [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.metabot.tools.resources :as metabot-resources]
    [metabase.metabot.tools.search :as metabot-search]
@@ -40,11 +44,15 @@
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.eclipse.jetty.io EofException)))
 
 ;;; --------------------------------------------------- Defaults ------------------------------------------------------
 
@@ -128,7 +136,8 @@
 
 (api.macros/defendpoint :get "/v1/ping" :- [:map [:message :string]]
   "Health check endpoint for the Agent API."
-  {:scope :unchecked}
+  {:deprecated true
+   :scope :unchecked}
   []
   {:message "pong"})
 
@@ -156,7 +165,8 @@
 
   Supports both term-based and semantic search queries. Results are ranked using
   Reciprocal Rank Fusion when both query types are provided."
-  {:scope metabot/agent-search
+  {:deprecated true
+   :scope metabot/agent-search
    :tool  {:name "search"
            :title "Search Metabase Content"
            :description (str "Search for tables, models, metrics, saved questions, dashboards, and collections "
@@ -258,7 +268,8 @@
   matching `::lib.schema/external-query` \u2014 see the `construct_notebook_query` tool
   documentation for the format reference. Returns a base64-encoded MBQL query that can be
   executed via /v1/execute or paginated via /v2/query."
-  {:scope metabot/agent-query-construct
+  {:deprecated true
+   :scope metabot/agent-query-construct
    :tool  {:name "construct_query"
            ;; Condensed inline summary so LLMs see the shape directly in `tools/list`. Full
            ;; grammar lives in the `construct_notebook_query` tool prompt.
@@ -272,8 +283,9 @@
                 "\n"
                 "Shape: every clause is `[\"op\", {}, ...args]` with a MANDATORY empty options "
                 "map at position 1. Every field reference is "
-                "`[\"field\", {}, [<db-name>, <schema-or-null>, <table-name>, <column-name>]]` "
-                "(4-segment portable FK string array, NOT a numeric id). Cross-stage refs use "
+                "`[\"field\", {}, [<db-name>, <schema>, <table-name>, <column-name>]]` "
+                "(4-segment portable FK string array, NOT a numeric id; the schema is `null` only in a "
+                "database without schemas). Cross-stage refs use "
                 "a bare column-name string in the third slot: `[\"field\", {}, \"count\"]`.\n"
                 "\n"
                 "Top level: `{\"lib/type\": \"mbql/query\", \"stages\": [...]}`. Each stage has "
@@ -332,7 +344,8 @@
   This endpoint does NOT execute the SQL; to run native SQL ad hoc use /v1/execute-sql. The
   MBQL execution endpoints (/v1/execute, /v2/query) reject native queries by design, so a
   handle produced here is for saving, not for /v2/query execution."
-  {:scope metabot/agent-sql-construct
+  {:deprecated true
+   :scope metabot/agent-sql-construct
    :tool  {:name "construct_native_query"
            :description (str "Construct a native (raw SQL) query for the given database. Returns "
                              "`{\"query_handle\": \"<uuid>\"}` to feed `create_question` and save it "
@@ -536,7 +549,8 @@
   Accepts either a JSON body (same shape as /v2/construct-query) or a `continuation_token`
   from a previous response. Returns results with column metadata and an optional
   `continuation_token` for fetching the next page."
-  {:scope metabot/agent-query
+  {:deprecated true
+   :scope metabot/agent-query
    :tool  {:name "query"
            :title "Query Tables and Metrics"
            :description (str "Execute a Metabase query and return results with column "
@@ -616,7 +630,8 @@
   - On failure: {:status :failed :error \"message\" ...}
 
   Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated)."
-  {:scope metabot/agent-query-execute
+  {:deprecated true
+   :scope metabot/agent-query-execute
    :tool  {:name "execute_query"
            :description (str "Execute a previously constructed query and return raw results with column metadata, "
                              "row count, and execution time. Use this when the user explicitly asks for raw data, "
@@ -648,7 +663,8 @@
   Requires the user to have native-query permission on the target database; the QP
   middleware enforces this. The instance-level `mcp-execute-sql-enabled` setting
   must also be on (it is by default)."
-  {:scope metabot/agent-sql-execute
+  {:deprecated true
+   :scope metabot/agent-sql-execute
    :tool  {:name "execute_sql"
            :description (str "Execute a raw SQL query against a Metabase-connected database. "
                              "Use this ONLY when MBQL via construct_query cannot express the question. "
@@ -678,9 +694,8 @@
 ;;; -------------------------------------------------- Read Resource -------------------------------------------------
 
 (mr/def ::read-resource-request
-  "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs."
-  [:map {:closed true}
-   [:uris [:sequential ms/NonBlankString]]])
+  "Arguments for /v1/read-resource, shared with the tool declaration."
+  (:args (tools.core/validate-tool! metabot-resources/read-resource-tool)))
 
 (mr/def ::read-resource-item
   "One fetched resource. Either `:content` (success) or `:error` (failure) is present."
@@ -696,31 +711,63 @@
    [:resources [:sequential ::read-resource-item]]
    [:output    :string]])
 
+(def ^:private read-resource-ctx
+  "The tool context for this endpoint.
+
+  `:tool-names` decides which recovery steps a per-URI failure keeps: a step is dropped unless the
+  caller has every tool its text names. This API publishes `search` (see `/v1/search` below), so the
+  \"find it with search\" steps survive here. Renaming that endpoint's tool drops those steps rather
+  than sending the caller at something it does not have, which is the point of `:uses`."
+  {:tool-names #{"search"}})
+
+(defn- read-resource-item
+  "One [[::read-resource-item]] from the tool's entry for that URI.
+
+  This endpoint's published item shape, built here rather than by the tool: a URI that could not be
+  read is this item's `:error`, not the call's. The tool reports per item and leaves what that means
+  to its caller."
+  [{:keys [item output failed? structured-output]}]
+  (cond-> {:uri (:uri item)}
+    failed?       (assoc :error output)
+    (not failed?) (assoc :content {:structured-output structured-output})))
+
 (api.macros/defendpoint :post "/v1/read-resource" :- ::read-resource-response
   "Read one or more Metabase resources via metabase:// URI patterns.
 
-  Dispatches into the shared URI resolver in `metabase.metabot.tools.resources`,
-  which validates URIs, fetches entities with per-URI permission checks, and
-  returns a map of `{:resources ... :output ...}`. Up to 5 URIs per call."
-  {:scope metabot/agent-resource-read
+  Calls the `read_resource` tool in `metabase.metabot.tools.resources` — the same record the agent
+  loop calls, so URI dispatch, per-URI permission checks and the per-URI failure text are shared.
+  A URI that cannot be read becomes that item's `:error`; the call still returns 200 with the items
+  that did read. Each request accepts up to five URIs; oversized batches return 400 before any reads."
+  {:deprecated true
+   :scope metabot/agent-resource-read
    :tool  {:name "read_resource"
-           :description (str "Read Metabase entities by metabase:// URI. "
-                             "Examples: metabase://databases, metabase://database/{id}/tables, "
-                             "metabase://collection/{id}/items, metabase://question/{id}, "
-                             "metabase://dashboard/{id}/items, metabase://table/{id}/fields. "
-                             "Up to 5 URIs per call. List endpoints cap at 25 items.")}}
+           :description metabot-resources/agent-api-description}}
   [_route-params
    _query-params
    body :- ::read-resource-request]
-  (try
-    (metabot-resources/read-resource body)
-    (catch clojure.lang.ExceptionInfo e
-      ;; The Metabot dispatcher's "too many URIs" guard throws ex-info without a
-      ;; :status-code. Surface it as a 400 to the HTTP boundary rather than the
-      ;; default 500.
-      (throw (ex-info (ex-message e)
-                      (merge {:status-code 400} (ex-data e))
-                      e)))))
+  ;; `with-batched-entries` rather than `tools.core/call`, because this endpoint's contract differs
+  ;; from the agent loop's in exactly one way: a call where no URI could be read is still a 200 with
+  ;; an `:error` per item, where the agent loop needs it to be a failed call. Composing the entries
+  ;; here is what lets both be true without the tool knowing either of us.
+  (tools.core/with-batched-entries metabot-resources/read-resource-tool body read-resource-ctx
+    {:on-item-fault
+     (fn [{:keys [uri]} e]
+       ;; One URI hitting a fault is this item's error, not the call's: the others read fine and the
+       ;; published response promises every URI it was given. Master did this too, with
+       ;; `(ex-message e)` as the text — a message written for a developer, crossing an API boundary
+       ;; to an agent that can do nothing with it. The exception goes to the log; the caller gets a
+       ;; sentence that is true and says nothing about our internals.
+       (log/error e "Reading a resource faulted" {:uri uri})
+       {:item    {:uri uri}
+        :failed? true
+        :output  (tru "This resource could not be read.")})}
+    (fn [entries]
+      {:resources (mapv read-resource-item entries)
+       ;; The tool's own envelope, so the text is identical to what the agent loop reads. Its
+       ;; `:structured-output` and `:data-parts` title are not part of this response.
+       :output    (tools.core/render-text
+                   (:output (tools.core/compose metabot-resources/read-resource-tool entries
+                                                read-resource-ctx)))})))
 
 ;;; ------------------------------------------------- Create Question ------------------------------------------------
 
@@ -887,7 +934,7 @@
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]])
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]])
 
 (mr/def ::create-question-response
   [:map
@@ -911,7 +958,8 @@
   The response `collection_path` is the saved location.
 
   Saving a native (raw SQL) query requires native-query permission on the target database."
-  {:scope metabot/agent-question-create
+  {:deprecated true
+   :scope metabot/agent-question-create
    :tool  {:name "create_question"
            :description (str "Save a query as a named question in Metabase. "
                              "Pass the `query_handle` returned by `construct_query` (MBQL) or "
@@ -937,7 +985,7 @@
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]])
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]])
 
 (mr/def ::create-metric-response
   [:map
@@ -975,7 +1023,8 @@
   If `collection_id` is omitted the metric is saved to the caller's personal collection.
   Pass an explicit `null` to save it to the root collection.
   The response `collection_path` is the saved location."
-  {:scope metabot/agent-metric-create
+  {:deprecated true
+   :scope metabot/agent-metric-create
    :tool  {:name "create_metric"
            :description (str "Save a query as a reusable metric in Metabase. "
                              "Pass the `query_handle` returned by `construct_query`. "
@@ -1003,7 +1052,7 @@
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
@@ -1029,7 +1078,8 @@
   Pass `query` (a query_handle from construct_query, or a base64 MBQL string) to replace the underlying
   query; the replacement must still be a valid metric (exactly one aggregation, at most one
   date/datetime grouping). The target card must be a metric — use `update_question` for questions."
-  {:scope metabot/agent-metric-update
+  {:deprecated true
+   :scope metabot/agent-metric-update
    :tool  {:name "update_metric"
            :description (str "Update a saved metric. Patch semantics - only fields you pass are changed. "
                              "To move a metric to a different collection, set collection_id. "
@@ -1061,7 +1111,7 @@
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
@@ -1087,7 +1137,8 @@
   Pass `query` (a query_handle from construct_query or construct_native_query, or a base64 query
   string) to replace the underlying query. Replacing it with a native (raw SQL) query requires
   native-query permission on the target database."
-  {:scope metabot/agent-question-update
+  {:deprecated true
+   :scope metabot/agent-question-update
    :tool  {:name "update_question"
            :description (str "Update a saved question (card). Patch semantics - only fields you pass are changed. "
                              "To move a card to a different collection, set collection_id. "
@@ -1123,7 +1174,8 @@
   Parameterized questions are NOT supported: if the card declares parameters or input
   template tags (field filters / variables), this returns a 400. Run it in Metabase, or
   save a parameterless version."
-  {:scope metabot/agent-question-execute
+  {:deprecated true
+   :scope metabot/agent-question-execute
    :tool  {:name "execute_question"
            :description (str "Run a saved question by id and return its rows with column metadata, "
                              "row count, and execution time. Use this to get the current results of "
@@ -1197,7 +1249,8 @@
   If `collection_id` is omitted the dashboard is saved to the caller's personal collection.
   Pass an explicit `null` to save it to the root collection.
   The response `collection_path` is the saved location."
-  {:scope metabot/agent-dashboard-create
+  {:deprecated true
+   :scope metabot/agent-dashboard-create
    :tool  {:name "create_dashboard"
            :description (str "Create a dashboard in Metabase. "
                              "Optionally pass question_ids to add saved questions as cards. "
@@ -1221,7 +1274,9 @@
                         (personal-collection-id))]
     (api/create-check :model/Dashboard {:collection_id collection_id})
     (let [cards (when (seq question_ids)
-                  (mapv #(api/read-check :model/Card %) question_ids))
+                  (let [id->card (u/index-by :id (t2/hydrate (agent-api.db/cards-with-ids (vec (distinct question_ids)))
+                                                             :can_read))]
+                    (mapv #(api/read-check (id->card %)) question_ids)))
           dash  (t2/with-transaction [_conn]
                   (let [dash (agent-api.db/insert-dashboard!
                               {:name          dashboard-name
@@ -1348,6 +1403,8 @@
   collide with that tab's cards; a move only reflows cards sharing the moved card's tab."
   [dashboard-id mutations]
   (let [current        (agent-api.db/dashcards dashboard-id)
+        ;; the dashboard row is the same for every mutation in the batch
+        dashboard      (agent-api.db/dashboard dashboard-id)
         ;; one fetch serves the default tab, per-mutation tab_id validation, and collision grouping
         tab-ids        (agent-api.db/dashboard-tab-ids dashboard-id)
         ;; new dashcards land on the first tab, alongside any nil-tab dashcards, which the
@@ -1364,6 +1421,12 @@
         ;; collision/reflow purposes they count as first-tab cards.
         effective-tab  (fn [dashcard] (or (:dashboard_tab_id dashcard) default-tab-id))
         on-tab         (fn [placed tab-id] (filterv #(= (effective-tab %) tab-id) placed))
+        add-cards      (u/index-by :id (t2/hydrate (agent-api.db/cards-with-ids
+                                                    (into [] (comp (filter (comp #{"add"} :action))
+                                                                   (keep :card_id)
+                                                                   (distinct))
+                                                          mutations))
+                                                   :can_read))
         state          (atom {:placed  (vec current)
                               :added   []
                               :removed []
@@ -1373,7 +1436,11 @@
       (try
         (case action
           "add"
-          (let [card    (api/read-check :model/Card card_id)
+          (let [card    (api/read-check (add-cards card_id))
+                ;; A card placed on a shared dashboard exposes its selected timeline events, so the
+                ;; same read check the REST writer applies runs here too.
+                _       (queries/check-newly-exposed-dashcards-timeline-permissions!
+                         dashboard current [{:card_id card_id}])
                 ;; A card internal to a different dashboard (a dashboard question) can't be added
                 ;; here — mirrors the REST dashcard-creation gate.
                 _       (api/check (or (nil? (:dashboard_id card))
@@ -1488,7 +1555,8 @@
   `{action: add|add_heading|add_text|update_text|remove|move, ...}` entries applied in
   order. `add` requires `card_id`; `add_heading` and `add_text` require `text` (Markdown
   for text cards); `update_text`, `remove`, and `move` require `dashcard_id`."
-  {:scope metabot/agent-dashboard-update
+  {:deprecated true
+   :scope metabot/agent-dashboard-update
    :tool  {:name "update_dashboard"
            :description (str "Update a dashboard. Patch semantics - only fields you pass are changed. "
                              "Set collection_id to move it. "
@@ -1608,7 +1676,8 @@
 
   Pass `parent_collection_id` to nest under another collection; omit for a root-level collection.
   The caller must have write access to the parent (or root, if no parent given)."
-  {:scope metabot/agent-collection-create
+  {:deprecated true
+   :scope metabot/agent-collection-create
    :tool  {:name "create_collection"
            :description (str "Create a new collection in Metabase. "
                              "Set parent_collection_id to nest under another collection; "
@@ -1780,10 +1849,71 @@
   "Wrap routes so they may only be accessed when the Agent API is enabled."
   agent-api.validation/+agent-api-enabled)
 
+(defn- exception-response
+  "The response to an exception raised while handling an Agent API request, never with a stack trace.
+  A 4xx exception without a database cause keeps its message and client-facing ex-data. Any other exception goes to the
+  server log, as a database failure when [[metabot-construct/database-error?]] says it is one, and the caller gets a
+  generic 500 whatever `hide-stacktraces` says."
+  [e]
+  (let [{:keys [status-code] :as data} (ex-data e)
+        client-data                     (api-error/response-data data)
+        database-error?                 (metabot-construct/database-error? e {:ignore-status? true})]
+    (if (and (not database-error?) status-code (<= 400 status-code 499))
+      {:status status-code
+       :body   (if (empty? client-data)
+                 (ex-message e)
+                 (merge {:message (ex-message e)} client-data))}
+      (do
+        (if database-error?
+          (log/error e "Database failure in Agent API")
+          (log/error e "Unhandled error in Agent API request"))
+        (when (nil? status-code)
+          (analytics/inc! :metabase-api/unhandled-errors))
+        {:status 500
+         :body   {:message (tru "Something went wrong")}}))))
+
+(defn- query-failure-body
+  "The body for an error that a streamed query run writes.
+  A failure that [[query-execution/caller-facing-failure?]] accepts keeps its status, error and error type. Any other
+  failure goes to the server log without the query, and the caller gets a generic message."
+  [error]
+  (if (query-execution/caller-facing-failure? error)
+    (merge {:status :failed} (select-keys error [:error :error_type]))
+    (do
+      (log/errorf "Agent API query run failed: %s" (u/pprint-to-str (dissoc error :json_query :preprocessed :native)))
+      {:status :failed
+       :error  (tru "Something went wrong")})))
+
+(defn- wrap-error-responses
+  "Middleware that keeps internal detail out of Agent API error responses, since an agent passes them to its LLM.
+  A raised exception gets [[exception-response]], and an error that a streamed query run writes gets
+  [[query-failure-body]]. When the client went away before its response was written, the default exception handling
+  logs a canceled request, as on any other route."
+  [handler]
+  (fn [request respond raise]
+    (let [callback-called? (volatile! false)
+          respond' (fn [response]
+                     (let [response (streaming-response/with-error-response-fn response query-failure-body)]
+                       (vreset! callback-called? true)
+                       (respond response)))
+          raise'   (fn [e]
+                     (when @callback-called?
+                       (throw e))
+                     (vreset! callback-called? true)
+                     (if (instance? EofException e)
+                       (raise e)
+                       (respond' (exception-response e))))]
+      (try
+        (handler request respond' raise')
+        (catch Throwable e
+          (if @callback-called?
+            (throw e)
+            (raise' e)))))))
+
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 
 (def ^:private base-routes
-  (api.macros/ns-handler *ns* +auth))
+  (api.macros/ns-handler *ns* +auth wrap-error-responses))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/agent/` routes."
@@ -1826,3 +1956,11 @@
                                      (respond response))
                                    raise))))
    (fn [prefix] (open-api/open-api-spec base-routes prefix))))
+
+(defn defendpoint-scopes
+  "All defendpoint scopes from agent-api as a sorted set."
+  []
+  (into (sorted-set)
+        (comp (keep #(get-in % [:form :metadata :scope]))
+              (filter string?))
+        (vals (api.macros/ns-routes 'metabase.agent-api.api))))

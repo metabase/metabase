@@ -16,8 +16,7 @@
    scopes deny (a no-op update would return the full entity). `read-scopes` is everything the
    read path would demand: the read tool's own scope plus any per-type extra. `ack-keys` are
    keys of `row` the caller already supplied (and are thus not read-gated) that should survive
-   the degradation — e.g. `bookmark_content`'s `:bookmarked`. Unscoped callers (cookie sessions
-   bind the unrestricted sentinel) always get the row. Throws when `read-scopes` is empty."
+   the degradation — e.g. `bookmark_content`'s `:bookmarked`. Throws when `read-scopes` is empty."
   [token-scopes read-scopes row ack-keys]
   ;; An empty `read-scopes` would make `missing` empty and hand back the ungated row, which is
   ;; indistinguishable from a gate that ran and passed. Every caller reads something back, so

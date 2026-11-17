@@ -1,4 +1,3 @@
-created_at: '2026-04-02T01:50:06.081195Z'
 creator_id: admin@example.com
 definition:
   database: Sample Database
@@ -21,6 +20,4 @@ definition:
 entity_id: d4G5fMj5smJ17Nd0dvE2A
 name: Median Order Total
 serdes/meta:
-- id: d4G5fMj5smJ17Nd0dvE2A
-  label: median_order_total
-  model: Measure
+- model: Measure

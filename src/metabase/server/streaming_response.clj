@@ -8,6 +8,7 @@
    [metabase.server.settings :as server.settings]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.async :as async.u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -41,9 +42,9 @@
    (.write os ba offset len)))
 
 (defn- format-exception [e]
-  (cond-> (Throwable->map e)
-    ;; `:data` is the ex-data, which for QP exceptions routinely carries the whole query; drop it along with the
-    ;; stacktrace and cause chain, as the (non-streaming) exception middleware does.
+  (cond-> (api-error/throwable->map e)
+    ;; `:data` is the client-facing part of the ex-data; drop it along with the stacktrace and cause chain, as the
+    ;; (non-streaming) exception middleware does.
     (server.settings/hide-stacktraces) (dissoc :via :trace :data)))
 
 ;; Implemented by the output stream handed to a streaming response body, so that [[write-error!]] -- called from the
@@ -399,7 +400,7 @@
 
 (defn- respond
   [{:keys [^HttpServletResponse response ^AsyncContext async-context request-map response-map request]}
-   f {:keys [content-type status headers], :as options} finished-chan]
+   f {:keys [content-type status headers async-timeout-ms], :as options} finished-chan]
   (let [canceled-chan (a/promise-chan)
         completed?   (AtomicBoolean. false)]
     (.addListener async-context
@@ -415,6 +416,8 @@
                     (onComplete [_ _event])
                     (onStartAsync [_ _event])))
     (try
+      (when async-timeout-ms
+        (.setTimeout async-context async-timeout-ms))
       (.setStatus response (or status 202))
       (let [gzip?   (should-gzip-response? request-map)
             headers (cond-> (assoc (merge headers (:headers response-map))
@@ -521,6 +524,8 @@
      of a query) must supply their own executor so they cannot exhaust it. The supplied executor's futures must
      support real interruption (`Future.cancel(true)`) — the hung-request escalation interrupts the worker, and a
      ForkJoinPool-backed executor silently ignores it.
+  *  `:async-timeout-ms` -- how long the response may run before Jetty completes it, cutting the stream short.
+     Defaults to `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`; `0` means no limit.
   *  `:error-response-fn` -- optional function applied to any error body right before [[write-error!]] writes it to the
      client. Usually added after the fact with [[with-error-response-fn]]."
   {:style/indent 2, :arglists '([options [os-binding canceled-chan-binding] & body])}

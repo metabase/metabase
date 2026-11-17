@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
-   [metabase.driver.connection :as driver.conn]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -312,7 +311,7 @@
       - db-name
       - host
 
-  See the [plugin manifest reference](https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference)
+  See the [plugin manifest reference](https://www.metabase.com/docs/latest/developers-guide/drivers/plugins#the-metabase-plugin-manifest-reference)
   for more details."
   {:dbname                   default-dbname-details
    :host                     default-host-details
@@ -324,6 +323,7 @@
    :multi-level-schema       multi-level-schema
    :additional-options       additional-options
    :advanced-options-start   advanced-options-start
+   :json-unfolding           json-unfolding
    :default-advanced-options default-advanced-options})
 
 (def cloud-ip-address-info
@@ -335,7 +335,7 @@
              (when-let [ips (warehouses/cloud-gateway-ips)]
                (str (deferred-tru
                      (str "If your database is behind a firewall, you may need to allow connections from our Metabase "
-                          "[Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"))
+                          "[Cloud IP addresses](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist):"))
                     "\n"
                     (str/join " - " ips))))})
 
@@ -500,7 +500,7 @@
   ;; This allows adding support for nested-field-columns for drivers in the future and
   ;; have json-unfolding enabled by default, without
   ;; needing a migration to add the `json-unfolding=true` key to the database details.
-  (let [json-unfolding (:json-unfolding (driver.conn/effective-details database))]
+  (let [json-unfolding (:json-unfolding (:details database))]
     (if (nil? json-unfolding)
       true
       json-unfolding)))

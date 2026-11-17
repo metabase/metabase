@@ -54,9 +54,12 @@
 (defn drop-all-tables [conn]
   ;; can't use current-partitions because we want to get rid of them regardless
   ;; of whether they're attached currently or not
-  (doseq [t (next.jdbc/execute! conn ["SELECT table_name FROM information_schema.tables
-                                      WHERE table_name LIKE 'query_execution_%'"])]
-    (next.jdbc/execute! conn [(format "DROP TABLE %s" (:tables/table_name t))])))
+  (doseq [t (next.jdbc/execute! conn ["SELECT table_name, table_schema
+                                         FROM information_schema.tables
+                                        WHERE table_name LIKE 'query_execution_%'"])]
+    (next.jdbc/execute! conn [(format "DROP TABLE %s.%s"
+                                      (:tables/table_schema t)
+                                      (:tables/table_name t))])))
 
 (deftest manage-partitions
   (when (= :postgres (mdb/db-type))
@@ -114,8 +117,10 @@
   (when (= :postgres (mdb/db-type))
     (with-open [conn (.getConnection (mdb/data-source))]
       (try
-        (testing "initial partition"
+        (testing "no partitions"
           (drop-all-tables conn)
+          (is (not (partitions/fully-on-partitions?))))
+        (testing "initial partition"
           ;; initial partition, upper bound is exclusive
           (partitions/create-partition conn {:name "query_execution_2026_09"
                                              :from "1970-01-01"
@@ -143,6 +148,30 @@
           ;; by now the rows from 2026-10-02 have cycled out of retention
           (partitions/manage-partitions conn #t "2026-11-01" 25)
           (is (partitions/fully-on-partitions?)))
+        (finally
+          (drop-all-tables conn)
+          ;; make sure we end up in a good state for other tests
+          (partitions/create-partition conn {:name "query_execution_2026_08"
+                                             :from "1970-01-01"
+                                             :to "2099-01-01"}))))))
+
+(deftest current-partitions-current-schema-only
+  (when (= :postgres (mdb/db-type))
+    (with-open [conn (.getConnection (mdb/data-source))]
+      (try
+        (drop-all-tables conn)
+        (partitions/manage-partitions conn #t "2026-11-01" 25)
+        (next.jdbc/execute! conn ["CREATE SCHEMA IF NOT EXISTS metabase2"])
+        (next.jdbc/execute! conn ["CREATE TABLE IF NOT EXISTS metabase2.query_execution
+                                   (started_at TIMESTAMP) PARTITION BY RANGE (started_at)"])
+        (next.jdbc/execute! conn ["CREATE TABLE metabase2.query_execution_2026_01
+                                      PARTITION OF metabase2.query_execution
+                                     FOR VALUES FROM ('2026-01-01') TO ('2026-02-01')"])
+        (next.jdbc/execute! conn ["CREATE TABLE metabase2.query_execution_2026_11
+                                      PARTITION OF metabase2.query_execution
+                                     FOR VALUES FROM ('2026-11-01') TO ('2026-12-01')"])
+        (is (= ["query_execution_2026_11" "query_execution_2026_12"]
+               (sort (partitions/current-partitions conn))))
         (finally
           (drop-all-tables conn)
           ;; make sure we end up in a good state for other tests

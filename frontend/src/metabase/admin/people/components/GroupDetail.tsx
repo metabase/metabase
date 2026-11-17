@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
@@ -89,7 +90,7 @@ export const GroupDetail = ({
     } else {
       const { error } = await updateMembership(membership);
       if (error) {
-        sendToast({ message: t`Failed to update user` });
+        sendToast({ message: t`Failed to update user`, variant: "negative" });
       }
     }
   };
@@ -115,7 +116,10 @@ export const GroupDetail = ({
     } else {
       const { error } = await deleteMembership(membership);
       if (error) {
-        sendToast({ message: t`Failed to remove user from group` });
+        sendToast({
+          message: t`Failed to remove user from group`,
+          variant: "negative",
+        });
       }
     }
   };

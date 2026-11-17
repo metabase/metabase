@@ -19,16 +19,7 @@ import {
 import { SchemaFormSelect } from "metabase/transforms/components/SchemaFormSelect";
 import { TagsMultiFormSelect } from "metabase/transforms/components/TagsMultiFormSelect";
 import { TargetNameInput } from "metabase/transforms/components/TargetNameInput";
-import {
-  Box,
-  Button,
-  FocusTrap,
-  Group,
-  Input,
-  Modal,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Button, FocusTrap, Input, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { slugify } from "metabase/utils/formatting";
 import { useReplaceModelWithTransformMutation } from "metabase-enterprise/api";
@@ -57,9 +48,9 @@ export function ReplaceWithTransformModal({
 }: ReplaceWithTransformModalProps) {
   return (
     <Modal
+      density="relaxed"
       title={t`Convert this model to a transform?`}
       opened={opened}
-      padding="xxl"
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
@@ -158,7 +149,7 @@ function ReplaceWithTransformForm({
       onSubmit={handleSubmit}
     >
       <Form>
-        <Stack gap="xl" mt="sm">
+        <Stack gap="xl">
           <Text>
             {t`We'll create a transform based on the model and replace usages of the model with the transform's output table. Then we'll convert the model to a saved question.`}
           </Text>
@@ -166,7 +157,6 @@ function ReplaceWithTransformForm({
             name="collectionId"
             title={t`Folder to save this transform in`}
             collectionPickerModalProps={{ namespaces: ["transforms"] }}
-            style={{ marginBottom: 0 }}
           />
           <Input.Wrapper label={t`Database this model belongs to`}>
             <Text>{database.name}</Text>
@@ -184,21 +174,19 @@ function ReplaceWithTransformForm({
             label={t`Scheduling tags`}
             description={t`Transforms are run by jobs. Jobs run every transform with matching tags.`}
           />
-          <Group gap="xxs">
-            <Box flex={1}>
-              <FormErrorMessage />
-            </Box>
-            <Button
-              variant="subtle"
-              color="neutral"
-              onClick={onClose}
-            >{t`Cancel`}</Button>
-            <FormSubmitButton
-              label={t`Convert to a transform`}
-              variant="filled"
-            />
-          </Group>
         </Stack>
+        <Modal.Footer>
+          <FormErrorMessage flex={1} />
+          <Button
+            variant="subtle"
+            color="neutral"
+            onClick={onClose}
+          >{t`Cancel`}</Button>
+          <FormSubmitButton
+            label={t`Convert to a transform`}
+            variant="filled"
+          />
+        </Modal.Footer>
       </Form>
     </FormProvider>
   );

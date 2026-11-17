@@ -92,6 +92,7 @@ const Template = () => (
         width={800}
         timelineEvents={TIMELINE_EVENTS}
         selectedTimelineEventIds={[5]}
+        onSelectTimelineEvents={() => {}}
       />
     </Box>
   </VisualizationWrapper>

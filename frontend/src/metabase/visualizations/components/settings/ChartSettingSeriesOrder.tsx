@@ -1,5 +1,4 @@
 import { arrayMove } from "@dnd-kit/sortable";
-import { updateIn } from "icepick";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -7,6 +6,7 @@ import _ from "underscore";
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import type { DragEndEvent } from "metabase/common/components/Sortable";
 import {
+  ActionIcon,
   Box,
   Button,
   Flex,
@@ -88,7 +88,9 @@ export const ChartSettingSeriesOrder = ({
         (item) => item.key === selectedItem.key,
       );
       onChange(
-        updateIn(orderedItems, [index, "enabled"], (enabled) => !enabled),
+        orderedItems.map((item, i) =>
+          i === index ? { ...item, enabled: !item.enabled } : item,
+        ),
       );
     },
     [orderedItems, onChange],
@@ -174,15 +176,14 @@ export const ChartSettingSeriesOrder = ({
               />
               <Text truncate fw="bold">{t`Other`}</Text>
             </Group>
-            {/* TODO: replace with ActionIcon (GDGT-2457) */}
-            <Button
+            <ActionIcon
               variant="subtle"
-              color="neutral"
               size="sm"
-              leftSection={<Icon name="gear" />}
               aria-label={t`Other series settings`}
               onClick={handleOtherSeriesSettingsClick}
-            />
+            >
+              <Icon name="gear" />
+            </ActionIcon>
           </Flex>
         ),
       },

@@ -196,10 +196,6 @@
   transition: opacity 150ms linear;
 }
 
-.agentPartActionIcon:hover {
-  background-color: var(--mb-color-background_page-tertiary) !important;
-}
-
 .agentPartCard:hover .agentPartActions,
 .agentPartCard:focus-within .agentPartActions {
   opacity: 1;

@@ -37,7 +37,6 @@
    [better-cond.core :as b]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.channel.db :as channel.db]
    [metabase.channel.render.body :as body]
@@ -59,6 +58,7 @@
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru trun]]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [metabase.util.memoize :as memo]
    [toucan2.core :as t2])
   (:import
@@ -462,44 +462,46 @@
 
   Returns nil for dashcard kinds we don't render (placeholder/action), or for a card with no part -- a card whose
   query failed or was hidden while empty (`card.hide_empty`), which `execute-dashboard` omits."
-  [dashcard parameters parts-by-dashcard-id]
-  (let [inline (resolve-inline-params dashcard parameters)
-        geom   (cond-> (select-keys dashcard [:row :col :size_x :size_y])
-                 (seq inline) (assoc :inline-params inline))]
-    (cond
-      (:card_id dashcard)
-      ;; Reuse the pre-executed part. Large results stay disk-backed (a StreamingTempFileStorage handle, see
-      ;; [[metabase.notification.payload.temp-storage]]) here and are realized lazily at draw time in
-      ;; [[render-card-cell!]] -- so only the card being drawn is resident in memory, exactly as the email channel
-      ;; walks its parts one at a time to keep its memory watermark low.
-      (when-let [part (get parts-by-dashcard-id (:id dashcard))]
-        (assoc geom
-               :kind :card
-               :part (cond-> part
-                       (seq inline) (assoc :inline-params inline))))
+  ([dashcard parameters parts-by-dashcard-id]
+   (dashcard->cell dashcard parameters parts-by-dashcard-id (notification.payload/link-card-entities [dashcard])))
+  ([dashcard parameters parts-by-dashcard-id link-card-entities]
+   (let [inline (resolve-inline-params dashcard parameters)
+         geom   (cond-> (select-keys dashcard [:row :col :size_x :size_y])
+                  (seq inline) (assoc :inline-params inline))]
+     (cond
+       (:card_id dashcard)
+       ;; Reuse the pre-executed part. Large results stay disk-backed (a StreamingTempFileStorage handle, see
+       ;; [[metabase.notification.payload.temp-storage]]) here and are realized lazily at draw time in
+       ;; [[render-card-cell!]] -- so only the card being drawn is resident in memory, exactly as the email channel
+       ;; walks its parts one at a time to keep its memory watermark low.
+       (when-let [part (get parts-by-dashcard-id (:id dashcard))]
+         (assoc geom
+                :kind :card
+                :part (cond-> part
+                        (seq inline) (assoc :inline-params inline))))
 
-      (notification.payload/virtual-card-of-type? dashcard "heading")
-      (assoc geom :kind :heading, :text (virtual-dashcard->text dashcard parameters))
+       (notification.payload/virtual-card-of-type? dashcard "heading")
+       (assoc geom :kind :heading, :text (virtual-dashcard->text dashcard parameters))
 
-      (notification.payload/virtual-card-of-type? dashcard "text")
-      (assoc geom :kind :text
-             :text    (virtual-dashcard->text dashcard parameters)
-             :align-h (text-card-align-h dashcard)
-             :align-v (text-card-align-v dashcard))
+       (notification.payload/virtual-card-of-type? dashcard "text")
+       (assoc geom :kind :text
+              :text    (virtual-dashcard->text dashcard parameters)
+              :align-h (text-card-align-h dashcard)
+              :align-v (text-card-align-v dashcard))
 
-      ;; link cards render as a markdown `### [name](url)` text cell (clickable like any md link);
-      ;; reuse the email conversion so they match, and so entity links are permission-checked.
-      (notification.payload/virtual-card-of-type? dashcard "link")
-      (when-let [part (notification.payload/dashcard-link-card->part dashcard)]
-        (assoc geom :kind :text, :text (:text part)))
+       ;; link cards render as a markdown `### [name](url)` text cell (clickable like any md link);
+       ;; reuse the email conversion so they match, and so entity links are permission-checked.
+       (notification.payload/virtual-card-of-type? dashcard "link")
+       (when-let [part (notification.payload/dashcard-link-card->part dashcard link-card-entities)]
+         (assoc geom :kind :text, :text (:text part)))
 
-      ;; iframe cards (embedded video/web players) can't render in a PDF -- show the target as a
-      ;; clickable link instead (autolinked bare URL).
-      (notification.payload/virtual-card-of-type? dashcard "iframe")
-      (when-let [url (iframe-url (get-in dashcard [:visualization_settings :iframe]))]
-        (assoc geom :kind :text, :text url))
+       ;; iframe cards (embedded video/web players) can't render in a PDF -- show the target as a
+       ;; clickable link instead (autolinked bare URL).
+       (notification.payload/virtual-card-of-type? dashcard "iframe")
+       (when-let [url (iframe-url (get-in dashcard [:visualization_settings :iframe]))]
+         (assoc geom :kind :text, :text url))
 
-      :else nil)))
+       :else nil))))
 
 (defn- build-cells
   "Order a tab's (or the untabbed dashboard's) dashcards and build cells, normalizing row numbers so the first
@@ -508,8 +510,9 @@
   (let [sorted  (sort dashboard-card/dashcard-comparator dashcards)
         min-row (if (seq sorted)
                   (apply min (map :row sorted))
-                  0)]
-    (into [] (comp (keep #(dashcard->cell % parameters parts-by-dashcard-id))
+                  0)
+        link-card-entities (notification.payload/link-card-entities sorted)]
+    (into [] (comp (keep #(dashcard->cell % parameters parts-by-dashcard-id link-card-entities))
                    (map  #(update % :row - min-row)))
           sorted)))
 
@@ -647,7 +650,9 @@
   (binding [js.svg/*chart-size* {:width       w-px
                                  :height      h-px
                                  :scale       common/chart-supersample
-                                 :fit-within? true}]
+                                 :fit-within? true
+                                 :grid-size   (when (and (:size_x dashcard) (:size_y dashcard))
+                                                {:width (:size_x dashcard) :height (:size_y dashcard)})}]
     (let [viz                    (or (:visualization_settings dashcard)
                                      (:visualization_settings card))
           {:keys [content type]} (js.svg/*javascript-visualization* (cards-with-data card dashcard data) viz)]
@@ -860,27 +865,16 @@
                            (append-style header-divider-css))))
           items)))
 
-(defn- restyle-form
-  "Restyle one walked Hiccup form: the `<table>` gets [[table-css]] (fill the frame, drop its own
-  border/radius/margin); with `add-dividers?` header rows also get per-cell dividers. Everything else passes
-  through."
-  [add-dividers? form]
-  (cond
-    (and (element? form :table) (map? (second form)))
-    (append-style form table-css)
-
-    (and add-dividers? (element? form :tr) (header-row? form))
-    (add-header-dividers form)
-
-    :else form))
-
 (defn- restyle-table
   "Restyle the inner `<table>` to fill the card frame: `width:100%`, dropping its own border/radius/margin (the
   native frame and per-cell dividers remain). In the fixed-width clip box this fills the cell when the content
   is narrower (columns stretch, like the dashboard) and overflows-then-clips when it's wider. `add-dividers?`
   adds header dividers to match the body (native `:table` only -- pivots and object-detail border their cells)."
   [content add-dividers?]
-  (walk/postwalk #(restyle-form add-dividers? %) content))
+  (match/replace-all content
+    [:table #'map? & _] (append-style &match table-css)
+    (:and [:tr & _] #'header-row?) (cond-> &match
+                                     add-dividers? add-header-dividers)))
 
 (def ^:private footer-text-css
   "Font size and color shared by the card footers -- the native table's row-count footer and object-detail's

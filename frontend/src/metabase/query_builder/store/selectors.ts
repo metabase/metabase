@@ -1,14 +1,9 @@
 /*eslint no-use-before-define: "error"*/
 import { createSelector } from "@reduxjs/toolkit";
-import * as d3 from "d3";
-import { merge, updateIn } from "icepick";
 import { shallowEqual } from "react-redux";
 import _ from "underscore";
 
-import { timelineApi } from "metabase/api";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
-import { getSortedTimelines } from "metabase/common/utils/timelines";
-import { dayjs } from "metabase/dayjs";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import {
   getShallowTableFieldIds,
@@ -21,20 +16,24 @@ import {
   isQuestionRunnable,
 } from "metabase/querying/common/utils/question";
 import { getSetting } from "metabase/settings";
+import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
+import { filterTimelinesByXAxes } from "metabase/timelines/panel/utils";
+import { deepMerge } from "metabase/utils/deep-merge";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
-import { parseTimestamp } from "metabase/utils/time-dayjs";
-import { isNotNull } from "metabase/utils/types";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
+import { getIsPKFromSourcePredicate } from "metabase/visualizations/components/ObjectDetail/utils";
 import {
-  type TimeSeriesInterval,
-  computeTimeseriesDataInterval,
+  getCollectionTimelinesVisibility,
+  getRecordedTimelineEventsVisibility,
+  resolveVisibleTimelineEvents,
+} from "metabase/visualizations/lib/timeline-events-visibility";
+import {
+  getTimeseriesXAxis as computeTimeseriesXAxis,
   createRawSeries,
   extractRemappings,
   getComputedSettingsForSeries,
   getVisualizationTransformed,
-  getXValues,
   isTimeseries,
-  minTimeseriesUnit,
 } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -42,7 +41,6 @@ import {
   normalizeParameterValue,
   normalizeParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
 import type {
   Bookmark,
   ColumnFormattingSetting,
@@ -51,14 +49,15 @@ import type {
   DatasetColumn,
   DatasetQuery,
   Field,
+  FieldId,
   Series,
-  Timeline,
-  TimelineEvent,
+  TimelineEventsVisibility,
 } from "metabase-types/api";
-import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+import type { DeepPartial } from "metabase-types/utils/types";
 
 import { cleanIndexFlags } from "../model-indexes/actions";
 import { getWritableColumnProperties } from "../utils";
+import { isLegacyTimelineEventsSource } from "../utils/timeline-events";
 import { getQuestionWithDefaultVisualizationSettings } from "../utils/viz-settings";
 
 import {
@@ -134,10 +133,10 @@ export const getLastRunCard = (state: QueryBuilderStoreState) =>
 export const getMetadataDiff = (state: QueryBuilderStoreState) =>
   state.qb.metadataDiff;
 
-export const getVisibleTimelineEventIds = (state: QueryBuilderStoreState) =>
-  state.qb.visibleTimelineEventIds;
 export const getSelectedTimelineEventIds = (state: QueryBuilderStoreState) =>
   state.qb.selectedTimelineEventIds;
+export const getFocusedTimelineEventIds = (state: QueryBuilderStoreState) =>
+  getUiControls(state).focusedTimelineEventIds;
 
 const getRawQueryResults = (state: QueryBuilderStoreState) =>
   state.qb.queryResults;
@@ -251,7 +250,12 @@ export const getQueryResults = createSelector(
 
     function applyMetadataDiff<T extends DatasetColumn | Field>(column: T): T {
       const columnDiff = metadataDiff[column.name];
-      return columnDiff ? merge(column, columnDiff) : column;
+      if (!columnDiff) {
+        return column;
+      }
+      // The diff only holds writable column properties that exist on both
+      // `DatasetColumn` and `Field`, so it is a partial of `T`.
+      return deepMerge(column, columnDiff as DeepPartial<T>);
     }
 
     return [
@@ -304,48 +308,48 @@ export const getNextRunParameters = createSelector(
   (parameters) => normalizeParameters(parameters),
 );
 
-export const getTableId = createSelector([getQuestion], (question) => {
-  if (!question) {
-    return;
-  }
+const getSourceTableId = createSelector([getQuestion], (question) =>
+  question != null ? Lib.primarySourceTableId(question.query()) : null,
+);
 
-  return Lib.sourceTableOrCardId(question.query());
-});
+export const getSourceCardId = createSelector([getQuestion], (question) =>
+  question != null ? Lib.primarySourceCardId(question.query()) : null,
+);
 
 export const getTableMetadata = createSelector(
-  [getTableId, getShallowTables],
+  [getSourceTableId, getShallowTables],
   (tableId, tables) => (tableId != null ? tables[tableId] : undefined),
 );
 
-const NO_FIELD_IDS: Field["id"][] = [];
+const NO_FIELD_IDS: FieldId[] = [];
 
 const getTableFieldIds = (state: QueryBuilderStoreState) => {
-  const tableId = getTableId(state);
+  const tableId = getSourceTableId(state);
   return tableId != null
     ? getShallowTableFieldIds(state, tableId)
     : NO_FIELD_IDS;
 };
 
 export const getTableForeignKeys = (state: QueryBuilderStoreState) => {
-  const tableId = getTableId(state);
+  const tableId = getSourceTableId(state);
   return (tableId != null && getShallowTableForeignKeys(state, tableId)) || [];
 };
 
 export const getPKColumnIndex = createSelector(
-  [getFirstQueryResult, getTableId],
-  (result, tableId) => {
+  [getFirstQueryResult, getSourceTableId, getSourceCardId],
+  (result, tableId, cardId) => {
     if (!result || !result.data) {
       return;
     }
     const { cols } = result.data;
+    const isPKFromSource = getIsPKFromSourcePredicate({ tableId, cardId });
 
-    const hasMultiplePks =
-      cols.filter(getIsPKFromTablePredicate(tableId)).length > 1;
+    const hasMultiplePks = cols.filter(isPKFromSource).length > 1;
 
     if (hasMultiplePks) {
       return -1;
     }
-    return cols.findIndex(getIsPKFromTablePredicate(tableId));
+    return cols.findIndex(isPKFromSource);
   },
 );
 
@@ -400,7 +404,7 @@ export const getRowIndexToPKMap = createSelector(
 function areLegacyQueriesEqual(
   queryA: DatasetQuery | undefined,
   queryB: DatasetQuery | undefined,
-  tableFieldIds: Field["id"][],
+  tableFieldIds: FieldId[],
 ) {
   if (queryA == null || queryB == null) {
     return false;
@@ -425,7 +429,7 @@ function areComposedEntitiesEquivalent({
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableFieldIds: Field["id"][];
+  tableFieldIds: FieldId[];
 }) {
   const isQuestion = originalQuestion?.type() === "question";
   if (!originalQuestion || !lastRunQuestion || !currentQuestion || isQuestion) {
@@ -473,7 +477,7 @@ export function areQueriesEquivalent({
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableFieldIds: Field["id"][];
+  tableFieldIds: FieldId[];
 }) {
   return (
     areLegacyQueriesEqual(
@@ -817,151 +821,47 @@ export const getIsTimeseries = createSelector(
   (settings) => settings && isTimeseries(settings),
 );
 
-export const getTimeseriesXValues = createSelector(
-  [getIsTimeseries, getTransformedSeries, getVisualizationSettings],
-  (isTimeseries, series, settings) =>
-    isTimeseries && series && settings
-      ? getXValues({ series, settings })
-      : null,
+export const getTimeseriesXAxis = createSelector(
+  [getTransformedSeries, getVisualizationSettings],
+  (series, settings) =>
+    series && settings ? computeTimeseriesXAxis(series, settings) : null,
 );
 
-export const getTimeseriesDataInterval = createSelector(
+const getFilteredTimelines = createSelector(
+  [getTransformedTimelines, getTimeseriesXAxis],
+  (timelines, xAxis) =>
+    filterTimelinesByXAxes(timelines, xAxis ? [xAxis] : null),
+);
+
+const NO_TIMELINE_EVENTS_VISIBILITY: TimelineEventsVisibility = {};
+
+export const getTimelineEventsVisibility = createSelector(
   [
-    getTransformedSeries,
-    getVisualizationSettings,
-    getIsTimeseries,
-    getTimeseriesXValues,
-  ],
-  (series, settings, isTimeseries, xValues): TimeSeriesInterval | null => {
-    if (!isTimeseries || !xValues) {
-      return null;
-    }
-    const columns = series?.[0]?.data?.cols ?? [];
-    const dimensions = settings?.["graph.dimensions"] ?? [];
-    const dimensionColumns = dimensions.map((dimension) =>
-      columns.find((column) => column != null && column.name === dimension),
-    );
-    const columnUnits = dimensionColumns
-      .map((column) =>
-        isAbsoluteDateTimeUnit(column?.unit) ? column.unit : null,
-      )
-      .filter(isNotNull);
-    return (
-      computeTimeseriesDataInterval(xValues, minTimeseriesUnit(columnUnits)) ??
-      null
-    );
-  },
-);
-
-type Numeric = string | number | boolean | object | dayjs.Dayjs;
-type Domain<T extends Numeric = Numeric> = [T, T];
-
-export const getTimeseriesXDomain = createSelector(
-  [getIsTimeseries, getTimeseriesXValues],
-  (isTimeseries, xValues) => {
-    if (isTimeseries && Array.isArray(xValues) && xValues.length > 0) {
-      // Unjustified type cast. FIXME
-      return d3.extent(xValues as Array<d3.Numeric>) as Domain<dayjs.Dayjs>;
-    }
-    return null;
-  },
-);
-
-const selectListTimelines = timelineApi.endpoints.listTimelines.select({
-  include: "events",
-});
-
-export const getFetchedTimelines = createSelector(
-  [selectListTimelines],
-  (result): Timeline[] => result.data ?? [],
-);
-
-export const getTransformedTimelines = createSelector(
-  [getFetchedTimelines],
-  (timelines) => {
-    return getSortedTimelines(
-      timelines.map((timeline) =>
-        updateIn(timeline, ["events"], (events = []) =>
-          _.chain(events)
-            .map((event) => updateIn(event, ["timestamp"], parseTimestamp))
-            .filter((event) => !event.archived)
-            .value(),
-        ),
+    (state: QueryBuilderStoreState) =>
+      getRecordedTimelineEventsVisibility(getQuestion(state)?.settings()),
+    (state: QueryBuilderStoreState) =>
+      isLegacyTimelineEventsSource(
+        getOriginalQuestion(state) ?? getQuestion(state),
       ),
-    );
-  },
-);
-
-function isEventWithinDomain(
-  event: TimelineEvent,
-  xDomain: Domain<dayjs.Dayjs>,
-) {
-  return dayjs(event.timestamp).isBetween(
-    xDomain[0],
-    xDomain[1],
-    undefined,
-    "[]",
-  );
-}
-
-function getXDomainForTimelines<T extends Numeric>(
-  xDomain: Domain<T> | null,
-  dataInterval: TimeSeriesInterval | null,
-): Domain<T> | null {
-  // When looking at, let's say, count of orders over years, last year value is Jan 1, 2024
-  // If we filter timeline events up until Jan 1, 2024, we won't see any events from 2024,
-  // so we need to extend xDomain by dataInterval.count * dataInterval.unit to include them
-  if (
-    xDomain &&
-    isAbsoluteDateTimeUnit(dataInterval?.unit) &&
-    dayjs.isDayjs(xDomain[0]) &&
-    dayjs.isDayjs(xDomain[1])
-  ) {
-    let maxValue = xDomain[1]
-      .clone()
-      .add(dataInterval.count, dataInterval.unit);
-
-    if (dataInterval.unit !== "hour" && dataInterval.unit !== "minute") {
-      maxValue = maxValue.subtract(1, "day");
-    }
-
-    // Unjustified type cast. FIXME
-    return [xDomain[0], maxValue as T];
-  }
-
-  return xDomain;
-}
-
-export const getFilteredTimelines = createSelector(
-  [getTransformedTimelines, getTimeseriesXDomain, getTimeseriesDataInterval],
-  (timelines, xDomain, dataInterval) => {
-    const timelineXDomain = getXDomainForTimelines(xDomain, dataInterval);
-    return timelines
-      .map((timeline) =>
-        updateIn(timeline, ["events"], (events: TimelineEvent[]) =>
-          xDomain
-            ? events.filter(
-                (event) =>
-                  timelineXDomain &&
-                  isEventWithinDomain(event, timelineXDomain),
-              )
-            : events,
-        ),
-      )
-      .filter((timeline) => (timeline.events ?? []).length > 0);
-  },
+    (state: QueryBuilderStoreState) => getQuestion(state)?.collectionId(),
+    getTransformedTimelines,
+  ],
+  (savedVisibility, isLegacySource, collectionId, timelines) =>
+    savedVisibility ??
+    (isLegacySource
+      ? NO_TIMELINE_EVENTS_VISIBILITY
+      : getCollectionTimelinesVisibility(timelines, collectionId)),
 );
 
 export const getVisibleTimelineEvents = createSelector(
-  [getFilteredTimelines, getVisibleTimelineEventIds],
-  (timelines, visibleTimelineEventIds) =>
-    _.chain(timelines)
-      .map((timeline) => timeline.events)
-      .flatten()
-      .compact()
-      .filter((event) => visibleTimelineEventIds.includes(event.id))
-      .sortBy((event) => event.timestamp)
-      .value(),
+  [getFilteredTimelines, getTimelineEventsVisibility],
+  (timelines, visibility) =>
+    resolveVisibleTimelineEvents({ timelines, visibility }),
+);
+
+export const getVisibleTimelineEventIds = createSelector(
+  [getVisibleTimelineEvents],
+  (events) => events.map((event) => event.id),
 );
 
 export function getOffsetForQueryAndPosition(
@@ -1050,7 +950,9 @@ export const getIsVisualized = createSelector(
       question.display() !== "list") ||
       (settings != null &&
         (settings["table.pivot"] ||
-          (question.display() === "table" && settings["table.pivot_column"])))), // last case - pivot_column is set but display is set to table viz (#56094)
+          (question.display() === "table" &&
+            // "table.pivot_column" is typed `any` via the settings index signature; it is a column name string
+            (settings["table.pivot_column"] as string | undefined))))), // last case - pivot_column is set but display is set to table viz (#56094)
 );
 
 export const getIsLiveResizable = createSelector(
@@ -1150,18 +1052,18 @@ export const getEmbeddingParameters = createSelector([getCard], (card) => {
 // Embeddings might be published without passing embedding_params to the server,
 // in which case it's an empty object. We should treat such situations with
 // caution, assuming that an absent parameter is "disabled".
-export function getEmbeddedParameterVisibility(
-  state: QueryBuilderStoreState,
-  slug: string,
-) {
-  const card = getCard(state);
-  if (!card?.enable_embedding) {
-    return null;
-  }
+// Memoized on the card, so `connect` sees the same function until the card changes.
+export const getEmbeddedParameterVisibilityGetter = createSelector(
+  [getCard],
+  (card) => (slug: string) => {
+    if (!card?.enable_embedding) {
+      return null;
+    }
 
-  const embeddingParams = card.embedding_params ?? {};
-  return embeddingParams[slug] ?? "disabled";
-}
+    const embeddingParams = card.embedding_params ?? {};
+    return embeddingParams[slug] ?? "disabled";
+  },
+);
 
 export const getSubmittableQuestion = (
   state: QueryBuilderStoreState,
@@ -1192,6 +1094,13 @@ export const getSubmittableQuestion = (
       submittableQuestion,
       series,
     );
+  }
+
+  if (
+    submittableQuestion.type() === "question" &&
+    getLastRunCard(state) == null
+  ) {
+    submittableQuestion = submittableQuestion.setDefaultDisplay();
   }
 
   const cleanQuery = Lib.dropEmptyStages(submittableQuestion.query());

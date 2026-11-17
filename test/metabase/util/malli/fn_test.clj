@@ -318,9 +318,12 @@
 
 (deftest ^:parallel error-location-tests
   (tools.macro/macrolet [(check-error-location [expr]
-                           `(try ~expr
-                                 (is false "Did not throw")
-                                 (catch Exception e# (from-here? e#))))]
+                           `(let [e# (try ~expr
+                                          nil
+                                          (catch Exception ex# ex#))]
+                              (is (some? e#) "Did not throw")
+                              (when e#
+                                (from-here? e#))))]
     (testing "Top stack trace is this namespace, not in validate"
       (testing "single arity input"
         (check-error-location (foo 1)))

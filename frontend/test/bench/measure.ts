@@ -12,8 +12,15 @@
  * The first load fills the HTTP cache, the second fills V8's code cache, and the
  * loads after that are the steady state a returning user sees. Both are
  * reported, because a chunk layout can help one and hurt the other.
+ *
+ * The network is shaped with tc netem rather than by the browser, because
+ * browser throttling is applied per request and so prices every byte at the
+ * bandwidth rate wherever it sits in the response. A layout that pushes the
+ * script tags past the initial congestion window costs a whole round trip
+ * instead, which only packet-level shaping reproduces. Linux only, and it needs
+ * root: this runs on a CI runner.
  */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
 
@@ -38,6 +45,112 @@ if (!url) {
     "env: CPU_THROTTLE NETWORK_MBPS NETWORK_LATENCY WARM PORT_OFFSET SESSION_COOKIE",
   );
   process.exit(1);
+}
+
+const backendPort = Number(new URL(url).port || 80);
+const shapeNetwork = mbps > 0 || latency > 0;
+
+/** What a real link carries. Loopback defaults to 65536. */
+const LOOPBACK_MTU = 1500;
+const LOOPBACK_MTU_DEFAULT = 65536;
+
+const privileged = (process.getuid?.() ?? 0) === 0 ? [] : ["sudo"];
+
+function asRoot(command: string): { ok: boolean; stderr: string } {
+  const [executable, ...args] = [...privileged, "sh", "-c", command];
+  const result = spawnSync(executable, args, { encoding: "utf8" });
+  return { ok: result.status === 0, stderr: (result.stderr || "").trim() };
+}
+
+function shellOutput(command: string): string {
+  return spawnSync("sh", ["-c", command], { encoding: "utf8" }).stdout || "";
+}
+
+/**
+ * The window is counted in segments, so loopback's 65536-byte MTU makes the
+ * initial ten-segment window about 640 kB. Every document this harness loads
+ * fits in one flight at that size, and the reading comes out the same whatever
+ * the layout does. Forcing 1500 is what makes the boundary observable.
+ */
+function shapeLoopback(): void {
+  // A packet crosses lo's egress once in each direction, so the round trip is
+  // twice the one-way delay netem is given.
+  const perDirectionMs = Math.round(latency / 2);
+  const bitsPerSecond = mbps * 1024 * 1024;
+
+  asRoot(`ip link set dev lo mtu ${LOOPBACK_MTU}`);
+  // Nothing to delete on a fresh runner, so this one is allowed to fail.
+  asRoot("tc qdisc del dev lo root");
+
+  const steps = [
+    "tc qdisc add dev lo root handle 1: prio bands 3",
+    `tc qdisc add dev lo parent 1:1 handle 10: netem delay ${perDirectionMs}ms rate ${bitsPerSecond}bit`,
+    // Only the backend is shaped. The harness drives Chrome over CDP on
+    // loopback as well, and delaying that channel would move the moment each
+    // reading is taken without moving the load the reading describes.
+    ...["dport", "sport"].flatMap((direction) => [
+      `tc filter add dev lo parent 1: protocol ip prio 1 u32 match ip ${direction} ${backendPort} 0xffff flowid 1:1`,
+      `tc filter add dev lo parent 1: protocol ipv6 prio 2 u32 match ip6 ${direction} ${backendPort} 0xffff flowid 1:1`,
+    ]),
+  ];
+
+  for (const step of steps) {
+    const { ok, stderr } = asRoot(step);
+    if (!ok) {
+      console.error(`could not shape the network: ${step}\n${stderr}`);
+      process.exit(1);
+    }
+  }
+
+  // An unshaped run still reports plausible times, so a shaping failure would
+  // read as a result rather than as an error. Check it took.
+  const link = shellOutput("ip link show lo");
+  const qdisc = shellOutput("tc qdisc show dev lo");
+  const problems = [
+    !link.includes(`mtu ${LOOPBACK_MTU}`) &&
+      `lo is not at mtu ${LOOPBACK_MTU}: ${link.split("\n")[0].trim()}`,
+    !qdisc.includes("netem") && `no netem qdisc on lo: ${qdisc.trim()}`,
+    perDirectionMs > 0 &&
+      !qdisc.includes(`delay ${perDirectionMs}ms`) &&
+      `netem is not delaying ${perDirectionMs}ms: ${qdisc.trim()}`,
+  ].filter(Boolean);
+
+  if (problems.length > 0) {
+    console.error(`the network shaping did not take:\n${problems.join("\n")}`);
+    process.exit(1);
+  }
+}
+
+/**
+ * A first visit opens a connection, and so does a return visit. A load here
+ * follows the one before it by seconds, and Chrome would reuse the connection
+ * that one left open. That skips the handshake, a whole round trip the reading
+ * then lacks, and how often it happens moves with the timing between loads.
+ * Closing the connections makes every load pay for its own.
+ */
+async function closeBackendConnections(): Promise<void> {
+  const sockets = `'( dport = :${backendPort} or sport = :${backendPort} )'`;
+  let open = "";
+
+  // More than once, because a request the last page had in flight can still
+  // open a connection after the first pass.
+  for (let attempt = 0; attempt < 20; attempt++) {
+    asRoot(`ss -K -t ${sockets}`);
+    open = shellOutput(`ss -H -t state established ${sockets}`).trim();
+    if (!open) {
+      return;
+    }
+    await sleep(50);
+  }
+
+  // A kernel without socket destroy leaves them open and reports nothing.
+  console.error(`connections to the backend stayed open:\n${open}`);
+  process.exit(1);
+}
+
+function unshapeLoopback(): void {
+  asRoot("tc qdisc del dev lo root");
+  asRoot(`ip link set dev lo mtu ${LOOPBACK_MTU_DEFAULT}`);
 }
 
 /** What READ_METRICS evaluates to in the page. */
@@ -118,9 +231,13 @@ class Session {
 // and when the page has its data. See metabase/utils/performance-marks.ts.
 const READ_METRICS = `JSON.stringify((() => {
   const nav = performance.getEntriesByType("navigation")[0];
-  const scripts = performance
+  // Only what arrived before DOMContentLoaded is counted. That set is fixed
+  // once the event fires, so the counts do not depend on when this runs, and a
+  // build that records no marks is counted at the same moment as one that does.
+  const resources = performance
     .getEntriesByType("resource")
-    .filter((entry) => entry.name.endsWith(".js"));
+    .filter((entry) => nav && entry.responseEnd <= nav.domContentLoadedEventEnd);
+  const scripts = resources.filter((entry) => entry.name.endsWith(".js"));
   const paint = (name) => {
     const entry = performance.getEntriesByName(name)[0];
     return entry ? entry.startTime : 0;
@@ -140,14 +257,13 @@ const READ_METRICS = `JSON.stringify((() => {
     lastScriptEnd: Math.max(0, ...scripts.map((entry) => entry.responseEnd)),
     scriptCount: scripts.length,
     scriptBytes: scripts.reduce((total, entry) => total + entry.encodedBodySize, 0),
-    styleBytes: performance
-      .getEntriesByType("resource")
+    styleBytes: resources
       .filter((entry) => entry.name.endsWith(".css"))
       .reduce((total, entry) => total + entry.encodedBodySize, 0),
-    // Every byte the page fetched so far, compressed as it arrived: the document
-    // itself, then each script, stylesheet, font, image and API response.
-    totalBytes: (nav ? nav.encodedBodySize : 0) + performance
-      .getEntriesByType("resource")
+    // Every byte the page fetched before DOMContentLoaded, compressed as it
+    // arrived: the document itself, then each script, stylesheet, font, image
+    // and API response.
+    totalBytes: (nav ? nav.encodedBodySize : 0) + resources
       .reduce((total, entry) => total + entry.encodedBodySize, 0),
   };
 })())`;
@@ -167,6 +283,58 @@ const OBSERVE_LARGEST_PAINT = `
     }
   }).observe({ type: "largest-contentful-paint", buffered: true });
 `;
+
+// A fixed workload with the three kinds of work a page load does: parse and
+// compile, allocate and sort, build and lay out. How long it takes is the speed
+// this runner gives the page right now, under the same throttle as the loads.
+const CALIBRATE = `(() => {
+  const start = performance.now();
+  let source = "";
+  for (let index = 0; index < 4000; index++) {
+    source += "function f" + index + "(a, b) { return a * " + index + " + b; }\\n";
+  }
+  // Unique each time, so the compile is never served from a cache.
+  new Function(source + "return f3999(1, " + Math.random() + ");")();
+  const items = Array.from({ length: 200000 }, (_, index) => ({
+    key: (index * 2654435761) % 1000003,
+    label: "item " + index,
+  }));
+  items.sort((a, b) => a.key - b.key);
+  const root = document.createElement("div");
+  for (let index = 0; index < 3000; index++) {
+    const paragraph = document.createElement("p");
+    paragraph.textContent = items[index].label;
+    root.appendChild(paragraph);
+  }
+  document.body.appendChild(root);
+  root.getBoundingClientRect();
+  root.remove();
+  return performance.now() - start;
+})()`;
+
+const CALIBRATION_REPEATS = 5;
+
+async function calibrate(): Promise<number[]> {
+  const target = await devtools("/json/new?about:blank", "PUT");
+  const socket = new WebSocket(target.webSocketDebuggerUrl);
+  await new Promise((resolve) => socket.addEventListener("open", resolve));
+  const session = new Session(socket);
+  await session.send("Emulation.setCPUThrottlingRate", { rate: cpuThrottle });
+
+  const readings = [];
+  // One extra at the front, discarded, so no reading pays for a cold renderer.
+  for (let repeat = 0; repeat <= CALIBRATION_REPEATS; repeat++) {
+    const { result } = await session.send("Runtime.evaluate", {
+      expression: CALIBRATE,
+      returnByValue: true,
+    });
+    readings.push(Number(result.value));
+  }
+
+  socket.close();
+  await devtools(`/json/close/${target.id}`);
+  return readings.slice(1);
+}
 
 async function launchChrome() {
   const chrome = spawn(CHROME, [
@@ -195,6 +363,10 @@ async function launchChrome() {
 }
 
 async function loadOnce() {
+  if (shapeNetwork) {
+    await closeBackendConnections();
+  }
+
   const target = await devtools("/json/new?about:blank", "PUT");
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve) => socket.addEventListener("open", resolve));
@@ -204,15 +376,6 @@ async function loadOnce() {
   await session.send("Network.enable");
   await session.send("Network.setCacheDisabled", { cacheDisabled: !keepCache });
   await session.send("Emulation.setCPUThrottlingRate", { rate: cpuThrottle });
-
-  if (mbps > 0) {
-    await session.send("Network.emulateNetworkConditions", {
-      offline: false,
-      latency,
-      downloadThroughput: (mbps * 1024 * 1024) / 8,
-      uploadThroughput: (mbps * 1024 * 1024) / 8,
-    });
-  }
 
   if (sessionCookie) {
     await session.send("Network.setCookie", {
@@ -283,6 +446,18 @@ async function loadOnce() {
 
   socket.close();
   await devtools(`/json/close/${target.id}`);
+  // The close is only a request. Wait for the page to be gone, so it cannot
+  // open a connection while the next load is closing them.
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const targets = await devtools("/json/list");
+    if (
+      !Array.isArray(targets) ||
+      targets.every((open) => open.id !== target.id)
+    ) {
+      break;
+    }
+    await sleep(50);
+  }
   return metrics;
 }
 
@@ -317,8 +492,17 @@ function timings(run: Run) {
 }
 
 (async () => {
+  if (shapeNetwork) {
+    shapeLoopback();
+    // Registered on exit so the early returns below put lo back too.
+    process.on("exit", unshapeLoopback);
+  }
+
   const chrome = await launchChrome();
   const results = [];
+
+  // Before and after the loads, so the reading covers the time they ran in.
+  const calibration = await calibrate();
 
   for (let run = 0; run < runs; run++) {
     const metrics = await loadOnce();
@@ -326,6 +510,9 @@ function timings(run: Run) {
       results.push(metrics);
     }
   }
+
+  calibration.push(...(await calibrate()));
+  calibration.sort((a, b) => a - b);
 
   chrome.kill();
 
@@ -362,6 +549,9 @@ function timings(run: Run) {
         steady: results.length > 2 ? timings(representative(results, 2)) : null,
         everyRunMs: results.map((result) =>
           Math.round(result.domContentLoaded),
+        ),
+        calibrationMs: Number(
+          calibration[Math.floor(calibration.length / 2)].toFixed(1),
         ),
       },
       null,

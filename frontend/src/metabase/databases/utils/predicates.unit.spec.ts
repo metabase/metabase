@@ -1,14 +1,9 @@
-import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/utils/types";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
 import { getHasDatabaseWithJsonEngine } from "./predicates";
 
-const setup = (databases: Database[]) => {
-  const metadata = createMockMetadata({ databases });
-  return databases.map(({ id }) => checkNotNull(metadata.database(id)));
-};
+const setup = (databases: Database[]) => databases;
 
 describe("metabase/databases/utils/predicates", () => {
   describe("getHasDatabaseWithJsonEngine", () => {

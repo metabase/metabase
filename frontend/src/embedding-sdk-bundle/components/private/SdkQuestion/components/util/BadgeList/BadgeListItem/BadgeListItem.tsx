@@ -30,6 +30,7 @@ const _BadgeListItem = (
     color="brand"
     rightSection={
       <ActionIcon
+        variant="subtle"
         radius="xl"
         size="sm"
         ml={0}

@@ -5,10 +5,13 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.athena :as athena]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.premium-features.core :as premium-features]
@@ -21,7 +24,9 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData)))
 
 (set! *warn-on-reflection* true)
 
@@ -36,6 +41,69 @@
 (def ^:private upper-case-schema-columns
   [{:column_name "id", :type_name "string"}
    {:column_name "ts", :type_name "STRING"}])
+
+(defn- empty-metadata-result-set []
+  (reify ResultSet
+    (getMetaData [_]
+      (reify ResultSetMetaData
+        (getColumnCount [_] 0)))
+    (next [_] false)
+    (close [_])))
+
+(deftest ^:parallel get-columns-literal-patterns-test
+  (doseq [[schema table expected-schema expected-table]
+          [[nil nil nil nil]
+           ["database" "birds" "database" "birds"]
+           ["database_name" "birds_seen" "database\\_name" "birds\\_seen"]
+           ["db%name" "birds\\seen" "db\\%name" "birds\\\\seen"]]]
+    (let [called   (atom nil)
+          metadata (reify DatabaseMetaData
+                     (getSearchStringEscape [_] "\\")
+                     (getColumns [_ catalog schema-pattern table-pattern column-pattern]
+                       (reset! called [catalog schema-pattern table-pattern column-pattern])
+                       (empty-metadata-result-set)))]
+      (is (empty? (#'athena/get-columns metadata "AwsDataCatalog" schema table)))
+      (is (= ["AwsDataCatalog" expected-schema expected-table nil] @called)))))
+
+(deftest ^:parallel get-tables-literal-schema-test
+  (doseq [[schema expected] [[nil nil] ["database_name%" "database!_name!%"]]]
+    (let [called   (atom nil)
+          metadata (reify DatabaseMetaData
+                     (getSearchStringEscape [_] "!")
+                     (getTables [_ catalog schema-pattern table-pattern types]
+                       (reset! called [catalog schema-pattern table-pattern (vec types)])
+                       (empty-metadata-result-set)))]
+      (is (empty? (#'athena/get-tables metadata schema "AwsDataCatalog")))
+      (is (= ["AwsDataCatalog" expected "%" ["TABLE" "VIEW"]] @called)))))
+
+(driver/register! ::metadata-test :parent :athena)
+
+(defmethod sql-jdbc.execute/do-with-connection-with-options ::metadata-test
+  [_driver {:keys [connection]} _options f]
+  (f connection))
+
+(deftest ^:parallel describe-table-catalog-test
+  (doseq [[catalog dbname connection-catalog expected]
+          [[nil "database_name" "AwsDataCatalog" "AwsDataCatalog"]
+           ["" "database_name" "AwsDataCatalog" "AwsDataCatalog"]
+           [" " "database_name" "AwsDataCatalog" "AwsDataCatalog"]
+           [nil "database_name" "CustomCatalog" "CustomCatalog"]
+           ["ConfiguredCatalog" "database_name" "CustomCatalog" "ConfiguredCatalog"]
+           [nil nil "AwsDataCatalog" nil]
+           [nil "" "AwsDataCatalog" nil]]]
+    (testing (str "catalog=" (pr-str catalog) ", dbname=" (pr-str dbname))
+      (let [called (atom nil)
+            conn   (reify Connection
+                     (getMetaData [_] nil)
+                     (getCatalog [_] connection-catalog))]
+        (mt/with-dynamic-fn-redefs [driver.conn/effective-details
+                                    (constantly {:catalog catalog :dbname dbname})
+                                    athena/describe-table-fields
+                                    (fn [_metadata _database _driver _table catalog dbname]
+                                      (reset! called [catalog dbname])
+                                      #{})]
+          (driver/describe-table ::metadata-test {:connection conn} {:name "birds_seen" :schema nil})
+          (is (= [expected dbname] @called)))))))
 
 (deftest sync-test
   (testing "sync with nested fields"
@@ -131,7 +199,7 @@
              {:name "latitude",    :base-type :type/Float,   :database-type "double", :database-position 3}
              {:name "longitude",   :base-type :type/Float,   :database-type "double", :database-position 4}
              {:name "price",       :base-type :type/Integer, :database-type "int",    :database-position 5}}
-           (#'athena/describe-table-fields-with-nested-fields (mt/db) "v3_test_data" "venues")))))
+           (#'athena/describe-table-fields-with-nested-fields (lib.metadata/database (mt/metadata-provider)) "v3_test_data" "venues")))))
 
 (deftest ^:parallel endpoint-test
   (testing "AWS Endpoint URL"
@@ -250,7 +318,7 @@
 
 (deftest hard-coded-iam-credential-handling
   (testing "When not hosted"
-    (with-redefs [premium-features/is-hosted? (constantly false)]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
       (testing "Specifying access-key will not use credential chain"
         (is (not (contains?
                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
@@ -260,7 +328,7 @@
              (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
              :CredentialsProvider)))))
   (testing "When hosted"
-    (with-redefs [premium-features/is-hosted? (constantly true)]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
       (testing "Specifying access-key will not use credential chain"
         (is (not (contains?
                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
@@ -359,20 +427,22 @@
                              :secret_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-secret-key)
                              :catalog catalog)]
           (mt/with-temp [:model/Database db {:engine :athena, :details details}]
-            (sync/sync-database! db {:scan :schema})
+            (sync/sync-database! (:id db) {:scan :schema})
             (let [table (t2/select-one :model/Table :db_id (:id db) :name "airport")]
               (testing "Check that .getColumns returns no results, meaning the athena JDBC driver still has a bug"
                 ;; If this test fails and .getColumns returns results, the athena JDBC driver has been fixed and we can
                 ;; undo the changes in https://github.com/metabase/metabase/pull/44032
                 (is (empty? (sql-jdbc.execute/do-with-connection-with-options
                              :athena
-                             db
+                             (driver.u/ensure-lib-database db)
                              nil
                              (fn [^java.sql.Connection conn]
                                (let [metadata (.getMetaData conn)]
                                  (#'athena/get-columns metadata catalog (:schema table) (:name table))))))))
               (testing "`describe-table` returns the fields anyway"
-                (is (not-empty (:fields (driver/describe-table :athena db table))))))))))))
+                (is (not-empty (:fields (driver/describe-table :athena (driver.u/ensure-lib-database db) table)))))
+              (testing "sync gives the table its fields"
+                (is (pos? (t2/count :model/Field :table_id (:id table), :active true)))))))))))
 
 (deftest describe-table-falls-back-to-describe-on-duplicate-jdbc-columns-test
   (testing "`describe-table-fields` uses DESCRIBE if the JDBC driver returns duplicate column names (#58441, GHY-3273)"
@@ -391,8 +461,159 @@
                      {:database-position 3, :name "latitude", :database-type "double", :base-type :type/Float}
                      {:database-position 4, :name "longitude", :database-type "double", :base-type :type/Float}
                      {:database-position 5, :name "municipality_id", :database-type "int", :base-type :type/Integer}}
-                   (:fields (driver/describe-table :athena db table))))
+                   (:fields (driver/describe-table :athena (driver.u/ensure-lib-database db) table))))
             (is (true? @get-columns-called))))))))
+
+(defn- column [table-name column-name]
+  {:table_name table-name, :column_name column-name, :type_name "int"})
+
+(defn- field [table-name field-name position]
+  {:table-schema      "s"
+   :table-name        table-name
+   :name              field-name
+   :database-type     "int"
+   :base-type         :type/Integer
+   :database-position position})
+
+(defn- describe-fields-with-fake-athena
+  "Runs `describe-fields` for schema `s` against a fake Athena and returns the result of `reduce-fn`. The `.getColumns`
+  call for the schema returns `columns`, and throws when `fail-after` rows were read. `reads` counts the rows read."
+  [columns & {:keys [fail-after reads reduce-fn] :or {reads (atom 0), reduce-fn #(into [] %)}}]
+  (let [remaining (atom columns)
+        row       (atom nil)
+        rs        (reify ResultSet
+                    (next [_]
+                      (when (= fail-after @reads)
+                        (throw (java.sql.SQLException. "Rate exceeded")))
+                      (reset! row (first @remaining))
+                      (swap! remaining rest)
+                      (when @row
+                        (swap! reads inc))
+                      (some? @row))
+                    (^String getString [_ ^String column-label]
+                      (get @row (keyword (u/lower-case-en column-label))))
+                    (close [_]))
+        metadata  (reify DatabaseMetaData
+                    (getSearchStringEscape [_] "!")
+                    (getColumns [_ _catalog _schema-pattern _table-pattern _column-pattern] rs))
+        conn      (reify Connection
+                    (getMetaData [_] metadata)
+                    (getCatalog [_] "AwsDataCatalog"))]
+    (mt/with-dynamic-fn-redefs [driver.conn/effective-details (constantly {})
+                                athena/sync-tables            (fn [& _]
+                                                                (for [table-name (distinct (map :table_name columns))]
+                                                                  {:name table-name, :schema "s"}))
+                                athena/get-columns            (fn [_metadata _catalog _schema table-name]
+                                                                (filter #(= table-name (:table_name %)) columns))]
+      (reduce-fn (driver/describe-fields ::metadata-test {:connection conn} :schema-names ["s"])))))
+
+(deftest ^:parallel describe-fields-get-columns-error-test
+  (testing "if reading the `getColumns` result for the schema fails, every table still gets its fields once"
+    (is (= [(field "t1" "id" 0)
+            (field "t2" "id" 0)
+            (field "t3" "id" 0)]
+           (describe-fields-with-fake-athena [(column "t1" "id")
+                                              (column "t2" "id")
+                                              (column "t3" "id")]
+                                             :fail-after 2)))))
+
+(deftest ^:parallel describe-fields-out-of-order-columns-test
+  (testing "if `getColumns` returns the columns of a table in two parts, only the first part is returned"
+    (is (= [(field "t1" "a" 0)
+            (field "t2" "a" 0)]
+           (describe-fields-with-fake-athena [(column "t1" "a")
+                                              (column "t2" "a")
+                                              (column "t1" "b")])))))
+
+(deftest ^:parallel describe-fields-one-table-at-a-time-test
+  (testing "a table's fields are returned when the table is complete, before the next tables are read"
+    (let [reads          (atom 0)
+          reads-at-field (atom [])]
+      (describe-fields-with-fake-athena [(column "t1" "a")
+                                         (column "t1" "b")
+                                         (column "t2" "a")
+                                         (column "t2" "b")
+                                         (column "t3" "a")]
+                                        :reads     reads
+                                        :reduce-fn (partial run! #(swap! reads-at-field conj [(:table-name %) @reads])))
+      ;; `t1` is returned after its rows and the first `t2` row are read, and before the rest
+      (is (= [["t1" 3] ["t1" 3] ["t2" 5] ["t2" 5] ["t3" 5]]
+             @reads-at-field)))))
+
+(deftest describe-fields-matches-describe-table-test
+  (mt/test-driver :athena
+    (let [db     (driver.u/ensure-lib-database (mt/db))
+          tables (t2/select :model/Table :db_id (mt/id), :active true)]
+      (testing "`describe-fields` returns the same fields as `describe-table` for each table"
+        (is (= (into #{}
+                     (for [table tables
+                           field (:fields (driver/describe-table :athena db table))]
+                       (assoc field :table-schema (:schema table), :table-name (:name table))))
+               (into #{} (driver/describe-fields :athena db)))))
+      (testing "for one table, `describe-fields` returns the same fields as `describe-table`"
+        (doseq [table tables]
+          (testing (:name table)
+            (is (= (into #{}
+                         (map #(assoc % :table-schema (:schema table), :table-name (:name table)))
+                         (:fields (driver/describe-table :athena db table)))
+                   (into #{} (driver/describe-fields :athena db
+                                                     :schema-names [(:schema table)]
+                                                     :table-names  [(:name table)]))))))))))
+
+(deftest describe-fields-without-dbname-test
+  (mt/test-driver :athena
+    (testing "without `dbname` and `catalog`, `describe-fields` returns the fields of the schema with the schema set"
+      (let [schema   (:dbname (:details (mt/db)))
+            expected (into #{}
+                           (map #(assoc % :table-schema schema))
+                           (driver/describe-fields :athena (driver.u/ensure-lib-database (mt/db))))]
+        (mt/with-temp [:model/Database db {:engine  :athena
+                                           :details (-> (:details (mt/db))
+                                                        (dissoc :dbname :catalog))}]
+          (t2/insert! :model/Table (for [table (t2/select :model/Table :db_id (mt/id), :active true)]
+                                     {:db_id (:id db), :schema schema, :name (:name table), :active true}))
+          (testing "with and without `schema-names`"
+            (is (= expected
+                   (into #{} (driver/describe-fields :athena (driver.u/ensure-lib-database db)
+                                                     :schema-names [schema]))
+                   (into #{} (driver/describe-fields :athena (driver.u/ensure-lib-database db)))))))))))
+
+(deftest describe-fields-table-error-test
+  (mt/test-driver :athena
+    (testing "an error in one table's fields skips only that table"
+      (let [columns->fields (mt/original-fn #'athena/columns->fields)]
+        (mt/with-dynamic-fn-redefs [athena/columns->fields (fn [database driver schema table-name columns]
+                                                             (when (= "venues" table-name)
+                                                               (throw (ex-info "Cannot read table" {})))
+                                                             (columns->fields
+                                                              database driver schema table-name columns))]
+          (let [table-names (into #{}
+                                  (map :table-name)
+                                  (driver/describe-fields :athena (driver.u/ensure-lib-database (mt/db))))]
+            (is (contains? table-names "users"))
+            (is (not (contains? table-names "venues")))))))))
+
+(deftest get-columns-ordered-by-table-test
+  (mt/test-driver :athena
+    (testing "one `getColumns` call for a schema returns the columns of each table together"
+      (let [db          (driver.u/ensure-lib-database (mt/db))
+            table-names (sql-jdbc.execute/do-with-connection-with-options
+                         :athena db nil
+                         (fn [^Connection conn]
+                           (let [metadata (.getMetaData conn)]
+                             (with-open [^ResultSet rs (.getColumns metadata
+                                                                    (.getCatalog conn)
+                                                                    (#'athena/escape-metadata-pattern
+                                                                     metadata
+                                                                     (:dbname (:details db)))
+                                                                    "%"
+                                                                    nil)]
+                               (loop [table-names []]
+                                 (if (.next rs)
+                                   (recur (conj table-names (.getString rs "TABLE_NAME")))
+                                   table-names))))))]
+        (is (seq table-names))
+        (is (= (distinct table-names) (dedupe table-names)))))))
 
 (deftest column-name-with-question-mark-test
   (testing "Column name with a question mark in it should be compiled correctly (#44915)"
@@ -563,11 +784,11 @@
                         {:name "people", :schema nil, :description nil}
                         {:name "products", :schema nil, :description nil}
                         {:name "reviews", :schema nil, :description nil}}}
-             (driver/describe-database driver/*driver* (mt/db)))))
+             (driver/describe-database driver/*driver* (lib.metadata/database (mt/metadata-provider))))))
     (testing "when the dbname is not specified describe-database returns tables from all databases and does include the schema"
       (mt/with-temp [:model/Database db {:engine :athena,
                                          :details (dissoc (:details (mt/db)) :dbname)}]
-        (let [tables (driver/describe-database driver/*driver* db)
+        (let [tables (driver/describe-database driver/*driver* (driver.u/ensure-lib-database db))
               ;; athena CI has many (possibly changing) databases so we'll just filter for a few
               filter-dbs #{"v3_test_data" "airports" "db_router_data" "db_routed_data" "diff_time_zones_athena_cases"}
               filtered-tables {:tables (set (filter (comp filter-dbs :schema) (:tables tables)))}]
@@ -613,3 +834,13 @@
           ;; should escape single quotes
           "'); OR 1 = 1 --"
           "SELECT * FROM categories WHERE regexp_like(name, '''); OR 1 = 1 --')")))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:hostname "a;b" :region "us-east-1" :s3_staging_dir "s3://b/"}
+                   {:region "us-east-1;b" :s3_staging_dir "s3://b/"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :athena details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))

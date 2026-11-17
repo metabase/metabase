@@ -168,6 +168,13 @@ export function isSameOrSiteUrlOrigin(url: string): boolean {
   return isSameOrigin(url) || isSiteUrlOrigin(url);
 }
 
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/** Whether `hostname` is `localhost`, `127.0.0.1` or `[::1]`. */
+export function isLoopbackHostname(hostname: string): boolean {
+  return LOOPBACK_HOSTNAMES.has(hostname);
+}
+
 export function initializeIframeResizer(onReady = () => {}): void {
   if (!isWithinIframe()) {
     return;
@@ -204,6 +211,10 @@ export function isEventOverElement(
 export function isReducedMotionPreferred(): boolean {
   const mediaQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
   return mediaQuery != null && mediaQuery.matches;
+}
+
+export function isFocusVisible(element: Element): boolean {
+  return element.matches(":focus-visible");
 }
 
 export function isSmallScreen(): boolean {

@@ -12,12 +12,14 @@ export function setupMockIntersectionObserver() {
   const originalIntersectionObserver = globalThis.IntersectionObserver;
 
   let intersectionCallback: IntersectionObserverCallback | null = null;
+  let allIntersectionCallbacks: IntersectionObserverCallback[] = [];
   let observerOptions: IntersectionObserverInit | undefined;
   const observeMock = jest.fn();
   const disconnectMock = jest.fn();
 
   beforeEach(() => {
     intersectionCallback = null;
+    allIntersectionCallbacks = [];
     observerOptions = undefined;
     observeMock.mockClear();
     disconnectMock.mockClear();
@@ -28,6 +30,7 @@ export function setupMockIntersectionObserver() {
         options?: IntersectionObserverInit,
       ) {
         intersectionCallback = callback;
+        allIntersectionCallbacks.push(callback);
         observerOptions = options;
       }
 
@@ -59,8 +62,23 @@ export function setupMockIntersectionObserver() {
     });
   }
 
+  /** Fires an intersection event on every observer created so far, not only the last one. */
+  function setAllIntersecting(isIntersecting: boolean) {
+    act(() => {
+      allIntersectionCallbacks.forEach((callback) =>
+        callback(
+          // Observed components only read `isIntersecting` from the entry
+          [{ isIntersecting } as IntersectionObserverEntry],
+          // Observed components never use the observer argument
+          {} as IntersectionObserver,
+        ),
+      );
+    });
+  }
+
   return {
     setIntersecting,
+    setAllIntersecting,
     observe: observeMock,
     disconnect: disconnectMock,
     getObserverOptions: () => observerOptions,

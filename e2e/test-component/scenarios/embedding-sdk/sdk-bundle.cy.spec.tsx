@@ -54,7 +54,7 @@ describe(
 
     [{ strictMode: false }, { strictMode: true }].forEach(({ strictMode }) => {
       describe(`Common cases ${strictMode ? "with" : "without"} strict mode`, () => {
-        it("should display an SDK question", () => {
+        it("should display an SDK question", { tags: "@prerelease" }, () => {
           mountSdkContent(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
             { strictMode },
@@ -150,8 +150,11 @@ describe(
 
           checkStyles({
             expectedMantineStylesLength: 1,
-            // We have 3 usages of `<Global />` component from Emotion, all are wrapped within the EnsureSingleInstance
-            expectedEmotionStylesLength: 3,
+            // We have 3 usages of `<Global />` component from Emotion, all are wrapped within the
+            // EnsureSingleInstance. Only 2 emit a tag here: the one in SdkFontsGlobalStyles is
+            // empty until `application-font-files` names a custom font, because the bundled faces
+            // now come from fonts.css instead.
+            expectedEmotionStylesLength: 2,
           });
 
           // Unmount

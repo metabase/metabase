@@ -5,7 +5,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn active-visible-table-ids-by-name
@@ -14,7 +13,7 @@
   [database-id :- ::lib.schema.id/database
    table-names :- [:sequential :string]]
   (t2/select-pks-set :model/Table
-                     {:from  [(warehouse-schema-overlay/table-query)]
+                     {:from  [(t2/table-name :model/Table)]
                       :where [:and
                               [:= :db_id database-id]
                               ;; `lower()` cannot use an index on the name column, but it still beats fetching every

@@ -98,6 +98,7 @@
                          (and (vector? x) (#{:asc :desc} (first x))) ::order-by
                          :else                                        ::expression))}
    [:metadata/column                    ::lib.schema.metadata/column]
+   [:metadata/database                  ::lib.schema.metadata/database]
    [:metadata/table                     ::lib.schema.metadata/table]
    [:metadata/card                      ::card-metadata]
    [:metadata/metric                    ::metric-metadata]
@@ -289,7 +290,7 @@
       ;; `:type/Integer` if its an extraction operation, e.g. `:month-of-year` always returns an integer; otherwise we
       ;; can return `:base-type`.
       (when (and temporal-unit
-                 (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit))
+                 (contains? lib.schema.temporal-bucketing/datetime-integer-extraction-units temporal-unit))
         :type/Integer)
       ;; otherwise if `:base-type` is specified, we can return that.
       (:base-type options)
@@ -525,8 +526,7 @@
        {:selected selected})
      (when-let [temporal-unit ((some-fn :lib/temporal-unit :temporal-unit) x-metadata)]
        {:is-temporal-extraction
-        (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)
-             (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units temporal-unit)))})
+        (contains? lib.schema.temporal-bucketing/datetime-integer-extraction-units temporal-unit)})
      (select-keys x-metadata [:breakout-positions :order-by-position :filter-positions]))))
 
 (defmethod display-info-method :default
@@ -535,10 +535,11 @@
 
 (defmethod display-info-method :metadata/table
   [query stage-number table]
-  (merge (default-display-info query stage-number table)
-         {:is-source-table (= (lib.util/source-table-id query) (:id table))
-          :schema (:schema table)
-          :visibility-type (:visibility-type table)}))
+  (cond-> (merge (default-display-info query stage-number table)
+                 {:is-source-table (= (lib.util/source-table-id query) (:id table))
+                  :schema (:schema table)
+                  :visibility-type (:visibility-type table)})
+    (:description table) (assoc :description (:description table))))
 
 (mr/def ::column-metadata-with-source
   "Schema for the column metadata that should be returned by [[metadata]]. A column metadata that is also required to

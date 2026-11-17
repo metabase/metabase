@@ -2,6 +2,14 @@
 name: e2e-test-review
 description: Review Cypress E2E spec files for Metabase conventions, common gotchas, and flakiness/performance issues. Use when reviewing pull requests or diffs containing Cypress spec files in e2e/test/scenarios/.
 allowed-tools: Read, Grep, Bash, Glob
+metadata:
+  metareview:
+    title: E2E review
+    kind: agent
+    rule: Cypress specs changed
+    watches: ["e2e/**/*.cy.spec.{js,ts}"]
+    icon: eye
+    color: orange
 ---
 
 # E2E Test Review Skill

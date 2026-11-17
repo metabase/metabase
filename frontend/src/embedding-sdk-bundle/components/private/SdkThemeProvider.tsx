@@ -45,7 +45,7 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
   const whitelabelColors = useSetting("application-colors");
 
   const themeBrandColor = isEmbeddingThemeV2(theme)
-    ? (theme.colors?.["core-brand"] ?? theme.colors?.brand)
+    ? theme.colors?.["core-brand"]
     : theme?.colors?.brand;
 
   const hasCustomBrandColor = Boolean(

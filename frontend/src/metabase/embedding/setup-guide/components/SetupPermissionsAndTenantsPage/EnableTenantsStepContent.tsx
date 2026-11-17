@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 /* eslint-disable metabase/no-literal-metabase-strings -- This string only shows for admins */
 
 import { useCallback } from "react";
@@ -53,8 +54,7 @@ export const EnableTenantsStepContent = ({
       }
     } catch (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: getErrorMessage(
           error,
           t`Failed to enable tenants and create shared collection`,

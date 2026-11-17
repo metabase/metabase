@@ -85,6 +85,7 @@ export function PanelHeader({
       <Group m="-sm" gap="xxs" wrap="nowrap">
         <Tooltip label={t`View metadata`}>
           <ActionIcon
+            variant="subtle"
             component={ForwardRefLink}
             to={metadataUrl}
             target="_blank"
@@ -93,7 +94,7 @@ export function PanelHeader({
             <FixedSizeIcon name="external" />
           </ActionIcon>
         </Tooltip>
-        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>

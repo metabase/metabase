@@ -23,7 +23,7 @@ export function MetabotVerifiedContentConfigurationPane({
     if (result.error) {
       sendToast({
         message: t`Error updating Metabot`,
-        icon: "warning",
+        variant: "negative",
       });
     }
   };

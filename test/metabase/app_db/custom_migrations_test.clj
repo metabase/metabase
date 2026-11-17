@@ -26,7 +26,11 @@
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.app-db.setting :as mdb.setting]
+   [metabase.app-db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
+   [metabase.global-system.test-util :as global-system.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
@@ -82,7 +86,10 @@
       (is (= (sort versions)
              versions)))))
 
-(task/defjob AbandonmentEmail [_] :default)
+(task/defjob AbandonmentEmail
+  {:saved-class "metabase.app_db.custom_migrations_test.AbandonmentEmail"}
+  [_]
+  :default)
 
 (defn- table-default [table]
   (letfn [(with-timestamped [props]
@@ -212,8 +219,7 @@
                      json/decode))))
         (testing "legacy column_settings are updated to the current format"
           (is (= (-> visualization-settings
-                     mi/normalize-visualization-settings
-                     (#'mi/migrate-viz-settings)
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings))
                      walk/stringify-keys)
                  (-> (t2/query-one {:select [:visualization_settings]
                                     :from   [:report_card]
@@ -222,15 +228,13 @@
                      json/decode))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
-                     mi/normalize-visualization-settings
-                     (#'mi/migrate-viz-settings))
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings)))
                  (-> (t2/query-one {:select [:visualization_settings]
                                     :from   [:report_card]
                                     :where  [:= :id card-id]})
                      :visualization_settings
                      json/decode
-                     mi/normalize-visualization-settings
-                     (#'mi/migrate-viz-settings)))))))))
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings))))))))))
 
 (deftest ^:mb/old-migrations-test migrate-legacy-result-metadata-field-refs-test
   (testing "Migrations v47.00-027: update report_card.result_metadata legacy field refs"
@@ -665,8 +669,7 @@
                      (get "visualization_settings")))))
         (testing "legacy column_settings are updated to the current format"
           (is (= (-> visualization-settings
-                     mi/normalize-visualization-settings
-                     (#'mi/migrate-viz-settings)
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings))
                      walk/stringify-keys)
                  (-> (t2/query-one {:select [:object]
                                     :from   [:revision]
@@ -676,16 +679,14 @@
                      (get "visualization_settings")))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
-                     mi/normalize-visualization-settings
-                     (#'mi/migrate-viz-settings))
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings)))
                  (-> (t2/query-one {:select [:object]
                                     :from   [:revision]
                                     :where  [:= :id revision-id]})
                      :object
                      json/decode
                      (get "visualization_settings")
-                     mi/normalize-visualization-settings
-                     (#'mi/migrate-viz-settings)))))))))
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings))))))))))
 
 (deftest ^:mb/old-migrations-test revision-add-join-alias-to-column-settings-field-refs-test
   (testing "Migrations v47.00-034: update visualization_settings.column_settings legacy field refs"
@@ -811,8 +812,7 @@
                      json/decode))))
         (testing "legacy column_settings are updated to the current format"
           (is (= (-> visualization-settings
-                     mi/normalize-visualization-settings
-                     (#'mi/migrate-viz-settings)
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings))
                      walk/stringify-keys)
                  (-> (t2/query-one {:select [:visualization_settings]
                                     :from   [:report_dashboardcard]
@@ -821,15 +821,13 @@
                      json/decode))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
-                     mi/normalize-visualization-settings
-                     (#'mi/migrate-viz-settings))
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings)))
                  (-> (t2/query-one {:select [:visualization_settings]
                                     :from   [:report_dashboardcard]
                                     :where  [:= :id dashcard-id]})
                      :visualization_settings
                      json/decode
-                     mi/normalize-visualization-settings
-                     (#'mi/migrate-viz-settings)))))))))
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings))))))))))
 
 (deftest ^:mb/old-migrations-test add-join-alias-to-dashboard-card-visualization-settings-field-refs-test
   (testing "Migrations v47.00-044: update report_dashboardcard.visualization_settings.column_settings legacy field refs"
@@ -953,8 +951,7 @@
                      (get-in ["cards" 0 "visualization_settings"])))))
         (testing "legacy column_settings are updated to the current format"
           (is (= (-> visualization-settings
-                     mi/normalize-visualization-settings
-                     (#'mi/migrate-viz-settings)
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings))
                      walk/stringify-keys)
                  (-> (t2/query-one {:select [:object]
                                     :from   [:revision]
@@ -964,16 +961,14 @@
                      (get-in ["cards" 0 "visualization_settings"])))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
-                     mi/normalize-visualization-settings
-                     (#'mi/migrate-viz-settings))
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings)))
                  (-> (t2/query-one {:select [:object]
                                     :from   [:revision]
                                     :where  [:= :id revision-id]})
                      :object
                      json/decode
                      (get-in ["cards" 0 "visualization_settings"])
-                     mi/normalize-visualization-settings
-                     (#'mi/migrate-viz-settings)))))))))
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings))))))))))
 
 (deftest ^:mb/old-migrations-test revision-add-join-alias-to-dashboard-card-column-settings-field-refs-test
   (testing "Migrations v47.00-046: update dashboard cards' visualization_settings.column_settings legacy field refs"
@@ -1114,28 +1109,28 @@
                   (testing "the options is merged into settings correctly"
                     (is (= {:persist-models-enabled true
                             :database-enable-actions true}
-                           (t2/select-one-fn :settings :model/Database success-id)))
+                           (t2/select-one-fn :settings :model/Database :id success-id)))
                     (testing "even when settings is nil"
                       (is (= {:persist-models-enabled true}
-                             (t2/select-one-fn :settings :model/Database options-nil-settings-id))))
+                             (t2/select-one-fn :settings :model/Database :id options-nil-settings-id))))
                     (testing "even when settings is empty"
                       (is (= {:persist-models-enabled true}
-                             (t2/select-one-fn :settings :model/Database options-empty-settings-id)))))
+                             (t2/select-one-fn :settings :model/Database :id options-empty-settings-id)))))
                   (testing "nil or empty options doesn't break migration"
                     (is (= {:database-enable-actions true}
-                           (t2/select-one-fn :settings :model/Database nil-options-id)))
+                           (t2/select-one-fn :settings :model/Database :id nil-options-id)))
                     (is (= {:database-enable-actions true}
-                           (t2/select-one-fn :settings :model/Database empty-options-id)))))
+                           (t2/select-one-fn :settings :model/Database :id empty-options-id)))))
                 (testing "rollback migration"
                   (migrate! :down 46)
                   (testing "the persist-models-enabled is assoced back to options"
                     (is (= {:options  "{\"persist-models-enabled\":true}"
                             :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database :settings :options] success-id))))
+                           (t2/select-one [:model/Database :settings :options] :id success-id))))
                   (testing "if settings doesn't have :persist-models-enabled, then options is empty map"
                     (is (= {:options  nil
                             :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database :settings :options] empty-options-id)))))))))]
+                           (t2/select-one [:model/Database :settings :options] :id empty-options-id)))))))))]
     (do-test false)
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (do-test true))))
@@ -1634,7 +1629,7 @@
               session (t2/insert-returning-instance! :core_session {:user_id    user-id
                                                                     :id         (str (random-uuid))
                                                                     :created_at :%now})]
-          (t2/update! :core_session (:id session) {:anti_csrf_token "normal"})
+          (t2/update! :core_session :id (:id session) {:anti_csrf_token "normal"})
           (testing "created_at shouldn't change if there is an update"
             (is (= (:created_at session)
                    (t2/select-one-fn :created_at :core_session :id (:id session))))))))))
@@ -1670,21 +1665,21 @@
                                                             :model_id  (:id card-2)
                                                             :user_id   user-id}))]
       (testing "sanity check revision object"
-        (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
+        (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision :id card-revision-id)]
           (testing "doesn't have type"
             (is (not (contains? card-revision-object "type"))))
           (testing "has dataset"
             (is (contains? card-revision-object "dataset")))))
       (testing "after migration card revisions should have type"
         (migrate!)
-        (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)
-              model-revision-object (t2/select-one-fn (comp json/decode :object) :revision model-revision-id)]
+        (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision :id card-revision-id)
+              model-revision-object (t2/select-one-fn (comp json/decode :object) :revision :id model-revision-id)]
           (is (= "question" (get card-revision-object "type")))
           (is (= "model" (get model-revision-object "type")))))
       (testing "rollback should remove type and keep dataset"
         (migrate! :down 48)
-        (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)
-              model-revision-object (t2/select-one-fn (comp json/decode :object) :revision model-revision-id)]
+        (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision :id card-revision-id)
+              model-revision-object (t2/select-one-fn (comp json/decode :object) :revision :id model-revision-id)]
           (is (contains? card-revision-object "dataset"))
           (is (contains? model-revision-object "dataset"))
           (is (not (contains? card-revision-object "type")))
@@ -1705,12 +1700,12 @@
                                                               :model_id (:id card)
                                                               :user_id  user-id}))]
         (testing "sanity check revision object"
-          (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
+          (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision :id card-revision-id)]
             (testing "doesn't have type"
               (is (not (contains? card-revision-object "type"))))))
         (testing "after migration card revisions should have type"
           (migrate!)
-          (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
+          (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision :id card-revision-id)]
             (is (= "question" (get card-revision-object "type")))
             (testing "original visualization_settings should be preserved"
               (is (= viz-settings
@@ -1798,14 +1793,13 @@
 ;;; 50 tests
 ;;;
 
-(deftest ^:mb/old-migrations-test delete-send-pulse-job-on-migrate-down-test
+(deftest ^:mb/old-migrations-test ^:synchronized delete-send-pulse-job-on-migrate-down-test
   (impl/test-migrations ["v50.2024-04-25T01:04:06"] [migrate!]
     (migrate!)
     (pulse-channel-test/with-send-pulse-setup!
-      ;; the `pulse-channell-test/with-send-pulse-setup!` macro dynamically binds an in-memory scheduler to `task/*quartz-scheduler*`
-      ;; but we need to re-bind that to global here because the InitSendPulseTriggers job will need access to the scheduler,
-      ;; and since quartz job is running in a different thread other than this test's thread, we need to bind it globally
-      (with-redefs [task.impl/*quartz-scheduler* task.impl/*quartz-scheduler*]
+      ;; `with-send-pulse-setup!` binds an in-memory scheduler, but the InitSendPulseTriggers job runs on a Quartz
+      ;; thread, which does not inherit bindings, so install that scheduler as the root too
+      (global-system.tu/with-root (task.impl/scheduler-handle) (task.impl/scheduler)
         (let [user-id  (:id (new-instance-with-default :core_user))
               pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id}))
               pc       (new-instance-with-default :pulse_channel {:pulse_id pulse-id})]
@@ -1821,8 +1815,8 @@
             (is (= #{} (scheduler-job-keys))))
           (testing "the init-send-pulse-triggers job should be re-run after migrate up"
             (migrate!)
-            ;; we redefine this so quartz triggers that run on different threads use the same db connection as this test
-            (with-redefs [mdb.connection/*application-db* mdb.connection/*application-db*]
+            ;; quartz triggers run on other threads, so install this test's app DB as the root for them to see
+            (mdb.test-util/with-application-db-as-root (mdb.connection/current-application-db)
               ;; simulate starting MB after migrate up, which will trigger this function
               (task/init! ::task.send-pulses/SendPulses)
               ;; wait a bit for the InitSendPulseTriggers to run
@@ -2713,8 +2707,8 @@
         (migrate!)
         (is (= {"_@foo" "bar"}
                (json/decode (:attribute_remappings (t2/select-one :sandboxes :id sandbox-id)))))
-        (is (= "_@foo" (:attribute (t2/select-one :connection_impersonations impersonation-id))))
-        (is (= "_@foo" (:user_attribute (t2/select-one :db_router db-router-id))))
+        (is (= "_@foo" (:attribute (t2/select-one :connection_impersonations :id impersonation-id))))
+        (is (= "_@foo" (:user_attribute (t2/select-one :db_router :id db-router-id))))
         (is (= {"_@foo" "bar"}
                (json/decode (t2/select-one-fn :login_attributes :core_user :id user-id))))
         (is (= {"_@foo" "bang"}
@@ -3117,3 +3111,57 @@
             (is (=? {:name "Data App: ops" :slug "data_app__ops" :location "/" :namespace "data-apps"}
                     (t2/select-one :collection :id collection-id)))
             (is (= 21 (count (t2/select-one-fn :entity_id :collection :id collection-id))))))))))
+
+(deftest delete-data-app-drafts-test
+  (testing "v65.2026-10-07T00:00:00: draft rows go with their assignments and empty collections"
+    (impl/test-migrations ["v65.2026-10-07T00:00:00" "v65.2026-10-07T00:00:01"] [migrate!]
+      (let [insert-collection! (fn [name]
+                                 (t2/insert-returning-pk! :collection {:name       name
+                                                                       :slug       name
+                                                                       :location   "/"
+                                                                       :namespace  "data-apps"
+                                                                       :entity_id  (u/generate-nano-id)
+                                                                       :created_at :%now}))
+            insert-app!        (fn [slug draft? collection-id]
+                                 (t2/insert-returning-pk! :data_app {:name                   slug
+                                                                     :display_name           slug
+                                                                     :bundle_path            "dist/index.js"
+                                                                     :entity_id              (u/generate-nano-id)
+                                                                     :draft                  draft?
+                                                                     :resource_collection_id collection-id
+                                                                     :created_at             :%now
+                                                                     :updated_at             :%now}))
+            empty-coll   (insert-collection! "empty")
+            used-coll    (insert-collection! "used")
+            kept-coll    (insert-collection! "kept")
+            shared-group (t2/insert-returning-pk! :permissions_group {:name      "App viewers"
+                                                                      :entity_id (u/generate-nano-id)})
+            empty-draft  (insert-app! "empty-draft" true empty-coll)
+            used-draft   (insert-app! "used-draft" true used-coll)
+            real-app     (insert-app! "real" false kept-coll)]
+        (doseq [app-id [empty-draft used-draft real-app]]
+          (t2/insert! :data_app_group_assignment {:data_app_id app-id :permission_group_id shared-group}))
+        (t2/insert! :permissions {:object (str "/collection/" empty-coll "/read/") :group_id 1 :collection_id empty-coll})
+        ;; something was put in the used draft's collection: a child collection here, cards and actions count the same
+        (t2/insert! :collection {:name       "Inside"
+                                 :slug       "inside"
+                                 :location   (str "/" used-coll "/")
+                                 :namespace  "data-apps"
+                                 :entity_id  (u/generate-nano-id)
+                                 :created_at :%now})
+        (migrate!)
+        (testing "every draft row is gone, with its assignments"
+          (is (not (t2/exists? :data_app :id empty-draft)))
+          (is (not (t2/exists? :data_app :id used-draft)))
+          (is (not (t2/exists? :data_app_group_assignment :data_app_id [:in [empty-draft used-draft]]))))
+        (testing "the empty collection went with its draft, grants included"
+          (is (not (t2/exists? :collection :id empty-coll)))
+          (is (not (t2/exists? :permissions :collection_id empty-coll))))
+        (testing "a collection holding content stays"
+          (is (t2/exists? :collection :id used-coll)))
+        (testing "an app that is not a draft is untouched"
+          (is (t2/exists? :data_app :id real-app))
+          (is (t2/exists? :collection :id kept-coll))
+          (is (t2/exists? :data_app_group_assignment :data_app_id real-app :permission_group_id shared-group)))
+        (testing "the shared permission group survives draft deletion"
+          (is (t2/exists? :permissions_group :id shared-group)))))))

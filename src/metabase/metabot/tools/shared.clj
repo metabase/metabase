@@ -1,9 +1,27 @@
 (ns metabase.metabot.tools.shared
   "Shared tool helpers and state accessors."
   (:require
+   [malli.util :as mut]
+   [metabase.metabot.curation :as curation]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
+
+(def show-chart-arg
+  "The optional `show_chart` argument of the tools that build a query. Passing false shows the user nothing, for a
+   query the model builds only to read its values with run_query."
+  [:show_chart {:optional true
+                :description (str "Pass false for a query you build only to read its values with run_query: "
+                                  "the user is then shown no chart. Defaults to true.")}
+   [:maybe :boolean]])
+
+(defn without-show-chart
+  "Returns the tool definition `tool` with `show_chart` left out of its `:schema`, so the model is not told about the
+   argument. A tool without the argument is returned unchanged."
+  [tool]
+  (update tool :schema (fn [[arrow [cat args-schema] output]]
+                         [arrow [cat (mut/dissoc args-schema :show_chart)] output])))
 
 (def chart-types
   "Display types the chart tools can produce, as model-facing strings. The main
@@ -13,14 +31,26 @@
    "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
    "smartscalar" "gauge" "progress" "funnel" "object" "map"])
 
+(def visualization-arg
+  "The optional `visualization` argument of the tools that build a query: the chart type the query is drawn as."
+  [:visualization {:optional true} [:map {:closed true}
+                                    [:chart_type (into [:enum] chart-types)]]])
+
+(defn visualization-chart-type
+  "The chart type keyword a `visualization` argument names, or `:table` when it names none. The tool args keep
+  nested keys as the model sent them, so `chart_type` may be a string or keyword key, in either case style."
+  [visualization]
+  (or (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)) :chart-type keyword)
+      :table))
+
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *memory-atom*
   "Dynamic memory atom bound for tools that need access to agent state."
   nil)
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *metabot-id*
-  "The resolved metabot ID for the current agent session. Bound during the agent loop
+(def ^:dynamic *metabot*
+  "The resolved Metabot row for the current agent session. Bound during the agent loop
    so that tools can scope queries to the correct metabot instance's collection."
   nil)
 
@@ -29,6 +59,13 @@
   "The profile keyword for the current agent session, e.g. `:nlq`. Bound during the
    agent loop so that tools can adapt their output to the active profile."
   nil)
+
+(defn curated-only?
+  "Whether the current session's tools may only reach curated content: its Metabot has `use_verified_content` on and
+  its profile isn't exempt (see [[curation/curated-only?]]). False outside an agent session, where no Metabot is
+  bound."
+  []
+  (curation/curated-only? *metabot* *profile-id*))
 
 (defn current-memory
   "Returns the current agent memory map, or nil if not in an agent context."
@@ -43,10 +80,18 @@
   []
   (:conversation-id (current-memory)))
 
-(defn current-queries-state
-  "Returns the current queries state map from agent memory."
+(defn request-canceled-chan
+  "The channel that receives a value when the current turn's request is canceled, or nil when the turn has none."
   []
-  (get-in (current-memory) [:state :queries] {}))
+  (:request-canceled-chan (current-memory)))
+
+(defn current-queries-state
+  "Returns the current queries state map from agent memory.
+  Reads the memory in `memory-atom`, which a tool gets in its ctx, or else the bound [[*memory-atom*]]."
+  ([]
+   (current-queries-state *memory-atom*))
+  ([memory-atom]
+   (get-in (some-> memory-atom deref) [:state :queries] {})))
 
 (defn current-charts-state
   "Returns the current charts state map from agent memory."
@@ -67,6 +112,13 @@
   Chart configs contain pre-materialized series data from the frontend viewing context."
   []
   (get-in (current-memory) [:state :chart-configs] {}))
+
+(defn tool-offered?
+  "Whether the current agent session recorded its tools and offers the one named `tool-name`.
+  A session that did not record its tools does not count as offering it, so text that promises the model a tool is
+  never shown on a guess."
+  [tool-name]
+  (contains? (:tool-names (current-memory)) tool-name))
 
 (defn current-context
   "Returns the current agent context from memory."

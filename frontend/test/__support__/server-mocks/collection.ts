@@ -1,15 +1,9 @@
 import fetchMock from "fetch-mock";
-import _ from "underscore";
 
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import {
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
-  convertSavedQuestionToVirtualTable,
-  getCollectionVirtualSchemaName,
-} from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
-  Card,
   Collection,
+  CollectionId,
   CollectionItem,
   Dashboard,
   DashboardQuestionCandidate,
@@ -96,8 +90,11 @@ export function setupCollectionsEndpoints({
         return false;
       }
 
-      // Filter out archived collections if requested
-      if (excludeArchived && collection.archived) {
+      // Filter out archived collections, and the trash, if requested
+      if (
+        excludeArchived &&
+        (collection.archived || collection.type === "trash")
+      ) {
         return false;
       }
 
@@ -121,40 +118,6 @@ export function setupCollectionsEndpoints({
   });
 }
 
-function getCollectionVirtualSchemaURLs(collection: Collection) {
-  const db = SAVED_QUESTIONS_VIRTUAL_DB_ID;
-  const schemaName = getCollectionVirtualSchemaName(collection);
-  const schema = encodeURIComponent(schemaName);
-
-  const questions = ["path:/api/database/", db, "/schema/", schema].join("");
-  const models = ["path:/api/database/", db, "/datasets/", schema].join("");
-
-  return { questions, models };
-}
-
-export function setupCollectionVirtualSchemaEndpoints(
-  collection: Collection,
-  cards: Card[],
-) {
-  const urls = getCollectionVirtualSchemaURLs(collection);
-
-  const [models, questions] = _.partition(
-    cards,
-    (card) => card.type === "model",
-  );
-  const modelVirtualTables = models.map(convertSavedQuestionToVirtualTable);
-  const questionVirtualTables = questions.map(
-    convertSavedQuestionToVirtualTable,
-  );
-
-  fetchMock.get(urls.questions, questionVirtualTables, {
-    name: "collection-questions-virtual-tables",
-  });
-  fetchMock.get(urls.models, modelVirtualTables, {
-    name: "collection-models-virtual-tables",
-  });
-}
-
 function matchesPinnedState(item: CollectionItem, pinnedState: string | null) {
   if (pinnedState === "is_pinned") {
     return item.collection_position != null;
@@ -167,14 +130,21 @@ function matchesPinnedState(item: CollectionItem, pinnedState: string | null) {
 
 function handleCollectionItemsResponse({
   call,
-  collectionItems,
+  collectionItems: unarchivedItems,
+  archivedItems = [],
   modelsParam,
 }: {
   call: { url: string };
   collectionItems: CollectionItem[];
+  archivedItems?: CollectionItem[];
   modelsParam?: string[];
 }) {
   const url = new URL(call.url);
+  // As in the API, archived items are only listed when they are requested.
+  const collectionItems =
+    url.searchParams.get("archived") === "true"
+      ? [...unarchivedItems, ...archivedItems]
+      : unarchivedItems;
   const models = modelsParam ?? url.searchParams.getAll("models");
   const pinnedState = url.searchParams.get("pinned-state");
 
@@ -190,7 +160,9 @@ function handleCollectionItemsResponse({
     ? matchedItems.filter(({ name }) => name.toLowerCase().includes(q))
     : matchedItems;
 
-  const limit = Number(url.searchParams.get("limit")) || searchedItems.length;
+  // As in the API, `limit=0` is a count-only request: no rows, just `total`.
+  const limitParam = url.searchParams.get("limit");
+  const limit = limitParam === null ? searchedItems.length : Number(limitParam);
   const offset = Number(url.searchParams.get("offset")) || 0;
 
   return {
@@ -225,27 +197,37 @@ function collectionItemsMetadata(
 export function setupCollectionItemsEndpoint({
   collection,
   collectionItems = [],
+  archivedItems,
   models: modelsParam,
 }: {
   collection: Pick<Collection, "id">;
   collectionItems: CollectionItem[];
+  /** Items that are only listed when the request asks for `archived=true`. */
+  archivedItems?: CollectionItem[];
   models?: string[];
 }) {
+  const itemsName = `collection-${collection.id}-items`;
+  const metadataName = `collection-${collection.id}-items-metadata`;
+  fetchMock.removeRoutes({
+    names: [itemsName, metadataName],
+    includeFallback: false,
+  });
   fetchMock.get(
     `path:/api/collection/${collection.id}/items`,
     (call) => {
       return handleCollectionItemsResponse({
         call,
         collectionItems,
+        archivedItems,
         modelsParam,
       });
     },
-    { name: `collection-${collection.id}-items` },
+    { name: itemsName },
   );
   fetchMock.get(
     `path:/api/collection/${collection.id}/items/metadata`,
     (call) => collectionItemsMetadata(call, collectionItems),
-    { name: `collection-${collection.id}-items-metadata` },
+    { name: metadataName },
   );
 }
 
@@ -280,9 +262,12 @@ export function setupTenantCollectionItemsEndpoint({
 
 export function setupRootCollectionItemsEndpoint({
   rootCollectionItems,
+  archivedRootItems = [],
   tenantRootItems = [],
 }: {
   rootCollectionItems: CollectionItem[];
+  /** Items, like the trash, that are only listed with `archived=true`. */
+  archivedRootItems?: CollectionItem[];
   tenantRootItems?: CollectionItem[];
 }) {
   fetchMock.get(
@@ -302,9 +287,14 @@ export function setupRootCollectionItemsEndpoint({
         };
       }
 
+      const items =
+        url.searchParams.get("archived") === "true"
+          ? [...rootCollectionItems, ...archivedRootItems]
+          : rootCollectionItems;
+
       return {
-        data: rootCollectionItems,
-        total: rootCollectionItems.length,
+        data: items,
+        total: items.length,
         models,
         limit: null,
         offset: null,
@@ -439,10 +429,32 @@ export function setupDashboardQuestionCandidatesEndpoint(
   });
 }
 
-export function setupStaleItemsEndpoint(total: number) {
-  fetchMock.get("express:/api/ee/stale/:id", {
-    total,
-  });
+/**
+ * Mocks the stale item count request (`GET /api/ee/stale/:id?limit=0`). When
+ * `collectionId` or `beforeDate` is given, a request for another collection or
+ * cutoff date gets a total of 0.
+ */
+export function setupStaleItemsEndpoint(
+  total: number,
+  {
+    collectionId,
+    beforeDate,
+  }: { collectionId?: CollectionId; beforeDate?: string } = {},
+) {
+  fetchMock.get(
+    "express:/api/ee/stale/:id",
+    ({ url, expressParams }) => {
+      const params = new URL(url).searchParams;
+      const isMatch =
+        (collectionId === undefined ||
+          expressParams?.id === String(collectionId)) &&
+        (beforeDate === undefined ||
+          params.get("before_date") === beforeDate) &&
+        params.get("limit") === "0";
+      return { data: [], total: isMatch ? total : 0, limit: 0, offset: 0 };
+    },
+    { name: "stale-items" },
+  );
 }
 
 export function setupCreateCollectionEndpoint(
@@ -453,9 +465,20 @@ export function setupCreateCollectionEndpoint(
   });
 }
 
-export function setupUpdateCollectionEndpoint(collection: Collection) {
-  fetchMock.put(`path:/api/collection/${collection.id}`, collection, {
+export function setupUpdateCollectionEndpoint(
+  collection: Collection,
+  response: Collection | Promise<Collection> = collection,
+) {
+  fetchMock.put(`path:/api/collection/${collection.id}`, response, {
     name: `update-collection-${collection.id}`,
+  });
+}
+
+export function setupUpdateCollectionEndpointWithError(
+  collectionId: CollectionId,
+) {
+  fetchMock.put(`path:/api/collection/${collectionId}`, 500, {
+    name: `update-collection-${collectionId}`,
   });
 }
 

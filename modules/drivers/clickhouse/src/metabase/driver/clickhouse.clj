@@ -3,6 +3,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse-introspection]
@@ -10,21 +11,24 @@
    [metabase.driver.clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.quoting :refer [dot-qualified quote-identifier with-quoting]]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.driver.util :as driver.u]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf])
   (:import
    (com.clickhouse.client.api.query QuerySettings)
-   (java.sql Connection SQLException PreparedStatement)
+   (java.sql Connection SQLException Statement PreparedStatement)
    (java.time LocalDate)))
 
 (set! *warn-on-reflection* true)
@@ -43,6 +47,7 @@
    "socket_tcp_nodelay" "use_server_time_zone" "use_server_time_zone_for_dates"])
 
 (defn- quote-schema [s] (sql.u/quote-name :clickhouse :schema s))
+(defn- quote-field  [s] (sql.u/quote-name :clickhouse :field s))
 
 (defmethod driver/prettify-native-form :clickhouse
   [_ native-form]
@@ -56,6 +61,7 @@
                               ;; JDBC driver always provides "NO" for the IS_GENERATEDCOLUMN JDBC metadata
                               :describe-is-generated            false
                               :describe-is-nullable             true
+                              :workspace                        true
                               :expression-literals              true
                               :expressions/date                 true
                               :expressions/float                true
@@ -66,7 +72,11 @@
                               :index/fetch                      true
                               :index/inline-create              true
                               :index/standalone-create          true
-                              :left-join                        (not driver-api/is-test?)
+                              ;; The JDBC driver sends the query timeout as the `max_execution_time` server setting,
+                              ;; which fails for users with `readonly = 1` (#85850). Long running queries will still
+                              ;; be cancelled by `schedule-query-timeout-cancel!`.
+                              :jdbc/set-query-timeout           false
+                              :left-join                        true
                               :metadata/key-constraints         false
                               :native-pivot-tables              true
                               :now                              true
@@ -75,6 +85,7 @@
                               :schemas                          true
                               :set-timezone                     true
                               :split-part                       true
+                              :stage-ctes                       true
                               :standard-deviation-aggregations  true
                               :test/date-time-type              false
                               :test/jvm-timezone-setting        false
@@ -105,16 +116,6 @@
    db-or-id-or-spec
    options
    (fn [^java.sql.Connection conn]
-     (when-let [db (cond
-                     ;; id?
-                     (integer? db-or-id-or-spec)
-                     (driver-api/with-metadata-provider db-or-id-or-spec
-                       (driver-api/database (driver-api/metadata-provider)))
-                     ;; db?
-                     (u/id db-or-id-or-spec)     db-or-id-or-spec
-                     ;; otherwise it's a spec and we can't get the db
-                     :else nil)]
-       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
        (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
              query-settings (new QuerySettings)]
@@ -165,6 +166,7 @@
                  (str/starts-with? host "http://")  (subs host 7)
                  (str/starts-with? host "https://") (subs host 8)
                  :else host)]
+    ;; https://clickhouse.com/docs/integrations/language-clients/java/jdbc
     (-> {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
          :subprotocol                    "clickhouse"
          :subname                        (str "//" host ":" port "/" dbname)
@@ -179,14 +181,27 @@
          :jdbc_schema_term               "schema"
          :ignore_unknown_config_key      true
          :max_open_connections           (or max-open-connections 100)
-         ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
          :custom_http_params             (cond-> "select_sequential_consistency=1"
                                            (not (str/blank? clickhouse-settings))
-                                           (str "," clickhouse-settings))}
+                                           (str "," clickhouse-settings))
+         :jdbc_metadata_use_show_statements false}
         (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
+(defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :clickhouse
+  [driver database]
+  ;; A ClickHouse connection is an HTTP client that does not contact the server when c3p0 acquires
+  ;; it, so it will succeed even if the server is down, whereas other drivers would fail here.
+  ;; However the `testConnectionOnCheckout` test does contact the server, so it will fail if the
+  ;; server is down. Then c3p0 will continue to acquire and test new connections, flooding the logs
+  ;; and causing a stack overflow. Since the connection is an HTTP client, there's no server state
+  ;; that can go stale on the connection so the test can be disabled (#85512).
+  (merge
+   ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver database)
+   {"testConnectionOnCheckout" false}))
+
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
-  (boolean (-> db clickhouse-version/dbms-version :cloud)))
+  (let [{:keys [cloud single-node]} (clickhouse-version/dbms-version db)]
+    (boolean (or cloud single-node))))
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
@@ -254,6 +269,20 @@
     :metabase.upload/datetime                 "Nullable(DateTime64(3))"
     :metabase.upload/offset-datetime          nil))
 
+;; ClickHouse changes a column's type with MODIFY COLUMN; the default ALTER COLUMN is a syntax error.
+(defmethod sql-jdbc.sync/alter-table-columns-sql :clickhouse
+  [driver table-name column-definitions & _opts]
+  (with-quoting driver
+    (first (sql/format {:alter-table   (dot-qualified table-name)
+                        :modify-column (map (fn [[column-name type-and-constraints]]
+                                              (into [(quote-identifier column-name)]
+                                                    (if (string? type-and-constraints)
+                                                      [[:raw type-and-constraints]]
+                                                      type-and-constraints)))
+                                            column-definitions)}
+                       :quoted  true
+                       :dialect (sql.qp/quote-style driver)))))
+
 (defmulti ^:private type->database-type
   "Internal type->database-type multimethod for ClickHouse that dispatches on type."
   {:arglists '([type])}
@@ -278,9 +307,10 @@
 
 (defmethod driver/table-name-length-limit :clickhouse
   [_driver]
-  ;; FIXME: This is a lie because you're really limited by a filesystems' limits, because Clickhouse uses
-  ;; filenames as table/column names. But its an approximation
-  206)
+  ;; ClickHouse stores table metadata as files, so the real limit is on the combined length of the database and table
+  ;; names: on recent versions `max table name length = 213 - (length of the database name)`, so the old value of 206
+  ;; only held for a 7-character database such as `default`. 128 leaves room for database names up to 85 characters.
+  128)
 
 (defn- escape-ident
   ;; Backslash-escape rather than double the backtick: ClickHouse identifiers follow string-literal escaping, where
@@ -489,7 +519,7 @@
 
 (defmethod driver/rename-table! :clickhouse
   [_driver db-id old-table-name new-table-name]
-  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
     (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
       (let [sql (format "RENAME TABLE %s TO %s" (quote-name old-table-name) (quote-name new-table-name))]
         (.execute stmt sql)))))
@@ -568,6 +598,12 @@
   [_ _]
   "NONE")
 
+(defmethod sql-jdbc.execute/impl-error-in-query? :clickhouse
+  [driver ^SQLException e]
+  ;; ClickHouse also uses class 22 for operational failures such as memory and result limits.
+  (and (not (str/starts-with? (str (.getSQLState e)) "22"))
+       ((get-method sql-jdbc.execute/impl-error-in-query? :sql-jdbc) driver e)))
+
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :clickhouse
   [_ ^SQLException e]
   ;; the clickhouse driver doesn't set ErrorCode, we must parse it from the message
@@ -640,6 +676,97 @@
 (defmethod sql-jdbc.execute/set-parameter [:clickhouse LocalDate]
   [_ ^PreparedStatement prepared-statement i object]
   (.setObject prepared-statement i object))
+
+;;; ------------------------------------------ Workspace Isolation ------------------------------------------
+
+(defmethod driver/init-workspace-isolation! :clickhouse
+  [driver database workspace]
+  (let [db-name             (:schema workspace)
+        canonical-db        (:db (driver.conn/effective-details (driver.u/ensure-lib-database database)))
+        read-user           (:database_details workspace)
+        escaped-password    (sql.u/escape-sql (:password read-user) :ansi)
+        quoted-db           (quote-schema db-name)
+        quoted-user         (quote-field (:user read-user))
+        quoted-canonical-db (when-not (str/blank? canonical-db)
+                              (quote-schema canonical-db))]
+    ;; No transaction: ClickHouse has no transactional DDL — CREATE/GRANT apply
+    ;; immediately. Failure recovery is compensation via the idempotent destroy.
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver (driver.u/ensure-lib-database database) {:write? true}
+     (fn [^Connection conn]
+       (with-open [stmt (.createStatement conn)]
+         (doseq [sql (cond-> [(format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
+                              (format "CREATE USER IF NOT EXISTS %s IDENTIFIED BY '%s'"
+                                      quoted-user escaped-password)
+                              ;; the user may survive a failed teardown; without this it would keep
+                              ;; its old password while the new one gets persisted
+                              (format "ALTER USER %s IDENTIFIED BY '%s'"
+                                      quoted-user escaped-password)
+                              ;; Least-privilege grant on the workspace's own DB (ClickHouse has no
+                              ;; owner auto-privileges, so grant each verb explicitly):
+                              ;;   SELECT       - read its own tables
+                              ;;   INSERT       - CTAS populate + incremental insert
+                              ;;   CREATE TABLE - transform target
+                              ;;   DROP TABLE   - swap/cleanup
+                              ;; (these four also satisfy the atomic-swap RENAME TABLE.)
+                              (format "GRANT SELECT, INSERT, CREATE TABLE, DROP TABLE ON %s.* TO %s"
+                                      quoted-db quoted-user)]
+                       quoted-canonical-db
+                       (conj (format "GRANT SHOW DATABASES ON %s.* TO %s"
+                                     quoted-canonical-db quoted-user)))]
+           (.addBatch ^Statement stmt ^String sql))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user) escaped-password])))))))
+    nil))
+
+(defmethod driver/grant-workspace-read-access! :clickhouse
+  [driver database workspace schemas]
+  (let [read-user-name (-> workspace :database_details :user)
+        quoted-user    (quote-field read-user-name)]
+    (when-not read-user-name
+      (throw (ex-info (tru "Cannot grant workspace read access. Workspace details have no read user — initialization may have failed. Re-run workspace initialization and retry.")
+                      {:workspace-id (:id workspace) :step :grant})))
+    ;; ClickHouse `qualified-name-components` is `[:schema]` — each entry in
+    ;; `schemas` is a database-as-schema. Grant `*` covers all tables in the
+    ;; database; ClickHouse re-resolves `*` so future tables get coverage too.
+    (let [sqls (for [schema schemas
+                     :let [_ (when (str/blank? schema)
+                               (throw (ex-info (tru "Cannot grant workspace read access. Input schema name is blank. Remove the blank entry from the workspace input schemas and retry.")
+                                               {:database-id (:id database) :step :grant})))]]
+                 (format "GRANT SELECT ON %s.* TO %s"
+                         (quote-schema schema)
+                         quoted-user))]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver (driver.u/ensure-lib-database database) {:write? true}
+       (fn [^Connection conn]
+         (with-open [stmt (.createStatement conn)]
+           (doseq [sql sqls]
+             (.addBatch ^Statement stmt ^String sql))
+           (try
+             (.executeBatch ^Statement stmt)
+             (catch Throwable t
+               (throw (driver.u/batch-exception t))))))))))
+
+(defmethod driver/destroy-workspace-isolation! :clickhouse
+  [driver database workspace]
+  (let [db-name      (:schema workspace)
+        username     (-> workspace :database_details :user)
+        quoted-db    (quote-schema db-name)
+        quoted-user  (quote-field username)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver (driver.u/ensure-lib-database database) {:write? true}
+     (fn [^Connection conn]
+       (with-open [stmt (.createStatement conn)]
+         (doseq [sql [;; DROP DATABASE cascades to all tables within it
+                      (format "DROP DATABASE IF EXISTS %s" quoted-db)
+                      (format "DROP USER IF EXISTS %s" quoted-user)]]
+           (.addBatch ^Statement stmt ^String sql))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/batch-exception t)))))))))
 
 (defmethod driver/llm-sql-dialect-resource :clickhouse [_]
   "metabot/prompts/dialects/clickhouse.md")

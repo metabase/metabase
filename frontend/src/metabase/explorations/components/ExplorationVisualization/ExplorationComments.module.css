@@ -4,15 +4,15 @@
 }
 
 .commentBadge {
-  background-color: var(--mb-color-background-brand);
+  background-color: var(--mb-color-background_surface-brand-subtle);
 
   &:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
 .commentBadgeLabel {
-  background-color: var(--mb-color-background-brand);
+  background-color: var(--mb-color-background_surface-brand-subtle);
   cursor: default;
 }
 
@@ -35,6 +35,6 @@
 }
 
 .target {
-  background-color: var(--mb-color-background-brand);
-  outline: 1px solid var(--mb-color-brand);
+  background-color: var(--mb-color-background_surface-brand-subtle);
+  outline: 1px solid var(--mb-color-core-brand);
 }

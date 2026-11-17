@@ -1,12 +1,14 @@
 import type {
   BrowserEmbedOptions,
   DashboardEmbedOptions,
+  DataAppEmbedOptions,
   ExplorationEmbedOptions,
   MetabotEmbedOptions,
   QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
   SdkIframeEmbedSettingKey,
 } from "./types/embed";
+import type { MetabaseConfig } from "./types/modular-embedding";
 
 /**
  * The timeout to wait for a session token from the embed.js script.
@@ -30,7 +32,8 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "pluginsConfig",
     "guestEmbedProviderUri",
     "allowedCustomVisualizations",
-  ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
+    // Every allowed setting must be documented in `MetabaseConfig`
+  ] satisfies (keyof SdkIframeEmbedBaseSettings & keyof MetabaseConfig)[],
   dashboard: [
     "dashboardId",
     "autoRefreshInterval",
@@ -42,6 +45,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "hiddenParameters",
     "drills",
     "enableEntityNavigation",
+    "navigatedEntityParameters",
     "customContext",
   ] satisfies (keyof DashboardEmbedOptions)[],
   chart: [
@@ -57,6 +61,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "entityTypes",
     "customContext",
   ] satisfies (keyof QuestionEmbedOptions)[],
+  "data-app": ["path"] satisfies (keyof DataAppEmbedOptions)[],
   exploration: [
     "template",
     "questionId",
@@ -110,6 +115,7 @@ export const ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP = {
   exploration: [] satisfies (keyof ExplorationEmbedOptions)[],
   browser: [] satisfies (keyof BrowserEmbedOptions)[],
   metabot: [] satisfies (keyof MetabotEmbedOptions)[],
+  "data-app": [] satisfies (keyof DataAppEmbedOptions)[],
 } as const;
 
 // This file is used by embed.js, so we shouldn't import external dependencies.
@@ -119,6 +125,7 @@ export const ALLOWED_EMBED_SETTING_KEYS = uniq([
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.base,
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.dashboard,
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.chart,
+  ...ALLOWED_EMBED_SETTING_KEYS_MAP["data-app"],
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.exploration,
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.browser,
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.metabot,

@@ -8,7 +8,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.comments.core :as comments]
    [metabase.documents.core :as documents]
@@ -27,7 +26,9 @@
    [metabase.users.settings :as users.settings]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -72,7 +73,7 @@
 
 (defn- smart-link-readable?
   "Whether the current user is allowed to see `row`'s display name. Every model but `user` has
-  a [[mi/can-read?]] implementation to defer to; user rows are pre-filtered by
+  a [[mi/can-read?]] implementation to defer to, read off `:can_read` hydrated on the row; user rows are pre-filtered by
   [[visible-user-rows]], and a sandboxed or impersonated caller resolves nobody but themselves."
   [model row]
   (if (= "user" model)
@@ -106,7 +107,8 @@
   see, one query per referenced model. A target the caller can't read is left out, so it is
   indistinguishable from one that doesn't exist and its name never crosses the permission
   boundary — the caller's write check on the *document* does not extend to whatever the
-  document happens to point at."
+  document happens to point at. A target MCP v2 treats as absent ([[v2.resolve/hidden?]]) is left out
+  the same way."
   [links]
   (into {}
         (mapcat (fn [[model model-links]]
@@ -116,8 +118,11 @@
                                    (try
                                      (filterv #(smart-link-readable? model %)
                                               (if (= "user" model)
-                                                (visible-user-rows ids)
-                                                (mcp.db/select-by-ids db-model ids)))
+                                                (remove #(v2.resolve/hidden? db-model %) (visible-user-rows ids))
+                                                (t2/hydrate (into []
+                                                                  (remove #(v2.resolve/hidden? db-model %))
+                                                                  (mcp.db/select-by-ids db-model ids))
+                                                            :can_read)))
                                      (catch Exception e
                                        (log/warnf e "smart link lookup failed for %s" model)
                                        nil)))]
@@ -158,23 +163,20 @@
       ast
       (let [rows   (smart-link-rows links)
             stored (some-> previous-ast stored-smart-link-attrs)]
-        (walk/postwalk
-         (fn [node]
-           (if (and (map? node) (= "smartLink" (:type node)))
-             (let [{:strs [entityId model]} (:attrs node)
-                   k                        [model entityId]]
-               (if-let [row (get rows k)]
-                 (update node :attrs assoc
-                         "label" (smart-link-label row)
-                         "href" (smart-link-href model row))
-                 (if-let [prior (get stored k)]
-                   (update node :attrs assoc "label" (get prior "label") "href" (get prior "href"))
-                   (do
-                     (when (prose-mirror/smart-link-model->db-model model)
-                       (log/warnf "smart link target not found or not readable for %s at id: %s" model entityId))
-                     node))))
-             node))
-         ast)))))
+        (match/replace-all ast
+          {:type "smartLink"}
+          (let [{:strs [entityId model]} (:attrs &match)
+                k                        [model entityId]]
+            (if-let [row (get rows k)]
+              (update &match :attrs assoc
+                      "label" (smart-link-label row)
+                      "href" (smart-link-href model row))
+              (if-let [prior (get stored k)]
+                (update &match :attrs assoc "label" (get prior "label") "href" (get prior "href"))
+                (do
+                  (when (prose-mirror/smart-link-model->db-model model)
+                    (log/warnf "smart link target not found or not readable for %s at id: %s" model entityId))
+                  &match)))))))))
 
 (defn- ast-id-set
   [ast]
@@ -214,7 +216,7 @@
   (let [ids (distinct (prose-mirror/card-ids {:document     ast
                                               :content_type prose-mirror/prose-mirror-content-type}))]
     (when (seq ids)
-      (let [cards (into {} (map (juxt :id identity)) (mcp.db/select-by-ids :model/Card ids))]
+      (let [cards (into {} (map (juxt :id identity)) (t2/hydrate (mcp.db/select-by-ids :model/Card ids) :can_read))]
         (doseq [id ids]
           (let [card (get cards id)]
             (when-not (and card
@@ -531,10 +533,12 @@
 
 (registry/deftool document-write-tool
   "Create or update a document. method: \"create\" | \"update\". Documents are Metabase-flavored Markdown: CommonMark plus {% card id=118 name=\"…\" %} block embeds of saved questions you can read (build with question_write first; an unresolvable id fails the write), {% entity id=\"42\" model=\"dashboard\" %} inline links (models: card, dataset, metric, dashboard, collection, table, database, document), and ::: layout containers (flex, supporting, resize). No Markdown tables - embed a table-display question instead. Before authoring layout containers, call learn(\"documents\") — the grammar, nesting rules, and a worked example. A card not already owned by the document is cloned into it on write and its id rewritten, so always take the returned content_markdown as the current text. Create: name + content_markdown; optional collection_id (omit for your personal collection; \"root\" for the root collection) and collection_position. Update: id + exactly one of edits: [{old_str, new_str, replace_all?}] (each old_str must match the current server-side Markdown exactly once — extend the snippet or set replace_all; new_str is parsed as Markdown; edited blocks keep their ids and comment anchors) or content_markdown (a full-body rewrite that orphans every comment thread on the body); edits: [] changes only name/collection_id/collection_position/archived (archived: true trashes, false restores). To unset a property, name it in clear: [\"collection_position\"] — a null does not clear. The response lists changed_blocks and orphaned_comment_threads. It carries content_markdown_unavailable in place of content_markdown when the body holds a block with no Markdown form: the write happened, but that body cannot be edited or rewritten as Markdown without discarding the block. Writes are last-write-wins; a stale old_str failing to match is the only staleness signal."
-  {:name        "document_write"
-   :scope       metabot.scope/agent-content-write
-   :annotations {:readOnlyHint false :destructiveHint false}
-   :args        document-write-args-schema}
+  {:name           "document_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-write
+   ;; `destructiveHint`: `archived: true` trashes the document, and a full-body rewrite orphans its comments.
+   :annotations    {:readOnlyHint false, :destructiveHint true}
+   :args           document-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (v2.write/dispatch-write
                   {:create-required [:name :content_markdown]

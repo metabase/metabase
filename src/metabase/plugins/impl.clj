@@ -181,7 +181,7 @@
     (try
       (register-plugin! reserved-names path)
       (catch Throwable e
-        (log/errorf "Failed to register plugin %s: %s" (.getFileName path) (ex-message e))))))
+        (log/errorf e "Failed to register plugin %s" (.getFileName path))))))
 
 (defn- bundled-plugin-names
   "Names of every bundled (classpath) plugin, whether or not its dependencies are yet satisfied. A bundled

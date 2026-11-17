@@ -82,7 +82,9 @@
   [:string {:min 1, :max 254}]) ; min/max are from the app DB being varchar(254)
 
 (mr/def ::scope
-  [:enum :scim])
+  "What a scoped key is for. A `:scim` key authenticates only the SCIM API; a `:workspace-manager` key is
+  accepted only on endpoints tagged with the `mb:workspace-manager` scope (403 elsewhere)."
+  [:enum :scim :workspace-manager])
 
 (mr/def ::timestamp
   [:or
@@ -106,6 +108,7 @@
    [:updated_by_id        pos-int?]
    [:scope                {:optional true} [:maybe [:ref ::scope]]]
    [:single_collection_id {:optional true} [:maybe pos-int?]]
+   [:last_used_at         {:optional true} [:maybe [:ref ::timestamp]]]
    ;; added by the model's after-select hook
    [:masked_key           {:optional true} :string]])
 

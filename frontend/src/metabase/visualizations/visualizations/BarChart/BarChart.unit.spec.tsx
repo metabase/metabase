@@ -3,12 +3,13 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
 import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -41,14 +42,18 @@ describe("BarChart", () => {
   it("should not error when rendering for a question without breakouts", () => {
     const question = new Question(
       {
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-          },
-          database: SAMPLE_DB_ID,
-        },
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestQuery(SAMPLE_PROVIDER, {
+            stages: [
+              {
+                source: { type: "table", id: ORDERS_ID },
+                aggregations: [
+                  { type: "operator", operator: "count", args: [] },
+                ],
+              },
+            ],
+          }),
+        ),
         display: "bar",
         visualization_settings: {},
       },

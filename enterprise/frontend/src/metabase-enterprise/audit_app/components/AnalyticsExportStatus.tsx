@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
-import StatusLarge from "metabase/status/components/StatusLarge";
+import { StatusLarge } from "metabase/status/components/StatusLarge";
 import useStatusVisibility from "metabase/status/hooks/use-status-visibility";
 
 import { ANALYTICS_EXPORT_CACHE_KEY, useExportAnalyticsMutation } from "../api";

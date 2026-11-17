@@ -477,7 +477,11 @@ describe("issue 32252", () => {
     cy.findByTestId("sidebar-toggle").click();
     H.navigationSidebar().findByText("Our analytics").click();
 
-    cy.findAllByRole("button", { name: "Actions" }).eq(0).click();
+    // The items table renders with zero rows while the items query is in flight, so
+    // the row's Actions button mounts late. Anchor on the row before opening its menu,
+    // otherwise the click lands on a freshly mounted Mantine Menu target and is dropped.
+    H.getUnpinnedSection().findByText("My collection").should("be.visible");
+    H.openUnpinnedItemMenu("My collection");
     H.popover().findByText("Move to trash").click();
     cy.findByTestId("toast-undo")
       .findByText("Trashed collection")
@@ -509,7 +513,8 @@ describe("issue 32252", () => {
     cy.findAllByTestId("collection-entry-name")
       .findByText("My collection")
       .click();
-    cy.button("Actions").click();
+    H.getUnpinnedSection().findByText("My question").should("be.visible");
+    H.openUnpinnedItemMenu("My question");
     H.popover().findByText("Move to trash").click();
     cy.findByTestId("toast-undo")
       .findByText("Trashed question")

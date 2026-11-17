@@ -192,7 +192,7 @@ export const DocumentHeader = ({
             <Box>
               {document && (
                 <ActionIcon
-                  className={S.commentsIcon}
+                  variant="subtle"
                   component={Link}
                   to={`/document/${document.id}/comments/all`}
                   size="md"

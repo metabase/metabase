@@ -26,7 +26,7 @@
   {:status  404
    :body    "Not found."
    :headers {"Cache-Control"                     "max-age=0, no-cache, must-revalidate, proxy-revalidate"
-             "Content-Security-Policy"           (str (-> (@#'mw.security/content-security-policy-header nil false false nil false) vals first)
+             "Content-Security-Policy"           (str (-> (@#'mw.security/content-security-policy-header nil false false nil false false) vals first)
                                                       " frame-ancestors 'none';")
              "Content-Type"                      "text/plain"
              "Expires"                           "Tue, 03 Jul 2001 06:00:00 GMT"
@@ -88,6 +88,20 @@
             identity
             (fn [e] (throw e)))))))
 
+(deftest ^:parallel check-map-message-is-client-facing-test
+  (testing "a map message is the response body, and its keys stay readable in the ex-data"
+    (let [e (try
+              (api/check false [400 {:message "Nope", :error_code "archived", :errors {:id "bad"}}])
+              (catch ExceptionInfo e e))]
+      (is (=? {:status-code 400, :error_code "archived", :errors {:id "bad"}}
+              (ex-data e)))
+      (is (= {:message "Nope", :error_code "archived", :errors {:id "bad"}}
+             (:body (mock-api-fn (fn [_] (throw e)))))))))
+
+(deftest ^:parallel checkp-errors-are-client-facing-test
+  (is (= {:errors {:name "is bad"}}
+         (:body (mock-api-fn (fn [_] (api/checkp false "name" "is bad")))))))
+
 (methodical/defmethod hawk.approx/=?-diff [java.util.regex.Pattern clojure.lang.Symbol]
   [expected-re sym]
   (hawk.approx/=?-diff expected-re (name sym)))
@@ -99,7 +113,6 @@
     (is (= [1 2 3] (api/parse-multi-values-param ["1" "2" "3"] parse-long)))))
 
 ;; set up for testing permission failure event publishing
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *events* nil)
 
 (methodical/defmethod events/publish-event! ::permission-failure-event
@@ -149,13 +162,13 @@
 (deftest query-check-returns-object-when-user-has-query-permissions-test
   (testing "query-check returns object when user has query permissions"
     (mt/with-temp [:model/Card card {}]
-      (with-redefs [mi/can-query? (constantly true)]
+      (mt/with-dynamic-fn-redefs [mi/can-query? (constantly true)]
         (is (= card (api/query-check card)))))))
 
 (deftest query-check-throws-403-when-user-lacks-query-permissions-test
   (testing "query-check throws 403 when user lacks query permissions"
     (mt/with-temp [:model/Card card {}]
-      (with-redefs [mi/can-query? (constantly false)]
+      (mt/with-dynamic-fn-redefs [mi/can-query? (constantly false)]
         (is (thrown-with-msg? ExceptionInfo #"permissions"
                               (api/query-check card)))))))
 

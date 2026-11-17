@@ -124,6 +124,16 @@ describe("scenarios > dashboard > filters > reset", () => {
 
     H.filterWidget().contains("Baz").should("be.visible");
     H.filterWidget().contains("Foo").should("be.visible");
+
+    cy.log("Keep a long value inside the filter box (metabase#59306)");
+    H.clearFilterWidget(0);
+    H.filterWidget({ name: "Filter One" }).click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter some text")
+        .type("asdf".repeat(20))
+        .invoke("outerWidth")
+        .should("be.lt", 400);
+    });
   });
 });
 

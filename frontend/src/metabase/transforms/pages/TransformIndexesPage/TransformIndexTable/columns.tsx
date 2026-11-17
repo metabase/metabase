@@ -40,7 +40,7 @@ export function getColumns({
       accessorFn: (index) => getIndexName(index),
       cell: ({ getValue }) => (
         <Group gap="sm" wrap="nowrap" miw={0}>
-          <FixedSizeIcon name="table_index" c="brand" />
+          <FixedSizeIcon name="table_index" c="core-brand" />
           <Ellipsified>{String(getValue())}</Ellipsified>
         </Group>
       ),

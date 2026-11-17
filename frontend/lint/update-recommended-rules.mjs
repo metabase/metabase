@@ -1,9 +1,12 @@
 import fs from "node:fs";
 import { pathToFileURL } from "node:url";
-import { builtinRules } from "eslint/use-at-your-own-risk";
+
 import js from "@eslint/js";
+import { builtinRules } from "eslint/use-at-your-own-risk";
 import tseslint from "typescript-eslint";
+
 import configs from "../../eslint.config.mjs";
+
 import ruleMap from "./oxlint/rule-map.json" with { type: "json" };
 
 function stripConfig(config) {

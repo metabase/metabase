@@ -1,5 +1,6 @@
 import { trackSimpleEvent } from "metabase/analytics";
 import type {
+  CollectionId,
   IndexKind,
   InspectorCardId,
   InspectorLensId,
@@ -10,6 +11,74 @@ import type {
 
 /** Lens ID concatenated with params */
 type LensKey = string;
+
+export type TransformDeletedTriggeredFrom =
+  | "transform_page"
+  | "content_diagnostics";
+
+export async function deleteTransformAndTrack({
+  deleteTransform,
+  transformId,
+  triggeredFrom,
+}: {
+  deleteTransform: () => Promise<unknown>;
+  transformId: TransformId;
+  triggeredFrom: TransformDeletedTriggeredFrom;
+}): Promise<void> {
+  const startTime = performance.now();
+  const track = (result: "success" | "failure") =>
+    trackSimpleEvent({
+      event: "transform_deleted",
+      target_id: transformId,
+      triggered_from: triggeredFrom,
+      duration_ms: Math.trunc(performance.now() - startTime),
+      result,
+    });
+
+  try {
+    await deleteTransform();
+    track("success");
+  } catch (error) {
+    track("failure");
+    throw error;
+  }
+}
+
+type TransformsFolderDeletedEventDetail =
+  | "transforms_only"
+  | "transforms_and_tables";
+
+export async function deleteTransformsFolderAndTrack({
+  deleteFolder,
+  collectionId,
+  deleteTables,
+}: {
+  deleteFolder: () => Promise<unknown>;
+  collectionId: CollectionId;
+  deleteTables: boolean;
+}): Promise<void> {
+  const startTime = performance.now();
+  const eventDetail: TransformsFolderDeletedEventDetail = deleteTables
+    ? "transforms_and_tables"
+    : "transforms_only";
+  const track = (result: "success" | "failure") =>
+    trackSimpleEvent({
+      event: "transform_folder_deleted",
+      target_id: Number(collectionId),
+      triggered_from: "transform_list_page",
+      event_detail: eventDetail,
+      duration_ms: Math.trunc(performance.now() - startTime),
+      result,
+    });
+
+  try {
+    await deleteFolder();
+    track("success");
+  } catch (error) {
+    track("failure");
+    throw error;
+  }
+}
 
 export function trackTransformTriggerManualRun({
   transformId,

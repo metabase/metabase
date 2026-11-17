@@ -15,7 +15,7 @@
 
 (defn- call
   [args]
-  (:result (registry/call-tool nil (str (random-uuid)) "glossary" args)))
+  (:result (registry/call-tool v2.tu/all-scopes (str (random-uuid)) "glossary" args)))
 
 (defn- text-of
   [result]

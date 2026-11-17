@@ -6,11 +6,10 @@
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting ^:deprecated data-complexity-scoring-enabled
-  (deferred-tru
-   (str "Deprecated: the :data-complexity-score premium feature token is the authoritative gate "
-        "for the scheduled scoring job. Retained as a read-only fallback so existing overrides "
-        "keep working — values from the MB_DATA_COMPLEXITY_SCORING_ENABLED env var or previously "
-        "persisted DB rows are still honored, but the setting can no longer be changed at runtime."))
+  (str "Deprecated: the :data-complexity-score premium feature token is the authoritative gate "
+       "for the scheduled scoring job. Retained as a read-only fallback so existing overrides "
+       "keep working — values from the MB_DATA_COMPLEXITY_SCORING_ENABLED env var or previously "
+       "persisted DB rows are still honored, but the setting can no longer be changed at runtime.")
   :encryption :no
   :visibility :internal
   :setter     :none
@@ -31,7 +30,7 @@
                (data-complexity-scoring-enabled))))
 
 (defsetting data-complexity-scoring-last-fingerprint
-  (deferred-tru "Internal bookkeeping: Fingerprint of last successful run, to prevent needless re-calculations.")
+  "Internal bookkeeping: Fingerprint of last successful run, to prevent needless re-calculations."
   :encryption :no
   :visibility :internal
   :default    ""
@@ -40,7 +39,7 @@
   :doc        false)
 
 (defsetting data-complexity-scoring-claim
-  (deferred-tru "Internal bookkeeping: EDN metadata with TTL for in-progress run, to skip duplicate work.")
+  "Internal bookkeeping: EDN metadata with TTL for in-progress run, to skip duplicate work."
   :encryption :no
   :visibility :internal
   :default    ""

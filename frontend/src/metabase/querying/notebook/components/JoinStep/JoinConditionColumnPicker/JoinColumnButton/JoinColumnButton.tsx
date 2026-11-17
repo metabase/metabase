@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useMergedRef } from "@mantine/hooks";
 import cx from "classnames";
 import { type Ref, forwardRef, useMemo, useRef } from "react";
@@ -90,7 +91,7 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
           display="block"
           fz={11}
           lh={1}
-          c={isEmpty ? "core-brand" : "text-primary-inverse"}
+          c={isEmpty ? "text-brand-strong" : "text-primary-inverse"}
           ta="left"
           fw={400}
         >
@@ -100,7 +101,7 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
       <Text
         className={S.joinCellContent}
         display="block"
-        c={isEmpty ? "core-brand" : "text-primary-inverse"}
+        c={isEmpty ? "text-brand-strong" : "text-primary-inverse"}
         ta="left"
         fw={700}
         lh={1}

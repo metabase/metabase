@@ -1,13 +1,15 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { html } from "@codemirror/lang-html";
 import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
-import { markdown } from "@codemirror/lang-markdown";
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { python } from "@codemirror/lang-python";
 import { sql } from "@codemirror/lang-sql";
 import {
   LanguageDescription,
   StreamLanguage,
   indentUnit,
+  syntaxHighlighting,
 } from "@codemirror/language";
 import { clojure } from "@codemirror/legacy-modes/mode/clojure";
 import { pug } from "@codemirror/legacy-modes/mode/pug";
@@ -17,6 +19,8 @@ import type { Extension } from "@codemirror/state";
 import { handlebarsLanguage as handlebars } from "@xiechao/codemirror-lang-handlebars";
 import { useMemo } from "react";
 import _ from "underscore";
+
+import { markdownMarkHighlighting } from "metabase/ui/syntax";
 
 import type { CodeLanguage } from "./types";
 
@@ -46,7 +50,9 @@ export function useExtensions({
   }, [language, extensions, originalValue, proposedValue]);
 }
 
-export function getLanguageExtension(language: CodeLanguage | Extension) {
+export function getLanguageExtension(
+  language: CodeLanguage | Extension,
+): Extension {
   if (typeof language !== "string") {
     return language;
   }
@@ -59,14 +65,17 @@ export function getLanguageExtension(language: CodeLanguage | Extension) {
     case "json":
       return json();
     case "markdown":
-      return markdown({
-        codeLanguages: [
-          LanguageDescription.of({
-            name: "sql",
-            support: sql(),
-          }),
-        ],
-      });
+      return [
+        markdown({
+          codeLanguages: [
+            LanguageDescription.of({
+              name: "sql",
+              support: sql(),
+            }),
+          ],
+        }),
+        syntaxHighlighting(markdownMarkHighlighting(markdownLanguage)),
+      ];
     case "python":
       return [python(), indentUnit.of("    ")];
     case "mustache":

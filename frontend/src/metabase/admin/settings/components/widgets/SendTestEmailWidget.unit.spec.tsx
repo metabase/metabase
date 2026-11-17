@@ -90,6 +90,10 @@ describe("SendTestEmailWidget", () => {
       const toasts = screen.getAllByLabelText("warning icon");
       expect(toasts).toHaveLength(1);
     });
+    expect(screen.getByTestId("toast-undo")).toHaveAttribute(
+      "data-variant",
+      "negative",
+    );
 
     expect(
       screen.getByRole("alert", { name: "Error sending test email" }),

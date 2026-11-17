@@ -18,17 +18,17 @@ Metabase is an open-source business intelligence platform. You can use Metabase 
 
 ### Metabase Cloud
 
-The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout). You get support, backups, upgrades, an SMTP server, SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving Metabase). Check out our quick overview of [cloud vs self-hosting](./cloud/cloud-vs-self-hosting.md). If you need to, you can always switch to [self-hosting](./installation-and-operation/installing-metabase.md) Metabase at any time (or vice versa).
+The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout). You get support, backups, upgrades, an SMTP server, SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving Metabase). Check out our quick overview of [cloud vs self-hosting](https://www.metabase.com/docs/latest/cloud/cloud-vs-self-hosting). If you need to, you can always switch to [self-hosting](./installation-and-operation/installing-metabase.md) Metabase at any time (or vice versa).
 
 ### [Installing Metabase](./installation-and-operation/installing-metabase.md)
 
 Run as a JAR, using Docker, or on [Metabase Cloud](https://store.metabase.com/checkout).
 
-### [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
+### [Setting up Metabase](./getting-started/setting-up-metabase.md)
 
 Once installed, set up your Metabase and connect to your data.
 
-### [Getting started](https://www.metabase.com/learn/metabase-basics/getting-started)
+### [Getting started](./getting-started/start.md)
 
 With your data connected, get started asking questions, creating dashboards, and sharing your work.
 
@@ -50,7 +50,7 @@ Metabase's reference documentation.
 - [Migrating to a production application database](./installation-and-operation/migrating-from-h2.md)
 - [Development instances](./installation-and-operation/development-instance.md)
 - [Serialization](./installation-and-operation/serialization.md)
-- [Remote sync](./installation-and-operation/remote-sync.md)
+- [Remote sync](./data-modeling/semantic-layer/remote-sync.md)
 - [Metabase CLI](./installation-and-operation/metabase-cli.md)
 - [Metabase JAR commands](./installation-and-operation/commands.md)
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
@@ -124,6 +124,13 @@ Metabase's reference documentation.
 - [Dashboard subscriptions](./dashboards/subscriptions.md)
 - [Actions on dashboards](./dashboards/actions.md)
 
+### Data apps
+
+- [Data apps overview](./data-apps/start.md)
+- [Getting started with data apps](./data-apps/getting-started.md)
+- [Build a data app](./data-apps/build.md)
+- [Manage data apps](./data-apps/manage.md)
+
 ### Documents
 
 - [Introduction to documents](./documents/introduction.md)
@@ -142,8 +149,9 @@ Metabase's reference documentation.
 
 ### Actions
 
-- [Actions overview](./data-modeling/models/actions/start.md)
-- [Introduction to actions](./data-modeling/models/actions/introduction.md)
+- [Data actions](./data-modeling/data-actions.md)
+- [Model actions](./data-modeling/models/actions/start.md)
+- [Introduction to model actions](./data-modeling/models/actions/introduction.md)
 - [Basic actions](./data-modeling/models/actions/basic.md)
 - [Custom actions](./data-modeling/models/actions/custom.md)
 
@@ -151,6 +159,7 @@ Metabase's reference documentation.
 
 - [AI overview](./ai/start.md)
 - [Metabot](./ai/metabot.md)
+- [Research](./ai/research.md)
 - [AI settings](./ai/settings.md)
 - [Supported AI providers](./ai/providers.md)
 - [AI usage controls](./ai/usage-controls.md)
@@ -232,7 +241,7 @@ Metabase's reference documentation.
 ### Configuration
 
 - [Configuration overview](./configuring-metabase/start.md)
-- [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
+- [Setting up Metabase](./getting-started/setting-up-metabase.md)
 - [General settings](./configuring-metabase/settings.md)
 - [Allow iframes and images from other domains](./configuring-metabase/domains.md)
 - [Email](./configuring-metabase/email.md)
@@ -251,6 +260,7 @@ Metabase's reference documentation.
 
 - [Monitor overview](./monitor/start.md)
 - [Dependency diagnostics](./monitor/dependency-diagnostics.md)
+- [Content diagnostics](./monitor/content-diagnostics.md)
 - [Erroring questions](./monitor/erroring-questions.md)
 - [Alerts management](./monitor/alerts-management.md)
 - [Background tasks](./monitor/background-tasks.md)
@@ -258,6 +268,7 @@ Metabase's reference documentation.
 - [Application logs](./monitor/application-logs.md)
 - [Model persistence log](./monitor/model-persistence-log.md)
 - [CLI analytics](./monitor/cli-analytics.md)
+- [Data app analytics](./monitor/data-app-analytics.md)
 
 ### Tools
 
@@ -266,7 +277,7 @@ Metabase's reference documentation.
 
 ### Metabase Cloud
 
-- [Documentation for Metabase Cloud and Store](./cloud/start.md)
+- [Documentation for Metabase Cloud and Store](https://www.metabase.com/docs/latest/cloud/start)
 
 ### Metabase API
 

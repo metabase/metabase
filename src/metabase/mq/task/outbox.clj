@@ -16,9 +16,10 @@
 (def ^:private job-key (jobs/key "metabase.mq.task.outbox.job"))
 (def ^:private trigger-key (triggers/key "metabase.mq.task.outbox.trigger"))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Republishes transactional-outbox rows orphaned by a crash."}
-  FlushMessageOutbox
+(task/defjob FlushMessageOutbox
+  "Republishes transactional-outbox rows orphaned by a crash."
+  {:saved-class "metabase.mq.task.outbox.FlushMessageOutbox"
+   :concurrent? false}
   [_]
   (let [n (outbox/recover-outbox!)]
     (when (pos? n)

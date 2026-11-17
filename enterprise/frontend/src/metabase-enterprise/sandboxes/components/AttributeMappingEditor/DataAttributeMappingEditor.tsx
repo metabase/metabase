@@ -4,8 +4,17 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { Box, Button, Icon, Select, Text, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Icon,
+  Select,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import { QuestionParameterTargetWidget } from "metabase-enterprise/sandboxes/containers/QuestionParameterTargetWidget";
+import { useTableCard } from "metabase-enterprise/sandboxes/hooks/use-table-card";
 import type {
   DataAttributeMap,
   GroupTableAccessPolicyDraft,
@@ -15,7 +24,6 @@ import {
   addEntry,
   buildEntries,
   buildMapping,
-  getRawDataQuestionForTable,
   removeEntry,
   renderUserAttributesForSelect,
   replaceEntryKey,
@@ -129,17 +137,17 @@ export const DataAttributeMappingEditor = ({
                 className={cx(CS.pb1, CS.pl1)}
                 style={{ verticalAlign: "middle" }}
               >
-                {/* TODO: replace with ActionIcon (GDGT-2457) */}
-                <Button
-                  leftSection={<Icon name="close" />}
+                <ActionIcon
                   variant="subtle"
-                  color="neutral"
                   size="sm"
                   onClick={() =>
                     handleChange(removeEntry<ValueType>(entries, index))
                   }
                   data-testid="remove-mapping"
-                />
+                  aria-label={t`Remove mapping`}
+                >
+                  <Icon name="close" />
+                </ActionIcon>
               </td>
             </tr>
           );
@@ -205,6 +213,7 @@ const ColumnPicker = ({
   policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft;
   shouldUseSavedQuestion: boolean;
 }) => {
+  const tableCard = useTableCard(policyTable);
   const filterByTableColumn =
     !shouldUseSavedQuestion && policy.table_id != null;
   const filterBySavedQuestion =
@@ -218,11 +227,7 @@ const ColumnPicker = ({
         <QuestionParameterTargetWidget
           target={target}
           onChange={onChange}
-          questionObject={
-            filterByTableColumn && policyTable
-              ? getRawDataQuestionForTable(policyTable)
-              : null
-          }
+          questionObject={filterByTableColumn ? tableCard : null}
           questionId={filterBySavedQuestion ? policy.card_id : undefined}
           placeholder={
             filterByTableColumn ? t`Pick a column` : t`Pick a parameter`

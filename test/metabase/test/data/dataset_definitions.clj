@@ -8,6 +8,8 @@
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
+(set! *warn-on-reflection* true)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Various Datasets                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+

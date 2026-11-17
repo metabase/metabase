@@ -53,14 +53,15 @@
   execute-dashcard!
   fetch-values]
  [metabase.actions.models
+  adhoc-action
   check-action-databases-enabled
+  check-implicit-action-table-pk
   check-implicit-actions-supported
   dashcard->action
   insert!
   select-action
   select-actions
   select-actions-for-ids
-  select-actions-for-models
   update!]
  [metabase.actions.events
   publish-action-success!]

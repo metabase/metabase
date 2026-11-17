@@ -12,6 +12,7 @@
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase-enterprise.tenants.auth-provider] ;; make sure the auth provider is actually registered
    [metabase.appearance.settings :as appearance.settings]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as auth-identity.provider]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -349,21 +350,20 @@
       (doseq [redirect-uri ["https://badsite.com"
                             "//badsite.com"
                             "https:///badsite.com"]]
+        ;; The rejection is returned as a plain-text body, so the whole body is the message.
         (is
          (= "Invalid redirect URL"
-            (->
-             (client/client
-              :get 400 "/auth/sso" {:request-options {:redirect-strategy :none}}
-              :return_to redirect-uri
-              :jwt
-              (jwt/sign
-               {:email      "rasta@metabase.com"
-                :first_name "Rasta"
-                :last_name  "Toucan"
-                :extra      "keypairs"
-                :are        "also present"}
-               default-jwt-secret))
-             :message)))))))
+            (client/client
+             :get 400 "/auth/sso" {:request-options {:redirect-strategy :none}}
+             :return_to redirect-uri
+             :jwt
+             (jwt/sign
+              {:email      "rasta@metabase.com"
+               :first_name "Rasta"
+               :last_name  "Toucan"
+               :extra      "keypairs"
+               :are        "also present"}
+              default-jwt-secret))))))))
 
 (deftest expired-jwt-test
   (testing "Check an expired JWT"
@@ -643,6 +643,39 @@
               (is (= nil
                      (t2/select-one-fn :login_attributes :model/User :email "existinguser@metabase.com"))))))))))
 
+(defn- jwt-login!
+  [email]
+  (client/client-real-response :get 302 "/auth/sso"
+                               {:request-options {:redirect-strategy :none}}
+                               :return_to default-redirect-uri
+                               :jwt (jwt/sign {:email email :first_name "Password" :last_name "User"}
+                                              default-jwt-secret)))
+
+(defn- reset-url-status
+  [user-id]
+  (binding [client/*url-prefix* "/api"]
+    (:status (mt/user-http-request-full-response :crowberto :post (format "user/%d/password-reset-url" user-id)))))
+
+(deftest password-user-keeps-password-reset-after-jwt-login-test
+  (testing "admin can still create reset link for user who logged in with password and later with JWT"
+    (with-jwt-default-setup!
+      (mt/with-temp [:model/User user {:email "password-then-jwt@metabase.com"}]
+        (auth-identity/set-password! (:id user) "somePassword12!!")
+        (binding [client/*url-prefix* "/api"]
+          (client/client :post 200 "session" {:username (:email user) :password "somePassword12!!"}))
+        (is (sso.test-setup/successful-login? (jwt-login! (:email user))))
+        (is (= :jwt (t2/select-one-fn :sso_source :model/User :id (:id user))))
+        (is (= 200 (reset-url-status (:id user))))))))
+
+(deftest unused-password-gives-no-reset-after-jwt-login-test
+  (testing "admin cannot create reset link for JWT user whose password was never used to log in"
+    (with-jwt-default-setup!
+      (mt/with-temp [:model/User user {:email "unused-password-then-jwt@metabase.com"}]
+        (auth-identity/set-password! (:id user) "somePassword12!!")
+        (is (= 200 (reset-url-status (:id user))))
+        (is (sso.test-setup/successful-login? (jwt-login! (:email user))))
+        (is (= 404 (reset-url-status (:id user))))))))
+
 (deftest login-update-account-test
   (testing "An existing user will be reactivated upon login"
     (with-jwt-default-setup!
@@ -826,38 +859,29 @@
     (mt/with-additional-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/PermissionsGroup _my-group {:name (str ::my-group)}
-                       :model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
-                                                      :name "Tenant McTenantson"
-                                                      :is_active false}
+                       :model/Tenant {tenant-id :id
+                                      collection-id :tenant_collection_id} {:slug "tenant-mctenantson"
+                                                                            :name "Tenant McTenantson"}
                        :model/User {existing-email :email} {:tenant_id tenant-id}]
-          (mt/with-temporary-setting-values [use-tenants true]
-            (testing "a new user can log into a deactivated tenant"
-              (mt/with-model-cleanup [:model/User]
+          (mt/with-model-cleanup [:model/User]
+            (doseq [[user-type email] [["new" "newuser@metabase.com"] ["existing" existing-email]]]
+              (testing (str "a " user-type " user can log into a deactivated tenant")
+                (mt/user-http-request :crowberto :put 200 (str "/api/ee/tenant/" tenant-id) {:is_active false})
+                (is (true? (t2/select-one-fn :archived :model/Collection :id collection-id)))
                 (let [response (client/client-real-response :get 302 "/auth/sso"
                                                             {:request-options {:redirect-strategy :none}}
                                                             :return_to default-redirect-uri
                                                             :jwt
                                                             (jwt/sign
-                                                             {:email "newuser@metabase.com"
+                                                             {:email email
                                                               "@tenant" "tenant-mctenantson"
-                                                              :first_name "New"
+                                                              :first_name "Test"
                                                               :last_name "User"}
                                                              default-jwt-secret))]
                   (is (sso.test-setup/successful-login? response))
-                  (is (t2/select-one-fn :is_active :model/Tenant :id tenant-id)))))
-            (testing "an existing user also fails to log in with correct error message"
-              (let [response (client/client-real-response :get 302 "/auth/sso"
-                                                          {:request-options {:redirect-strategy :none}}
-                                                          :return_to default-redirect-uri
-                                                          :jwt
-                                                          (jwt/sign
-                                                           {:email existing-email
-                                                            "@tenant" "tenant-mctenantson"
-                                                            :first_name "Existing"
-                                                            :last_name "User"}
-                                                           default-jwt-secret))]
-                (is (sso.test-setup/successful-login? response))
-                (is (t2/select-one-fn :is_active :model/Tenant :id tenant-id))))))))))
+                  (is (true? (t2/select-one-fn :is_active :model/Tenant :id tenant-id)))
+                  (is (true? (t2/select-one-fn :is_active :model/User :email email)))
+                  (is (false? (t2/select-one-fn :archived :model/Collection :id collection-id))))))))))))
 
 (deftest users-cannot-log-into-deactivated-tenant-with-provisioning-disabled
   (with-jwt-default-setup!
@@ -1466,7 +1490,7 @@
                                                               :last_name "User"}
                                                              default-jwt-secret))]
                   (is (sso.test-setup/successful-login? response))
-                  (let [tenant (t2/select-one :model/Tenant tenant-id)]
+                  (let [tenant (t2/select-one :model/Tenant :id tenant-id)]
                     (testing "existing 'plan' attribute is preserved, not overwritten"
                       (is (= "enterprise" (get (:attributes tenant) "plan"))))
                     (testing "new 'region' attribute is added"

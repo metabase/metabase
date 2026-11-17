@@ -21,8 +21,7 @@ import { Outlet, useNavigate, useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Table from "metabase-lib/v1/metadata/Table";
-import { type Card, isConcreteTableId } from "metabase-types/api";
+import type { Card, TableId } from "metabase-types/api";
 
 type ModelActionsParams = {
   slug: string;
@@ -34,7 +33,7 @@ type EntityLoadersProps = {
 
 type DispatchProps = {
   loadMetadataForCard: (card: Card) => void;
-  fetchTableForeignKeys: (params: { id: Table["id"] }) => void;
+  fetchTableForeignKeys: (params: { id: TableId }) => void;
 };
 
 type Props = EntityLoadersProps & DispatchProps;
@@ -58,12 +57,14 @@ function ModelActions({
 
   usePageTitle(model?.displayName() || "");
 
-  const database = model.database();
+  const card = model.card();
+  const isModel = model.type() === "model";
+  const databaseId = Lib.databaseID(model.query());
   const hasActions = actions.length > 0;
-  const hasActionsEnabled = database != null && database.hasActionsEnabled();
+  const hasActionsEnabled =
+    Lib.databaseDisplayInfo(model.query())?.isActionsEnabled ?? false;
   const shouldShowActionsUI = hasActions || hasActionsEnabled;
 
-  // A card source (`card__123`) has no foreign keys of its own.
   const mainTableId = useMemo(() => {
     const query = model.query();
     const { isNative } = Lib.queryDisplayInfo(query);
@@ -72,23 +73,20 @@ function ModelActions({
       return null;
     }
 
-    const sourceTableId = Lib.sourceTableOrCardId(query);
-    return sourceTableId != null && isConcreteTableId(sourceTableId)
-      ? sourceTableId
-      : null;
+    return Lib.primarySourceTableId(query);
   }, [model]);
 
   useMount(() => {
-    const card = model.card();
-    const isModel = model.type() === "model";
-    if (isModel) {
-      if (model.database()) {
-        loadMetadataForCard(card);
-      }
-    } else {
+    if (!isModel) {
       navigate(Urls.card(card), { replace: true });
     }
   });
+
+  useEffect(() => {
+    if (isModel && databaseId != null) {
+      loadMetadataForCard(card);
+    }
+  }, [card, databaseId, isModel, loadMetadataForCard]);
 
   // The table request is also the permission check: a user who cannot read the
   // table gets no table, and its foreign keys are not asked for.

@@ -6,7 +6,7 @@
    [metabase-enterprise.gsheets.settings :refer [gsheets]]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.test :as mt]
-   [metabase.util.string :as u.string]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -131,8 +131,9 @@
   "A 200 'error' response from HM. nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
   "e8653c8d-4d86-4ebc-92a3-0468252b9d07")
 
-(defmacro with-sample-db-as-dwh [& body]
+(defmacro with-sample-db-as-dwh
   "We need an attached dwh for these tests, so let's have the sample db fill in for us:"
+  [& body]
   (let [db-sym (gensym "db-")]
     `(mt/with-temp [:model/Database ~db-sym {:is_attached_dwh true}]
        ~@body)))
@@ -151,7 +152,7 @@
             (is (partial= {:url "https://drive.google.com/drive/expected-gdrive-link", :created-by-id (mt/user->id :crowberto)}
                           saved))
             (is (pos-int? (:created-at saved)))
-            (is (u.string/valid-uuid? (:gdrive/conn-id saved)))))))))
+            (is (u/uuid-string? (:gdrive/conn-id saved)))))))))
 
 (deftest create-sheet-test
   (with-sample-db-as-dwh

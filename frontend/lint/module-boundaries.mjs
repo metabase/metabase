@@ -139,6 +139,20 @@ const elements = [
   // embedding-iframe-sdk, embedding-iframe-sdk-setup and mcp-app must come before
   // shared/embedding: their patterns are subfolders of
   // frontend/src/metabase/embedding/, and the first matching element wins.
+  // The data-app-* elements are the Data Apps team's folders inside embedding
+  // code. Each one takes its parent's tier and comes before its parent.
+  createElement({
+    type: "app",
+    name: "data-app-iframe-sdk",
+    pattern:
+      "frontend/src/metabase/embedding/embedding-iframe-sdk/data-apps/**",
+  }),
+  createElement({
+    type: "app",
+    name: "data-app-iframe-sdk-setup",
+    pattern:
+      "frontend/src/metabase/embedding/embedding-iframe-sdk-setup/data-apps/**",
+  }),
   createElement({
     type: "app",
     name: "embedding-iframe-sdk",
@@ -154,6 +168,16 @@ const elements = [
     name: "mcp-app",
     pattern: "frontend/src/metabase/embedding/mcp/**",
   }),
+  // App tier because ResourcePreview imports the EAJS runtime
+  // (embedding-iframe-sdk), and PreviewPanel then EmbeddingThemeEditorApp import
+  // it in turn -- shared cannot import app. The runtime has real module-load
+  // side effects, so this stays app tier rather than becoming shared. Must
+  // precede shared/embedding below: first match wins.
+  createElement({
+    type: "app",
+    name: "theme-editor",
+    pattern: "frontend/src/metabase/embedding/themes/components/ThemeEditor/**",
+  }),
   ...[
     "frontend/src/metabase/app-embed-mcp.tsx",
     "frontend/src/metabase/app-embed-mcp-public-path.ts",
@@ -161,8 +185,18 @@ const elements = [
   ].map((pattern) =>
     createElement({ type: "app", name: "mcp-app", pattern, mode: "full" }),
   ),
+  createElement({
+    type: "shared",
+    name: "data-app-embedding",
+    pattern: "frontend/src/metabase/embedding/data-apps/**",
+  }),
   createElement({ type: "shared", name: "embedding" }),
   createElement({ type: "shared", name: "embedding-sdk" }),
+  createElement({
+    type: "app",
+    name: "data-app-sdk-bundle",
+    pattern: "frontend/src/embedding-sdk-bundle/components/public/DataApp/**",
+  }),
   createElement({
     type: "app",
     name: "embedding-sdk-bundle",
@@ -177,6 +211,11 @@ const elements = [
     type: "app",
     name: "embedding-sdk-ee",
     pattern: "enterprise/frontend/src/embedding-sdk-ee/**",
+  }),
+  createElement({
+    type: "app",
+    name: "data-app-sdk-package",
+    pattern: "enterprise/frontend/src/embedding-sdk-package/data-apps/**",
   }),
   createElement({
     type: "app",
@@ -210,6 +249,11 @@ const elements = [
   }),
   createElement({
     type: "shared",
+    name: "data-app-embedding-sdk-shared",
+    pattern: "frontend/src/embedding-sdk-shared/data-apps/**",
+  }),
+  createElement({
+    type: "shared",
     name: "embedding-sdk-shared",
     pattern: "frontend/src/embedding-sdk-shared/**",
   }),
@@ -233,6 +277,11 @@ const elements = [
   createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),
+  createElement({
+    type: "shared",
+    name: "permissions",
+    enforcePublicApi: true,
+  }),
   createElement({ type: "shared", name: "plugins" }),
   createElement({ type: "shared", name: "pulse" }),
   createElement({ type: "shared", name: "querying" }),
@@ -268,27 +317,28 @@ const elements = [
   createElement({ type: "shared", name: "visualizer" }),
 
   // feature
-  // The theme editor previews the live embed through the app-tier EAJS
-  // runtime, so the whole editor is an app-tier module. It still lives under
-  // the admin folder; the pattern must come before feature/admin (first match
-  // wins).
-  // TODO(embedding-modules): move the folder out of admin so module == folder.
-  createElement({
-    type: "app",
-    name: "theme-editor",
-    pattern: "frontend/src/metabase/admin/embedding/components/ThemeEditor/**",
-  }),
-  // Route composition for the admin app. Must precede feature/admin.
-  ...[
-    "frontend/src/metabase/admin/routes.tsx",
-    "frontend/src/metabase/admin/routes.unit.spec.tsx",
-  ].map((pattern) =>
-    createElement({ type: "app", name: "admin-routes", pattern, mode: "full" }),
-  ),
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
   createElement({ type: "feature", name: "data-studio" }),
   createElement({ type: "shared", name: "documents" }),
+  // The hub's route table and the page that mounts the app-tier theme editor.
+  // Must precede feature/embedding-hub: routes.tsx imports admin's permissions
+  // routes (feature) and EmbeddingHubThemeEditorPage imports
+  // EmbeddingThemeEditorApp (app), neither of which a feature module may import.
+  ...[
+    "frontend/src/metabase/embedding-hub/routes.tsx",
+    "frontend/src/metabase/embedding-hub/routes.unit.spec.tsx",
+    "frontend/src/metabase/embedding-hub/pages/EmbeddingHubThemeEditorPage.tsx",
+    "frontend/src/metabase/embedding-hub/pages/EmbeddingHubThemeEditorPage.unit.spec.tsx",
+  ].map((pattern) =>
+    createElement({
+      type: "app",
+      name: "embedding-hub-routes",
+      pattern,
+      mode: "full",
+    }),
+  ),
+  createElement({ type: "feature", name: "embedding-hub" }),
   // EE plugin-bootstrap files that only wire app-tier SDK modules into plugin
   // slots, so they're app tier, not feature/enterprise. Tagged by which embedding
   // product they belong to. Must precede the feature/enterprise element below
@@ -321,6 +371,13 @@ const elements = [
       mode: "full",
     }),
   ),
+  createElement({
+    type: "app",
+    name: "data-app-iframe-sdk-ee",
+    pattern:
+      "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/data-apps/**",
+    mode: "full",
+  }),
   // The Near-Membrane sandbox + its ABI (globals map, factory/provider-props
   // contract). Feature tier on purpose: it's a library consumed by the app-tier
   // entries (runtime + SDK package dev preset), and the tier guarantees it only
@@ -328,13 +385,13 @@ const elements = [
   createElement({
     type: "feature",
     name: "data-app-sandbox",
-    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/sandbox/**",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data-apps/sandbox/**",
     mode: "full",
   }),
   createElement({
     type: "app",
     name: "data-app-runtime",
-    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/runtime/**",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data-apps/runtime/**",
     mode: "full",
   }),
   createElement({
@@ -371,7 +428,7 @@ const elements = [
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/app-static-viz.ts",
     "frontend/src/metabase/AppComponent.tsx",
-    "frontend/src/metabase/App.styled.tsx",
+    "frontend/src/metabase/AppComponent.unit.spec.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
     "frontend/src/metabase/reducers-main.ts",
     "frontend/src/metabase/reducers-public.ts",

@@ -8,8 +8,8 @@
    [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -64,21 +64,25 @@
     [:updated_at  {:optional true} RowTimestamp]]
    ::channel.schema/channel.details-by-type])
 
-(defmethod mi/can-write? :model/Channel
-  [& _]
-  (or (mi/superuser?)
-      (perms/current-user-has-application-permissions? :setting)))
+(methodical/defmethod t2/simple-hydrate [:model/Channel :can_write]
+  [_model k instance]
+  (assoc instance k
+         (boolean
+          (or (mi/superuser?)
+              (perms/current-user-has-application-permissions? :setting)))))
 
-(defmethod mi/can-read? :model/Channel
-  [_channel]
-  (or (mi/superuser?)
-      (perms/current-user-has-application-permissions? :setting)))
+(methodical/defmethod t2/simple-hydrate [:model/Channel :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k
+             (boolean
+              (or (mi/superuser?)
+                  (perms/current-user-has-application-permissions? :setting)))))
 
 (methodical/defmethod mi/to-json :model/Channel
   "Only include `:details` for callers who can write the channel, matching `remove-details-if-needed` in the channel
   API. Encoding at the model boundary keeps every response that returns a Channel consistent."
   [channel json-generator]
-  (next-method (if (mi/can-write? channel)
+  (next-method (if (mi/can-write? (t2/hydrate channel :can_write))
                  channel
                  (dissoc channel :details))
                json-generator))
@@ -95,22 +99,15 @@
       ;; Limit to 254 characters to avoid hitting character limit
       (assoc :name (u/truncate (format "DEACTIVATED_%d %s" (:id instance) (:name instance)) 254)))))
 
-(defmethod serdes/entity-id "Channel" [_ {:keys [name]}] name)
+(defmethod serialization/storage-paths :model/Channel [_ entities _ctx]
+  (mapv (fn [channel]
+          [{:label "channels"} {:label (:name channel) :key (:name channel)}])
+        entities))
 
-(defmethod serdes/load-find-local "Channel"
-  [path]
-  (channel.db/channel-by-name (:id (last path))))
-
-(defmethod serdes/generate-path "Channel" [_ channel]
-  [(serdes/infer-self-path "Channel" channel)])
-
-(defmethod serdes/storage-path "Channel" [channel _ctx]
-  [{:label "channels"} {:label (:name channel) :key (serdes/entity-id "Channel" channel)}])
-
-(defmethod serdes/make-spec "Channel"
-  [_model-name _opts]
-  {:copy           [:name :description :type :details :active]
-   :transform      {:created_at (serdes/date)}
+(defmethod serialization/spec :model/Channel [_]
+  {:schema   ::channel.schema/external-channel
+   :identity [:name]
+   :copy     [:name :description :type :details :active]
    :defaults {:active true}})
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -125,7 +122,7 @@
   "Entries every channel template has, whatever its `:channel_type`."
   [[:id           {:optional true} ms/PositiveInt]
    [:name         {:optional true} ms/NonBlankString]
-   [:channel_type                  [:fn #(= "channel" (-> % keyword namespace))]]])
+   [:channel_type                  [:fn {:json-schema {:type "string"}} #(= "channel" (-> % keyword namespace))]]])
 
 (def ^:private channel-template-row-entries
   "[[channel-template-entries]] plus the timestamps a stored template carries. Kept out of the user-provided schema
@@ -193,7 +190,9 @@
 (defmethod analytics.core/known-labels :metabase-notification/template-create [_] template-channel-labels)
 (defmethod analytics.core/known-labels :metabase-notification/template-update [_] template-channel-labels)
 
-(defmethod mi/can-write? :model/ChannelTemplate
-  [& _]
-  (or (mi/superuser?)
-      (perms/current-user-has-application-permissions? :setting)))
+(methodical/defmethod t2/simple-hydrate [:model/ChannelTemplate :can_write]
+  [_model k instance]
+  (assoc instance k
+         (boolean
+          (or (mi/superuser?)
+              (perms/current-user-has-application-permissions? :setting)))))

@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.oauth-server.consent-page :as consent-page]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.fonts :as u.fonts]))
 
 (set! *warn-on-reflection* true)
 
@@ -87,7 +88,9 @@
                    :csrf-token   "test-csrf"}))]
       (is (re-find #"action=\"https://example\.com/metabase/oauth/authorize/decision\"" html))
       (testing "bundled fonts are also loaded from under the subpath"
-        (is (re-find #"url\('https://example\.com/metabase/app/fonts/" html)))))
+        ;; The face URLs carry a content hash, so they only exist once the frontend has been built.
+        (when (u.fonts/bundled-fonts-available?)
+          (is (re-find #"url\('https://example\.com/metabase/app/dist/fonts/" html))))))
   (testing "at the domain root the action still targets /oauth/authorize/decision"
     (let [html (render!)]
       (is (re-find #"action=\"http://localhost:3000/oauth/authorize/decision\"" html)))))
@@ -192,10 +195,10 @@
       (is (tag-has-attribute? locked "disabled"))
       (is (re-find #"(?s)value=\"agent:content:read\"(?:(?!</li>).)*Always granted" html)
           "the note sits in the locked scope's row")))
-  (testing "every other scope, including a full-access one, starts unticked and can be ticked"
+  (testing "GHY-4826: every requested scope starts ticked"
     (let [[_ sql full] (checkbox-tags (render-with-scopes! checkbox-scopes))]
       (doseq [tag [sql full]]
-        (is (not (tag-has-attribute? tag "checked")) tag)
+        (is (tag-has-attribute? tag "checked") tag)
         (is (not (tag-has-attribute? tag "disabled")) tag))))
   (testing "no always-granted note when nothing is locked"
     (is (not (re-find #"Always granted" (render-with-scopes! (rest checkbox-scopes)))))))

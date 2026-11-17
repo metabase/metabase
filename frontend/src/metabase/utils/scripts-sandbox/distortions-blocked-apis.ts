@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { GLOBAL_BLOCKED_EVENT_TYPES } from "./distortions-event";
 
 export const BLOCKED_NATIVE_REFS = new Map<object, string>();

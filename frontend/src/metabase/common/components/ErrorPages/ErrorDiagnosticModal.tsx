@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useEffect, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
@@ -12,7 +13,7 @@ import { addUndo } from "metabase/redux/undo";
 import { getIsErrorDiagnosticModalOpen } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
-import { Button, Flex, Icon, Loader, Modal, Stack, Text } from "metabase/ui";
+import { Button, Icon, Loader, Modal, Stack, Text } from "metabase/ui";
 import { downloadObjectAsJson } from "metabase/utils/download";
 import { isWithinIframe } from "metabase/utils/iframe";
 
@@ -112,7 +113,7 @@ export const ErrorDiagnosticModal = ({
         dispatch(
           addUndo({
             message: t`Failed to send diagnostic information to Slack`,
-            icon: "warning",
+            variant: "negative",
           }),
         );
       }
@@ -121,7 +122,7 @@ export const ErrorDiagnosticModal = ({
       dispatch(
         addUndo({
           message: t`Error sending diagnostic information to Slack`,
-          icon: "warning",
+          variant: "negative",
         }),
       );
     } finally {
@@ -131,8 +132,12 @@ export const ErrorDiagnosticModal = ({
 
   if (isSubmissionComplete) {
     return (
-      <Modal opened onClose={onClose} size={550}>
-        <Stack gap="sm" align="center" py="xxl">
+      <Modal
+        opened
+        onClose={onClose}
+        size={550}
+        layout="centered"
+        illustration={
           <MetabotLogo
             variant="bug"
             alt={c(
@@ -140,14 +145,15 @@ export const ErrorDiagnosticModal = ({
             ).t`Bug report submitted`}
             style={{ height: "100px", width: "100px" }}
           />
-          <Text ta="center" size="lg" fw="bold">
-            {t`Thank you for your feedback!`}
-          </Text>
-          <Text ta="center" c="text-secondary">
-            {t`Bug report submitted successfully.`}
-          </Text>
-          <Button mt="xxl" onClick={onClose}>{t`Close`}</Button>
-        </Stack>
+        }
+        title={t`Thank you for your feedback!`}
+      >
+        <Text c="text-secondary">{t`Bug report submitted successfully.`}</Text>
+        <Modal.Footer>
+          <Button variant="filled" onClick={onClose}>
+            {t`Close`}
+          </Button>
+        </Modal.Footer>
       </Modal>
     );
   }
@@ -267,17 +273,19 @@ export const ErrorExplanationModal = ({
       opened={isModalOpen}
       onClose={onClose}
     >
-      <Text my="lg">
-        {t`We’ve run into an error, try to refresh the page or go back.`}
-      </Text>
-      <Text my="lg">
-        {t`If the error persists, you can download diagnostic information`}
-      </Text>
-      <Flex justify="flex-end">
+      <Stack gap="lg">
+        <Text>
+          {t`We’ve run into an error, try to refresh the page or go back.`}
+        </Text>
+        <Text>
+          {t`If the error persists, you can download diagnostic information`}
+        </Text>
+      </Stack>
+      <Modal.Footer>
         <Button variant="filled" onClick={openDiagnosticModal}>
           {t`Download diagnostic info`}
         </Button>
-      </Flex>
+      </Modal.Footer>
     </Modal>
   );
 };

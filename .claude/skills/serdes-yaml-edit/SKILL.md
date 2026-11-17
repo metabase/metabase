@@ -238,6 +238,5 @@ The filename slug should match the card name (lowercase, underscored). If you re
 
 - `entity_id` - this is the identity of the object, changing it creates a new object on import
 - `serdes/meta` - internal serdes metadata, leave it alone
-- `created_at` - timestamp, no reason to change
 - `creator_id` - email reference, leave it
 - `metabase_version` - informational, leave it
