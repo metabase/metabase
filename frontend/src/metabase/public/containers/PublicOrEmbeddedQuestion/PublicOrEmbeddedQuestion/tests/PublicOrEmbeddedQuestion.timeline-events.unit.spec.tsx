@@ -96,7 +96,8 @@ const TIMELINE_API_PATH = /^\/api\/([a-z_]+\/)?timeline/;
 const getTimelineRequests = () =>
   fetchMock.callHistory
     .calls()
-    .filter((call) => TIMELINE_API_PATH.test(new URL(call.url).pathname));
+    .map((call) => call.url)
+    .filter((url) => TIMELINE_API_PATH.test(new URL(url).pathname));
 
 describe("PublicOrEmbeddedQuestion > timeline events", () => {
   beforeEach(() => {
