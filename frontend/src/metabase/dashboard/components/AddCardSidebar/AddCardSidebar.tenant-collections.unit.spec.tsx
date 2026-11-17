@@ -86,10 +86,14 @@ const TENANT_SUB_CARD = createMockCard({
 });
 
 const REGULAR_COLLECTIONS = [ROOT, OUR_ANALYTICS_SUB];
-const TENANT_COLLECTIONS = [
-  OTHER_TENANT_COLLECTION,
-  TENANT_COLLECTION,
-  TENANT_SUB_COLLECTION,
+
+// Like the API, the tree nests each collection in its parent's `children`.
+const SHARED_COLLECTION_TREE: Collection[] = [
+  { ...OTHER_TENANT_COLLECTION, children: [] },
+  {
+    ...TENANT_COLLECTION,
+    children: [{ ...TENANT_SUB_COLLECTION, children: [] }],
+  },
 ];
 
 const toCardItem = (card: Card) =>
@@ -100,13 +104,23 @@ interface SetupOpts {
 }
 
 function setup({ useTenants = true }: SetupOpts = {}) {
-  // The tree endpoint returns the tenant collections only for their namespace.
+  // Registered first, so these win over the flat tree of the shared helper.
+  fetchMock.get({
+    url: "path:/api/collection/tree",
+    query: { namespace: TENANT_NAMESPACE },
+    response: SHARED_COLLECTION_TREE,
+    name: "shared-tenant-collection-tree",
+  });
+  fetchMock.get({
+    url: "path:/api/collection/tree",
+    query: { namespace: "tenant-specific" },
+    response: [],
+    name: "tenant-specific-collection-tree",
+  });
   setupCollectionsEndpoints({
-    collections: [...REGULAR_COLLECTIONS, ...TENANT_COLLECTIONS],
+    collections: REGULAR_COLLECTIONS,
     rootCollection: ROOT,
   });
-  // Like the API, the plain list only has collections of the default namespace.
-  fetchMock.modifyRoute("collection-list", { response: REGULAR_COLLECTIONS });
   setupTenantEntpoints([]);
 
   setupCollectionItemsEndpoint({ collection: ROOT, collectionItems: [] });
