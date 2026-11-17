@@ -25,7 +25,7 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/User [_model] :core_user)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :author]     [_original-model _k] :model/User)
@@ -36,7 +36,8 @@
 (doto :model/User
   (derive :metabase/model)
   (derive :hook/updated-at-timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive ::mi/create-policy.superuser))
 
 (events/derive! :event/user-create :metabase/event)
 
@@ -65,15 +66,15 @@
    :sso_source       mi/transform-keyword
    :type             mi/transform-keyword})
 
-(def ^:private allowed-user-types
-  #{:internal :personal :api-key})
+(def ^:private default-user-columns
+  "Sequence of columns that are normally returned when fetching a User from the DB."
+  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_data_analyst :is_qbnewb :tenant_id])
 
-(def ^:private insert-default-values
-  {:date_joined     :%now
-   :last_login      nil
-   :is_active       true
-   :is_superuser    false
-   :is_data_analyst false})
+(t2.default-fields/define-default-fields :model/User default-user-columns)
+
+(defmethod mi/exclude-internal-content-hsql :model/User
+  [_model & {:keys [table-alias]}]
+  [:and [:not= (h2x/identifier :field table-alias :type) "internal"]])
 
 (defn settings-map
   "Returns the user's `settings` as a map, defaulting to an empty map.
@@ -97,7 +98,17 @@
        (users.db/user-settings user-or-user-id)
        (:settings user-or-user-id)))))
 
-;;; -------------------------------------------------- Validation Helpers --------------------------------------------------
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
+(def ^:private allowed-user-types
+  #{:internal :personal :api-key})
+
+(def ^:private insert-default-values
+  {:date_joined     :%now
+   :last_login      nil
+   :is_active       true
+   :is_superuser    false
+   :is_data_analyst false})
 
 (defn- validate-user-email!
   "Validate that the email is in a valid format."
@@ -110,12 +121,11 @@
   (when locale
     (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale)))))
 
-(defn- validate-user-type!
-  "Validate that the user type is one of the allowed types."
+(defn- check-user-type
+  "Throws a 400 unless `user-type` is nil or one of the allowed types."
   [user-type]
-  (when user-type
-    (assert (contains? allowed-user-types user-type)
-            (tru "Invalid user type: {0}" (pr-str user-type)))))
+  (when (and user-type (not (contains? allowed-user-types user-type)))
+    (throw (ex-info (tru "Invalid user type: {0}" (pr-str user-type)) {:status-code 400}))))
 
 (defn- validate-sso-setup!
   "Validate that SSO users can only be created after initial setup is complete."
@@ -123,17 +133,22 @@
   (when (and sso-source (not (setup/has-user-setup)))
     (throw (Exception. (trs "Metabase instance has not been initialized")))))
 
+(defn- check-superuser-has-no-tenant
+  "Throws a 400 when `user` is both a superuser and a tenant user."
+  [{superuser? :is_superuser tenant-id :tenant_id}]
+  (when (and superuser? tenant-id)
+    (throw (ex-info (tru "Superusers cannot be tenant users") {:status-code 400}))))
+
 (defn- validate-user-insert!
   "Validate all constraints for user insertion."
-  [{:keys [email locale sso_source] user-type :type}]
+  [{:keys [email locale sso_source] user-type :type :as user}]
   (validate-user-email! email)
-  (validate-user-type! user-type)
+  (check-superuser-has-no-tenant user)
+  (check-user-type user-type)
   (validate-user-locale! locale)
   (validate-sso-setup! sso_source)
   (when (or (nil? user-type) (= user-type :personal))
     (premium-features/assert-airgap-allows-user-creation!)))
-
-;;; -------------------------------------------------- Password Management --------------------------------------------------
 
 (defn- without-credential-fields
   "Remove password and reset-token fields from a User map. Login passwords live in the user's `password` AuthIdentity
@@ -142,8 +157,6 @@
   longer read or written by this codebase, so we drop any incoming values rather than persisting them."
   [user]
   (dissoc user :password :password_salt :reset_token :reset_triggered))
-
-;;; -------------------------------------------------- Admin Group Management --------------------------------------------------
 
 (defn- handle-superuser-toggle!
   "Add or remove user from admin group based on superuser status change.
@@ -165,8 +178,6 @@
   (when (and in-admin-group? (false? active?))
     (perms/throw-if-last-admin! id)))
 
-;;; -------------------------------------------------- User Archival --------------------------------------------------
-
 (defn- handle-user-archival!
   "Clean up user subscriptions when user is archived."
   [user-id active?]
@@ -181,8 +192,6 @@
     active? {:deactivated_at nil}
     (false? active?) {:deactivated_at :%now}
     :else nil))
-
-;;; -------------------------------------------------- Field Normalization --------------------------------------------------
 
 (defn- normalize-user-fields
   "Normalize email and locale for database storage."
@@ -227,6 +236,12 @@
 
 (t2/define-before-update :model/User
   [{:keys [id] :as user}]
+  (when (and (= id config/internal-mb-user-id) (seq (t2/changes user)))
+    (throw (ex-info (tru "Not able to modify the internal user") {:status-code 400})))
+  (when (contains? (t2/changes user) :type)
+    (check-user-type (:type (t2/changes user))))
+  (when (:is_superuser (t2/changes user))
+    (check-superuser-has-no-tenant user))
   (let [changes (t2/changes user)
         {:keys [email locale]
          superuser? :is_superuser
@@ -263,36 +278,65 @@
   [user]
   (add-common-name user))
 
-(def ^:private default-user-columns
-  "Sequence of columns that are normally returned when fetching a User from the DB."
-  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_data_analyst :is_qbnewb :tenant_id])
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
-(def admin-or-self-visible-columns
-  "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
-  fetching themselves. Needed to power the admin page."
-  (into default-user-columns [:sso_source :is_active :updated_at :login_attributes :jwt_attributes :locale]))
+(defn- self-or-superuser?
+  "Whether the current user is `user` or a superuser."
+  [user]
+  (boolean (or api/*is-superuser?* (= (u/the-id user) api/*current-user-id*))))
 
-(def non-admin-or-self-visible-columns
-  "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see
-  other Users at all? I honestly would prefer they couldn't, but we need to give them a list of emails to power
-  Pulses."
-  [:id :email :first_name :last_name])
+(defn- group-manager?
+  "Whether the current user manages a group, which counts only with advanced permissions."
+  []
+  (boolean (and (premium-features/enable-advanced-permissions?) api/*is-group-manager?*)))
 
-(def group-manager-visible-columns
-  "Sequence of columns Group Managers can see when fetching a list of Users.."
-  (into non-admin-or-self-visible-columns [:is_superuser :last_login]))
+(methodical/defmethod t2/batched-hydrate [:model/User :can_read]
+  "Whether the current user can read each of `users`, which a user can for themselves and a superuser or a group
+  manager can for anyone."
+  [_model k users]
+  (let [group-manager (group-manager?)]
+    (for [user users]
+      (when user
+        (vary-meta user assoc k (or group-manager (self-or-superuser? user)))))))
 
-(t2.default-fields/define-default-fields :model/User default-user-columns)
+(methodical/defmethod t2/batched-hydrate [:model/User :can_write]
+  "Whether the current user can write each of `users`, which a user can for themselves and a superuser can for anyone."
+  [_model k users]
+  (for [user users]
+    (when user
+      (assoc user k (self-or-superuser? user)))))
 
-(defn group-ids
-  "Fetch set of IDs of PermissionsGroup a User belongs to."
-  [user-or-id]
-  (when user-or-id
-    (users.db/user-group-ids (u/the-id user-or-id))))
+(def ^:private self-updatable-columns
+  "The columns a user may change on their own row."
+  #{:first_name :last_name :locale :email :is_qbnewb :is_datasetnewb})
 
-(defmethod mi/exclude-internal-content-hsql :model/User
-  [_model & {:keys [table-alias]}]
-  [:and [:not= (h2x/identifier :field table-alias :type) "internal"]])
+(def ^:private superuser-updatable-columns
+  "The columns a superuser may change on any user's row."
+  (into self-updatable-columns [:login_attributes :tenant_id :is_superuser :is_data_analyst]))
+
+(defn updatable-columns
+  "The columns of `user` the current user may change: those a superuser may change, those of their own row, or none."
+  [user]
+  (cond
+    api/*is-superuser?*                       superuser-updatable-columns
+    (= (u/the-id user) api/*current-user-id*) self-updatable-columns
+    :else                                     #{}))
+
+(defn- email-change-allowed?
+  "Whether the current user may give `user` the `:email` in `changes`, which only a superuser may for a Google or LDAP
+  user, or for a `user` selected without its `:sso_source`."
+  [{:keys [sso_source email] :as user} changes]
+  (or api/*is-superuser?*
+      (not (contains? changes :email))
+      (= email (:email changes))
+      (and (contains? user :sso_source)
+           (not (#{:google :ldap} sso_source)))))
+
+(defmethod mi/can-update? :model/User
+  [user changes]
+  (boolean (and (mi/can-write? user)
+                (every? (updatable-columns user) (keys changes))
+                (email-change-allowed? user changes))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -363,6 +407,27 @@
                                             (get tenant-id->collection-id tenant-id)))))))
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
+
+(def admin-or-self-visible-columns
+  "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
+  fetching themselves. Needed to power the admin page."
+  (into default-user-columns [:sso_source :is_active :updated_at :login_attributes :jwt_attributes :locale]))
+
+(def non-admin-or-self-visible-columns
+  "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see
+  other Users at all? I honestly would prefer they couldn't, but we need to give them a list of emails to power
+  Pulses."
+  [:id :email :first_name :last_name])
+
+(def group-manager-visible-columns
+  "Sequence of columns Group Managers can see when fetching a list of Users.."
+  (into non-admin-or-self-visible-columns [:is_superuser :last_login]))
+
+(defn group-ids
+  "Fetch set of IDs of PermissionsGroup a User belongs to."
+  [user-or-id]
+  (when user-or-id
+    (users.db/user-group-ids (u/the-id user-or-id))))
 
 (declare form-password-reset-url)
 
