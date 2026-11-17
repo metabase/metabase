@@ -61,22 +61,17 @@
   "Name for the auto-created Summary document on each exploration."
   "Summary")
 
+(defn- publish-document-updates!
+  "Publish `:event/document-update` for each of the Summary `documents` just updated."
+  [documents]
+  (doseq [document documents]
+    (events/publish-event! :event/document-update {:object document})))
+
 (defn- cascade-collection-id-to-documents!
   "Propagate an Exploration's new `collection_id` to its Summary document.
   Mirrors the dashboard-question cascade in `dashboards_rest/api.clj`."
   [exploration-id new-coll-id]
-  (explorations.db/move-summary-documents! exploration-id new-coll-id))
-
-(defn- cascade-archived-to-documents!
-  "Propagate an Exploration's archive flip to its Summary document.
-  Mirrors `dashboards_rest/api.clj` (parent-archive cascade for dashboard questions):
-  on archive, flip every doc that wasn't already archived directly; on unarchive,
-  flip every doc that was cascade-archived. Docs with `archived_directly=true`
-  (user-archived) are never touched."
-  [exploration-id new-archived?]
-  (if new-archived?
-    (explorations.db/archive-summary-documents! exploration-id)
-    (explorations.db/unarchive-summary-documents! exploration-id)))
+  (publish-document-updates! (explorations.db/move-summary-documents! exploration-id new-coll-id)))
 
 (defn- insert-summary-document!
   "Insert the auto-created Summary document for a newly created exploration. Explore-further
@@ -570,12 +565,7 @@
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private updatable-columns
-  "Columns a client may set through `PUT /api/exploration/:id`. `UpdateExploration` is an open map,
-  so extra body keys survive decoding; the request is `select-keys`'d to this set before
-  `t2/update!` to prevent mass-assignment of protected columns (`creator_id`, `entity_id`,
-  timestamps, ...). `:archived_directly` is intentionally excluded — it is derived server-side by
-  `updates-with-archived-directly`, never accepted from the client. Keep in sync with
-  `UpdateExploration`."
+  "The columns `PUT /api/exploration/:id` passes to `t2/update!`."
   #{:name :description :archived :collection_id :collection_position})
 
 ;;; ----------------------------------------- /dimensions schemas + helpers -----------------------------------------
@@ -802,26 +792,27 @@
   "Update an exploration's metadata, archive state, or move it to a different collection.
 
   When `collection_id` changes, the caller must have write perms on the destination collection
-  (or the root collection when `collection_id` is nil). Source perms are enforced by
-  `api/write-check` against the exploration itself, which reads its Collection.
-  Moving an exploration cascades the new `collection_id` onto its Summary document; flipping
-  `archived` cascades to the same document (skipping any that were directly user-archived,
-  mirroring the dashboard / dashboard-question cascade)."
+  (or the root collection when `collection_id` is nil). The caller must pass
+  `api/update-check` on the exploration.
+  Moving an exploration cascades the new `collection_id` onto its Summary document; changing
+  `archived` archives or restores its Summary documents, except those archived on their own."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    updates :- UpdateExploration]
   (let [existing (get-exploration-or-404 id)
         allowed  (select-keys updates updatable-columns)
-        updates' (api/updates-with-archived-directly existing allowed)]
-    (api/write-check existing)
+        updates' (api/updates-without-collection-when-archiving existing allowed)]
+    (api/update-check existing updates')
     (check-destination-collection-perms! existing updates')
-    (t2/with-transaction [_]
-      (when (seq updates')
-        (explorations.db/update-exploration! id updates')
-        (when (contains? updates' :collection_id)
-          (cascade-collection-id-to-documents! id (:collection_id updates')))
-        (when (contains? updates' :archived)
-          (cascade-archived-to-documents! id (:archived updates')))))
+    (let [archived-document-ids (when (contains? updates' :archived)
+                                  (explorations.db/summary-document-ids-following id (boolean (:archived updates'))))]
+      (t2/with-transaction [_]
+        (when (seq updates')
+          (explorations.db/update-exploration! id updates')
+          (when (contains? updates' :collection_id)
+            (cascade-collection-id-to-documents! id (:collection_id updates')))))
+      (when (seq archived-document-ids)
+        (publish-document-updates! (explorations.db/documents-by-ids archived-document-ids))))
     (let [updated (explorations.db/exploration id)]
       (when (seq updates')
         (events/publish-event! :event/exploration-update

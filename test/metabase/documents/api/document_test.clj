@@ -16,6 +16,7 @@
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
    [metabase.util.malli.fn :as mu.fn]
    [toucan2.core :as t2]))
 
@@ -485,7 +486,7 @@
             (is (= collection1-id (:collection_id (t2/select-one :model/Card :id card-id))))))
         (testing "moving to non-existent collection fails gracefully"
           (mt/user-http-request :crowberto
-                                :put 400 (format "document/%s" document-id)
+                                :put 404 (format "document/%s" document-id)
                                 {:collection_id 99999})
           ;; Verify nothing changed
           (is (= collection1-id (:collection_id (t2/select-one :model/Document :id document-id))))
@@ -1715,7 +1716,7 @@
           (is (true? (:archived doc)))
           (is (true? (:archived_directly doc)))
           (is (true? (:archived card)))
-          (is (true? (:archived_directly card)))))
+          (is (false? (:archived_directly card)))))
       (testing "unarchiving directly archived document works"
         (mt/user-http-request :crowberto
                               :put 200 (format "document/%s" doc-id)
@@ -1738,24 +1739,36 @@
           (is (true? (:archived card)))
           (is (false? (:archived_directly card)))))
       (testing "directly archived documents stay archived when collection is unarchived"
-        ;; First, directly archive the document
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived false})
+        (mt/user-http-request :crowberto
+                              :put 200 (format "document/%s" doc-id)
+                              {:archived true})
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived true})
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived false})
+        (let [doc (t2/select-one :model/Document :id doc-id)
+              card (t2/select-one :model/Card :id card-id)]
+          (is (true? (:archived doc)))
+          (is (true? (:archived_directly doc)))
+          (is (true? (:archived card)))
+          (is (false? (:archived_directly card)))))
+      (testing "a document that is not archived in an archived collection is archived as following it"
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived true})
         (mt/user-http-request :crowberto
                               :put 200 (format "document/%s" doc-id)
                               {:archived false})
         (mt/user-http-request :crowberto
                               :put 200 (format "document/%s" doc-id)
                               {:archived true})
-        ;; Then unarchive the collection
-        (mt/user-http-request :crowberto
-                              :put 200 (format "collection/%s" coll-id)
-                              {:archived false})
-        ;; Document should remain archived because it was archived directly
-        (let [doc (t2/select-one :model/Document :id doc-id)
-              card (t2/select-one :model/Card :id card-id)]
-          (is (true? (:archived doc)))
-          (is (true? (:archived_directly doc)))
-          (is (true? (:archived card)))
-          (is (true? (:archived_directly card))))))))
+        (is (=? {:archived true, :archived_directly false}
+                (t2/select-one [:model/Document :archived :archived_directly] :id doc-id)))))))
 
 (deftest archived-documents-filtering-test
   (testing "Archived documents are properly filtered from various endpoints"
@@ -2697,3 +2710,54 @@
           (is (= [card-1 card-2]
                  (embedded-card-ids (:document result))
                  (embedded-card-ids (t2/select-one-fn :document :model/Document :id document-id)))))))))
+
+(deftest move-needs-write-access-to-both-collections-test
+  (testing "PUT /api/document/:id moves a Document only when the user writes its Collection and the target"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {old-id :id} {}
+                     :model/Collection {new-id :id} {}
+                     :model/Document {document-id :id} {:collection_id old-id}]
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-id)
+        (mt/user-http-request :rasta :put 403 (str "document/" document-id) {:collection_id new-id})
+        (is (= old-id (t2/select-one-fn :collection_id :model/Document :id document-id)))
+        (perms/revoke-collection-permissions! (perms/all-users-group) old-id)
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-id)
+        (mt/user-http-request :rasta :put 403 (str "document/" document-id) {:collection_id new-id})
+        (is (= old-id (t2/select-one-fn :collection_id :model/Document :id document-id)))
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-id)
+        (mt/user-http-request :rasta :put 200 (str "document/" document-id) {:collection_id new-id})
+        (is (= new-id (t2/select-one-fn :collection_id :model/Document :id document-id)))))))
+
+(deftest public-link-create-and-delete-publish-document-update-test
+  (testing "creating and removing a public link publish :event/document-update, as other document writes do"
+    (tu/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document document {}]
+        (let [published (atom [])
+              original  (mt/original-fn #'events/publish-event!)]
+          (with-redefs [events/publish-event! (fn [topic event]
+                                                (swap! published conj [topic (some-> event :object :id)])
+                                                (original topic event))]
+            (mt/user-http-request :crowberto :post 200 (format "document/%d/public-link" (:id document)))
+            (is (= [[:event/document-update (:id document)]] @published))
+            (reset! published [])
+            (mt/user-http-request :crowberto :post 200 (format "document/%d/public-link" (:id document)))
+            (is (empty? @published))
+            (mt/user-http-request :crowberto :delete 204 (format "document/%d/public-link" (:id document)))
+            (is (= [[:event/document-update (:id document)]] @published))))))))
+
+(deftest collection-archive-and-restore-publish-document-update-test
+  (testing "archiving and restoring collection publish :event/document-update for its documents"
+    (mt/with-temp [:model/Collection {collection-id :id} {}
+                   :model/Document {document-id :id} {:collection_id collection-id}]
+      (let [published (atom [])
+            original  (mt/original-fn #'events/publish-event!)]
+        (with-redefs [events/publish-event! (fn [topic event]
+                                              (when (= :event/document-update topic)
+                                                (swap! published conj (some-> event :object :id)))
+                                              (original topic event))]
+          (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id) {:archived true})
+          (is (= [document-id] @published))
+          (is (true? (t2/select-one-fn :archived :model/Document :id document-id)))
+          (reset! published [])
+          (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id) {:archived false})
+          (is (= [document-id] @published)))))))

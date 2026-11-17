@@ -964,6 +964,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/Database
+                    :model/Exploration
                     :model/Table
                     :model/User}}
 

@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.explorations.api]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.derived-perms :as derived-perms]
@@ -593,10 +594,8 @@
     (mt/with-temp [:model/User u {:email "segments@example.com"}
                    :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                    :model/Segment internal {:name       "internal"
-                                            :table_id   (mt/id :venues)
                                             :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1)))))}
                    :model/Segment premium  {:name       "premium"
-                                            :table_id   (mt/id :venues)
                                             :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 4)))))}]
       (let [body    {:name       "fan-out"
                      :metrics    [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
@@ -629,7 +628,6 @@
     (mt/with-temp [:model/User u {:email "seg-scope@example.com"}
                    :model/Card metric (venues-metric-card (:id u))
                    :model/Segment _other {:name       "users-only"
-                                          :table_id   (mt/id :users)
                                           :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :users))) (lib/filter (lib/not-null (lib.metadata/field mp (mt/id :users :id)))))))}]
       (let [body    {:name       "scope"
                      :metrics    [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
@@ -767,7 +765,6 @@
     (mt/with-temp [:model/User u {:email "facet-no-seg@example.com"}
                    :model/Card metric (assoc (products-monthly-metric-card (:id u)) :name "Sales")
                    :model/Segment s {:name       "premium"
-                                     :table_id   (mt/id :products)
                                      :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :products))) (lib/filter (lib/> (lib.metadata/field mp (mt/id :products :price)) 50)))))}]
       (let [mapping [{:dimension_id (duid "cat")
                       :table_id     (mt/id :products)
@@ -792,7 +789,6 @@
     (mt/with-temp [:model/User u {:email "seg-multiply@example.com"}
                    :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                    :model/Segment s {:name       "cheap"
-                                     :table_id   (mt/id :venues)
                                      :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1)))))}]
       (let [mapping [{:dimension_id (duid "created")
                       ;; a mapping's :table_id is the table of the *target* column (see
@@ -1912,6 +1908,42 @@
           (is (true? (:archived d)))
           (is (true? (:archived_directly d))))))))
 
+(deftest exploration-summary-updates-record-revision-and-event-test
+  (testing "Archiving and moving an exploration records a revision and an event for the Summary it updates"
+    (mt/with-temp [:model/Collection c {}
+                   :model/Collection dest {}
+                   :model/Exploration e {:name "to-archive"
+                                         :creator_id    (mt/user->id :crowberto)
+                                         :collection_id (:id c)}
+                   :model/Document live {:name "Summary"
+                                         :document {:type "doc" :content []}
+                                         :content_type "application/json+vnd.prose-mirror"
+                                         :creator_id (mt/user->id :crowberto)
+                                         :collection_id (:id c)
+                                         :exploration_id (:id e)}
+                   :model/Document user-archived {:name "user-archived"
+                                                  :document {:type "doc" :content []}
+                                                  :content_type "application/json+vnd.prose-mirror"
+                                                  :creator_id (mt/user->id :crowberto)
+                                                  :collection_id (:id c)
+                                                  :exploration_id (:id e)
+                                                  :archived true
+                                                  :archived_directly true}]
+      (let [published (atom [])
+            original  (mt/original-fn #'events/publish-event!)]
+        (with-redefs [events/publish-event! (fn [topic event]
+                                              (swap! published conj [topic (some-> event :object :id)])
+                                              (original topic event))]
+          (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                                {:collection_id (:id dest)})
+          (is (some #{[:event/document-update (:id live)]} @published))
+          (reset! published [])
+          (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                                {:archived true})
+          (is (some #{[:event/document-update (:id live)]} @published))
+          (is (not-any? #{[:event/document-update (:id user-archived)]} @published)))
+        (is (pos? (t2/count :model/Revision :model "Document" :model_id (:id live))))))))
+
 (deftest exploration-get-hydrates-summary-when-trashed-test
   (testing "GET /:id still hydrates the Summary after the exploration is trashed, so Trash view keeps the document."
     (mt/with-temp [:model/Collection c {}
@@ -2119,10 +2151,8 @@
     (mt/with-temp [:model/User u {:email "groups@example.com"}
                    :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                    :model/Segment _seg-a {:name "alpha"
-                                          :table_id (mt/id :venues)
                                           :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1)))))}
                    :model/Segment _seg-b {:name "beta"
-                                          :table_id (mt/id :venues)
                                           :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 4)))))}]
       (let [body {:name "groups"
                   :metrics    [{:card_id (:id metric)

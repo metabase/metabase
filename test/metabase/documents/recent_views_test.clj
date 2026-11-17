@@ -99,8 +99,7 @@
 (deftest select-documents-for-recents-archived-collections-test
   (testing "excludes documents from archived collections via left join"
     (mt/with-temp [:model/Collection {archived-coll-id :id} {:name "Archived Collection"
-                                                             :authority_level "official"
-                                                             :archived true}
+                                                             :authority_level "official"}
                    :model/Collection {active-coll-id :id} {:name "Active Collection"
                                                            :authority_level "official"
                                                            :archived false}
@@ -110,6 +109,7 @@
                    :model/Document {doc2-id :id} {:name "Document in Active Collection"
                                                   :collection_id active-coll-id
                                                   :archived false}]
+      (t2/update! :collection :id archived-coll-id {:archived true})
       (let [results (#'recent-views.model/document-recents [doc1-id doc2-id])]
         (is (= 2 (count results)))
         ;; Document from archived collection should have nil collection info
