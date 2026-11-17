@@ -787,10 +787,11 @@
   "The lines telling the model which subscriptions the save archived, and what to tell the user.
   A subscription the user can't read is counted, not described."
   [subscriptions]
-  (let [describe          (fn [{:keys [creator-name channels recipient-count parameters]}]
+  (let [channel-name      #(get {:http "webhook"} % (name %))
+        describe          (fn [{:keys [creator-name channels recipient-count parameters]}]
                             (str "  - " creator-name "'s subscription"
                                  (if (seq channels)
-                                   (str " by " (str/join " and " (map #(get {:http "webhook"} % (name %)) channels)) " to " recipient-count
+                                   (str " by " (str/join " and " (map channel-name channels)) " to " recipient-count
                                         (if (= 1 recipient-count) " recipient" " recipients"))
                                    " with no recipients")
                                  ", which used " (str/join ", " (map (comp pr-str :name) parameters))))
