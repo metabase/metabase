@@ -177,6 +177,9 @@
    {:context "CTE declarations and references keep their spelling"
     :dialect "postgres" :sql "WITH Orders AS (SELECT 1 AS id) SELECT id FROM ORDERS"
     :expected "WITH Orders AS (\n  SELECT\n    1 AS id\n)\nSELECT\n  id\nFROM ORDERS"}
+   {:context "unquoted identifiers and a table alias stay unquoted through an uppercase-folding dialect"
+    :dialect "snowflake" :sql "select SubTotal from Orders as O where o.Total > 0"
+    :expected "SELECT\n  SubTotal\nFROM Orders AS O\nWHERE\n  o.Total > 0"}
    {:context "lowercase unquoted identifiers stay unquoted through an uppercase-folding dialect"
     :dialect "snowflake" :sql "select subtotal from orders"
     :expected "SELECT\n  subtotal\nFROM orders"}
@@ -192,6 +195,9 @@
    {:context "reserved words are quoted in the dialect's folded case, lowercase dialect"
     :dialect "postgres" :sql "select Order, user from t"
     :expected "SELECT\n  \"order\",\n  \"user\"\nFROM t"}
+   {:context "a lone reserved word is quoted in the dialect's folded case"
+    :dialect "postgres" :sql "SELECT order FROM t"
+    :expected "SELECT\n  \"order\"\nFROM t"}
    {:context "a reserved word that is already quoted stays quoted"
     :dialect "postgres" :sql "SELECT \"order\" FROM t"
     :expected "SELECT\n  \"order\"\nFROM t"}
