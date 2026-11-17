@@ -412,8 +412,8 @@ describe("query builder > metrics in questions", () => {
 
     const step = await screen.findByTestId("step-summarize-0-0");
     expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-    expect(within(step).getByText("Count of orders")).toBeInTheDocument();
     expect(screen.queryByText("[Unknown Metric]")).not.toBeInTheDocument();
+    expect(within(step).getByText("Count of orders")).toBeInTheDocument();
   });
 
   it("should be able to add a filter to a question that uses a metric", async () => {
