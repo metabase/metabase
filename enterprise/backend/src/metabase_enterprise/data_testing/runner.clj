@@ -1,18 +1,19 @@
 (ns metabase-enterprise.data-testing.runner
   "Orchestrates a test run over the module's separated concerns. Callers hand the runner the saved subject, and the
-  saved test to run or the inputs and expectations to validate; the runner owns the connection lifecycle, hands
+  saved test to run or the test definition to validate; the runner owns the connection lifecycle, hands
   ordinary arguments to each concern (no marshaled plan object), and owns the HTTP decisions.
 
     subject      — app-db: the subject's database and its query compiled to SQL, one method per subject type
     compile      — pure: referenced tables (once), then rewrites to temp tables
     validator    — pure: may this test run? every read faked, every rewritten query on temp tables
     executor     — the one place warehouse I/O lives: create/drop temp tables, run read-backs
-    expectations — check each expectation against the output temp table (via executor)
+    expectations — check each expectation against the output temp table, or the input temp tables after a write
+                   (via executor)
 
   Flow — compile the subject once, then thread that one result so the guard and the rewrite agree:
 
     subject-plan (app-db)     : the database, the subject's SQL, the names of its output
-      → referenced tables (pure): the tables the SQL reads
+      → referenced tables (pure): the tables the SQL reads or writes
       → name + rewrite (pure)   : a temp table per input, and the source reading them
       → validate (pure)         : reject a test that is incomplete, or whose queries would still
                                   read a real table
