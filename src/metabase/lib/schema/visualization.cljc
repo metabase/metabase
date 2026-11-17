@@ -256,11 +256,22 @@
                 [:rows  ::column-names-or-refs]
                 [:value [:sequential :any]]))
 
+(mr/def ::goal-value.reference
+  "A dynamic goal's reference to a column of the result of another entity, such as a card or a measure."
+  [:map
+   [:type   [:string {:decode/normalize lib.schema.common/normalize-string-key}]]
+   [:id     pos-int?]
+   [:column :string]])
+
+(mr/def ::goal-value
+  "A goal: a number, the name of another column of the same result, or a [[::goal-value.reference]]."
+  [:or number? :string ::goal-value.reference])
+
 (mr/def ::scalar.segment
   "A segment of a scalar visualization: the color of the values from its minimum to its maximum."
   (settings-map {:description "scalar segment"}
-                [:min   number?]
-                [:max   number?]
+                [:min   ::goal-value]
+                [:max   ::goal-value]
                 [:color :string]
                 [:label :string]))
 

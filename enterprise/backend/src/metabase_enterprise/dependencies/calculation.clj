@@ -129,7 +129,9 @@
         base-deps      (merge-with into
                                    (upstream-deps:query query)
                                    (upstream-deps:dimension-mappings dimension-mappings)
-                                   (upstream-deps:dynamic-goals (:visualization_settings card)))
+                                   (upstream-deps:dynamic-goals
+                                    (lib/normalize ::lib.schema.visualization/visualization-settings
+                                                   (:visualization_settings card))))
         param-card-ids (keep #(-> % :values_source_config :card_id) (:parameters card))]
     (reduce (fn [deps card-id]
               (update deps :card (fnil conj #{}) card-id))
@@ -193,7 +195,9 @@
                                        column-setting-card-ids])
         all-dashboard-ids (into vis-setting-dashboard-ids column-setting-dashboard-ids)
         goal-deps (reduce (fn [deps dashcard]
-                            (merge-with into deps (upstream-deps:dynamic-goals (:visualization_settings dashcard))))
+                            (merge-with into deps (upstream-deps:dynamic-goals
+                                                   (lib/normalize ::lib.schema.visualization/visualization-settings
+                                                                  (:visualization_settings dashcard)))))
                           {}
                           dashcards)]
     (merge-with into
