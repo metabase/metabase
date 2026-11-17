@@ -1,5 +1,9 @@
 import type { DatabaseId, TableId } from "metabase-types/api";
 
+export function adminPermissions() {
+  return "/admin/permissions";
+}
+
 export function tableDataPermissions(
   databaseId: DatabaseId,
   schema: string | null,

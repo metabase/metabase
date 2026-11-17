@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import type {
+  ForcePasswordResetResponse,
   User,
   UserAttributeKey,
   UserId,
@@ -19,6 +20,12 @@ export function setupPasswordResetUrlEndpoint(
   fetchMock.post(`path:/api/user/${userId}/password-reset-url`, {
     password_reset_url: resetUrl,
   });
+}
+
+export function setupForcePasswordResetEndpoint(
+  response: ForcePasswordResetResponse,
+) {
+  fetchMock.post("path:/api/user/force-password-reset", response);
 }
 
 export function setupUpdatePasswordEndpoint(userId: UserId) {

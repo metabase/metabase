@@ -13,6 +13,8 @@
 ;; Import model query functions
 (p/import-vars
  [auth-identity
+  force-password-reset!
+  password-reset-required?
   hash-password-credentials
   set-password!
   reset-token-hash])

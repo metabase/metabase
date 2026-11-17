@@ -1,5 +1,6 @@
 export interface PasswordResetTokenStatus {
   valid: boolean;
+  password_reset_required: boolean;
 }
 
 export interface LoginData {

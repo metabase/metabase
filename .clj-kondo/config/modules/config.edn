@@ -3434,6 +3434,7 @@
    :uses #{api
            api-scope
            appearance
+           channel
            collections
            events
            lib.schema

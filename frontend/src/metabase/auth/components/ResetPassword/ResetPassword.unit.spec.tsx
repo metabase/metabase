@@ -15,10 +15,17 @@ import { ResetPassword } from "./ResetPassword";
 
 interface SetupOpts {
   isTokenValid?: boolean;
+  isPasswordResetRequired?: boolean;
 }
 
-const setup = ({ isTokenValid = true }: SetupOpts = {}) => {
-  setupPasswordResetTokenEndpoint({ valid: isTokenValid });
+const setup = ({
+  isTokenValid = true,
+  isPasswordResetRequired = false,
+}: SetupOpts = {}) => {
+  setupPasswordResetTokenEndpoint({
+    valid: isTokenValid,
+    password_reset_required: isPasswordResetRequired,
+  });
   setupResetPasswordEndpoint();
   setupPasswordCheckEndpoint();
   setupCurrentUserEndpoint(createMockUser());
@@ -44,6 +51,22 @@ describe("ResetPassword", () => {
   it("should show a form when token validations succeeds", async () => {
     setup({ isTokenValid: true });
     expect(await screen.findByText("New password")).toBeInTheDocument();
+  });
+
+  it("should say an administrator required the reset when they did", async () => {
+    setup({ isPasswordResetRequired: true });
+    expect(await screen.findByText("New password")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /An administrator has required you to set a new password/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("should not mention an administrator for an ordinary reset", async () => {
+    setup();
+    expect(await screen.findByText("New password")).toBeInTheDocument();
+    expect(screen.queryByText(/An administrator/)).not.toBeInTheDocument();
   });
 
   it("should show an error message when token validation fails", async () => {
