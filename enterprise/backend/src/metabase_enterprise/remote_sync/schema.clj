@@ -1,25 +1,38 @@
 (ns metabase-enterprise.remote-sync.schema
   "Malli schemas for remote sync API request and response bodies."
   (:require
+   [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
+   [metabase.actions.schema :as actions.schema]
+   [metabase.collections.schema :as collections.schema]
+   [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.data-apps.schema :as data-apps.schema]
+   [metabase.documents.schema :as documents.schema]
+   [metabase.glossary.schema :as glossary.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.measures.schema :as measures.schema]
+   [metabase.native-query-snippets.schema :as native-query-snippets.schema]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.segments.schema :as segments.schema]
+   [metabase.timeline.schema :as timeline.schema]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]))
 
-;;; ------------------------------------------- Task Schemas -------------------------------------------
-
-(def TaskStatus
+(mr/def ::task-status
   "Status of a remote sync task."
   [:enum :running :successful :errored :cancelled :timed-out :conflict])
 
-(def TaskType
+(mr/def ::task-type
   "Type of remote sync task."
   [:enum "import" "export"])
 
-(def SyncTask
+(mr/def ::sync-task
   "Schema for a remote sync task object."
   [:map
    [:id pos-int?]
-   [:sync_task_type TaskType]
+   [:sync_task_type ::task-type]
    [:initiated_by {:optional true} [:maybe pos-int?]]
    [:initiated_by_user {:optional true} [:maybe [:map
                                                  [:id pos-int?]
@@ -36,167 +49,128 @@
    [:error_message {:optional true} [:maybe :string]]
    [:outcome {:optional true} [:maybe :map]]
    [:conflicts {:optional true} [:maybe [:sequential :string]]]
-   [:status TaskStatus]])
+   [:status ::task-status]])
 
-;;; ------------------------------------------- Conflict Schemas -------------------------------------------
+(def ^:private item-data
+  "The schema of the `:data` of an item of each model: a row of the model, with what remote sync hydrates of it."
+  {"action"             ::actions.schema/action
+   "card"               ::queries.schema/card
+   "cardtest"           ::data-testing.schema/card-test
+   "collection"         ::collections.schema/collection
+   "dashboard"          ::dashboards.schema/dashboard
+   "dataapp"            ::data-apps.schema/data-app
+   "dimension"          ::warehouse-schema.schema/dimension
+   "document"           ::documents.schema/document
+   "fieldusersettings"  ::warehouse-schema.schema/field-user-settings
+   "glossary"           ::glossary.schema/glossary
+   "measure"            ::measures.schema/measure
+   "nativequerysnippet" ::native-query-snippets.schema/native-query-snippet
+   "pythonlibrary"      ::transforms-python.schema/python-library
+   "segment"            ::segments.schema/segment
+   "tableusersettings"  ::warehouse-schema.schema/table-user-settings
+   "timeline"           ::timeline.schema/timeline
+   "transform"          ::transforms.schema/transform
+   "transformtag"       ::transforms.schema/transform-tag
+   "transformtest"      ::data-testing.schema/transform-test})
 
-(def ConflictType
-  "Type of import conflict detected during pre-flight check."
-  [:enum
-   :entity-id-conflict    ; Local entity exists with same entity_id but not in RemoteSyncObject
-   :library-conflict      ; First import, local Library exists, import has Library
-   :transforms-conflict   ; Local has transforms AND import has transforms
-   :snippets-conflict     ; Local has snippets AND import has snippets
-   :dirty])               ; RemoteSyncObject has items with status != "synced"
+(mr/def ::item
+  "A synced row as the client shows it: its model, its primary key, and its `:data`, the row with what the client shows
+  of it, such as its collection, and, for an unsynced dependency, the items that use it."
+  (into [:multi {:dispatch :model}]
+        (for [[model data] item-data]
+          [model [:map {:closed true}
+                  [:id      pos-int?]
+                  [:model   [:= model]]
+                  [:data    data]
+                  [:used_by {:optional true} [:sequential [:ref ::item]]]]])))
 
-(def ConflictDetail
-  "Schema for detailed conflict information."
-  [:map
-   [:type ConflictType]
-   [:category {:optional true} :string]
-   [:count {:optional true} pos-int?]
-   [:entity-ids {:optional true} [:set :string]]
-   [:message {:optional true} :string]])
+(mr/def ::dirty-item
+  "A synced row changed since the last sync, as the client lists it: an item (see `::item`) with the name the change
+  gives it and its status, with id 0 and no `:data` when its row no longer exists."
+  (into [:multi {:dispatch :model}]
+        (for [[model data] item-data]
+          [model [:map {:closed true}
+                  [:id          :int]
+                  [:model       [:= model]]
+                  [:name        [:maybe :string]]
+                  [:sync_status :string]
+                  [:data        [:maybe data]]]])))
 
-(def ConflictResponse
-  "Schema for conflict error response from async-import!."
-  [:map
-   [:status-code [:= 400]]
-   [:conflicts [:= true]]
-   [:conflict-type {:optional true} ConflictType]
-   [:conflict-details {:optional true} [:sequential ConflictDetail]]
-   [:conflict-summary {:optional true} [:set :string]]])
-
-;;; ------------------------------------------- Dirty Item Schemas -------------------------------------------
-
-(def DirtyItem
-  "Schema for a dirty sync item.
-   Note: id is :int instead of pos-int? because the Transforms root collection uses
-   a sentinel value of -1 as its model_id."
-  [:map
-   [:id :int]
-   [:name [:maybe :string]]
-   [:model :string]
-   [:sync_status :string]
-   [:created_at {:optional true} :any]
-   [:updated_at {:optional true} [:maybe :any]]
-   [:collection_id {:optional true} [:maybe pos-int?]]
-   [:authority_level {:optional true} [:maybe :string]]
-   [:display {:optional true} [:maybe :string]]
-   [:query_type {:optional true} [:maybe :string]]
-   [:description {:optional true} [:maybe :string]]
-   [:table_id {:optional true} [:maybe pos-int?]]
-   [:table_name {:optional true} [:maybe :string]]
-   [:card_id {:optional true} [:maybe pos-int?]]])
-
-;;; ------------------------------------------- API Response Schemas -------------------------------------------
-
-(def ImportResponse
+(mr/def ::import-response
   "Schema for POST /import response."
   [:map
    [:status [:= :success]]
-   [:task_id [:maybe pos-int?]]
-   [:message {:optional true} [:maybe :string]]])
+   [:task_id [:maybe pos-int?]]])
 
-(def IsDirtyResponse
+(mr/def ::is-dirty-response
   "Schema for GET /is-dirty response."
   [:map
    [:is_dirty :boolean]])
 
-(def DirtyResponse
+(mr/def ::dirty-response
   "Schema for GET /dirty response."
   [:map
-   [:dirty [:sequential DirtyItem]]])
+   [:dirty [:sequential ::dirty-item]]])
 
-(def ExportResponse
+(mr/def ::export-response
   "Schema for POST /export response."
   [:map
    [:message :string]
    [:task_id pos-int?]])
 
-(def MergeSummary
+(mr/def ::merge-summary
   "Counts of remote changes a merge would fold into local content."
   [:map
    [:added :int]
    [:updated :int]
    [:removed :int]])
 
-(def ForcePushCasualties
-  "Remote content a force push would discard, keyed by how: entities removed entirely (`:deleted`) or
-  whose remote-side edits would be replaced (`:overwritten`). Each is human-readable entity labels."
+(mr/def ::force-push-casualties
+  "The labels of the remote content a force push would discard, by whether it deletes or overwrites it."
   [:map
    [:deleted [:sequential :string]]
    [:overwritten [:sequential :string]]])
 
-(def ExportPreflightResponse
+(mr/def ::export-preflight-response
   "Schema for GET /export-preflight response."
   [:map
    [:has_changes :boolean]
    [:clean :boolean]
    [:conflicts [:sequential :string]]
-   [:summary MergeSummary]
-   [:force_push_casualties ForcePushCasualties]
+   [:summary ::merge-summary]
+   [:force_push_casualties ::force-push-casualties]
    [:reason [:maybe :string]]])
 
-(def SettingsUpdateResponse
+(mr/def ::settings-update-response
   "Schema for PUT /settings response."
   [:map
    [:success :boolean]
    [:task_id {:optional true} pos-int?]])
 
-(def BranchesResponse
+(mr/def ::branches-response
   "Schema for GET /branches response."
   [:map
    [:items [:sequential :string]]])
 
-(def CreateBranchResponse
-  "Schema for POST /create-branch response."
-  [:map
-   [:status :string]
-   [:message :string]])
-
-(def StashResponse
+(mr/def ::stash-response
   "Schema for POST /stash response."
   [:map
    [:status :string]
    [:message :string]
    [:task_id pos-int?]])
 
-(def HasRemoteChangesResponse
+(mr/def ::has-remote-changes-response
   "Schema for GET /has-remote-changes response."
   [:map
    [:has_changes :boolean]
    [:remote_version [:maybe :string]]
    [:local_version [:maybe :string]]
-   [:cached :boolean]
    [:branch_missing {:optional true} :boolean]])
 
-(def TestConnectionResponse
+(mr/def ::test-connection-response
   "Schema for POST /test-connection response."
   [:map
    [:status [:= :success]]])
-
-(mr/def ::remote-sync-object
-  "A RemoteSyncObject as selected from the app DB: every column of `:remote_sync_object`."
-  [:merge
-   ::remote-sync-object.update
-   [:map {:closed true}
-    [:id                  ms/PositiveInt]]])
-
-(mr/def ::remote-sync-object.update
-  "What an update (or insert) of a RemoteSyncObject accepts: every column of `:remote_sync_object` except `id`, all optional."
-  [:map {:closed true}
-   [:model_type          {:optional true} [:maybe [:or :keyword :string]]]
-   [:model_id            {:optional true} [:maybe :int]]
-   [:status              {:optional true} [:maybe [:or :keyword :string]]]
-   [:status_changed_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:model_name          {:optional true} [:maybe :string]]
-   [:model_collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:model_display       {:optional true} [:maybe [:or :keyword :string]]]
-   [:model_table_id      {:optional true} [:maybe ::lib.schema.id/table]]
-   [:model_table_name    {:optional true} [:maybe :string]]
-   [:file_path           {:optional true} [:maybe :string]]
-   [:content_hash        {:optional true} [:maybe :string]]])
 
 (mr/def ::remote-sync-task.outcome
   "The `:outcome` column of a RemoteSyncTask, decoded."
@@ -213,23 +187,8 @@
                     [:branch [:maybe :string]]]]
    ["push-skipped" [:map {:closed true}
                     [:kind [:= "push-skipped"]]]]
-   ["merged"       [:map {:closed true}
-                    [:kind   [:= "merged"]]
-                    [:pulled :int]
-                    [:pushed :int]
-                    [:branch [:maybe :string]]]]
-   ;; Conflict outcomes: why a task stopped when the cause is not a collision (its `:conflicts` say what collided).
-   ["remote-changed"    [:map {:closed true}
-                         [:kind [:= "remote-changed"]]]]
-   ["history-rewritten" [:map {:closed true}
-                         [:kind [:= "history-rewritten"]]]]])
-
-(mr/def ::remote-sync-task
-  "A RemoteSyncTask as selected from the app DB: every column of `:remote_sync_task`."
-  [:merge
-   ::remote-sync-task.update
-   [:map {:closed true}
-    [:id                      ms/PositiveInt]]])
+   ["remote-changed" [:map {:closed true}
+                      [:kind [:= "remote-changed"]]]]])
 
 (mr/def ::remote-sync-task.update
   "What an update (or insert) of a RemoteSyncTask accepts: every column of `:remote_sync_task` except `id`, all optional."

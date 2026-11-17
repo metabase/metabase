@@ -8,8 +8,25 @@ import type {
   ListNotificationsRequest,
   Notification,
   NotificationId,
+  UnsubscribeResponse,
 } from "metabase-types/api";
 import { createMockNotification } from "metabase-types/api/mocks";
+
+export const setupUnsubscribeFromNotificationByEmailEndpoint = (
+  response: UnsubscribeResponse,
+  { status = 200 }: { status?: number } = {},
+) => {
+  fetchMock.post("path:/api/notification/unsubscribe", {
+    status,
+    body: response,
+  });
+};
+
+export const setupUndoUnsubscribeFromNotificationByEmailEndpoint = (
+  response: UnsubscribeResponse,
+) => {
+  fetchMock.post("path:/api/notification/unsubscribe/undo", response);
+};
 
 export const setupListNotificationEndpoints = (
   { card_id }: Partial<ListNotificationsRequest>,

@@ -3,10 +3,9 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn database-engine
@@ -32,8 +31,7 @@
                                 [:table  :string]
                                 [:schema {:optional true} [:maybe :string]]]]]
   (t2/select :model/Table
-             {:from [(warehouse-schema-overlay/table-query)]
-              :where [:and
+             {:where [:and
                       [:= :db_id database-id]
                       [:= :active true]
                       (into [:or] (map table-match-clause) tables)]}))
@@ -46,19 +44,17 @@
    database-id :- ::lib.schema.id/database
    user-id     :- [:maybe ::lib.schema.id/user]
    superuser?  :- :boolean]
-  (let [{:keys [clause with]} (mi/visible-filter-clause
-                               :model/Table :id
-                               {:user-id user-id, :is-superuser? superuser?}
-                               {:perms/view-data      :unrestricted
-                                :perms/create-queries :query-builder-and-native})]
-    (t2/select :model/Table
-               :id [:in table-ids]
-               :db_id database-id
-               :active true
-               :visibility_type nil
-               (cond-> {:from  [(warehouse-schema-overlay/table-query)]
-                        :where clause}
-                 with (assoc :with with)))))
+  (t2/select :model/Table
+             :id [:in table-ids]
+             :db_id database-id
+             :active true
+             :visibility_type nil
+             {:where (perms/visible-tables-filter-clause
+                      :id
+                      (assoc (perms/user-info user-id) :is-superuser? superuser?)
+                      {:perms/view-data      :unrestricted
+                       :perms/create-queries :query-builder-and-native}
+                      {:active-only? false, :include-published-via-collection? false})}))
 
 (mu/defn unarchived-cards
   "The unarchived Cards with `card-ids`."
@@ -68,4 +64,4 @@
 (mu/defn field-names-and-tables
   "The id, name, and Table id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :name :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select [:model/Field :id :name :table_id] :id [:in field-ids]))

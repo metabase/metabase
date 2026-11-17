@@ -39,7 +39,9 @@
   (cond-> coll
     (transient? coll) persistent!))
 
-(defn- add-original-meta [coll og-form]
+(defn add-original-meta
+  "Transfer metadata from `og-form` to `coll`."
+  [coll og-form]
   (when-not (nil? coll)
     (with-meta coll (meta og-form))))
 
@@ -541,12 +543,47 @@
 
 ;; clojure.walk reimplementation. Partially adapted from https://github.com/tonsky/clojure-plus.
 
+(defn mapv-mostly-unchanged
+  "Special optimized `mapv` implementation for usecases where `f` is an identity function for many/most inputs. `coll`
+  must be a vector."
+  [f coll]
+  (if (map-entry? coll)
+    (mapv f coll) ;; Revert to regular mapv
+    (maybe-persistent!
+     (reduce-kv (fn [v idx el]
+                  (let [el' (f el)]
+                    (if (identical? el' el)
+                      v
+                      (assoc+ v idx el'))))
+                coll coll))))
+
 (defn walk
   "Drop-in replacement for `clojure.walk/walk`. Optimized for efficiency and has the following behavior differences:
   - Doesn't walk over map entries. When descending into a map, walks keys and values separately.
   - Uses transients and reduce where possible and tries to return the same input `form` if no changes were made."
   [inner outer form]
   (cond
+    ;; Records may implement their own reduce (e.g. toucan2's IdentityQuery reduces over its rows), so walk their
+    ;; entries through `seq` instead of `reduce-kv`.
+    (record? form)
+    (let [new-keys (volatile! (transient #{}))]
+      (-> (reduce (fn [r e]
+                    (let [k  (key e)
+                          v  (val e)
+                          k' (inner k)
+                          v' (inner v)]
+                      (if (identical? k' k)
+                        (if (identical? v' v)
+                          r
+                          (assoc r k v'))
+                        (do (vswap! new-keys conj! k')
+                            (if (contains? @new-keys k)
+                              (assoc r k' v')
+                              (-> r (dissoc k) (assoc k' v')))))))
+                  form (seq form))
+          (add-original-meta form)
+          outer))
+
     (map? form)
     (let [new-keys (volatile! (transient #{}))]
       (-> (reduce-kv (fn [m k v]
@@ -566,18 +603,12 @@
           outer))
 
     (and (vector? form) (not (map-entry? form)))
-    (-> (reduce-kv (fn [v idx el]
-                     (let [el' (inner el)]
-                       (if (identical? el' el)
-                         v
-                         (assoc+ v idx el'))))
-                   form form)
-        maybe-persistent!
+    (-> (mapv-mostly-unchanged inner form)
         (add-original-meta form)
         outer)
 
     ;; Don't care much about optimizing seq and generic coll cases. When efficiency is required, use vectors.
-    (seq? form) (outer (add-original-meta (seq (mapv inner form)) form)) ;;
+    (seq? form) (outer (add-original-meta (or (seq (mapv inner form)) ()) form))
     (coll? form) (outer (add-original-meta (into (empty form) (map inner) form) form))
     :else (outer form)))
 

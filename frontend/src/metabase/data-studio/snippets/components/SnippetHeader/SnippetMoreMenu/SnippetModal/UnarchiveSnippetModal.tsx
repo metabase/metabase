@@ -38,7 +38,7 @@ export function UnarchiveSnippetModal(props: ArchiveSnippetModalProps) {
 
   return (
     <Modal opened onClose={onClose} title={t`Unarchive snippet?`}>
-      <Text>{t`Are you sure you want to unarchive "${snippet.name}"?`}</Text>
+      <Text c="text-secondary">{t`Are you sure you want to unarchive "${snippet.name}"?`}</Text>
       <Modal.Footer>
         <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button variant="filled" onClick={handleUnarchive} loading={isLoading}>

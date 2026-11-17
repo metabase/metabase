@@ -1,0 +1,7 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`fails under --ci without a committed snapshot 1`] = `
+{
+  "a": 2,
+}
+`;

@@ -7,6 +7,7 @@ export {
   useUpdateMetabotSlackSettingsMutation,
 } from "./api";
 export * from "./context";
+export { useOnMetabotDashboardSave } from "./hooks/use-on-metabot-dashboard-save";
 export {
   AIProviderList,
   AIProviderSetup,

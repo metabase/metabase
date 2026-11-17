@@ -14,11 +14,11 @@ import {
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
 import { hasNativeWritePermissions } from "metabase/common/utils/database";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { type Location, useNavigate, useSearchParams } from "metabase/router";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import Question from "metabase-lib/v1/Question";
 import type {
   Database,
   ImplicitActionKind,
@@ -80,13 +80,14 @@ type NewQueryActionPageBodyProps = {
 };
 
 function NewQueryActionPageBody({ databases }: NewQueryActionPageBodyProps) {
+  const buildQuestion = useQuestionFromOptsBuilder();
   const initialDatasetQuery = useMemo(
     () =>
-      Question.create({
+      buildQuestion({
         DEPRECATED_RAW_MBQL_type: "native",
         DEPRECATED_RAW_MBQL_databaseId: databases[0]?.id,
       }).datasetQuery(),
-    [databases],
+    [buildQuestion, databases],
   );
   const draft = useQueryActionDraft({ initialDatasetQuery });
   const [name, setName] = useState("");

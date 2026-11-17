@@ -1,10 +1,40 @@
-import { USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_TABLES, USER_GROUPS } from "e2e/support/cypress_data";
 import * as Urls from "metabase/urls/data-apps";
-import type { TableId } from "metabase-types/api";
+import type { DataApp, TableId } from "metabase-types/api";
 
 import { createLibrary, publishTables } from "./api";
+import { DATA_APP_DEV_INSTANCE_PING_PATH } from "./e2e-data-app-dev-helpers";
 import { getIframeBody } from "./e2e-embedding-helpers";
-import { LOCAL_GIT_PATH } from "./e2e-remote-sync-helpers";
+import {
+  LOCAL_GIT_PATH,
+  commitToRepo,
+  configureGitAndPullChanges,
+  setupGitSync,
+} from "./e2e-remote-sync-helpers";
+
+export type EmbeddedDataApp = DataApp;
+
+/** Imports the embedded-app fixture with its built bundle and saved question. */
+export function createEmbeddedDataApp(): Cypress.Chainable<EmbeddedDataApp> {
+  const slug = "embedded-app";
+
+  createLibrary();
+  publishTables({ table_ids: [SAMPLE_DB_TABLES.STATIC_ORDERS_ID] });
+  setupGitSync();
+  copyDataAppsFixture();
+  commitToRepo("Add data apps");
+  configureGitAndPullChanges("read-only");
+
+  return cy.request<DataApp[]>("/api/ee/apps").then(({ body: apps }) => {
+    const app = apps.find((app) => app.slug === slug);
+
+    if (!app) {
+      throw new Error(`The pull loaded no data app named ${slug}.`);
+    }
+
+    return app;
+  });
+}
 
 /**
  * Builds the apps of `e2e/support/assets/data-apps` and copies that repository,
@@ -92,7 +122,7 @@ export function dataAppIframe(displayName: string) {
 const DATA_APP_DEV_HOST_APP_DIR =
   "e2e/embedding-sdk-host-apps/vite-6-data-app-host-app";
 
-const DATA_APP_DEV_ENV_PATH = `${DATA_APP_DEV_HOST_APP_DIR}/.env.local`;
+export const DATA_APP_DEV_ENV_PATH = `${DATA_APP_DEV_HOST_APP_DIR}/.env.local`;
 
 export const DATA_APP_DEV_MANIFEST_PATH = `${DATA_APP_DEV_HOST_APP_DIR}/data_app.yaml`;
 
@@ -124,7 +154,7 @@ export function setUpDataAppDevServer({
   createLibrary();
   publishTables({ table_ids: [tableId] });
   cy.task("removeDataAppPaths", { paths: [DATA_APP_DEV_ENV_PATH] });
-  waitForDataAppDevServerEnv(clientHost, mbUrl, { expectPresent: false });
+  waitForDataAppDevServerEnv(clientHost, { expectPresent: false });
 
   cy.request("POST", "/api/api-key", {
     name: `data-app-dev-e2e-${Date.now()}`,
@@ -137,47 +167,40 @@ export function setUpDataAppDevServer({
     });
   });
 
-  waitForDataAppDevServerEnv(clientHost, mbUrl, { expectPresent: true });
+  waitForDataAppDevServerEnv(clientHost, { expectPresent: true });
 }
 
 export function tearDownDataAppDevServer() {
   return cy.task("removeDataAppPaths", { paths: [DATA_APP_DEV_ENV_PATH] });
 }
 
-// `DATA_APP_MB_URL` shows up in (or drops out of) the served CSP once Vite has
-// restarted onto the changed env — poll for the expected state before visiting.
+// The dev server relays to the instance only while `DATA_APP_MB_URL` is set,
+// and picks up a changed `.env.local` by restarting: poll its ping route, which
+// answers 404 without the relay, for the expected state before visiting.
 function waitForDataAppDevServerEnv(
   clientHost: string,
-  mbUrl: string,
   { expectPresent }: { expectPresent: boolean },
   attempt = 0,
 ) {
   const MAX_ATTEMPTS = 40;
-  const origin = new URL(mbUrl).origin;
 
   cy.request({
-    url: `${clientHost}/`,
-    headers: { Accept: "text/html" },
+    url: `${clientHost}${DATA_APP_DEV_INSTANCE_PING_PATH}`,
     failOnStatusCode: false,
   }).then((res) => {
-    const csp = String(res.headers["content-security-policy"] ?? "");
+    const relays = res.status !== 404;
 
-    if (csp.includes(origin) === expectPresent) {
+    if (relays === expectPresent) {
       return;
     }
 
     if (attempt >= MAX_ATTEMPTS) {
       throw new Error(
-        `Dev server never restarted onto DATA_APP_MB_URL ${expectPresent ? "present" : "absent"} (${origin}); last CSP: "${csp}"`,
+        `Dev server never restarted onto DATA_APP_MB_URL ${expectPresent ? "present" : "absent"}; last ping status: ${res.status}`,
       );
     }
 
     cy.wait(1000);
-    waitForDataAppDevServerEnv(
-      clientHost,
-      mbUrl,
-      { expectPresent },
-      attempt + 1,
-    );
+    waitForDataAppDevServerEnv(clientHost, { expectPresent }, attempt + 1);
   });
 }

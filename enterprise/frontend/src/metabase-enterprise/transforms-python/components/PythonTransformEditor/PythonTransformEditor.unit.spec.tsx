@@ -72,7 +72,7 @@ type SetupOpts = {
   uiOptions?: PythonTransformEditorUiOptions;
 };
 
-function setup({
+async function setup({
   source = mockPythonSource,
   isEditMode = true,
   transform,
@@ -94,6 +94,8 @@ function setup({
       storeInitialState: createMockState(),
     },
   );
+
+  expect(await screen.findByText("Test Database")).toBeInTheDocument();
 }
 
 describe("PythonTransformEditor", () => {
@@ -103,7 +105,7 @@ describe("PythonTransformEditor", () => {
 
   describe("view mode (not editing)", () => {
     it("should not render the data picker sidebar when not in edit mode", async () => {
-      setup({ isEditMode: false });
+      await setup({ isEditMode: false });
       // The editor loads lazily, so assert absence only once it has rendered.
       await screen.findByTestId("python-transform-top-bar");
       expect(
@@ -111,63 +113,63 @@ describe("PythonTransformEditor", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should not render the results panel when not in edit mode", () => {
-      setup({ isEditMode: false });
+    it("should not render the results panel when not in edit mode", async () => {
+      await setup({ isEditMode: false });
       expect(screen.queryByTestId("python-results")).not.toBeInTheDocument();
     });
 
-    it("should render the top bar", () => {
-      setup({ isEditMode: false });
+    it("should render the top bar", async () => {
+      await setup({ isEditMode: false });
       expect(
         screen.getByTestId("python-transform-top-bar"),
       ).toBeInTheDocument();
     });
 
-    it("should render EditDefinitionButton when not in edit mode", () => {
-      setup({ isEditMode: false, transform: mockPythonTransform });
+    it("should render EditDefinitionButton when not in edit mode", async () => {
+      await setup({ isEditMode: false, transform: mockPythonTransform });
       expect(screen.getByText(/edit definition/i)).toBeInTheDocument();
     });
   });
 
   describe("edit mode", () => {
     it("should render the data picker sidebar in edit mode", async () => {
-      setup({ isEditMode: true });
+      await setup({ isEditMode: true });
       expect(
         await screen.findByTestId("python-data-picker"),
       ).toBeInTheDocument();
     });
 
-    it("should render the results panel in edit mode", () => {
-      setup({ isEditMode: true });
+    it("should render the results panel in edit mode", async () => {
+      await setup({ isEditMode: true });
       expect(screen.getByTestId("python-results")).toBeInTheDocument();
     });
 
-    it("should render the top bar", () => {
-      setup({ isEditMode: true });
+    it("should render the top bar", async () => {
+      await setup({ isEditMode: true });
       expect(
         screen.getByTestId("python-transform-top-bar"),
       ).toBeInTheDocument();
     });
 
-    it("should not render EditDefinitionButton in edit mode", () => {
-      setup({ isEditMode: true });
+    it("should not render EditDefinitionButton in edit mode", async () => {
+      await setup({ isEditMode: true });
       expect(screen.queryByText(/edit definition/i)).not.toBeInTheDocument();
     });
   });
 
   describe("hideRunButton option", () => {
-    it("should render run button when hideRunButton is not set", () => {
-      setup({ isEditMode: true });
+    it("should render run button when hideRunButton is not set", async () => {
+      await setup({ isEditMode: true });
       expect(screen.getByTestId("run-button")).toBeInTheDocument();
     });
 
-    it("should render run button when hideRunButton is false", () => {
-      setup({ isEditMode: true, uiOptions: { hideRunButton: false } });
+    it("should render run button when hideRunButton is false", async () => {
+      await setup({ isEditMode: true, uiOptions: { hideRunButton: false } });
       expect(screen.getByTestId("run-button")).toBeInTheDocument();
     });
 
-    it("should not render run button when hideRunButton is true", () => {
-      setup({ isEditMode: true, uiOptions: { hideRunButton: true } });
+    it("should not render run button when hideRunButton is true", async () => {
+      await setup({ isEditMode: true, uiOptions: { hideRunButton: true } });
       expect(screen.queryByTestId("run-button")).not.toBeInTheDocument();
     });
   });
@@ -181,7 +183,7 @@ describe("PythonTransformEditor", () => {
     });
 
     it("should disable the run button when no source tables are selected", async () => {
-      setup({ isEditMode: true });
+      await setup({ isEditMode: true });
       const runButton = screen.getByTestId("run-button");
       expect(runButton).toBeDisabled();
 
@@ -192,7 +194,7 @@ describe("PythonTransformEditor", () => {
     });
 
     it("should run the script when a source table is selected", async () => {
-      setup({ isEditMode: true, source: mockPythonSourceWithTable });
+      await setup({ isEditMode: true, source: mockPythonSourceWithTable });
       const runButton = screen.getByTestId("run-button");
       expect(runButton).toBeEnabled();
 

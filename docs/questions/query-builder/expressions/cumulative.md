@@ -1,5 +1,6 @@
 ---
 title: Cumulative count and sum
+summary: Show running totals and cumulative counts across a breakout, like revenue to date.
 redirect_from:
   - /docs/latest/questions/expressions/cumulativesum
   - /docs/latest/questions/expressions/cumulativecount

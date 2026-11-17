@@ -166,7 +166,6 @@
       "parameter_mappings": [],
       "display": "bar",
       "entity_id": "FTeHbkv5U8nNV2M77a_wL",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.dimensions": ["X"],
         "graph.metrics": ["Y"]

@@ -32,23 +32,18 @@
    "dimension" :dimension "temporal-unit" :temporal-unit})
 
 (defn- tag-field-id
-  "The field the tag binds: `field_id` (the write dialect), or the id embedded in a read-shape
-   `dimension` ref — `[\"field\", <id>, opts]` legacy or `[\"field\", opts, <id>]` MBQL 5 — so the
-   tags `get_content` returns round-trip through this tool unchanged."
-  [{:keys [field_id dimension]}]
-  (or field_id
-      (when (sequential? dimension)
-        (some #(when (or (int? %) (v2.resolve/entity-id? %)) %) (rest dimension)))))
+  "The field the tag binds: `field_id` (the write dialect) or the read-shape `field-id` `get_content` emits."
+  [tag]
+  (or (:field_id tag) (:field-id tag)))
 
 (defn- ->lib-template-tag
   "Map the tool's tag shape onto `existing-tag` (the lib-extracted template-tag map, which
    already carries `:id`/`:name`/`:display-name`). `dimension` and `temporal-unit` tags
-   additionally carry a field (`field_id` — a numeric field id, resolved here and built into a
-   pMBQL field ref, since a JSON caller cannot construct one directly: it requires a `:lib/uuid`.
+   additionally carry a field (`field_id` — a numeric field id, resolved here.
    Numeric only: `metabase_field.entity_id` was dropped by migration and `:model/Field` is not in
    the eid-translation map, so an entity_id here could only ever fail); `dimension` tags also carry a widget type (`widget_type`). Alongside the
    underscore write dialect, the kebab-case read shape `get_content` emits (`display-name`,
-   `widget-type`, a `dimension` ref) is accepted, so a read-modify-write round-trip needs no
+   `widget-type`, `field-id`) is accepted, so a read-modify-write round-trip needs no
    translation."
   [existing-tag {tag-type :type :keys [display_name widget_type required default] :as tag}]
   (let [t            (or (tag-type->kw tag-type)
@@ -76,8 +71,7 @@
       display-name (assoc :display-name display-name)
       (some? required) (assoc :required (boolean required))
       (some? default) (assoc :default default)
-      field-ref? (assoc :dimension [:field {:lib/uuid (str (random-uuid))}
-                                    (v2.resolve/resolve-id-or-404 :model/Field field-id)])
+      field-ref? (assoc :field-id (v2.resolve/resolve-id-or-404 :model/Field field-id))
       (and (= t :dimension) widget-type) (assoc :widget-type (keyword widget-type)))))
 
 (def ^:private reference-tag-types
@@ -94,11 +88,10 @@
   [query template_tags]
   (if (empty? template_tags)
     query
-    (let [extracted (get-in query [:stages 0 :template-tags])
-          present (into #{} (map :name) extracted)
-          existing-by-name (into {} (map (juxt :name identity)) extracted)]
+    (let [extracted        (get-in query [:stages 0 :template-tags])
+          existing-by-name (u/index-by :name extracted)]
       (doseq [tag-name (keys template_tags)]
-        (when-not (contains? present (name tag-name))
+        (when-not (contains? existing-by-name (name tag-name))
           (common/throw-teaching-error
            (message/msg ["Template tag %s does not appear in the SQL — add %s to the query or drop the tag."]
                         (name tag-name) (str "{{" (name tag-name) "}}")))))
@@ -271,14 +264,14 @@
    through untouched. Every `column_metadata` name must match a computed column, or a
    teaching error names the offending one."
   [computed-columns column_metadata]
-  (let [by-name (into {} (map (juxt :name identity)) computed-columns)]
+  (let [by-name (u/index-by :name computed-columns)]
     (doseq [{col-name :name} column_metadata]
       (when-not (contains? by-name col-name)
         (common/throw-teaching-error
          (message/msg [(str "Column %s is not in the query results — column_metadata "
                             "names must match the query's output columns.")]
                       col-name))))
-    (let [overrides (into {} (map (juxt :name identity)) column_metadata)]
+    (let [overrides (u/index-by :name column_metadata)]
       (mapv (fn [col]
               (if-let [override (get overrides (:name col))]
                 (apply-column-override col override)

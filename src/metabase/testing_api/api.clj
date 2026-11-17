@@ -27,6 +27,7 @@
    [metabase.search.task.search-index :as task.search-index]
    [metabase.security-center.schema :as security-center.schema]
    [metabase.session.api :as session.api]
+   [metabase.settings.core :as setting]
    [metabase.testing-api.db :as testing-api.db]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
@@ -265,12 +266,6 @@
   metabase-enterprise.cache.task.refresh-cache-configs
   [])
 
-(defenterprise clear-metabot-limit-cache!
-  "Clears the metabot usage limit memoization cache on EE so that limit checks re-evaluate immediately.
-  No-op on OSS."
-  metabase-enterprise.metabot.usage
-  [])
-
 (defenterprise run-content-diagnostics-scan!
   "Runs a content diagnostics scan on EE and returns its topline. No-op on OSS."
   metabase-enterprise.content-diagnostics.scan
@@ -312,6 +307,15 @@
   (let [value (mapv #(update % :config update-keys keyword) value)]
     (run! validate-llm-provider-fixture! value)
     (llm.settings/set-llm-providers! value))
+  nil)
+
+(api.macros/defendpoint :put "/isolated-origin" :- :nil
+  "Set `MB_ISOLATED_ORIGIN`, or unset it with a nil `value`. It is an environment-only setting, and the E2E backend is
+  one process for every spec, so a spec turns the isolated origin on here. A snapshot restore unsets it."
+  [_route-params
+   _query-params
+   {:keys [value]} :- [:map {:closed true} [:value [:maybe ms/NonBlankString]]]]
+  (setting/set! :isolated-origin value :bypass-read-only? true)
   nil)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -364,12 +368,6 @@
       (lib/test-native-query (walk/keywordize-keys native-query-spec))))
 
 ;;;; Metabot AI usage seeding
-
-(defn- seed-ai-usage-conversation-id
-  "The `conversation_id` of the `ai_usage_log` rows the `seed-ai-usage` endpoint inserts for `user-id`. Fixed per
-  user, so the DELETE finds them."
-  [user-id]
-  (str (java.util.UUID/nameUUIDFromBytes (.getBytes (str "e2e-seed-ai-usage-" user-id) "UTF-8"))))
 
 (def ^:private e2e-usage-auditing-group-name "E2E Usage Auditing")
 
@@ -579,43 +577,6 @@
           (= (:user-id conversation) second-user-id) (assoc :tenant-id second-tenant-id))))
      {:inserted (count e2e-usage-auditing-conversation-ids)
       :date     (str (t/local-date today))})))
-
-(api.macros/defendpoint :post "/metabot/seed-ai-usage"
-  :- [:map [:inserted :int]]
-  "Insert `count` messages of AI usage for the given `user_id`: one `ai_usage_log` row each, from the chat source and
-  under its own `request_id`, so a message limit counts each row as one message. Then clear the metabot limit cache
-  so limit checks re-evaluate immediately. Intended only for E2E tests."
-  [_route-params
-   _query-params
-   {:keys [user_id count]} :- [:map {:closed true}
-                               [:user_id ms/PositiveInt]
-                               [:count   ms/PositiveInt]]]
-  (let [conversation-id (seed-ai-usage-conversation-id user_id)]
-    (dotimes [_ count]
-      (testing-api.db/insert-ai-usage-log!
-       {:source            "metabot_agent"
-        :model             "test/model"
-        :conversation_id   conversation-id
-        :request_id        (str (random-uuid))
-        :prompt_tokens     0
-        :completion_tokens 0
-        :total_tokens      0
-        :user_id           user_id})))
-  (clear-metabot-limit-cache!)
-  {:inserted count})
-
-(api.macros/defendpoint :delete "/metabot/seed-ai-usage"
-  :- [:map [:deleted :int]]
-  "Delete all `ai_usage_log` rows inserted by the seeding endpoint for the given `user_id`, then
-  clear the metabot limit cache.  Intended only for E2E tests."
-  [_route-params
-   _query-params
-   {:keys [user_id]} :- [:map {:closed true}
-                         [:user_id ms/PositiveInt]]]
-  (let [deleted (testing-api.db/delete-ai-usage-logs-for-user-and-conversation!
-                 user_id (seed-ai-usage-conversation-id user_id))]
-    (clear-metabot-limit-cache!)
-    {:deleted deleted}))
 
 (api.macros/defendpoint :post "/metabot/seed-usage-auditing"
   :- [:map

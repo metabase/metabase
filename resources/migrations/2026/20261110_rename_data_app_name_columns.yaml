@@ -1,0 +1,52 @@
+## Data apps name their slug and their display name as the app's data_app.yaml does: data_app.name becomes slug, and
+## data_app.display_name becomes name. MySQL and MariaDB rename with CHANGE and the whole column definition, since
+## renameColumn there drops the column's NOT NULL and its comment.
+
+databaseChangeLog:
+  - changeSet:
+      id: rwnbah
+      author: ranquild
+      comment: Rename data_app.name to slug
+      changes:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              ALTER TABLE data_app RENAME COLUMN name TO slug
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE data_app CHANGE name slug VARCHAR(254) NOT NULL COMMENT 'Slug, used in the URL /apps/:slug'
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              ALTER TABLE data_app RENAME COLUMN slug TO name
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE data_app CHANGE slug name VARCHAR(254) NOT NULL COMMENT 'Slug, used in the URL /apps/:name'
+
+  - changeSet:
+      id: m4kz8v
+      author: ranquild
+      comment: Rename data_app.display_name to name
+      changes:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              ALTER TABLE data_app RENAME COLUMN display_name TO name
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE data_app CHANGE display_name name VARCHAR(254) NOT NULL
+              COMMENT 'Human-readable name from the manifest, shown in the admin UI'
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              ALTER TABLE data_app RENAME COLUMN name TO display_name
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE data_app CHANGE name display_name VARCHAR(254) NOT NULL
+              COMMENT 'Human-readable name from the manifest, shown in the admin UI'

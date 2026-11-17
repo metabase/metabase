@@ -8,7 +8,10 @@ import {
   JWT_SHARED_SECRET,
   enableJwtAuth,
 } from "e2e/support/helpers/e2e-jwt-helpers";
-import type { SessionListResponse } from "metabase-types/api";
+import type {
+  SessionListResponse,
+  SupportAccessGrant,
+} from "metabase-types/api";
 
 const { H } = cy;
 
@@ -21,9 +24,6 @@ const JWT_USER = {
 };
 
 const LDAP_USER = { email: "user01@example.org", password: "123456" };
-
-/** What creating a support access grant returns: the grant, and the token that redeems it */
-type CreatedGrant = { id: number; token: string };
 
 /** A session created outside the browser: its credential, and its id as the admin's list shows it */
 type TestSession = { key: string; id: string };
@@ -223,14 +223,21 @@ describe("scenarios > monitor > session management", () => {
     startSession(passwordLogin(USERS.readonly)).as("loggedOut");
     startSession(passwordLogin(nodata)).as("deactivated");
     startSession(passwordLogin(normal)).as("passwordChanged");
-    cy.task<CreatedGrant>("requestAsAdmin", {
+    H.setupSMTP();
+    cy.task<SupportAccessGrant>("requestAsAdmin", {
       method: "POST",
       url: "/api/ee/support-access-grant",
       body: { grant_duration_minutes: 60 },
     }).as("grant");
-    cy.get<CreatedGrant>("@grant").then(({ token }) =>
-      startSession(supportAccessLogin(token)).as("supportAccess"),
-    );
+    H.getInbox(1).then(({ body: emails }: { body: { html: string }[] }) => {
+      const token = emails[0]?.html.match(
+        /\/auth\/reset_password\/([\w-]+)"/,
+      )?.[1];
+      if (!token) {
+        throw new Error("Missing reset link in the support access email");
+      }
+      return startSession(supportAccessLogin(token)).as("supportAccess");
+    });
 
     withSessions(
       ["loggedOut", "deactivated", "passwordChanged", "supportAccess"],
@@ -260,7 +267,7 @@ describe("scenarios > monitor > session management", () => {
         });
 
         cy.log("An admin revokes the support access grant");
-        cy.get<CreatedGrant>("@grant").then(({ id }) =>
+        cy.get<SupportAccessGrant>("@grant").then(({ id }) =>
           cy.task("requestAsAdmin", {
             method: "PUT",
             url: `/api/ee/support-access-grant/${id}/revoke`,

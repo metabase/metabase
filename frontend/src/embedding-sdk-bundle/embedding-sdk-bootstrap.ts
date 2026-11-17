@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { SDK_BUNDLE_ERROR } from "embedding-sdk-shared/constants/event-names";
 
 import { waitForAuthConfigAndStartEarlyAuthFlow } from "./bootstrap-auth";

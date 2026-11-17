@@ -4,16 +4,16 @@ import {
   isCustomClickAction,
 } from "metabase/visualizations/types";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
+  createMockCard,
   createMockColumn,
   createMockNumericColumn,
 } from "metabase-types/api/mocks";
-import {
-  createSampleDatabase,
-  createSavedStructuredCard,
-} from "metabase-types/api/mocks/presets";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { CopyValueAction } from "./CopyValueAction";
 
@@ -24,7 +24,12 @@ const setup = (
   const metadata = createMockMetadata({
     databases: [createSampleDatabase()],
   });
-  const question = new Question(createSavedStructuredCard(), metadata);
+  const question = new Question(
+    createMockCard({
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    }),
+    metadata,
+  );
   return CopyValueAction({ question, clicked, settings });
 };
 

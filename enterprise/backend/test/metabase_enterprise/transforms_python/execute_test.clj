@@ -27,7 +27,7 @@
                                                                      :schema schema
                                                                      :name   "swap_tbl"}]
               (let [initial-transform {:name   "Python Transform Initial"
-                                       :source {:type            "python"
+                                       :source {:type            :python
                                                 :source-tables   []
                                                 :source-database (mt/id)
                                                 :body            (str "import pandas as pd\n"
@@ -41,7 +41,7 @@
                   (let [initial-rows (transforms.tu/table-rows table-name)]
                     (is (= [["Alice" 25] ["Bob" 30]] initial-rows) "Initial data should be Alice and Bob")
                     (t2/update! :model/Transform :id (:id transform)
-                                {:source {:type            "python"
+                                {:source {:type            :python
                                           :source-tables   []
                                           :source-database (mt/id)
                                           :body            (str "import pandas as pd\n"
@@ -49,7 +49,7 @@
                                                                 "def transform():\n"
                                                                 "    return pd.DataFrame({'name': ['Charlie', 'Diana', 'Eve'], 'age': [35, 40, 45]})")}}))
                   (let [swap-latch (CountDownLatch. 1)
-                        original-rename-tables-atomic! transforms-base.u/rename-tables!]
+                        original-rename-tables-atomic! (mt/original-fn #'transforms-base.u/rename-tables!)]
                     (mt/with-dynamic-fn-redefs [transforms-base.u/rename-tables! (fn [driver db-id rename-pairs]
                                                                                    (.await swap-latch)
                                                                                    (original-rename-tables-atomic! driver db-id rename-pairs))]
@@ -76,7 +76,7 @@
                                                                      :schema schema
                                                                      :name   "cleanup_"}]
               (let [transform-def {:name   "Python Transform Cleanup"
-                                   :source {:type            "python"
+                                   :source {:type            :python
                                             :source-tables   []
                                             :source-database (mt/id)
                                             :body            (str "import pandas as pd\n"
@@ -112,7 +112,7 @@
                                              "    time.sleep(10)  # Sleep longer than timeout\n"
                                              "    return pd.DataFrame({'result': ['should_not_reach_here']})")
                       transform-def {:name   "Python Transform Timeout Test"
-                                     :source {:type            "python"
+                                     :source {:type            :python
                                               :source-tables   []
                                               :source-database (mt/id)
                                               :body            long-running-code}
@@ -140,7 +140,7 @@
                                               :schema schema
                                               :name   "unresolved_test"}]
               (mt/with-temp [:model/Transform transform {:name   "Transform with unresolved ref"
-                                                         :source {:type            "python"
+                                                         :source {:type            :python
                                                                   :body            "def transform(input): return input"
                                                                   :source-database (mt/id)
                                                                   :source-tables   [{:alias       "input"
@@ -163,7 +163,7 @@
                                             :schema nil
                                             :name   "unresolved_no_schema_test"}]
             (mt/with-temp [:model/Transform transform {:name   "Transform with unresolved ref no schema"
-                                                       :source {:type            "python"
+                                                       :source {:type            :python
                                                                 :body            "def transform(input): return input"
                                                                 :source-database (mt/id)
                                                                 :source-tables   [{:alias       "input"

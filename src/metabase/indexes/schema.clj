@@ -6,7 +6,9 @@
   `:direction`) to strings; [[keywordize-structured]] turns them back into keywords so a driver can dispatch on
   `:kind`."
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -86,6 +88,11 @@
     (:columns structured) (update :columns (fn [cols]
                                              (mapv #(cond-> % (:direction %) (update :direction keyword)) cols)))))
 
+(def index-kinds
+  "Every `:kind` an [[::index-structured]] can have."
+  [:btree :hash :gin :gist :brin :spgist :fulltext :spatial :clustered :nonclustered :columnstore
+   :sortkey :distkey :clustering :order-by :skip-index])
+
 (mr/def ::index-structured
   "A single structured index definition, dispatched on `:kind`. The shape stored in
   `metabase_table_indexes.structured` and handed to the driver index multimethods."
@@ -119,9 +126,17 @@
    [:transform_id     {:optional true} [:maybe ::lib.schema.id/transform]]
    [:index_name       {:optional true} [:maybe :string]]
    [:structured       {:optional true} [:maybe ::table-index.structured]]
-   [:status           {:optional true} [:maybe [:or :keyword :string]]]
+   [:status           {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:error_message    {:optional true} [:maybe :string]]
    [:created_by       {:optional true} [:maybe :int]]
    [:created_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:last_executed_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::external-table-index
+  "A TableIndex as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::table-index [:index_name :structured]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

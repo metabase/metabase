@@ -9,6 +9,7 @@
    [metabase.metabot.skills :as skills]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -80,7 +81,7 @@
 
   (compose [_ entries _ctx]
     ;; Only the first failure lists the loadable skills, so they appear once and survive the runtime's length limit
-    (let [first-failed (first (keep-indexed (fn [i entry] (when (:failed? entry) i)) entries))]
+    (let [first-failed (u/index-of :failed? entries)]
       {:output (str/join "\n\n" (map-indexed (fn [i {:keys [failed? output error]}]
                                                (if (and failed? (not= i first-failed))
                                                  (not-loadable-text (get-in error [:data :id]))

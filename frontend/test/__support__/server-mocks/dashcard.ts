@@ -7,9 +7,11 @@ export function setupDashcardQueryEndpoints(
   dashboardId: DashboardId,
   dashcard: StoreDashcard,
   dataset: Dataset,
+  { delay }: { delay?: number } = {},
 ) {
   fetchMock.post(
     `path:/api/dashboard/${dashboardId}/dashcard/${dashcard.id}/card/${dashcard.card_id}/query`,
     dataset,
+    { delay },
   );
 }

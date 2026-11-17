@@ -15,7 +15,6 @@
   covered by `metabase.agent-lib.representations-test`; this suite focuses on resolution."
   (:require
    [clojure.test :refer [deftest is testing]]
-   [clojure.walk :as walk]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
@@ -23,8 +22,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.serialization.protocol.mp :as protocol.mp]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -555,7 +555,7 @@
                       :definition revenue-definition}])))
 
 (def ^:private metric-content-store
-  (reify resolve.mp/ContentStore
+  (reify protocol.mp/ContentStore
     (card-by-entity-id    [_ eid] (get {metric-entity-id          {:id 900 :database_id 1}
                                         datetime-metric-entity-id {:id 902 :database_id 1}}
                                        eid))
@@ -568,13 +568,8 @@
     (segment-by-id        [_ _] nil)))
 
 (defn- collect-clauses [q tag]
-  (let [acc (volatile! [])]
-    (walk/postwalk (fn [x]
-                     (when (and (vector? x) (= tag (nth x 0 nil)) (map? (nth x 1 nil)))
-                       (vswap! acc conj x))
-                     x)
-                   (:stages q))
-    @acc))
+  (match/match-all (:stages q)
+    [#{tag} #'map? & _] &match))
 
 (defn- yoy-growth-parsed
   "Portable query computing `(agg - offset(agg, -12)) / offset(agg, -12)` by month, where
@@ -694,7 +689,7 @@
                                "breakout"     [["field" {"temporal-unit" "month"}
                                                 ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]]}]}
           q        (repr.resolve/resolve-query mp parsed)
-          exported (repr.resolve/try-export-query mp q resolve.mp/unchecked-app-db-content-store)]
+          exported (repr.resolve/try-export-query mp q protocol.mp/unchecked-app-db-content-store)]
       (is (map? exported))
       (is (= "mbql/query" (get exported "lib/type")))
       (is (= "Sample" (get exported "database")))
@@ -706,10 +701,10 @@
 
 (deftest try-export-query-nil-and-error-fallback-test
   (testing "nil / blank input returns nil so the caller can omit the field"
-    (is (nil? (repr.resolve/try-export-query mp nil resolve.mp/unchecked-app-db-content-store)))
-    (is (nil? (repr.resolve/try-export-query mp {} resolve.mp/unchecked-app-db-content-store)))
+    (is (nil? (repr.resolve/try-export-query mp nil protocol.mp/unchecked-app-db-content-store)))
+    (is (nil? (repr.resolve/try-export-query mp {} protocol.mp/unchecked-app-db-content-store)))
     (is (nil? (repr.resolve/try-export-query nil {:lib/type :mbql/query :database 1 :stages []}
-                                             resolve.mp/unchecked-app-db-content-store))))
+                                             protocol.mp/unchecked-app-db-content-store))))
   (testing "export errors are swallowed and surface as nil (the caller falls back gracefully)"
     ;; A query map with a numeric field id that doesn't exist in the metadata-provider
     ;; will throw inside `export-mbql`; we want the helper to return nil rather than
@@ -718,7 +713,7 @@
                  :database 1
                  :stages   [{:lib/type     :mbql.stage/mbql
                              :source-table 99999}]}]
-      (is (nil? (repr.resolve/try-export-query mp bogus resolve.mp/unchecked-app-db-content-store))))))
+      (is (nil? (repr.resolve/try-export-query mp bogus protocol.mp/unchecked-app-db-content-store))))))
 
 (def ^:private source-card-export-query
   {:lib/type :mbql/query
@@ -727,7 +722,7 @@
                :source-card 900}]})
 
 (defn- recording-export-content-store [calls]
-  (reify resolve.mp/ContentStore
+  (reify protocol.mp/ContentStore
     (card-by-entity-id    [_ _] nil)
     (measure-by-entity-id [_ _] nil)
     (segment-by-entity-id [_ _] nil)
