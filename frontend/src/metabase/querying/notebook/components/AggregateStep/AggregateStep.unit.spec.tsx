@@ -18,6 +18,7 @@ import {
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
+import type { TestAggregationSpec } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -259,6 +260,77 @@ describe("AggregateStep", () => {
         "[Revenue]",
       ),
     );
+  });
+
+  describe("custom column with brackets in its name (metabase#15316)", () => {
+    const CUSTOM_COLUMN_NAME = "MyCC [2027]";
+
+    function createQueryWithBracketedCustomColumn(
+      aggregations: readonly TestAggregationSpec[] = [],
+    ) {
+      return Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            expressions: [
+              {
+                name: CUSTOM_COLUMN_NAME,
+                value: {
+                  type: "operator",
+                  operator: "+",
+                  args: [
+                    { type: "literal", value: 1 },
+                    { type: "literal", value: 1 },
+                  ],
+                },
+              },
+            ],
+            aggregations,
+          },
+        ],
+      });
+    }
+
+    it("should aggregate the custom column", async () => {
+      const { getRecentAggregationClause } = setup({
+        step: createMockNotebookStep({
+          query: createQueryWithBracketedCustomColumn(),
+        }),
+      });
+
+      await userEvent.click(screen.getByText("Pick a function or metric"));
+      await userEvent.click(screen.getByText("Sum of ..."));
+      await userEvent.click(await screen.findByText(CUSTOM_COLUMN_NAME));
+
+      expect(getRecentAggregationClause()).toMatchObject({
+        name: "sum",
+        displayName: "Sum of MyCC [2027]",
+      });
+    });
+
+    it("should escape the brackets when opening the aggregation as a custom expression", async () => {
+      setup({
+        step: createMockNotebookStep({
+          query: createQueryWithBracketedCustomColumn([
+            {
+              type: "operator",
+              operator: "sum",
+              args: [{ type: "column", name: CUSTOM_COLUMN_NAME }],
+            },
+          ]),
+        }),
+      });
+
+      await userEvent.click(screen.getByText("Sum of MyCC [2027]"));
+      await userEvent.click(await screen.findByText("Sum of ...")); // go back to operator selection
+      await userEvent.click(await screen.findByText("Custom Expression"));
+
+      await waitFor(() =>
+        expect(
+          screen.getByTestId("custom-expression-query-editor"),
+        ).toHaveValue("Sum([MyCC \\[2027\\]])"),
+      );
+    });
   });
 
   describe("metrics", () => {
