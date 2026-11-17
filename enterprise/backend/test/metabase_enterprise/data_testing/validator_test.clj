@@ -153,7 +153,7 @@
       (is (nil? (refused (with-sql complete-test "SELECT '{{x}}' AS a FROM PEOPLE")))))))
 
 (deftest refused-write-says-why-test
-  (testing "a write that calls a function that waits is refused, and the refusal's data names the reason and the function"
+  (testing "a write that calls a function that waits is refused, and the refusal's data names the function"
     (let [e (try (validator/ensure-single-write :postgres "UPDATE t SET name = pg_sleep(1)::text WHERE id = 1")
                  nil
                  (catch ExceptionInfo e e))]
