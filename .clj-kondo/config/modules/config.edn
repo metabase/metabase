@@ -540,6 +540,17 @@
                     :model/DashboardCard
                     :model/Database}}
 
+  change-log
+  {:team "Cloud"
+   :api  #{metabase.change-log.core
+           metabase.change-log.init}
+   :uses #{app-db
+           global-system
+           premium-features
+           task
+           util
+           util.config}}
+
   ;; TODO -- way too many API namespaces.
   channel
   {:team "Gadget"
@@ -808,6 +819,7 @@
            analytics
            api
            app-db
+           change-log
            collections
            content-verification
            embedding
@@ -1611,6 +1623,7 @@
               api-scope
               app-db
               audit-app
+              change-log
               channel
               collections
               data-apps
@@ -1629,6 +1642,7 @@
               metabot.slackbot
               metabot.toolkit
               metrics
+              model-persistence
               models
               native-query-snippets
               notification
@@ -1674,6 +1688,7 @@
                     :model/Glossary
                     :model/Measure
                     :model/ModerationReview
+                    :model/NativeQuerySnippet
                     :model/QueryTable
                     :model/Segment
                     :model/Table
@@ -2064,6 +2079,7 @@
    :uses #{api
            app-db
            audit-app
+           change-log
            collections
            events
            lib.metadata
@@ -2087,6 +2103,7 @@
                     :model/Database
                     :model/Field
                     :model/Table
+                    :model/Tenant
                     :model/User}}
 
   permissions.rest
@@ -2210,6 +2227,7 @@
            metabase.pulse.init}
    :uses #{api
            app-db
+           change-log
            channel
            collections
            driver
@@ -2255,6 +2273,7 @@
            audit-app
            audit-app.view-log
            cache
+           change-log
            channel
            collections
            content-verification
@@ -2990,6 +3009,7 @@
            api
            app-db
            audit-app
+           change-log
            database-routing
            dependencies
            driver
@@ -3297,7 +3317,8 @@
            transforms.base
            transforms.schema
            util}
-   :model-imports #{:model/Transform
+   :model-imports #{:model/Collection
+                    :model/Transform
                     :model/TransformDagRun
                     :model/TransformJob
                     :model/TransformJobRun
@@ -3486,6 +3507,7 @@
            app-db
            audit-app
            driver
+           lib
            lib.schema
            models
            permissions
@@ -3529,7 +3551,8 @@
            util.config
            warehouses
            warehouses.schema
-           warehouses.secrets}
+           warehouses.secrets
+           workspaces}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -3556,6 +3579,7 @@
    :uses #{api
            app-db
            audit-app
+           change-log
            collections
            database-routing
            driver
@@ -3642,8 +3666,7 @@
   {:team "Graphy"
    :api #{metabase.workspaces.core
           metabase.workspaces.table-remapping}
-   :uses #{premium-features
-           util}}
+   :uses #{premium-features}}
 
   xrays
   {:team "Graphy"
@@ -4892,6 +4915,7 @@
            cache
            database-routing
            driver
+           events
            lib.metadata
            lib.schema
            models

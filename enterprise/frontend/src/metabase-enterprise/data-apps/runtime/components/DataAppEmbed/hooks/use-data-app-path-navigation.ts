@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 
-import { navigate } from "embedding-sdk-package/lib/private/data-app-routing";
+import { navigate } from "embedding-sdk-package/data-apps/private/lib/data-app-routing";
 import {
   getDataAppEmbedUrl,
   normalizeDataAppPath,
-} from "embedding-sdk-shared/lib/embedded-data-app-path";
+} from "embedding-sdk-shared/data-apps/embedded-data-app-path";
 import { getCurrentMetabaseInstanceUrl } from "embedding-sdk-shared/lib/get-current-metabase-instance-url";
 import { EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME } from "metabase/embedding/embedding-iframe-sdk/constants";
 import type { SdkIframeEmbedNavigateToDataAppPathMessage } from "metabase/embedding/embedding-iframe-sdk/types/embed";

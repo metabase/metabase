@@ -2787,7 +2787,7 @@
         "additionalProperties" : false
       },
       "metabase-enterprise.data-testing.expectations.equals.result" : {
-        "description" : "What an `equals` expectation found.\n\n  Unless `:status` is `error`, every key is present on a pass as well as a failure:\n  `:extra-rows`, `:missing-rows` and `:cell-mismatches` come back empty rather than missing.\n  `:row-counts` sets the output's row count against the number of rows the expectation declared.\n  `:cell-mismatches` is filled only when exactly one row is missing and exactly one is extra.\n  `:extra-rows` and `:missing-rows` are capped; `:truncated` is how many rows that cap dropped.",
+        "description" : "What an `equals` expectation found.\n\n  Unless `:status` is `error`, every key is present on a pass as well as a failure:\n  `:extra-rows`, `:missing-rows` and `:cell-mismatches` come back empty rather than missing.\n  `:row-counts` sets the output's row count against the number of expected rows.\n  `:cell-mismatches` is filled only when exactly one row is missing and exactly one is extra.\n  `:extra-rows` and `:missing-rows` are capped; `:truncated` is how many rows that cap dropped.",
         "anyOf" : [ {
           "description" : "What every expectation result carries: which expectation this is, and how it came out.\n\n  A `:status` of `error` means this one expectation could not be evaluated while the rest of the\n  run still reported; `:error` then says why, and nothing else is reported for it.",
           "type" : "object",
@@ -3217,7 +3217,7 @@
         "additionalProperties" : false
       },
       "metabase-enterprise.data-testing.schema..expectation.equals" : {
-        "description" : "A check that the output of the query under test holds exactly the declared rows, over exactly the declared columns.",
+        "description" : "A check that the output of the query under test holds exactly the expected rows, over exactly their columns.",
         "anyOf" : [ {
           "description" : "Test data returned by a SQL query run against the Database of the query under test.",
           "type" : "object",
@@ -7074,7 +7074,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -7151,7 +7151,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -7221,7 +7221,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -7463,7 +7463,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -7542,7 +7542,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -7614,7 +7614,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -7723,7 +7723,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -7884,7 +7884,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -8038,7 +8038,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -8583,7 +8583,7 @@
           },
           "visualization_settings" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -8671,7 +8671,7 @@
           },
           "visualization_settings" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -9342,7 +9342,7 @@
           },
           "visualization_settings" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -9446,7 +9446,7 @@
           },
           "visualization_settings" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -11563,7 +11563,7 @@
       },
       "metabase.dashboards.schema..dashboard-card.visualization-settings" : {
         "description" : "The `:visualization_settings` column of a DashboardCard, decoded.",
-        "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+        "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
       },
       "metabase.dashboards.schema..dashboard-tab.update" : {
         "description" : "What an update (or insert) of a DashboardTab accepts: every column of `:dashboard_tab` except `id`, all optional.",
@@ -12335,7 +12335,7 @@
                 "properties" : {
                   "visualization_settings" : {
                     "anyOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                     }, {
                       "type" : "null"
                     } ]
@@ -12499,7 +12499,7 @@
                 "properties" : {
                   "visualization_settings" : {
                     "anyOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                     }, {
                       "type" : "null"
                     } ]
@@ -12656,7 +12656,7 @@
                 "properties" : {
                   "visualization_settings" : {
                     "anyOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                     }, {
                       "type" : "null"
                     } ]
@@ -16452,7 +16452,7 @@
           },
           "settings" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -17369,7 +17369,7 @@
           },
           "viz-settings" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -18348,7 +18348,7 @@
           },
           "viz-settings" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -19918,7 +19918,7 @@
           },
           "visualization-settings" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -20941,7 +20941,7 @@
           },
           "settings" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -21867,7 +21867,7 @@
             },
             "settings" : {
               "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -22991,7 +22991,7 @@
               },
               "settings" : {
                 "anyOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                 }, {
                   "type" : "null"
                 } ]
@@ -24427,7 +24427,7 @@
           },
           "viz-settings" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -26074,31 +26074,434 @@
           }
         } ]
       },
-      "metabase.lib.schema.visualization-settings..click-behavior.dimension" : {
+      "metabase.lib.schema.visualization..click-behavior.dimension" : {
         "description" : "The `:dimension` a click behavior parameter maps to, with the legacy MBQL reference of its column."
       },
-      "metabase.lib.schema.visualization-settings..pivot-table.collapsed-rows" : {
-        "description" : "pivot table collapsed rows",
+      "metabase.lib.schema.visualization..click-behavior.parameter-mapping" : {
+        "description" : "The `:parameterMapping` of a click behavior: what each parameter of its destination gets, by the JSON-encoded id of\n  that parameter or dimension.",
         "type" : "object",
-        "properties" : {
-          "rows" : {
-            "anyOf" : [ {
-              "type" : "array",
-              "items" : {
+        "additionalProperties" : {
+          "anyOf" : [ {
+            "description" : "click behavior parameter mapping",
+            "type" : "object",
+            "properties" : {
+              "source" : {
                 "anyOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.column-name-or-ref"
+                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization..click-behavior.parameter-ref"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "target" : {
+                "anyOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization..click-behavior.parameter-ref"
                 }, {
                   "type" : "null"
                 } ]
               }
+            }
+          }, {
+            "type" : "null"
+          } ]
+        }
+      },
+      "metabase.lib.schema.visualization..click-behavior.parameter-ref" : {
+        "description" : "click behavior parameter reference",
+        "type" : "object",
+        "properties" : {
+          "dimension" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization..click-behavior.dimension"
             }, {
               "type" : "null"
             } ]
           }
         }
       },
-      "metabase.lib.schema.visualization-settings..pivot-table.column-split" : {
+      "metabase.lib.schema.visualization..column-settings.entry" : {
+        "description" : "column settings",
+        "type" : "object",
+        "properties" : {
+          "text_wrapping" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "duration_precision" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "minute", "second", "millisecond" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "view_as" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "date_style" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "text_align" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "left", "middle", "right" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "prefix" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "scale" : {
+            "anyOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "currency" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "suffix" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "number_separators" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "link_url" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "currency_in_header" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "duration_unit" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "nanosecond", "microsecond", "millisecond", "second", "minute", "hour", "day", "week" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "click_behavior" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.click-behavior"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "column_title" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "pivot_table.column_show_totals" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "time_enabled" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "minutes", "seconds", "milliseconds" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "show_mini_bar" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "currency_position" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "before", "after" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "date_separator" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "pivot_table.column_sort_order" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "ascending", "descending" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "duration_style" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "digital", "narrow" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "link_text" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "currency_style" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "symbol", "narrowSymbol", "code", "name" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "number_style" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "decimal", "percent", "scientific", "currency", "duration" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "date_abbreviate" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "time_style" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "decimals" : {
+            "anyOf" : [ {
+              "type" : "integer",
+              "minimum" : 0
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase.lib.schema.visualization..link-card.entity-id" : {
+        "description" : "The id of the entity a link card links to.",
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.id.dashboard"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.id.document"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+        } ]
+      },
+      "metabase.lib.schema.visualization..pivot-table.collapsed-rows" : {
+        "description" : "pivot table collapsed rows",
+        "type" : "object",
+        "properties" : {
+          "rows" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.column-names-or-refs"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "value" : {
+            "anyOf" : [ {
+              "type" : "array",
+              "items" : { }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase.lib.schema.visualization..pivot-table.column-split" : {
         "description" : "pivot table column split",
+        "type" : "object",
+        "properties" : {
+          "columns" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.column-names-or-refs"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "rows" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.column-names-or-refs"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "values" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.column-names-or-refs"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase.lib.schema.visualization..scalar.segment" : {
+        "description" : "scalar segment",
+        "type" : "object",
+        "properties" : {
+          "color" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "label" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "max" : {
+            "anyOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "min" : {
+            "anyOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase.lib.schema.visualization..series-order.entry" : {
+        "description" : "series order entry",
+        "type" : "object",
+        "properties" : {
+          "color" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "enabled" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "key" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase.lib.schema.visualization..table.column" : {
+        "description" : "table column",
+        "type" : "object",
+        "properties" : {
+          "enabled" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "fieldRef" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.column-name-or-ref"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase.lib.schema.visualization..table.column-formatting" : {
+        "description" : "The `:table.column_formatting` of a table visualization: its conditional formatting rules.",
+        "type" : "array",
+        "items" : {
+          "anyOf" : [ {
+            "$ref" : "#/components/schemas/metabase.lib.schema.visualization..table.column-formatting-rule"
+          }, {
+            "type" : "null"
+          } ]
+        }
+      },
+      "metabase.lib.schema.visualization..table.column-formatting-rule" : {
+        "description" : "column formatting rule",
         "type" : "object",
         "properties" : {
           "columns" : {
@@ -26106,7 +26509,7 @@
               "type" : "array",
               "items" : {
                 "anyOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.column-name-or-ref"
+                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization.column-name-or-ref"
                 }, {
                   "type" : "null"
                 } ]
@@ -26115,189 +26518,453 @@
               "type" : "null"
             } ]
           },
-          "rows" : {
+          "operator" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "max_value" : {
+            "anyOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "max_type" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "custom", "all" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "min_type" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "custom", "all" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "value" : { },
+          "highlight_row" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "min_value" : {
+            "anyOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "single", "range" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "colors" : {
             "anyOf" : [ {
               "type" : "array",
               "items" : {
-                "anyOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.column-name-or-ref"
-                }, {
-                  "type" : "null"
-                } ]
+                "type" : "string"
               }
             }, {
               "type" : "null"
             } ]
           },
-          "values" : {
+          "color" : {
             "anyOf" : [ {
-              "type" : "array",
-              "items" : {
-                "anyOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.column-name-or-ref"
-                }, {
-                  "type" : "null"
-                } ]
-              }
+              "type" : "string"
             }, {
               "type" : "null"
             } ]
           }
         }
       },
-      "metabase.lib.schema.visualization-settings..table.column-formatting" : {
-        "description" : "The `:table.column_formatting` of a table visualization: its conditional formatting rules, each with the columns it\n  applies to.",
+      "metabase.lib.schema.visualization..table.columns" : {
+        "description" : "The `:table.columns` of a table visualization: its columns in display order.",
         "type" : "array",
         "items" : {
           "anyOf" : [ {
-            "description" : "column formatting rule",
-            "type" : "object",
-            "properties" : {
-              "columns" : {
-                "anyOf" : [ {
-                  "type" : "array",
-                  "items" : {
-                    "anyOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.column-name-or-ref"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  }
-                }, {
-                  "type" : "null"
-                } ]
-              }
-            }
+            "$ref" : "#/components/schemas/metabase.lib.schema.visualization..table.column"
           }, {
             "type" : "null"
           } ]
         }
       },
-      "metabase.lib.schema.visualization-settings..table.columns" : {
-        "description" : "The `:table.columns` of a table visualization: its columns in display order, with the legacy MBQL reference older\n  settings give each under `:fieldRef`.",
-        "type" : "array",
-        "items" : {
-          "anyOf" : [ {
-            "description" : "table column",
-            "type" : "object",
-            "properties" : {
-              "fieldRef" : {
-                "anyOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.column-name-or-ref"
-                }, {
-                  "type" : "null"
-                } ]
-              }
-            }
-          }, {
-            "type" : "null"
-          } ]
-        }
-      },
-      "metabase.lib.schema.visualization-settings.click-behavior" : {
+      "metabase.lib.schema.visualization.click-behavior" : {
         "description" : "click behavior",
         "type" : "object",
         "properties" : {
+          "tabId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.dashboard-tab"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "targetId" : {
+            "anyOf" : [ {
+              "anyOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              }, {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.dashboard"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "tableId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "linkTextTemplate" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "linkTemplate" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "linkType" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "question", "dashboard", "url" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "action", "actionMenu", "crossfilter", "link" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "objectDetailDashCardId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.dashcard"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "parameterMapping" : {
             "anyOf" : [ {
-              "type" : "object",
-              "additionalProperties" : {
-                "anyOf" : [ {
-                  "type" : "object",
-                  "properties" : {
-                    "target" : {
-                      "anyOf" : [ {
-                        "type" : "object",
-                        "properties" : {
-                          "dimension" : {
-                            "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings..click-behavior.dimension"
-                          }
-                        }
-                      }, {
-                        "type" : "null"
-                      } ]
-                    }
-                  }
-                }, {
-                  "type" : "null"
-                } ]
-              }
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization..click-behavior.parameter-mapping"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "actionType" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "insert", "update", "delete" ]
             }, {
               "type" : "null"
             } ]
           }
         }
       },
-      "metabase.lib.schema.visualization-settings.column-name-or-ref" : {
+      "metabase.lib.schema.visualization.column-name-or-ref" : {
         "description" : "How a setting refers to a column: by name, as newer settings do, by legacy MBQL reference, as older ones do, or by\n  something else the frontend wrote, which is kept as it is."
       },
-      "metabase.lib.schema.visualization-settings.column-settings" : {
-        "description" : "The `:column_settings` of a visualization: the settings of each column, by its JSON-encoded reference or name, with\n  keyword keys all the way down, without the invalid ones.",
-        "type" : "object",
-        "additionalProperties" : {
+      "metabase.lib.schema.visualization.column-names-or-refs" : {
+        "description" : "The columns a setting lists, by name or by the legacy MBQL reference older settings give.",
+        "type" : "array",
+        "items" : {
           "anyOf" : [ {
-            "description" : "column settings",
-            "type" : "object",
-            "properties" : {
-              "click_behavior" : {
-                "anyOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.click-behavior"
-                }, {
-                  "type" : "null"
-                } ]
-              }
-            }
+            "$ref" : "#/components/schemas/metabase.lib.schema.visualization.column-name-or-ref"
           }, {
             "type" : "null"
           } ]
         }
       },
-      "metabase.lib.schema.visualization-settings.legacy-reference" : {
+      "metabase.lib.schema.visualization.column-settings" : {
+        "description" : "The `:column_settings` of a visualization: the settings of each column, by its JSON-encoded reference or name.",
+        "type" : "object",
+        "additionalProperties" : {
+          "anyOf" : [ {
+            "$ref" : "#/components/schemas/metabase.lib.schema.visualization..column-settings.entry"
+          }, {
+            "type" : "null"
+          } ]
+        }
+      },
+      "metabase.lib.schema.visualization.global-column-settings" : {
+        "description" : "The column settings the formatting settings of the instance give every column of a type, by that type.",
+        "type" : "object",
+        "additionalProperties" : {
+          "anyOf" : [ {
+            "$ref" : "#/components/schemas/metabase.lib.schema.visualization..column-settings.entry"
+          }, {
+            "type" : "null"
+          } ]
+        }
+      },
+      "metabase.lib.schema.visualization.legacy-reference" : {
         "description" : "A legacy MBQL reference to a column, as older settings give it.",
         "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
       },
-      "metabase.lib.schema.visualization-settings.visualization-settings" : {
+      "metabase.lib.schema.visualization.link-card" : {
+        "description" : "link card",
+        "type" : "object",
+        "properties" : {
+          "entity" : {
+            "anyOf" : [ {
+              "description" : "link card entity",
+              "type" : "object",
+              "properties" : {
+                "id" : {
+                  "anyOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.visualization..link-card.entity-id"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "model" : {
+                  "anyOf" : [ {
+                    "type" : "string"
+                  }, {
+                    "type" : "null"
+                  } ]
+                }
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "url" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase.lib.schema.visualization.visualization-settings" : {
         "description" : "Value must be a map.",
         "type" : "object",
         "properties" : {
-          "click_behavior" : {
+          "pivot.show_row_totals" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.click-behavior"
+              "type" : "boolean"
             }, {
               "type" : "null"
             } ]
           },
-          "column_settings" : {
+          "table.pivot_column" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.column-settings"
+              "type" : "string"
             }, {
               "type" : "null"
             } ]
           },
-          "pivot_table.collapsed_rows" : {
+          "pie.percent_visibility" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings..pivot-table.collapsed-rows"
+              "type" : "string",
+              "enum" : [ "off", "legend", "inside", "both" ]
             }, {
               "type" : "null"
             } ]
           },
-          "pivot_table.column_split" : {
+          "scalar.field" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings..pivot-table.column-split"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "table.column_formatting" : {
-            "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings..table.column-formatting"
+              "type" : "string"
             }, {
               "type" : "null"
             } ]
           },
           "table.columns" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings..table.columns"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization..table.columns"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "funnel.dimension" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "pivot_table.column_split" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization..pivot-table.column-split"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table.column_formatting" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization..table.column-formatting"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "pivot.show_column_totals" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "funnel.rows" : {
+            "anyOf" : [ {
+              "type" : "array",
+              "items" : {
+                "anyOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization..series-order.entry"
+                }, {
+                  "type" : "null"
+                } ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "card.title" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "click_behavior" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.click-behavior"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "column_settings" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.column-settings"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "funnel.metric" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "pivot_table.collapsed_rows" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization..pivot-table.collapsed-rows"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "qp/global-column-settings" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.global-column-settings"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "map.latitude_column" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "pivot.condense_duplicate_totals" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "map.region" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "map.longitude_column" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "link" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.link-card"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table.cell_column" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "scalar.segments" : {
+            "anyOf" : [ {
+              "type" : "array",
+              "items" : {
+                "anyOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization..scalar.segment"
+                }, {
+                  "type" : "null"
+                } ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "qp/display" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table.pivot" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table.column_widths" : {
+            "anyOf" : [ {
+              "type" : "array",
+              "items" : {
+                "anyOf" : [ {
+                  "type" : "number"
+                }, {
+                  "type" : "null"
+                } ]
+              }
             }, {
               "type" : "null"
             } ]
@@ -29588,6 +30255,13 @@
           "content" : {
             "anyOf" : [ {
               "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "can_write" : {
+            "anyOf" : [ {
+              "type" : "boolean"
             }, {
               "type" : "null"
             } ]
@@ -35050,7 +35724,7 @@
         "properties" : {
           "settings" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -35480,7 +36154,7 @@
       },
       "metabase.queries.schema..card.visualization-settings" : {
         "description" : "The `:visualization_settings` column of a Card, decoded.",
-        "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+        "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
       },
       "metabase.queries.schema..param-field.name-field" : {
         "description" : "A Field trimmed to the columns a parameter widget needs, as the `:name_field` hydration attaches it.",
@@ -39860,7 +40534,7 @@
       },
       "metabase.warehouse-schema.schema..field-user-settings.settings" : {
         "description" : "The `:settings` column of a FieldUserSettings, decoded.",
-        "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+        "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
       },
       "metabase.warehouse-schema.schema..field-user-settings.update" : {
         "description" : "What an update (or insert) of a FieldUserSettings accepts: every column of `:metabase_field_user_settings` except `id`, all optional.",
@@ -40010,7 +40684,7 @@
       },
       "metabase.warehouse-schema.schema..field.settings" : {
         "description" : "The `:settings` column of a Field, decoded.",
-        "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+        "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
       },
       "metabase.warehouse-schema.schema..field.update" : {
         "description" : "What an update (or insert) of a Field accepts: every column of `:metabase_field` except `id`, all optional.",
@@ -41153,6 +41827,10 @@
               "type" : "null"
             } ]
           },
+          "id" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
           "coercion_strategy" : {
             "anyOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
@@ -41568,6 +42246,13 @@
               "type" : "null"
             } ]
           },
+          "can_query" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "entity_type" : {
             "anyOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
@@ -41653,6 +42338,10 @@
             }, {
               "type" : "null"
             } ]
+          },
+          "id" : {
+            "type" : "integer",
+            "minimum" : 1
           },
           "show_in_getting_started" : {
             "anyOf" : [ {
@@ -42261,6 +42950,13 @@
               "type" : "null"
             } ]
           },
+          "can_write" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "cache_ttl" : {
             "anyOf" : [ {
               "type" : "integer"
@@ -42376,6 +43072,13 @@
               "type" : "null"
             } ]
           },
+          "can_query" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "features" : {
             "anyOf" : [ {
               "type" : "array",
@@ -42445,62 +43148,6 @@
           }
         },
         "required" : [ "id" ],
-        "additionalProperties" : false
-      },
-      "metabase.workspaces.core.table-namespace" : {
-        "description" : "A `{:db ?, :schema ?}` namespace map. Either or both keys may be present\n   depending on the driver's `qualified-name-components`; at least one must\n   populate. Empty-string `\"\"` is reserved for the storage layer; the atom\n   carries `nil`/missing for absent slots.",
-        "type" : "object",
-        "properties" : {
-          "db" : {
-            "anyOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "schema" : {
-            "anyOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "additionalProperties" : false
-      },
-      "metabase.workspaces.core.workspace-database-config" : {
-        "description" : "Per-database workspace config: `:input_schemas` is a vector of driver-opaque\n   schema names (the source schemas the workspace reads from) — may be empty\n   on drivers with no schema layer (e.g. MySQL), where the bound DB itself acts\n   as the implicit input namespace; `:output` is a single namespace map (the\n   workspace's isolation schema, expanded with the warehouse catalog at boot).",
-        "type" : "object",
-        "properties" : {
-          "input_schemas" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          },
-          "output" : {
-            "$ref" : "#/components/schemas/metabase.workspaces.core.table-namespace"
-          }
-        },
-        "required" : [ "input_schemas", "output" ],
-        "additionalProperties" : false
-      },
-      "metabase.workspaces.core.workspace-instance-config" : {
-        "description" : "The shape stored in the EE `instance-workspace` setting after the `:workspace`\n   config.yml loader has resolved database names to ids. Database keys are integer\n   ids (post-resolution); the wire format with name keys lives in\n   `metabase-enterprise.advanced-config.file.workspace`.",
-        "type" : "object",
-        "properties" : {
-          "databases" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "$ref" : "#/components/schemas/metabase.workspaces.core.workspace-database-config"
-            }
-          },
-          "name" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        },
-        "required" : [ "name", "databases" ],
         "additionalProperties" : false
       },
       "metabase.xrays.api.automagic-dashboards.base-64-encoded-json" : {
@@ -44044,7 +44691,7 @@
       "post" : {
         "operationId" : "post-api-api-key",
         "summary" : "POST /api/api-key",
-        "description" : "Create a new API key (and an associated `User`) with the provided name and group ID.",
+        "description" : "Create a new API key (and an associated `User`) with the provided name and group ID. With `scope`\n  `workspace-manager`, the key is accepted only on the workspace manager endpoints (403 elsewhere), which also need its\n  group to be Administrators.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -44070,6 +44717,14 @@
                     "description" : "value must be a non-blank string.",
                     "type" : "string",
                     "minLength" : 1
+                  },
+                  "scope" : {
+                    "anyOf" : [ {
+                      "type" : "string",
+                      "enum" : [ "workspace-manager" ]
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "group_id", "name" ],
@@ -44083,7 +44738,7 @@
       "get" : {
         "operationId" : "get-api-api-key",
         "summary" : "GET /api/api-key",
-        "description" : "Get a list of API keys with the default scope. Non-paginated.",
+        "description" : "Get a list of API keys with the default or the `workspace-manager` scope. Non-paginated.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -44103,7 +44758,7 @@
       "get" : {
         "operationId" : "get-api-api-key-count",
         "summary" : "GET /api/api-key/count",
-        "description" : "Get the count of API keys in the DB with the default scope.",
+        "description" : "Get the count of API keys in the DB with the default or the `workspace-manager` scope.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -45446,7 +46101,7 @@
                 "type" : "object",
                 "properties" : {
                   "visualization_settings" : {
-                    "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                    "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                   },
                   "dashboard_tab_id" : {
                     "anyOf" : [ {
@@ -46212,7 +46867,7 @@
                   },
                   "visualization_settings" : {
                     "anyOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                     }, {
                       "type" : "null"
                     } ]
@@ -49348,7 +50003,7 @@
                         "properties" : {
                           "visualization_settings" : {
                             "anyOf" : [ {
-                              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                             }, {
                               "type" : "null"
                             } ]
@@ -49459,7 +50114,7 @@
                                   },
                                   "visualization_settings" : {
                                     "anyOf" : [ {
-                                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                                     }, {
                                       "type" : "null"
                                     } ]
@@ -49524,7 +50179,7 @@
                                 },
                                 "visualization_settings" : {
                                   "anyOf" : [ {
-                                    "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                                    "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                                   }, {
                                     "type" : "null"
                                   } ]
@@ -49657,7 +50312,7 @@
                         "properties" : {
                           "visualization_settings" : {
                             "anyOf" : [ {
-                              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                             }, {
                               "type" : "null"
                             } ]
@@ -49768,7 +50423,7 @@
                                   },
                                   "visualization_settings" : {
                                     "anyOf" : [ {
-                                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                                     }, {
                                       "type" : "null"
                                     } ]
@@ -49833,7 +50488,7 @@
                                 },
                                 "visualization_settings" : {
                                   "anyOf" : [ {
-                                    "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                                    "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                                   }, {
                                     "type" : "null"
                                   } ]
@@ -50655,7 +51310,7 @@
                           },
                           "visualization_settings" : {
                             "anyOf" : [ {
-                              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                             }, {
                               "type" : "null"
                             } ]
@@ -50810,7 +51465,7 @@
                         },
                         "visualization_settings" : {
                           "anyOf" : [ {
-                            "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                            "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                           }, {
                             "type" : "null"
                           } ]
@@ -53282,7 +53937,7 @@
                     "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-or-internal-query"
                   },
                   "visualization_settings" : {
-                    "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings",
                     "default" : { }
                   }
                 },
@@ -53343,7 +53998,7 @@
                         "type" : "object",
                         "properties" : {
                           "visualization_settings" : {
-                            "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                            "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                           },
                           "entity_id" : {
                             "anyOf" : [ {
@@ -53579,7 +54234,7 @@
                         "type" : "object",
                         "properties" : {
                           "visualization_settings" : {
-                            "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                            "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                           },
                           "entity_id" : {
                             "anyOf" : [ {
@@ -66375,7 +67030,7 @@
       "get" : {
         "operationId" : "get-api-ee-workspace-instance-current",
         "summary" : "GET /api/ee/workspace-instance/current",
-        "description" : "Read-only summary of the workspace loaded on this instance, wrapped in a\n  `{:data ...}` envelope.\n\n  Reads from the `instance-workspace` setting populated at boot by the `:workspace`\n  section of `config.yml`, or at runtime by `POST /current`. `:data` is `null`\n  when no workspace was loaded — i.e. this is a manager-only instance, or no\n  `config.yml` was present at boot and `POST /current` hasn't been called.\n  The envelope avoids an empty JSON body for the `nil` case.\n\n  The workspace's `can_write` flag is `false` when it was set by deployment\n  config (`config.yml` or `MB_INSTANCE_WORKSPACE`); `POST`/`DELETE` are rejected\n  in that case.",
+        "description" : "The workspace this instance is, wrapped in a `{:data ...}` envelope: `{:databases\n  [{:database_id :schema}]}`, each database that has a `database-workspace-schema`. `:data`\n  is `null` when the `workspaces-enabled` setting is off. The envelope avoids an empty\n  JSON body for the `nil` case.",
         "parameters" : [ ],
         "responses" : {
           "4XX" : {
@@ -66395,50 +67050,27 @@
                       "anyOf" : [ {
                         "type" : "object",
                         "properties" : {
-                          "can_write" : {
-                            "type" : "boolean"
-                          },
                           "databases" : {
-                            "type" : "object",
-                            "additionalProperties" : {
+                            "type" : "array",
+                            "items" : {
                               "type" : "object",
                               "properties" : {
-                                "input_schemas" : {
-                                  "type" : "array",
-                                  "items" : {
-                                    "type" : "string"
-                                  }
+                                "database_id" : {
+                                  "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
                                 },
-                                "output" : {
-                                  "type" : "object",
-                                  "properties" : {
-                                    "db" : {
-                                      "anyOf" : [ {
-                                        "type" : "string"
-                                      }, {
-                                        "type" : "null"
-                                      } ]
-                                    },
-                                    "schema" : {
-                                      "anyOf" : [ {
-                                        "type" : "string"
-                                      }, {
-                                        "type" : "null"
-                                      } ]
-                                    }
-                                  }
+                                "schema" : {
+                                  "description" : "value must be a non-blank string.",
+                                  "type" : "string",
+                                  "minLength" : 1
                                 }
                               },
-                              "required" : [ "input_schemas", "output" ]
+                              "required" : [ "database_id", "schema" ],
+                              "additionalProperties" : false
                             }
-                          },
-                          "name" : {
-                            "description" : "value must be a non-blank string.",
-                            "type" : "string",
-                            "minLength" : 1
                           }
                         },
-                        "required" : [ "name", "databases", "can_write" ]
+                        "required" : [ "databases" ],
+                        "additionalProperties" : false
                       }, {
                         "type" : "null"
                       } ]
@@ -66455,7 +67087,7 @@
       "post" : {
         "operationId" : "post-api-ee-workspace-instance-current",
         "summary" : "POST /api/ee/workspace-instance/current",
-        "description" : "Install a workspace config on this instance at runtime. Accepts the same shape\n  `GET /current` returns and persists it via the `instance-workspace` setting so\n  it survives restarts. Use this on a running instance to enter workspace mode\n  without restarting from `config.yml`.\n\n  Returns 400 if the workspace was set by deployment config (`config.yml` or\n  `MB_INSTANCE_WORKSPACE`) and so is read-only.",
+        "description" : "Make this instance a workspace: turn `workspaces-enabled` on and set each listed\n  database's `database-workspace-schema`, clearing it on every other database. A database\n  whose schema changes or is cleared loses its `TableRemapping` rows. Returns 400 for an\n  unknown database id, when this instance manages workspaces, while\n  `MB_WORKSPACES_ENABLED=false`, or when the request would change or clear a database's\n  schema while `MB_WORKSPACES_ENABLED` is set. A request that names the schema each\n  database already has is not a change.",
         "parameters" : [ ],
         "responses" : {
           "4XX" : {
@@ -66471,50 +67103,27 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "can_write" : {
-                      "type" : "boolean"
-                    },
                     "databases" : {
-                      "type" : "object",
-                      "additionalProperties" : {
+                      "type" : "array",
+                      "items" : {
                         "type" : "object",
                         "properties" : {
-                          "input_schemas" : {
-                            "type" : "array",
-                            "items" : {
-                              "type" : "string"
-                            }
+                          "database_id" : {
+                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
                           },
-                          "output" : {
-                            "type" : "object",
-                            "properties" : {
-                              "db" : {
-                                "anyOf" : [ {
-                                  "type" : "string"
-                                }, {
-                                  "type" : "null"
-                                } ]
-                              },
-                              "schema" : {
-                                "anyOf" : [ {
-                                  "type" : "string"
-                                }, {
-                                  "type" : "null"
-                                } ]
-                              }
-                            }
+                          "schema" : {
+                            "description" : "value must be a non-blank string.",
+                            "type" : "string",
+                            "minLength" : 1
                           }
                         },
-                        "required" : [ "input_schemas", "output" ]
+                        "required" : [ "database_id", "schema" ],
+                        "additionalProperties" : false
                       }
-                    },
-                    "name" : {
-                      "description" : "value must be a non-blank string.",
-                      "type" : "string",
-                      "minLength" : 1
                     }
                   },
-                  "required" : [ "name", "databases", "can_write" ]
+                  "required" : [ "databases" ],
+                  "additionalProperties" : false
                 }
               }
             }
@@ -66524,7 +67133,29 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.workspaces.core.workspace-instance-config"
+                "type" : "object",
+                "properties" : {
+                  "databases" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "properties" : {
+                        "database_id" : {
+                          "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                        },
+                        "schema" : {
+                          "description" : "value must be a non-blank string.",
+                          "type" : "string",
+                          "minLength" : 1
+                        }
+                      },
+                      "required" : [ "database_id", "schema" ],
+                      "additionalProperties" : false
+                    }
+                  }
+                },
+                "required" : [ "databases" ],
+                "additionalProperties" : false
               }
             }
           }
@@ -66534,7 +67165,7 @@
       "delete" : {
         "operationId" : "delete-api-ee-workspace-instance-current",
         "summary" : "DELETE /api/ee/workspace-instance/current",
-        "description" : "Clear the workspace config on this instance. After this returns, the instance\n  is no longer in workspace mode and `GET /current` returns `nil`. Also drops\n  every `TableRemapping` row, since stale mappings from the prior workspace\n  would otherwise keep rewriting queries on the now-unmanaged databases.\n\n  Returns 400 if the workspace was set by deployment config (`config.yml` or\n  `MB_INSTANCE_WORKSPACE`) and so is read-only.",
+        "description" : "Turn `workspaces-enabled` off and delete every `TableRemapping` row: reads of a remapped\n  table follow its row whether or not the instance is a workspace. After this returns,\n  `GET /current` returns `{:data nil}`. Returns 400 while `MB_WORKSPACES_ENABLED=true`.",
         "parameters" : [ ],
         "responses" : {
           "4XX" : {
@@ -66777,7 +67408,7 @@
       "post" : {
         "operationId" : "post-api-ee-workspace-manager",
         "summary" : "POST /api/ee/workspace-manager",
-        "description" : "Create a new Workspace attached to the given databases (each must be eligible\n   for workspaces) and provision it (blocking).",
+        "description" : "Create a new Workspace attached to the given databases (each must be eligible\n   for workspaces) and provision it (blocking). A failed provisioning is an error,\n   never a 200: the database's status code, or 500, with `message` and\n   `cleanup_required`, true when the workspace was kept and must be deleted to\n   finish the teardown.",
         "parameters" : [ ],
         "responses" : {
           "4XX" : {
@@ -66919,9 +67550,15 @@
                     "minItems" : 1
                   },
                   "name" : {
-                    "description" : "value must be a non-blank string.",
-                    "type" : "string",
-                    "minLength" : 1
+                    "allOf" : [ {
+                      "description" : "value must be a non-blank string.",
+                      "type" : "string",
+                      "minLength" : 1
+                    }, {
+                      "description" : "value must be at most 254 UTF-16 code units; an emoji counts as two.",
+                      "type" : "string",
+                      "maxLength" : 254
+                    } ]
                   }
                 },
                 "required" : [ "name", "database_ids" ],
@@ -67223,9 +67860,15 @@
                 "type" : "object",
                 "properties" : {
                   "name" : {
-                    "description" : "value must be a non-blank string.",
-                    "type" : "string",
-                    "minLength" : 1
+                    "allOf" : [ {
+                      "description" : "value must be a non-blank string.",
+                      "type" : "string",
+                      "minLength" : 1
+                    }, {
+                      "description" : "value must be at most 254 UTF-16 code units; an emoji counts as two.",
+                      "type" : "string",
+                      "maxLength" : 254
+                    } ]
                   }
                 },
                 "additionalProperties" : false
@@ -67238,7 +67881,7 @@
       "delete" : {
         "operationId" : "delete-api-ee-workspace-manager-id",
         "summary" : "DELETE /api/ee/workspace-manager/{id}",
-        "description" : "Delete a Workspace. Tears down every database's warehouse isolation first\n  (blocking, any state). Each database is either fully torn down (its row is\n  deleted) or kept; when any teardown fails the workspace is kept too — with the\n  failed rows, so the delete can be retried — and the combined failure is\n  returned as the error. 204 on success, no response body.",
+        "description" : "Delete a Workspace: tear down each database's warehouse isolation (blocking),\n  then delete the workspace. 409 (error code `workspace_busy`, nothing changed)\n  while a create or deprovision is running on any of its databases, meaning a row\n  is `:provisioning` or `:deprovisioning` and any row of the workspace was last\n  updated within the last 15 minutes. Once every row is older, such a row is\n  treated as left by a crashed instance and is torn down. A row whose teardown\n  succeeds is deleted. A row whose teardown fails is kept, the workspace is kept\n  with it, and the combined failure is the error, so the delete can be retried.\n  204 on success, no response body.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -67274,7 +67917,7 @@
       "get" : {
         "operationId" : "get-api-ee-workspace-manager-id-config",
         "summary" : "GET /api/ee/workspace-manager/{id}/config",
-        "description" : "Download the workspace's developer-instance config as a YAML file. 409 if any\n  of the workspace's databases is not `:provisioned`; retry later. 422 if a\n  database's connection settings need an admin to fix them; retrying does not help.",
+        "description" : "Download the workspace's developer-instance config as a YAML file. 409 if any\n  of the workspace's databases is not `:provisioned`; retry later. 422 if a\n  database's connection settings need an admin to fix them, if any emitted\n  value contains `{{` or `[[`, or if the workspace has no databases; retrying\n  does not help.\n  A scoped credential (an `mb:workspace-manager` API key or token) gets 422 when any\n  of the workspace's databases uses an SSH tunnel, because the config would need the\n  parent's tunnel secrets; an unscoped admin credential gets them.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -67315,6 +67958,17 @@
                   "required" : [ "status", "headers", "body" ],
                   "additionalProperties" : false
                 }
+              }
+            }
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
               }
             }
           }
@@ -69433,7 +70087,7 @@
       "put" : {
         "operationId" : "put-api-exploration-id",
         "summary" : "PUT /api/exploration/{id}",
-        "description" : "Update an exploration's metadata, archive state, or move it to a different collection.\n\n  When `collection_id` changes, the caller must have write perms on the destination collection\n  (or the root collection when `collection_id` is nil). Source perms are enforced by\n  `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`.\n  Moving an exploration cascades the new `collection_id` onto its Summary document; flipping\n  `archived` cascades to the same document (skipping any that were directly user-archived,\n  mirroring the dashboard / dashboard-question cascade).",
+        "description" : "Update an exploration's metadata, archive state, or move it to a different collection.\n\n  When `collection_id` changes, the caller must have write perms on the destination collection\n  (or the root collection when `collection_id` is nil). Source perms are enforced by\n  `api/write-check` against the exploration itself, which reads its Collection.\n  Moving an exploration cascades the new `collection_id` onto its Summary document; flipping\n  `archived` cascades to the same document (skipping any that were directly user-archived,\n  mirroring the dashboard / dashboard-question cascade).",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -69749,7 +70403,7 @@
                     "minItems" : 1
                   },
                   "visualization_settings" : {
-                    "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                    "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                   }
                 },
                 "required" : [ "exploration_query_ids", "display", "visualization_settings" ],
@@ -69899,7 +70553,7 @@
                   },
                   "settings" : {
                     "anyOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                     }, {
                       "type" : "null"
                     } ]
@@ -73216,7 +73870,7 @@
                   "properties" : {
                     "visualization_settings" : {
                       "anyOf" : [ {
-                        "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                        "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                       }, {
                         "type" : "null"
                       } ]
@@ -73346,7 +74000,7 @@
                       },
                       "visualization_settings" : {
                         "anyOf" : [ {
-                          "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                          "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                         }, {
                           "type" : "null"
                         } ]
@@ -73479,7 +74133,7 @@
                             } ]
                           },
                           "visualization_settings" : {
-                            "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
+                            "$ref" : "#/components/schemas/metabase.lib.schema.visualization.visualization-settings"
                           }
                         },
                         "required" : [ "name", "dataset_query", "database_id", "parameters", "visualization_settings" ]

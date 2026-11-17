@@ -30,6 +30,7 @@
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
@@ -265,7 +266,15 @@
                   (vec vs))))
          set)))
 
-;; `^:synchronized` because the `instance-workspace` setting is process-wide state
+(defn- load-sidecar-config!
+  "Load `config` as the sidecar would at boot. The parent and the sidecar share this
+   JVM and app DB, so the parent's own workspace rows would trip the
+   `workspaces-enabled` guard against parents; pretend they aren't there."
+  [config]
+  (mt/with-dynamic-fn-redefs [ws.db/any-workspace-exists? (constantly false)]
+    (advanced-config.file/initialize! config)))
+
+;; `^:synchronized` because the `workspaces-enabled` setting is process-wide state
 ;; backed by the shared test app DB; running concurrently with other workspace-mode
 ;; tests would cross-pollute.
 (defn- with-redshift-describe-filter-disabled
@@ -403,12 +412,12 @@
                           ;; `init-from-config-file!` for the `:databases` section (updates the
                           ;; existing Database row with merged workspace creds + schema-filters)
                           ;; and `apply-workspace-section!` for the `:workspace` section (resolves
-                          ;; db names → ids and writes the `instance-workspace` setting).
-                          (advanced-config.file/initialize! (yaml/parse-string yaml-str))
-                          ;; Diagnostic: the loader should have written the workspace-instance
-                          ;; setting and rewritten the Database row's :details to workspace-user creds.
+                          ;; db names → ids and writes the `workspaces-enabled` and
+                          ;; `database-workspace-schema` settings).
+                          (load-sidecar-config! (yaml/parse-string yaml-str))
+                          ;; Diagnostic: the loader should have turned on workspace mode and rewritten the Database row's :details to workspace-user creds.
                           (is (ws/workspace-mode?)
-                              "loader did not put the instance into workspace-mode (atom not populated)")
+                              "loader did not put the instance into workspace-mode (workspaces-enabled is off)")
                           ;; The Database row's `:details` was just rewritten by the loader. Re-read
                           ;; it so `mt/with-db` and the connection pool see the workspace-user creds.
                           (let [ws-db (t2/select-one :model/Database :id (:id ws-db))
@@ -669,7 +678,7 @@
                                       (is (= ::ok outcome)
                                           (str "deleting the transform output table failed; outcome=" (pr-str outcome))))))))))
                         (finally
-                          ;; Clear the `instance-workspace` setting (populated by `apply-workspace-section!`
+                          ;; Turn workspace mode off (turned on by `apply-workspace-section!`
                           ;; via `initialize!` above) and tear down the WorkspaceDatabase. The
                           ;; `:databases` initializer rewrote the `Database.details` to the workspace
                           ;; user's creds — but `destroy-workspace-isolation!` needs admin privileges
@@ -748,7 +757,7 @@
                   (let [cfg-map  (ws.config/build-workspace-config ws-id)
                         yaml-str (ws.config/config->yaml cfg-map)
                         reparsed (yaml/parse-string yaml-str)]
-                    (advanced-config.file/initialize! reparsed)
+                    (load-sidecar-config! reparsed)
                     (let [ws-db (t2/select-one :model/Database :id (:id ws-db))]
                       (mt/with-db ws-db
                         (sync/sync-database! (:id ws-db) {:scan :schema})
@@ -821,11 +830,15 @@
                                     (is (= [{:n 3}] (vec rows))
                                         "B's iso output reflects rewriter routing B's SELECT to A's iso table"))))))))))
                   (finally
-                    (ws/clear-instance-workspace!)
                     (t2/update! :model/Database :id (:id ws-db) {:details admin-details})
                     (try (ws/delete-workspace! ws-id)
                          (catch Throwable t
-                           (log/warn t "delete-workspace! failed during native-transform repro cleanup")))))))
+                           (log/warn t "delete-workspace! failed during native-transform repro cleanup")))
+                    ;; After deprovisioning, not before: this test runs inside the harness's app-DB
+                    ;; transaction, and clearing deletes every remap row on that connection.
+                    ;; Teardown then deletes the workspace's remap rows on another connection and
+                    ;; waits on those row locks until it times out (seen on MariaDB).
+                    (ws/clear-instance-workspace!)))))
             (finally
               (try (drop-canonical-schema! admin-driver admin-spec admin-details main-schema src-name tgt-a-name)
                    (catch Throwable _ nil))
@@ -859,7 +872,7 @@
                 (try
                   (add-database! ws-id (:id ws-db)
                                  [(workspace-input-schema admin-driver admin-details main-schema)])
-                  (advanced-config.file/initialize!
+                  (load-sidecar-config!
                    (yaml/parse-string (ws.config/config->yaml (ws.config/build-workspace-config ws-id))))
                   (let [ws-db (t2/select-one :model/Database :id (:id ws-db))]
                     (mt/with-db ws-db
