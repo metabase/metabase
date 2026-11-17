@@ -951,7 +951,7 @@
    {:pre [(symbol? dataset-name)]}
    `(~(if config/is-dev? 'def 'defonce)
      ~(vary-meta dataset-name assoc :doc docstring, :tag `DatabaseDefinition)
-     (dataset-definition ~(name dataset-name) ~definition ~options))))
+     (dataset-definition ~(name dataset-name) ~definition (merge {:static true} ~options)))))
 
 (p.types/deftype+ ^:private NativeDatasetDefinition [dataset-name table-definitions native-ddl]
   pretty/PrettyPrintable
