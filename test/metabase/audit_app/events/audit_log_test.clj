@@ -496,8 +496,6 @@
   (mt/with-current-user (mt/user->id :rasta)
     (mt/with-temp [:model/Channel channel notification.tu/default-can-connect-channel]
       (testing :event/channel-create
-        (is (= {:object channel}
-               (events/publish-event! :event/channel-create {:object channel})))
         (is (= {:model_id (:id channel)
                 :user_id  (mt/user->id :rasta)
                 :details  {:id          (:id channel)
@@ -509,10 +507,7 @@
                 :model    "Channel"}
                (mt/latest-audit-log-entry :channel-create (:id channel)))))
       (testing :event/channel-update
-        (events/publish-event! :event/channel-update {:object          (assoc channel
-                                                                              :details {:new-detail true}
-                                                                              :name "New Name")
-                                                      :previous-object channel})
+        (t2/update! :model/Channel (:id channel) {:name "New Name"})
         (is (= {:model_id (:id channel)
                 :user_id  (mt/user->id :rasta)
                 :details  {:previous {:name "Test channel"}

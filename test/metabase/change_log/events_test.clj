@@ -1,11 +1,11 @@
-(ns metabase.change-log.hooks-test
+(ns metabase.change-log.events-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [hooks.metabase.toucan.db-ns :as toucan.db-ns]
    [metabase.change-log.cascade :as change-log.cascade]
    [metabase.change-log.core :as change-log]
-   [metabase.change-log.hooks :as change-log.hooks]
+   [metabase.change-log.log :as change-log.log]
    [metabase.change-log.numbering :as change-log.numbering]
    [metabase.config.core :as config]
    [metabase.core.init-test :as init-test]
@@ -62,9 +62,9 @@
         (testing "an update that changes nothing logs nothing"
           (is (= [] (logged-by #(t2/update! :model/Table :id (:id t) {:name (:name t)}))))
           (is (= [] (logged-by #(t2/update! :model/Table {:db_id (:id db)} {:active true})))))
-        (testing "an update that changes one row of two logs both"
+        (testing "an update that changes one row of two logs the one it changes"
           (mt/with-temp [:model/Table other {:db_id (:id db), :active false}]
-            (is (= #{["metabase_table" (:id t) "update"] ["metabase_table" (:id other) "update"]}
+            (is (= #{["metabase_table" (:id other) "update"]}
                    (set (logged-by #(t2/update! :model/Table {:db_id (:id db)} {:active true})))))))
         (testing "an update that changes nothing logs nothing, on a model with a no-op before-update"
           (mt/with-temp [:model/Pulse     pulse {}
@@ -111,10 +111,10 @@
   (testing "a log wakes the numbering, but not in tests"
     (let [woken (atom 0)]
       (mt/with-dynamic-fn-redefs [change-log.numbering/stay-awake! #(swap! woken inc)]
-        (#'change-log.hooks/log! [])
+        (#'change-log.log/log! [])
         (is (= 0 @woken))
         (with-redefs [config/is-test? false]
-          (#'change-log.hooks/log! []))
+          (#'change-log.log/log! []))
         (is (= 1 @woken))))))
 
 (deftest other-hooks-test
@@ -206,7 +206,7 @@
               (is (contains? (set (logged-by permissions.db/deactivate-all-tenants!))
                              ["tenant" (:id tenant) "update"])))))
         (testing "`log-rows!` on a model that is not tracked throws in dev and test"
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not derive :hook/change-log"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not in `metabase.change-log.log/tracked-models`"
                                 (change-log/log-rows! :model/Collection :update :id 1)))
           (testing "and in production it warns instead of logging"
             (with-redefs [config/is-prod? true]
@@ -259,13 +259,19 @@
                        (column-types [(name (t2/table-name model)) (u/lower-case-en (name (first pks)))]))
             (str model "'s key is not an integer column"))))))
 
-(deftest tracked-models-before-update-test
-  (testing "each tracked model has a before-update"
+(deftest tracked-models-derive-events-test
+  (testing "each tracked model derives the events trait, which collects the writes the change log records"
     (load-models!)
     (doseq [model (vals (change-log.cascade/tracked-models))]
-      (is (isa? model :toucan2.tools.before-update/before-update)
-          (str model " has no before-update. Without one, an update that changes no row is logged. Derive"
-               " :hook/change-log-before-update-noop.")))))
+      (is (isa? model :hook/events) (str model " does not derive :hook/events")))))
+
+(deftest cascade-sources-derive-events-test
+  (testing "a model whose delete cascades to a tracked table derives the events trait, so the delete is captured"
+    (let [models  (load-models!)
+          fks     (change-log.cascade/foreign-keys)
+          sources (set (filter #(seq (change-log.cascade/referenced-columns fks (name (t2/table-name %)))) models))]
+      (doseq [model sources]
+        (is (isa? model :hook/events) (str model " does not derive :hook/events"))))))
 
 (defn- startup-namespaces
   "The Metabase namespaces that the startup namespaces require in their `ns` forms, at any depth. EE's startup
@@ -290,8 +296,7 @@
             (str model "'s namespace does not load at startup: require it from a namespace that does"))))))
 
 (def ^:private tracked-models
-  "The models we want tracked. [[tracked-models-test]] checks that each one derives `:hook/change-log` (see
-  `metabase.change-log.core`)."
+  "The models we want tracked. [[tracked-models-test]] checks that it is `metabase.change-log.log/tracked-models`."
   #{:model/Card
     :model/Dashboard
     :model/Database
@@ -314,7 +319,7 @@
     :model/User})
 
 (def ^:private untracked-models
-  "The models we do not want tracked. [[tracked-models-test]] checks that none derives `:hook/change-log`. A new model
+  "The models we do not want tracked. [[tracked-models-test]] checks that none is in `metabase.change-log.log/tracked-models`. A new model
   goes here, or in [[tracked-models]] when a reader of the change log needs its changes."
   #{:model/Action
     :model/AgentApiCallLog
@@ -460,9 +465,9 @@
     (testing "each model is in `tracked-models` or `untracked-models`, and not in both"
       (is (= models (set (filter models (concat tracked-models untracked-models)))))
       (is (empty? (filter tracked-models untracked-models))))
-    (testing "the models in `tracked-models` derive :hook/change-log, and no other model does"
+    (testing "the models in `tracked-models` are the tracked models of the change log"
       (is (= (set (filter models tracked-models))
-             (set (filter #(isa? % :hook/change-log) models)))))
+             (set (filter models change-log.log/tracked-models)))))
     (testing "both name only models"
       (is (empty? (remove models.resolution/model->namespace (concat tracked-models untracked-models)))))))
 
@@ -471,7 +476,7 @@
     (doseq [model (load-models!)
             :let  [columns (change-log/ignored-columns model)]
             :when (seq columns)]
-      (is (isa? model :hook/change-log) (str model " is not tracked"))
+      (is (contains? change-log.log/tracked-models model) (str model " is not tracked"))
       (is (some? (t2/query {:select (vec columns), :from [(t2/table-name model)], :limit 1}))))))
 
 (deftest lint-tables-test
@@ -508,7 +513,7 @@
               (is (nil? (t2/select-one-fn :fk_target_field_id :model/Field :id (:id fk)))))))))))
 
 (deftest cascade-from-untracked-model-test
-  (is (not (isa? :model/DashboardCard :hook/change-log)))
+  (is (not (contains? change-log.log/tracked-models :model/DashboardCard)))
   (when config/ee-available?
     (mt/with-premium-features #{:change-log}
       (mt/with-temp [:model/Dashboard     dash  {}
@@ -518,8 +523,10 @@
                      :model/PulseCard     pc    {:pulse_id (:id pulse), :card_id (:id card)
                                                  :dashboard_card_id (:id dc)}]
         (testing "deleting a dashboard card, which is not logged, logs the subscription card deleted with it"
-          (is (= [["pulse_card" (:id pc) "delete"]]
-                 (logged-by #(t2/delete! :model/DashboardCard :id (:id dc)))))
+          (is (= [["pulse_card" (:id pc) "delete"]
+                  ["pulse" (:id pulse) "update"]]
+                 (logged-by #(t2/delete! :model/DashboardCard :id (:id dc))))
+              "and the subscription, which takes the name of its dashboard")
           (is (nil? (t2/select-one :model/PulseCard :id (:id pc)))))))))
 
 (deftest cascade-through-untracked-table-test
@@ -554,25 +561,16 @@
 
 (deftest call-count-test
   (mt/with-premium-features #{:change-log}
-    ;; warm the caches a first write fills
     (call-counts))
-  (let [unhooked (mt/with-premium-features #{}
-                   (try
-                     (underive :model/PermissionsGroup :hook/change-log)
-                     (call-counts)
-                     (finally
-                       (derive :model/PermissionsGroup :hook/change-log))))
-        off      (mt/with-premium-features #{}
-                   (call-counts))]
-    (testing "while the change log is off, a tracked model runs no extra query"
-      (is (= unhooked off)))
+  (let [off (mt/with-premium-features #{}
+              (call-counts))]
     (when config/ee-available?
       (let [on (mt/with-premium-features #{:change-log}
                  (call-counts))]
-        (testing "while the change log is on, an insert runs one extra query, an update two, and a delete more"
+        (testing "while the change log is on, an insert and an update run one more query, and a delete runs more"
           (is (= (inc (:insert off)) (:insert on)))
-          (is (= (+ (:update off) 2) (:update on)))
-          (is (< (+ (:delete off) 2) (:delete on))))))))
+          (is (= (inc (:update off)) (:update on)))
+          (is (< (inc (:delete off)) (:delete on))))))))
 
 (deftest off-test
   (mt/with-temp [:model/PermissionsGroup group {}]

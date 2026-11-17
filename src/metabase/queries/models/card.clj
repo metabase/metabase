@@ -137,8 +137,7 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events)
-  (derive :hook/events)
-  (derive :hook/change-log))
+  (derive :hook/events))
 
 (methodical/defmethod change-log/ignored-columns :model/Card [_model]
   #{:last_used_at :view_count})

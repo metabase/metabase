@@ -4,7 +4,6 @@
    [clojure.data :as data]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.events.core :as events]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions-rest.db :as permissions-rest.db]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
@@ -222,9 +221,7 @@
     (when-not (setting/get :use-tenants)
       (throw (ex-info (tru "Tenant groups cannot be created while the Tenants feature is disabled.")
                       {:status-code 400}))))
-  (u/prog1 (permissions-rest.db/insert-permissions-group! name (boolean is_tenant_group))
-    (events/publish-event! :event/group-create {:object <>
-                                                :user-id api/*current-user-id*})))
+  (permissions-rest.db/insert-permissions-group! name (boolean is_tenant_group)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -237,25 +234,18 @@
    _query-params
    {:keys [name]} :- [:map {:closed true}
                       [:name ms/NonBlankString]]]
-  (let [group (api/write-check (permissions-rest.db/permissions-group group-id))]
-    (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
-    (permissions-rest.db/rename-permissions-group! group-id name)
-    ;; return the updated group
-    (u/prog1 (permissions-rest.db/permissions-group group-id)
-      (events/publish-event! :event/group-update
-                             {:user-id api/*current-user-id*
-                              :object <>
-                              :previous-object group}))))
+  (api/write-check (permissions-rest.db/permissions-group group-id))
+  (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
+  (permissions-rest.db/rename-permissions-group! group-id name)
+  (permissions-rest.db/permissions-group group-id))
 
 (api.macros/defendpoint :delete "/group/:group-id" :- ::api/generic-204-no-content
   "Delete a specific `PermissionsGroup`."
   [{:keys [group-id]} :- [:map {:closed true}
                           [:group-id ms/PositiveInt]]]
-  (let [group (api/write-check (permissions-rest.db/permissions-group group-id))]
-    (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
-    (permissions-rest.db/delete-permissions-group! group-id)
-    (events/publish-event! :event/group-delete {:object group
-                                                :user-id api/*current-user-id*}))
+  (api/write-check (permissions-rest.db/permissions-group group-id))
+  (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
+  (permissions-rest.db/delete-permissions-group! group-id)
   api/generic-204-no-content)
 
 ;;; ------------------------------------------- Group Membership Endpoints -------------------------------------------

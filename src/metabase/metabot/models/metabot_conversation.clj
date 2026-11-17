@@ -10,7 +10,8 @@
 (methodical/defmethod t2/table-name :model/MetabotConversation [_model] :metabot_conversation)
 
 (doto :model/MetabotConversation
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/events))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

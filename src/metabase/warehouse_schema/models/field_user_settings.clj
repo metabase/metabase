@@ -30,8 +30,7 @@
 (doto :model/FieldUserSettings
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/events)
-  (derive :hook/change-log))
+  (derive :hook/events))
 
 (defn- with-set-flags
   "Set the `_set` flag of every flagged column `effective` writes, unless `effective` sets the flag itself."

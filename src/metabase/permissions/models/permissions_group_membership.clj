@@ -1,8 +1,6 @@
 (ns metabase.permissions.models.permissions-group-membership
   (:require
    [medley.core :as m]
-   [metabase.api.common :as api]
-   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -17,8 +15,7 @@
 (methodical/defmethod t2/table-name :model/PermissionsGroupMembership [_model] :permissions_group_membership)
 
 (derive :model/PermissionsGroupMembership :metabase/model)
-(derive :model/PermissionsGroupMembership :hook/change-log)
-(derive :model/PermissionsGroupMembership :hook/change-log-before-update-noop)
+(derive :model/PermissionsGroupMembership :hook/events)
 
 (def fail-to-remove-last-admin-msg
   "Exception message when try to remove the last admin."
@@ -236,14 +233,7 @@
         (t2/with-transaction [_conn]
           (permissions.db/insert-group-memberships!
            (for [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
-             {:user_id user-id :group_id group-id :is_group_manager is-group-manager?}))
-          (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
-            (events/publish-event! :event/group-membership-create
-                                   {:user-id api/*current-user-id*
-                                    :object (t2/instance :model/PermissionsGroupMembership
-                                                         {:user_id user-id
-                                                          :group_id group-id
-                                                          :is_group_manager is-group-manager?})})))))))
+             {:user_id user-id :group_id group-id :is_group_manager is-group-manager?})))))))
 
 (defn add-user-to-groups!
   "Add a user to multiple groups"
@@ -263,14 +253,8 @@
   "Removes a user from groups."
   [user-id-or-user group-ids-or-groups]
   (when (seq group-ids-or-groups)
-    (let [user-id (u/the-id user-id-or-user)
-          group-ids (map u/the-id group-ids-or-groups)
-          memberships (permissions.db/memberships-for-user-in-groups user-id group-ids)]
-      (t2/with-transaction [_conn]
-        (permissions.db/delete-memberships-for-user-in-groups! user-id group-ids))
-      (doseq [membership memberships]
-        (events/publish-event! :event/group-membership-delete {:object membership
-                                                               :user-id api/*current-user-id*})))))
+    (permissions.db/delete-memberships-for-user-in-groups! (u/the-id user-id-or-user)
+                                                           (map u/the-id group-ids-or-groups))))
 
 (defn remove-user-from-group!
   "Removes a user from a group."
@@ -280,19 +264,9 @@
 (defn remove-all-users-from-group!
   "Removes all users from a group."
   [group-id]
-  (let [memberships (permissions.db/memberships-for-group group-id)]
-    (t2/with-transaction [_conn]
-      (permissions.db/delete-memberships-for-group! group-id))
-    (doseq [membership memberships]
-      (events/publish-event! :event/group-membership-delete {:object membership
-                                                             :user-id api/*current-user-id*}))))
+  (permissions.db/delete-memberships-for-group! group-id))
 
 (defn remove-user-from-all-groups!
   "Removes a user from all groups."
   [user-id]
-  (let [memberships (permissions.db/memberships-for-user user-id)]
-    (t2/with-transaction [_conn]
-      (permissions.db/delete-memberships-for-user! user-id))
-    (doseq [membership memberships]
-      (events/publish-event! :event/group-membership-delete {:object membership
-                                                             :user-id api/*current-user-id*}))))
+  (permissions.db/delete-memberships-for-user! user-id))

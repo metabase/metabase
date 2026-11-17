@@ -8,9 +8,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.db :as channel.db]
    [metabase.channel.schema :as channel.schema]
-   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]
    [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
@@ -71,8 +69,7 @@
   (when (channel.db/channel-name-exists? channel-name)
     (throw (ex-info "Channel with that name already exists" {:status-code 409
                                                              :errors      {:name "Channel with that name already exists"}})))
-  (u/prog1 (channel.db/insert-channel! body)
-    (events/publish-event! :event/channel-create {:object <> :user-id api/*current-user-id*})))
+  (channel.db/insert-channel! body))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -99,12 +96,9 @@
              [:type        {:optional true} [:maybe ChannelType]]
              [:active      {:optional true} [:maybe :boolean]]]
             :details-optional? true)]
-  (let [channel-before-update (api/write-check (channel.db/channel id))]
-    (channel.db/update-channel! id body)
-    (u/prog1 (channel.db/channel id)
-      (events/publish-event! :event/channel-update {:object          <>
-                                                    :user-id         api/*current-user-id*
-                                                    :previous-object channel-before-update}))))
+  (api/write-check (channel.db/channel id))
+  (channel.db/update-channel! id body)
+  (channel.db/channel id))
 
 (defn- test-channel-connection!
   "Test if a channel can be connected, throw an exception if it fails."

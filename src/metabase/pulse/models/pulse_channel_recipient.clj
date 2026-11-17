@@ -9,8 +9,7 @@
 (methodical/defmethod t2/table-name :model/PulseChannelRecipient [_model] :pulse_channel_recipient)
 
 (derive :model/PulseChannelRecipient :metabase/model)
-(derive :model/PulseChannelRecipient :hook/change-log)
-(derive :model/PulseChannelRecipient :hook/change-log-before-update-noop)
+(derive :model/PulseChannelRecipient :hook/events)
 
 ;;; ------------------------------------------------------- Hooks --------------------------------------------------------
 

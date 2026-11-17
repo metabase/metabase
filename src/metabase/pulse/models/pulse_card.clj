@@ -15,8 +15,7 @@
 (doto :model/PulseCard
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/change-log)
-  (derive :hook/change-log-before-update-noop))
+  (derive :hook/events))
 
 ;;; ------------------------------------------------- Persistence Functions -------------------------------------------------
 

@@ -332,7 +332,7 @@
 
 (methodical/defmethod events/publish-event! ::channel-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (record-lifecycle! topic event true))
 
 (events/derive! ::permissions-group-event ::event)
 (events/derive! :event/group-create ::permissions-group-event)
@@ -341,16 +341,17 @@
 
 (methodical/defmethod events/publish-event! ::permissions-group-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (record-lifecycle! topic event true))
 
 (events/derive! ::permissions-group-membership-event ::event)
 (events/derive! :event/group-membership-create ::permissions-group-membership-event)
-(events/derive! :event/group-membership-update ::permissions-group-membership-event)
 (events/derive! :event/group-membership-delete ::permissions-group-membership-event)
 
 (methodical/defmethod events/publish-event! ::permissions-group-membership-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (record-lifecycle! topic (cond-> event
+                             (= :event/group-membership-create topic) (update :object dissoc :id))
+                     false))
 
 (events/derive! ::cloud-add-on-event ::event)
 (events/derive! :event/cloud-add-on-purchase ::cloud-add-on-event)
@@ -494,7 +495,7 @@
 
 (methodical/defmethod events/publish-event! ::tenant-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (record-lifecycle! topic event true))
 
 (events/derive! ::security-advisory-event ::event)
 (events/derive! :event/security-advisory-acknowledge ::security-advisory-event)

@@ -53,8 +53,7 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events)
-  (derive :hook/events)
-  (derive :hook/change-log))
+  (derive :hook/events))
 
 (methodical/defmethod change-log/ignored-columns :model/Dashboard [_model]
   #{:last_viewed_at :view_count})

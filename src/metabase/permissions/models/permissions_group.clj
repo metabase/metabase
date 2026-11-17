@@ -34,7 +34,7 @@
 (doto :model/PermissionsGroup
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/change-log))
+  (derive :hook/events))
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 

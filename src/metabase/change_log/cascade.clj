@@ -5,6 +5,7 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.change-log.db :as change-log.db]
+   [metabase.change-log.log :as change-log.log]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
@@ -16,9 +17,8 @@
   "The tracked models that have loaded, by table name."
   []
   (into {}
-        (for [model (descendants :hook/change-log)
-              ;; other keywords derive from models too, such as `:metadata/card`
-              :when (= "model" (namespace model))]
+        (for [model change-log.log/tracked-models
+              :when (isa? model :hook/events)]
           [(name (t2/table-name model)) model])))
 
 (defn- cascades
@@ -57,8 +57,8 @@
 
 (def ^:private foreign-keys*
   (mdb/memoize-for-application-db
-   ;; cached by the hook's descendants, so that a model that loads later gets a new entry
-   (fn [_descendants]
+   ;; cached by the tracked models that have loaded, so that a model that loads later gets a new entry
+   (fn [_tracked]
      (to-tracked-tables (cascades (change-log.db/foreign-keys))
                         (update-vals (tracked-models) #(first (t2/primary-keys %)))))))
 
@@ -71,7 +71,7 @@
 
   `:child-pk` is nil for a child that is not tracked."
   []
-  (foreign-keys* (descendants :hook/change-log)))
+  (foreign-keys* (set (vals (tracked-models)))))
 
 (defn referenced-columns
   "The columns of `table-name` that the [[foreign-keys]] `fks` point to."

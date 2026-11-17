@@ -7,7 +7,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -53,9 +52,7 @@
     (throw (ex-info "Invalid Tenant"
                     {:status-code 400
                      :errors (mr/explain CreateTenantArguments tenant)})))
-  (let [new-tenant (tenants.db/insert-tenant! tenant)]
-    (events/publish-event! :event/tenant-create {:object new-tenant})
-    (present-tenant new-tenant)))
+  (present-tenant (tenants.db/insert-tenant! tenant)))
 
 (api.macros/defendpoint :post "/" :- Tenant
   "Create a new Tenant"
@@ -87,13 +84,8 @@
   "Updates a tenant, publishing any necessary events after doing so"
   [tenant-id :- ms/PositiveInt
    tenant :- UpdateTenantArguments]
-  (t2/with-transaction [_cn]
-    (let [tenant-before-update (tenants.db/tenant tenant-id)
-          _                    (tenants.db/update-tenant! tenant-id tenant)
-          tenant-after-update  (tenants.db/tenant tenant-id)]
-      (events/publish-event! :event/tenant-update {:object          tenant-after-update
-                                                   :previous-object tenant-before-update})
-      tenant-after-update)))
+  (tenants.db/update-tenant! tenant-id tenant)
+  (tenants.db/tenant tenant-id))
 
 (api.macros/defendpoint :put "/:id" :- Tenant
   "Update a tenant, can set name, attributes, or whether this tenant is active."

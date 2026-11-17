@@ -28,10 +28,12 @@
 
 (doto :model/Channel
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/timestamped?))
 
 (doto :model/ChannelTemplate
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/timestamped?))
 
 ;;; ------------------------------------------------------- Setup --------------------------------------------------------

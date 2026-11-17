@@ -18,7 +18,9 @@
 
 (def ^:private topic-stems
   "The stem of the lifecycle topics of the models whose name is not it."
-  {:model/NativeQuerySnippet        "snippet"
+  {:model/Notification              "notification-row"
+   :model/Pulse                     "pulse-row"
+   :model/NativeQuerySnippet        "snippet"
    :model/PermissionsGroup          "group"
    :model/PermissionsGroupMembership "group-membership"})
 
@@ -37,7 +39,7 @@
   [:map
    [:model     :keyword]
    [:operation Operation]
-   [:id        [:or :int :string]]
+   [:id        [:maybe [:or :int :string]]]
    [:object    [:fn map?]]
    [:previous-object {:optional true} [:maybe [:fn map?]]]
    [:changes   {:optional true} [:maybe [:fn map?]]]
