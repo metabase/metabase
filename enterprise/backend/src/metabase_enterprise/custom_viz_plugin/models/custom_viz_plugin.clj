@@ -218,10 +218,7 @@
 (defn- check-registration!
   "Throws unless the imported plugin `row`, loaded over its `local` row or as new when nil, may hold its identifier."
   [{:keys [identifier]} local]
-  ;; a new plugin is a registration, so it is held to the directory-name rule; an existing one may predate it
-  (when (nil? local)
-    (when-let [error (manifest/directory-name-error identifier)]
-      (throw (ex-info error {:status-code 400}))))
+  ;; a `:` identifier isn't refused here: its bundle fails validation, so it loads as :error without aborting the batch
   ;; the unique index would refuse the write anyway, but with an error that doesn't say what to do
   (check-identifier-free! identifier (:id local)
                           (format (str "A custom viz plugin \"%s\" already exists on this instance. Delete it and pull "

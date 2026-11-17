@@ -258,12 +258,13 @@
                          (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
                                                {:dev_bundle_url "http://localhost:5174"})))))))))
 
-(deftest upload-rejects-invalid-directory-name-test
+(deftest upload-accepts-a-non-directory-safe-identifier-test
   (mt/with-premium-features #{:custom-viz}
-    (testing "an identifier a repository can't name is refused at upload"
-      (is (re-find #"must be letters, digits"
-                   (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/"
-                                      (cvp.tu/valid-bundle-bytes "a/b")))))))
+    (testing "an identifier is free-form apart from `:`: a repository names the directory after its slug"
+      (mt/with-model-cleanup [:model/CustomVizPlugin]
+        (is (=? {:identifier "a/b"}
+                (multipart-upload! :crowberto 200 "ee/custom-viz-plugin/"
+                                   (cvp.tu/valid-bundle-bytes "a/b"))))))))
 
 (deftest upload-rejects-a-non-svg-icon-test
   (mt/with-premium-features #{:custom-viz}
@@ -517,12 +518,7 @@
           (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "a:b"})]
             (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"})]
-              (is (str/includes? resp "must not contain \":\"")))))
-        (testing "dev plugin registration rejects an identifier a repository can't name"
-          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "a/b"})]
-            (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
-                                             {:dev_bundle_url "http://localhost:5174"})]
-              (is (str/includes? resp "must be letters, digits")))))))))
+              (is (str/includes? resp "must not contain \":\"")))))))))
 
 ;;; ------------------------------------------------ Bundle Replace ------------------------------------------------
 

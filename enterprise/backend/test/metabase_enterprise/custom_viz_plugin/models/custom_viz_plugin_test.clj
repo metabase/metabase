@@ -272,15 +272,19 @@
         (doseq [extra [{} {:enabled true}]]
           (is (false? (:enabled (load-plugin! (ingested-plugin "toggled-viz" bundle (assoc extra :entity_id entity-id)))))))))))
 
-(deftest load-refuses-a-new-identifier-that-cannot-name-a-directory-test
-  (let [bundle (cv.tu/valid-bundle-bytes "bad/identifier")]
-    (testing "a new plugin is a registration, held to the directory rule"
+(deftest load-identifier-rule-test
+  (testing "a new plugin with an identifier that isn't directory-safe loads: the directory is its slug"
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (is (= :active (:status (load-plugin! (ingested-plugin "My/Heatmap" (cv.tu/valid-bundle-bytes "My/Heatmap"))))))))
+  (let [bundle (cv.tu/valid-bundle-bytes "colon:viz")]
+    (testing "a new plugin holding `:`, the viz-settings key separator, loads as :error without aborting the import"
       (mt/with-model-cleanup [:model/CustomVizPlugin]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"bad/identifier\" must be letters, digits"
-                              (load-plugin! (ingested-plugin "bad/identifier" bundle))))))
-    (testing "an existing plugin from before the rule still updates in place"
-      (mt/with-temp [:model/CustomVizPlugin {entity-id :entity_id} (active-plugin-row "bad/identifier" bundle)]
-        (is (= :active (:status (load-plugin! (ingested-plugin "bad/identifier" bundle :entity_id entity-id)))))))))
+        (is (=? {:status :error :error_message #(str/includes? % "must not contain \":\"")}
+                (load-plugin! (ingested-plugin "colon:viz" bundle))))))
+    (testing "an existing plugin from before the `:` rule still updates in place"
+      (mt/with-temp [:model/CustomVizPlugin {entity-id :entity_id} (active-plugin-row "colon:viz" bundle)]
+        (is (=? {:identifier "colon:viz"}
+                (load-plugin! (ingested-plugin "colon:viz" bundle :entity_id entity-id))))))))
 
 (deftest load-identifier-uniqueness-test
   (let [ingested (fn [identifier & kvs]
