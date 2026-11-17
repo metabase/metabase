@@ -191,10 +191,12 @@
 
 (defn delete-stale-table-remappings!
   "Delete the remap rows of `database` when its `database-workspace-schema`
-   differs from that of `previous-database`, the same row before the write. Those rows
-   point at the old schema and would keep redirecting reads there."
+   differs from that of `previous-database`, the same row before the write, and that had one. Those rows
+   point at the old schema and would keep redirecting reads there. A database that had no schema has no
+   rows of its own, and keeps the ones an upgrade carried over."
   [previous-database database]
-  (when (not= (database-workspace-schema previous-database) (database-workspace-schema database))
+  (when (and (some? (database-workspace-schema previous-database))
+             (not= (database-workspace-schema previous-database) (database-workspace-schema database)))
     (ws.db/delete-table-remappings-of-database! (:id database)))
   nil)
 

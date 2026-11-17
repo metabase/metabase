@@ -1714,7 +1714,7 @@
                   published  (atom [])
                   publish    events/publish-event!]
               (with-redefs [events/publish-event! (fn [topic event]
-                                                    (swap! published conj topic)
+                                                    (swap! published conj [topic (:user-id event)])
                                                     (publish topic event))]
                 (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
               (testing "premise: the re-import updated the test"
@@ -1755,7 +1755,7 @@
             (let [published (atom [])
                   publish   events/publish-event!]
               (with-redefs [events/publish-event! (fn [topic event]
-                                                    (swap! published conj topic)
+                                                    (swap! published conj [topic (:user-id event)])
                                                     (publish topic event))]
                 (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
               (testing "premise: the import inserted both tests"
@@ -1763,11 +1763,13 @@
                 (is (=? {:transform_id (t2/select-one-pk :model/Transform :name "Orders Summary")
                          :creator_id   (t2/select-one-pk :model/User :email "creator@example.com")}
                         (t2/select-one :model/TransformTest :name "My test"))))
-              (testing "no saved-test event is published"
-                (is (= [] (filter #{:event/card-test-create :event/card-test-update :event/card-test-delete
-                                    :event/transform-test-create :event/transform-test-update
-                                    :event/transform-test-delete}
-                                  @published))))
+              (testing "the saved-test events name no user"
+                (is (= #{nil} (into #{} (comp (filter (comp #{:event/card-test-create :event/card-test-update :event/card-test-delete
+                                                              :event/transform-test-create :event/transform-test-update
+                                                              :event/transform-test-delete}
+                                                            first))
+                                              (map second))
+                                    @published))))
               (testing "no audit or revision row is written for the tests"
                 (is (zero? (t2/count :model/AuditLog :model [:in ["CardTest" "TransformTest"]])))
                 (is (zero? (t2/count :model/Revision :model [:in ["CardTest" "TransformTest"]])))))))))))

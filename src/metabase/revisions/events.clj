@@ -17,7 +17,7 @@
     :model/Segment :model/Transform :model/TransformTest})
 
 (def ^:private creator-recorded
-  "The models whose saved tests record their creator as the author of the creation Revision when no user is bound, and
+  "The models whose saved tests record their creator as the author of the creation Revision when a user writes it, and
   whose reversion writes a Revision of its own update."
   #{:model/CardTest :model/TransformTest})
 
@@ -44,8 +44,9 @@
   "Write the Revision of the entity `[model id]` as it is now, for the `events` of its writes."
   [[model id] events _all-events]
   (let [own        (first (filter #(and (= model (:model %)) (= :create (:operation %))) events))
-        creator-id (when (and own (creator-recorded model)) (:creator_id (:object own)))]
-    (when-let [user-id (or (some :user-id events) creator-id)]
+        user-id    (some :user-id events)
+        creator-id (when (and user-id own (creator-recorded model)) (:creator_id (:object own)))]
+    (when-let [user-id (or creator-id user-id)]
       (try
         (when-let [object (revisions.db/entity model id)]
           (revision/push-revision! {:entity       model

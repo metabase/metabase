@@ -60,14 +60,14 @@
                   :model    "TransformTest"}
                  (mt/latest-audit-log-entry :transform-test-delete transform-test-id))))))))
 
-(deftest transform-test-model-writes-write-no-audit-row-test
-  (testing "Inserting, updating and deleting a transform test through the model writes no audit row"
+(deftest transform-test-model-writes-by-a-user-write-audit-rows-test
+  (testing "Inserting, updating and deleting a transform test through the model as a user writes an audit row each"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform     {transform-id :id}      {}
                      :model/TransformTest {transform-test-id :id} {:transform_id transform-id}]
         (t2/update! :model/TransformTest :id transform-test-id {:name "Renamed"})
         (t2/delete! :model/TransformTest :id transform-test-id)
-        (is (zero? (t2/count :model/AuditLog :model "TransformTest" :model_id transform-test-id)))))))
+        (is (= 3 (t2/count :model/AuditLog :model "TransformTest" :model_id transform-test-id)))))))
 
 (deftest transform-test-run-audit-events-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -170,14 +170,14 @@
                   :model    "CardTest"}
                  (mt/latest-audit-log-entry :card-test-delete card-test-id))))))))
 
-(deftest card-test-model-writes-write-no-audit-row-test
-  (testing "Inserting, updating and deleting a card test through the model writes no audit row"
+(deftest card-test-model-writes-by-a-user-write-audit-rows-test
+  (testing "Inserting, updating and deleting a card test through the model as a user writes an audit row each"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card     {card-id :id}      {}
                      :model/CardTest {card-test-id :id} {:card_id card-id}]
         (t2/update! :model/CardTest :id card-test-id {:name "Renamed"})
         (t2/delete! :model/CardTest :id card-test-id)
-        (is (zero? (t2/count :model/AuditLog :model "CardTest" :model_id card-test-id)))))))
+        (is (= 3 (t2/count :model/AuditLog :model "CardTest" :model_id card-test-id)))))))
 
 (deftest card-test-audit-events-name-the-creator-then-the-acting-user-test
   (testing "The create row names the test's creator; the update and delete rows name the user who acts"

@@ -221,7 +221,7 @@
                 published     (atom [])
                 publish       events/publish-event!]
             (with-redefs [events/publish-event! (fn [topic event]
-                                                  (swap! published conj topic)
+                                                  (swap! published conj [topic (:user-id event)])
                                                   (publish topic event))]
               (testing "a pull that changes a test's file updates the test"
                 (remote-sync.tu/commit! url "main" {t-path (str/replace t-yaml "name: Row count" "name: Remote name")})
@@ -236,8 +236,10 @@
                         (remote-sync.tu/pull! url v3)
                         (is (=? {:name "Row count" :card_id (:id card)}
                                 (t2/select-one :model/CardTest :entity_id (:entity_id t))))))))))
-            (testing "no pull publishes a card test event or records a card test revision"
-              (is (= [] (filter #{:event/card-test-create :event/card-test-update :event/card-test-delete} @published)))
+            (testing "no pull records a card test revision, and its card test events name no user"
+              (is (= #{nil} (into #{} (comp (filter (comp #{:event/card-test-create :event/card-test-update :event/card-test-delete} first))
+                                            (map second))
+                                  @published)))
               (is (= before (revisions))))))))))
 
 (deftest pull-conflict-on-a-card-test-test

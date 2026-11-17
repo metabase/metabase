@@ -412,14 +412,14 @@
   {:event/transform-update :event/update-transform})
 
 (def ^:private creator-recorded-topics
-  "The creation topics of the saved tests, recorded as their creator when no user is bound."
+  "The creation topics of the saved tests, recorded as their creator when a user writes them."
   #{:event/transform-test-create :event/card-test-create})
 
 (defn- record-saved-test-lifecycle!
-  [topic {:keys [object] :as event}]
+  [topic {:keys [object user-id] :as event}]
   (record-lifecycle! topic
                      (cond-> event
-                       (and (creator-recorded-topics topic) (nil? (:user-id event)))
+                       (and user-id (creator-recorded-topics topic) (:creator_id object))
                        (assoc :user-id (:creator_id object)))
                      false))
 
