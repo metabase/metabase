@@ -47,13 +47,6 @@
   [node]
   (::declared (meta node)))
 
-(defn- unwrap-branch
-  "Merge the one branch left of the branching node `schema` into it, keeping whether either was declared."
-  [schema k]
-  (let [branch (first (k schema))]
-    (with-meta (merge (dissoc schema k) branch)
-               (merge (meta schema) (select-keys (meta branch) [::declared])))))
-
 (def ^:private neighbor-keys
   "JSON Schema keywords whose meaning depends on other keywords of the same schema, mapped to those keywords."
   {:additionalItems       #{:items :prefixItems}
@@ -91,9 +84,20 @@
        (not (reads-neighbor? branch node))
        (not (reads-neighbor? node branch))))
 
+(defn merge-one-branch
+  "The JSON Schema `schema` with the one branch under its branching keyword `k` merged into it, keeping whether either
+  was declared.
+  Returns nil when `k` holds more or fewer than one branch, or when the branch does not [[merges-cleanly?]]."
+  [schema k]
+  (let [[branch & more] (k schema)
+        siblings        (dissoc schema k)]
+    (when (and branch (not more) (merges-cleanly? siblings branch))
+      (with-meta (merge siblings branch)
+                 (merge (meta schema) (select-keys (meta branch) [::declared]))))))
+
 (defn- collapse-branches
   "Drop the conjuncts that accept anything and the alternatives that accept nothing, and unwrap a branching node that
-  has one branch left, if it [[merges-cleanly?]]."
+  has one branch left, if it [[merges-cleanly?]] (see [[merge-one-branch]])."
   [schema k]
   (let [schema (cond-> schema
                  (= k :allOf)
@@ -108,14 +112,10 @@
       (and (seq (k schema)) (mp/every? empty-schema? (k schema)))
       (dissoc schema k)
 
-      (and (= 1 (count (k schema))) (merges-cleanly? (dissoc schema k) (first (k schema))))
-      (unwrap-branch schema k)
-
-      (empty? (k schema))
-      (dissoc schema k)
-
       :else
-      schema)))
+      (or (merge-one-branch schema k)
+          (cond-> schema
+            (empty? (k schema)) (dissoc k))))))
 
 (defn- stringify [required]
   (if (sequential? required)

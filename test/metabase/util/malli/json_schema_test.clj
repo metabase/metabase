@@ -58,7 +58,10 @@
            (mu.json-schema/transform [:any {:json-schema {:type "string", :allOf [{:type "string", :minLength 1}]}}]))))
   (testing "one branch left sharing a constraining key with the node stays, as merging would drop a constraint"
     (is (= {:type "string", :allOf [{:type "integer"}]}
-           (mu.json-schema/transform [:any {:json-schema {:type "string", :allOf [{:type "integer"}]}}]))))
+           (mu.json-schema/transform [:any {:json-schema {:type "string", :allOf [{:type "integer"}]}}])))
+    ;; and so does an `anyOf` with one alternative left
+    (is (= {:type "string", :anyOf [{:type "integer"}]}
+           (mu.json-schema/transform [:any {:json-schema {:type "string", :anyOf [{:type "integer"}]}}]))))
   (testing "one branch left with a keyword that reads a keyword of the node stays, as merging would change it"
     ;; `additionalProperties` would start allowing the node's `properties`, in either direction
     (is (= {:properties {"a" {}}, :allOf [{:additionalProperties false}]}

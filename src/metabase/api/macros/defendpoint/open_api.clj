@@ -65,14 +65,11 @@
       (cond
         ;; this happens when we use `[:and ... [:fn ...]]`, the `:fn` schema gets converted into an empty object
         (:allOf schema)
-        (let [schema   (update schema :allOf (partial remove (partial = {})))
-              siblings (dissoc schema :allOf)
-              branch   (first (:allOf schema))]
-          (if (and (= (count (:allOf schema)) 1)
-                   (mu.json-schema/merges-cleanly? siblings branch))
-            (fix-json-schema (merge siblings branch))
+        (let [schema (update schema :allOf (partial remove (partial = {})))]
+          (if-let [merged (mu.json-schema/merge-one-branch schema :allOf)]
+            (fix-json-schema merged)
             ;; the rest of the schema still needs its clean-up, such as which properties are required
-            (cond-> (fix-json-schema siblings)
+            (cond-> (fix-json-schema (dissoc schema :allOf))
               (seq (:allOf schema)) (assoc :allOf (vec (:allOf schema))))))
 
         (= (select-keys schema (keys file-schema)) file-schema)
