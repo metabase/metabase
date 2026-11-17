@@ -23,7 +23,6 @@ export const DataModel = {
   Shared: {
     visitArea,
     getBasePathForArea,
-    getCheckLocation,
     getTriggeredFromArea,
     verifyAndCloseToast,
     verifyTablePreview,
@@ -79,7 +78,6 @@ export const DataModel = {
     getDescriptionInput: getFieldDescriptionInput,
     getPreviewButton: getFieldPreviewButton,
     getFieldValuesButton: getFieldValuesButton,
-    getDataType: getFieldDataType,
     getCoercionToggle: getFieldCoercionToggle,
     getCoercionInput: getFieldCoercionInput,
     getSemanticTypeInput: getFieldSemanticTypeInput,
@@ -526,10 +524,6 @@ function getRawFieldName() {
   return getFieldSection().findByLabelText("Field name");
 }
 
-function getFieldDataType() {
-  return getFieldSection().findByLabelText("Data type");
-}
-
 function getFieldCoercionToggle() {
   return getFieldSection().findByLabelText("Cast to a specific data type");
 }
@@ -804,13 +798,6 @@ export type Area = (typeof areas)[number];
 
 export function getBasePathForArea(area: Area) {
   return () => (area === "admin" ? "/admin/datamodel" : "/data-studio/data");
-}
-
-export function getCheckLocation(area: Area) {
-  return (path: string) => {
-    const basePath = getBasePathForArea(area)();
-    cy.location("pathname").should("eq", `${basePath}${path}`);
-  };
 }
 
 export function getTriggeredFromArea(area: Area) {
