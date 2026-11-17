@@ -142,7 +142,7 @@
       (throw (ex-info (str (manifest/manifest-path) " is invalid: " error)
                       {:status-code 400})))
     (doseq [asset (manifest/asset-paths parsed)
-            :let  [path (str (.normalize (Path/of (dist-path (asset-rel-path asset)) (into-array String []))))]]
+            :let  [path (manifest/normalize-path (dist-path (asset-rel-path asset)))]]
       (when-not (contains? files path)
         (throw (ex-info (str path " not found in bundle")
                         {:status-code 400}))))

@@ -128,6 +128,19 @@
   (when (and (string? icon) (not (str/blank? icon)) (not (svg-file? icon)))
     (format "Plugin icon \"%s\" must be an SVG file" icon)))
 
+(defn normalize-path
+  "`path` without empty or `.` segments and with `..` resolved, joined with `/` on every OS as archive paths are."
+  [^String path]
+  (str/join "/" (reduce (fn [segments segment]
+                          (case segment
+                            ("" ".") segments
+                            ".."     (if (and (seq segments) (not= ".." (peek segments)))
+                                       (pop segments)
+                                       (conj segments segment))
+                            (conj segments segment)))
+                        []
+                        (str/split path #"/"))))
+
 (defn safe-relative-path?
   "Returns true if path normalizes to a relative path with no directory traversal."
   [^String path]

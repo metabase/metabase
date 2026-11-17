@@ -169,6 +169,15 @@
     ;; but this resolves to ../secret
     (is (false? (manifest/safe-relative-path? "foo/../../secret")))))
 
+(deftest ^:parallel normalize-path-test
+  (testing "joins with / and drops empty and . segments"
+    (is (= "dist/assets/icon.svg" (manifest/normalize-path "dist/assets/./icon.svg")))
+    (is (= "dist/assets/icon.svg" (manifest/normalize-path "./dist//assets/icon.svg"))))
+  (testing "resolves .. against the segment before it"
+    (is (= "dist/icon.svg" (manifest/normalize-path "dist/assets/../icon.svg"))))
+  (testing "keeps a leading .. it can't resolve, as Path.normalize does"
+    (is (= "../icon.svg" (manifest/normalize-path "assets/../../icon.svg")))))
+
 ;;; ------------------------------------------------ Asset Paths ------------------------------------------------
 
 (deftest ^:parallel asset-paths-test
