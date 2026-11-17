@@ -355,6 +355,9 @@ describe("collection timelines", () => {
         await userEvent.click(screen.getByText("Releases"));
         await userEvent.click(screen.getByRole("button", { name: "Move" }));
         await findHeading("Metrics");
+        expect(
+          await screen.findByText("Add context to your time series charts"),
+        ).toBeInTheDocument();
         await waitFor(() =>
           expect(screen.queryByText("RC2")).not.toBeInTheDocument(),
         );
@@ -415,10 +418,10 @@ describe("collection timelines", () => {
 
         await findHeading("Releases");
         expect(pathname()).toBe("/collection/root/timelines/2");
+        expect(await screen.findByText("RC2")).toBeInTheDocument();
         await waitFor(() =>
           expect(screen.queryByText("RC1")).not.toBeInTheDocument(),
         );
-        expect(screen.getByText("RC2")).toBeInTheDocument();
         expect(writes()).toEqual([
           {
             method: "PUT",
@@ -439,10 +442,10 @@ describe("collection timelines", () => {
         await openMenu("RC1", "Event menu");
         await clickMenuItem("Archive event");
 
+        expect(await screen.findByText("RC2")).toBeInTheDocument();
         await waitFor(() =>
           expect(screen.queryByText("RC1")).not.toBeInTheDocument(),
         );
-        expect(screen.getByText("RC2")).toBeInTheDocument();
 
         await userEvent.click(screen.getByRole("button", { name: "Undo" }));
 
@@ -499,16 +502,17 @@ describe("collection timelines", () => {
 
         await openMenu("RC2", "Event menu");
         await clickMenuItem("Unarchive event");
+        expect(await screen.findByText("RC1")).toBeInTheDocument();
         await waitFor(() =>
           expect(screen.queryByText("RC2")).not.toBeInTheDocument(),
         );
-        expect(screen.getByText("RC1")).toBeInTheDocument();
 
         await userEvent.click(screen.getByRole("button", { name: "Undo" }));
         expect(await screen.findByText("RC2")).toBeInTheDocument();
 
         await openMenu("RC1", "Event menu");
         await clickMenuItem("Unarchive event");
+        expect(await screen.findByText("RC2")).toBeInTheDocument();
         await waitFor(() =>
           expect(screen.queryByText("RC1")).not.toBeInTheDocument(),
         );
@@ -550,10 +554,10 @@ describe("collection timelines", () => {
 
         await findHeading("Archived events");
         expect(pathname()).toBe("/collection/root/timelines/2/archive");
+        expect(await screen.findByText("RC1")).toBeInTheDocument();
         await waitFor(() =>
           expect(screen.queryByText("RC2")).not.toBeInTheDocument(),
         );
-        expect(screen.getByText("RC1")).toBeInTheDocument();
         expect(writes()).toEqual([
           { method: "DELETE", path: "/api/timeline-event/5", body: undefined },
         ]);
