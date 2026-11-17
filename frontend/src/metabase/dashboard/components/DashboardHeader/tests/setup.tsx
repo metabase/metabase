@@ -6,11 +6,11 @@ import {
 } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
+import { createMockDashboardState } from "__support__/state";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { getDefaultTab } from "metabase/dashboard/actions";
 import { DASHBOARD_APP_ACTIONS } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { Collection, TokenFeatures } from "metabase-types/api";
 import {
@@ -47,6 +47,7 @@ export const setup = async ({
   collections = [],
   enterprisePlugins,
   tokenFeatures = {},
+  readDashboardFromStore = false,
 }: {
   dashboard?: typeof TEST_DASHBOARD;
   isAdmin?: boolean;
@@ -55,6 +56,11 @@ export const setup = async ({
   collections?: Collection[];
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
+  /**
+   * Read the dashboard from the redux store instead of passing it as a prop,
+   * so that refetches (e.g. after a moderation review) reach the header.
+   */
+  readDashboardFromStore?: boolean;
 }) => {
   setupCollectionsEndpoints({ collections });
   setupCollectionByIdEndpoint({ collections });
@@ -119,7 +125,7 @@ export const setup = async ({
       element={
         <MockDashboardContext
           dashboardId={dashboard.id}
-          dashboard={dashboard}
+          {...(readDashboardFromStore ? {} : { dashboard })}
           isFullscreen={false}
           isAdditionalInfoVisible={false}
           refreshPeriod={0}

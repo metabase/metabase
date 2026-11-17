@@ -3,7 +3,7 @@
   (:require
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.app-db.core :as app-db]
+   [metabase.api.common :as api]
    [metabase.cache.db :as cache.db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -23,7 +23,7 @@
 
 (def SortParams
   "Schema for sort parameters."
-  [:map
+  [:map {:closed true}
    [:sort_column    {:default :name} (into [:enum] available-sort-columns)]
    [:sort_direction {:default :asc}  [:enum :asc :desc]]])
 
@@ -38,55 +38,83 @@
    :config   mi/transform-json
    :state    mi/transform-json})
 
-(defn- target-collection-id
-  "Get the collection_id for the target entity of a CacheConfig."
-  [{:keys [model model_id]}]
-  (case model
-    "dashboard" (:collection_id (cache.db/dashboard-collection-id model_id))
-    "question"  (:collection_id (cache.db/card-collection-id model_id))
-    nil))
+(defn- can-write-config?
+  "Whether the current user can write the CacheConfig `instance`, given the collection of the dashboard or card it
+  targets, the current user's permission on each collection and the database it targets, each looked up only for the
+  configs that target one."
+  [instance target-collection-id collection-permissions target-database]
+  (case (:model instance)
+    "root"      (mi/superuser?)
+    "database"  (boolean (some-> target-database mi/can-write?))
+    ("dashboard" "question")
+    (perms/collection-permission-at-least? (get collection-permissions target-collection-id) :read-and-write)))
 
-(defmethod mi/can-write? :model/CacheConfig
-  ([instance]
-   (case (:model instance)
-     "root"      (mi/superuser?)
-     "database"  (mi/can-write? :model/Database (:model_id instance))
-     ("dashboard" "question")
-     (mi/current-user-has-full-permissions?
-      (perms/perms-objects-set-for-parent-collection
-       {:collection_id (target-collection-id instance)}
-       :write))))
-  ([_model pk]
-   (mi/can-write? (cache.db/cache-config pk))))
+(methodical/defmethod t2/batched-hydrate [:model/CacheConfig :can_write]
+  "Add whether the current user can write each CacheConfig, looking up the dashboards, cards, and databases they
+  target at once."
+  [_model k cache-configs]
+  (mi/instances-with-hydrated-data
+   cache-configs k
+   #(let [configs        (remove nil? cache-configs)
+          target-ids     (fn [model] (into [] (comp (filter (comp #{model} :model)) (keep :model_id) (distinct)) configs))
+          collection-ids {"dashboard" (cache.db/dashboard-collection-ids (target-ids "dashboard"))
+                          "question"  (cache.db/card-collection-ids (target-ids "question"))}
+          collection-permissions (perms/collection-permissions-for-user
+                                  (api/current-user-info)
+                                  (into [] (comp (filter (comp #{"dashboard" "question"} :model))
+                                                 (map (fn [{:keys [model model_id]}]
+                                                        (get-in collection-ids [model model_id])))
+                                                 (distinct))
+                                        configs)
+                                  {:root-namespace nil})
+          databases      (u/index-by :id (t2/hydrate (cache.db/databases (target-ids "database")) :can_write))]
+      (into {}
+            (map (fn [{:keys [id model model_id] :as config}]
+                   [id (can-write-config? config
+                                          (get-in collection-ids [model model_id])
+                                          collection-permissions
+                                          (when (= "database" model) (get databases model_id)))]))
+            configs))
+   :id
+   {:default false}))
 
-(defmethod mi/can-read? :model/CacheConfig
-  ([instance]
-   (case (:model instance)
-     "root"      (mi/superuser?)
-     "database"  (mi/can-read? :model/Database (:model_id instance))
-     "dashboard" (mi/can-read? :model/Dashboard (:model_id instance))
-     "question"  (mi/can-read? :model/Card (:model_id instance))))
-  ([_model pk]
-   (mi/can-read? (cache.db/cache-config pk))))
+(methodical/defmethod t2/simple-hydrate [:model/CacheConfig :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k
+             (boolean
+              (case (:model instance)
+                "root"      (mi/superuser?)
+                "database"  (some-> (cache.db/database-with-ids [(:model_id instance)]) (t2/hydrate :can_read) mi/can-read?)
+                "dashboard" (some-> (cache.db/dashboard-with-ids [(:model_id instance)]) (t2/hydrate :can_read) mi/can-read?)
+                "question"  (some-> (cache.db/card-with-ids [(:model_id instance)]) (t2/hydrate :can_read) mi/can-read?)))))
 
 (defn- can-set-cache-policy?
   "Check if the current user can set a cache policy for an entity.
    Uses collection permissions directly, bypassing remote-sync content lock."
   [{model-id :id :as instance}]
-  (mi/can-write? (t2/instance :model/CacheConfig {:model (-> (t2/model instance)
-                                                             name
-                                                             u/lower-case-en)
-                                                  :model_id model-id})))
+  (mi/can-write? (t2/hydrate (t2/instance :model/CacheConfig {:model (-> (t2/model instance)
+                                                                         name
+                                                                         u/lower-case-en)
+                                                              :model_id model-id}) :can_write)))
 
-(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_set_cache_policy]
-  [_model k models]
+(defn- hydrate-can-set-cache-policy
+  "Sets `k` on the Cards or Dashboards `models` to whether the current user can set the cache policy of each."
+  [k models]
   (mi/instances-with-hydrated-data
    models k
    #(into {}
           (map (juxt :id can-set-cache-policy?))
-          (t2/hydrate (remove nil? models) :collection))
+          (remove nil? models))
    :id
    {:default false}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Card :can_set_cache_policy]
+  [_model k models]
+  (hydrate-can-set-cache-policy k models))
+
+(methodical/defmethod t2/batched-hydrate [:model/Dashboard :can_set_cache_policy]
+  [_model k models]
+  (hydrate-can-set-cache-policy k models))
 
 (defn- audit-caching-change! [user-id id prev new]
   (events/publish-event!
@@ -146,7 +174,9 @@
 (mu/defn get-list
   "Get a list of cache configurations for given `models` and a `collection`.
    Supports pagination via `limit` and `offset`, and sorting via `sort-params`."
-  [models collection id
+  [models      :- [:sequential :string]
+   collection  :- [:maybe ms/PositiveInt]
+   id          :- [:maybe ms/IntGreaterThanOrEqualToZero]
    limit       :- [:maybe ms/PositiveInt]
    offset      :- [:maybe ms/IntGreaterThanOrEqualToZero]
    sort-params :- [:maybe SortParams]]
@@ -159,7 +189,9 @@
 
 (mu/defn get-list-total
   "Get the total count of cache configurations for given `models` and a `collection`."
-  [models collection id]
+  [models     :- [:sequential :string]
+   collection :- [:maybe ms/PositiveInt]
+   id         :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (:count (cache.db/cache-config-count-row models collection id)))
 
 (defn store!
@@ -168,8 +200,7 @@
   (t2/with-transaction [_tx]
     (let [data    (config->row config)
           current (cache.db/lock-cache-config model model_id)]
-      (u/prog1 (app-db/update-or-insert! :model/CacheConfig {:model model :model_id model_id}
-                                         (constantly data))
+      (u/prog1 (cache.db/upsert-cache-config! model model_id data)
         (audit-caching-change! user-id <> current data)))))
 
 (defn delete!

@@ -1,5 +1,6 @@
 ---
 title: "Installation and operation overview"
+summary: Install, configure, back up, and upgrade your Metabase. Also covers serialization, development instances, the Metabase CLI, and monitoring with Prometheus.
 ---
 
 # Installation and operation overview
@@ -64,4 +65,4 @@ Administrative commands built into the Metabase JAR.
 
 ---
 
-If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).
+If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners).

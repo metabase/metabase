@@ -19,6 +19,7 @@ import {
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { createMockDashboardState } from "__support__/state";
 import { screen } from "__support__/ui";
 import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
@@ -26,8 +27,9 @@ import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { useLocale } from "metabase/common/hooks/use-locale";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { DashboardCard, TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
@@ -40,7 +42,6 @@ import {
   createMockDatabase,
   createMockDataset,
   createMockParameter,
-  createMockStructuredDatasetQuery,
   createMockTextDashboardCard,
   createMockUser,
   createMockUserPermissions,
@@ -57,9 +58,11 @@ export const TEST_DASHBOARD_ID = 1;
 export const TEST_DB = createMockDatabase({ id: 1 });
 export const TEST_COLLECTION = createMockCollection();
 
-const dataset_query = createMockStructuredDatasetQuery({
-  query: { "source-table": ORDERS_ID },
-});
+const dataset_query = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  }),
+);
 
 export const dashboardTabs = [
   createMockDashboardTab({ id: 1, name: "Foo Tab 1" }),
@@ -118,7 +121,9 @@ export interface SetupSdkDashboardOptions extends NotificationChannelSetup {
   props?: Omit<Partial<SdkDashboardProps>, "token">;
   providerProps?: Partial<MetabaseProviderProps>;
   isLocaleLoading?: boolean;
-  component: ComponentType<SdkDashboardProps>;
+  component: ComponentType<
+    SdkDashboardProps & Pick<EditableDashboardProps, "dataPickerProps">
+  >;
   dashboardName?: string;
   dataPickerProps?: EditableDashboardProps["dataPickerProps"];
   dashcards?: DashboardCard[];

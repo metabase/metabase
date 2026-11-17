@@ -18,12 +18,14 @@
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel fetch-field-test
-  (let [field (t2/select-one :metadata/column (mt/id :categories :id))]
+  (let [field (t2/select-one :metadata/column :id (mt/id :categories :id))]
     (is (not (me/humanize (mr/explain ::lib.schema.metadata/column field))))))
 
 (deftest ^:parallel fetch-database-test
-  (is (=? {:lib/type :metadata/database, :features set?}
+  (is (=? {:lib/type :metadata/database, :features set?, :default-schema "PUBLIC"}
           (lib.metadata/database (mt/metadata-provider))))
   (testing "Should return nil correctly"
     (is (nil? (lib.metadata.protocols/database (lib.metadata.jvm/application-database-metadata-provider Integer/MAX_VALUE))))))

@@ -1,12 +1,14 @@
 (ns metabase-enterprise.library.api
   (:require
    [metabase-enterprise.library.db :as library.db]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
+   [metabase.permissions.core :as perms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -22,26 +24,33 @@
   [_route
    _query
    _body]
-  (api/check-data-analyst)
-  (api/check-400 (not (collections/library-collection)) "Library already exists")
+  (api/check-data-studio-access)
+  (api/check-400 (not (collections/library-collection)) "Semantic layer already exists")
   (collections/create-library-collection!))
 
 (defn- add-here-and-below [collection]
-  (let [descendent-ids (map :id (collection/descendants-flat collection))
+  (let [descendent-ids (map :id (collection/descendants-flat collection
+                                                             nil
+                                                             (perms/visible-collections-filter-clause :collection.id (api/current-user-info) {:include-archived-items :exclude :root-namespace nil})))
         below-card-types (library.db/card-types-in-collections descendent-ids)
-        below-tables? (library.db/published-table-in-collections? descendent-ids)]
+        below-tables? (library.db/published-table-in-collections? descendent-ids)
+        below-dashboards? (library.db/dashboard-in-collections? descendent-ids)]
     ;; This function is only used on the root Library which cannot have items directly in it
     ;; So can assume :here is only collection, and all descendants are :below
     (assoc collection :here #{"collection"}
            :below (cond-> below-card-types
                     (contains? below-card-types :model)
                     (-> (disj :model) (conj :dataset))
+                    (contains? below-card-types :question)
+                    (-> (disj :question) (conj :card))
                     below-tables? (conj :table)
+                    below-dashboards? (conj :dashboard)
                     true sort
                     true ((partial map name))))))
 
 (api.macros/defendpoint :get "/" :- [:or ::collections.schema/CollectionItem [:map [:data nil?]]]
   "Get the Library. If no library exists, it doesn't fail but returns an empty response"
+  {:scope api-scope/data-app}
   [_route
    _query
    _body]

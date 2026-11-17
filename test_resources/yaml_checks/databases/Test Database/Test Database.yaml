@@ -7,7 +7,6 @@ dbms_version:
   semantic-version:
   - 2
   - 1
-created_at: '2026-01-01T00:00:00.000000Z'
 creator_id: test@metabase.com
 timezone: UTC
 auto_run_queries: true
@@ -24,8 +23,7 @@ caveats: null
 points_of_interest: null
 initial_sync_status: complete
 serdes/meta:
-- id: Test Database
-  model: Database
+- model: Database
 provider_name: null
 router_database_id: null
 uploads_enabled: false

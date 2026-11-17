@@ -1,7 +1,6 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   buildCollectionTree,
@@ -9,11 +8,12 @@ import {
   isLibraryCollection,
 } from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Tree } from "metabase/common/components/tree";
 import {
   SidebarHeading,
   SidebarSection,
-} from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
+} from "metabase/nav/containers/MainNavbar/Sidebar";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useUserSetting } from "metabase/settings";
@@ -25,7 +25,7 @@ type LibraryCollectionSectionProps = {
   onItemSelect: () => void;
 };
 
-/** Build the tree for a single library section (Data or Metrics).
+/** Build the tree for a single library section (Data, Metrics, or Dashboards).
  *  If the user has access to the root collection, use it directly.
  *  If not, create a synthetic container for any promoted children. */
 function buildSectionTree(
@@ -94,10 +94,6 @@ export function NavbarLibrarySection({
     "expand-library-in-nav",
   );
 
-  const { isVisible: isGitSyncVisible } =
-    PLUGIN_REMOTE_SYNC.useGitSyncVisible();
-  const { isCollectionDirty } = PLUGIN_REMOTE_SYNC.useRemoteSyncDirtyState();
-
   const libraryTree = useMemo(() => {
     const libraryCollection = collections.find(isLibraryCollection);
     if (!libraryCollection) {
@@ -116,21 +112,17 @@ export function NavbarLibrarySection({
       "library-metrics",
       t`Metrics`,
     );
+    const dashboardsTree = buildSectionTree(
+      libraryCollection,
+      collections,
+      "library-dashboards",
+      t`Dashboards`,
+    );
 
-    return [dataTree, metricsTree].filter(
+    return [dataTree, metricsTree, dashboardsTree].filter(
       (node): node is CollectionTreeItem => node != null,
     );
   }, [collections]);
-
-  const showChangesBadge = useCallback(
-    (itemId?: number | string) => {
-      if (!isGitSyncVisible || typeof itemId !== "number") {
-        return false;
-      }
-      return isCollectionDirty(itemId);
-    },
-    [isGitSyncVisible, isCollectionDirty],
-  );
 
   if (libraryTree.length === 0) {
     return null;
@@ -156,10 +148,10 @@ export function NavbarLibrarySection({
             role="tree"
             aria-label="library-collection-tree"
             rightSection={(item) =>
-              isGitSyncVisible &&
-              showChangesBadge(item?.id) &&
-              PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge && (
-                <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
+              typeof item.id === "number" && (
+                <PLUGIN_REMOTE_SYNC.ChangesBadge
+                  target={{ type: "collection", id: item.id }}
+                />
               )
             }
           />

@@ -1,14 +1,19 @@
-import { useState } from "react";
 import type { MouseEvent } from "react";
+import { useState } from "react";
+
 import { type CustomVisualizationProps, formatValue } from "../../../src/index";
-import type { Settings } from "./types";
+
+type Settings = {
+  columns?: string[];
+  threshold?: number;
+};
 
 export const Visualization = (
   props: CustomVisualizationProps<Settings> & { locale: string },
 ) => {
   const { series, settings, renderingContext, onClick, onHover, locale } =
     props;
-  const { threshold } = settings;
+  const { columns, threshold } = settings;
   const { cols, rows } = series[0].data;
   const value = rows[0][0];
 
@@ -18,7 +23,7 @@ export const Visualization = (
   );
   const measuredWidth = Math.round(measuredTextSize.width);
   const measuredHeight = Math.round(measuredTextSize.height);
-  const brandColor = renderingContext.getColor("brand");
+  const brandColor = renderingContext.getColor("core-brand");
 
   const [lastClickValue, setLastClickValue] = useState<number | null>(null);
   const [lastHoverValue, setLastHoverValue] = useState<number | null>(null);
@@ -58,6 +63,9 @@ export const Visualization = (
     <div>
       <h1>Custom viz rendered successfully</h1>
       <div>Threshold: {threshold}</div>
+      <div data-testid="demo-viz-columns">
+        Columns: {columns?.join(", ") ?? "none"}
+      </div>
       <div>Value: {value}</div>
       <div data-testid="demo-viz-formatted-value">
         Formatted: {formatValue(value, settings.column?.(cols[0]))}

@@ -14,7 +14,9 @@
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.cache.impl :as qp.cache.impl]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.middleware.drop-fields-in-summaries :as qp.drop-fields]
    [metabase.query-processor.middleware.limit :as qp.limit]
+   [metabase.query-processor.middleware.process-userland-query :as qp.process-userland-query]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -51,9 +53,15 @@
  ;; Constraints — metabase.query-processor.middleware.constraints
  [qp.constraints
   default-query-constraints]
+ ;; Summary fields – metabase.query-processor.middleware.drop-fields-in-summaries
+ [qp.drop-fields
+  drop-fields-in-summaries]
  ;; Limit — metabase.query-processor.middleware.limit
  [qp.limit
   disable-max-results]
+ ;; Userland query — metabase.query-processor.middleware.process-userland-query
+ [qp.process-userland-query
+  do-with-captured-execution-context]
  ;; Pivot — metabase.query-processor.pivot
  [qp.pivot
   run-pivot-query]
@@ -77,6 +85,7 @@
   default-query->remark
   internal-query?
   query->remark
+  query->remark-data
   query-hash
   userland-query?]
  ;; Writeback — metabase.query-processor.writeback

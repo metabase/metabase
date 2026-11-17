@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import {
   skipToken,
   useListPermissionsGroupsQuery,
@@ -84,11 +83,7 @@ export function ConversationHeader({
             {conversation.user && (
               <Menu shadow="sm" position="bottom-start" withinPortal>
                 <Menu.Target>
-                  <ActionIcon
-                    variant="subtle"
-                    color="text-secondary"
-                    aria-label={t`User actions`}
-                  >
+                  <ActionIcon variant="subtle" aria-label={t`User actions`}>
                     <Icon name="ellipsis" size={16} />
                   </ActionIcon>
                 </Menu.Target>
@@ -105,14 +100,14 @@ export function ConversationHeader({
           </Flex>
           <Flex gap="xl" align="center" wrap="wrap">
             <Flex gap="xxs" align="center">
-              <Icon name="calendar" size={16} c="text-disabled" />
+              <Icon name="calendar" size={16} c="text-secondary" />
               <Text size="md" c="text-secondary">
                 <DateTime value={conversation.created_at} unit="day" />
               </Text>
             </Flex>
             {firstProfile && (
               <Flex gap="xxs" align="center">
-                <Icon name="metabot" size={16} c="text-disabled" />
+                <Icon name="metabot" size={16} c="text-secondary" />
                 <Text size="md" c="text-secondary">
                   {renderMetabotProfileLabel(firstProfile)}
                 </Text>
@@ -121,13 +116,13 @@ export function ConversationHeader({
             {(userGroupsInfo.userGroups.length > 0 ||
               userGroupsInfo.isAdmin) && (
               <Flex gap="xxs" align="center">
-                <Icon name="group" size={16} c="text-disabled" />
+                <Icon name="group" size={16} c="text-secondary" />
                 <UserGroupsMenu {...userGroupsInfo} />
               </Flex>
             )}
             {tenant && (
               <Flex gap="xxs" align="center">
-                <Icon name="company" size={16} c="text-disabled" />
+                <Icon name="company" size={16} c="text-secondary" />
                 <Anchor
                   component={ForwardRefLink}
                   to={EnterpriseUrls.editTenant(tenant.id)}
@@ -141,7 +136,7 @@ export function ConversationHeader({
             )}
             {conversation.forked_from_conversation_id && (
               <Flex gap="xxs" align="center">
-                <Icon name="git_branch" size={16} c="text-disabled" />
+                <Icon name="git_branch" size={16} c="text-secondary" />
                 <Anchor
                   component={ForwardRefLink}
                   to={Urls.monitorAiAuditingConversationDetail(
@@ -228,17 +223,17 @@ function UserGroupsMenu({
         >
           <Flex component="span" align="center" gap={4}>
             <span>{summaryText}</span>
-            <Icon name="chevrondown" size={10} c="text-disabled" />
+            <Icon name="chevrondown" size={10} c="text-secondary" />
           </Flex>
         </Anchor>
       </Menu.Target>
       <Menu.Dropdown miw="14rem">
-        <Menu.Label>{t`View a group's permissions`}</Menu.Label>
+        <Menu.Label>{t`View a group's usage`}</Menu.Label>
         {userGroups.map((group) => (
           <Menu.Item
             key={group.id}
             component={ForwardRefLink}
-            to={getGroupFocusPermissionsUrl(group.id)}
+            to={Urls.monitorAiAuditingUsage({ groupId: group.id })}
             leftSection={<Icon name="group" size={14} />}
           >
             {group.name}

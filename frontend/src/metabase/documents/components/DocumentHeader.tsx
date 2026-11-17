@@ -34,8 +34,8 @@ import type { Document } from "metabase-types/api";
 import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 
-import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
 import S from "./DocumentHeader.module.css";
+import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
 
 const saveButtonTransition: TransitionProps["transition"] = {
   in: { opacity: 1, visibility: "visible", width: "auto" },
@@ -192,7 +192,7 @@ export const DocumentHeader = ({
             <Box>
               {document && (
                 <ActionIcon
-                  className={S.commentsIcon}
+                  variant="subtle"
                   component={Link}
                   to={`/document/${document.id}/comments/all`}
                   size="md"
@@ -261,11 +261,11 @@ export const DocumentHeader = ({
                             component={Link}
                             to="/admin/settings/public-sharing"
                             target="_blank"
-                            variant="subtle"
+                            variant="transparent"
+                            size="compact-md"
                             h="auto"
                             lh="inherit"
                             ml="sm"
-                            p={0}
                             bd={0}
                             className={CS.floatRight}
                           >

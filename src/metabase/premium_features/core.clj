@@ -37,6 +37,10 @@
   quotas
   TokenStatus
   clear-cache!
+  clear-local-cache!
+  refresh-at-startup!
+  start-refresher!
+  stop-refresher!
   token-check-url
   transform-metered-as
   transform-stats]
@@ -52,6 +56,7 @@
   enable-any-sso?
   enable-audit-app?
   enable-cache-granular-controls?
+  enable-change-log?
   enable-collection-cleanup?
   enable-config-text-file?
   enable-content-translation?
@@ -81,6 +86,7 @@
   enable-scim?
   enable-semantic-search?
   enable-serialization?
+  enable-session-management?
   enable-session-timeout-config?
   enable-snippet-collections?
   enable-sso-google?
@@ -91,7 +97,9 @@
   enable-support-users?
   enable-basic-transforms?
   enable-python-transforms?
+  enable-transform-testing?
   enable-upload-management?
+  enable-workspaces?
   enable-whitelabeling?
   enable-writable-connection?
   has-attached-dwh?

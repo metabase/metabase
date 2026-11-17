@@ -58,8 +58,7 @@
 
 (deftest ^:parallel template-tags-test
   (testing "snippet tags"
-    (let [snippet           {:type :snippet
-                             :name "foo"
+    (let [snippet           {:name "foo"
                              :id   1}
           metadata-provider (lib.tu/mock-metadata-provider
                              {:native-query-snippets [snippet]})]
@@ -134,12 +133,10 @@
                         :type    :card
                         :card-id 321})
           metadata-provider (lib.tu/mock-metadata-provider
-                             {:native-query-snippets [{:name         "first snippet"
-                                                       :id           123
-                                                       :snippet-name "first snippet"}
-                                                      {:name         "another snippet"
-                                                       :id           124
-                                                       :snippet-name "another snippet"}]})]
+                             {:native-query-snippets [{:name "first snippet"
+                                                       :id   123}
+                                                      {:name "another snippet"
+                                                       :id   124}]})]
       (is (=? [c1 v1 s1]
               (lib.native/extract-template-tags
                metadata-provider
@@ -314,7 +311,6 @@
                  meta/metadata-provider
                  {:native-query-snippets [{:id            1
                                            :name          "snippet1"
-                                           :type          :snippet
                                            :content       "{{var}}"
                                            :template-tags {"var" {:id           "ac8a19f0-e125-418a-81dc-aa7f4f2c3e76"
                                                                   :name         "var"
@@ -355,11 +351,9 @@
               meta/metadata-provider
               {:native-query-snippets [{:id            1
                                         :name          "snippet1"
-                                        :type          :snippet
                                         :content       "SELECT"}
                                        {:id            2
                                         :name          "snippet2"
-                                        :type          :snippet
                                         :content       "{{var}}"
                                         :template-tags {"var" {:id           "ac8a19f0-e125-418a-81dc-aa7f4f2c3e76"
                                                                :name         "var"
@@ -402,7 +396,7 @@
                  lib/template-tags))))
     (testing "Allows to remove template tag properties"
       (let [template-tags     [{:default      nil
-                                :dimension    [:field {:lib/uuid (str (random-uuid))} 1]
+                                :field-id     1
                                 :display-name "Tag"
                                 :id           "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
                                 :name         "tag"
@@ -512,8 +506,20 @@
                              :name "foo"
                              :widget-type :text
                              :display-name "foo"
-                             :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})
+                             :field-id  1}})
                    :question))
+  (testing "a required tag without a default value does not block running or saving"
+    (let [query (lib/with-template-tags
+                  (lib/native-query meta/metadata-provider "select * {{foo}}")
+                  {"foo" {:type :dimension
+                          :id "1"
+                          :name "foo"
+                          :widget-type :id
+                          :display-name "foo"
+                          :required true
+                          :field-id  1}})]
+      (is (lib/can-run query :question))
+      (is (lib/can-save? query :question))))
   (is (lib/can-run (lib.tu/venues-query) :question))
   (mu/disable-enforcement
     (is (not (lib/can-run (lib/native-query meta/metadata-provider "") :question)))
@@ -599,7 +605,7 @@
     (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
         (lib/with-template-tags {"mytag"
                                  {:default nil
-                                  :dimension [:field {:lib/uuid (str (random-uuid))} 1]
+                                  :field-id  1
                                   :display-name "My Tag"
                                   :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
                                   :name "mytag"
@@ -610,7 +616,7 @@
   (let [query (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
                   (lib/with-template-tags {"mytag"
                                            {:default nil
-                                            :dimension [:field {:lib/uuid (str (random-uuid))} 1]
+                                            :field-id  1
                                             :display-name "My Tag"
                                             :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
                                             :name "mytag"
@@ -709,9 +715,7 @@
            :target [:dimension [:template-tag "mytag"]]}]
          (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
              (lib/with-template-tags {"mytag"
-                                      {:dimension [:field
-                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
-                                                   (meta/id :products :category)]
+                                      {:field-id  (meta/id :products :category)
                                        :display-name "My Tag"
                                        :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
                                        :name "mytag"
@@ -727,9 +731,7 @@
            :target [:dimension [:template-tag "mytag"]]}]
          (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
              (lib/with-template-tags {"mytag"
-                                      {:dimension [:field
-                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
-                                                   (meta/id :orders :total)]
+                                      {:field-id  (meta/id :orders :total)
                                        :display-name "My Tag"
                                        :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
                                        :name "mytag"
@@ -745,9 +747,7 @@
            :target [:dimension [:template-tag "mytag"]]}]
          (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
              (lib/with-template-tags {"mytag"
-                                      {:dimension [:field
-                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
-                                                   (meta/id :orders :created-at)]
+                                      {:field-id  (meta/id :orders :created-at)
                                        :display-name "My Tag"
                                        :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
                                        :name "mytag"
@@ -763,9 +763,7 @@
            :target [:dimension [:template-tag "mytag"]]}]
          (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
              (lib/with-template-tags {"mytag"
-                                      {:dimension [:field
-                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
-                                                   (meta/id :orders :created-at)]
+                                      {:field-id  (meta/id :orders :created-at)
                                        :display-name "My Tag"
                                        :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
                                        :name "mytag"
@@ -885,6 +883,37 @@
               (lib.native/replace-template-tag-names
                query
                {"#133-bh-population-model" "#1206-bh-population-model"}))))))
+
+(deftest ^:parallel rename-template-tags-test
+  (testing "a tag map and its text are renamed the way a query's native stage is"
+    (let [renames {"#133-bh-population-model" "#1206-bh-population-model"}]
+      (is (= "select * from {{#1206-bh-population-model}} where {{ state }}"
+             (lib.native/rename-template-tags-in-text
+              "select * from {{ #133-bh-population-model }} where {{ state }}" renames)))
+      (is (=? {"#1206-bh-population-model" {:name         "#1206-bh-population-model"
+                                            :display-name "#1206 Bh Population Model"
+                                            :card-id      1206}
+               "state"                     {:name "state" :display-name "State"}}
+              (lib.native/rename-template-tags
+               {"#133-bh-population-model" {:type         :card
+                                            :name         "#133-bh-population-model"
+                                            :display-name "#133 Bh Population Model"
+                                            :id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
+                                            :card-id      1206}
+                "state"                    {:type         :text
+                                            :name         "state"
+                                            :display-name "State"
+                                            :id           "6ebf6c2e-d6e2-449e-97b7-7005047928e5"}}
+               renames))))))
+
+(deftest ^:parallel rename-template-tags-in-text-one-pass-test
+  (testing "a new name that is another tag's old name is not renamed again"
+    (is (= "{{#2}} {{#1-orders}} {{#2}}"
+           (lib.native/rename-template-tags-in-text "{{ #1 }} {{#2-orders}} {{#1}}" {"#1" "#2", "#2-orders" "#1-orders"})))
+    (is (= "{{#1}} {{#2}}"
+           (lib.native/rename-template-tags-in-text "{{#2}} {{#1}}" {"#1" "#2", "#2" "#1"})))
+    (is (= "{{#7}} {{#9}} {{#70}}"
+           (lib.native/rename-template-tags-in-text "{{#ent}} {{#7}} {{#70}}" {"#ent" "#7", "#7" "#9"})))))
 
 (deftest ^:parallel replace-template-tag-names-noop-test
   (let [query (card-tag-query "select * from {{#133-some-old-slug}}"

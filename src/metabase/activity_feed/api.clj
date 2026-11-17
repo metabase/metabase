@@ -31,7 +31,10 @@
         items (->> (t2/hydrate items :moderation_reviews)
                    (map (fn [{:keys [moderation_reviews] :as item}]
                           (let [status (some #(when (:most_recent %) (:status %)) moderation_reviews)]
-                            (assoc item :moderated_status status)))))]
+                            (assoc item :moderated_status status))))
+                   (group-by t2/model)
+                   vals
+                   (mapcat #(t2/hydrate % :can_read :can_write)))]
     ;; Now group the flat list of items into a map.
     (update-vals (group-by :model items) #(m/index-by :id %))))
 
@@ -84,7 +87,7 @@
   "Get a list of recent items the current user has been viewing most recently under the `:recents` key.
   Allows for filtering by context: views or selections"
   [_route-params
-   {:keys [context include_metadata]} :- [:map
+   {:keys [context include_metadata]} :- [:map {:closed true}
                                           [:context (ms/QueryVectorOf [:enum :selections :views])]
                                           [:include_metadata {:default false} [:maybe :boolean]]]]
   (when-not (seq context) (throw (ex-info "context is required." {})))
@@ -98,7 +101,7 @@
   "Adds a model to the list of recently selected items."
   [_route-params
    _query-params
-   {:keys [model model_id context]} :- [:map
+   {:keys [model model_id context]} :- [:map {:closed true}
                                         [:model    (into [:enum] recent-views/rv-models)]
                                         [:model_id ms/PositiveInt]
                                         [:context  [:enum :selection]]]]
@@ -136,7 +139,7 @@
     (let [dashboard (-> (activity-feed.db/dashboard dashboard-id)
                         api/check-404
                         (t2/hydrate [:collection :is_personal]))]
-      (if (mi/can-read? dashboard)
+      (if (mi/can-read? (t2/hydrate dashboard :can_read))
         dashboard
         api/generic-204-no-content))
     api/generic-204-no-content))

@@ -1,9 +1,3 @@
-import * as React from "react";
-import * as ReactDOM from "react-dom";
-import * as ReactDOMClient from "react-dom/client";
-import * as ReactDOMServer from "react-dom/server";
-import * as ReactJsxDevRuntime from "react/jsx-dev-runtime";
-import * as ReactJsxRuntime from "react/jsx-runtime";
 import * as sdkExports from "@metabase/embedding-sdk-react";
 import * as dataAppExports from "@metabase/embedding-sdk-react/data-app";
 import {
@@ -15,36 +9,42 @@ import {
   devDiagnostics,
   instanceConnectionCheck,
 } from "@metabase/embedding-sdk-react/data-app-dev";
+import * as React from "react";
+import * as ReactDOM from "react-dom";
+import * as ReactDOMClient from "react-dom/client";
+import { createRoot } from "react-dom/client";
+import * as ReactDOMServer from "react-dom/server";
+import * as ReactJsxDevRuntime from "react/jsx-dev-runtime";
+import * as ReactJsxRuntime from "react/jsx-runtime";
 import {
   allowedHosts,
   appSlug,
   buildIdHeader,
   bundleUrl,
   diagnosticsChangedEvent,
+  instanceUrl,
   rebuiltEvent,
   sdkVersion,
 } from "virtual:metabase-data-app-dev-config";
-import { createRoot } from "react-dom/client";
 
-import { DATA_APP_PROVIDER_PROP_KEYS } from "metabase-enterprise/data_apps/sandbox/types";
-
+import { DATA_APP_PROVIDER_PROP_KEYS } from "metabase-enterprise/data-apps/sandbox/types";
 // The same baseline reset the production iframe loads (`iframe-vendors.ts`), so the
 // dev preview matches production. style-loader injects it at runtime.
-import "metabase-enterprise/data_apps/sandbox/iframe-baseline.css";
+import "metabase-enterprise/data-apps/sandbox/iframe-baseline.css";
 
+// The dev server relays the instance's `/api/` and `/app/` and adds the API key
+// there, so the key never reaches this page. The SDK still needs a key to use
+// API-key auth: the dev server drops this one and sends its own.
 const authConfig = {
-  metabaseInstanceUrl: import.meta.env.DATA_APP_MB_URL ?? "",
-  apiKey: import.meta.env.DATA_APP_MB_API_KEY ?? "",
+  metabaseInstanceUrl: window.location.origin,
+  apiKey: "set-by-the-dev-server",
 };
 
 devDiagnostics.install();
 
-instanceConnectionCheck.install({
-  metabaseUrl: authConfig.metabaseInstanceUrl,
-  sdkVersion,
-});
+instanceConnectionCheck.install({ metabaseUrl: instanceUrl, sdkVersion });
 
-sdkCallCapture.install(authConfig.metabaseInstanceUrl);
+sdkCallCapture.install();
 
 const hot = import.meta.hot;
 

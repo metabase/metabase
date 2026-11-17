@@ -1,9 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
 import MetabaseSettings from "metabase/utils/settings";
 import { createMockVisualizationProps } from "metabase/visualizations/types/mocks";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   DatasetData,
   RowValue,
@@ -13,13 +14,8 @@ import {
   createMockColumn,
   createMockDatasetData,
   createMockSingleSeries,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
-import {
-  ORDERS_ID,
-  SAMPLE_DB_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { PinMap, getPoints } from "./PinMap";
 
@@ -262,10 +258,11 @@ describe("PinMap", () => {
     const series = [
       createMockSingleSeries(
         {
-          dataset_query: createMockStructuredDatasetQuery({
-            database: SAMPLE_DB_ID,
-            query: { "source-table": ORDERS_ID },
-          }),
+          dataset_query: Lib.toJsQuery(
+            Lib.createTestQuery(SAMPLE_PROVIDER, {
+              stages: [{ source: { type: "table", id: ORDERS_ID } }],
+            }),
+          ),
         },
         { data },
       ),
@@ -277,7 +274,6 @@ describe("PinMap", () => {
       data: series[0].data,
       card: series[0].card,
       settings,
-      metadata: createMockMetadata({ databases: [createSampleDatabase()] }),
       isDashboard,
       height: 300,
       onRender,

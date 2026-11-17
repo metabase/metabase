@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
@@ -30,11 +29,8 @@
 (defn- remove-source-metadata
   "This is mostly to make the test failure diffs sane."
   [x]
-  (walk/postwalk
-   (fn [x]
-     (cond-> x
-       (map? x) (dissoc :source-metadata :lib/stage-metadata)))
-   x))
+  (match/replace-all x
+    #'map? (dissoc &match :source-metadata :lib/stage-metadata)))
 
 (defn- add-alias-info [query]
   (if-not (:lib/type query)
@@ -1392,10 +1388,10 @@
                           (lib/aggregate $q (lib/count)))
           ;; Inject stale :inherited-temporal-unit into the breakout field ref, simulating a card
           ;; saved when the source column had :minute granularity.
-          ;; Legacy field refs are [:field name-or-id opts-map].
+          ;; MBQL 5 field refs are [:field opts-map id], so the options live at index 1.
           model-2-query (lib/update-query-stage
                          model-2-query -1
-                         assoc-in [:breakouts 0 1 :inherited-temporal-unit] :minute)
+                         assoc-in [:breakout 0 1 :inherited-temporal-unit] :minute)
           mp (lib.tu/mock-metadata-provider
               mp
               {:cards [{:id            2

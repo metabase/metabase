@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   Checkbox,
-  Group,
   Icon,
   Modal,
   Stack,
@@ -131,13 +130,7 @@ export function AddEntitiesModal({
   });
 
   return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      title={title}
-      size="lg"
-      padding="xxl"
-    >
+    <Modal opened={opened} onClose={onClose} title={title} size="lg">
       <Stack gap="lg">
         <TextInput
           value={search}
@@ -231,16 +224,16 @@ export function AddEntitiesModal({
             )}
           </LoadingAndErrorWrapper>
         </Box>
-        <Group justify="flex-end">
-          {!emptyState && (
-            <Button
-              variant="filled"
-              onClick={handleAdd}
-              disabled={checked.size === 0}
-            >{t`Add`}</Button>
-          )}
-        </Group>
       </Stack>
+      {!emptyState && (
+        <Modal.Footer>
+          <Button
+            variant="filled"
+            onClick={handleAdd}
+            disabled={checked.size === 0}
+          >{t`Add`}</Button>
+        </Modal.Footer>
+      )}
     </Modal>
   );
 }

@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
 import {
@@ -6,29 +7,36 @@ import {
   setupDashboardsEndpoints,
   setupDatabaseEndpoints,
 } from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { Api } from "metabase/api";
-import type { DashboardState, State } from "metabase/redux/store";
-import type { StoreSeedState } from "metabase/redux/store/mocks";
+import type { StoreSeedState } from "__support__/state";
 import {
   createMockDashboardState,
   createMockSettingsState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import { waitFor } from "__support__/ui";
+import { Api } from "metabase/api";
+import type { DashboardState, State } from "metabase/redux/store";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import type { Dashboard } from "metabase-types/api";
+import { defer } from "metabase/utils/promise";
+import { checkNotNull } from "metabase/utils/types";
+import type { Dashboard, NormalizedQueryParameter } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
   createMockDashboardQueryMetadata,
   createMockDashboardTab,
+  createMockDataset,
+  createMockParameter,
+  createMockParameterMapping,
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { dashboardReducers } from "../reducers";
+import { getLastSeenTabDashcards } from "../selectors";
 
 import {
   fetchCardDataAction,
@@ -36,6 +44,7 @@ import {
   fetchDashboardCardData,
   reloadDashboardCards,
 } from "./data-fetching";
+import { setParameterValue } from "./parameters";
 
 type SetupOpts = {
   dashboards?: Dashboard[];
@@ -79,6 +88,79 @@ function setup({
 }
 
 describe("fetchDashboard", () => {
+  describe("while the query metadata is still loading (DSN-749)", () => {
+    let queryMetadataRequest = defer();
+
+    const setupDeferredQueryMetadata = (dashboardId: number) => {
+      queryMetadataRequest = defer();
+      fetchMock.get(`path:/api/dashboard/${dashboardId}/query_metadata`, () =>
+        queryMetadataRequest.promise.then(() =>
+          createMockDashboardQueryMetadata(),
+        ),
+      );
+    };
+
+    // Never leave the request pending, or teardown waits on it when a test fails.
+    afterEach(() => queryMetadataRequest.resolve());
+
+    it("publishes the dashboard layout before the fetch finishes", async () => {
+      const dashboard = createMockDashboard({
+        id: 1,
+        dashcards: [createMockDashboardCard({ id: 10, dashboard_id: 1 })],
+      });
+      const store = setup();
+      setupDashboardsEndpoints([dashboard]);
+      setupDeferredQueryMetadata(1);
+
+      const fetchResult = store.dispatch(
+        fetchDashboard({ dashId: 1, queryParams: {}, options: {} }),
+      );
+
+      // The skeleton can draw the real layout while the dashboard still loads.
+      await waitFor(() => {
+        expect(getLastSeenTabDashcards(store.getState(), 1)).toHaveLength(1);
+      });
+      expect(store.getState().dashboard.dashboardId).toBeNull();
+
+      queryMetadataRequest.resolve();
+      await expect(fetchResult).resolves.toHaveProperty(
+        "type",
+        "metabase/dashboard/FETCH_DASHBOARD/fulfilled",
+      );
+      expect(store.getState().dashboard.dashboardId).toBe(1);
+    });
+
+    it("does not publish the layout early when refetching a dashboard that is already on screen", async () => {
+      const store = setup({
+        dashboard: createMockDashboardState({
+          dashboardId: 1,
+          dashboards: {
+            1: createMockStoreDashboard({ id: 1, name: "Old", dashcards: [] }),
+          },
+        }),
+      });
+      setupDashboardsEndpoints([createMockDashboard({ id: 1, name: "New" })]);
+      setupDeferredQueryMetadata(1);
+
+      const fetchResult = store.dispatch(
+        fetchDashboard({ dashId: 1, queryParams: {}, options: {} }),
+      );
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/dashboard/1/query_metadata"),
+        ).toBe(true);
+      });
+      // Let the dashboard GET resolve before checking nothing was merged early.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(store.getState().dashboard.dashboards[1].name).toBe("Old");
+
+      queryMetadataRequest.resolve();
+      await fetchResult;
+      expect(store.getState().dashboard.dashboards[1].name).toBe("New");
+    });
+  });
+
   it("should cancel previous dashboard fetch when a new one is initiated (metabase#35959)", async () => {
     const store = setup({
       dashboards: [
@@ -338,9 +420,8 @@ describe("fetchDashboard", () => {
  * Creates a dispatch/getState pair that runs thunks against the mock dashboard
  * `state` but routes RTK Query lifecycle actions to a real (api-only) store, so
  * the RTK-backed dashcard query endpoints execute. The dashboard `dashcardData`
- * reducer is intentionally bypassed: it uses icepick `assocIn`, which crashes
- * under Immer when many fulfilled actions arrive at once (the case these
- * concurrency tests provoke).
+ * reducer is intentionally bypassed: these concurrency tests only assert on
+ * the requests that get made, not on the dashboard state.
  */
 function createMockDispatch(getMockState: () => Partial<State>) {
   const apiStore = getStore({ [Api.reducerPath]: Api.reducer }, {}, [
@@ -549,6 +630,104 @@ describe("fetchDashboardCardData", () => {
     // Before the fix, the batch cancellation loop would cancel Tab 1's
     // in-flight request, causing a re-execution on return.
     expect(tab1QueryCount).toBe(1);
+  });
+});
+
+describe("fetchCardDataAction", () => {
+  it("should not rerun a query with unset values when the last result lists the same parameters in another order (metabase#39863)", async () => {
+    const dashboardId = 400;
+    // Clojure maps stop preserving insertion order at nine entries.
+    const parameters = _.range(1, 10).map((index) =>
+      createMockParameter({
+        id: String(index),
+        slug: `filter-${index}`,
+        type: "number/<=",
+      }),
+    );
+    const card = createMockCard({ id: 40 });
+    const dashcard = createMockDashboardCard({
+      id: 41,
+      card_id: card.id,
+      dashboard_id: dashboardId,
+      card,
+      parameter_mappings: parameters.map((parameter, index) =>
+        createMockParameterMapping({
+          parameter_id: parameter.id,
+          card_id: card.id,
+          target: ["dimension", ["field", index + 1, null]],
+        }),
+      ),
+    });
+    const store = setup({
+      dashboard: createMockDashboardState({
+        dashboardId,
+        dashboards: {
+          [dashboardId]: createMockStoreDashboard({
+            id: dashboardId,
+            dashcards: [dashcard.id],
+            parameters,
+          }),
+        },
+        dashcards: { [dashcard.id]: dashcard },
+        parameterValues: { [parameters[0].id]: [10] },
+      }),
+    });
+
+    const queryUrl = `path:/api/dashboard/${dashboardId}/dashcard/${dashcard.id}/card/${card.id}/query`;
+    const expectedParameters = parameters.map(
+      (parameter, index): NormalizedQueryParameter => ({
+        id: parameter.id,
+        type: "number/<=",
+        target: ["dimension", ["field", index + 1, null]],
+        ...(index === 0 ? { value: [10] } : {}),
+      }),
+    );
+    let responseParameters = expectedParameters;
+    fetchMock.post(
+      queryUrl,
+      () =>
+        createMockDataset({
+          json_query: {
+            ...card.dataset_query,
+            parameters: responseParameters
+              .map((parameter) => ({
+                ...parameter,
+                value: parameter.value ?? null,
+              }))
+              .reverse(),
+          },
+        }),
+      { delay: 100 },
+    );
+    const getLastQueryBody = () => {
+      const call = checkNotNull(fetchMock.callHistory.lastCall(queryUrl));
+      const body: unknown = JSON.parse(String(call.options.body));
+      return body;
+    };
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+    expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(1);
+    expect(getLastQueryBody()).toEqual(
+      expect.objectContaining({ parameters: expectedParameters }),
+    );
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+    expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(1);
+
+    await store.dispatch(setParameterValue(parameters[0].id, [20]));
+    responseParameters = expectedParameters.map((parameter, index) =>
+      index === 0 ? { ...parameter, value: [20] } : parameter,
+    );
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+    expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(2);
+    expect(getLastQueryBody()).toEqual(
+      expect.objectContaining({
+        parameters: responseParameters,
+      }),
+    );
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+    expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(2);
   });
 });
 

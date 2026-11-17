@@ -32,6 +32,12 @@ Then you can run `bun run storybook-embedding-sdk` to start storybook.
 
 Storybook will use the source files and not the built package.
 
+By default the stories connect to a Metabase instance at `http://localhost:3000`. To point them at a different instance, set `STORYBOOK_METABASE_INSTANCE_URL` when starting storybook:
+
+```bash
+STORYBOOK_METABASE_INSTANCE_URL=http://localhost:3010 bun run storybook-embedding-sdk
+```
+
 ## E2E tests
 
 ### Component e2e tests

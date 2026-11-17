@@ -5,6 +5,7 @@
    [clojure.core.memoize :as memoize]
    [java-time.api :as t]
    [malli.error :as me]
+   [malli.util :as mut]
    [metabase.api-keys.core :as-alias api-keys]
    [metabase.api-keys.db :as api-keys.db]
    [metabase.api-keys.schema :as api-keys.schema]
@@ -67,10 +68,17 @@
                  ::api-keys.schema/prefix]]
   (subs (expose k) 0 api-keys.schema/prefix-length))
 
+(def ^:private ApiKeyPipelineRow
+  "The shape `add-prefix`/`add-key` receive: a before-insert or before-update `:model/ApiKey` instance, every column
+  optional at this stage, plus the two internal keys the CRUD hooks thread through."
+  (mut/merge ::api-keys.schema/api-key.update
+             [:map {:closed true}
+              [::api-keys/unhashed-key {:optional true} ::api-keys.schema/key.unhashed-or-secret]
+              [::api-keys/group-id     {:optional true} pos-int?]]))
+
 (mu/defn- add-prefix :- [:map
                          [:key_prefix {:optional true} ::api-keys.schema/prefix]]
-  [{unhashed-key ::api-keys/unhashed-key, :as api-key} :- [:map
-                                                           [::api-keys/unhashed-key {:optional true} ::api-keys.schema/key.unhashed-or-secret]]]
+  [{unhashed-key ::api-keys/unhashed-key, :as api-key} :- ApiKeyPipelineRow]
   (cond-> api-key
     (contains? api-key ::api-keys/unhashed-key) (assoc :key_prefix (some-> unhashed-key prefix))))
 
@@ -91,16 +99,26 @@
       (.append sb \*))
     (str sb)))
 
+(mu/defn key-hash-salt :- :string
+  "The salt hashed in front of a key with `scope`, and checked in front of it at authentication. A `:workspace-manager`
+  key has one. A build from before that scope checks every key with no salt, so it never authenticates such a key and
+  never treats it as an unscoped key of its user. Other keys have no salt."
+  [scope :- [:maybe ::api-keys.schema/scope]]
+  (if (= scope :workspace-manager)
+    "workspace-manager:"
+    ""))
+
 (mu/defn- hash-bcrypt :- ::api-keys.schema/key.hashed
-  [k :- ::api-keys.schema/key.unhashed-or-secret]
-  (-> k expose u.password/hash-bcrypt))
+  [k     :- ::api-keys.schema/key.unhashed-or-secret
+   scope :- [:maybe ::api-keys.schema/scope]]
+  (u.password/hash-bcrypt (str (key-hash-salt scope) (expose k))))
 
 (mu/defn- add-key
-  "Adds the `key` based on the `:metabase.api-keys/unhashed-qkey passed in."
-  [{unhashed-key ::api-keys/unhashed-key, :as api-key} :- [:map
-                                                           [::api-keys/unhashed-key {:optional true} ::api-keys.schema/key.unhashed-or-secret]]]
+  "Adds the `key` based on the `:metabase.api-keys/unhashed-qkey passed in, salted for the key's `:scope`."
+  [{unhashed-key ::api-keys/unhashed-key, :as api-key} :- ApiKeyPipelineRow]
   (-> api-key
-      (cond-> (contains? api-key ::api-keys/unhashed-key) (assoc :key (some-> unhashed-key hash-bcrypt)))
+      (cond-> (contains? api-key ::api-keys/unhashed-key)
+        (assoc :key (some-> unhashed-key (hash-bcrypt (:scope api-key)))))
       (dissoc ::api-keys/unhashed-key)))
 
 (defn- validate-with-schema [api-key schema]
@@ -198,11 +216,12 @@
         (throw (ex-info (tru "could not generate key with unique prefix") {}))))))
 
 (mu/defn create-api-key-with-new-user!
-  "Create a new API key and a new user for that key at the same time."
-  [{:keys [key-name group-id]}
+  "Create a new API key and a new user for that key at the same time, with `scope` when given."
+  [{:keys [key-name group-id scope]}
    :- [:map {:closed true}
        [:key-name ::api-keys.schema/name]
-       [:group-id {:optional true} pos-int?]]]
+       [:group-id {:optional true} pos-int?]
+       [:scope    {:optional true} ::api-keys.schema/scope]]]
   (api/checkp (not (api-keys.db/api-key-name-exists? key-name))
               "name" "An API key with this name already exists.")
   (let [unhashed-key (key-with-unique-prefix)
@@ -216,11 +235,12 @@
         (when group-id
           (user/set-permissions-groups! user-id [(perms/all-users-group) group-id]))
         (-> (api-keys.db/insert-api-key!
-             {:user_id                user-id
-              :name                   key-name
-              ::api-keys/unhashed-key unhashed-key
-              :updated_by_id          api/*current-user-id*
-              :creator_id             api/*current-user-id*})
+             (cond-> {:user_id                user-id
+                      :name                   key-name
+                      ::api-keys/unhashed-key unhashed-key
+                      :updated_by_id          api/*current-user-id*
+                      :creator_id             api/*current-user-id*}
+               scope (assoc :scope scope)))
             (assoc :unmasked_key unhashed-key))))))
 
 (mu/defn regenerate! :- [:map
@@ -233,7 +253,7 @@
         new-key        (key-with-unique-prefix)
         new-prefix     (prefix new-key)]
     (t2/with-transaction [_conn]
-      (api-keys.db/update-api-key! id {:key           (hash-bcrypt new-key)
+      (api-keys.db/update-api-key! id {:key           (hash-bcrypt new-key (:scope api-key-before))
                                        :key_prefix    new-prefix
                                        :updated_by_id api/*current-user-id*})
       (events/publish-event! :event/api-key-regenerate

@@ -4,7 +4,9 @@ import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import type { ColorSettings } from "metabase-types/api";
 
 import { deriveAllAccentColors, mapChartColorsToAccents } from "./accents";
+import { getBaseColorsForThemeDefinitionOnly } from "./constants/base-colors";
 import { PROTECTED_COLORS } from "./constants/protected-colors";
+import { mapWhitelabelColorsToTokens } from "./constants/whitelabel-colors";
 import { getThemeFromColorScheme } from "./theme-from-color-scheme";
 import type {
   MetabaseColorKey,
@@ -25,13 +27,13 @@ export function deriveFullMetabaseTheme({
   colorScheme,
   whitelabelColors,
   embeddingThemeOverride,
+  forceDynamicBrandRamp = false,
 }: {
   colorScheme: ResolvedColorScheme;
   whitelabelColors?: ColorSettings | null;
   embeddingThemeOverride?: MetabaseEmbeddingThemeV2;
+  forceDynamicBrandRamp?: boolean;
 }): MetabaseDerivedThemeV2 {
-  const baseTheme = getThemeFromColorScheme(colorScheme);
-
   // Filter out protected colors from embedding theme overrides.
   // Some colors (such as the Metabase brand color) should not be modifiable.
   const filteredEmbeddingColors = _.omit(
@@ -39,25 +41,30 @@ export function deriveFullMetabaseTheme({
     ...PROTECTED_COLORS,
   );
 
+  const embeddingColors = embeddingThemeOverride?.colors;
+
+  // When instance doesn't have custom brand color configured, we replace brand
+  // ramp (which is generated dynamically using color-mix to work with custom colors)
+  // with a hand-picked `ocean` ramp
+  const shouldKeepBrandRampDynamic =
+    forceDynamicBrandRamp ||
+    Boolean(embeddingColors?.["core-brand"] ?? whitelabelColors?.brand);
+
+  const baseColors = getBaseColorsForThemeDefinitionOnly();
+
+  const baseTheme = getThemeFromColorScheme(
+    colorScheme,
+    shouldKeepBrandRampDynamic ? baseColors.brand : baseColors.ocean,
+  );
+
   // Unjustified type cast. FIXME
   const colors = {
     ...baseTheme.colors,
     ...mapChartColorsToAccents(baseTheme.chartColors),
-    ...deriveAllAccentColors(whitelabelColors ?? {}),
+    ...deriveAllAccentColors(mapWhitelabelColorsToTokens(whitelabelColors)),
     ...filteredEmbeddingColors,
     ...mapChartColorsToAccents(embeddingThemeOverride?.chartColors ?? []),
   } as Record<MetabaseColorKey, string>;
-
-  // These 3 assignments are temporary compatibility layer for colors migration (GDGT-2517)
-  // Custom brand, filter, and summarize colors (whitelabelling) are passed directly from settings
-  // as part of `whitelabelColors` into `deriveAllAccentColors` which passes them through without
-  // any processing (as they aren't accent colors), and this way they get included in colors object.
-  // But brand colors might be also overriden by embedding (`filteredEmbeddingColors`). To ensure that
-  // colors available by new name (core-*) always match actual brand/filter/summarize we copy there
-  // here, after all possible overrides are done, instead of e.g. extending original `whitelabelColors`
-  colors["core-brand"] = colors.brand;
-  colors["core-filter"] = colors.filter;
-  colors["core-summarize"] = colors.summarize;
 
   return { version: 2, colors };
 }

@@ -10,9 +10,9 @@ import {
   setupLibraryEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
-import { createMockState } from "metabase/redux/store/mocks";
 import type {
   Collection,
   CollectionItem,
@@ -846,7 +846,8 @@ describe("useGetPathFromValue", () => {
         ],
       });
 
-      // doing this manually here to get a delay
+      // Delayed by hand, so the loading state stays observable for longer than
+      // waitFor's 50ms polling interval.
       fetchMock.get(
         `path:/api/collection/${parentCollection.id}/items`,
         () => {
@@ -860,7 +861,7 @@ describe("useGetPathFromValue", () => {
             ],
           };
         },
-        { name: `collection-${parentCollection.id}-items`, delay: 50 },
+        { name: `collection-${parentCollection.id}-items`, delay: 300 },
       );
 
       setupCollectionItemsEndpoint({
@@ -951,12 +952,12 @@ describe("useGetPathFromValue", () => {
 
   describe("enterprise features", () => {
     beforeEach(() => {
-      setupLibraryEndpoints(true);
+      setupLibraryEndpoints({ hasLibrary: true });
     });
 
     it("warmup enterprise plugins", () => {
       // warm up enterprise plugins, without this, tests can time out in CI 😢
-      setupLibraryEndpoints(true);
+      setupLibraryEndpoints({ hasLibrary: true });
       const { result } = setup({
         enterprise: true,
       });

@@ -206,7 +206,7 @@ Response:
       "display_name": "Orders",
       "description": "All customer orders",
       "database_id": 1,
-      "database_schema": "PUBLIC",
+      "database_schema": null,
       "verified": false
     },
     {
@@ -256,9 +256,9 @@ Minimal example:
     "stages": [
       {
         "lib/type": "mbql.stage/mbql",
-        "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
-        "aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]]],
-        "breakout":    [["field", {}, ["Sample Database", "PUBLIC", "PEOPLE", "STATE"]]],
+        "source-table": ["Sample Database", null, "ORDERS"],
+        "aggregation": [["sum", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]]]],
+        "breakout":    [["field", {}, ["Sample Database", null, "PEOPLE", "STATE"]]],
         "limit": 100
       }
     ]
@@ -399,6 +399,9 @@ On failure:
 ```json
 { "status": "failed", "error": "Query error message" }
 ```
+
+When the run fails inside Metabase, such as in an app DB lookup, `error` is
+`Something went wrong`, and the details go to the server log.
 
 Row limits:
 
@@ -630,5 +633,6 @@ Response:
 | 401         | Authentication failure                                                                             |
 | 403         | Insufficient permissions                                                                           |
 | 404         | Entity not found                                                                                   |
+| 500         | Server error. A failure inside Metabase says only `Something went wrong`                           |
 
 ---

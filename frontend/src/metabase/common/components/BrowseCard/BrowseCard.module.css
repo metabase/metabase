@@ -1,0 +1,38 @@
+.card:has(.link:focus-visible) {
+  outline: 2px solid var(--mb-color-input-focus);
+}
+
+.link {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+
+  /*
+   * Stretches the link over the whole card so the whole card can be clicked to follow
+   * the link, while allowing the action menu to render outside of the anchor tag
+   */
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+.title {
+  position: relative;
+  z-index: 1;
+}
+
+.actions {
+  z-index: 1;
+}
+
+.cornerActions {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+}

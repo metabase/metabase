@@ -1,13 +1,14 @@
 import type { WidgetMount } from "custom-viz";
 
 import { checkNotNull } from "metabase/utils/types";
+import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
 
 import { usePluginMount } from "../use-plugin-mount";
 import { getWidgetMountPlugin } from "../widget-mount";
 
 type Props = {
-  mount: WidgetMount<Record<string, unknown>>;
-  widgetProps: Record<string, unknown>;
+  mount: WidgetMount<CustomVizSettingWidgetProps>;
+  widgetProps: CustomVizSettingWidgetProps;
 };
 
 /**

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -31,6 +32,7 @@ export function QueryVisualization(props: QueryVisualizationProps) {
     isNativeEditorOpen,
     isDirtyStateShownForError,
     result,
+    errorAction,
     maxTableRows = HARD_ROW_LIMIT,
   } = props;
 
@@ -76,9 +78,9 @@ export function QueryVisualization(props: QueryVisualizationProps) {
             className={S.spread}
             error={result.error}
             errorType={result.error_type}
-            via={result.via ?? []}
             question={question}
             duration={result.duration ?? 0}
+            errorAction={errorAction}
           />
         ) : result?.data ? (
           <VisualizationResult
@@ -135,8 +137,6 @@ export const VisualizationDirtyState = ({
   cancelQuery,
   hidden,
 }: VisualizationDirtyStateProps) => {
-  const keyboardShortcut = getRunQueryShortcut();
-
   const handleClick = () => {
     if (!hidden) {
       if (isRunning) {
@@ -167,8 +167,8 @@ export const VisualizationDirtyState = ({
         hidden={hidden}
         isRunning={Boolean(isRunning)}
         isDirty={Boolean(isResultDirty)}
+        getTooltip={getRunQueryShortcut}
       />
-      {!hidden && <Text c="text-secondary">{keyboardShortcut}</Text>}
     </Flex>
   );
 };

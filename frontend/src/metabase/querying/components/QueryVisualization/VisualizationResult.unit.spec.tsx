@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockMetadata } from "__support__/metadata";
+import { createMockMetadataFromState } from "__support__/metadata";
+import { createMockState } from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -9,14 +11,14 @@ import {
 } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 import {
-  ORDERS_ID,
-  SAMPLE_DB_ID,
   createOrdersIdDatasetColumn,
   createOrdersTotalDatasetColumn,
   createSampleDatabase,
@@ -38,20 +40,17 @@ beforeAll(() => {
   return loadVisualizationComponents(["table"]);
 });
 
-const metadata = createMockMetadata({
-  databases: [createSampleDatabase()],
+const state = createMockState({
+  entities: createMockEntitiesState({
+    databases: [createSampleDatabase()],
+  }),
 });
+const metadata = createMockMetadataFromState(state);
 
 const setup = (props: Partial<QueryVisualizationProps> = {}) => {
   const question = new Question(
     {
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-        },
-        database: SAMPLE_DB_ID,
-      },
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
       display: "table",
       visualization_settings: {},
     },
@@ -75,6 +74,7 @@ const setup = (props: Partial<QueryVisualizationProps> = {}) => {
       navigateToNewCardInsideQB={jest.fn()}
       {...props}
     />,
+    { storeInitialState: state },
   );
 };
 
@@ -154,6 +154,7 @@ describe("VisualizationResult", () => {
       });
 
       expect(screen.getByText("No results")).toBeInTheDocument();
+      expect(screen.getByAltText("No results")).toBeInTheDocument();
       expect(screen.getByText("Alert prompt")).toBeInTheDocument();
     });
 

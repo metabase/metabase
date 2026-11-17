@@ -82,7 +82,7 @@ jobs:
         echo "It must start with either 'v0.' or 'v1.'."
         echo "Please, try again."
         exit 1
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         sparse-checkout: |
           release
@@ -270,7 +270,7 @@ jobs:
       matrix:
         edition: ${{ fromJson(needs.check-version.outputs.edition_matrix) }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         fetch-depth: 0 # we want all branches and tags
@@ -308,7 +308,7 @@ jobs:
       with:
         role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         sparse-checkout: |
           release
@@ -346,3 +346,27 @@ jobs:
         aws cloudfront create-invalidation \
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
         --paths "/version-info.json" "/version-info-ee.json"
+
+  notify-failure:
+    needs:
+      - check-version
+      - copy-to-s3
+      - tag-docker-image
+      - push-git-tags
+      - update-version-info-latest
+    if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            release
+            .github
+      - name: Send release failure message
+        uses: ./.github/actions/notify-release-failure
+        with:
+          title: Setting the ${{ inputs.tag_name }} tag for
+          version: ${{ inputs.version }}
+          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}

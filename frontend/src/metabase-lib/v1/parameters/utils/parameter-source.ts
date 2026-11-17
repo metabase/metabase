@@ -1,5 +1,6 @@
-import Field from "metabase-lib/v1/metadata/Field";
+import type * as Lib from "metabase-lib";
 import { isFuzzyOperator } from "metabase-lib/v1/operators/utils";
+import type { ParameterWithTemplateTagTarget } from "metabase-lib/v1/parameters/types";
 import type {
   Parameter,
   ValuesQueryType,
@@ -7,10 +8,12 @@ import type {
   ValuesSourceType,
 } from "metabase-types/api";
 
-import type { ParameterWithTemplateTagTarget } from "../types";
-
 import { deriveFieldOperatorFromParameter } from "./operators";
-import { getFields } from "./parameter-fields";
+import {
+  canSearchField,
+  getFields,
+  hasRemappedFieldValues,
+} from "./parameter-fields";
 import { getParameterType } from "./parameter-type";
 
 export const getQueryType = (
@@ -46,9 +49,9 @@ export const getSourceConfig = (parameter: Parameter): ValuesSourceConfig => {
  */
 export const hasRemappedParameterValues = (
   parameter: Parameter | null | undefined,
-  fields: Field[],
+  fields: Lib.ParameterFieldInfo[],
 ): boolean => {
-  if (Field.remappedField(fields) != null) {
+  if (hasRemappedFieldValues(fields)) {
     return true;
   }
 
@@ -122,19 +125,16 @@ export const canListParameterValues = (parameter: Parameter) => {
     : queryType !== "none" && canListFields;
 };
 
-export const canListFieldValues = (fields: Field[]) => {
+export const canListFieldValues = (fields: Lib.ParameterFieldInfo[]) => {
   const hasFields = fields.length > 0;
-  const hasFieldValues = fields
-    .filter((field) => !field.isVirtual())
-    .every((field) => field.has_field_values === "list");
+  const hasFieldValues = fields.every(
+    (field) => field.hasFieldValues === "list",
+  );
 
   return hasFields && hasFieldValues;
 };
 
-export const canSearchParameterValues = (
-  parameter: Parameter,
-  disablePKRemapping = false,
-) => {
+export const canSearchParameterValues = (parameter: Parameter) => {
   const operator = deriveFieldOperatorFromParameter(parameter);
   if (operator && isFuzzyOperator(operator) && !canUseCustomSource(parameter)) {
     return false;
@@ -143,25 +143,18 @@ export const canSearchParameterValues = (
   const queryType = getQueryType(parameter);
   const sourceType = getSourceType(parameter);
   const fields = getFields(parameter);
-  const canSearchFields = canSearchFieldValues(fields, disablePKRemapping);
+  const canSearchFields = canSearchFieldValues(fields);
 
   return sourceType
     ? queryType === "search"
     : queryType !== "none" && canSearchFields;
 };
 
-export const canSearchFieldValues = (
-  fields: Field[],
-  disablePKRemapping = false,
-) => {
+export const canSearchFieldValues = (fields: Lib.ParameterFieldInfo[]) => {
   const hasFields = fields.length > 0;
-  const canSearch = fields.every((field) =>
-    field.searchField(disablePKRemapping),
-  );
+  const canSearch = fields.every(canSearchField);
   const hasFieldValues = fields.some(
-    (field) =>
-      field.has_field_values === "search" ||
-      (field.has_field_values === "list" && field.has_more_values === true),
+    (field) => field.hasFieldValues === "search",
   );
 
   return hasFields && canSearch && hasFieldValues;

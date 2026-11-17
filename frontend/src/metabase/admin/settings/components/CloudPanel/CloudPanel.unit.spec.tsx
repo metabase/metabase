@@ -5,8 +5,8 @@ import {
   setupBugReportingDetailsEndpoint,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { getPlan, getSettings } from "metabase/settings";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
@@ -66,8 +66,8 @@ describe("CloudPanel", () => {
 
     // should see the progress bar update as progress increases
     for (const { progress } of migrationProgressResponses) {
-      await waitFor(async () => {
-        expect(await screen.findByRole("progressbar")).toHaveAttribute(
+      await waitFor(() => {
+        expect(screen.getByRole("progressbar")).toHaveAttribute(
           "aria-valuenow",
           `${progress}`,
         );

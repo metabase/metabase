@@ -17,7 +17,7 @@
   "Fetch a list of all Impersonation policies currently in effect, or a single policy if both `group_id` and `db_id`
   are provided."
   [_route-params
-   {:keys [group_id db_id]} :- [:map
+   {:keys [group_id db_id]} :- [:map {:closed true}
                                 [:group_id {:optional true} [:maybe ms/PositiveInt]]
                                 [:db_id    {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
@@ -25,13 +25,9 @@
     (impersonation.db/impersonation-for-group-and-database group_id db_id)
     (impersonation.db/all-impersonations)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a Connection Impersonation entry."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (impersonation.db/impersonation id))

@@ -12,7 +12,7 @@
 (def ^:private default-drivers
   "Drivers implementing [[tx/gc-orphans!]]. Athena and Databricks are excluded: their datasets are preloaded, not
   created by tests."
-  [:snowflake :bigquery-cloud-sdk :redshift])
+  [:snowflake :bigquery-cloud-sdk :redshift :motherduck])
 
 (def ^:private default-report-dir
   "Where [[write-report!]] leaves its files for the workflow to upload as an artifact."
@@ -67,7 +67,6 @@
     (let [results   (try
                       (vec (tx/gc-orphans! driver options))
                       (catch Exception e
-                        (def ee e)
                         [{:name nil, :status :failed, :error (ex-message e)}]))
           remaining (census! driver)
           {:keys [deleted failed]} (group-by :status results)]

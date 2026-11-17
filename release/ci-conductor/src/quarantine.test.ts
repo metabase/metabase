@@ -135,9 +135,9 @@ describe("matchKey", () => {
 
   it("does not collide when a boundary between fields shifts", () => {
     // ["a", "b", "c"] vs ["ab", "", "c"] must stay distinct.
-    expect(
-      matchKey({ filePath: "a", testPath: "b", testName: "c" }),
-    ).not.toBe(matchKey({ filePath: "ab", testPath: "", testName: "c" }));
+    expect(matchKey({ filePath: "a", testPath: "b", testName: "c" })).not.toBe(
+      matchKey({ filePath: "ab", testPath: "", testName: "c" }),
+    );
   });
 });
 
@@ -233,7 +233,9 @@ describe("suiteMatchesGlob", () => {
   });
 
   it("expands `*` and `?`", () => {
-    expect(suiteMatchesGlob("be-tests-java-21-mbql", "be-tests-*-mbql")).toBe(true);
+    expect(suiteMatchesGlob("be-tests-java-21-mbql", "be-tests-*-mbql")).toBe(
+      true,
+    );
     expect(suiteMatchesGlob("e2e-3", "e2e-?")).toBe(true);
     expect(suiteMatchesGlob("e2e-12", "e2e-?")).toBe(true); // unanchored
   });
@@ -344,7 +346,8 @@ describe("fetchQuarantine", () => {
   const okList = (entries: QuarantineEntry[], suites?: string[]) =>
     new Response(JSON.stringify({ tests: entries, suites }), { status: 200 });
   const errorStatus = (status: number) => new Response("", { status });
-  const econnreset = () => new Error("The socket connection was closed unexpectedly");
+  const econnreset = () =>
+    new Error("The socket connection was closed unexpectedly");
 
   const list = (entries: QuarantineEntry[], suites: string[] = []) => ({
     tests: entries,
@@ -468,20 +471,20 @@ describe("checkQuarantineGate", () => {
     }
   }
 
-  it("passes without a verdict line when there are no failures to gate", async () => {
+  it("fails when the test step failed with no failing tests", async () => {
     const { result, verdict } = await runCapturingLogs({
       suite: "e2e",
       failures: [],
       baseUrl: undefined,
       secret: undefined,
-      dryRun: true,
+      dryRun: false,
     });
     expect(result).toEqual({
-      shouldFail: false,
-      enforced: false,
-      reason: "no failures to gate",
+      shouldFail: true,
+      enforced: true,
+      reason: "the test step failed with no failing tests to check",
     });
-    expect(verdict).toBeUndefined();
+    expect(verdict).toContain("VERDICT: FAIL");
   });
 
   it("reports COULD NOT CHECK — not FAIL — when the base URL is unset", async () => {
@@ -552,7 +555,9 @@ describe("checkQuarantineGate", () => {
   ): Promise<T> {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (async () =>
-      new Response(JSON.stringify(body), { status: 200 })) as unknown as typeof fetch;
+      new Response(JSON.stringify(body), {
+        status: 200,
+      })) as unknown as typeof fetch;
     try {
       return await run();
     } finally {
@@ -584,9 +589,8 @@ describe("checkQuarantineGate", () => {
   });
 
   it("still gates test by test when no suite rule matches", async () => {
-    const { result } = await withList(
-      { tests: [], suites: ["athena"] },
-      () => gate("fe-tests-unit"),
+    const { result } = await withList({ tests: [], suites: ["athena"] }, () =>
+      gate("fe-tests-unit"),
     );
 
     expect(result).toEqual({

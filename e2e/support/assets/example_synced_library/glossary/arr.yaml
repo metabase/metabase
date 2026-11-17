@@ -1,0 +1,6 @@
+creator_id: admin@metabase.test
+definition: Annual recurring revenue
+entity_id: glossaryfixturearr001
+term: ARR
+serdes/meta:
+- model: Glossary

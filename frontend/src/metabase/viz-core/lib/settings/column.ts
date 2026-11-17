@@ -1,13 +1,21 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { t } from "ttag";
 import _ from "underscore";
 
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import {
+  DEFAULT_DURATION_PRECISION,
+  DEFAULT_DURATION_STYLE,
+  DEFAULT_DURATION_UNIT,
   currency,
+  formatDuration,
+  formatNumber,
   getCurrency,
   getCurrencyNarrowSymbol,
+  getCurrencyPositionOptions,
   getCurrencyStyleOptions,
   getCurrencySymbol,
+  getEffectiveCurrencyPosition,
   hasHour,
   numberFormatterForOptions,
 } from "metabase/utils/formatting";
@@ -28,7 +36,6 @@ import {
 } from "metabase-lib/v1/queries/utils/dataset";
 import {
   isCoordinate,
-  isCurrency,
   isDate,
   isDateWithoutTime,
   isNumber,
@@ -37,6 +44,7 @@ import type {
   ColumnSettings,
   DatasetColumn,
   DatetimeUnit,
+  DurationUnit,
   Series,
   TimeEnabled,
   VisualizationSettings,
@@ -45,6 +53,7 @@ import type {
 import {
   getDefaultCurrency,
   getDefaultCurrencyInHeader,
+  getDefaultCurrencyPosition,
   getDefaultCurrencyStyle,
   getDefaultNumberSeparators,
   getDefaultNumberStyle,
@@ -57,7 +66,10 @@ import type {
 import { getVisualization, getVisualizationRaw } from "../registry";
 
 import { nestedSettings } from "./nested";
-import { getDeduplicatedTableColumnSettings } from "./utils";
+import {
+  getDeduplicatedTableColumnSettings,
+  insertNewColumnSettings,
+} from "./utils";
 
 type GetColumnsFn = (
   series: Series,
@@ -259,45 +271,110 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
   },
 };
 
+const DURATION_SAMPLE_SECONDS = 3723.25;
+
+function formatDurationSample({
+  duration_style,
+  duration_precision,
+  number_separators,
+}: ColumnSettings) {
+  return formatDuration(DURATION_SAMPLE_SECONDS, {
+    duration_style,
+    duration_precision,
+    number_separators,
+  });
+}
+
+function getDurationUnitOptions(): { name: string; value: DurationUnit }[] {
+  return [
+    { name: t`Nanoseconds`, value: "nanosecond" },
+    { name: t`Microseconds`, value: "microsecond" },
+    { name: t`Milliseconds`, value: "millisecond" },
+    { name: t`Seconds`, value: "second" },
+    { name: t`Minutes`, value: "minute" },
+    { name: t`Hours`, value: "hour" },
+    { name: t`Days`, value: "day" },
+    { name: t`Weeks`, value: "week" },
+  ];
+}
+
 export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
   number_style: {
     get title() {
-      return t`Style`;
+      return t`Format`;
+    },
+    widget: "segmentedControl",
+    // Each option is a sample value rendered in that style, so the
+    // examples reflect the column's separators and currency.
+    getProps: (_column, settings) => ({
+      options: (
+        ["decimal", "percent", "currency", "scientific", "duration"] as const
+      ).map((numberStyle) => ({
+        name: formatNumber(
+          numberStyle === "duration" ? DURATION_SAMPLE_SECONDS : 1.23,
+          {
+            number_style: numberStyle,
+            number_separators: settings.number_separators,
+            currency: settings.currency,
+            currency_style: "symbol",
+            currency_position: settings.currency_position,
+          },
+        ),
+        value: numberStyle,
+      })),
+    }),
+    getDefault: getDefaultNumberStyle,
+    readDependencies: ["currency"],
+  },
+  duration_unit: {
+    get title() {
+      return t`Unit of duration`;
     },
     widget: "select",
     getProps: () => ({
-      options: [
-        {
-          get name() {
-            return t`Normal`;
-          },
-          value: "decimal",
-        },
-        {
-          get name() {
-            return t`Percent`;
-          },
-          value: "percent",
-        },
-        {
-          get name() {
-            return t`Scientific`;
-          },
-          value: "scientific",
-        },
-        {
-          get name() {
-            return t`Currency`;
-          },
-          value: "currency",
-        },
-      ],
+      options: getDurationUnitOptions(),
     }),
-    getDefault: getDefaultNumberStyle,
-    // hide this for currency
-    getHidden: (column, settings) =>
-      isCurrency(column) && settings.number_style === "currency",
-    readDependencies: ["currency"],
+    getDefault: () => DEFAULT_DURATION_UNIT,
+    getHidden: (_column, settings) => settings.number_style !== "duration",
+    readDependencies: ["number_style"],
+  },
+  duration_style: {
+    get title() {
+      return t`Duration style`;
+    },
+    widget: "radio",
+    getProps: (_column, settings) => ({
+      options: (["digital", "narrow"] as const).map((durationStyle) => ({
+        name: formatDurationSample({
+          ...settings,
+          duration_style: durationStyle,
+        }),
+        value: durationStyle,
+      })),
+    }),
+    getDefault: () => DEFAULT_DURATION_STYLE,
+    getHidden: (_column, settings) => settings.number_style !== "duration",
+    readDependencies: ["number_style"],
+  },
+  duration_precision: {
+    get title() {
+      return t`Duration precision`;
+    },
+    widget: "radio",
+    getProps: (_column, settings) => ({
+      options: (["minute", "second", "millisecond"] as const).map(
+        (durationPrecision) => ({
+          name: formatDurationSample({
+            ...settings,
+            duration_precision: durationPrecision,
+          }),
+          value: durationPrecision,
+        }),
+      ),
+    }),
+    getDefault: () => DEFAULT_DURATION_PRECISION,
+    getHidden: (_column, settings) => settings.number_style !== "duration",
+    readDependencies: ["number_style"],
   },
   currency: {
     get title() {
@@ -356,6 +433,31 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     },
     readDependencies: ["number_style"],
   },
+  currency_position: {
+    get title() {
+      return t`Currency label position`;
+    },
+    widget: "radio",
+    getProps: (_column, settings) => ({
+      options: getCurrencyPositionOptions(),
+      value: getEffectiveCurrencyPosition(
+        settings.currency_style,
+        settings.currency_position,
+      ),
+      disabled: settings.currency_style === "name",
+      description:
+        settings.currency_style === "name"
+          ? t`Currency names always appear after the amount.`
+          : undefined,
+    }),
+    getDefault: getDefaultCurrencyPosition,
+    getHidden: (_column, settings, extra) =>
+      settings.number_style !== "currency" ||
+      ((extra?.forAdminSettings === true ||
+        extra?.series?.[0]?.card.display === "table") &&
+        settings.currency_in_header === true),
+    readDependencies: ["number_style", "currency_style", "currency_in_header"],
+  },
   number_separators: {
     // uses 1-2 character string to represent decimal and thousands separators
     get title() {
@@ -377,14 +479,14 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     get title() {
       return t`Number of decimal places`;
     },
-    widget: "number",
+    widget: "numberInput",
     getProps: () => ({
       placeholder: "1",
-      options: {
-        isNonNegative: true,
-        isInteger: true,
-      },
+      min: 0,
+      max: 20,
     }),
+    getHidden: (_column, settings) => settings.number_style === "duration",
+    readDependencies: ["number_style"],
   },
   scale: {
     get title() {
@@ -473,6 +575,31 @@ const COMMON_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
   },
 };
 
+const LEADING_COLUMN_SETTING_KEYS = [
+  "column_title",
+  "click_behavior",
+  "show_mini_bar",
+  "text_align",
+  "number_style",
+  "currency",
+];
+// "Display as" and the link fields that depend on it go last
+const TRAILING_COLUMN_SETTING_KEYS = ["view_as", "link_text", "link_url"];
+
+function orderColumnSettingDefinitions(
+  settingDefs: VisualizationSettingsDefinitions,
+): VisualizationSettingsDefinitions {
+  return {
+    ..._.pick(settingDefs, ...LEADING_COLUMN_SETTING_KEYS),
+    ..._.omit(
+      settingDefs,
+      ...LEADING_COLUMN_SETTING_KEYS,
+      ...TRAILING_COLUMN_SETTING_KEYS,
+    ),
+    ..._.pick(settingDefs, ...TRAILING_COLUMN_SETTING_KEYS),
+  };
+}
+
 export function getSettingDefinitionsForColumn(
   series: Series,
   column: FormattableColumn,
@@ -487,23 +614,23 @@ export function getSettingDefinitionsForColumn(
       : visualization?.columnSettings || {};
 
   if (isDate(column) || (column.unit && column.unit !== "default")) {
-    return {
+    return orderColumnSettingDefinitions({
       ...extraColumnSettings,
       ...DATE_COLUMN_SETTINGS,
       ...COMMON_COLUMN_SETTINGS,
-    };
+    });
   }
   if (isNumber(column) && !isCoordinate(column)) {
-    return {
+    return orderColumnSettingDefinitions({
       ...extraColumnSettings,
       ...NUMBER_COLUMN_SETTINGS,
       ...COMMON_COLUMN_SETTINGS,
-    };
+    });
   }
-  return {
+  return orderColumnSettingDefinitions({
     ...extraColumnSettings,
     ...COMMON_COLUMN_SETTINGS,
-  };
+  });
 }
 
 export function isPivoted(
@@ -540,7 +667,7 @@ export const getTitleForColumn = (
   const pivoted = isPivoted(series, settings);
 
   if (pivoted) {
-    return displayNameForColumn(column) || NULL_DISPLAY_VALUE;
+    return displayNameForColumn(column) || getNullDisplayValue();
   }
 
   return (
@@ -559,7 +686,7 @@ export function tableColumnSettings({
       getSection: () => t`Columns`,
       // title: t`Columns`,
       widget: "tableColumns",
-      getHidden: (_series, vizSettings) => vizSettings["table.pivot"],
+      getHidden: (_series, vizSettings) => vizSettings["table.pivot"] ?? false,
       getValue: ([{ data }], vizSettings) => {
         const { cols } = data;
         const settings = vizSettings["table.columns"] ?? [];
@@ -574,19 +701,18 @@ export function tableColumnSettings({
           uniqColumnSettings,
         );
 
-        return [
+        return insertNewColumnSettings(
           // retain settings with matching columns only
-          ...uniqColumnSettings.filter(
+          uniqColumnSettings.filter(
             (_, settingIndex) => columnIndexes[settingIndex] >= 0,
           ),
-          // add columns that do not have matching settings to the end
-          ...cols
-            .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
-            .map((column) => ({
-              name: column.name,
-              enabled: true,
-            })),
-        ];
+          cols,
+          {
+            getColumnName: (setting) => setting.name,
+            isNewColumn: (_, columnIndex) => settingIndexes[columnIndex] < 0,
+            createSetting: (column) => ({ name: column.name, enabled: true }),
+          },
+        );
       },
       getProps: (series, settings) => {
         const [

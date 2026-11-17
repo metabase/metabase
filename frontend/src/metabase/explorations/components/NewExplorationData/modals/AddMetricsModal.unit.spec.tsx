@@ -6,6 +6,7 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
+  waitFor,
 } from "__support__/ui";
 import type { ExplorationBlock } from "metabase/explorations/hooks";
 import {
@@ -172,6 +173,58 @@ describe("AddMetricsModal", () => {
 
     expect(await screen.findByText("Churn")).toBeInTheDocument();
     expect(allTab()).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("searches metrics on the server, restores the list when cleared, and shows the empty state when nothing matches", async () => {
+    const countMetric: ExplorationMetric = {
+      ...createMockMetric({ id: 3, name: "Count of orders" }),
+      dimension_ids: [],
+    };
+    const timeseriesMetric: ExplorationMetric = {
+      ...createMockMetric({ id: 4, name: "Count of orders over time" }),
+      dimension_ids: [],
+    };
+    setup({ metrics: [countMetric, timeseriesMetric] });
+
+    expect(
+      await screen.findByRole("checkbox", { name: "Count of orders" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Count of orders over time" }),
+    ).toBeInTheDocument();
+
+    const searchInput = screen.getByPlaceholderText("Search for a metric");
+    await userEvent.type(searchInput, "over time");
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory
+          .calls("path:/api/exploration/dimensions")
+          .map((call) => new URL(call.url).searchParams.get("q")),
+      ).toContain("over time");
+    });
+    expect(
+      await screen.findByRole("checkbox", {
+        name: "Count of orders over time",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: "Count of orders" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.clear(searchInput);
+
+    expect(
+      await screen.findByRole("checkbox", { name: "Count of orders" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Count of orders over time" }),
+    ).toBeInTheDocument();
+
+    await userEvent.type(searchInput, "zzz");
+
+    expect(await screen.findByText("No results")).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
 
   it("keeps an explicitly chosen tab during searches", async () => {

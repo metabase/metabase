@@ -1,9 +1,10 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { Collection } from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
@@ -90,7 +91,7 @@ describe("MainNavSharedCollections > new shared collection modal", () => {
     fetchMock.get("path:/api/collection/1", MOCK_TENANT_COLLECTIONS[0]);
 
     const addButton = screen.getByRole("button", { name: /add/i });
-    addButton.click();
+    await userEvent.click(addButton);
 
     expect(
       await screen.findByText("New shared collection"),

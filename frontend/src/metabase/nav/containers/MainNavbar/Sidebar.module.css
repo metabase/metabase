@@ -1,0 +1,27 @@
+.sidebar {
+  position: relative;
+  z-index: 4;
+  width: var(--sidebar-width);
+
+  @media (--breakpoint-max-sm) {
+    position: absolute;
+    top: 0;
+    width: 90vw;
+  }
+}
+
+.left {
+  border-inline-end: 1px solid var(--mb-color-border-neutral);
+
+  @media (--breakpoint-max-sm) {
+    inset-inline-start: 0;
+  }
+}
+
+.right {
+  border-inline-start: 1px solid var(--mb-color-border-neutral);
+
+  @media (--breakpoint-max-sm) {
+    inset-inline-end: 0;
+  }
+}

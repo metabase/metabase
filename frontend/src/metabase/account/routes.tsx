@@ -2,6 +2,7 @@ import type { Store } from "@reduxjs/toolkit";
 
 import type { State } from "metabase/redux/store";
 import { Route, type RouteComponent, redirect } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import { getNotificationRoutes } from "./notifications/routes";
 
@@ -49,8 +50,14 @@ export const getAccountRoutes = (
         <Route path="authentication" lazy={userPasswordApp} />
         <Route path="login-history" lazy={loginHistoryApp} />
         {/* Legacy path redirects */}
-        <Route path="security" element={redirect("/account/authentication")} />
-        <Route path="password" element={redirect("/account/authentication")} />
+        <Route
+          path="security"
+          element={redirect(Urls.accountAuthentication())}
+        />
+        <Route
+          path="password"
+          element={redirect(Urls.accountAuthentication())}
+        />
         {getNotificationRoutes()}
       </Route>
     </Route>

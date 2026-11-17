@@ -185,7 +185,7 @@ export function DashboardHeaderView({
             data-testid="fixed-width-dashboard-tabs"
             isFixedWidth={dashboard?.width === "fixed"}
           >
-            <DashboardTabs />
+            <DashboardTabs hasFullBleedBorder />
           </FixedWidthContainer>
         </FullWidthContainer>
       </div>

@@ -85,12 +85,13 @@ function getVisibilityTypeName(visibilityType: VisibilityType) {
   return visibilityType.name;
 }
 
-const visibilityTypeOptions = FIELD_VISIBILITY_TYPES.filter(
-  (type) => type.id !== "sensitive",
-).map((type) => ({
-  name: getVisibilityTypeName(type),
-  value: type.id,
-}));
+const getVisibilityTypeOptions = () =>
+  FIELD_VISIBILITY_TYPES.filter((type) => type.id !== "sensitive").map(
+    (type) => ({
+      name: getVisibilityTypeName(type),
+      value: type.id,
+    }),
+  );
 
 const VIEW_AS_FIELDS = ["view_as", "link_text", "link_url"];
 
@@ -144,8 +145,8 @@ function DatasetFieldMetadataSidebarInner({
   const initialValues = useMemo(() => {
     const values: FieldMetadataFormValues = {
       display_name: field.display_name,
-      description: field.description,
-      semantic_type: field.semantic_type,
+      description: field.description ?? null,
+      semantic_type: field.semantic_type ?? null,
       fk_target_field_id: field.fk_target_field_id || null,
       visibility_type: field.visibility_type || "normal",
       should_index: shouldIndex,
@@ -298,7 +299,7 @@ function DatasetFieldMetadataSidebarInner({
                         left: "0.75rem",
                         top: "0.5rem",
                         fontSize: "0.625rem",
-                        color: color("text-disabled"),
+                        color: color("text-secondary"),
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -380,7 +381,7 @@ function DatasetFieldMetadataSidebarInner({
                       }}
                       onChange={handleVisibilityTypeChange}
                     >
-                      {visibilityTypeOptions.map((option) => (
+                      {getVisibilityTypeOptions().map((option) => (
                         <Radio
                           key={`visibility-type-${option.value}`}
                           value={option.value}

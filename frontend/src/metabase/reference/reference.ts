@@ -1,5 +1,3 @@
-import { assoc } from "icepick";
-
 import { createAction, handleActions } from "metabase/redux";
 
 import { filterUntouchedFields, isEmptyObject } from "./utils";
@@ -67,8 +65,7 @@ const updateDataWrapper = (
     try {
       const editedFields = filterUntouchedFields(fields, props.entity);
       if (!isEmptyObject(editedFields)) {
-        const newEntity = { ...props.entity, ...editedFields };
-        await fn(newEntity);
+        await fn({ id: props.entity.id, ...editedFields });
       }
     } finally {
       resetForm(props);
@@ -127,7 +124,7 @@ export const rUpdateFields = (
           ),
         }))
         .filter(({ formField }) => !isEmptyObject(formField))
-        .map(({ field, formField }) => ({ ...field, ...formField }));
+        .map(({ field, formField }) => ({ id: field.id, ...formField }));
 
       await Promise.all(updatedFields.map(props.updateField));
     } finally {
@@ -151,24 +148,28 @@ const initialState: ReferenceState = {
 export default handleActions(
   {
     [START_EDITING]: {
-      next: (state: ReferenceState) => assoc(state, "isEditing", true),
+      next: (state: ReferenceState) => ({ ...state, isEditing: true }),
     },
     [END_EDITING]: {
-      next: (state: ReferenceState) => assoc(state, "isEditing", false),
+      next: (state: ReferenceState) => ({ ...state, isEditing: false }),
     },
     [EXPAND_FORMULA]: {
-      next: (state: ReferenceState) => assoc(state, "isFormulaExpanded", true),
+      next: (state: ReferenceState) => ({ ...state, isFormulaExpanded: true }),
     },
     [COLLAPSE_FORMULA]: {
-      next: (state: ReferenceState) => assoc(state, "isFormulaExpanded", false),
+      next: (state: ReferenceState) => ({ ...state, isFormulaExpanded: false }),
     },
     [SHOW_DASHBOARD_MODAL]: {
-      next: (state: ReferenceState) =>
-        assoc(state, "isDashboardModalOpen", true),
+      next: (state: ReferenceState) => ({
+        ...state,
+        isDashboardModalOpen: true,
+      }),
     },
     [HIDE_DASHBOARD_MODAL]: {
-      next: (state: ReferenceState) =>
-        assoc(state, "isDashboardModalOpen", false),
+      next: (state: ReferenceState) => ({
+        ...state,
+        isDashboardModalOpen: false,
+      }),
     },
   },
   initialState,

@@ -1,0 +1,15 @@
+.item {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 16px;
+  color: var(--mb-color-text-primary);
+
+  &:hover,
+  &[data-selected] {
+    color: var(--mb-color-text-brand);
+  }
+}

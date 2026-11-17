@@ -19,6 +19,8 @@
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.queues :as explorations.queues]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.metrics.core :as metrics]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
@@ -45,8 +47,8 @@
 (defn- check-destination-collection-perms!
   "When `updates` moves the exploration to a different `collection_id`, verify the current
   user has write perms on the destination (collection or root). Source-side perms are already
-  enforced by the parent `api/write-check` against the exploration itself, which via
-  `:perms/use-parent-collection-perms` requires write on the source collection."
+  enforced by the parent `api/write-check` against the exploration itself, whose write check
+  requires write on the source collection."
   [{old-coll :collection_id} updates]
   (when (and (contains? updates :collection_id)
              (not= old-coll (:collection_id updates)))
@@ -145,6 +147,10 @@
               (attach-thread-read-data thread blocks pages card-name-by-id)))
           threads)))
 
+(defn- strip-lens-stamp
+  [m]
+  (dissoc m :data_access_token :resolved_source_ids))
+
 (defn- gate-threads-derived-data
   "Drop every thread's derived read-data — its queries, the block/page tree built from them, and the
   thread name — when the current user's data-access lens isn't compatible with the creator's lens
@@ -162,9 +168,10 @@
             ;; but it still enumerates which tables the creator is sandboxed on and which databases
             ;; are impersonated or routed — and a response schema validates and encodes without
             ;; stripping (see [[redact-query-error]]), so it has to come off here.
-            (dissoc (or (get enriched (:id thread))
-                        (assoc thread :queries [] :blocks [] :name nil :status "forbidden"))
-                    :data_access_token))
+            (-> (or (get enriched (:id thread))
+                    (assoc thread :queries [] :blocks [] :name nil :status "forbidden"))
+                strip-lens-stamp
+                (u/update-if-exists :queries #(some->> % (mapv strip-lens-stamp)))))
           threads)))
 
 (defn- thread-status
@@ -220,7 +227,7 @@
 
 (defn- hydrate-exploration [exploration]
   (-> exploration
-      (t2/hydrate :creator :can_write :collection :document [:threads :queries :timelines])
+      (t2/hydrate :creator :can_write :can_restore :can_delete :collection :document [:threads :queries :timelines])
       (update :threads
               #(some->> %
                         (mapv (comp redact-thread-query-errors attach-thread-status))
@@ -315,22 +322,27 @@
 (def ^:private ExploreFilterScalar
   [:maybe [:or :string number? :boolean]])
 
+(def ^:private ExploreFieldRef
+  "The reference an explore filter points at: the legacy `field_ref` of the chart column the client clicked. It is
+  persisted and echoed back."
+  [:ref ::lib.schema.parameter/dimension.target])
+
 (def ^:private ExploreFilterSpec
   "One segment filter stamped onto a block metric selection's `:explore_filters` vector.
   `:display_value` is required — the FE formats it at click time and both the thread name
   and filter pills read it as-is."
   [:multi {:dispatch :operator}
    ["="
-    [:map
+    [:map {:closed true}
      [:operator       [:= "="]]
-     [:field_ref      [:sequential :any]]
+     [:field_ref      ExploreFieldRef]
      [:value          ExploreFilterScalar]
      [:display_value  ms/NonBlankString]
      [:dimension_name {:optional true} [:maybe :string]]]]
    ["between"
-    [:map
+    [:map {:closed true}
      [:operator       [:= "between"]]
-     [:field_ref      [:sequential :any]]
+     [:field_ref      ExploreFieldRef]
      [:values         [:tuple ExploreFilterScalar ExploreFilterScalar]]
      [:display_value  ms/NonBlankString]
      [:dimension_name {:optional true} [:maybe :string]]]]])
@@ -339,7 +351,7 @@
   ;; Mapping objects are decoded from the snake_case wire shape to the internal kebab-case shape
   ;; at the `defendpoint` edge by the wire-annotated schema (see [[metabase.metrics.core]]);
   ;; the envelope `:dimension_mappings` key itself stays snake_case, matching storage.
-  [:map
+  [:map {:closed true}
    [:card_id ms/PositiveInt]
    [:dimension_mappings {:optional true} [:maybe [:sequential ::metrics/dimension-mapping]]]])
 
@@ -347,7 +359,7 @@
   ;; The FE sends snake_case dimension snapshots; the `:decode/api` rule kebab-cases them at the
   ;; `defendpoint` edge, so entries here are declared in the internal kebab-case shape the
   ;; handler receives and persists. Open map: snapshot keys beyond these pass through kebab-cased.
-  [:map {:decode/api {:enter #(cond-> % (map? %) (update-keys u/->kebab-case-en))}}
+  [:map {:closed true :decode/api {:enter #(cond-> % (map? %) (update-keys u/->kebab-case-en))}}
    [:dimension-id   ms/UUIDString]
    [:display-name   {:optional true} [:maybe :string]]
    [:effective-type {:optional true} [:maybe :string]]
@@ -358,7 +370,7 @@
    one `ExplorationBlock` row; the planners cross this block's metrics with this block's
    dimensions only. The sidebar heading is computed read-side (the `:name` of an
    `ExplorationBlockNode`), not supplied here."
-  [:map
+  [:map {:closed true}
    [:metrics    {:optional true} [:maybe [:sequential MetricSelection]]]
    [:dimensions {:optional true} [:maybe [:sequential DimensionSelection]]]])
 
@@ -474,6 +486,9 @@
    [:creator       {:optional true} [:maybe :map]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:archived      {:optional true} :boolean]
+   [:can_write     {:optional true} :boolean]
+   [:can_restore   {:optional true} :boolean]
+   [:can_delete    {:optional true} :boolean]
    [:document      {:optional true} [:maybe ::ExplorationDocument]]
    [:threads       {:optional true} [:maybe [:sequential ::HydratedThread]]]
    [:created_at    {:optional true} [:maybe :any]]
@@ -525,7 +540,7 @@
    The FE sends one entry per Research-plan block (`:blocks` — each a metric/dimension
    area), each persisted verbatim. `:timeline_ids` is thread-scoped (timelines aren't part of
    any metric×dimension cross-product) and lives at the top level, not inside a block."
-  [:map
+  [:map {:closed true}
    [:name          expl.model/ExplorationName]
    [:description   {:optional true} [:maybe :string]]
    [:prompt        {:optional true} [:maybe :string]]
@@ -538,7 +553,7 @@
   page — its block (metric selection + dimensions) is copied verbatim so the new thread re-runs
   the same charts. `explore_filters` is appended to each copied metric selection's existing
   `:explore_filters`."
-  [:map
+  [:map {:closed true}
    [:page_id         ms/PositiveInt]
    [:explore_filters [:sequential {:min 1} ExploreFilterSpec]]])
 
@@ -547,7 +562,7 @@
   actually includes are forwarded to the underlying `t2/update!`. `collection_id` may be `nil`
   to move the exploration to the root collection (\"Our Analytics\"). `collection_position` may
   be `nil` to unpin the exploration."
-  [:map
+  [:map {:closed true}
    [:name                {:optional true} expl.model/ExplorationName]
    [:description         {:optional true} [:maybe :string]]
    [:archived            {:optional true} :boolean]
@@ -598,6 +613,10 @@
 
 ;;; ----------------------------------------- endpoints -----------------------------------------
 
+(defn- index-by-id
+  [rows]
+  (into {} (map (juxt :id identity)) rows))
+
 (api.macros/defendpoint :post "/" :- ::HydratedExploration
   "Create a new exploration with a single thread, persist the user's selected metrics, dimensions,
   and timelines, and stamp the thread as started. Also auto-creates a placeholder Summary
@@ -614,10 +633,14 @@
   ;; Block metric-card and timeline references are persisted verbatim and read back unfiltered
   ;; (planning context, thread hydration), so attach time is the
   ;; permission boundary: every referenced id must exist (404) and be readable (403) by the creator.
-  (doseq [card-id (distinct (mapcat #(map :card_id (:metrics %)) blocks))]
-    (api/read-check :model/Card card-id))
-  (doseq [timeline-id (distinct timeline_ids)]
-    (api/read-check :model/Timeline timeline-id))
+  (let [card-ids     (vec (distinct (mapcat #(map :card_id (:metrics %)) blocks)))
+        timeline-ids (vec (distinct timeline_ids))
+        id->card     (index-by-id (t2/hydrate (explorations.db/cards-by-ids (remove nil? card-ids)) :can_read))
+        id->timeline (index-by-id (t2/hydrate (explorations.db/timelines (set timeline-ids)) :can_read))]
+    (doseq [card-id card-ids]
+      (api/read-check (get id->card card-id)))
+    (doseq [timeline-id timeline-ids]
+      (api/read-check (get id->timeline timeline-id))))
   (let [persisted
         (t2/with-transaction [_]
           (let [exploration (explorations.db/insert-exploration! {:name          name
@@ -645,20 +668,24 @@
                            {:object persisted :user-id api/*current-user-id*})
     (hydrate-exploration persisted)))
 
-(defn- drill-thread-token
-  "The lens stamp for the thread `explore-further` creates.
+(defn- drill-thread-stamp
+  "The lens stamp for the thread `explore-further` creates. Its `:resolved_source_ids` is the union of the block's
+  metric cards', so the gate holds a viewer to every table the token was computed over.
 
-  Computed under the *creator's* identity rather than the caller's. The values this thread is named
+  The token is computed under the *creator's* identity rather than the caller's. The values this thread is named
   for were read out of results the creator's lens produced, and its queries will execute under that
   same identity (see [[metabase.explorations.runner]]), which is the lens `finalize-row!` stamps them
   with."
   [exploration cards]
-  (request/with-current-user (:creator_id exploration)
-    (perms/data-access-token
-     {:database-id (:database_id (first cards))
-      :table-ids   (into #{}
-                         (mapcat #(query-perms/query->resolved-source-table-ids (:dataset_query %)))
-                         cards)})))
+  (let [resolved-source-ids (query-perms/merge-resolved-source-ids
+                             (map #(query-perms/query->resolved-source-ids (:dataset_query %)) cards))]
+    {:data_access_token   (request/with-current-user (:creator_id exploration)
+                            (perms/data-access-token
+                             {:database-id (:database_id (first cards))
+                              :table-ids   (:table-ids resolved-source-ids)}))
+     ;; The content gate checks the thread against the first card's query.
+     :resolved_source_ids (query-perms/stamped-resolved-source-ids (:dataset_query (first cards))
+                                                                   resolved-source-ids)}))
 
 (api.macros/defendpoint :post "/:id/explore-further" :- ::HydratedExploration
   "Start a follow-up investigation scoped to a clicked chart segment.
@@ -671,7 +698,7 @@
   keeps the earlier scope (see
   `metabase.explorations.query-plan.context/build-row-context`). Returns immediately with the new
   thread stamped `started_at`; clients poll `GET /:id` for the queries to land, exactly like create."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [page_id explore_filters]} :- ExploreFurther]
   (let [exploration (get-exploration-or-404 id)]
@@ -691,9 +718,11 @@
                                     src-thread-id))
           metric-selections (:metrics block)
           metric-selection  (first metric-selections)
+          id->card      (index-by-id (t2/hydrate (explorations.db/cards-by-ids (into [] (comp (keep :card_id) (distinct)) metric-selections))
+                                                 :can_read))
           cards         (mapv (fn [{:keys [card_id]}]
                                 (api/read-check
-                                 (api/check-404 (when card_id (explorations.db/card card_id)))))
+                                 (api/check-404 (when card_id (get id->card card_id)))))
                               metric-selections)
           card          (api/check-404 (first cards))
           card-name     (:name card)
@@ -708,15 +737,15 @@
           next-position (inc (or (explorations.db/last-thread-position id) 0))]
       (t2/with-transaction [_]
         (let [thread (explorations.db/insert-thread!
-                      {:exploration_id    id
-                       :name              (explore-further-thread-name card-name
-                                                                       enriched-filters
-                                                                       top-level-follow-up?)
-                       :data_access_token (drill-thread-token exploration cards)
-                       :position          next-position
-                       ;; drill lineage — lets the sidebar nest this thread
-                       ;; under the one owning the drilled page
-                       :source_page_id    page_id})
+                      (merge {:exploration_id id
+                              :name           (explore-further-thread-name card-name
+                                                                           enriched-filters
+                                                                           top-level-follow-up?)
+                              :position       next-position
+                              ;; drill lineage — lets the sidebar nest this thread
+                              ;; under the one owning the drilled page
+                              :source_page_id page_id}
+                             (drill-thread-stamp exploration cards)))
               tid    (:id thread)]
           (explorations.db/insert-blocks! {:exploration_thread_id tid
                                            :metrics               metrics'
@@ -736,7 +765,7 @@
 
   Optional `q` filters case-insensitively across metric name and dimension display-name."
   [_route-params
-   {:keys [q]} :- [:maybe [:map [:q {:optional true} [:maybe ms/NonBlankString]]]]]
+   {:keys [q]} :- [:maybe [:map {:closed true} [:q {:optional true} [:maybe ms/NonBlankString]]]]]
   ;; Returned in the internal kebab-case shape; the `::DimensionsResponse` schema encodes
   ;; dimensions and mappings to the snake_case wire shape at the `defendpoint` edge. (The
   ;; `add_research_groups` metabot tool serves the same payload outside `defendpoint` and
@@ -764,8 +793,9 @@
 
 (api.macros/defendpoint :get "/:id" :- ::HydratedExploration
   "Fetch an exploration with its thread, selections, and generated queries."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [expl (api/read-check (get-exploration-or-404 id))]
+    (events/publish-event! :event/exploration-read {:object-id id :user-id api/*current-user-id*})
     (hydrate-exploration expl)))
 
 (api.macros/defendpoint :put "/:id" :- ::HydratedExploration
@@ -773,11 +803,11 @@
 
   When `collection_id` changes, the caller must have write perms on the destination collection
   (or the root collection when `collection_id` is nil). Source perms are enforced by
-  `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`.
+  `api/write-check` against the exploration itself, which reads its Collection.
   Moving an exploration cascades the new `collection_id` onto its Summary document; flipping
   `archived` cascades to the same document (skipping any that were directly user-archived,
   mirroring the dashboard / dashboard-question cascade)."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    updates :- UpdateExploration]
   (let [existing (get-exploration-or-404 id)
@@ -803,7 +833,7 @@
 
   Cascades to every `exploration_thread`, `exploration_query`, and attached Summary `document`
   via the on-delete-cascade FKs configured in the explorations migration."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [existing (get-exploration-or-404 id)]
     (api/write-check existing)
     (explorations.db/delete-exploration! id))
@@ -832,7 +862,7 @@
 
   No `:event/exploration-update` is published: nothing on the Exploration row changes, so there
   is no revision to record (the revision push skips unchanged objects)."
-  [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]]
+  [{:keys [thread-id]} :- [:map {:closed true} [:thread-id ms/PositiveInt]]]
   (let [thread      (get-thread-or-404 thread-id)
         exploration (api/write-check (get-exploration-or-404 (:exploration_id thread)))]
     (when-not (reset-thread-for-rerun! thread-id)
@@ -857,7 +887,7 @@
   Idempotent: a thread with `completed_at IS NOT NULL` (already terminal — natural completion or
   prior cancel) returns 200 with its existing state. Authorization is the same write check as
   other thread-mutating endpoints."
-  [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]]
+  [{:keys [thread-id]} :- [:map {:closed true} [:thread-id ms/PositiveInt]]]
   (write-check-thread thread-id)
   (let [now (t/offset-date-time)]
     (t2/with-transaction [_conn]
@@ -904,8 +934,8 @@
   "Stream the result of a single completed exploration query. The optional `format` query param
   is one of `api`, `json`, `csv`, `xlsx` (default `api`). When the underlying query is still
   pending or has errored, returns a 409 with status info instead of streaming."
-  [{:keys [id]}     :- [:map [:id ms/PositiveInt]]
-   {:keys [format]} :- [:map
+  [{:keys [id]}     :- [:map {:closed true} [:id ms/PositiveInt]]
+   {:keys [format]} :- [:map {:closed true}
                         [:format {:default :api}
                          [:enum {:decode/api keyword} :api :csv :json :xlsx]]]]
   (let [q (get-exploration-query-or-404 id)]
@@ -929,9 +959,9 @@
 
 (api.macros/defendpoint :put "/page/:id/starred" :- :nil
   "Set whether an exploration page is starred."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [starred]} :- [:map [:starred :boolean]]]
+   {:keys [starred]} :- [:map {:closed true} [:starred :boolean]]]
   (let [page (get-exploration-page-or-404 id)]
     (api/write-check page)
     (explorations.db/update-page! id {:starred starred}))
@@ -942,11 +972,12 @@
   page passes a one-element `page_ids`; hiding a whole group passes all its page ids."
   [_route-params
    _query-params
-   {:keys [page_ids hidden]} :- [:map
+   {:keys [page_ids hidden]} :- [:map {:closed true}
                                  [:page_ids [:sequential ms/PositiveInt]]
                                  [:hidden :boolean]]]
-  (doseq [id page_ids]
-    (api/write-check (get-exploration-page-or-404 id)))
+  (let [id->page (index-by-id (t2/hydrate (explorations.db/pages-by-ids page_ids) :can_write))]
+    (doseq [id page_ids]
+      (api/write-check (api/check-404 (get id->page id)))))
   (when (seq page_ids)
     (explorations.db/update-pages! page_ids {:hidden hidden}))
   nil)
@@ -999,13 +1030,13 @@
 
   All source EQs must belong to a thread of this exploration. Appending clears
   `is_placeholder` when it was set."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [exploration_query_ids display visualization_settings]}
-   :- [:map
+   :- [:map {:closed true}
        [:exploration_query_ids  [:sequential {:min 1} ms/PositiveInt]]
        [:display                :string]
-       [:visualization_settings ms/Map]]]
+       [:visualization_settings ::lib.schema.visualization/visualization-settings]]]
   (api/write-check (get-exploration-or-404 id))
   (let [doc (summary-document-or-404 id)]
     (api/check-404 (exploration-query-ids-belong-to-exploration? id exploration_query_ids))
@@ -1020,14 +1051,14 @@
             chart-href      (explorations.blocks/page-url id page-id)
             ;; Snapshot onto host_data so the Summary embed can render pills without a live lookup.
             explore-filters (page-explore-filters page-id)
-            extra-attrs {:stored_result_id stored-result-id
-                         :chart_href       chart-href
+            extra-attrs {"stored_result_id" stored-result-id
+                         "chart_href"       chart-href
                          ;; Comment stream key (page id). Distinct from `_id`,
                          ;; which must stay unique per node for duplicate embeds.
-                         :child_target_id  (str page-id)
-                         :host_data        (cond-> {:query_ids exploration_query_ids}
-                                             explore-filters (assoc :explore_filters explore-filters))}]
-        (documents/add-card-to-document!
+                         "child_target_id"  (str page-id)
+                         "host_data"        (cond-> {:query_ids exploration_query_ids}
+                                              explore-filters (assoc :explore_filters explore-filters))}]
+        (documents/add-card-to-document-row!
          (:id doc) card-id nil
          :extra-attrs extra-attrs)))
     (document-summary (:id doc))))

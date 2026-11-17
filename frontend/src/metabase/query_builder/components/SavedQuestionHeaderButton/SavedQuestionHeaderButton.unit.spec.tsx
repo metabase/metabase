@@ -4,8 +4,8 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import { createMockMetadata } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { act, getIcon, renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
 import type { TokenFeatures } from "metabase-types/api";
 import {
@@ -98,14 +98,17 @@ describe("SavedQuestionHeaderButton", () => {
   });
 
   describe("when the question has a latest moderation review", () => {
-    const question = new Question({
-      name: "foo",
-      moderation_reviews: [
-        { status: null },
-        { most_recent: true, status: "verified" },
-      ],
-      collection: createMockCollection(),
-    });
+    const question = new Question(
+      {
+        name: "foo",
+        moderation_reviews: [
+          { status: null },
+          { most_recent: true, status: "verified" },
+        ],
+        collection: createMockCollection(),
+      },
+      createMockMetadata(),
+    );
 
     it("should have an additional icon to signify the question's moderation status", () => {
       setup({

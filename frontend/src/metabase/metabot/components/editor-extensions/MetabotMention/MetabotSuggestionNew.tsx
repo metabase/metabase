@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useClickOutside } from "@mantine/hooks";
 import {
   forwardRef,
@@ -93,13 +94,13 @@ const MetabotMentionSuggestionComponent = forwardRef<
     },
   }));
 
-  const searchModelsReal = searchModels?.filter(
+  const mentionModels = (searchModels ?? []).filter(
     (model) =>
-      model !== "database" &&
       model !== "action" &&
       model !== "segment" &&
       model !== "user" &&
-      model !== "measure",
+      model !== "measure" &&
+      model !== "data-app",
   );
 
   const shouldHide = useMemo(() => {
@@ -142,7 +143,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
         opened
         searchQuery={query}
         shouldShowLibrary
-        models={searchModelsReal ?? []}
+        models={mentionModels}
         closeOnClickOutside={false}
         onChange={onSelectEntity}
         onClose={onClose}
@@ -170,7 +171,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
                 }
               : undefined
           }
-          models={searchModelsReal ?? []}
+          models={mentionModels}
           options={{
             hasDatabases: true,
             hasRootCollection: true,
@@ -178,7 +179,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
             hasSearch: true,
             hasRecents: true,
             hasLibrary: true,
-            hasConfirmButtons: false,
+            hasConfirmButtons: true,
             canCreateCollections: false,
             canCreateDashboards: false,
           }}

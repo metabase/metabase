@@ -1,9 +1,5 @@
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import type {
-  ConcreteFieldReference,
-  Dataset,
-  MetricDatasetRequest,
-} from "metabase-types/api";
+import type { ConcreteFieldReference } from "metabase-types/api";
 
 const { H } = cy;
 const { SourceReplacement } = H.DataModel;
@@ -57,14 +53,15 @@ describe(
       cy.intercept("POST", "/api/ee/replacement/replace-source").as(
         "replaceSource",
       );
-      cy.intercept("GET", "/api/ee/dependencies/graph/dependents*").as(
-        "dependents",
-      );
     });
 
     describe("Successful replacements", () => {
-      it("updates all dependent questions on the source table", () => {
+      it("updates every type of dependent: questions, joins, models, metrics, dashboards, segments, measures, transforms, and native SQL", () => {
         createTestTables();
+
+        getTableId(SOURCE_TABLE).as("sourceTableId");
+        getTableId(COMPATIBLE_TARGET).as("targetTableId");
+
         createSourceQuestion("Q1 plain").as("q1");
         createSourceQuestion("Q2 filtered", {
           filter: [
@@ -72,85 +69,13 @@ describe(
             ["field", "amount", { "base-type": "type/Decimal" }],
             50,
           ],
-        });
-        createSourceQuestion("Q3 count", { aggregation: [["count"]] });
+        }).as("q2");
+        createSourceQuestion("Q3 count", { aggregation: [["count"]] }).as("q3");
 
-        openReplacementModal(SOURCE_TABLE_LABEL);
-        pickTarget(COMPATIBLE_TARGET_LABEL);
-
-        cy.log("all dependents are listed in the modal");
-        SourceReplacement.getDependentsTab(3).click();
-        SourceReplacement.getModal().within(() => {
-          cy.findByText("Q1 plain").should("be.visible");
-          cy.findByText("Q2 filtered").should("be.visible");
-          cy.findByText("Q3 count").should("be.visible");
-        });
-
-        confirmReplacement();
-        waitForReplacementToComplete();
-
-        cy.log("first question now queries the new table");
-        cy.get<Cypress.Response<{ id: number }>>("@q1").then(({ body }) => {
-          H.visitQuestion(body.id);
-          assertTargetRowVisible();
-          H.main().findByText(SOURCE_ROW_VALUE).should("not.exist");
-          H.openNotebook();
-          assertDataSourceIs(COMPATIBLE_TARGET_LABEL);
-        });
-      });
-
-      it("allows replacement when target has extra columns", () => {
-        createTestTables();
-        createSourceQuestion("Question on source").as("question");
-
-        openReplacementModal(SOURCE_TABLE_LABEL);
-        pickTarget(TARGET_EXTRA_COLUMNS_LABEL);
-
-        cy.log("column comparison is shown and replace is enabled");
-        SourceReplacement.getModal()
-          .findByText("Column comparison")
-          .should("be.visible");
-
-        confirmReplacement();
-        waitForReplacementToComplete();
-
-        cy.get<Cypress.Response<{ id: number }>>("@question").then(
-          ({ body }) => {
-            H.visitQuestion(body.id);
-            H.main()
-              .findByText(EXTRA_COLUMNS_TARGET_ROW_VALUE)
-              .should("be.visible");
-
-            H.openNotebook();
-            assertDataSourceIs(TARGET_EXTRA_COLUMNS_LABEL);
-          },
-        );
-      });
-
-      it("replaces a joined table without breaking the question", () => {
-        createTestTables();
         createQuestionJoiningSourceIntoExtraColumns("Joined question").as(
-          "question",
+          "joinedQuestion",
         );
 
-        replaceSourceWithTarget(SOURCE_TABLE_LABEL, COMPATIBLE_TARGET_LABEL);
-
-        cy.log(
-          "the only extra_columns row (D) now joins the D row from compatible_target",
-        );
-        cy.get<Cypress.Response<{ id: number }>>("@question").then(
-          ({ body }) => {
-            H.visitQuestion(body.id);
-            H.main()
-              .findByText(EXTRA_COLUMNS_TARGET_ROW_VALUE)
-              .should("be.visible");
-            H.main().findByText(ANOTHER_TARGET_ROW_VALUE).should("be.visible");
-          },
-        );
-      });
-
-      it("updates a model and questions built on it", () => {
-        createTestTables();
         createSourceModel("Source model").then(({ body: model }) => {
           cy.wrap(model.id).as("modelId");
           createQuestionOnModel("Question on model", model.id).as(
@@ -158,27 +83,7 @@ describe(
           );
         });
 
-        replaceSourceWithTarget(SOURCE_TABLE_LABEL, COMPATIBLE_TARGET_LABEL);
-
-        cy.log("nested question shows data from the new table");
-        cy.get<Cypress.Response<{ id: number }>>("@nestedQuestion").then(
-          ({ body }) => {
-            H.visitQuestion(body.id);
-            assertTargetRowVisible();
-            H.main().findByText(SOURCE_ROW_VALUE).should("not.exist");
-          },
-        );
-
-        cy.log("the model's own data source was updated");
-        cy.get<number>("@modelId").then((modelId) => {
-          cy.visit(`/model/${modelId}/query`);
-          assertDataSourceIs(COMPATIBLE_TARGET_LABEL);
-        });
-      });
-
-      it("updates a metric defined on the source table", () => {
-        createTestTables();
-        getTableId(SOURCE_TABLE).then((sourceTableId) => {
+        cy.get<number>("@sourceTableId").then((sourceTableId) => {
           H.getFieldId({ tableId: sourceTableId, name: "amount" }).then(
             (amountId) => {
               H.createQuestion({
@@ -194,57 +99,7 @@ describe(
           );
         });
 
-        replaceSourceWithTarget(SOURCE_TABLE_LABEL, COMPATIBLE_TARGET_LABEL);
-
-        cy.log("metric now aggregates data from the new table");
-        cy.get<Cypress.Response<{ id: number }>>("@metric").then(({ body }) => {
-          cy.intercept("POST", "/api/metric/dataset").as("metricDataset");
-          H.visitMetric(body.id);
-          cy.wait<MetricDatasetRequest, Dataset>("@metricDataset").then(
-            ({ response }) => {
-              expect(response?.statusCode).to.equal(202);
-              const total = response?.body.data.rows.reduce((sum, row) => {
-                return sum + Number(row[row.length - 1]);
-              }, 0);
-              expect(total).to.equal(800);
-            },
-          );
-          cy.findByTestId("visualization-root")
-            .should("be.visible")
-            .and("have.attr", "data-viz-ui-name", "Number");
-          cy.findByTestId("scalar-value").should("have.text", "800");
-        });
-      });
-
-      it("updates a dashboard with parameter filters", () => {
-        createTestTables();
         createFilteredDashboardOnSource().as("dashboardInfo");
-
-        replaceSourceWithTarget(SOURCE_TABLE_LABEL, COMPATIBLE_TARGET_LABEL);
-
-        cy.get<{ dashboard_id: number; card_id: number }>(
-          "@dashboardInfo",
-        ).then(({ dashboard_id, card_id }) => {
-          cy.log("dashboard renders with new data");
-          H.visitDashboard(dashboard_id);
-          H.main().findByText(COMPATIBLE_TARGET_ROW_VALUE).should("be.visible");
-
-          cy.log("filter widget still works after replacement");
-          H.toggleFilterWidgetValues(["C"]);
-          H.main().findByText(COMPATIBLE_TARGET_ROW_VALUE).should("be.visible");
-
-          cy.log("the underlying question's data source was updated");
-          H.visitQuestion(card_id);
-          H.openNotebook();
-          assertDataSourceIs(COMPATIBLE_TARGET_LABEL);
-        });
-      });
-
-      it("reassigns segments and measures to the target table", () => {
-        createTestTables();
-
-        getTableId(SOURCE_TABLE).as("sourceTableId");
-        getTableId(COMPATIBLE_TARGET).as("targetTableId");
 
         createHighAmountSegment().then((segmentId) => {
           createSourceQuestion("Question using segment", {
@@ -253,21 +108,134 @@ describe(
         });
         createSourceTotalAmountMeasure().as("measure");
 
+        createSourceTransform("Source transform").then(
+          ({ body: transform }) => {
+            cy.wrap(transform.id).as("transformId");
+          },
+        );
+
+        H.createNativeQuestion({
+          name: "Native SQL question",
+          database: WRITABLE_DB_ID,
+          native: { query: `SELECT id, name, amount FROM ${SOURCE_TABLE}` },
+        }).as("nativeQuestion");
+
         openReplacementModal(SOURCE_TABLE_LABEL);
         pickTarget(COMPATIBLE_TARGET_LABEL);
 
-        cy.log("dependents tab lists the question, segment, and measure");
-        SourceReplacement.getDependentsTab(3).click();
+        cy.log("all direct dependents are listed in the modal");
+        // Q1-3, joined question, model, metric, dashboard question, segment,
+        // segment question, measure, transform, and native question. The
+        // dashboard and the question on the model are not direct dependents.
+        SourceReplacement.getModal()
+          .findByRole("tab", {
+            name: /12 items will be changed/,
+            timeout: 30_000,
+          })
+          .click();
         SourceReplacement.getModal().within(() => {
-          cy.findByText("Question using segment").should("be.visible");
-          cy.findByText("High amount").should("be.visible");
-          cy.findByText("Total amount").should("be.visible");
+          // The dependents list is virtualized; scroll each row into view.
+          [
+            "Q1 plain",
+            "Q2 filtered",
+            "Q3 count",
+            "Question using segment",
+            "High amount",
+            "Total amount",
+          ].forEach((name) => {
+            cy.findByText(name).scrollIntoView().should("be.visible");
+          });
         });
 
         confirmReplacement();
         waitForReplacementToComplete();
 
-        cy.log("the dependent question still runs against the target");
+        cy.log("first question now queries the new table");
+        cy.get<Cypress.Response<{ id: number }>>("@q1").then(({ body }) => {
+          H.visitQuestion(body.id);
+          assertTargetRowVisible();
+          H.main().findByText(SOURCE_ROW_VALUE).should("not.exist");
+          H.openNotebook();
+          assertDataSourceIs(COMPATIBLE_TARGET_LABEL);
+        });
+
+        cy.log("filtered question now queries the new table");
+        cy.get<Cypress.Response<{ id: number }>>("@q2").then(({ body }) => {
+          H.visitQuestion(body.id);
+          assertTargetRowVisible();
+          H.main().findByText(SOURCE_ROW_VALUE).should("not.exist");
+        });
+
+        cy.log("count question now queries the new table");
+        cy.get<Cypress.Response<{ id: number }>>("@q3").then(({ body }) => {
+          H.visitQuestion(body.id);
+          H.openNotebook();
+          assertDataSourceIs(COMPATIBLE_TARGET_LABEL);
+        });
+
+        cy.log(
+          "the only extra_columns row (D) now joins the D row from compatible_target",
+        );
+        cy.get<Cypress.Response<{ id: number }>>("@joinedQuestion").then(
+          ({ body }) => {
+            H.visitQuestion(body.id);
+            H.main()
+              .findByText(EXTRA_COLUMNS_TARGET_ROW_VALUE)
+              .should("be.visible");
+            H.main().findByText(ANOTHER_TARGET_ROW_VALUE).should("be.visible");
+          },
+        );
+
+        cy.log("nested question shows data from the new table");
+        cy.get<Cypress.Response<{ id: number }>>("@nestedQuestion").then(
+          ({ body }) => {
+            H.visitQuestion(body.id);
+            assertTargetRowVisible();
+            H.main().findByText(SOURCE_ROW_VALUE).should("not.exist");
+          },
+        );
+
+        cy.log("the model's own data source was updated");
+        cy.get<number>("@modelId").then((modelId) => {
+          cy.visit(`/model/${modelId}/query`);
+          assertDataSourceIs(COMPATIBLE_TARGET_LABEL);
+        });
+
+        cy.log("metric now aggregates data from the new table");
+        cy.get<Cypress.Response<{ id: number }>>("@metric").then(({ body }) => {
+          cy.intercept("POST", "/api/metric/dataset").as("metricDataset");
+          H.visitMetric(body.id);
+          cy.wait("@metricDataset")
+            .its("response.statusCode")
+            .should("eq", 202);
+          cy.findByTestId("visualization-root")
+            .should("be.visible")
+            .and("have.attr", "data-viz-ui-name", "Number");
+          cy.findByTestId("scalar-value").should("have.text", "800");
+        });
+
+        cy.get<{ dashboard_id: number; card_id: number }>(
+          "@dashboardInfo",
+        ).then(({ dashboard_id, card_id }) => {
+          cy.log("dashboard renders with new data");
+          H.visitDashboard(dashboard_id);
+          H.main().findByText(COMPATIBLE_TARGET_ROW_VALUE).should("be.visible");
+          H.main().findByText(ANOTHER_TARGET_ROW_VALUE).should("be.visible");
+
+          cy.log("filter widget still works after replacement");
+          interceptDashcardQuery();
+          H.toggleFilterWidgetValues(["C"]);
+          cy.wait("@dashcardQuery");
+          H.main().findByText(COMPATIBLE_TARGET_ROW_VALUE).should("be.visible");
+          H.main().findByText(ANOTHER_TARGET_ROW_VALUE).should("not.exist");
+
+          cy.log("the underlying question's data source was updated");
+          H.visitQuestion(card_id);
+          H.openNotebook();
+          assertDataSourceIs(COMPATIBLE_TARGET_LABEL);
+        });
+
+        cy.log("the segment question still runs against the target");
         cy.get<Cypress.Response<{ id: number }>>("@segmentQuestion").then(
           ({ body }) => {
             H.visitQuestion(body.id);
@@ -283,6 +251,7 @@ describe(
           "segment no longer shows on the source table in the data model UI",
         );
         visitWritableTableSegments("@sourceTableId");
+        H.DataModel.SegmentList.getEmptyState().should("be.visible");
         H.DataModel.SegmentList.get().should("not.contain", "High amount");
 
         cy.log("measure now shows on the target table in the data model UI");
@@ -293,6 +262,7 @@ describe(
           "measure no longer shows on the source table in the data model UI",
         );
         visitWritableTableMeasures("@sourceTableId");
+        H.DataModel.MeasureList.getEmptyState().should("be.visible");
         H.DataModel.MeasureList.get().should("not.contain", "Total amount");
 
         cy.log("measure still aggregates correctly against the target table");
@@ -313,33 +283,43 @@ describe(
             H.main().findByText("800").should("be.visible");
           },
         );
-      });
 
-      it("updates a transform that sources the replaced table", () => {
-        createTestTables();
-        createSourceTransform("Source transform").then(
-          ({ body: transform }) => {
-            replaceSourceWithTarget(
-              SOURCE_TABLE_LABEL,
-              COMPATIBLE_TARGET_LABEL,
-            );
+        cy.log("transform now references the new source table");
+        cy.get<number>("@transformId").then((transformId) => {
+          H.visitTransform(transformId);
+          assertDataSourceIs(COMPATIBLE_TARGET_LABEL);
+        });
 
-            cy.log("transform now references the new source table");
-            H.visitTransform(transform.id);
-            assertDataSourceIs(COMPATIBLE_TARGET_LABEL);
+        cy.log("native SQL question now queries the new table");
+        cy.get<Cypress.Response<{ id: number }>>("@nativeQuestion").then(
+          ({ body }) => {
+            H.visitQuestion(body.id);
+            assertTargetRowVisible();
+            H.main().findByText(SOURCE_ROW_VALUE).should("not.exist");
           },
         );
       });
     });
 
-    describe("Blocked replacements", () => {
-      it("blocks replacement when target has a column type mismatch", () => {
+    describe("Replacement checks", () => {
+      it("blocks invalid replacements, allows a target with extra columns, and checks sandboxes and permissions", () => {
         createTestTables();
-        createSourceQuestion("Question on source");
 
+        cy.log("blocks replacement when source table has no dependents");
+        openReplacementModal(SOURCE_TABLE_LABEL);
+        pickTarget(COMPATIBLE_TARGET_LABEL);
+        SourceReplacement.getModal()
+          .findByText(
+            "Nothing uses this data source, so there's nothing to replace.",
+          )
+          .should("be.visible");
+        SourceReplacement.getReplaceButton().should("be.disabled");
+
+        createSourceQuestion("Question on source").as("question");
+
+        cy.log("blocks replacement when target has a column type mismatch");
         openReplacementModal(SOURCE_TABLE_LABEL);
         pickTarget(TARGET_TYPE_MISMATCH_LABEL);
-
         SourceReplacement.getModal().within(() => {
           cy.findByText("Column comparison").should("be.visible");
           cy.findByText(
@@ -347,15 +327,10 @@ describe(
           ).should("be.visible");
         });
         SourceReplacement.getReplaceButton().should("be.disabled");
-      });
 
-      it("blocks replacement when target is missing a required column", () => {
-        createTestTables();
-        createSourceQuestion("Question on source");
-
+        cy.log("blocks replacement when target is missing a required column");
         openReplacementModal(SOURCE_TABLE_LABEL);
         pickTarget(TARGET_MISSING_COLUMN_LABEL);
-
         SourceReplacement.getModal().within(() => {
           cy.findByText("Column comparison").should("be.visible");
           cy.findByText("This data source isn't compatible.").should(
@@ -363,53 +338,80 @@ describe(
           );
         });
         SourceReplacement.getReplaceButton().should("be.disabled");
-      });
 
-      it("blocks replacement when source table has foreign keys", () => {
-        createTestTablesWithForeignKey();
-        createSourceQuestion("Question on source");
-
+        cy.log("blocks replacement when target would create a cycle");
         openReplacementModal(SOURCE_TABLE_LABEL);
-        pickTarget(COMPATIBLE_TARGET_LABEL);
-
-        SourceReplacement.getModal()
-          .findByText(
-            "The original table can't be referenced by a foreign key by another table.",
-          )
-          .should("be.visible");
-        SourceReplacement.getReplaceButton().should("be.disabled");
-      });
-
-      it("blocks replacement when target would create a cycle", () => {
-        createTestTables();
-        createSourceQuestion("Question on source");
-
-        openReplacementModal(SOURCE_TABLE_LABEL);
-
-        cy.log("pick a question that depends on source_table as the target");
         SourceReplacement.getTargetPickerButton().click();
         H.entityPickerModal().within(() => {
           cy.findByText("Our analytics").click();
           cy.findByText("Question on source").click();
         });
-
         SourceReplacement.getModal()
           .findByText(
             "The replacement data source can't be based on the original data source.",
           )
           .should("be.visible");
         SourceReplacement.getReplaceButton().should("be.disabled");
-      });
 
-      it("blocks replacement when source table has no dependents", () => {
-        createTestTables();
+        cy.log("allows replacement when target has extra columns");
+        openReplacementModal(SOURCE_TABLE_LABEL);
+        pickTarget(TARGET_EXTRA_COLUMNS_LABEL);
+        SourceReplacement.getModal()
+          .findByText("Column comparison")
+          .should("be.visible");
+        confirmReplacement();
+        waitForReplacementToComplete();
+
+        cy.get<Cypress.Response<{ id: number }>>("@question").then(
+          ({ body }) => {
+            H.visitQuestion(body.id);
+            H.main()
+              .findByText(EXTRA_COLUMNS_TARGET_ROW_VALUE)
+              .should("be.visible");
+
+            H.openNotebook();
+            assertDataSourceIs(TARGET_EXTRA_COLUMNS_LABEL);
+          },
+        );
+
+        cy.log("non-admin users cannot open the data model in data studio");
+        cy.signInAsNormalUser();
+        cy.visit("/data-studio/data");
+        H.main()
+          .findByText("Sorry, you don\u2019t have permission to see that.")
+          .should("be.visible");
+        cy.signInAsAdmin();
+
+        cy.log("blocks replacement when the source table has a sandbox policy");
+        // The question above now uses the extra-columns table. Without a
+        // dependent, the modal shows "Nothing uses this data source" instead.
+        createSourceQuestion("Another question on source");
+        getTableId(SOURCE_TABLE).then((sourceTableId) => {
+          H.getFieldId({ tableId: sourceTableId, name: "category" }).then(
+            (categoryFieldId) => {
+              H.createQuestion({
+                name: "Sandbox filter question",
+                database: WRITABLE_DB_ID,
+                query: {
+                  "source-table": sourceTableId,
+                  filter: ["=", ["field", categoryFieldId, null], "A"],
+                },
+              }).then(({ body: sandboxQuestion }) => {
+                cy.sandboxTable({
+                  table_id: sourceTableId,
+                  card_id: sandboxQuestion.id,
+                  group_id: USER_GROUPS.COLLECTION_GROUP,
+                });
+              });
+            },
+          );
+        });
 
         openReplacementModal(SOURCE_TABLE_LABEL);
         pickTarget(COMPATIBLE_TARGET_LABEL);
-
         SourceReplacement.getModal()
           .findByText(
-            "Nothing uses this data source, so there's nothing to replace.",
+            "This table has row or column security policies that block this replacement.",
           )
           .should("be.visible");
         SourceReplacement.getReplaceButton().should("be.disabled");
@@ -417,7 +419,7 @@ describe(
     });
 
     describe("Entry points", () => {
-      it("opens replacement from the dependency graph and replaces successfully", () => {
+      it("replaces from the dependency graph, then blocks replacement when the source table has foreign keys", () => {
         createTestTables();
         createSourceQuestion("Graph question").as("question");
 
@@ -454,33 +456,24 @@ describe(
             assertDataSourceIs(COMPATIBLE_TARGET_LABEL);
           },
         );
+
+        cy.log("blocks replacement when source table has foreign keys");
+        createChildTableWithForeignKey();
+        createSourceQuestion("Question on source");
+
+        openReplacementModal(SOURCE_TABLE_LABEL);
+        pickTarget(COMPATIBLE_TARGET_LABEL);
+
+        SourceReplacement.getModal()
+          .findByText(
+            "The original table can't be referenced by a foreign key by another table.",
+          )
+          .should("be.visible");
+        SourceReplacement.getReplaceButton().should("be.disabled");
       });
     });
 
     describe("Native queries", () => {
-      it("replaces a table referenced in a native SQL question", () => {
-        createTestTables();
-        createSourceQuestion("MBQL dependent");
-
-        H.createNativeQuestion({
-          name: "Native SQL question",
-          database: WRITABLE_DB_ID,
-          native: { query: `SELECT id, name, amount FROM ${SOURCE_TABLE}` },
-        }).as("nativeQuestion");
-
-        cy.get<Cypress.Response<{ id: number }>>("@nativeQuestion").then(
-          ({ body }) => {
-            replaceSourceWithTarget(
-              SOURCE_TABLE_LABEL,
-              COMPATIBLE_TARGET_LABEL,
-            );
-            H.visitQuestion(body.id);
-            assertTargetRowVisible();
-            H.main().findByText(SOURCE_ROW_VALUE).should("not.exist");
-          },
-        );
-      });
-
       it.skip("replaces a table referenced via a native query snippet", () => {
         createTestTables();
         createSourceQuestion("MBQL dependent");
@@ -522,215 +515,112 @@ describe(
       });
     });
 
-    describe("Access control", () => {
-      it("non-admin users cannot access source replacement", () => {
-        createTestTables();
-        createSourceQuestion("Question on source");
-
-        cy.signInAsNormalUser();
-        cy.visit("/data-studio/data");
-        H.main()
-          .findByText("Sorry, you don\u2019t have permission to see that.")
-          .should("be.visible");
-      });
-    });
-
-    describe("Sandboxing", () => {
-      it("blocks replacement when the source table has a sandbox policy", () => {
-        createTestTables();
-        createSourceQuestion("Question on source");
-
-        getTableId(SOURCE_TABLE).then((sourceTableId) => {
-          H.getFieldId({ tableId: sourceTableId, name: "category" }).then(
-            (categoryFieldId) => {
-              H.createQuestion({
-                name: "Sandbox filter question",
-                database: WRITABLE_DB_ID,
-                query: {
-                  "source-table": sourceTableId,
-                  filter: ["=", ["field", categoryFieldId, null], "A"],
-                },
-              }).then(({ body: sandboxQuestion }) => {
-                cy.sandboxTable({
-                  table_id: sourceTableId,
-                  card_id: sandboxQuestion.id,
-                  group_id: USER_GROUPS.COLLECTION_GROUP,
-                });
-              });
-            },
-          );
-        });
-
-        openReplacementModal(SOURCE_TABLE_LABEL);
-        pickTarget(COMPATIBLE_TARGET_LABEL);
-
-        SourceReplacement.getModal()
-          .findByText(
-            "This table has row or column security policies that block this replacement.",
-          )
-          .should("be.visible");
-        SourceReplacement.getReplaceButton().should("be.disabled");
-      });
-    });
-
     describe("Field ref upgrades", () => {
-      describe("numeric field id on a question directly on the source table", () => {
-        it("rewrites the card's own filter ref after swap", () => {
-          createTestTables();
-          createQuestionUsingFieldIdRef().then(({ cardId }) => {
-            replaceSourceWithTarget(
-              SOURCE_TABLE_LABEL,
-              COMPATIBLE_TARGET_LABEL,
-            );
+      it("rewrites field refs in questions, viz settings, and dashboards after swap", () => {
+        createTestTables();
 
-            H.visitQuestion(cardId);
-            assertTargetRowVisible();
+        cy.log("numeric field id on a question directly on the source table");
+        createQuestionUsingFieldIdRef().then(({ cardId }) => {
+          cy.wrap(cardId).as("directFilterCardId");
+        });
+        createQuestionUsingFieldIdRef().then(({ cardId, amountRef }) => {
+          setCardColumnTitle({
+            cardId,
+            columnRef: amountRef,
           });
+          cy.wrap(cardId).as("directVizSettingsCardId");
+        });
+        createQuestionUsingFieldIdRef()
+          .then((scenario) => buildParameterTargetDashboard(scenario))
+          .as("directParameterDashboardId");
+        createQuestionUsingFieldIdRef()
+          .then((scenario) => buildClickBehaviorDashboard(scenario))
+          .as("directClickBehaviorDashboardId");
+        createQuestionUsingFieldIdRef()
+          .then((scenario) => buildCardSourcedValuesDashboard(scenario))
+          .as("directValuesSourceDashboardId");
+
+        cy.log("numeric field id in a nested card on a parent question");
+        createNestedQuestionUsingFieldIdRef().then(({ cardId }) => {
+          cy.wrap(cardId).as("nestedFilterCardId");
+        });
+        createNestedQuestionUsingFieldIdRef()
+          .then((scenario) => buildParameterTargetDashboard(scenario))
+          .as("nestedParameterDashboardId");
+        createNestedQuestionUsingFieldIdRef()
+          .then((scenario) => buildClickBehaviorDashboard(scenario))
+          .as("nestedClickBehaviorDashboardId");
+        createNestedQuestionUsingFieldIdRef()
+          .then((scenario) => buildCardSourcedValuesDashboard(scenario))
+          .as("nestedValuesSourceDashboardId");
+
+        cy.log(
+          "`_2` suffix ref in a nested card whose parent has a same-name join",
+        );
+        createNestedQuestionUsingJoinSuffixRef().then(({ cardId }) => {
+          cy.wrap(cardId).as("joinSuffixFilterCardId");
+        });
+        createNestedQuestionUsingJoinSuffixRef()
+          .then((scenario) => buildParameterTargetDashboard(scenario))
+          .as("joinSuffixParameterDashboardId");
+        createNestedQuestionUsingJoinSuffixRef()
+          .then((scenario) => buildClickBehaviorDashboard(scenario))
+          .as("joinSuffixClickBehaviorDashboardId");
+
+        replaceSourceWithTarget(SOURCE_TABLE_LABEL, COMPATIBLE_TARGET_LABEL);
+
+        cy.log("direct question: the card's own filter ref");
+        cy.get<number>("@directFilterCardId").then((cardId) => {
+          H.visitQuestion(cardId);
+          assertTargetRowVisible();
         });
 
-        it("rewrites viz settings column_settings ref keys", () => {
-          createTestTables();
-          createQuestionUsingFieldIdRef().then(({ cardId, amountRef }) => {
-            setNestedCardColumnTitle({
-              nestedCardId: cardId,
-              columnRef: amountRef,
-            });
-            replaceSourceWithTarget(
-              SOURCE_TABLE_LABEL,
-              COMPATIBLE_TARGET_LABEL,
-            );
-
-            H.visitQuestion(cardId);
-            assertTargetRowVisible();
-            H.main().findByText("Renamed Column").should("be.visible");
-          });
+        cy.log("direct question: viz settings column_settings ref keys");
+        cy.get<number>("@directVizSettingsCardId").then((cardId) => {
+          H.visitQuestion(cardId);
+          assertTargetRowVisible();
+          H.main().findByText("Renamed Column").should("be.visible");
         });
 
-        it("rewrites a dashboard parameter target", () => {
-          createTestTables();
-          createQuestionUsingFieldIdRef().then((scenario) => {
-            buildParameterTargetDashboard(scenario);
-            replaceSourceWithTarget(
-              SOURCE_TABLE_LABEL,
-              COMPATIBLE_TARGET_LABEL,
-            );
-            assertParameterTargetStillWorks();
-          });
+        cy.log("direct question: dashboard parameter target");
+        assertParameterTargetStillWorks("@directParameterDashboardId");
+
+        cy.log("direct question: dashcard click_behavior parameterMapping");
+        assertClickBehaviorStillWorks("@directClickBehaviorDashboardId");
+
+        cy.log(
+          "direct question: parameter values_source_config card value_field ref",
+        );
+        assertCardSourcedValuesStillWork("@directValuesSourceDashboardId");
+
+        cy.log("nested card: the nested card's filter ref");
+        cy.get<number>("@nestedFilterCardId").then((cardId) => {
+          H.visitQuestion(cardId);
+          assertTargetRowVisible();
         });
 
-        it("rewrites dashcard click_behavior parameterMapping", () => {
-          createTestTables();
-          createQuestionUsingFieldIdRef().then((scenario) => {
-            buildClickBehaviorDashboard(scenario);
-            replaceSourceWithTarget(
-              SOURCE_TABLE_LABEL,
-              COMPATIBLE_TARGET_LABEL,
-            );
-            assertClickBehaviorStillWorks();
-          });
+        cy.log("nested card: dashboard parameter target");
+        assertParameterTargetStillWorks("@nestedParameterDashboardId");
+
+        cy.log("nested card: dashcard click_behavior parameterMapping");
+        assertClickBehaviorStillWorks("@nestedClickBehaviorDashboardId");
+
+        cy.log(
+          "nested card: parameter values_source_config card value_field ref",
+        );
+        assertCardSourcedValuesStillWork("@nestedValuesSourceDashboardId");
+
+        cy.log("`_2` suffix: the nested card's `_2` filter ref");
+        cy.get<number>("@joinSuffixFilterCardId").then((cardId) => {
+          H.visitQuestion(cardId);
+          assertTargetRowVisible();
         });
 
-        it("rewrites a parameter values_source_config card value_field ref", () => {
-          createTestTables();
-          createQuestionUsingFieldIdRef().then((scenario) => {
-            buildCardSourcedValuesDashboard(scenario);
-            replaceSourceWithTarget(
-              SOURCE_TABLE_LABEL,
-              COMPATIBLE_TARGET_LABEL,
-            );
-            assertCardSourcedValuesStillWork();
-          });
-        });
-      });
+        cy.log("`_2` suffix: dashboard parameter target");
+        assertParameterTargetStillWorks("@joinSuffixParameterDashboardId");
 
-      describe("numeric field id in a nested card on a parent question", () => {
-        it("rewrites the nested card's filter ref after swap", () => {
-          createTestTables();
-          createNestedQuestionUsingFieldIdRef().then(({ cardId }) => {
-            replaceSourceWithTarget(
-              SOURCE_TABLE_LABEL,
-              COMPATIBLE_TARGET_LABEL,
-            );
-
-            H.visitQuestion(cardId);
-            assertTargetRowVisible();
-          });
-        });
-
-        it("rewrites a dashboard parameter target", () => {
-          createTestTables();
-          createNestedQuestionUsingFieldIdRef().then((scenario) => {
-            buildParameterTargetDashboard(scenario);
-            replaceSourceWithTarget(
-              SOURCE_TABLE_LABEL,
-              COMPATIBLE_TARGET_LABEL,
-            );
-            assertParameterTargetStillWorks();
-          });
-        });
-
-        it("rewrites dashcard click_behavior parameterMapping", () => {
-          createTestTables();
-          createNestedQuestionUsingFieldIdRef().then((scenario) => {
-            buildClickBehaviorDashboard(scenario);
-            replaceSourceWithTarget(
-              SOURCE_TABLE_LABEL,
-              COMPATIBLE_TARGET_LABEL,
-            );
-            assertClickBehaviorStillWorks();
-          });
-        });
-
-        it("rewrites a parameter values_source_config card value_field ref", () => {
-          createTestTables();
-          createNestedQuestionUsingFieldIdRef().then((scenario) => {
-            buildCardSourcedValuesDashboard(scenario);
-            replaceSourceWithTarget(
-              SOURCE_TABLE_LABEL,
-              COMPATIBLE_TARGET_LABEL,
-            );
-            assertCardSourcedValuesStillWork();
-          });
-        });
-      });
-
-      describe("`_2` suffix ref in a nested card whose parent has a same-name join", () => {
-        it("rewrites the nested card's `_2` filter ref after swap", () => {
-          createTestTables();
-          createNestedQuestionUsingJoinSuffixRef().then(({ cardId }) => {
-            replaceSourceWithTarget(
-              SOURCE_TABLE_LABEL,
-              COMPATIBLE_TARGET_LABEL,
-            );
-
-            H.visitQuestion(cardId);
-            assertTargetRowVisible();
-          });
-        });
-
-        it("rewrites a dashboard parameter target", () => {
-          createTestTables();
-          createNestedQuestionUsingJoinSuffixRef().then((scenario) => {
-            buildParameterTargetDashboard(scenario);
-            replaceSourceWithTarget(
-              SOURCE_TABLE_LABEL,
-              COMPATIBLE_TARGET_LABEL,
-            );
-            assertParameterTargetStillWorks();
-          });
-        });
-
-        it("rewrites dashcard click_behavior parameterMapping", () => {
-          createTestTables();
-          createNestedQuestionUsingJoinSuffixRef().then((scenario) => {
-            buildClickBehaviorDashboard(scenario);
-            replaceSourceWithTarget(
-              SOURCE_TABLE_LABEL,
-              COMPATIBLE_TARGET_LABEL,
-            );
-            assertClickBehaviorStillWorks();
-          });
-        });
+        cy.log("`_2` suffix: dashcard click_behavior parameterMapping");
+        assertClickBehaviorStillWorks("@joinSuffixClickBehaviorDashboardId");
       });
     });
   },
@@ -801,29 +691,9 @@ function createTestTables() {
   H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 }
 
-function createTestTablesWithForeignKey() {
-  dropAllTestTables();
-
+function createChildTableWithForeignKey() {
   H.queryWritableDB(
     `
-    CREATE TABLE ${SOURCE_TABLE} (
-      id INTEGER PRIMARY KEY,
-      name VARCHAR(255),
-      amount NUMERIC(10,2),
-      category VARCHAR(100)
-    );
-    INSERT INTO ${SOURCE_TABLE} VALUES
-      (1, 'Source Value 1', 100.50, 'A');
-
-    CREATE TABLE ${COMPATIBLE_TARGET} (
-      id INTEGER PRIMARY KEY,
-      name VARCHAR(255),
-      amount NUMERIC(10,2),
-      category VARCHAR(100)
-    );
-    INSERT INTO ${COMPATIBLE_TARGET} VALUES
-      (10, 'Compatible Target Value', 300.00, 'C');
-
     CREATE TABLE ${CHILD_TABLE} (
       id INTEGER PRIMARY KEY,
       source_id INTEGER REFERENCES ${SOURCE_TABLE}(id),
@@ -835,7 +705,7 @@ function createTestTablesWithForeignKey() {
     "postgres",
   );
 
-  H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+  H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: CHILD_TABLE });
 }
 
 function getTableId(tableName: string) {
@@ -849,6 +719,10 @@ function openReplacementModal(sourceTableLabel: string) {
   // "Nothing uses this data source" for a table that does have dependents.
   H.waitForBackfillComplete();
 
+  // Register the alias again so that the wait below skips earlier requests.
+  cy.intercept("GET", "/api/ee/dependencies/graph/dependents*").as(
+    "dependents",
+  );
   H.DataModel.visitDataStudio();
 
   H.DataModel.TablePicker.getDatabase("Writable Postgres12").click();
@@ -879,7 +753,7 @@ function confirmReplacement() {
       // The affected-items count comes from an async dependents computation
       // that can exceed the default 4s timeout, so wait longer for the tab.
       name: /\d+ items? will be changed/,
-      timeout: 15000,
+      timeout: 30_000,
     })
     .should("be.visible");
 
@@ -896,7 +770,7 @@ function confirmReplacement() {
 
 function waitForReplacementToComplete() {
   const POLL_INTERVAL_MS = 250;
-  const POLL_TIMEOUT_MS = 30_000;
+  const POLL_TIMEOUT_MS = 60_000;
   const MAX_ATTEMPTS = POLL_TIMEOUT_MS / POLL_INTERVAL_MS;
 
   cy.wait("@replaceSource").then((interception) => {
@@ -1292,7 +1166,7 @@ function buildParameterTargetDashboard({
   cardId,
   categoryRef,
 }: FieldRefScenario) {
-  H.createDashboard({
+  return H.createDashboard({
     name: "Parameter target dashboard",
     parameters: [categoryStringParameter(CATEGORY_FILTER_ID)],
   }).then(({ body: dashboard }) => {
@@ -1309,7 +1183,7 @@ function buildParameterTargetDashboard({
         ],
       },
     });
-    cy.wrap(dashboard.id).as("dashboardId");
+    return cy.wrap(dashboard.id);
   });
 }
 
@@ -1317,7 +1191,7 @@ function buildClickBehaviorDashboard({
   cardId,
   categoryRef,
 }: FieldRefScenario) {
-  H.createDashboard({
+  return H.createDashboard({
     name: "Click behavior dashboard",
     parameters: [categoryStringParameter(CATEGORY_FILTER_ID)],
   }).then(({ body: dashboard }) => {
@@ -1333,11 +1207,15 @@ function buildClickBehaviorDashboard({
           },
         ],
         visualization_settings: {
-          click_behavior: crossfilterClickBehavior(CATEGORY_FILTER_ID),
+          column_settings: {
+            '["name","category"]': {
+              click_behavior: crossfilterClickBehavior(CATEGORY_FILTER_ID),
+            },
+          },
         },
       },
     });
-    cy.wrap(dashboard.id).as("dashboardId");
+    return cy.wrap(dashboard.id);
   });
 }
 
@@ -1345,7 +1223,7 @@ function buildCardSourcedValuesDashboard({
   cardId,
   categoryRef,
 }: FieldRefScenario) {
-  H.createDashboard({
+  return H.createDashboard({
     name: "Card-sourced values dashboard",
     parameters: [
       {
@@ -1371,18 +1249,20 @@ function buildCardSourcedValuesDashboard({
         ],
       },
     });
-    cy.wrap(dashboard.id).as("dashboardId");
+    return cy.wrap(dashboard.id);
   });
 }
 
-function assertParameterTargetStillWorks() {
-  cy.get<number>("@dashboardId").then((dashboardId) => {
+function assertParameterTargetStillWorks(dashboardAlias: string) {
+  cy.get<number>(dashboardAlias).then((dashboardId) => {
     H.visitDashboard(dashboardId);
     assertDashcardHasRows({
       visible: [COMPATIBLE_TARGET_ROW_VALUE, ANOTHER_TARGET_ROW_VALUE],
       hidden: [],
     });
+    interceptDashcardQuery();
     H.toggleFilterWidgetValues(["D"]);
+    cy.wait("@dashcardQuery");
     assertDashcardHasRows({
       visible: [ANOTHER_TARGET_ROW_VALUE],
       hidden: [COMPATIBLE_TARGET_ROW_VALUE],
@@ -1390,15 +1270,17 @@ function assertParameterTargetStillWorks() {
   });
 }
 
-function assertClickBehaviorStillWorks() {
-  cy.get<number>("@dashboardId").then((dashboardId) => {
+function assertClickBehaviorStillWorks(dashboardAlias: string) {
+  cy.get<number>(dashboardAlias).then((dashboardId) => {
     H.visitDashboard(dashboardId);
     assertDashcardHasRows({
       visible: [COMPATIBLE_TARGET_ROW_VALUE, ANOTHER_TARGET_ROW_VALUE],
       hidden: [],
     });
+    interceptDashcardQuery();
     cy.findByTestId("dashcard").findAllByText("D").first().click();
     H.filterWidget().should("contain.text", "D");
+    cy.wait("@dashcardQuery");
     assertDashcardHasRows({
       visible: [ANOTHER_TARGET_ROW_VALUE],
       hidden: [COMPATIBLE_TARGET_ROW_VALUE],
@@ -1406,8 +1288,8 @@ function assertClickBehaviorStillWorks() {
   });
 }
 
-function assertCardSourcedValuesStillWork() {
-  cy.get<number>("@dashboardId").then((dashboardId) => {
+function assertCardSourcedValuesStillWork(dashboardAlias: string) {
+  cy.get<number>(dashboardAlias).then((dashboardId) => {
     H.visitDashboard(dashboardId);
     assertDashcardHasRows({
       visible: [COMPATIBLE_TARGET_ROW_VALUE, ANOTHER_TARGET_ROW_VALUE],
@@ -1416,10 +1298,12 @@ function assertCardSourcedValuesStillWork() {
     H.filterWidget().click();
     H.popover().findByText("C").should("be.visible");
     H.popover().findByText("D").should("be.visible");
+    interceptDashcardQuery();
     H.popover().within(() => {
       cy.findByText("D").click();
       cy.button("Add filter").click();
     });
+    cy.wait("@dashcardQuery");
     assertDashcardHasRows({
       visible: [ANOTHER_TARGET_ROW_VALUE],
       hidden: [COMPATIBLE_TARGET_ROW_VALUE],
@@ -1449,11 +1333,11 @@ function crossfilterClickBehavior(parameterId: string) {
   };
 }
 
-function setNestedCardColumnTitle({
-  nestedCardId,
+function setCardColumnTitle({
+  cardId,
   columnRef,
 }: {
-  nestedCardId: number;
+  cardId: number;
   columnRef: ConcreteFieldReference;
 }) {
   // Legacy column_settings keys store refs with null options. See
@@ -1464,7 +1348,7 @@ function setNestedCardColumnTitle({
     null,
   ] as ConcreteFieldReference;
   const columnKey = JSON.stringify(["ref", legacyRef]);
-  return cy.request("PUT", `/api/card/${nestedCardId}`, {
+  return cy.request("PUT", `/api/card/${cardId}`, {
     visualization_settings: {
       column_settings: {
         [columnKey]: { column_title: "Renamed Column" },
@@ -1484,6 +1368,12 @@ function assertTargetRowVisible() {
 
 function assertDataSourceIs(tableLabel: string) {
   cy.findByTestId("data-step-cell").should("have.text", tableLabel);
+}
+
+function interceptDashcardQuery() {
+  cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+    "dashcardQuery",
+  );
 }
 
 function assertDashcardHasRows({

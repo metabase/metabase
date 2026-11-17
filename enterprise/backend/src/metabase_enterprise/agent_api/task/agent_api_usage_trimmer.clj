@@ -12,9 +12,7 @@
    [metabase-enterprise.agent-api.db :as agent-api.db]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.task.core :as task]
-   [metabase.util.log :as log])
-  (:import
-   (org.quartz DisallowConcurrentExecution)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,9 +29,11 @@
         (let [calls (agent-api.db/delete-call-logs-created-before! cutoff)]
           (log/infof "Agent API usage log cleanup complete. Deleted %d call rows." (or calls 0)))))))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Delete old Agent API usage log rows"}
-  AgentApiUsageTrimmer [_ctx]
+(task/defjob AgentApiUsageTrimmer
+  "Delete old Agent API usage log rows"
+  {:saved-class "metabase_enterprise.agent_api.task.agent_api_usage_trimmer.AgentApiUsageTrimmer"
+   :concurrent? false}
+  [_ctx]
   (trim-old-agent-api-usage-data!))
 
 (defmethod task/init! ::AgentApiUsageTrimmer

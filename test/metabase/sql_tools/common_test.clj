@@ -48,3 +48,15 @@
           (is (= #{} (sql-tools.common/table-ids-by-name db-id ["no_such_table"]))))
         (testing "no names requested returns empty rather than the whole catalog"
           (is (= #{} (sql-tools.common/table-ids-by-name db-id []))))))))
+
+(deftest find-table-or-transform-uses-synced-default-schema-test
+  (let [database {:default-schema "analytics"}
+        tables   [{:id 1 :name "orders" :schema "analytics"}
+                  {:id 2 :name "orders" :schema "public"}]]
+    (testing "an unqualified reference uses the Database's synced default schema"
+      (is (= {:table 1}
+             (sql-tools.common/find-table-or-transform :h2 database tables [] {:table "orders"}))))
+    (testing "an explicit schema takes precedence"
+      (is (= {:table 2}
+             (sql-tools.common/find-table-or-transform
+              :h2 database tables [] {:table "orders" :schema "public"}))))))

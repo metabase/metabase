@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
-import { MetabotDataStudioButton } from "metabase/metabot/components/MetabotDataStudioButton";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import {
   Box,
@@ -25,7 +24,6 @@ export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   tabs?: ReactNode;
   actions?: ReactNode;
   breadcrumbs: ReactNode;
-  showMetabotButton?: boolean;
   showAppSwitcher?: boolean;
 }
 
@@ -37,7 +35,6 @@ export const PaneHeader = ({
   tabs,
   actions,
   breadcrumbs,
-  showMetabotButton,
   showAppSwitcher = true,
   ...rest
 }: PaneHeaderProps) => {
@@ -47,7 +44,6 @@ export const PaneHeader = ({
         {breadcrumbs}
 
         <Group ml="auto" gap="lg" className={S.ButtonGroup}>
-          {showMetabotButton && <MetabotDataStudioButton />}
           {showAppSwitcher && <AppSwitcher />}
         </Group>
       </Flex>
@@ -63,7 +59,12 @@ export const PaneHeader = ({
             <Group align="center" gap="sm" wrap="nowrap">
               {icon && <FixedSizeIcon name={icon} c="core-brand" size={20} />}
               {title}
-              {menu}
+              {menu && (
+                // The menu button is taller than the title, keep it from growing the header
+                <Flex h="var(--mantine-h3-line-height)" align="center">
+                  {menu}
+                </Flex>
+              )}
             </Group>
           )}
           {tabs}

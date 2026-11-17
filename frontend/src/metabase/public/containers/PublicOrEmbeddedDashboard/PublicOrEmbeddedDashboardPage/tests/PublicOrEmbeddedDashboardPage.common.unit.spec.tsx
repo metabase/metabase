@@ -1,5 +1,9 @@
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
-import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
+import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
+import {
+  createMockActionDashboardCard,
+  createMockImplicitQueryAction,
+} from "metabase-types/api/mocks";
 
 import { type SetupOpts, setup } from "./setup";
 
@@ -15,6 +19,28 @@ const setupCommon = async (opts?: Partial<SetupOpts>) => {
 describe("PublicOrEmbeddedDashboardPage", () => {
   beforeEach(() => {
     setupLastDownloadFormatEndpoints();
+  });
+
+  it("shows the grid skeleton, not the empty state, while the dashboard loads", async () => {
+    const { releaseDashboardRequest } = await setupCommon({
+      holdDashboardRequest: true,
+    });
+
+    try {
+      expect(
+        await screen.findByTestId("dashboard-grid-skeleton"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("This dashboard is empty"),
+      ).not.toBeInTheDocument();
+    } finally {
+      releaseDashboardRequest();
+    }
+
+    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("dashboard-grid-skeleton"),
+    ).not.toBeInTheDocument();
   });
 
   it("should display dashboard tabs", async () => {
@@ -84,5 +110,31 @@ describe("PublicOrEmbeddedDashboardPage", () => {
     await waitForLoaderToBeRemoved();
 
     expect(screen.getByText("This dashboard is empty")).toBeInTheDocument();
+  });
+
+  it("should hide action buttons on a static embed dashboard (metabase#34395)", async () => {
+    await setupCommon({
+      hasEmbedBranding: true,
+      extraDashcards: [
+        createMockActionDashboardCard({
+          id: 100,
+          action: createMockImplicitQueryAction({ name: "Create" }),
+          visualization_settings: {
+            ...createMockActionDashboardCard().visualization_settings,
+            "button.label": "Create row",
+          },
+        }),
+      ],
+    });
+
+    expect(
+      screen.getByRole("heading", { name: DASHBOARD_TITLE }),
+    ).toBeInTheDocument();
+    const grid = screen.getByTestId("dashboard-grid");
+    expect(within(grid).getAllByTestId("dashcard")).toHaveLength(1);
+    expect(within(grid).queryByText("Create row")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Powered by Metabase" }),
+    ).toBeInTheDocument();
   });
 });

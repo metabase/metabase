@@ -2,18 +2,21 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { selectTableQueryMetadata } from "metabase/api";
+import type {
+  OmniPickerQuestionItem,
+  OmniPickerTableItem,
+} from "metabase/common/components/Pickers";
 import {
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import { TableBreadcrumbs } from "metabase/metadata/components";
-import { getMetadata } from "metabase/metadata-store";
 import { useDispatch, useStore } from "metabase/redux";
 import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import { Box, Button, Flex, Icon, Text } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import type { TableId } from "metabase-types/api";
 
 import { ClauseStep } from "../ClauseStep";
 
@@ -31,9 +34,9 @@ export function DataStep({
   onChange,
 }: DataStepProps) {
   const [isOpened, setIsOpened] = useState(false);
-  const tableId = query ? Lib.sourceTableOrCardId(query) : undefined;
+  const tableId = query ? Lib.primarySourceTableId(query) : undefined;
   const table =
-    query && tableId ? Lib.tableOrCardMetadata(query, tableId) : undefined;
+    query && tableId != null ? Lib.tableMetadata(query, tableId) : undefined;
   const tableInfo =
     query && table ? Lib.displayInfo(query, stageIndex, table) : undefined;
   const tableValue =
@@ -41,17 +44,20 @@ export function DataStep({
   const store = useStore();
   const dispatch = useDispatch();
 
-  const handleChange = async (tableId: TableId) => {
+  const handleChange = async (
+    item: OmniPickerTableItem | OmniPickerQuestionItem,
+  ) => {
+    if (item.model !== "table") {
+      return;
+    }
+    const tableId = item.id;
     await dispatch(fetchTableMetadataAndForeignKeys({ id: tableId }));
     const state = store.getState();
     const { data: tableMetadata } = selectTableQueryMetadata({ id: tableId })(
       state,
     );
     const databaseId = checkNotNull(tableMetadata).db_id;
-    const metadataProvider = Lib.metadataProvider(
-      databaseId,
-      getMetadata(state),
-    );
+    const metadataProvider = selectMetadataProvider(state, databaseId);
     const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
     if (table) {
       const newQuery = Lib.queryFromTableOrCardMetadata(
@@ -75,9 +81,8 @@ export function DataStep({
 
         {isNew ? (
           <Button
-            variant="subtle"
-            p={0}
-            c="text-primary"
+            variant="transparent"
+            size="compact-md"
             rightSection={<Icon name="chevrondown" />}
             onClick={() => setIsOpened(true)}
           >

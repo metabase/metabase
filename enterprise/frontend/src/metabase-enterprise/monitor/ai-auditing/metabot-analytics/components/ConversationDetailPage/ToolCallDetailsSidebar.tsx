@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef } from "react";
 import { t } from "ttag";
 
-import { ToolCallDetailsContent } from "metabase/metabot/components/MetabotChat/MetabotAgentToolCallMessage";
+import { ToolCallDetailsContent } from "metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart";
 import type { MetabotDebugToolCallMessage } from "metabase/metabot/state";
 import { ActionIcon, Badge, Flex, Icon, Stack, Text } from "metabase/ui";
 
@@ -39,6 +39,7 @@ export function ToolCallDetailsSidebar({
         <Flex align="center" justify="space-between" gap="lg" wrap="nowrap">
           <Text id={headingId} fw="bold">{t`Tool Call`}</Text>
           <ActionIcon
+            variant="subtle"
             ref={closeButtonRef}
             aria-label={t`Close`}
             onClick={onClose}

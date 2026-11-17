@@ -19,13 +19,11 @@
    [toucan2.core :as t2]))
 
 (defn- effective-children-ids
-  "Returns effective children ids for collection."
-  [collection _permissions-set]
-  (into []
-        (comp (map :id)
-              (remove #(= % (collection/trash-collection-id)))
-              (filter #(collection/visible-collection-id? % :write)))
-        (collection/descendants-flat collection false)))
+  "The ids of the unarchived descendants of `collection` the current user writes, answered together."
+  [collection]
+  (let [ids (into [] (comp (map :id) (remove #(= % (collection/trash-collection-id))))
+                  (collection/descendants-flat collection false))]
+    (filterv (collection/visible-collection-ids ids :write) ids)))
 
 (defmulti present-model-items
   "Given a model and a list of items, return the items in the format the API client expects. Note that order does not
@@ -58,12 +56,14 @@
 
 (defmethod present-model-items :model/Card [_ cards]
   (->> (t2/hydrate (stale.db/stale-cards (set (map :id cards))) :can_write :can_delete :can_restore [:collection :effective_location] :dashboard_count [:dashboard :moderation_status])
+       (map #(assoc % :fully_parameterized (queries/fully-parameterized? %)))
        present-collections
        (map (fn [card]
               (-> card
                   (assoc :model (if (queries/model? card) "dataset" "card"))
-                  (assoc :fully_parameterized (queries/fully-parameterized? card))
-                  (dissoc :dataset_query))))))
+                  ;; Selected so `queries/model?` above can read :type and so the Card schema upgrade
+                  ;; can run; none of them are part of the listing payload.
+                  (dissoc :dataset_query :type :result_metadata :dimensions :dimension_mappings))))))
 
 (defn- annotate-dashboard-with-collection-info
   "For dashboards, we want `here` and `location` since they can contain cards as children."
@@ -94,9 +94,9 @@
   - `is_recursive` - if true, return entities from all children of the collection, not just the direct children (default: false)
   - `sort_column` - the column to sort by (default: name)
   - `sort_direction` - the direction to sort by (default: asc)"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt [:= :root]]]]
-   {:keys [before_date is_recursive sort_column sort_direction]} :- [:map
+   {:keys [before_date is_recursive sort_column sort_direction]} :- [:map {:closed true}
                                                                      [:before_date    {:optional true}  [:maybe :string]]
                                                                      [:is_recursive   {:default false}  :boolean]
                                                                      [:sort_column    {:default :name}  [:enum :name :last_used_at]]
@@ -108,14 +108,14 @@
                                 (throw (ex-info (str "invalid before_date: '"
                                                      before_date
                                                      "' expected format: 'yyyy-MM-dd'")
-                                                {:status 400}))))
+                                                {:status-code 400}))))
                          (t/minus (t/local-date) (t/months 6)))
         collection     (if (= id :root)
                          collection/root-collection
                          (stale.db/collection id))
         _              (api/read-check collection)
         collection-ids (->> (if is_recursive
-                              (conj (effective-children-ids collection @api/*current-user-permissions-set*)
+                              (conj (effective-children-ids collection)
                                     id)
                               [id])
                             (mapv (fn root->nil [x] (if (= :root x) nil x)))

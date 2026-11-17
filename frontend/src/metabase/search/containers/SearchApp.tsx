@@ -21,16 +21,12 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import type { Location, To } from "metabase/router";
 import { queryToSearch, useLocation, useNavigate } from "metabase/router";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
-import {
-  SearchBody,
-  SearchControls,
-  SearchMain,
-  SearchResultContainer,
-} from "metabase/search/containers/SearchApp.styled";
 import { SearchResultSection } from "metabase/search/containers/SearchResultSection";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
-import { Box, Group, Paper, Text } from "metabase/ui";
+import { Box, Flex, Group, Paper, Stack, Text } from "metabase/ui";
 import type { SearchRequest } from "metabase-types/api";
+
+import S from "./SearchApp.module.css";
 
 const getPageFromLocation = (location: Location) => {
   const page = new URLSearchParams(location.search).get("page");
@@ -100,15 +96,15 @@ export function SearchApp() {
   const list = useMemo(() => data?.data ?? [], [data?.data]);
 
   return (
-    <SearchMain direction="column" gap="2rem" m="auto" data-testid="search-app">
+    <Flex className={S.main} data-testid="search-app">
       <Text size="xl" fw={700}>
         {jt`Results for "${searchText}"`}
       </Text>
-      <SearchBody justify="center">
-        <SearchControls pb="xl">
+      <Flex className={S.body}>
+        <Stack className={S.controls}>
           <SearchSidebar value={searchFilters} onChange={onFilterChange} />
-        </SearchControls>
-        <SearchResultContainer>
+        </Stack>
+        <Box flex={1}>
           {(error || isFetching) && (
             <LoadingAndErrorWrapper error={error} loading={isFetching} />
           )}
@@ -147,8 +143,8 @@ export function SearchApp() {
               </Group>
             </Box>
           )}
-        </SearchResultContainer>
-      </SearchBody>
-    </SearchMain>
+        </Box>
+      </Flex>
+    </Flex>
   );
 }

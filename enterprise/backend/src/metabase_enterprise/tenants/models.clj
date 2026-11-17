@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -31,7 +32,7 @@
   [tenant]
   (let [tenant-collection-id (tenants.db/insert-collection! {:type      collection/tenant-specific-root-collection-type
                                                              :name      (format "Tenant Collection: %s" (:name tenant))
-                                                             :namespace "tenant-specific"})]
+                                                             :namespace :tenant-specific})]
     (u/prog1 (assoc tenant :tenant_collection_id tenant-collection-id)
       ;; The API layer is responsible for doing validation with nice error messages, here we just throw as a final layer
       ;; of defense.
@@ -44,7 +45,8 @@
 
 (doto :model/Tenant
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/change-log))
 
 (methodical/defmethod t2/batched-hydrate [:model/Tenant :member_count]
   [_model k tenants]
@@ -76,7 +78,7 @@
   therefore sees a permissive `:map-of` that keeps every entry, and the `:fn` re-checks the strict shape afterwards,
   so an `@`-prefixed key is a 400."
   [:and
-   [:map-of ms/KeywordOrString :any]
+   (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])
    (mu/with-api-error-message
     [:fn #(mr/validate StrictAttributes %)]
     (deferred-tru "attribute keys must be a keyword or string and must not start with `@`"))])

@@ -21,6 +21,11 @@ on:
         required: false
         default: ""
 
+# Ensures we don't try to run multiple releases for the same version at the same time as this leads to races
+# for tagging/pushing etc.
+concurrency:
+  group: release-auto-${{ inputs.version }}
+
 # This workflow only runs on dispatch. Given a major version and a kind, it
 # infers the next patch or minor to cut and kicks off that release. Cron
 # scheduling lives in the schedule-* trigger workflows, which decide what to
@@ -40,7 +45,7 @@ jobs:
             echo "This workflow should not run on forks."
             exit 1
           fi
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             release
@@ -147,6 +152,14 @@ jobs:
             echo ""
             echo "**Triggered by:** @${{ github.actor }}"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Send release failure message
+        if: failure() || cancelled()
+        uses: ./.github/actions/notify-release-failure
+        with:
+          title: Auto ${{ inputs.kind }} release for v${{ inputs.version }}
+          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
 
   trigger-release:
     name: Release ${{ needs.prepare.outputs.version }}

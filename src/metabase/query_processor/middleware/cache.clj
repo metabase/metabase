@@ -16,6 +16,7 @@
    [metabase.cache.core :as cache]
    [metabase.config.core :as config]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
@@ -40,6 +41,7 @@
     [initial-metadata row-1 row-2 ... row-n final-metadata]"
   3)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *backend*
   "Current cache backend. Dynamically rebindable primary for test purposes."
   (i/cache-backend (config/config-kw :mb-qp-cache-backend)))
@@ -72,6 +74,7 @@
 (defn- schedule-purge! [backend]
   (grouper/submit! @purge-queue backend))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *in-fn*
   "The `in-fn` provided by [[impl/do-with-serialization]]."
   nil)
@@ -84,6 +87,7 @@
                (m/update-existing object :json_query lib/prepare-for-serialization)
                object))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *result-fn*
   "The `result-fn` provided by [[impl/do-with-serialization]]."
   nil)
@@ -201,7 +205,7 @@
         (u/prog1 (qp.pipeline/*reduce* (cached-results-rff rff query-hash) metadata reducible-rows)
           (log/trace "All cached rows reduced"))))))
 
-(def ^:dynamic *refresh-lease-duration-ms*
+(def ^:private refresh-lease-duration-ms
   "How long a claimed stale-while-revalidate refresh lease is honored before another process may take it over (e.g. if
   the claiming process crashed mid-refresh). Should comfortably exceed a normal query's run time."
   (u/minutes->ms 5))
@@ -248,7 +252,7 @@
 (defn- not-too-stale?
   "Whether an entry last written at `updated-at` is close enough to `invalidated-at` (the strategy's freshness
   boundary) that serving it is still serving roughly what the caller asked for -- within
-  [[*refresh-lease-duration-ms*]] of it.
+  [[refresh-lease-duration-ms]] of it.
 
   Serving an expired entry is only defensible while its replacement is on the way, and that is the one thing an
   expired entry doesn't tell you: it can sit untouched for weeks until the first request arrives, wins the lease, and
@@ -259,7 +263,7 @@
   [updated-at invalidated-at]
   (boolean (and updated-at
                 (not (t/before? (t/instant updated-at)
-                                (t/minus (t/instant invalidated-at) (t/millis *refresh-lease-duration-ms*)))))))
+                                (t/minus (t/instant invalidated-at) (t/millis refresh-lease-duration-ms)))))))
 
 (mu/defn- maybe-serve-cached-results :- [:tuple
                                          #_status [:enum ::fresh ::stale ::miss ::canceled]
@@ -272,9 +276,9 @@
     - `[::miss nil]`     -- no entry; or it's expired, or nearly so, and *this* process won the lease; or it's too
                             stale to serve to anyone. The caller must recompute.
     - `[::canceled nil]` -- the request was canceled."
-  [ignore-cache?
-   query-hash :- bytes?
-   strategy   :- :map
+  [ignore-cache? :- [:maybe :boolean]
+   query-hash    :- bytes?
+   strategy   :- ::lib.schema/cache-strategy
    rff        :- ::qp.schema/rff]
   (if ignore-cache?
     [::miss nil]
@@ -297,7 +301,7 @@
                          updated-at
                          (fresh-duration-ms strategy)
                          (cache/query-caching-early-refresh-ratio))
-                        (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*))
+                        (i/try-acquire-refresh-lease! *backend* query-hash refresh-lease-duration-ms))
                    nil
 
                    ;; within its TTL -> serve the fresh entry
@@ -306,7 +310,7 @@
                      [::fresh result])
 
                    ;; expired, and we won the refresh lease -> recompute (don't serve stale)
-                   (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*)
+                   (i/try-acquire-refresh-lease! *backend* query-hash refresh-lease-duration-ms)
                    nil
 
                    ;; another process is refreshing, and the entry is still close enough to what
@@ -352,7 +356,8 @@
             (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))
 
 (mu/defn- run-query-with-cache :- :any
-  [qp {:keys [cache-strategy middleware], :as query} :- ::qp.schema/any-query
+  [qp                                                 :- fn?
+   {:keys [cache-strategy middleware], :as query} :- ::qp.schema/any-query
    rff                                               :- ::qp.schema/rff]
   ;; Query will already have `info.hash` if it's a userland query. It's not the same hash, because this is calculated
   ;; after normalization, instead of before. This is necessary to make caching work properly with sandboxed users, see

@@ -1,0 +1,184 @@
+---
+name: api-changelog
+description: Draft or audit the REST API changelog (docs/developers-guide/api-changelog.md) by semantically diffing the checked-in OpenAPI spec between two git refs. Use when asked "has the API changelog been updated", "what are the breaking API changes in vNN", when cutting a release branch, or when reviewing whether a PR needs a changelog entry.
+---
+
+# API changelog
+
+Answers "what changed in the REST API between two versions, and is the changelog
+honest about it?"
+
+## Ground truth
+
+`resources/openapi/openapi.json` is generated from the Malli endpoint schemas, so
+the spec at any git ref is what the API actually was at that ref. Diff the spec,
+do not read endpoint source or boot a server.
+
+Response coverage is partial: about 199 response entries declare a real schema
+and are compared, but roughly 1,700 are description-only `2XX/4XX/5XX` stubs. For
+an endpoint with no declared response schema, a response-shape change is
+invisible here. Say so rather than implying the diff is complete.
+
+### Check the spec is fresh first - it usually is not
+
+The self-healing CI job (`.github/workflows/openapi-check.yml`) only runs on PRs
+labelled `openapi-self-healing`, so the committed spec drifts behind master by
+default. Verify before trusting a diff:
+
+```bash
+./bin/mage openapi-staleness
+```
+
+If the source is newer, regenerate before diffing the new ref:
+
+```bash
+bun run generate-openapi   # rewrites resources/openapi/openapi.json in place
+```
+
+This staleness check only matters when you are diffing the committed spec.
+`--refs` (below) generates each ref's spec from its own source, so it is not
+subject to this drift at all - prefer it.
+
+When you do read a committed spec, a change present in source but absent from
+that spec is a **false negative**: the diff will not report it, and an empty
+result is indistinguishable from an API that did not change. Confirm suspected
+gaps with `grep -rn "defendpoint" src/.../api.clj`.
+
+## Steps
+
+1. Pick the refs. Default old ref = the previous release branch
+   (`origin/release-x.63.x`), new ref = the one being released
+   (`origin/release-x.64.x`) or `origin/master`. Confirm with the user if
+   ambiguous. `git fetch origin` first.
+
+2. Extract and diff:
+
+   ```bash
+   # Preferred: generate both specs from source. ~2 min (two JVM boots), no drift.
+   ./bin/mage openapi-diff --refs origin/release-x.63.x origin/release-x.64.x --severity breaking
+
+   # Fast, but reads the committed spec, which lags source. Warns when it does.
+   ./bin/mage openapi-diff --refs --committed origin/release-x.63.x origin/release-x.64.x
+
+   # Two spec files directly.
+   ./bin/mage openapi-diff /tmp/old.json /tmp/new.json --severity breaking
+   ```
+
+   `--refs` checks each ref out into a throwaway worktree and runs that ref's own
+   `generate-openapi-spec`, so it is not limited to refs that carry a committed spec
+   and never touches your checkout. Very old refs may not build with the current
+   toolchain; it falls back to the committed spec and says so when that happens.
+   Prefer it. `--committed` compares whatever blob each ref happens to carry, and
+   when a release branch and master share a stale one it reports far fewer findings
+   than the API actually changed - an artifact of the spec, not of the API.
+
+### Start from the grouped view
+
+   A single upstream change can produce hundreds of findings. `--grouped` collapses
+   identical findings and sorts by blast radius, which is the shape you draft from:
+
+   ```bash
+   ./bin/mage openapi-diff --refs <old> <new> --severity breaking --grouped
+   ```
+
+   On the real v63 -> master delta that turns 239 breaking findings into 113
+   distinct changes. The top entry spans 217 endpoints and is one PR (#82447,
+   closing `mu/defn` argument schemas) - **one changelog entry, not 217**.
+
+   Drop `--grouped` when you need the per-endpoint view to check a specific route.
+
+   A change spanning many endpoints is usually one upstream PR: write it once, name
+   the cause, and say which endpoints it spans. The long tail of single-endpoint
+   changes is where the individually-interesting entries are - the v63 -> master run
+   surfaced a `pinned_state` -> `pinned-state` query param rename there.
+
+   Findings are classified and sorted breaking-first.
+
+   **A change is breaking when an existing caller, sending exactly what it sent
+   before, can now fail or get a different result.** That covers three cases: the
+   API requires more of the request, provides less in the response, or behaves
+   differently for the same request. The first two invert between request and
+   response:
+
+   | | Breaking | Not breaking |
+   |---|---|---|
+   | **Request** | field or param becomes required; type, enum, or bound (`minimum`, `minLength`, `pattern`, ...) narrowed; `additionalProperties: false` added; default changed or dropped | new *optional* field or param; type, enum, or bound widened; field made nullable; schema opened; default added |
+   | **Response** | field removed or no longer always returned; field may now be `null`; new enum value | new field returned; field that was nullable never is |
+   | **Endpoint** | removed | added |
+
+   When the tool cannot tell, it ranks the change breaking: a false alarm costs
+   you one look, a miss ships undocumented. Two rules follow from that, not from
+   the definition, so check them before drafting an entry:
+
+   - **A removed request field** is ranked breaking because the spec does not say
+     whether the server rejects or acts on keys it does not declare. If the
+     endpoint ignores unknown keys, the removal is not breaking.
+   - **A change to a schema keyword the tool does not model** is ranked breaking
+     so that it is never hidden. Read the finding to decide.
+
+   A reworded description, title, or example is DOC_ONLY.
+
+   Adding an optional parameter is not breaking. Returning extra data is not
+   breaking. Existing callers keep working in both cases.
+
+   Start from `--severity breaking`. The long tail of API change is additive
+   (a public Stripe-spec diff found 663 of 679 changes additive); reading the
+   full diff to find the breaking few is how entries get missed.
+
+   **Identical or near-identical committed specs do not mean the API did not
+   change.** Two refs often carry the same stale blob, so `--committed` can report
+   zero findings for a pair that generating from source shows has removed endpoints.
+   Before reporting "no API surface changes", re-run without `--committed`. Only a
+   clean generated diff supports that conclusion.
+
+3. Review the classification. The tool decides severity structurally, but two
+   cases still need your judgement:
+   - **A removed + added pair is often one endpoint moving** (method change, or a
+     param moving between query/path/body). The tool reports two findings; read
+     the docstrings to pair them and write ONE changelog entry describing the move.
+   - **An `ADDITIVE` finding can still be worth an entry** when it is a new
+     endpoint clients should know about. Additive means "will not break existing
+     callers", not "not worth mentioning".
+
+4. For every breaking change, decide whether you can state **what it does for a
+   client** from the spec's `description` alone. If you cannot, do not guess and
+   do not paper over it - list it under "Needs author input" with the endpoint
+   name and what is unclear. Thin endpoint docstrings are the actual finding;
+   report them loudly.
+
+5. Cross-check `docs/developers-guide/api-changelog.md` for the target version.
+   Report three buckets:
+   - **Undocumented**: breaking changes with no changelog entry -> draft entries
+   - **Stale**: changelog entries with no matching spec change -> verify by hand
+     (may be a response-shape or behavior change the spec cannot see - do not
+     delete without asking)
+   - **Covered**: matched, no action
+
+6. Draft entries in the existing house style: `## Metabase 0.64.0` heading,
+   one `-` bullet per change, endpoint as `` `POST /api/foo/:id` `` with
+   **`:id` colon-style params, not OpenAPI `{id}` braces**. Say what changed, what
+   clients must do, and whether there was a deprecation period. Apply the
+   `docs-write` skill. Show the diff before writing to the file.
+
+## Attribution
+
+Find who to ask about an unclear change. Search the endpoint SOURCE, not `openapi.json`: the committed spec only changes on
+PRs carrying the `openapi-self-healing` label, which is usually a later, unrelated
+PR, so its history names the wrong author.
+
+```bash
+git log <old-ref>..<new-ref> --oneline -- \
+  'src/metabase/**/api.clj' 'src/metabase/**/api/*.clj' 'src/metabase/**/routes.clj' \
+  'enterprise/backend/src/**/api.clj' 'enterprise/backend/src/**/api/*.clj' 'enterprise/backend/src/**/routes.clj'
+```
+
+Attribution by route search is unreliable in both directions - `git log -S` reports
+where a string's count *changed*, which for a long-lived route is its creation years
+ago rather than its recent removal. Treat any commit you find as a candidate to
+verify, never as the established cause.
+
+## Backports
+
+A change landing in both `0.64.0` and older lines gets a full entry under the
+newest version and a one-line pointer under each backport version
+("See the 0.64.0 entry."). Match the existing `POST /api/slack/bug-report` pattern.

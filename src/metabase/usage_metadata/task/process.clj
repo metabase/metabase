@@ -26,9 +26,10 @@
 (def ^:private trigger-key
   (triggers/key "metabase.task.usage-metadata-process.trigger"))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Process usage metadata rollups from query execution history."}
-  UsageMetadataProcess
+(task/defjob UsageMetadataProcess
+  "Process usage metadata rollups from query execution history."
+  {:saved-class "metabase.usage_metadata.task.process.UsageMetadataProcess"
+   :concurrent? false}
   [_]
   (when (usage-metadata.settings/usage-metadata-enabled?)
     (try

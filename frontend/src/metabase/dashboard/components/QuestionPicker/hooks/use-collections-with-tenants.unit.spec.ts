@@ -2,9 +2,9 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupCollectionTreeEndpoint } from "__support__/server-mocks/collection";
 import { setupTenantEntpoints } from "__support__/server-mocks/tenant";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection, Tenant } from "metabase-types/api";
 import {
   createMockCollection,

@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { getSearchTextFromLocation } from "metabase/common/search";
 import { useLocation } from "metabase/router";
-import { Button, type ButtonProps, Flex, Icon } from "metabase/ui";
+import { ActionIcon, Button, type ButtonProps, Flex, Icon } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
 
 import S from "./SearchButton.module.css";
@@ -24,20 +24,19 @@ export const SearchButton = (props: ButtonProps) => {
 
   if (isSmallScreen) {
     return (
-      <Button
-        h="36px"
-        leftSection={<Icon name="search" />}
+      <ActionIcon
         variant="subtle"
+        size="sm"
         onClick={handleClick}
-        color="text-secondary"
         aria-label="Search"
-      />
+      >
+        <Icon name="search" />
+      </ActionIcon>
     );
   }
 
   return (
     <Button
-      h="36px"
       w="240px"
       c={searchText ? "text-primary" : "text-disabled"}
       leftSection={<Icon name="search" c="text-primary" />}

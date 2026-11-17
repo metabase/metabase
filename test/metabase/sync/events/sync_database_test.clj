@@ -13,9 +13,9 @@
   (testing "The :event/database-create handler kicks off a sync on a new thread by default"
     (mt/with-temp [:model/Database {:as db} {:is_full_sync true}]
       (let [calls (atom 0)]
-        (with-redefs [quick-task/submit-task!         (fn [task] (task))
-                      sync/sync-database!             (fn [_] (swap! calls inc))
-                      sync-metadata/sync-db-metadata! (fn [_] (swap! calls inc))]
+        (mt/with-dynamic-fn-redefs [quick-task/submit-task!         (fn [task] (task))
+                                    sync/sync-database!             (fn [_] (swap! calls inc))
+                                    sync-metadata/sync-db-metadata! (fn [_] (swap! calls inc))]
           (testing "default (disable-auto-sync=false): a sync entry point is invoked"
             (reset! calls 0)
             (events/publish-event! :event/database-create {:object db :user-id (mt/user->id :crowberto)})
@@ -24,4 +24,32 @@
             (reset! calls 0)
             (mt/with-temporary-setting-values [disable-auto-sync true]
               (events/publish-event! :event/database-create {:object db :user-id (mt/user->id :crowberto)}))
+            (is (zero? @calls))))))))
+
+(deftest database-update-event-syncs-connected-stub-test
+  (testing "The :event/database-update handler kicks off a sync only when a stub database gets connected"
+    (mt/with-temp [:model/Database {:as stub} {:is_full_sync true :is_stub true}
+                   :model/Database {:as db}   {:is_full_sync true}]
+      (let [calls     (atom 0)
+            connected (assoc stub :is_stub false)]
+        (mt/with-dynamic-fn-redefs [quick-task/submit-task!         (fn [task] (task))
+                                    sync/sync-database!             (fn [_] (swap! calls inc))
+                                    sync-metadata/sync-db-metadata! (fn [_] (swap! calls inc))]
+          (testing "a stub that gets connected is synced"
+            (reset! calls 0)
+            (events/publish-event! :event/database-update {:object          connected
+                                                           :previous-object stub
+                                                           :user-id         (mt/user->id :crowberto)})
+            (is (= 1 @calls)))
+          (testing "a stub that stays a stub is not synced"
+            (reset! calls 0)
+            (events/publish-event! :event/database-update {:object          stub
+                                                           :previous-object stub
+                                                           :user-id         (mt/user->id :crowberto)})
+            (is (zero? @calls)))
+          (testing "a regular database update is not synced"
+            (reset! calls 0)
+            (events/publish-event! :event/database-update {:object          db
+                                                           :previous-object db
+                                                           :user-id         (mt/user->id :crowberto)})
             (is (zero? @calls))))))))

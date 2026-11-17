@@ -2,6 +2,8 @@
   "Shared helpers for custom-viz-plugin tests: building in-memory tar+gzip
    archives that match the format `validate-bundle!` expects."
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [metabase.util.json :as json])
   (:import
    (java.io ByteArrayOutputStream)
@@ -43,3 +45,8 @@
     (make-tgz-bytes
      [["metabase-plugin.json" (json/encode manifest)]
       ["dist/index.js" "console.log('hi')"]])))
+
+(defn bundle-hash
+  "The sha256 hex of `bundle-bytes`, as stored in `custom_viz_plugin.bundle_hash`."
+  ^String [^bytes bundle-bytes]
+  (-> bundle-bytes buddy-hash/sha256 codecs/bytes->hex))

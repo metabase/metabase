@@ -6,6 +6,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.permissions.models.permissions :as perms]
@@ -13,6 +14,7 @@
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -50,11 +52,6 @@
 
 ;;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 ;;;
-
-(defn- root-collection
-  "Requiring resolve to break a circular dependency"
-  []
-  (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection)))
 
 (defn- collection-permission-graph
   "Return the permission graph for the collections with id in `collection-ids` and the root collection."
@@ -155,7 +152,7 @@
    collection-id :- [:or [:= :root] ms/PositiveInt]
    new-collection-perms :- CollectionPermissions]
   (let [collection-id (if (= collection-id :root)
-                        (assoc (root-collection) :namespace collection-namespace)
+                        (assoc collection.root/root-collection :namespace collection-namespace)
                         collection-id)]
     ;; remove whatever entry is already there (if any) and add a new entry if applicable
     (perms/revoke-collection-permissions! group-id collection-id)
@@ -231,6 +228,18 @@
                                "' group.")
                           {:status-code 400})))))))
 
+(def ^:private admin-only-write-namespaces
+  "The Collection namespaces only admins can write, so no group can be granted write on them."
+  #{"data-actions" "data-apps"})
+
+(defn- check-no-admin-only-namespace-write
+  "Throws a 400 when `changes` to the Collections of `collection-namespace` grant write in an admin-only namespace."
+  [collection-namespace changes]
+  (when (and (contains? admin-only-write-namespaces (some-> collection-namespace name))
+             (some #{:write} (mapcat vals (vals changes))))
+    (throw (ex-info (tru "You cannot grant write permissions on collections only admins can write.")
+                    {:status-code 400}))))
+
 (mu/defn update-graph!
   "Update the Collections permissions graph for Collections of `collection-namespace` (default `nil`, the 'default'
   namespace). This works just like [[metabase.models.permission/update-data-perms-graph!]], but for Collections;
@@ -260,7 +269,7 @@
   **Revision Tracking:**
   All changes are tracked in `CollectionPermissionGraphRevision` for auditing purposes. The revision number
   is checked to prevent concurrent modification conflicts (unless `force?` is true)."
-  ([new-graph]
+  ([new-graph :- PermissionsGraph]
    (update-graph! nil new-graph false))
 
   ([collection-namespace :- [:maybe ms/KeywordOrString]
@@ -277,6 +286,7 @@
                                                                 (filter (comp seq second))
                                                                 (into {})))]
      (check-data-analyst-library-permissions changes)
+     (check-no-admin-only-namespace-write collection-namespace changes)
      (when-not force? (perms.u/check-revision-numbers old-graph filtered-new-graph))
      (when (seq changes)
        (let [revision-id (t2/with-transaction [_conn]

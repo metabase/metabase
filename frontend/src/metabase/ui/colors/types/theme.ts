@@ -43,20 +43,11 @@ export type ChartColorV2 =
     }
   | null;
 
-/** Filled in by `deriveFullMetabaseTheme`; not required from theme files. */
-export const DERIVED_COLOR_KEYS = [
-  "core-brand",
-  "core-filter",
-  "core-summarize",
-] as const;
-
-export type DerivedColorKey = (typeof DERIVED_COLOR_KEYS)[number];
-
 /**
  * Metabase color keys without colors that are automatically derived.
- * Accents are transformed from `chartColors`, DerivedColorKey are derived in `deriveFullMetabaseTheme`
+ * Accents are transformed from `chartColors`.
  */
 type MetabaseRequiredThemeColorKey = Exclude<
   MetabaseColorKey,
-  MetabaseAccentColorKey | DerivedColorKey
+  MetabaseAccentColorKey
 >;

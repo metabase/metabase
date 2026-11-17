@@ -1,16 +1,15 @@
 // Storybook helpers
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
-import type { StoryFn } from "@storybook/react";
-import { useEffect, useMemo } from "react";
+import { type ComponentType, useEffect, useMemo } from "react";
 
+import { createMockState } from "__support__/state";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { PrintContext } from "metabase/documents/contexts/PrintContext";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { mainReducers } from "metabase/reducers-main";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import type { MantineThemeOverride } from "metabase/ui";
@@ -18,7 +17,7 @@ import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { RawSeries } from "metabase-types/api";
 
-import { getStore } from "./entities-store";
+import { getMainStore, getStore } from "./entities-store";
 import { TestWrapper } from "./ui";
 
 export const ReduxProvider = ({
@@ -44,7 +43,8 @@ export const VisualizationWrapper = ({
   displayTheme?: "light" | "dark";
   initialStore?: State;
 }) => {
-  const store = getStore(mainReducers, initialStore);
+  // Visualizations call RTK Query hooks, which need the `Api` reducer and middleware.
+  const store = getMainStore(initialStore);
 
   return (
     <TestWrapper
@@ -135,7 +135,7 @@ export const SdkVisualizationStory = ({
 };
 
 export function createWaitForResizeToStopDecorator(timeoutMs: number = 1000) {
-  return function WaitForResizeToStopDecorator(Story: StoryFn) {
+  return function WaitForResizeToStopDecorator(Story: ComponentType) {
     const asyncCallback = useMemo(() => createAsyncCallback(), []);
 
     useEffect(() => {
@@ -171,15 +171,15 @@ export function createWaitForResizeToStopDecorator(timeoutMs: number = 1000) {
  * of hanging.
  */
 export function createWaitForChartsDecorator({
-  count,
+  count = 1,
   settleMs = 1000,
   timeoutMs = 20000,
 }: {
-  count: number;
+  count?: number;
   settleMs?: number;
   timeoutMs?: number;
-}) {
-  return function WaitForChartsDecorator(Story: StoryFn) {
+} = {}) {
+  return function WaitForChartsDecorator(Story: ComponentType) {
     const asyncCallback = useMemo(() => createAsyncCallback(), []);
 
     useEffect(() => {
@@ -197,12 +197,21 @@ export function createWaitForChartsDecorator({
       };
 
       const poll = () => {
-        const renderedCount = document.querySelectorAll(
-          '[data-testid="visualization-root"]',
+        // Wait for the painted ECharts root (`chart-container`) AND for every
+        // dashboard card to finish loading (`loading-indicator` gone). React 19
+        // defers the lazy ECharts chunk past a fixed settle, so both the outer
+        // `visualization-root` and the dashcard skeleton can sit there long
+        // after mount while the chart is still blank. Gating on the real chart
+        // node keeps Loki from snapshotting an empty skeleton.
+        const paintedCount = document.querySelectorAll(
+          '[data-testid="chart-container"]',
+        ).length;
+        const stillLoading = document.querySelectorAll(
+          '[data-testid="loading-indicator"]',
         ).length;
         const timedOut = Date.now() - startedAt > timeoutMs;
 
-        if (renderedCount >= count || timedOut) {
+        if ((paintedCount >= count && stillLoading === 0) || timedOut) {
           settleTimer = setTimeout(resolve, settleMs);
           return;
         }
@@ -235,7 +244,7 @@ export function createWaitForChartsDecorator({
  * that hide `[data-hide-on-print]` are keyed on the print media query,
  * not this flag, so the snapshot is unaffected.
  */
-export function ForceDocumentCardRenderDecorator(Story: StoryFn) {
+export function ForceDocumentCardRenderDecorator(Story: ComponentType) {
   return (
     <PrintContext.Provider
       value={{ isPrinting: true, prepareForPrint: async () => {} }}

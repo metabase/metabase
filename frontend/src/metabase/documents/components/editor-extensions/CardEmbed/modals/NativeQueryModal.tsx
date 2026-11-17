@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useElementSize } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
@@ -6,7 +7,9 @@ import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { datasetApi } from "metabase/api/dataset";
 import { getErrorMessage as getResponseErrorMessage } from "metabase/api/utils";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
-import { getMetadata } from "metabase/metadata-store";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { getMetabotVisible } from "metabase/metabot/state";
+import { useQuestionFromCardBuilder } from "metabase/metadata-store";
 import { defaultClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
@@ -19,8 +22,7 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import NoResultsView from "metabase/visualizations/components/Visualization/NoResultsView/NoResultsView";
 import { createRawSeries } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import type Question from "metabase-lib/v1/Question";
 import type { Card, DatabaseId, Dataset, RawSeries } from "metabase-types/api";
 
 import S from "./NativeQueryModal.module.css";
@@ -37,7 +39,6 @@ const MODAL_SIDEBAR_FEATURES = {
   dataReference: true,
   variables: false,
   snippets: false,
-  promptInput: false,
   formatQuery: false,
 } as const;
 
@@ -110,7 +111,7 @@ export const NativeQueryModal = ({
 }: NativeQueryModalProps) => {
   const dispatch = useDispatch();
   const host = useEditorHost();
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCardBuilder();
 
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
     null,
@@ -119,6 +120,10 @@ export const NativeQueryModal = ({
   const [isShowingTemplateTagsEditor, setIsShowingTemplateTagsEditor] =
     useState(false);
   const [isShowingDataReference, setIsShowingDataReference] = useState(false);
+  const isMetabotSidebarOpen = useSelector((state) =>
+    getMetabotVisible(state, "omnibot"),
+  );
+  const { hasSqlGenerationAccess } = useUserMetabotPermissions();
   const [dataReferenceStack, setDataReferenceStack] = useState<
     DataReferenceItem[]
   >([]);
@@ -149,16 +154,16 @@ export const NativeQueryModal = ({
   }, [isOpen, card, dispatch, host.actions]);
 
   const question = useMemo(() => {
-    if (!card || !metadata || !isOpen) {
+    if (!card || !isOpen) {
       return null;
     }
 
-    const baseQuestion = new Question(card, metadata);
+    const baseQuestion = buildQuestion(card);
     if (!modifiedQuestion) {
       setModifiedQuestion(baseQuestion);
     }
     return baseQuestion;
-  }, [card, metadata, isOpen, modifiedQuestion]);
+  }, [card, buildQuestion, isOpen, modifiedQuestion]);
 
   const canSave =
     modifiedQuestion &&
@@ -176,16 +181,11 @@ export const NativeQueryModal = ({
     }
   }, [isOpen, currentQueryPromise]);
 
-  const setDatasetQuery = useCallback(
-    async (query: NativeQuery) => {
-      if (!modifiedQuestion) {
-        return modifiedQuestion;
+  const setQuery = useCallback(
+    (query: Lib.Query) => {
+      if (modifiedQuestion) {
+        setModifiedQuestion(modifiedQuestion.setQuery(query));
       }
-
-      const datasetQuery = query.datasetQuery();
-      const newQuestion = modifiedQuestion.setDatasetQuery(datasetQuery);
-      setModifiedQuestion(newQuestion);
-      return newQuestion;
     },
     [modifiedQuestion],
   );
@@ -305,10 +305,9 @@ export const NativeQueryModal = ({
     );
   }
 
-  const nativeQuery =
-    modifiedQuestion?.legacyNativeQuery() ??
-    question?.legacyNativeQuery() ??
-    null;
+  const isNative =
+    modifiedQuestion != null &&
+    Lib.queryDisplayInfo(modifiedQuestion.query()).isNative;
 
   return (
     <Modal
@@ -316,7 +315,6 @@ export const NativeQueryModal = ({
       onClose={onClose}
       size="95%"
       title={t`Edit SQL Query`}
-      padding="xl"
       classNames={{
         content: S.modalContent,
         body: S.modalBody,
@@ -333,12 +331,13 @@ export const NativeQueryModal = ({
             ref={mainRef}
           >
             <Box pos="relative" className={S.editorContainer}>
-              {nativeQuery && (
+              {modifiedQuestion && isNative && (
                 <NativeQueryEditor
                   question={modifiedQuestion}
-                  query={nativeQuery}
                   isNativeEditorOpen
                   isInitiallyOpen
+                  canAutoOpenDataReference={!isMetabotSidebarOpen}
+                  hasSqlGenerationAccess={hasSqlGenerationAccess}
                   availableHeight={totalHeight}
                   isRunnable
                   isRunning={isQueryRunning}
@@ -346,7 +345,7 @@ export const NativeQueryModal = ({
                   isShowingDataReference={isShowingDataReference}
                   isShowingTemplateTagsEditor={isShowingTemplateTagsEditor}
                   isShowingSnippetSidebar={false}
-                  setDatasetQuery={setDatasetQuery}
+                  setQuery={setQuery}
                   runQuery={handleRunQuery}
                   cancelQuery={handleCancelQuery}
                   toggleTemplateTagsEditor={() =>
@@ -418,7 +417,6 @@ export const NativeQueryModal = ({
                 <Box flex={1} mih="300px">
                   <Visualization
                     rawSeries={rawSeries}
-                    metadata={metadata}
                     mode={defaultClickActionMode}
                     onChangeCardAndRun={() => {}}
                     getExtraDataForClick={() => ({})}
@@ -468,7 +466,7 @@ export const NativeQueryModal = ({
           bg="background_page-primary"
           className={S.footer}
         >
-          <Button variant="subtle" onClick={onClose}>
+          <Button variant="subtle" color="neutral" onClick={onClose}>
             {t`Cancel`}
           </Button>
           <Button

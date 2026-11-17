@@ -1,10 +1,12 @@
 (ns metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
   (:require
    [buddy.core.codecs :as codecs]
+   [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
+   [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -30,6 +32,20 @@
    :manifest mi/transform-json
    :bundle   transform-bundle})
 
+(defn- with-bundle-hash
+  "The `row` with `bundle_hash` matching the `bundle` it sets."
+  [row]
+  (cond-> row
+    (contains? row :bundle) (assoc :bundle_hash (some-> ^bytes (:bundle row) cache/bytes-hash))))
+
+(t2/define-before-insert :model/CustomVizPlugin
+  [plugin]
+  (with-bundle-hash plugin))
+
+(t2/define-before-update :model/CustomVizPlugin
+  [plugin]
+  (merge plugin (some-> (t2/changes plugin) with-bundle-hash)))
+
 (doto :model/CustomVizPlugin
   (derive :metabase/model)
   (derive :hook/timestamped?))
@@ -40,13 +56,13 @@
    :manifest :metabase_version :bundle_hash :dev_bundle_url
    :created_at :updated_at])
 
-(defmethod mi/can-read? :model/CustomVizPlugin
-  ([_instance]   (some? api/*current-user-id*))
-  ([_model _pk]  (some? api/*current-user-id*)))
+(methodical/defmethod t2/simple-hydrate [:model/CustomVizPlugin :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (some? api/*current-user-id*))))
 
-(defmethod mi/can-write? :model/CustomVizPlugin
-  ([_instance]   api/*is-superuser?*)
-  ([_model _pk]  api/*is-superuser?*))
+(methodical/defmethod t2/simple-hydrate [:model/CustomVizPlugin :can_write]
+  [_model k instance]
+  (assoc instance k (boolean api/*is-superuser?*)))
 
 (defmethod mi/can-create? :model/CustomVizPlugin
   [_model _instance]
@@ -65,28 +81,55 @@
 (defn- b64->bundle ^bytes [^String s]
   (some-> s codecs/b64->bytes))
 
-(defmethod serdes/make-spec "CustomVizPlugin"
-  [_model-name _opts]
-  {:copy      [:display_name :identifier :enabled :icon :manifest :metabase_version :bundle_hash]
-   :skip      [:dev_bundle_url :error_message]
+(defmethod serialization/spec :model/CustomVizPlugin [_]
+  {:schema    ::custom-viz-plugin.schema/external-custom-viz-plugin
+   :identity  [:identifier]
+   :copy      [:display_name :identifier :enabled :icon :manifest :metabase_version]
+   :skip      [:status :error_message :dev_bundle_url :bundle_hash]
    :defaults  {:enabled true}
-   :transform {:created_at (serdes/date)
-               :status     {:export (constantly ::serdes/skip)
-                            :import (constantly "pending")}
-               :bundle     {:export bundle->b64
-                            :import b64->bundle}}})
+   :transform {:bundle {:export (fn [_store _batch bundles _opts] (mapv bundle->b64 bundles))
+                        :import (fn [_store _batch encoded _opts] (mapv b64->bundle encoded))}}})
 
-(defmethod serdes/entity-id "CustomVizPlugin" [_ {:keys [identifier]}]
-  identifier)
+(defmethod serialization/rows-by-refs :model/CustomVizPlugin [_ identifiers columns]
+  (let [identifiers (filterv some? identifiers)
+        rows        (when (seq identifiers)
+                      (custom-viz-plugin.db/plugins-by-identifiers
+                       identifiers
+                       (some->> columns (concat [:id :identifier]) distinct vec)))]
+    (reduce (fn [found {:keys [identifier] :as row}]
+              (cond-> found
+                (not (contains? found identifier)) (assoc identifier row)))
+            {}
+            rows)))
 
-(defmethod serdes/generate-path "CustomVizPlugin" [_ entity]
-  [{:model "CustomVizPlugin"
-    :id    (:identifier entity)
-    :label (:identifier entity)}])
+(defn- bundle-columns
+  "Columns derived from validating the imported `bundle` bytes against the imported `identifier`: the `:active` state
+  plus manifest-derived metadata when the bundle is valid and named for this plugin, or the `:error` state with the
+  reason when it is not. The same checks guard a bundle upload."
+  [{:keys [identifier bundle]}]
+  (try
+    (->> (cache/validate-bundle! bundle)
+         (cache/check-bundle-identifier! identifier)
+         cache/derived-columns)
+    (catch Exception e
+      {:status        :error
+       :error_message (ex-message e)})))
 
-(defmethod serdes/load-find-local "CustomVizPlugin" [path]
-  (let [{:keys [id]} (last path)]
-    (custom-viz-plugin.db/plugin-by-identifier id)))
+(defmethod serialization/storage-paths :model/CustomVizPlugin [_ entities _ctx]
+  (mapv (fn [entity]
+          [{:label "custom_viz_plugins"} {:label (:identifier entity)}])
+        entities))
 
-(defmethod serdes/storage-path "CustomVizPlugin" [entity _ctx]
-  [{:label "custom_viz_plugins"} {:label (:identifier entity)}])
+;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
+
+(defmethod serialization/before-load :model/CustomVizPlugin [_ items]
+  (mapv (fn [{:keys [row local] :as item}]
+          (if (and local (some-> ^bytes (:bundle row) cache/bytes-hash (= (:bundle_hash local))))
+            (update item :row dissoc :bundle)
+            (update item :row #(merge % (bundle-columns %)))))
+        items))
+
+(defmethod serialization/after-load :model/CustomVizPlugin [_ items]
+  (doseq [{:keys [local]} items
+          :when local]
+    (cache/purge-plugin-cache! {:id (:id local)})))

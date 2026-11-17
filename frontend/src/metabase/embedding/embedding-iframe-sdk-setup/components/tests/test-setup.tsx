@@ -14,9 +14,9 @@ import {
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, waitFor } from "__support__/ui";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
-import { createMockState } from "metabase/redux/store/mocks";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCollection,
@@ -27,20 +27,22 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
+import type { SdkIframeEmbedSetupSettings } from "../../types";
 import { SdkIframeEmbedSetupModal } from "../SdkIframeEmbedSetupModal";
 
 export const setup = (options?: {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
-  simpleEmbeddingEnabled?: boolean;
-  showSimpleEmbedTerms?: boolean;
-  guestEmbeddingEnabled?: boolean;
+  modularEmbeddingEnabled?: boolean;
+  showModularEmbedTerms?: boolean;
   showStaticEmbedTerms?: boolean;
   jwtReady?: boolean;
+  dataAppsEnabled?: boolean;
   initialState?: SdkIframeEmbedSetupModalInitialState;
   hasEmailSetup?: boolean;
   metabotEnabled?: boolean;
   siteUrl?: string;
   dashboard?: Dashboard;
+  savedTheme?: SdkIframeEmbedSetupSettings["theme"];
 }) => {
   const { enterprisePlugins } = options ?? {};
 
@@ -58,14 +60,14 @@ export const setup = (options?: {
   }
 
   const tokenFeatures = createMockTokenFeatures({
-    embedding_simple: options?.simpleEmbeddingEnabled ?? false,
+    embedding_simple: options?.modularEmbeddingEnabled ?? false,
+    "data-apps": options?.dataAppsEnabled ?? false,
   });
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
-    "show-simple-embed-terms": options?.showSimpleEmbedTerms ?? false,
-    "enable-embedding-simple": options?.simpleEmbeddingEnabled ?? false,
+    "show-modular-embed-terms": options?.showModularEmbedTerms ?? false,
     "show-static-embed-terms": options?.showStaticEmbedTerms ?? false,
-    "enable-embedding-static": options?.guestEmbeddingEnabled ?? false,
+    "enable-embedding-modular": options?.modularEmbeddingEnabled ?? false,
     "jwt-enabled": options?.jwtReady ?? false,
     "jwt-configured": options?.jwtReady ?? false,
     "jwt-enabled-and-configured": options?.jwtReady ?? false,
@@ -74,6 +76,7 @@ export const setup = (options?: {
     // Default to the jsdom test origin so the embed wizard preview renders
     // (mismatched origins surface a Site URL configuration error).
     "site-url": options?.siteUrl ?? window.location.origin,
+    "sdk-iframe-embed-setup-settings": { theme: options?.savedTheme },
   });
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
@@ -96,7 +99,7 @@ export const setup = (options?: {
   );
   fetchMock.get("path:/api/embed-theme", []);
 
-  renderWithProviders(
+  return renderWithProviders(
     <SdkIframeEmbedSetupModal
       opened
       initialState={{

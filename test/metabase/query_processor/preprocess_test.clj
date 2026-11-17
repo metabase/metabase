@@ -11,6 +11,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.lib.serialize :as lib.serialize]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -640,6 +641,16 @@
                   (qp.preprocess/query->expected-cols query))))))))
 
 (deftest ^:parallel remove-internal-keys-test
-  (testing "an internal namespaced key supplied in an incoming query does not survive preprocessing"
-    (is (not (contains? (qp.preprocess/preprocess (assoc (mt/mbql-query venues) :a/b 1))
-                        :a/b)))))
+  (testing "an internal namespaced key supplied in an incoming query is stripped at the deserialization boundary"
+    ;; `:qp/source-card-id` is one of the internal keys the query processor adds mid-pipeline, so `::lib.schema/query`
+    ;; declares it and a query carrying it is perfectly valid MBQL -- what stops a client from forging one is that
+    ;; the `:decode/api` decoder every incoming query goes through drops it before preprocessing starts.
+    (is (not (contains? (lib.serialize/prepare-after-deserialization
+                         (lib/query meta/metadata-provider
+                                    (assoc (lib.tu.macros/mbql-query venues) :qp/source-card-id 1)))
+                        :qp/source-card-id))))
+  (testing "a key that no schema declares is rejected outright rather than quietly ignored"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"disallowed key"
+         (qp.preprocess/preprocess (assoc (mt/mbql-query venues) :a/b 1))))))

@@ -3,7 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { callMockEvent } from "__support__/events";
 import { screen, waitFor } from "__support__/ui";
 import { getDefaultFormSettings } from "metabase/actions/utils";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
+import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type { WritebackQueryAction } from "metabase-types/api";
 import {
   createMockActionParameter,
   createMockImplicitQueryAction,
@@ -12,6 +15,15 @@ import {
 
 import type { SetupOpts } from "./common";
 import { setup as baseSetup } from "./common";
+
+function createRunnableQueryAction(opts: Partial<WritebackQueryAction> = {}) {
+  return createMockQueryAction({
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "SELECT 1",
+    }),
+    ...opts,
+  });
+}
 
 async function setup({
   action = createMockImplicitQueryAction(),
@@ -23,7 +35,7 @@ async function setup({
 
 describe("ActionCreator > Common", () => {
   describe.each([
-    ["query", createMockQueryAction],
+    ["query", createRunnableQueryAction],
     ["implicit", createMockImplicitQueryAction],
   ])(`%s actions`, (_, getAction) => {
     describe("with write permissions", () => {
@@ -74,7 +86,7 @@ describe("ActionCreator > Common", () => {
         ).toHaveValue("Thanks!");
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-        expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+        expect(mockEvent.returnValue).toEqual(getBeforeUnloadUnsavedMessage());
         expect(mockEvent.preventDefault).toHaveBeenCalled();
       });
 

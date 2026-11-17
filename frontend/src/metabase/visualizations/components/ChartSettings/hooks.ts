@@ -1,4 +1,3 @@
-import { assocIn } from "icepick";
 import { useCallback, useMemo } from "react";
 
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
@@ -8,6 +7,8 @@ import {
   type Widget,
   extractRemappings,
   getSettingsWidgetsForSeries,
+  getStoredSettingsForSeries,
+  getVisualizationRaw,
   getVisualizationTransformed,
   updateSettings,
 } from "metabase/viz-core";
@@ -18,6 +19,7 @@ import type {
   TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
 export type UseChartSettingsStateProps = {
   settings?: VisualizationSettings;
@@ -43,10 +45,20 @@ export const useChartSettingsState = ({
   series,
   onChange,
 }: UseChartSettingsStateProps): UseChartSettingsStateReturned => {
-  const chartSettings = useMemo(
-    () => settings || series[0].card.visualization_settings,
-    [series, settings],
-  );
+  const display = series[0].card.display;
+  const visualization = getVisualizationRaw(series);
+  const chartSettings = useMemo(() => {
+    if (settings) {
+      return settings;
+    }
+
+    if (!isCustomVizDisplay(display) || !visualization) {
+      return series[0].card.visualization_settings;
+    }
+
+    // Only custom viz needs the stored-settings migration.
+    return getStoredSettingsForSeries(series);
+  }, [series, settings, display, visualization]);
 
   const handleChangeSettings = useCallback(
     (changedSettings: VisualizationSettings, question?: Question) => {
@@ -56,7 +68,15 @@ export const useChartSettingsState = ({
   );
 
   const chartSettingsRawSeries = useMemo(
-    () => assocIn(series, [0, "card", "visualization_settings"], chartSettings),
+    () =>
+      series.map((s, i) =>
+        i === 0
+          ? {
+              ...s,
+              card: { ...s.card, visualization_settings: chartSettings },
+            }
+          : s,
+      ),
     [chartSettings, series],
   );
 

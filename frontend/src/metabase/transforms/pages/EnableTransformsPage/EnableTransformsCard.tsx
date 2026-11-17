@@ -62,7 +62,7 @@ export function EnableTransformsCard({
                   >{t`Because transforms require write access to your database, make sure you know what you’re doing and that you understand the risks.`}</Text>
                   <Button
                     loading={loading}
-                    variant="primary"
+                    variant="filled"
                     onClick={onEnableClick}
                   >{t`Enable transforms`}</Button>
                   {finePrint && (

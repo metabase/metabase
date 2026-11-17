@@ -1,20 +1,24 @@
-import type Table from "metabase-lib/v1/metadata/Table";
+import cx from "classnames";
 
-import { Label, LabelContainer } from "../MetadataInfo.styled";
+import CS from "metabase/css/core/index.css";
+import { Icon } from "metabase/ui";
+import type { NormalizedTable } from "metabase-types/api";
 
-import { TableIcon } from "./TableLabel.styled";
+import { Label, LabelContainer } from "../MetadataInfo";
 
-export function TableLabel({
-  className,
-  table,
-}: {
+import S from "./TableLabel.module.css";
+
+type TableLabelProps = {
   className?: string;
-  table: Table;
-}) {
+  table: Pick<NormalizedTable, "display_name">;
+};
+
+export function TableLabel({ className, table }: TableLabelProps) {
   return (
-    <LabelContainer className={className}>
-      <TableIcon name="table" />
-      <Label>{table.displayName()}</Label>
+    // A class, not a color prop, so ConnectedTables can recolor the label on hover
+    <LabelContainer className={cx(CS.textBrand, className)}>
+      <Icon className={S.icon} name="table" w="1em" h="1em" />
+      <Label>{table.display_name}</Label>
     </LabelContainer>
   );
 }

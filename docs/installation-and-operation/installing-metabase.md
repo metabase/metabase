@@ -1,5 +1,6 @@
 ---
 title: Installing Metabase
+summary: Pick how to run Metabase, from Metabase Cloud to Docker, a JAR file, or an air-gapped deployment.
 redirect_from:
   - /docs/latest/operations-guide/installing-metabase
 ---
@@ -10,7 +11,7 @@ Metabase is built and packaged as a Java JAR file and can be run anywhere that J
 
 ## Metabase Cloud (Recommended)
 
-[Metabase Cloud](https://www.metabase.com/cloud/) is the easiest way to run Metabase. All you need to do is [sign up for a free trial](https://store.metabase.com/checkout), and you're off to the races.
+[Metabase Cloud](https://www.metabase.com/cloud) is the easiest way to run Metabase. All you need to do is [sign up for a free trial](https://store.metabase.com/checkout), and you're off to the races.
 
 ## Self-hosting Metabase
 
@@ -57,4 +58,4 @@ Metabase doesn't have an officially supported Helm chart.
 
 ## Connect with a Metabase Expert
 
-If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).
+If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners).

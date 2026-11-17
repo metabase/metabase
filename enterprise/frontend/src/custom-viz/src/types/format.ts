@@ -1,15 +1,39 @@
 import type { Column, RowValue } from "./data";
 
 export type FormatValueOptions = {
+  /**
+   * Formatting is picked by the column's type, so number options like
+   * `number_style` and `decimals` have no effect without a numeric column.
+   */
   column?: Column;
   compact?: boolean;
   currency?: string;
   currency_style?: Intl.NumberFormatOptionsCurrencyDisplay;
+  currency_position?: "before" | "after";
   date_format?: string;
   date_style?: string | null;
   date_separator?: string;
   date_abbreviate?: boolean;
   decimals?: number;
+  duration_precision?:
+    | "nanosecond"
+    | "microsecond"
+    | "millisecond"
+    | "second"
+    | "minute"
+    | "hour"
+    | "day"
+    | "week";
+  duration_style?: "digital" | "narrow";
+  duration_unit?:
+    | "nanosecond"
+    | "microsecond"
+    | "millisecond"
+    | "second"
+    | "minute"
+    | "hour"
+    | "day"
+    | "week";
   number_style?: string;
   number_separators?: string;
   prefix?: string;

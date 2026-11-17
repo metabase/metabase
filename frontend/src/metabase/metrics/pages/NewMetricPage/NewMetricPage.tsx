@@ -12,7 +12,6 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import { getResultMetadata } from "metabase/common/data-studio/utils/get-result-metadata";
 import type { MetricUrls } from "metabase/common/metrics/types";
-import { getMetadata } from "metabase/metadata-store";
 import { MetricQueryEditor } from "metabase/metrics/components/MetricQueryEditor";
 import { NAME_MAX_LENGTH } from "metabase/metrics/constants";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
@@ -43,10 +42,10 @@ export function NewMetricPage({
   triggeredFrom = "main_app",
 }: NewMetricPageProps) {
   const location = useLocation();
-  const metadata = useSelector(getMetadata);
+  const initialQuery = useSelector(getInitialQuery);
   const [name, setName] = useState("");
   const [datasetQuery, setDatasetQuery] = useState(() =>
-    Lib.toJsQuery(getInitialQuery(metadata)),
+    Lib.toJsQuery(initialQuery),
   );
   const [uiState, setUiState] = useState(getInitialUiState);
   const [isModalOpened, { open: openModal, close: closeModal }] =
@@ -57,10 +56,7 @@ export function NewMetricPage({
   const defaultCollectionId = useGetDefaultCollectionId();
   const navigate = useNavigate();
 
-  const query = useMemo(
-    () => getQuery(datasetQuery, metadata),
-    [datasetQuery, metadata],
-  );
+  const query = useSelector((state) => getQuery(state, datasetQuery));
 
   const resultMetadata = useMemo(() => {
     return getResultMetadata(

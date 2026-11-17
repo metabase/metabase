@@ -10,12 +10,16 @@ import {
 } from "__support__/server-mocks";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import {
   createMockQueryBuilderState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import {
+  renderWithProviders,
+  waitForLoaderToBeRemoved,
+  waitForSidesheetToOpen,
+} from "__support__/ui";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Settings, User } from "metabase-types/api";
@@ -84,5 +88,6 @@ export const setup = async ({
     },
   );
 
+  await waitForSidesheetToOpen();
   await waitForLoaderToBeRemoved();
 };

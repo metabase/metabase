@@ -1,5 +1,12 @@
-.horizontalButton[data-variant="inverse"] {
-  &:hover {
+.horizontalButton {
+  display: flex;
+  justify-content: flex-start;
+
+  [data-position] {
+    color: var(--mb-color-core-brand);
+  }
+
+  &[data-variant][data-size]:hover {
     color: var(--mb-color-text-primary-inverse);
     background-color: var(--mb-color-core-brand);
 
@@ -22,14 +29,11 @@
 
 .tokenFilterActionButton {
   border-radius: 100px;
-  height: 1.4rem;
-  padding-bottom: 0.125rem;
   border: 1px solid var(--mb-color-input-focus);
 }
 
 .tokenFilterActionTokenButton {
   border-radius: 100px;
-  padding: 0.3125rem 0.875rem;
   border: 1px solid var(--mb-color-input-focus);
 }
 

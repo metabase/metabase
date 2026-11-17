@@ -1,17 +1,15 @@
 import "leaflet-draw";
 import "leaflet/dist/leaflet.css";
 import "./LeafletMap.module.css";
-
 import L from "leaflet";
 import { Component, createRef } from "react";
 import _ from "underscore";
 
+import type { CardQuestionBuilder } from "metabase/metadata-store";
 import MetabaseSettings from "metabase/utils/settings";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 import type { Point } from "metabase-types/api/dataset";
 import { isObject } from "metabase-types/guards/common";
@@ -53,7 +51,7 @@ export interface LeafletMapProps<TPoint extends AnyLeafletMapPoint = Point> {
   settings: MapSettings;
   points?: TPoint[] | null;
   series: Series;
-  metadata?: Metadata;
+  buildQuestion: CardQuestionBuilder;
   token?: string | null;
   zoomControl?: boolean;
   zoom?: number | null;
@@ -239,7 +237,7 @@ export class LeafletMap<
   supportsFilter() {
     const {
       series: [{ card }],
-      metadata,
+      buildQuestion,
       token,
     } = this.props;
 
@@ -249,7 +247,7 @@ export class LeafletMap<
       return false;
     }
 
-    const question = new Question(card, metadata);
+    const question = buildQuestion(card);
     const { isNative } = Lib.queryDisplayInfo(question.query());
     return !isNative || question.isSaved();
   }
@@ -288,7 +286,7 @@ export class LeafletMap<
       ],
       settings,
       onChangeCardAndRun,
-      metadata,
+      buildQuestion,
     } = this.props;
 
     const latitudeColumn = _.findWhere(cols, {
@@ -298,7 +296,7 @@ export class LeafletMap<
       name: settings["map.longitude_column"],
     });
 
-    const question = new Question(card, metadata);
+    const question = buildQuestion(card);
     if (this.supportsFilter() && latitudeColumn && longitudeColumn) {
       const query = question.query();
       const stageIndex = -1;

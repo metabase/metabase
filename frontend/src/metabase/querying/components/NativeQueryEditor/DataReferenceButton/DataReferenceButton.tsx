@@ -1,35 +1,28 @@
-import cx from "classnames";
 import { t } from "ttag";
 
-import { Box, Icon, Tooltip } from "metabase/ui";
-
-import DataReferenceButtonS from "./DataReferenceButton.module.css";
+import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 
 interface DataReferenceButtonProps {
   className?: string;
   isShowingDataReference: boolean;
-  size: number;
   onClick?: () => void;
 }
 
 export const DataReferenceButton = ({
   className,
   isShowingDataReference,
-  size,
   onClick,
-}: DataReferenceButtonProps) => {
-  return (
-    <Tooltip label={t`Learn about your data`}>
-      <Box
-        aria-label={t`Learn about your data`}
-        component="a"
-        h={size}
-        className={cx(className, DataReferenceButtonS.ButtonRoot, {
-          [DataReferenceButtonS.isSelected]: isShowingDataReference,
-        })}
-      >
-        <Icon name="reference" size={size} onClick={onClick} />
-      </Box>
-    </Tooltip>
-  );
-};
+}: DataReferenceButtonProps) => (
+  <Tooltip label={t`Learn about your data`}>
+    <ActionIcon
+      variant="subtle"
+      className={className}
+      aria-label={t`Learn about your data`}
+      aria-pressed={isShowingDataReference}
+      selected={isShowingDataReference}
+      onClick={onClick}
+    >
+      <Icon name="reference" />
+    </ActionIcon>
+  </Tooltip>
+);

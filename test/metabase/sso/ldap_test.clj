@@ -116,7 +116,14 @@
              (#'default-impl/ldap-groups->mb-group-ids
               ["CN=Accounting,OU=Groups,DC=metabase,DC=com"
                "CN=Shipping,OU=Groups,DC=metabase,DC=com"]
-              {:group-mappings (sso.settings/ldap-group-mappings)}))))))
+              {:first-name-attribute "givenname"
+               :last-name-attribute  "sn"
+               :email-attribute      "mail"
+               :sync-groups?         true
+               :user-base            "dc=metabase,dc=com"
+               :user-filter          "(uid={login})"
+               :group-base           nil
+               :group-mappings       (sso.settings/ldap-group-mappings)}))))))
 
 (deftest valid-group-mapping
   (testing "Validating that a group mapping DN can contain a forward slash when set as a keyword (#29629)"

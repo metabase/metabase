@@ -428,6 +428,8 @@ export interface Exploration {
   creator?: ExplorationCreator;
   threads?: ExplorationThread[];
   can_write: boolean;
+  can_restore: boolean;
+  can_delete: boolean;
   document?: ExplorationDocument | null;
 }
 

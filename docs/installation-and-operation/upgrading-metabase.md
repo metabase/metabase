@@ -1,5 +1,6 @@
 ---
 title: Upgrading Metabase
+summary: Upgrade Metabase Cloud or a self-hosted Metabase, including backing up first, what happens during an upgrade, rolling back, and upgrading a cluster.
 redirect_from:
   - /docs/latest/operations-guide/upgrading-metabase
 ---
@@ -14,7 +15,7 @@ This page covers how to upgrade to a new Metabase release.
 
 ## Upgrading Metabase Cloud
 
-If you're on a [Metabase Cloud](https://www.metabase.com/pricing/) plan, we'll upgrade your Metabase automatically with each new release; no action needed on your end ([unless you're using the modular embedding SDK](#instances-using-the-modular-embedding-sdk-on-metabase-cloud-must-request-an-upgrade)).
+If you're on a [Metabase Cloud](https://www.metabase.com/pricing) plan, we'll upgrade your Metabase automatically with each new release; no action needed on your end ([unless you're using the modular embedding SDK](#instances-using-the-modular-embedding-sdk-on-metabase-cloud-must-request-an-upgrade)).
 
 How soon we upgrade you depends on the type of release:
 
@@ -157,7 +158,7 @@ export MB_DB_PORT=5432
 export MB_DB_USER=username
 export MB_DB_PASS=password
 export MB_DB_HOST=localhost
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down
+java -jar metabase.jar migrate down
 ```
 
 If you're running Docker, use the command `"migrate down"` (with the quotes around `"migrate down"`), and include the connection details for your application database, for example:

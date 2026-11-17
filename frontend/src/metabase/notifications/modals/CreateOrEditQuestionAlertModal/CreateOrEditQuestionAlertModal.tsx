@@ -10,6 +10,7 @@ import {
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import type { ScheduleValueType } from "metabase/common/components/Schedule/domain";
 import CS from "metabase/css/core/index.css";
 import {
@@ -29,6 +30,7 @@ import {
   getHasConfiguredEmailOrSlackChannel,
 } from "metabase/pulse";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { Undo } from "metabase/redux/store/undo";
 import { addUndo } from "metabase/redux/undo";
 import {
   Button,
@@ -41,7 +43,6 @@ import {
   Text,
   rem,
 } from "metabase/ui";
-import { getResponseErrorMessage } from "metabase/utils/errors";
 import type Question from "metabase-lib/v1/Question";
 import type {
   AdminNotification,
@@ -50,6 +51,7 @@ import type {
   NotificationCardSendCondition,
   NotificationCronSubscription,
   NotificationHandler,
+  SendNotificationResponse,
   UpdateAlertNotificationRequest,
   UserId,
   VisualizationSettings,
@@ -117,6 +119,20 @@ type CreateOrEditQuestionAlertModalProps = {
       onAlertCreated?: () => void;
     }
 );
+
+function toastForSendResult(result: SendNotificationResponse): Partial<Undo> {
+  return match(result.status)
+    .with("sent", () => ({
+      message: t`Test alert sent.`,
+    }))
+    .with("skipped", () => ({
+      variant: "warning",
+      message: result.skip_reason
+        ? t`No alert to send (${result.skip_reason})`
+        : t`No alert to send.`,
+    }))
+    .exhaustive();
+}
 
 export const CreateOrEditQuestionAlertModal = ({
   editingNotification,
@@ -211,12 +227,11 @@ export const CreateOrEditQuestionAlertModal = ({
 
       if (result.error) {
         const errorText =
-          getResponseErrorMessage(result.error) ?? t`An error occurred`;
+          findErrorMessage(result.error) ?? t`An error occurred`;
 
         dispatch(
           addUndo({
-            icon: "warning",
-            toastColor: "feedback-negative",
+            variant: "negative",
             message: t`Failed save alert. ${errorText}`,
           }),
         );
@@ -247,11 +262,12 @@ export const CreateOrEditQuestionAlertModal = ({
       if (result.error) {
         dispatch(
           addUndo({
-            icon: "warning",
-            toastColor: "feedback-negative",
-            message: t`Failed to send test alert. ${getResponseErrorMessage(result.error) ?? t`An error occurred`}`,
+            variant: "negative",
+            message: t`Failed to send test alert. ${findErrorMessage(result.error) ?? t`An error occurred`}`,
           }),
         );
+      } else if (result.data) {
+        dispatch(addUndo(toastForSendResult(result.data)));
       }
     }
   };
@@ -314,7 +330,6 @@ export const CreateOrEditQuestionAlertModal = ({
       opened
       size={rem(680)}
       onClose={onClose}
-      padding="2.5rem"
       title={isEditMode ? t`Edit alert` : t`New alert`}
       styles={{
         body: {
@@ -324,7 +339,7 @@ export const CreateOrEditQuestionAlertModal = ({
         },
       }}
     >
-      <Stack gap="xxl" mt="1.5rem" mb="2rem" px="2.5rem">
+      <Stack gap="xxl" mt="1.5rem" mb="2rem" px="xl">
         <AlertModalSettingsBlock
           title={t`What do you want to be alerted about?`}
         >
@@ -409,11 +424,6 @@ export const CreateOrEditQuestionAlertModal = ({
         <AlertModalSettingsBlock title={t`More options`}>
           <Switch
             label={t`Delete this Alert after it's triggered`}
-            styles={{
-              label: {
-                lineHeight: "1.5rem",
-              },
-            }}
             labelPosition="right"
             checked={notification.payload?.send_once}
             onChange={(event) => {
@@ -435,13 +445,13 @@ export const CreateOrEditQuestionAlertModal = ({
       <Flex
         justify="space-between"
         align="center"
-        px="2.5rem"
+        px="xl"
         pt="xl"
         className={CS.borderTop}
       >
         <Button
-          variant="outline"
-          color="core-brand"
+          variant="subtle"
+          color="brand"
           disabled={!hasValidTarget}
           loading={isLoading}
           onClick={onSendNow}
@@ -452,7 +462,7 @@ export const CreateOrEditQuestionAlertModal = ({
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"
-            color={hasError ? "feedback-negative" : "core-brand"}
+            color={hasError ? "negative" : "brand"}
             disabled={!isValid || isCreating || isUpdating}
             loading={isCreating || isUpdating}
             onClick={onCreateOrEditAlert}

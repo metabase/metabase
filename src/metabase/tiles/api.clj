@@ -1,6 +1,7 @@
 (ns metabase.tiles.api
   "`/api/tiles` endpoints."
   (:require
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    ;; TODO (Cam 10/10/25) -- update the tile API to use MBQL 5
@@ -70,7 +71,9 @@
   [query     :- ::lib.schema/query
    lat-field :- ::lib.schema.metadata/column
    lon-field :- ::lib.schema.metadata/column
-   x y zoom]
+   x :- ms/Int
+   y :- ms/Int
+   zoom :- ms/Int]
   (let [top-left      (x+y+zoom->lat-lon      x       y  zoom)
         bottom-right  (x+y+zoom->lat-lon (inc x) (inc y) zoom)
         inside-filter (lib/inside
@@ -150,10 +153,10 @@
   - add [:inside lat lon bounding-region coordings] filter
   - limit query results to `tile-coordinate-limit` number of results
   - only select lat and lon fields rather than entire query's fields"
-  [query                :- :map
-   zoom
-   x
-   y
+  [query                :- [:maybe [:or [:= {} {}] ::mbql.s/Query ::lib.schema/query]]
+   zoom                 :- ms/Int
+   x                    :- ms/Int
+   y                    :- ms/Int
    lat-field-legacy-ref :- ::legacy-ref
    lon-field-legacy-ref :- ::legacy-ref]
   (let [query     (-> query
@@ -170,7 +173,8 @@
   [{{:keys [rows cols]} :data, :as qp-response} lat-field-ref lon-field-ref]
   (when-not (= (:status qp-response) :completed)
     (throw (ex-info (format "Error running tiles query: %s" (:error qp-response))
-                    (assoc qp-response :status-code 400))))
+                    ;; `:error` is client-facing by default, and the message already carries it
+                    (-> qp-response (dissoc :error) (assoc :status-code 400)))))
   (let [lat-id-or-name (second lat-field-ref)
         lon-id-or-name (second lon-field-ref)
 
@@ -222,13 +226,14 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:zoom/:x/:y"
   "Generates a single tile image for an ad-hoc query."
-  [{:keys [zoom x y]} :- [:map
+  {:scope api-scope/data-app}
+  [{:keys [zoom x y]} :- [:map {:closed true}
                           [:zoom ms/Int]
                           [:x ms/Int]
                           [:y ms/Int]]
    {:keys     [query]
     lat-field :latField
-    lon-field :lonField} :- [:map
+    lon-field :lonField} :- [:map {:closed true}
                              [:query    ::query]
                              [:latField ::legacy-ref]
                              [:lonField ::legacy-ref]]]
@@ -291,14 +296,15 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a saved Card."
+  {:scope api-scope/data-app}
   [{:keys [card-id zoom x y]}
-   :- [:map
+   :- [:map {:closed true}
        [:card-id ::lib.schema.id/card]
        [:zoom ms/Int]
        [:x ms/Int]
        [:y ms/Int]]
    {:keys [parameters], lat-field :latField lon-field :lonField}
-   :- [:map
+   :- [:map {:closed true}
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField ::legacy-ref]
        [:lonField ::legacy-ref]]]
@@ -311,8 +317,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a dashcard."
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id zoom x y], :as _route-params}
-   :- [:map
+   :- [:map {:closed true}
        [:dashboard-id ::lib.schema.id/dashboard]
        [:dashcard-id ::lib.schema.id/dashcard]
        [:card-id ::lib.schema.id/card]
@@ -320,7 +327,7 @@
        [:x ms/Int]
        [:y ms/Int]]
    {:keys [parameters] lat-field :latField, lon-field :lonField, :as _query-params}
-   :- [:map
+   :- [:map {:closed true}
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField ::legacy-ref]
        [:lonField ::legacy-ref]]]

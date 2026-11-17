@@ -2,6 +2,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.nonce :as nonce]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sso.core :as sso]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -41,14 +42,14 @@
         Also see the Changing session expiration documentation page.")
 
 (defsetting reset-token-ttl-hours
-  (deferred-tru "Number of hours a password reset is considered valid.")
+  "Number of hours a password reset is considered valid."
   :visibility :internal
   :type       :integer
   :default    48
   :audit      :getter)
 
 (defsetting mfa-challenge-signing-key
-  (deferred-tru "Key used to sign MFA challenge tokens. Generated automatically on first use.")
+  "Key used to sign MFA challenge tokens. Generated automatically on first use."
   :visibility :internal
   :type       :string
   :export?    false
@@ -58,3 +59,11 @@
   ;; race (last write wins; the loser's in-flight 5-min challenge tokens fail verification), but
   ;; the window is one first-ever MFA login. Generate eagerly at startup if this ever bites.
   :init       (fn [] (codecs/bytes->hex (nonce/random-bytes 32))))
+
+(premium-features/defenterprise mfa-required?
+  "Whether MFA is currently required for all users on the instance when using email or LDAP auth.
+
+  Always false in OSS, since that enforcement is an EE feature."
+  metabase-enterprise.mfa.core
+  []
+  false)

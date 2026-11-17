@@ -1,5 +1,6 @@
 ---
 title: "Limitations of Metabase Cloud"
+summary: What Metabase Cloud doesn't support, from community database drivers and custom certificates to application database access and query timeouts.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true
@@ -12,7 +13,7 @@ redirect_from:
 
 # Limitations of Metabase Cloud
 
-There are some limitations that could impact your migration to Metabase Cloud. These limitations apply to all [Metabase Cloud plans](https://www.metabase.com/pricing/).
+There are some limitations that could impact your migration to Metabase Cloud. These limitations apply to all [Metabase Cloud plans](https://www.metabase.com/pricing).
 
 ## Metabase Cloud only supports official databases
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { useForceUpdate } from "@mantine/hooks";
 import {
   type ReactNode,
@@ -402,7 +403,7 @@ export const DocumentPage = () => {
               // only applies when trying to duplicate a document that has unsaved changes
               opened={duplicateModalMode === "leave"}
               confirmButtonText={t`Save changes`}
-              confirmButtonProps={{ color: "core-brand" }}
+              confirmButtonProps={{ color: "brand" }}
               data-testid="save-confirmation"
               message={t`You need to save before you can duplicate this document.`}
               title={t`Save your changes first`}

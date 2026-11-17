@@ -87,8 +87,8 @@ export const DataImporter = ({
       </Title>
       {dataSources.length > 0 && (
         <Button
-          size="xs"
           variant="transparent"
+          size="compact-md"
           ml="auto"
           onClick={() => {
             if (showDatasets) {

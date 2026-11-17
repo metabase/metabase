@@ -124,13 +124,10 @@
 (s/def ::parameter  (s/keys :req-un [:parameter/id :parameter/type]))
 (s/def ::parameters (s/coll-of ::parameter))
 
-(s/def :action/type #{:query :implicit :http})
+(s/def :action/type #{:query :implicit})
 
 ;; * implicit_action
 (s/def ::kind #{"row/create" "row/update" "row/delete"})
-
-;; * http_action
-(s/def ::template #{{}})
 
 ;; * pulse
 (s/def ::row pos-int?)
@@ -143,7 +140,6 @@
 (s/def ::action (s/keys :req-un [::id :action/type ::name]))
 (s/def ::query-action (s/keys :req-un [::dataset_query]))
 (s/def ::implicit-action (s/keys :req-un [::kind]))
-(s/def ::http-action (s/keys :req-un [::template]))
 
 (s/def ::core-user (s/keys :req-un [::id ::first_name ::last_name ::email ::password]))
 (s/def ::collection (s/keys :req-un [::id ::name]))
@@ -207,10 +203,6 @@
    :implicit-action              {:prefix    :implicit-action
                                   :spec      ::implicit-action
                                   :insert!   {:model :model/ImplicitAction}
-                                  :relations {:action_id   [:action :id]}}
-   :http-action                  {:prefix    :http-action
-                                  :spec      ::http-action
-                                  :insert!   {:model :model/HTTPAction}
                                   :relations {:action_id   [:action :id]}}
    :database                     {:prefix  :db
                                   :spec    ::database

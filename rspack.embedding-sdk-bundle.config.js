@@ -1,6 +1,5 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
-/* eslint-disable import/order */
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const rspack = require("@rspack/core");
 const BundleAnalyzerPlugin =
@@ -28,9 +27,7 @@ const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   SIDE_EFFECT_FREE_RULE,
 } = require("./frontend/build/shared/rspack/side-effect-free-modules");
-const {
-  EXTERNAL_DEPENDENCIES,
-} = require("./frontend/build/embedding-sdk/constants/external-dependencies");
+const resolveConfig = require("./frontend/build/embedding-sdk/rspack/resolve-config");
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
@@ -54,9 +51,6 @@ const SDK_BUNDLE_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-bundle";
 
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const SDK_OUTPUT_PATH = path.join(BUILD_PATH, SDK_BUNDLE_PATH);
-
-const ENTERPRISE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/metabase-enterprise";
 
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
 
@@ -100,7 +94,11 @@ const config = {
     // Split chunks and bootstrap go into chunks/ subfolder.
     // The legacy monolithic bundle goes into legacy/.
     // The backend serves chunks/ with far-future immutable cache headers.
-    chunkFilename: "chunks/[id].[contenthash:8].js",
+    // `[name]` falls back to the chunk id when a chunk has no name, so this
+    // only changes chunks named through a `webpackChunkName` comment. The
+    // locale catalogues need their name in the filename: the bundle-size gate
+    // recognises them by it.
+    chunkFilename: "chunks/[name].[contenthash:8].js",
     filename: (pathData) => {
       switch (pathData.chunk?.name) {
         case "embedding-sdk-bootstrap":
@@ -135,8 +133,44 @@ const config = {
       },
       {
         test: /\.(svg|png)$/,
+        // SVG font faces live under frontend/fonts and must stay files: inlining them
+        // adds close to a megabyte of base64 to this bundle.
+        exclude: /[\\/]frontend[\\/]fonts[\\/]/,
         type: "asset/inline",
-        resourceQuery: { not: [/component|source/] },
+        resourceQuery: { not: [/component|source|url/] },
+      },
+      {
+        // `?url` opts an image out of inlining. The app build owns the emitted
+        // file, this build only needs its URL: `../dist/` resolves from the
+        // SDK's publicPath (`app/embedding-sdk/`) to the app's `app/dist/`.
+        test: /\.(svg|png)$/,
+        resourceQuery: /url/,
+        type: "asset/resource",
+        generator: {
+          emit: false,
+          filename: "../dist/[hash][ext]",
+        },
+      },
+      {
+        // Fonts are emitted as files, never inlined: base64 would add megabytes.
+        test: /\.(woff2?|ttf|otf|eot|svg)$/,
+        include: /[\\/]frontend[\\/]fonts[\\/]/,
+        type: "asset/resource",
+        generator: {
+          // The app build owns these files. Emitting them here as well would race
+          // with its `clean`, and would leave removed fonts behind if that clean
+          // had to skip the directory. This build only needs the URL.
+          emit: false,
+          // Keep the family directory: the backend derives the whitelabel font
+          // list from these directory names.
+          /** @param {{ filename: string }} pathData */
+          filename: (pathData) => {
+            // e.g. frontend/fonts/PT_Serif/PTSerif-Bold.woff2 -> PT_Serif
+            const segments = pathData.filename.split("/");
+            const family = segments[segments.length - 2];
+            return `../dist/fonts/${family}/[name].[contenthash:8][ext]`;
+          },
+        },
       },
       {
         test: /\.css$/,
@@ -203,7 +237,7 @@ const config = {
     ],
   },
 
-  externals: EXTERNAL_DEPENDENCIES,
+  ...resolveConfig,
 
   optimization: {
     ...OPTIMIZATION_CONFIG,
@@ -424,14 +458,6 @@ const config = {
       }),
     ...COMPRESSION_CONFIG,
   ].filter(Boolean),
-};
-
-config.resolve.alias = {
-  ...mainConfig.resolve.alias,
-  "sdk-ee-plugins": ENTERPRISE_SRC_PATH + "/sdk-plugins",
-  "sdk-iframe-embedding-ee-plugins":
-    ENTERPRISE_SRC_PATH + "/sdk-iframe-embedding-plugins",
-  "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
 };
 
 if (config.cache) {

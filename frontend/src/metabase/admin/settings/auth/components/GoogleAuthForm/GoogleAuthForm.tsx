@@ -1,10 +1,6 @@
-import { useMemo } from "react";
+import { type JSX, useMemo } from "react";
 import { jt, t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import {
@@ -19,6 +15,10 @@ import {
   useGetSettingsQuery,
   useSetting,
 } from "metabase/settings";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import type { SettingDefinition, Settings } from "metabase-types/api";
 
@@ -54,7 +54,7 @@ export const GoogleAuthForm = (): JSX.Element => {
     return { ...values, [ENABLED_KEY]: true };
   }, [settingValues]);
 
-  const { url: docsUrl } = useDocsUrl("people-and-groups/google-and-ldap", {
+  const { url: docsUrl } = useDocsUrl("people-and-groups/google-sign-in", {
     anchor: "enabling-google-sign-in",
   });
 

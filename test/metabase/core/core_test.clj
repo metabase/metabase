@@ -4,6 +4,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.core.core :as core]
+   [metabase.global-system.system :as global-system]
    [metabase.sample-data.impl :as sample-data.impl]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -17,7 +18,7 @@
       (let [h2-db (t2/insert-returning-instance! :model/Database
                                                  {:name "Sample Database" :engine :h2 :is_sample true
                                                   :details (#'sample-data.impl/try-to-extract-sample-database! :h2)})]
-        (sync/sync-database! h2-db)
+        (sync/sync-database! (:id h2-db))
         (let [before-tables (t2/select-fn-set :id :model/Table :db_id (:id h2-db))]
           (#'core/reconcile-sample-database!)
           (let [after (t2/select-one :model/Database :id (:id h2-db))]
@@ -37,7 +38,7 @@
       (let [db       (t2/insert-returning-instance! :model/Database
                                                     {:name "Sample Database" :engine :sqlite :is_sample true
                                                      :details (#'sample-data.impl/try-to-extract-sample-database! :sqlite)})
-            _        (sync/sync-database! db)
+            _        (sync/sync-database! (:id db))
             messages (mt/with-log-messages-for-level [messages [metabase.sample-data.impl :error]]
                        (#'core/reconcile-sample-database!)
                        (messages))]
@@ -49,8 +50,33 @@
   (testing "With no sample database present the bundled one is added, so fresh installs still get it"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)
-      (with-redefs [config/load-sample-content? (constantly true)]
+      (mt/with-dynamic-fn-redefs [config/load-sample-content? (constantly true)]
         (#'core/reconcile-sample-database!))
       (let [sample-db (t2/select-one :model/Database :is_sample true)]
         (is (some? sample-db))
         (is (= :sqlite (:engine sample-db)))))))
+
+(deftest destroy-runs-every-step-test
+  (testing "a step that throws is logged before the next step runs, and does not stop the steps after it"
+    (mt/with-log-messages-for-level [messages [metabase.core.core :warn]]
+      (let [ran         (atom [])
+            logged-yet? #(boolean (some (comp #{"Shutdown step failed: fails"} :message) (messages)))]
+        (mt/with-dynamic-fn-redefs [core/shutdown-steps (constantly [["first" #(swap! ran conj :first)]
+                                                                     ["fails" #(throw (ex-info "boom" {}))]
+                                                                     ["last" #(swap! ran conj [:last (logged-yet?)])]])]
+          (#'core/destroy!)
+          (is (=? {:ran      [:first [:last true]]
+                   :messages [{:level :error, :message "Shutdown step failed: fails"}
+                              {:level :warn, :message "Metabase Shutdown COMPLETE, with 1 failed steps"}]}
+                  {:ran      @ran
+                   :messages (messages)})))))))
+
+(deftest system-dependencies-name-components-test
+  (testing "every key in the halt's dependencies is an installed component, so a renamed one is not silently dropped"
+    (let [installed (set (keys (global-system/snapshot)))
+          named     (into #{} (mapcat (fn [[k uses]] (cons k uses))) @#'core/system-dependencies)]
+      (is (= #{} (into #{} (remove installed) named))))))
+
+(deftest system-dependencies-have-no-cycle-test
+  (testing "the halt's dependencies form a graph a halt accepts"
+    (is (some? (#'global-system/dependency-graph @#'core/system-dependencies)))))

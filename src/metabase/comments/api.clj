@@ -11,6 +11,7 @@
    [metabase.comments.models.comment :as comment]
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.comments.render :as comments.render]
+   [metabase.comments.schema :as comments.schema]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.request.core :as request]
@@ -57,19 +58,8 @@
    [:and
     {:error/message "Comment content must be valid JSON"
      :json-schema   {:type "object"}}
-    ms/Map]
+    ::comments.schema/prose-mirror-node]
    (deferred-tru "Comment content must be valid JSON.")))
-
-(def ^:private CommentHighlight
-  "The chart point a comment is anchored to. Identity only — which column, and which dimension values
-  pick out the point — so the client can re-find it in a result set it is separately authorized to
-  read."
-  [:map {:closed true}
-   [:columnName {:optional true} [:maybe :string]]
-   [:dimensions {:optional true}
-    [:maybe [:sequential [:map {:closed true}
-                          [:columnName {:optional true} [:maybe :string]]
-                          [:value      {:optional true} :any]]]]]])
 
 (def CommentContext
   "Context stored alongside a comment"
@@ -77,16 +67,12 @@
    [:and
     {:error/message "Comment context must be a valid JSON object"
      :json-schema   {:type "object"}}
-    [:map {:closed true}
-     [:timeline_id           {:optional true} [:maybe ms/PositiveInt]]
-     [:exploration_query_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
-     [:highlighted           {:optional true} [:maybe CommentHighlight]]
-     [:highlight_label       {:optional true} [:maybe [:string {:max 1000}]]]]]
+    ::comments.schema/comment.context]
    (deferred-tru "Comment context must be a valid JSON object.")))
 
 (def CreateComment
   "Schema for creating a new comment"
-  [:map
+  [:map {:closed true}
    [:target_type TargetType]
    [:target_id   ms/PositiveInt]
    [:content     CommentContent]
@@ -96,7 +82,7 @@
 
 (def UpdateComment
   "Schema for updating a comment"
-  [:map
+  [:map {:closed true}
    [:content {:optional true} CommentContent]
    [:is_resolved {:optional true} :boolean]])
 
@@ -136,7 +122,7 @@
 (api.macros/defendpoint :get "/"
   "Get comments for an entity"
   [_route-params
-   {:keys [target_type target_id]} :- [:map
+   {:keys [target_type target_id]} :- [:map {:closed true}
                                        [:target_type TargetType]
                                        [:target_id ms/PositiveInt]]
    _body
@@ -159,7 +145,7 @@
     (->> (comments.db/active-user-ids mention-ids)
          (filterv (fn [user-id]
                     (request/with-current-user user-id
-                      (mi/can-read? entity)))))))
+                      (mi/can-read? (t2/hydrate entity :can_read))))))))
 
 (defn notify-comment!
   "Send a notification about comment"
@@ -239,7 +225,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:comment-id"
   "Update a comment"
-  [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
+  [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
    _query-params
    {:keys [content is_resolved]} :- UpdateComment]
   (let [comment (api/check-404 (comments.db/comment-by-id comment-id))
@@ -267,13 +253,9 @@
                               :user-id api/*current-user-id*})
       updated-comment)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:comment-id"
+(api.macros/defendpoint :delete "/:comment-id" :- ::api/generic-204-no-content
   "Soft delete a comment"
-  [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
+  [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
    _query-params]
   (let [comment (api/check-404 (comments.db/comment-by-id comment-id))]
     (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
@@ -297,9 +279,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:comment-id/reaction"
   "Toggle a reaction on a comment"
-  [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
+  [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
    _query-params
-   {:keys [emoji]} :- [:map [:emoji [:string {:min 1 :max 10}]]]]
+   {:keys [emoji]} :- [:map {:closed true} [:emoji ::comments.schema/reaction-emoji]]]
   (let [comment (api/check-404 (comments.db/comment-by-id comment-id))]
     (api/check-400 (not (:deleted_at comment))
                    "Cannot react to deleted comments")

@@ -1,5 +1,6 @@
 ---
 title: Using or migrating from an H2 application database
+summary: Fix problems with an H2 application database, including failed migrations, locked or corrupted files, and downgrades.
 ---
 
 # Using or migrating from an H2 application database
@@ -14,7 +15,7 @@ You've installed Metabase, but:
 
 ## Are you currently using H2 as your application database?
 
-**Root cause:** Metabase stores information about users, questions, and so on in a database of its own called the "application database", or "app database" for short. By default Metabase uses H2 for the application database, but we don't recommended it for production---because it's an on-disk database, it's sensitive to filesystem errors, such as a drive being corrupted or a file not being flushed properly.
+**Root cause:** Metabase stores information about users, questions, and so on in a database of its own called the "application database", or "app database" for short. By default Metabase uses H2 for the application database, but we don't recommend it for production---because it's an on-disk database, it's sensitive to filesystem errors, such as a drive being corrupted or a file not being flushed properly.
 
 **Steps to take:**
 
@@ -44,7 +45,7 @@ Command failed with exception: Unsupported database file version or invalid file
     export MB_DB_USER=<username>
     export MB_DB_PASS=<password>
     export MB_DB_HOST=localhost
-    java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
+    java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
     ```
 
 If you're using a [Pro or Enterprise version of Metabase][enterprise], you can use [serialization][serialization-docs] to snapshot your application database. Serialization is useful when you want to [preload questions and dashboards][serialization-learn] in a new Metabase instance.
@@ -73,14 +74,14 @@ liquibase.exception.DatabaseException: liquibase.exception.LockException: Could 
 1.  Open a shell on the server where Metabase is installed and manually clear the locks by running:
 
     ```
-    java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate release-locks
+    java -jar metabase.jar migrate release-locks
     ```
 
 2.  Once this command completes, restart your Metabase instance normally (_without_ the `migrate release-locks` flag).
 
 ## Is the app database corrupted?
 
-**Root cause:** H2 is less reliable than production-quality database management systems, and sometimes the database itself becomes corrupted. This can result in loss of data in the app database, but can _not_ damage data in the databases that Metabase is connected.
+**Root cause:** H2 is less reliable than production-quality database management systems, and sometimes the database itself becomes corrupted. This can result in loss of data in the app database, but can _not_ damage data in the databases that Metabase is connected to.
 
 **Steps to take:** Error messages can vary depending on how the app database was corrupted, but in most cases the log message will mention `h2`. A typical command and message are:
 

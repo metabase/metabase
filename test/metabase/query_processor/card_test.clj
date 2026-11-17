@@ -12,18 +12,23 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
+   [metabase.query-processor.pivot :as qp.pivot]
    ;; asserts on the store's miscellaneous-value slot that the results-metadata middleware writes
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -39,6 +44,15 @@
                 (fn [query info]
                   (qp/process-query (assoc query :info info)))))))
 
+(deftest empty-query-card-is-handed-to-the-runner-test
+  (testing "a Card without a query is handed to the `:make-run` runner instead of being rejected as not found"
+    (mt/test-driver :h2
+      (mt/with-temp [:model/Card card {}]
+        (is (=? {:viz-settings {}
+                 :middleware   {:js-int-to-string? true}}
+                (mt/as-admin
+                  (qp.card/process-query-for-card card :api :make-run (constantly (fn [query _info] query))))))))))
+
 (defn field-filter-query
   "An MBQL 5 native query with a Field Filter (`:dimension`) parameter."
   []
@@ -47,7 +61,7 @@
                                        :name         "date"
                                        :display-name "Check-In Date"
                                        :type         :dimension
-                                       :dimension    (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :checkins :date)))
+                                       :field-id     (mt/id :checkins :date)
                                        :widget-type  :date/all-options}})))
 
 (defn field-filter-query-between
@@ -58,7 +72,7 @@
                                              :name         "quantities"
                                              :display-name "Quantity Range"
                                              :type         :dimension
-                                             :dimension    (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :quantity)))
+                                             :field-id     (mt/id :orders :quantity)
                                              :widget-type  :number/between}})))
 
 (defn non-field-filter-query
@@ -232,6 +246,37 @@
                   result))
           (is (= [[100]] (mt/formatted-rows [int] result))))))))
 
+(deftest pivot-card-records-average-execution-time-under-card-query-hash-test
+  (testing "Running a pivot Card records its execution time under the hash the cache strategy looks up, so a TTL
+           strategy gets a real `:avg-execution-ms` instead of 0"
+    (mt/test-driver :h2
+      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues
+                                                        {:aggregation [[:count]]
+                                                         :breakout    [$category_id $price]})
+                                       :display       :pivot}]
+        (doseq [native? [false true]]
+          (testing (str "use-native-pivot-tables = " native?)
+            (mt/with-temporary-setting-values [use-native-pivot-tables native?]
+              (mt/with-dynamic-fn-redefs [qp.card/cache-strategy (constantly {:type            :ttl
+                                                                              :multiplier      10
+                                                                              :min_duration_ms 0})]
+                (let [card-query-hash (qp.util/query-hash
+                                       (qp.card/query-for-card card nil (qp.constraints/default-query-constraints) nil))]
+                  (t2/delete! :model/Query :query_hash card-query-hash)
+                  (binding [qp.util/*execute-async?*     false
+                            qp.pivot/*check-pivot-parity?* false]
+                    (is (=? {:status :completed}
+                            (mt/as-admin
+                              (qp.card/process-query-for-card
+                               card :api
+                               :make-run (fn [qp _export-format]
+                                           (fn [query info]
+                                             (qp (update query :info merge info) nil))))))))
+                  (is (some? (queries/average-execution-time-ms card-query-hash)))
+                  (is (=? {:type :ttl, :avg-execution-ms (queries/average-execution-time-ms card-query-hash)}
+                          (:cache-strategy
+                           (qp.card/query-for-card card nil (qp.constraints/default-query-constraints) nil)))))))))))))
+
 (deftest nested-query-permissions-test
   (testing "Reading a Card is not enough to run it when its source query is a Card we cannot read"
     (mt/with-no-data-perms-for-all-users!
@@ -259,16 +304,16 @@
                                     (let [info (assoc info :query-hash (byte-array 0))]
                                       (qp/process-query (assoc query :info info)))))))]
               (testing "Should not be able to run the parent Card"
-                (is (not (mi/can-read? disallowed-collection)))
-                (is (not (mi/can-read? parent-card)))
+                (is (not (mi/can-read? (t2/hydrate disallowed-collection :can_read))))
+                (is (not (mi/can-read? (t2/hydrate parent-card :can_read))))
                 (is (thrown-with-msg?
                      clojure.lang.ExceptionInfo
                      #"\QYou don't have permissions to do that.\E"
                      (process-query-for-card parent-card))))
               (testing "Should not be able to run the child Card either, since it reads the parent"
-                (is (not (mi/can-read? parent-card)))
-                (is (mi/can-read? allowed-collection))
-                (is (mi/can-read? child-card))
+                (is (not (mi/can-read? (t2/hydrate parent-card :can_read))))
+                (is (mi/can-read? (t2/hydrate allowed-collection :can_read)))
+                (is (mi/can-read? (t2/hydrate child-card :can_read)))
                 (is (thrown-with-msg?
                      clojure.lang.ExceptionInfo
                      #"You do not have permissions to view Card"

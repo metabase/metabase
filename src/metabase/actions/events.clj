@@ -8,6 +8,10 @@
 (events/derive! :event/action.success ::event)
 (events/derive! :event/action.failure ::event)
 
+(events/derive! :event/action-create ::event)
+(events/derive! :event/action-update ::event)
+(events/derive! :event/action-delete ::event)
+
 (defn publish-action-invocation!
   "Publish the details of action of how a"
   [action-kw {:keys [invocation-id user-id] :as _context} inputs]

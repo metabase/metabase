@@ -1,26 +1,24 @@
-import Question from "metabase-lib/v1/Question";
+import {
+  NATIVE_QUERY_TEMPLATE,
+  STRUCTURED_QUERY_TEMPLATE,
+} from "metabase-lib/v1/queries/templates";
 import type {
   Card,
   PythonTransformSourceDraft,
   QueryTransformSource,
-  SuggestedTransform,
 } from "metabase-types/api";
 
-import type { NewTransformValues } from "./CreateTransformModal/form";
-
 export function getInitialQuerySource(): QueryTransformSource {
-  const question = Question.create({ DEPRECATED_RAW_MBQL_type: "query" });
   return {
     type: "query",
-    query: question.datasetQuery(),
+    query: STRUCTURED_QUERY_TEMPLATE,
   };
 }
 
 export function getInitialNativeSource(): QueryTransformSource {
-  const question = Question.create({ DEPRECATED_RAW_MBQL_type: "native" });
   return {
     type: "query",
-    query: question.datasetQuery(),
+    query: NATIVE_QUERY_TEMPLATE,
   };
 }
 
@@ -49,19 +47,4 @@ def transform():
 
 export function getInitialCardSource(card: Card): QueryTransformSource {
   return { type: "query", query: card.dataset_query };
-}
-
-export function getDefaultValues(
-  name: string,
-  suggestedTransform?: SuggestedTransform,
-): Partial<NewTransformValues> {
-  if (suggestedTransform == null) {
-    return { name };
-  }
-
-  return {
-    name,
-    targetName: suggestedTransform.target.name,
-    targetSchema: suggestedTransform.target.schema,
-  };
 }

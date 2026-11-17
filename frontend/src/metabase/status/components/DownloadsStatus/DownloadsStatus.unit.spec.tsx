@@ -1,10 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { createMockMetadata } from "__support__/metadata";
+import { createMockState } from "__support__/state";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { downloadDataset } from "metabase/redux/downloads";
 import type { Dispatch, DownloadsState } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { HIDE_DELAY } from "metabase/status/hooks/use-status-visibility";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
@@ -27,7 +28,10 @@ const getDownloadDatasetAction = () =>
   downloadDataset({
     opts: {
       type: "csv",
-      question: new Question(createMockCard({ id: 1, name: "test card" })),
+      question: new Question(
+        createMockCard({ id: 1, name: "test card" }),
+        createMockMetadata(),
+      ),
       result: createMockDataset(),
     },
     id: 1,

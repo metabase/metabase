@@ -230,7 +230,7 @@
                                                       :status       :active
                                                       :bundle_hash  "abc123"
                                                       :manifest     manifest}]
-          (with-redefs [cache/get-asset (fn [_ asset-name] (.getBytes (str "bytes:" asset-name) "UTF-8"))]
+          (mt/with-dynamic-fn-redefs [cache/get-asset (fn [_ asset-name] (.getBytes (str "bytes:" asset-name) "UTF-8"))]
             (testing "serves the manifest icon"
               (is (= "bytes:icon.svg"
                      (some-> (cache/resolve-asset plugin "icon.svg") (String. "UTF-8")))))
@@ -285,9 +285,9 @@
       (mt/with-temp [:model/CustomVizPlugin plugin {:identifier   "tampered-viz"
                                                     :display_name "tampered-viz"
                                                     :status       :active
-                                                    :bundle       (cvp.tu/valid-bundle-bytes "tampered-viz")
-                                                    :bundle_hash  "deadbeef"}]
-        (is (nil? (cache/get-bundle plugin))
+                                                    :bundle       (cvp.tu/valid-bundle-bytes "tampered-viz")}]
+        (t2/update! :custom_viz_plugin :id (:id plugin) {:bundle_hash "deadbeef"})
+        (is (nil? (cache/get-bundle (assoc plugin :bundle_hash "deadbeef")))
             "mismatch between bundle bytes and bundle_hash must not be served")))))
 
 ;;; ------------------------------------------------ resolve-bundle precedence ------------------------------------------------

@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { BrowseSchemas } from "metabase/browse/schemas/BrowseSchemas";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import {
@@ -44,7 +44,10 @@ describe("BrowseDatabases", () => {
   });
 
   describe("opening a database through the UI", () => {
-    const renderBrowseDatabasesWithRouter = (databases: Database[]) => {
+    const renderBrowseDatabasesWithRouter = (
+      databases: Database[],
+      { isAdmin = false }: setupOpts = {},
+    ) => {
       setupDatabasesEndpoints(databases);
       return renderWithProviders(
         <>
@@ -52,7 +55,9 @@ describe("BrowseDatabases", () => {
           <Route path="/browse/databases/:slug" element={<BrowseSchemas />} />
         </>,
         {
-          storeInitialState: createMockState({ currentUser: createMockUser() }),
+          storeInitialState: createMockState({
+            currentUser: createMockUser({ is_superuser: isAdmin }),
+          }),
           withRouter: true,
           initialRoute: "/browse/databases",
         },
@@ -101,6 +106,42 @@ describe("BrowseDatabases", () => {
       },
     );
 
+    it("opens the add database page from the add database card and tracks the click", async () => {
+      const { trackSimpleEvent } = jest.requireMock<{
+        trackSimpleEvent: jest.Mock<void, [{ event: string }]>;
+      }>("metabase/analytics");
+      const { router } = renderBrowseDatabasesWithRouter(
+        [createMockDatabase({ id: 1, name: "Sales" })],
+        { isAdmin: true },
+      );
+
+      await userEvent.click(await screen.findByText("Add a database"));
+
+      expect(router?.location.pathname).toBe("/admin/databases/create");
+      const addDatabaseEvents = trackSimpleEvent.mock.calls.filter(
+        ([event]) => event.event === "database_add_clicked",
+      );
+      expect(addDatabaseEvents).toEqual([
+        [{ event: "database_add_clicked", triggered_from: "db-list" }],
+      ]);
+    });
+
+    it("opens the database options menu without opening the database", async () => {
+      const { router } = renderBrowseDatabasesWithRouter(
+        [databaseWithSchemas(7, "Sales", ["PUBLIC", "ANALYTICS"])],
+        { isAdmin: true },
+      );
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Database options" }),
+      );
+
+      expect(
+        await screen.findByRole("menuitem", { name: /Edit metadata/ }),
+      ).toBeInTheDocument();
+      expect(router?.location.pathname).toBe("/browse/databases");
+    });
+
     it("opens a database whose name starts with a digit", async () => {
       // "7-sales" as a url segment would be read back as database 7
       const { router } = renderBrowseDatabasesWithRouter([
@@ -119,6 +160,26 @@ describe("BrowseDatabases", () => {
     expect(
       await screen.findByText("No databases here yet"),
     ).toBeInTheDocument();
+  });
+
+  describe("database options menu", () => {
+    it("should not render for regular users", async () => {
+      renderBrowseDatabases(2, { isAdmin: false });
+      await waitForLoaderToBeRemoved();
+
+      expect(
+        screen.queryByRole("button", { name: "Database options" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should render on each database card for admins", async () => {
+      renderBrowseDatabases(2, { isAdmin: true });
+      await waitForLoaderToBeRemoved();
+
+      expect(
+        screen.getAllByRole("button", { name: "Database options" }),
+      ).toHaveLength(2);
+    });
   });
 
   describe("Add database card", () => {

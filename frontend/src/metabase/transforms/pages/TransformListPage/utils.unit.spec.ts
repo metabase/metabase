@@ -2,37 +2,23 @@ import { createMockMetadata } from "__support__/metadata";
 import { getLibQuery } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type {
-  RemoteSyncEntity,
-  RemoteSyncEntityStatus,
-} from "metabase-types/api";
+import type { DatabaseId } from "metabase-types/api";
 import {
   createMockCollection,
-  createMockRemoteSyncEntity,
-  createMockStructuredDatasetQuery,
   createMockTemplateTag,
   createMockTransform,
   createMockTransformOwner,
   createMockTransformTarget,
 } from "metabase-types/api/mocks";
 
+import type { TreeNode } from "./types";
 import {
   buildTreeData,
   getDescendantCollectionIds,
-  getFolderSyncColor,
+  getFolderTransforms,
   getIncrementalWarning,
-  getSyncColorForEntities,
+  getRemoteSyncChangesTarget,
 } from "./utils";
-
-const dirtyEntity = (
-  status: RemoteSyncEntityStatus,
-  overrides: Partial<RemoteSyncEntity> = {},
-): RemoteSyncEntity =>
-  createMockRemoteSyncEntity({
-    model: "transform",
-    sync_status: status,
-    ...overrides,
-  });
 
 jest.mock("metabase/transforms/utils", () => ({
   getLibQuery: jest.fn(),
@@ -182,122 +168,58 @@ describe("getDescendantCollectionIds", () => {
   });
 });
 
-describe("getSyncColorForEntities", () => {
-  it("returns undefined when there are no changes", () => {
-    expect(getSyncColorForEntities([])).toBeUndefined();
-  });
-
-  it("colors a created entity green (feedback-positive)", () => {
-    expect(getSyncColorForEntities([dirtyEntity("create")])).toBe(
-      "feedback-positive",
-    );
-  });
-
-  it("colors an updated entity amber (feedback-warning)", () => {
-    expect(getSyncColorForEntities([dirtyEntity("update")])).toBe(
-      "feedback-warning",
-    );
-  });
-
-  it("colors a removed entity red (feedback-negative)", () => {
-    expect(getSyncColorForEntities([dirtyEntity("removed")])).toBe(
-      "feedback-negative",
-    );
-  });
-});
-
-describe("getFolderSyncColor", () => {
-  const collection = (id: number, status: RemoteSyncEntityStatus) =>
-    dirtyEntity(status, { id, model: "collection" });
-  const childTransform = (
-    collectionId: number,
-    status: RemoteSyncEntityStatus,
-  ) =>
-    dirtyEntity(status, {
-      id: 100 + collectionId,
-      collection_id: collectionId,
-    });
-
-  it("returns undefined when the subtree has no changes", () => {
-    expect(getFolderSyncColor([], 1)).toBeUndefined();
-  });
-
-  it("colors a brand-new folder green", () => {
-    expect(getFolderSyncColor([collection(1, "create")], 1)).toBe(
-      "feedback-positive",
-    );
-  });
-
-  it("colors a renamed or moved folder amber, not green", () => {
-    expect(getFolderSyncColor([collection(1, "update")], 1)).toBe(
-      "feedback-warning",
-    );
-  });
-
-  it("colors an existing folder amber when it only contains new children", () => {
-    expect(getFolderSyncColor([childTransform(1, "create")], 1)).toBe(
-      "feedback-warning",
-    );
-  });
-
-  it("colors an existing folder amber when a child was removed", () => {
-    expect(getFolderSyncColor([childTransform(1, "removed")], 1)).toBe(
-      "feedback-warning",
-    );
-  });
-
-  it("keeps a brand-new folder green even with new children", () => {
-    expect(
-      getFolderSyncColor(
-        [collection(1, "create"), childTransform(1, "create")],
-        1,
-      ),
-    ).toBe("feedback-positive");
-  });
-
-  it("keeps nested brand-new folders green (new folder > new folder > new transform)", () => {
-    const subtree = [
-      collection(1, "create"),
-      collection(2, "create"),
-      childTransform(2, "create"),
+describe("getRemoteSyncChangesTarget", () => {
+  it("targets folder collections and transforms", () => {
+    const collections = [createMockCollection({ id: 1, name: "Folder" })];
+    const transforms = [
+      createMockTransform({ id: 7, name: "Transform", collection_id: 1 }),
     ];
-    expect(getFolderSyncColor(subtree, 1)).toBe("feedback-positive");
-    expect(
-      getFolderSyncColor(
-        [collection(2, "create"), childTransform(2, "create")],
-        2,
-      ),
-    ).toBe("feedback-positive");
+
+    const [folderNode] = buildTreeData(collections, transforms);
+    const [transformNode] = folderNode.children ?? [];
+
+    expect(getRemoteSyncChangesTarget(folderNode)).toEqual({
+      type: "collection",
+      id: 1,
+    });
+    expect(getRemoteSyncChangesTarget(transformNode)).toEqual({
+      type: "transform",
+      id: 7,
+    });
   });
 });
 
 describe("getIncrementalWarning", () => {
   const metadata = createMockMetadata({});
+  const getMetadataProvider = (databaseId: DatabaseId | null) =>
+    Lib.metadataProvider(databaseId, metadata);
 
   it("should return undefined for non-incremental transform", () => {
     const transform = createMockTransform({
       target: createMockTransformTarget({ type: "table" }),
     });
 
-    expect(getIncrementalWarning(transform, metadata)).toBeUndefined();
+    expect(
+      getIncrementalWarning(transform, getMetadataProvider),
+    ).toBeUndefined();
   });
 
   it("should warn when native query has no table variables", () => {
     mockGetLibQuery.mockReturnValue(query);
-    mockTemplateTags.mockReturnValue({
-      snippet1: createMockTemplateTag({
+    mockTemplateTags.mockReturnValue([
+      createMockTemplateTag({
         id: "1",
         name: "snippet1",
         type: "snippet",
       }),
-    });
+    ]);
 
     const transform = createMockTransform({
       source_type: "native",
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
 
-    const result = getIncrementalWarning(transform, metadata);
+    const result = getIncrementalWarning(transform, getMetadataProvider);
     expect(result).toMatch(/table variable/);
   });
 
@@ -309,50 +231,50 @@ describe("getIncrementalWarning", () => {
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
 
-    const result = getIncrementalWarning(transform, metadata);
+    const result = getIncrementalWarning(transform, getMetadataProvider);
     expect(result).toMatch(/table variable/);
   });
 
   it("should warn when incremental transform has no checkpoint field", () => {
     mockGetLibQuery.mockReturnValue(query);
-    mockTemplateTags.mockReturnValue({
-      my_table: createMockTemplateTag({
+    mockTemplateTags.mockReturnValue([
+      createMockTemplateTag({
         id: "1",
         name: "my_table",
         type: "table",
         "table-id": 42,
       }),
-    });
+    ]);
 
     const transform = createMockTransform({
       source_type: "native",
       source: {
         type: "query",
-        query: createMockStructuredDatasetQuery(),
+        query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
       },
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
 
-    const result = getIncrementalWarning(transform, metadata);
+    const result = getIncrementalWarning(transform, getMetadataProvider);
     expect(result).toMatch(/checkpoint field/);
   });
 
   it("should return undefined for properly configured native incremental transform", () => {
     mockGetLibQuery.mockReturnValue(query);
-    mockTemplateTags.mockReturnValue({
-      my_table: createMockTemplateTag({
+    mockTemplateTags.mockReturnValue([
+      createMockTemplateTag({
         id: "1",
         name: "my_table",
         type: "table",
         "table-id": 42,
       }),
-    });
+    ]);
 
     const transform = createMockTransform({
       source_type: "native",
       source: {
         type: "query",
-        query: createMockStructuredDatasetQuery(),
+        query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
         "source-incremental-strategy": {
           type: "checkpoint",
           "checkpoint-filter-field-id": 99,
@@ -361,7 +283,9 @@ describe("getIncrementalWarning", () => {
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
 
-    expect(getIncrementalWarning(transform, metadata)).toBeUndefined();
+    expect(
+      getIncrementalWarning(transform, getMetadataProvider),
+    ).toBeUndefined();
   });
 
   it("should warn when mbql incremental transform has no checkpoint field", () => {
@@ -370,7 +294,7 @@ describe("getIncrementalWarning", () => {
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
 
-    const result = getIncrementalWarning(transform, metadata);
+    const result = getIncrementalWarning(transform, getMetadataProvider);
     expect(result).toMatch(/checkpoint field/);
   });
 
@@ -379,7 +303,7 @@ describe("getIncrementalWarning", () => {
       source_type: "mbql",
       source: {
         type: "query",
-        query: createMockStructuredDatasetQuery(),
+        query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
         "source-incremental-strategy": {
           type: "checkpoint",
           "checkpoint-filter-field-id": 99,
@@ -388,6 +312,42 @@ describe("getIncrementalWarning", () => {
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
 
-    expect(getIncrementalWarning(transform, metadata)).toBeUndefined();
+    expect(
+      getIncrementalWarning(transform, getMetadataProvider),
+    ).toBeUndefined();
+  });
+});
+
+describe("getFolderTransforms", () => {
+  const folderNode = (id: number, children: TreeNode[] = []): TreeNode => ({
+    id: `collection-${id}`,
+    name: `Folder ${id}`,
+    nodeType: "folder",
+    icon: "folder",
+    collection: createMockCollection({ id, namespace: "transforms" }),
+    children,
+  });
+
+  it("returns the transforms of the folder and its subfolders, by name", () => {
+    const folder = folderNode(1, [folderNode(2)]);
+    const transforms = [
+      createMockTransform({ id: 1, name: "Zebra", collection_id: 1 }),
+      createMockTransform({ id: 2, name: "Nested", collection_id: 2 }),
+      createMockTransform({ id: 3, name: "Elsewhere", collection_id: 3 }),
+      createMockTransform({ id: 4, name: "Root", collection_id: null }),
+      createMockTransform({ id: 5, name: "Apple", collection_id: 1 }),
+    ];
+
+    expect(getFolderTransforms(folder, transforms).map((t) => t.id)).toEqual([
+      5, 2, 1,
+    ]);
+  });
+
+  it("returns an empty list for a folder without transforms", () => {
+    expect(
+      getFolderTransforms(folderNode(1), [
+        createMockTransform({ id: 1, collection_id: 2 }),
+      ]),
+    ).toEqual([]);
   });
 });

@@ -1,6 +1,6 @@
-// eslint-disable-next-line no-restricted-imports -- We sometimes need css-in-js in the SDK
+// eslint-disable-next-line eslint-js/no-restricted-imports -- We sometimes need css-in-js in the SDK
 import { css } from "@emotion/react";
-// eslint-disable-next-line no-restricted-imports -- We sometimes need css-in-js in the SDK
+// eslint-disable-next-line eslint-js/no-restricted-imports -- We sometimes need css-in-js in the SDK
 import styled from "@emotion/styled";
 import cx from "classnames";
 import type React from "react";
@@ -64,7 +64,8 @@ export const SCOPED_CSS_RESET = css`
     background-color: transparent;
   }
 
-  // fonts.styled.ts has a reset for list padding and margin in the main app, so we need to do it here
+  // The app resets list padding and margin globally. These styles are scoped
+  // to the wrapper, so the reset has to be repeated inside it.
   :where(.mb-wrapper) *:where(ul) {
     padding: 0;
     margin: 0;

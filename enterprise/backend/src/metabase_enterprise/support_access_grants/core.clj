@@ -100,13 +100,13 @@
   []
   (when-let [{support-user-id :id, superuser? :is_superuser}
              (support-access-grants.db/user-superuser-flag-by-email (sag.settings/support-access-grant-email))]
-    (when (or superuser? (support-access-grants.db/session-exists-for-user? support-user-id))
+    (when (or superuser? (support-access-grants.db/unended-session-exists-for-user? support-user-id))
       (cluster-lock/with-cluster-lock grant-lifecycle-lock
         ;; Re-check after acquiring the same lock used by grant creation. This makes credential teardown and grant
         ;; creation mutually exclusive across the cluster, so teardown cannot invalidate a newly created grant.
         (when-not (active-grant-exists?)
           (log/infof "Support access grant has ended; revoking access for support user %d" support-user-id)
-          (sag.model/revoke-support-user-access! support-user-id (t/instant)))))))
+          (sag.model/revoke-support-user-access! support-user-id (t/instant) nil))))))
 
 (defn list-grants
   "List support access grants with optional filtering and pagination.

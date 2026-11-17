@@ -22,7 +22,7 @@
 (api.macros/defendpoint :get "/"
   "Fetch a list of recent tasks stored as Task History"
   [_
-   params :- [:maybe [:merge task-history/FilterParams task-history/SortParams]]]
+   params :- [:maybe task-history/FilterAndSortParams]]
   (perms/check-has-application-permission :monitoring)
   {:total  (task-history/total params)
    :limit  (request/limit)
@@ -35,7 +35,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get `TaskHistory` entry with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-404 (api/read-check :model/TaskHistory id)))
 
@@ -52,15 +52,11 @@
 ;;; TODO -- this is not necessarily a 'task history' thing and maybe belongs in the `task` module's API rather than
 ;;; here... maybe a problem for another day.
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/unique-tasks"
+(api.macros/defendpoint :get "/unique-tasks" :- [:vector string?]
   "Returns possibly empty vector of unique task names in alphabetical order. It is expected that number of unique
   tasks is small, hence no need for pagination. If that changes this endpoint and function that powers it should
   reflect that."
-  [] :- [:vector string?]
+  []
   (perms/check-has-application-permission :monitoring)
   (task-history/unique-tasks))
 
@@ -69,7 +65,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mr/def ::RunFilterParams
-  [:map
+  [:map {:closed true}
    [:run-type    {:optional true} (into [:enum] (map name task-run/run-types))]
    [:entity-type {:optional true} (into [:enum] (map name task-run/entity-types))]
    [:entity-id   {:optional true} ms/PositiveInt]
@@ -81,7 +77,7 @@
   #{:started_at :ended_at :run_type :status :entity_name :task_count})
 
 (mr/def ::RunSortParams
-  [:map
+  [:map {:closed true}
    [:sort-column    {:default :started_at} (into [:enum] run-sort-columns)]
    [:sort-direction {:default :desc}       [:enum :asc :desc]]])
 
@@ -188,6 +184,15 @@
      :started-at-start  start
      :started-at-end    end}))
 
+(api.macros/defendpoint :get "/counts" :- [:map {:closed true}
+                                           [:tasks ms/IntGreaterThanOrEqualToZero]
+                                           [:runs ms/IntGreaterThanOrEqualToZero]]
+  "Count all retained task history rows and task runs for the Monitor tabs."
+  [_route-params _query-params _body _request]
+  (perms/check-has-application-permission :monitoring)
+  {:tasks (task-history/total nil)
+   :runs (task-history.db/task-run-count (run-filters nil))})
+
 (api.macros/defendpoint :get "/runs" :- ::TaskRunsResponse
   "List task runs with optional filters. Returns runs with hydrated entity names and task counts."
   [_
@@ -204,7 +209,7 @@
 
 (api.macros/defendpoint :get "/runs/:id" :- ::TaskRunWithTasks
   "Get a single task run with all its child tasks."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (perms/check-has-application-permission :monitoring)
   (let [run   (api/check-404 (task-history.db/task-run id))
         tasks (task-history.db/tasks-for-run id)]
@@ -217,7 +222,7 @@
 (api.macros/defendpoint :get "/runs/entities" :- [:sequential ::RunEntity]
   "Get distinct entities that have task runs for a given run type. Used for populating entity filter picker."
   [_
-   params :- [:map
+   params :- [:map {:closed true}
               [:run-type   (into [:enum] (map name task-run/run-types))]
               [:started-at ms/NonBlankString]]]
   (perms/check-has-application-permission :monitoring)

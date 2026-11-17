@@ -2,53 +2,77 @@
   "Application database queries for the measures module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
+   [metabase.collections.models.collection.root :as collection.root]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.measures.schema :as measures.schema]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(defn insert-measure!
+(mu/defn synced-measures-clause :- [:fn vector?]
+  "The clause over the Measure table aliased `alias` selecting the measures of the tables remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  [:and
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
+   [:in (u/qualified-key alias :table_id)
+    ^:allow-subquery {:select [:settings.table_id]
+                      :from   [[(t2/table-name :model/TableUserSettings) :settings]]
+                      :where  (remote-sync/synced-filter-clause :model/TableUserSettings :settings opts)}]])
+
+(mu/defn insert-measure!
   "Insert a Measure and return the inserted instance."
-  [creator-id measure-name description definition]
+  [creator-id   :- ::lib.schema.id/user
+   measure-name :- :string
+   description  :- [:maybe :string]
+   definition   :- [:maybe ::measures.schema/measure.definition]]
   (t2/insert-returning-instance! :model/Measure
                                  :creator_id  creator-id
                                  :name        measure-name
                                  :description description
                                  :definition  definition))
 
-(defn measure
+(mu/defn measure
   "The Measure with `id`, or nil."
-  [id]
+  [id :- ::lib.schema.id/measure]
   (t2/select-one :model/Measure :id id))
 
-(defn unarchived-measures
+(mu/defn unarchived-measures
   "The unarchived Measures, in case-insensitive name order."
   []
   (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(defn table-database-ids
-  "The set of Database ids of the Tables with `table-ids`."
-  [table-ids]
-  (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
-
-(defn update-measure!
+(mu/defn update-measure!
   "Apply `changes` to the Measure with `id`."
-  [id changes]
-  (t2/update! :model/Measure id changes))
+  [id      :- ::lib.schema.id/measure
+   changes :- (mut/select-keys ::measures.schema/measure.update [:name :description :archived :definition])]
+  (t2/update! :model/Measure :id id changes))
 
-(defn table
+(mu/defn table
   "The Table with `table-id`, or nil."
-  [table-id]
+  [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
-(defn table-perms-columns
+(mu/defn table-perms-columns
   "The Database id, schema, and id of the Table with `table-id`, or nil."
-  [table-id]
+  [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :db_id :schema :id] :id table-id))
 
-(defn collections
-  "The Collections with `collection-ids`."
-  [collection-ids]
-  (t2/select :model/Collection :id [:in collection-ids]))
-
-(defn set-measure-dimensions!
+(mu/defn set-measure-dimensions!
   "Set the dimensions and dimension mappings of the Measure with `id`."
-  [id dimensions dimension-mappings]
-  (t2/update! :model/Measure id {:dimensions dimensions, :dimension_mappings dimension-mappings}))
+  [id                 :- ::lib.schema.id/measure
+   dimensions         :- [:maybe sequential?]
+   dimension-mappings :- [:maybe [:sequential ::measures.schema/measure.dimension-mapping]]]
+  (t2/update! :model/Measure :id id {:dimensions dimensions, :dimension_mappings dimension-mappings}))
+
+(mu/defn synced-measure-items :- [:sequential ::measures.schema/measure]
+  "The Measures with `ids`, with their Table and its Collection and ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Measure :id :name :table_id] :id [:in ids])
+        (t2/hydrate [:table [:collection :effective_ancestors]])
+        (->> (mapv (fn [row] (update row :table #(some-> % (collection.root/hydrate-root-collection root)))))))))

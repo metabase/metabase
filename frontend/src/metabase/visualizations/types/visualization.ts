@@ -11,7 +11,6 @@ import type {
 } from "metabase/viz-core";
 import type { BrushClickObject } from "metabase-lib/query/types";
 import type Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Dashboard,
   DashboardCard,
@@ -25,6 +24,7 @@ import type {
   SeriesCard,
   TimelineEvent,
   TimelineEventId,
+  TimelineEventsVisibility,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -54,12 +54,11 @@ export interface VisualizationProps {
   dashcard?: DashboardCard;
   card: SeriesCard;
   getHref?: () => string | undefined;
+  getCardHref?: (nextCard: SeriesCard) => string | undefined;
   data: DatasetData;
-  metadata?: Metadata;
   rawSeries: RawSeries;
   visualizerRawSeries?: RawSeries;
   settings: ComputedVisualizationSettings;
-  autoAdjustSettings?: boolean;
   hiddenSeries?: Set<string>;
   headerIcon?: IconProps | null;
   errorIcon?: IconName | null;
@@ -88,6 +87,7 @@ export interface VisualizationProps {
   clicked?: ClickObject | null;
   className?: string;
   timelineEvents?: TimelineEvent[];
+  timelineEventsVisibility?: TimelineEventsVisibility;
   selectedTimelineEventIds?: TimelineEventId[];
   queryBuilderMode?: QueryBuilderMode;
 
@@ -121,6 +121,8 @@ export interface VisualizationProps {
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: (eventIds?: number[]) => void;
   onSeeAllEvents?: (timelineEvents: TimelineEvent[]) => void;
+  onTimelineEventsShown?: () => void;
+  onTimelineEventsEnabledChange?: (isEnabled: boolean) => void;
 
   canToggleSeriesVisibility?: boolean;
   onUpdateWarnings?: any;

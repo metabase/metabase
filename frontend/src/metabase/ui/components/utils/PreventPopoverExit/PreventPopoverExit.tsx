@@ -1,5 +1,6 @@
 import {
   Children,
+  type JSX,
   cloneElement,
   createContext,
   useContext,

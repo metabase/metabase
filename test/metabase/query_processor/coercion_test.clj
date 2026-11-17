@@ -79,9 +79,10 @@
 (defn- date-type? [col]
   ;; legacy usage -- do not use going forward
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (some #(types/field-is-type? % col) [:type/DateTime ;; some databases return datetimes for date (e.g., Oracle)
-                                       :type/Text ;; sqlite uses text :(
-                                       :type/Date]))
+  (let [col (select-keys col [:base_type :effective_type])]
+    (some #(types/field-is-type? % col) [:type/DateTime ;; some databases return datetimes for date (e.g., Oracle)
+                                         :type/Text ;; sqlite uses text :(
+                                         :type/Date])))
 
 (defn- parse-date [s]
   (try

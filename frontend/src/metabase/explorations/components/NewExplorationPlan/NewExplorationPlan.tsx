@@ -40,15 +40,15 @@ export function NewExplorationPlan({ selection }: NewExplorationPlanProps) {
   }, [prefetchExplorationData]);
 
   return (
-    <Stack h="100%" gap={0} bg="background-primary" miw="50rem">
+    <Stack h="100%" gap={0} bg="background_page-primary" miw="50rem">
       <Box pt="1.5rem" pb="1rem" px="3rem">
         <Group w="100%" maw="93.75rem" mx="auto">
           <Button
             component={ForwardRefLink}
             to={Urls.newExploration()}
-            c="text-secondary"
-            bd="none"
-            leftSection={<Icon name="arrow_left" c="brand" />}
+            variant="transparent"
+            size="compact-md"
+            leftSection={<Icon name="arrow_left" />}
           >
             {t`All projects`}
           </Button>
@@ -71,7 +71,7 @@ export function NewExplorationPlan({ selection }: NewExplorationPlanProps) {
           w="100%"
           maw="93.75rem"
           mah="62.5rem"
-          bd="1px solid border"
+          bd="1px solid border-neutral"
         >
           <Group
             h="100%"

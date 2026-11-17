@@ -18,6 +18,7 @@ import {
   setupMetabotsEndpoints,
 } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
+import { createMockSettingsState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -26,16 +27,19 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
-import {
-  FIXED_METABOT_ENTITY_IDS,
-  FIXED_METABOT_IDS,
-} from "metabase/metabot/constants";
+import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
+import { TEST_METABOT_IDS } from "metabase/metabot/tests/utils";
 import { reinitialize } from "metabase/plugins";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
-import type { MetabotId, MetabotInfo, RecentItem } from "metabase-types/api";
+import type {
+  MetabotId,
+  MetabotInfo,
+  RecentItem,
+  SettingDefinition,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockMetabotInfo,
+  createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
@@ -44,11 +48,11 @@ import { MetabotSettingsPanel } from "./MetabotSettingsPanel";
 
 const defaultMetabots = [
   createMockMetabotInfo({
-    id: FIXED_METABOT_IDS.DEFAULT,
+    id: TEST_METABOT_IDS.INTERNAL,
     entity_id: FIXED_METABOT_ENTITY_IDS.DEFAULT,
   }),
   createMockMetabotInfo({
-    id: FIXED_METABOT_IDS.EMBEDDED,
+    id: TEST_METABOT_IDS.EMBEDDED,
     name: "Embedded Metabot",
     entity_id: FIXED_METABOT_ENTITY_IDS.EMBEDDED,
     collection_id: 21,
@@ -90,14 +94,14 @@ const defaultSeedCollections = [
   },
 ];
 const setup = async (
-  initialPathParam: MetabotId = 1,
+  initialPathParam: MetabotId = TEST_METABOT_IDS.INTERNAL,
   metabots: MetabotInfo[] = defaultMetabots,
   seedCollections = defaultSeedCollections,
   settings = createMockSettings({ "llm-metabot-configured?": true }),
+  settingDefinitions: SettingDefinition[] = [],
 ) => {
-  mockGetBoundingClientRect();
   setupPropertiesEndpoints(settings);
-  setupSettingsEndpoints([]);
+  setupSettingsEndpoints(settingDefinitions);
   setupMetabotsEndpoints(metabots);
   setupCollectionByIdEndpoint({
     collections: seedCollections.map((c: any) => ({ id: c.model_id, ...c })),
@@ -130,12 +134,51 @@ const setup = async (
     },
   });
 
-  await screen.findByTestId("metabot-enabled-toggle");
+  await waitFor(() => {
+    expect(screen.getByTestId("metabot-enabled-toggle")).toBeEnabled();
+  });
 
   return view;
 };
 
 const enabledToggle = () => screen.findByTestId("metabot-enabled-toggle");
+
+const QUERY_EXECUTION_LABEL = "Let Metabot run queries and read their results";
+
+const queryExecutionSwitch = () =>
+  screen.findByRole("switch", { name: QUERY_EXECUTION_LABEL });
+
+const setupQueryExecution = ({
+  enabled = true,
+  envName,
+  metabotEnabled = true,
+}: {
+  enabled?: boolean;
+  envName?: string;
+  metabotEnabled?: boolean;
+} = {}) =>
+  setup(
+    TEST_METABOT_IDS.INTERNAL,
+    defaultMetabots,
+    defaultSeedCollections,
+    createMockSettings({
+      "llm-metabot-configured?": true,
+      "metabot-enabled?": metabotEnabled,
+      "metabot-query-execution-enabled?": enabled,
+    }),
+    [
+      createMockSettingDefinition({
+        key: "metabot-enabled?",
+        value: metabotEnabled,
+      }),
+      createMockSettingDefinition({
+        key: "metabot-query-execution-enabled?",
+        value: envName ? undefined : enabled,
+        is_env_setting: envName != null,
+        env_name: envName,
+      }),
+    ],
+  );
 
 const getLastSettingUpdateCall = (settingKey: string) =>
   fetchMock.callHistory.lastCall(
@@ -162,6 +205,8 @@ const setupContentVerificationPlugin = () => {
 };
 
 describe("MetabotSettingsPanel", () => {
+  mockGetBoundingClientRect();
+
   afterEach(() => {
     reinitialize();
   });
@@ -195,15 +240,15 @@ describe("MetabotSettingsPanel", () => {
 
   it("should render a selected collection for embedded metabot", async () => {
     setupEmbeddingPlugin();
-    await setup(FIXED_METABOT_IDS.EMBEDDED);
+    await setup(TEST_METABOT_IDS.EMBEDDED);
     expect(await screen.findByText("Collection Two")).toBeInTheDocument();
   });
 
   it("should render a root collection if collection_id is null for metabot", async () => {
     setupEmbeddingPlugin();
-    await setup(FIXED_METABOT_IDS.EMBEDDED, [
+    await setup(TEST_METABOT_IDS.EMBEDDED, [
       createMockMetabotInfo({
-        id: FIXED_METABOT_IDS.EMBEDDED,
+        id: TEST_METABOT_IDS.EMBEDDED,
         name: "Embedded Metabot",
         entity_id: FIXED_METABOT_ENTITY_IDS.EMBEDDED,
         collection_id: null,
@@ -214,11 +259,11 @@ describe("MetabotSettingsPanel", () => {
 
   it("should change selected collection for embedded metabot", async () => {
     setupEmbeddingPlugin();
-    await setup(FIXED_METABOT_IDS.EMBEDDED);
+    await setup(TEST_METABOT_IDS.EMBEDDED);
 
     expect(
       fetchMock.callHistory.calls(
-        `path:/api/metabot/metabot/${FIXED_METABOT_IDS.EMBEDDED}/prompt-suggestions?limit=10&offset=0`,
+        `path:/api/metabot/metabot/${TEST_METABOT_IDS.EMBEDDED}/prompt-suggestions?limit=10&offset=0`,
       ).length,
     ).toEqual(1); // should have loaded prompt suggestions
 
@@ -238,14 +283,14 @@ describe("MetabotSettingsPanel", () => {
 
     const puts = await findRequests("PUT");
     expect(puts[0].url).toMatch(
-      new RegExp(`/api/metabot/metabot/${FIXED_METABOT_IDS.EMBEDDED}`),
+      new RegExp(`/api/metabot/metabot/${TEST_METABOT_IDS.EMBEDDED}`),
     );
     expect(puts[0].body).toEqual({ collection_id: 31 });
   });
 
   it("should show special copy for embedded metabot", async () => {
     setupEmbeddingPlugin();
-    await setup(FIXED_METABOT_IDS.EMBEDDED);
+    await setup(TEST_METABOT_IDS.EMBEDDED);
 
     expect(
       await screen.findByText(/embedding the metabot component/i),
@@ -254,7 +299,7 @@ describe("MetabotSettingsPanel", () => {
 
   it("should toggle embedded metabot enabled state", async () => {
     setupEmbeddingPlugin();
-    await setup(FIXED_METABOT_IDS.EMBEDDED);
+    await setup(TEST_METABOT_IDS.EMBEDDED);
 
     // Shows title but NOT description for embedded
     expect(
@@ -325,5 +370,73 @@ describe("MetabotSettingsPanel", () => {
 
     const putRequests = await findRequests("PUT");
     expect(putRequests[0].body).toEqual({ use_verified_content: true });
+  });
+});
+
+describe("MetabotSettingsPanel query execution", () => {
+  mockGetBoundingClientRect();
+
+  afterEach(() => {
+    reinitialize();
+  });
+
+  it.each([true, false])("shows the setting's value: %s", async (enabled) => {
+    await setupQueryExecution({ enabled });
+
+    expect(
+      await screen.findByRole("switch", {
+        name: QUERY_EXECUTION_LABEL,
+        checked: enabled,
+      }),
+    ).toBeInTheDocument();
+    expect(await queryExecutionSwitch()).toHaveAccessibleDescription(
+      /The result rows are sent to your AI provider/,
+    );
+  });
+
+  it("persists turning query execution off", async () => {
+    await setupQueryExecution();
+
+    await userEvent.click(await queryExecutionSwitch());
+    await waitForRequest(() =>
+      getLastSettingUpdateCall("metabot-query-execution-enabled?"),
+    );
+    const call = getLastSettingUpdateCall("metabot-query-execution-enabled?");
+    expect(call?.options?.body).toBe(JSON.stringify({ value: false }));
+  });
+
+  it("locks query execution to the value an env var sets", async () => {
+    await setupQueryExecution({
+      envName: "MB_METABOT_QUERY_EXECUTION_ENABLED",
+    });
+
+    const toggle = await queryExecutionSwitch();
+    expect(
+      await screen.findByTestId("setting-env-var-message"),
+    ).toHaveTextContent("MB_METABOT_QUERY_EXECUTION_ENABLED");
+    expect(toggle).toBeChecked();
+    expect(toggle).toBeDisabled();
+    expect(toggle).toHaveAccessibleDescription(
+      /set by the MB_METABOT_QUERY_EXECUTION_ENABLED environment variable/,
+    );
+  });
+
+  it("hides query execution while Metabot is off", async () => {
+    await setupQueryExecution({ metabotEnabled: false });
+
+    expect(await screen.findByText("Metabot is disabled")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("switch", { name: QUERY_EXECUTION_LABEL }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("doesn't show query execution for embedded Metabot", async () => {
+    setupEmbeddingPlugin();
+    await setup(TEST_METABOT_IDS.EMBEDDED);
+
+    expect(await screen.findByText("Collection Two")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("switch", { name: QUERY_EXECUTION_LABEL }),
+    ).not.toBeInTheDocument();
   });
 });

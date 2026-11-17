@@ -19,17 +19,18 @@
    body :- ::grants.schema/create-grant-request]
   (api/check-superuser)
   (api/create-check :model/SupportAccessGrantLog body)
-  (grants/create-grant! api/*current-user-id*
-                        (:grant_duration_minutes body)
-                        (:ticket_number body)
-                        (:notes body)))
+  (-> (grants/create-grant! api/*current-user-id*
+                            (:grant_duration_minutes body)
+                            (:ticket_number body)
+                            (:notes body))
+      (dissoc :token)))
 
 (api.macros/defendpoint :put "/:id/revoke"
   :- ::grants.schema/grant-response
   "Revoke an existing support access grant.
 
   Requires superuser permissions. Any admin can revoke any grant."
-  [{id :id} :- [:map [:id ms/PositiveInt]]]
+  [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/write-check :model/SupportAccessGrantLog id)
   (grants/revoke-grant! api/*current-user-id* id))
@@ -47,7 +48,7 @@
   [_route-params
    {:keys [ticket-number
            user-id
-           include-revoked]} :- [:map
+           include-revoked]} :- [:map {:closed true}
                                  [:ticket-number {:optional true} [:maybe :string]]
                                  [:user-id {:optional true} [:maybe ms/PositiveInt]]
                                  [:include-revoked {:optional true} [:maybe :boolean]]]]

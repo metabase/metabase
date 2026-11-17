@@ -1,10 +1,10 @@
-import React, { useState } from "react";
 import {
   CollectionBrowser,
   InteractiveDashboard,
   InteractiveQuestion,
   type MetabaseCollectionItem,
 } from "@metabase/embedding-sdk-react";
+import React, { useState } from "react";
 
 export default function BrowseAndOpen() {
   const [dashboardId, setDashboardId] = useState<number | null>(null);

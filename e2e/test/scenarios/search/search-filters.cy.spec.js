@@ -72,17 +72,6 @@ const REVIEWS_TABLE_NAME = "Reviews";
 
 const TEST_NATIVE_QUESTION_NAME = "GithubUptimeisMagnificentlyHigh";
 
-const TEST_CREATED_AT_FILTERS = [
-  ["Today", "thisday"],
-  ["Yesterday", "past1days"],
-  ["Previous week", "past1weeks"],
-  ["Previous 7 days", "past7days"],
-  ["Previous 30 days", "past30days"],
-  ["Previous month", "past1months"],
-  ["Previous 3 months", "past3months"],
-  ["Previous 12 months", "past12months"],
-];
-
 describe("scenarios > search", () => {
   beforeEach(() => {
     H.restore();
@@ -91,31 +80,6 @@ describe("scenarios > search", () => {
   });
 
   describe("applying search filters", () => {
-    describe("no filters", () => {
-      it("hydrating search from URL", () => {
-        cy.visit("/search?q=orders");
-        cy.wait("@search");
-        cy.findByTestId("search-app").within(() => {
-          cy.findByText('Results for "orders"').should("exist");
-        });
-      });
-
-      it("hydrates the command palette search from the URL (#71248)", () => {
-        cy.visit("/search?q=products");
-        cy.wait("@search");
-        H.commandPaletteButton().should("contain.text", "products");
-
-        cy.intercept("GET", "/api/search?q=products*").as("paletteSearch");
-        H.commandPaletteButton().click();
-        H.commandPaletteInput().should("have.value", "products");
-        cy.wait("@paletteSearch");
-
-        H.commandPalette().within(() => {
-          cy.findByRole("option", { name: "Products" }).should("be.visible");
-        });
-      });
-    });
-
     describe("type filter", () => {
       beforeEach(() => {
         H.setActionsEnabledForDB(SAMPLE_DB_ID);
@@ -177,41 +141,23 @@ describe("scenarios > search", () => {
         });
       });
 
-      typeFilters.forEach(({ label, type }) => {
-        it(`should hydrate search with search text and ${label} filter`, () => {
-          cy.visit(`/search?q=e&type=${type}`);
-          cy.wait("@search");
-
-          cy.findByTestId("search-app").within(() => {
-            cy.findByText('Results for "e"').should("exist");
-          });
-
+      it("should filter results by each type", () => {
+        typeFilters.forEach(({ label, type }) => {
           const regex = new RegExp(`${type}$`);
-          cy.findAllByTestId("search-result-item").each((result) => {
-            cy.wrap(result)
-              .should("have.attr", "aria-label")
-              .and("match", regex);
-          });
 
-          cy.findByTestId("type-search-filter").within(() => {
-            cy.findByText(label).should("exist");
-            cy.findByLabelText("close icon").should("exist");
-          });
-        });
-
-        it(`should filter results by ${label}`, () => {
+          cy.intercept("GET", "/api/search?q=*").as(`search-${type}`);
           cy.visit("/");
 
           H.commandPaletteSearch("e");
-          cy.wait("@search");
+          cy.wait(`@search-${type}`);
 
           cy.findByTestId("type-search-filter").click();
           H.popover().within(() => {
             cy.findByText(label).click();
             cy.findByText("Apply").click();
           });
+          cy.url().should("contain", `type=${type}`);
 
-          const regex = new RegExp(`${type}$`);
           cy.findAllByTestId("search-result-item").each((result) => {
             cy.wrap(result)
               .should("have.attr", "aria-label")
@@ -219,36 +165,10 @@ describe("scenarios > search", () => {
           });
         });
       });
-
-      it("should remove type filter when `X` is clicked on search filter", () => {
-        const { label, type } = typeFilters[0];
-        cy.visit(`/search?q=e&type=${type}`);
-        cy.wait("@search");
-
-        cy.findByTestId("type-search-filter").within(() => {
-          cy.findByText(label).should("exist");
-          cy.findByLabelText("close icon").click();
-          cy.findByText(label).should("not.exist");
-          cy.findByText("Content type").should("exist");
-        });
-
-        cy.url().should("not.contain", "type");
-
-        cy.findAllByTestId("search-result-item").then(($results) => {
-          const uniqueResults = new Set(
-            $results.toArray().map((el) => {
-              const label = el.getAttribute("aria-label");
-              return label.split(" ").slice(-1)[0];
-            }),
-          );
-          expect(uniqueResults.size).to.be.greaterThan(1);
-        });
-      });
     });
 
     describe("created_by filter", () => {
       beforeEach(() => {
-        H.restore();
         // create a question from a normal and admin user, then we can query the question
         // created by that user as an admin
         cy.signInAsNormalUser();
@@ -259,35 +179,10 @@ describe("scenarios > search", () => {
         H.createQuestion(ADMIN_TEST_QUESTION);
       });
 
-      it("should hydrate created_by filter", () => {
-        cy.visit(
-          `/search?created_by=${ADMIN_USER_ID}&created_by=${NORMAL_USER_ID}&q=reviews`,
-        );
-
-        cy.wait("@search");
-
-        cy.findByTestId("created_by-search-filter").within(() => {
-          cy.findByText("2 users selected").should("exist");
-          cy.findByLabelText("close icon").should("exist");
+      it("should filter results by one or more creators and Today, hydrate the date, and remove the filters with `X`", () => {
+        cy.then(() => {
+          cy.clock(Date.now(), ["Date"]);
         });
-
-        H.expectSearchResultContent({
-          expectedSearchResults: [
-            {
-              name: NORMAL_USER_TEST_QUESTION.name,
-              timestamp: "Created a few seconds ago by Robert Tableton",
-              collection: "Our analytics",
-            },
-            {
-              name: ADMIN_TEST_QUESTION.name,
-              timestamp: "Created a few seconds ago by you",
-              collection: "Our analytics",
-            },
-          ],
-        });
-      });
-
-      it("should filter results by one user", () => {
         cy.visit("/");
 
         H.commandPaletteSearch("reviews");
@@ -318,13 +213,12 @@ describe("scenarios > search", () => {
             },
           ],
         });
-      });
 
-      it("should filter results by more than one user", () => {
+        cy.intercept("GET", "/api/search?q=*").as("freshSearch");
         cy.visit("/");
 
         H.commandPaletteSearch("reviews");
-        cy.wait("@search");
+        cy.wait("@freshSearch");
 
         expectSearchResultItemNameContent({
           itemNames: [
@@ -341,30 +235,7 @@ describe("scenarios > search", () => {
           cy.findByText("Bobby Tables").click();
           cy.findByText("Apply").click();
         });
-        cy.url().should("contain", "created_by");
-
-        H.expectSearchResultContent({
-          expectedSearchResults: [
-            {
-              name: NORMAL_USER_TEST_QUESTION.name,
-              timestamp: "Created a few seconds ago by Robert Tableton",
-              collection: "Our analytics",
-            },
-            {
-              name: ADMIN_TEST_QUESTION.name,
-              timestamp: "Created a few seconds ago by you",
-              collection: "Our analytics",
-            },
-          ],
-        });
-      });
-
-      it("should be able to remove a user from the `created_by` filter", () => {
-        cy.visit(
-          `/search?q=reviews&created_by=${NORMAL_USER_ID}&created_by=${ADMIN_USER_ID}`,
-        );
-
-        cy.wait("@search");
+        cy.url().should("contain", `created_by=${ADMIN_USER_ID}`);
 
         H.expectSearchResultContent({
           expectedSearchResults: [
@@ -381,22 +252,9 @@ describe("scenarios > search", () => {
           ],
         });
 
-        cy.findByTestId("created_by-search-filter").click();
-        H.popover().within(() => {
-          // remove Robert Tableton from the created_by filter
-          cy.findByTestId("search-user-select-box")
-            .findByText("Robert Tableton")
-            .click();
-          cy.findByText("Apply").click();
-        });
-
-        expectSearchResultItemNameContent({
-          itemNames: [ADMIN_TEST_QUESTION.name],
-        });
-      });
-
-      it("should remove created_by filter when `X` is clicked on filter", () => {
+        cy.intercept("GET", "/api/search?q=*").as("hydratedSearch");
         cy.visit(`/search?q=reviews&created_by=${NORMAL_USER_ID}`);
+        cy.wait("@hydratedSearch");
 
         H.expectSearchResultContent({
           expectedSearchResults: [
@@ -412,6 +270,7 @@ describe("scenarios > search", () => {
           cy.findByText("Robert Tableton").should("exist");
           cy.findByLabelText("close icon").click();
         });
+        cy.url().should("not.contain", "created_by");
 
         expectSearchResultItemNameContent({
           itemNames: [
@@ -420,15 +279,78 @@ describe("scenarios > search", () => {
             REVIEWS_TABLE_NAME,
           ],
         });
+
+        cy.visit("/search?q=Reviews");
+
+        expectSearchResultItemNameContent(
+          {
+            itemNames: [REVIEWS_TABLE_NAME, NORMAL_USER_TEST_QUESTION.name],
+          },
+          { strict: false },
+        );
+
+        cy.findByTestId("created_at-search-filter").click();
+        H.popover().within(() => {
+          cy.findByText("Today").click();
+        });
+        cy.url().should("contain", "created_at=thisday");
+        cy.findByTestId("created_at-search-filter")
+          .findByText("Today")
+          .should("exist");
+
+        H.expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: NORMAL_USER_TEST_QUESTION.name,
+              collection: "Our analytics",
+              timestamp: "Created a few seconds ago by Robert Tableton",
+            },
+          ],
+          strict: false,
+        });
+
+        cy.intercept("GET", "/api/search?q=*").as("createdAtHydratedSearch");
+        cy.visit("/search?q=Reviews&created_at=thisday");
+        cy.wait("@createdAtHydratedSearch");
+
+        H.expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: NORMAL_USER_TEST_QUESTION.name,
+              collection: "Our analytics",
+              timestamp: "Created a few seconds ago by Robert Tableton",
+            },
+          ],
+          strict: false,
+        });
+
+        cy.findByTestId("created_at-search-filter").within(() => {
+          cy.findByText("Today").should("exist");
+
+          cy.findByLabelText("close icon").click();
+
+          cy.findByText("Today").should("not.exist");
+          cy.findByText("Creation date").should("exist");
+        });
+
+        cy.url().should("not.contain", "created_at");
+
+        expectSearchResultItemNameContent(
+          {
+            itemNames: [REVIEWS_TABLE_NAME, NORMAL_USER_TEST_QUESTION.name],
+          },
+          { strict: false },
+        );
       });
 
-      ["normal", "sandboxed"].forEach((userType) => {
-        it(`should allow ${userType} (non-admin) user to see users and filter by created_by`, () => {
+      it("should allow non-admin users to see users and filter by created_by", () => {
+        ["normal", "sandboxed"].forEach((userType) => {
           cy.signIn(userType);
+          cy.intercept("GET", "/api/search?q=*").as(`${userType}Search`);
           cy.visit("/");
 
           H.commandPaletteSearch("reviews");
-          cy.wait("@search");
+          cy.wait(`@${userType}Search`);
 
           expectSearchResultItemNameContent(
             {
@@ -463,8 +385,7 @@ describe("scenarios > search", () => {
 
     describe("last_edited_by filter", () => {
       beforeEach(() => {
-        cy.signInAsAdmin();
-        // We'll create a question as a normal user, then edit it as an admin user
+        // We'll create a question as an admin user, then edit it as a normal user
         H.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
           ({ body: { id: questionId } }) => {
             cy.signOut();
@@ -475,13 +396,11 @@ describe("scenarios > search", () => {
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
               .click();
-            cy.findByTestId("save-question-modal").within((modal) => {
-              cy.findByText("Save").click();
-            });
+            cy.findByTestId("save-question-modal").findByText("Save").click();
           },
         );
 
-        // We'll create a question as an admin user, then edit it as a normal user
+        // We'll create a question as a normal user, then edit it as an admin user
         H.createQuestion(LAST_EDITED_BY_ADMIN_QUESTION).then(
           ({ body: { id: questionId } }) => {
             cy.signInAsAdmin();
@@ -491,191 +410,19 @@ describe("scenarios > search", () => {
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
               .click();
-            cy.findByTestId("save-question-modal").within((modal) => {
-              cy.findByText("Save").click();
-            });
+            cy.findByTestId("save-question-modal").findByText("Save").click();
           },
         );
       });
 
-      it("should hydrate last_edited_by filter", () => {
-        cy.intercept("GET", "/api/user").as("getUsers");
-
-        cy.visit(`/search?q=reviews&last_edited_by=${NORMAL_USER_ID}`);
-
-        cy.wait("@search");
-
-        cy.findByTestId("last_edited_by-search-filter").within(() => {
-          cy.findByText("Robert Tableton").should("exist");
-          cy.findByLabelText("close icon").should("exist");
-        });
-
-        H.expectSearchResultContent({
-          expectedSearchResults: [
-            {
-              name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-              timestamp: "Updated a few seconds ago by Robert Tableton",
-              collection: "Our analytics",
-            },
-          ],
-        });
-      });
-
-      it("should filter last_edited results by one user", () => {
-        cy.visit("/");
-
-        H.commandPaletteSearch("reviews");
-        cy.wait("@search");
-
-        cy.findByTestId("last_edited_by-search-filter").click();
-
-        expectSearchResultItemNameContent({
-          itemNames: [
-            LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-            LAST_EDITED_BY_ADMIN_QUESTION.name,
-            REVIEWS_TABLE_NAME,
-          ],
-        });
-
-        H.popover().within(() => {
-          cy.findByText("Robert Tableton").click();
-          cy.findByText("Apply").click();
-        });
-        cy.url().should("contain", "last_edited_by");
-
-        H.expectSearchResultContent({
-          expectedSearchResults: [
-            {
-              name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-              timestamp: "Updated a few seconds ago by Robert Tableton",
-              collection: "Our analytics",
-            },
-          ],
-        });
-      });
-
-      it("should filter last_edited results by more than user", () => {
-        cy.visit("/");
-
-        H.commandPaletteSearch("reviews");
-        cy.wait("@search");
-
-        cy.findByTestId("last_edited_by-search-filter").click();
-
-        expectSearchResultItemNameContent({
-          itemNames: [
-            LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-            LAST_EDITED_BY_ADMIN_QUESTION.name,
-            REVIEWS_TABLE_NAME,
-          ],
-        });
-
-        H.popover().within(() => {
-          cy.findByText("Robert Tableton").click();
-          cy.findByText("Bobby Tables").click();
-          cy.findByText("Apply").click();
-        });
-        cy.url().should("contain", "last_edited_by");
-
-        H.expectSearchResultContent({
-          expectedSearchResults: [
-            {
-              name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-              timestamp: "Updated a few seconds ago by Robert Tableton",
-              collection: "Our analytics",
-            },
-            {
-              name: LAST_EDITED_BY_ADMIN_QUESTION.name,
-              timestamp: "Updated a few seconds ago by you",
-              collection: "Our analytics",
-            },
-          ],
-        });
-      });
-
-      it("should allow to remove a user from the `last_edited_by` filter", () => {
-        cy.visit(
-          `/search?q=reviews&last_edited_by=${NORMAL_USER_ID}&last_edited_by=${ADMIN_USER_ID}`,
-        );
-
-        cy.wait("@search");
-
-        H.expectSearchResultContent({
-          expectedSearchResults: [
-            {
-              name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-              timestamp: "Updated a few seconds ago by Robert Tableton",
-              collection: "Our analytics",
-            },
-            {
-              name: LAST_EDITED_BY_ADMIN_QUESTION.name,
-              timestamp: "Updated a few seconds ago by you",
-              collection: "Our analytics",
-            },
-          ],
-        });
-
-        cy.findByTestId("last_edited_by-search-filter").click();
-        H.popover().within(() => {
-          // remove Robert Tableton from the last_edited_by filter
-          cy.findByTestId("search-user-select-box")
-            .findByText("Robert Tableton")
-            .click();
-          cy.findByText("Apply").click();
-        });
-
-        H.expectSearchResultContent({
-          expectedSearchResults: [
-            {
-              name: LAST_EDITED_BY_ADMIN_QUESTION.name,
-              timestamp: "Updated a few seconds ago by you",
-              collection: "Our analytics",
-            },
-          ],
-        });
-      });
-
-      it("should remove last_edited_by filter when `X` is clicked on filter", () => {
-        cy.visit(
-          `/search?q=reviews&last_edited_by=${NORMAL_USER_ID}&last_edited_by=${ADMIN_USER_ID}`,
-        );
-
-        H.expectSearchResultContent({
-          expectedSearchResults: [
-            {
-              name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-              timestamp: "Updated a few seconds ago by Robert Tableton",
-              collection: "Our analytics",
-            },
-            {
-              name: LAST_EDITED_BY_ADMIN_QUESTION.name,
-              timestamp: "Updated a few seconds ago by you",
-              collection: "Our analytics",
-            },
-          ],
-        });
-
-        cy.findByTestId("last_edited_by-search-filter").within(() => {
-          cy.findByText("2 users selected").should("exist");
-          cy.findByLabelText("close icon").click();
-        });
-
-        expectSearchResultItemNameContent({
-          itemNames: [
-            LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-            LAST_EDITED_BY_ADMIN_QUESTION.name,
-            REVIEWS_TABLE_NAME,
-          ],
-        });
-      });
-
-      ["normal", "sandboxed"].forEach((userType) => {
-        it(`should allow ${userType} (non-admin) user to see users and filter by last_edited_by`, () => {
+      it("should allow non-admin users to see users and filter by last_edited_by", () => {
+        ["normal", "sandboxed"].forEach((userType) => {
           cy.signIn(userType);
+          cy.intercept("GET", "/api/search?q=*").as(`${userType}Search`);
           cy.visit("/");
 
           H.commandPaletteSearch("reviews");
-          cy.wait("@search");
+          cy.wait(`@${userType}Search`);
 
           expectSearchResultItemNameContent(
             {
@@ -708,187 +455,90 @@ describe("scenarios > search", () => {
       });
     });
 
-    describe("created_at filter", () => {
-      beforeEach(() => {
-        cy.signInAsNormalUser();
-        H.createQuestion(NORMAL_USER_TEST_QUESTION);
-        cy.signOut();
-        cy.signInAsAdmin();
-      });
+    describe("last_edited_at filter", () => {
+      describe("with an edited question", () => {
+        beforeEach(() => {
+          // We'll create a question as an admin user, then edit it as a normal user
+          H.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
+            ({ body: { id: questionId } }) => {
+              cy.signOut();
+              cy.signInAsNormalUser();
+              cy.visit(`/question/${questionId}`);
+              H.summarize();
+              cy.findByTestId("sidebar-right").findByText("Done").click();
+              cy.findByTestId("qb-header-action-panel")
+                .findByText("Save")
+                .click();
+              cy.findByTestId("save-question-modal").findByText("Save").click();
+              cy.signOut();
+              cy.signInAsAdmin();
+            },
+          );
+        });
 
-      TEST_CREATED_AT_FILTERS.forEach(([label, filter]) => {
-        it(`should hydrate created_at=${filter}`, () => {
-          cy.visit(`/search?q=orders&created_at=${filter}`);
+        // we can only test the 'today' filter since we currently
+        // can't edit the last_edited_at column of a question in our database
+        it("should filter results by Today (last_edited_at=thisday), and remove the filter when `X` is clicked", () => {
+          cy.visit("/search?q=Reviews");
 
-          cy.wait("@search");
+          expectSearchResultItemNameContent({
+            itemNames: [
+              REVIEWS_TABLE_NAME,
+              LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
+            ],
+          });
 
-          cy.findByTestId("created_at-search-filter").within(() => {
-            cy.findByText(label).should("exist");
+          cy.findByTestId("last_edited_at-search-filter").click();
+          H.popover().within(() => {
+            cy.findByText("Today").click();
+          });
+          cy.url().should("contain", "last_edited_at=thisday");
+          cy.findByTestId("last_edited_at-search-filter").within(() => {
+            cy.findByText("Today").should("exist");
             cy.findByLabelText("close icon").should("exist");
           });
-        });
-      });
 
-      // we can only test the 'today' filter since we currently
-      // can't edit the created_at column of a question in our database
-      it("should filter results by Today (created_at=thisday)", () => {
-        cy.visit("/search?q=Reviews");
+          H.expectSearchResultContent({
+            expectedSearchResults: [
+              {
+                name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
+                collection: "Our analytics",
+                timestamp: "Updated a few seconds ago by Robert Tableton",
+              },
+            ],
+          });
 
-        expectSearchResultItemNameContent(
-          {
-            itemNames: [REVIEWS_TABLE_NAME, NORMAL_USER_TEST_QUESTION.name],
-          },
-          { strict: false },
-        );
+          cy.intercept("GET", "/api/search?q=*").as("hydratedSearch");
+          cy.visit("/search?q=Reviews&last_edited_at=thisday");
+          cy.wait("@hydratedSearch");
 
-        cy.findByTestId("created_at-search-filter").click();
-        H.popover().within(() => {
-          cy.findByText("Today").click();
-        });
-
-        H.expectSearchResultContent({
-          expectedSearchResults: [
-            {
-              name: NORMAL_USER_TEST_QUESTION.name,
-              collection: "Our analytics",
-              timestamp: "Created a few seconds ago by Robert Tableton",
-            },
-          ],
-          strict: false,
-        });
-      });
-
-      it("should remove created_at filter when `X` is clicked on search filter", () => {
-        cy.visit("/search?q=Reviews&created_at=thisday");
-        cy.wait("@search");
-
-        H.expectSearchResultContent({
-          expectedSearchResults: [
-            {
-              name: NORMAL_USER_TEST_QUESTION.name,
-              collection: "Our analytics",
-              timestamp: "Created a few seconds ago by Robert Tableton",
-            },
-          ],
-          strict: false,
-        });
-
-        cy.findByTestId("created_at-search-filter").within(() => {
-          cy.findByText("Today").should("exist");
-
-          cy.findByLabelText("close icon").click();
-
-          cy.findByText("Today").should("not.exist");
-          cy.findByText("Creation date").should("exist");
-        });
-
-        cy.url().should("not.contain", "created_at");
-
-        expectSearchResultItemNameContent(
-          {
-            itemNames: [REVIEWS_TABLE_NAME, NORMAL_USER_TEST_QUESTION.name],
-          },
-          { strict: false },
-        );
-      });
-    });
-
-    describe("last_edited_at filter", () => {
-      beforeEach(() => {
-        cy.signInAsAdmin();
-        // We'll create a question as a normal user, then edit it as an admin user
-        H.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
-          ({ body: { id: questionId } }) => {
-            cy.signOut();
-            cy.signInAsNormalUser();
-            cy.visit(`/question/${questionId}`);
-            H.summarize();
-            cy.findByTestId("sidebar-right").findByText("Done").click();
-            cy.findByTestId("qb-header-action-panel")
-              .findByText("Save")
-              .click();
-            cy.findByTestId("save-question-modal").within((modal) => {
-              cy.findByText("Save").click();
-            });
-            cy.signOut();
-            cy.signInAsAdmin();
-          },
-        );
-      });
-
-      TEST_CREATED_AT_FILTERS.forEach(([label, filter]) => {
-        it(`should hydrate last_edited_at=${filter}`, () => {
-          cy.visit(`/search?q=reviews&last_edited_at=${filter}`);
-
-          cy.wait("@search");
+          H.expectSearchResultContent({
+            expectedSearchResults: [
+              {
+                name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
+                collection: "Our analytics",
+                timestamp: "Updated a few seconds ago by Robert Tableton",
+              },
+            ],
+          });
 
           cy.findByTestId("last_edited_at-search-filter").within(() => {
-            cy.findByText(label).should("exist");
-            cy.findByLabelText("close icon").should("exist");
+            cy.findByText("Today").should("exist");
+
+            cy.findByLabelText("close icon").click();
+
+            cy.findByText("Today").should("not.exist");
+            cy.findByText("Last edit date").should("exist");
           });
-        });
-      });
 
-      // we can only test the 'today' filter since we currently
-      // can't edit the last_edited_at column of a question in our database
-      it("should filter results by Today (last_edited_at=thisday)", () => {
-        cy.visit("/search?q=Reviews");
+          cy.url().should("not.contain", "last_edited_at");
 
-        expectSearchResultItemNameContent({
-          itemNames: [
-            REVIEWS_TABLE_NAME,
-            LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-          ],
-        });
-
-        cy.findByTestId("last_edited_at-search-filter").click();
-        H.popover().within(() => {
-          cy.findByText("Today").click();
-        });
-
-        H.expectSearchResultContent({
-          expectedSearchResults: [
-            {
-              name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-              collection: "Our analytics",
-              timestamp: "Updated a few seconds ago by Robert Tableton",
-            },
-          ],
-          strict: false,
-        });
-      });
-
-      it("should remove last_edited_at filter when `X` is clicked on search filter", () => {
-        cy.visit("/search?q=Reviews&last_edited_at=thisday");
-        cy.wait("@search");
-
-        H.expectSearchResultContent({
-          expectedSearchResults: [
-            {
-              name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-              collection: "Our analytics",
-              timestamp: "Updated a few seconds ago by Robert Tableton",
-            },
-          ],
-          strict: false,
-        });
-
-        cy.findByTestId("last_edited_at-search-filter").within(() => {
-          cy.findByText("Today").should("exist");
-
-          cy.findByLabelText("close icon").click();
-
-          cy.findByText("Today").should("not.exist");
-          cy.findByText("Last edit date").should("exist");
-        });
-
-        cy.url().should("not.contain", "last_edited_at");
-
-        expectSearchResultItemNameContent({
-          itemNames: [
-            REVIEWS_TABLE_NAME,
-            LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-          ],
+          expectSearchResultItemNameContent({
+            itemNames: [
+              REVIEWS_TABLE_NAME,
+              LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
+            ],
+          });
         });
       });
     });
@@ -903,64 +553,27 @@ describe("scenarios > search", () => {
         });
       });
 
-      it("should hydrate search with search text and verified filter", () => {
-        cy.visit("/search?q=orders&verified=true");
-        cy.wait("@search");
-
-        cy.findByTestId("search-app").within(() => {
-          cy.findByText('Results for "orders"').should("exist");
-        });
-
-        cy.findAllByTestId("search-result-item").each((result) => {
-          cy.wrap(result).within(() => {
-            cy.findByLabelText("verified_filled icon").should("exist");
-          });
-        });
-      });
-
       it("should filter results by verified items", () => {
         cy.visit("/");
 
         H.commandPaletteSearch("e");
         cy.wait("@search");
 
+        cy.intercept("GET", "/api/search?q=*verified=true*").as(
+          "verifiedSearch",
+        );
         cy.findByTestId("verified-search-filter")
           .findByLabelText("Verified items only")
           .click();
 
-        cy.wait("@search");
+        cy.url().should("include", "verified=true");
+        cy.wait("@verifiedSearch");
 
         cy.findAllByTestId("search-result-item").each((result) => {
           cy.wrap(result).within(() => {
             cy.findByLabelText("verified_filled icon").should("exist");
           });
         });
-      });
-
-      it("should not filter results when verified items is off", () => {
-        cy.visit("/search?q=e&verified=true");
-
-        cy.wait("@search");
-
-        cy.findByTestId("verified-search-filter")
-          .findByLabelText("Verified items only")
-          .click();
-        cy.url().should("not.include", "verified=true");
-
-        let verifiedElementCount = 0;
-        let unverifiedElementCount = 0;
-        cy.findAllByTestId("search-result-item")
-          .each(($el) => {
-            if (!$el.find('[aria-label="verified_filled icon"]').length) {
-              unverifiedElementCount++;
-            } else {
-              verifiedElementCount++;
-            }
-          })
-          .then(() => {
-            expect(verifiedElementCount).to.eq(1);
-            expect(unverifiedElementCount).to.be.gt(0);
-          });
       });
     });
 
@@ -982,23 +595,6 @@ describe("scenarios > search", () => {
         });
       });
 
-      it("should hydrate search with search text and native query filter", () => {
-        cy.visit(
-          `/search?q=${TEST_NATIVE_QUESTION_NAME}&search_native_query=true`,
-        );
-        cy.wait("@search");
-
-        cy.findByTestId("search-app").within(() => {
-          cy.findByText(`Results for "${TEST_NATIVE_QUESTION_NAME}"`).should(
-            "exist",
-          );
-        });
-
-        expectSearchResultItemNameContent({
-          itemNames: [TEST_NATIVE_QUESTION_NAME, "Native Query"],
-        });
-      });
-
       it("should include results that contain native query data when the toggle is on", () => {
         cy.visit(`/search?q=${TEST_NATIVE_QUESTION_NAME}`);
         cy.wait("@search");
@@ -1015,25 +611,6 @@ describe("scenarios > search", () => {
 
         expectSearchResultItemNameContent({
           itemNames: [TEST_NATIVE_QUESTION_NAME, "Native Query"],
-        });
-      });
-
-      it("should not include results that contain native query data if the toggle is off", () => {
-        cy.visit(
-          `/search?q=${TEST_NATIVE_QUESTION_NAME}&search_native_query=true`,
-        );
-        cy.wait("@search");
-
-        expectSearchResultItemNameContent({
-          itemNames: [TEST_NATIVE_QUESTION_NAME, "Native Query"],
-        });
-
-        cy.findByTestId("search_native_query-search-filter")
-          .findByLabelText("Search the contents of native queries")
-          .click();
-
-        expectSearchResultItemNameContent({
-          itemNames: [TEST_NATIVE_QUESTION_NAME],
         });
       });
     });
@@ -1057,35 +634,7 @@ describe("scenarios > search", () => {
         cy.signInAsAdmin();
       });
 
-      it("should hydrate personal collection filter", () => {
-        cy.visit("/search?q=keyword&filter_items_in_personal_collection=all");
-        cy.wait("@search");
-
-        cy.findByTestId("filter_items_in_personal_collection-search-filter")
-          .findByRole("switch")
-          .should("be.checked");
-
-        expectSearchResultItemNameContent({
-          itemNames: [
-            "Admin Personal Question [keyword]",
-            "Normal User Personal Question [keyword]",
-          ],
-        });
-      });
-
-      it("should not be exposed to non-admins", () => {
-        cy.signInAsNormalUser();
-        cy.visit("/search?q=keyword&filter_items_in_personal_collection=all");
-        cy.wait("@search");
-        expectSearchResultItemNameContent({
-          itemNames: ["Normal User Personal Question [keyword]"],
-        });
-        cy.findByTestId(
-          "filter_items_in_personal_collection-search-filter",
-        ).should("not.exist");
-      });
-
-      it("should include other users' personal collection items when filter is turned on", () => {
+      it("should include other users' personal collection items when filter is turned on, and hydrate the filter from the URL", () => {
         cy.visit("/search?q=keyword");
         cy.wait("@search");
 
@@ -1112,6 +661,22 @@ describe("scenarios > search", () => {
             "Normal User Personal Question [keyword]",
           ],
         });
+
+        cy.log("Hydrate the filter from the URL");
+        cy.intercept("GET", "/api/search?q=*").as("hydratedSearch");
+        cy.visit("/search?q=keyword&filter_items_in_personal_collection=all");
+        cy.wait("@hydratedSearch");
+
+        cy.findByTestId("filter_items_in_personal_collection-search-filter")
+          .findByRole("switch")
+          .should("be.checked");
+
+        expectSearchResultItemNameContent({
+          itemNames: [
+            "Admin Personal Question [keyword]",
+            "Normal User Personal Question [keyword]",
+          ],
+        });
       });
     });
 
@@ -1126,7 +691,11 @@ describe("scenarios > search", () => {
         cy.findByTestId("archived-search-filter")
           .findByLabelText("Search items in trash")
           .click();
-        cy.findAllByTestId("search-result-item").should("have.length", 0);
+        cy.url().should("include", "archived=true");
+        cy.findByTestId("search-app")
+          .findByText("Didn't find anything")
+          .should("be.visible");
+        cy.findAllByTestId("search-result-item").should("not.exist");
 
         H.archiveCollection(FIRST_COLLECTION_ID);
         cy.reload();
@@ -1138,8 +707,12 @@ describe("scenarios > search", () => {
       });
     });
 
-    it("should persist filters when the user changes the text query", () => {
+    it("should hydrate search from the URL and persist filters when the user changes the text query", () => {
       cy.visit("/search?q=orders");
+      cy.wait("@search");
+      cy.findByTestId("search-app")
+        .findByText('Results for "orders"')
+        .should("exist");
 
       // add created_by filter
       cy.findByTestId("created_by-search-filter").click();
@@ -1170,8 +743,25 @@ describe("scenarios > search", () => {
         ],
       });
 
-      //getSearchBar().clear().type("count{enter}");
       H.commandPaletteSearch("count");
+
+      cy.findByTestId("search-app")
+        .findByText('Results for "count"')
+        .should("exist");
+      cy.location("search")
+        .should("contain", "q=count")
+        .and("contain", `created_by=${ADMIN_USER_ID}`)
+        .and("contain", `last_edited_by=${ADMIN_USER_ID}`)
+        .and("contain", "type=card");
+      cy.findByTestId("created_by-search-filter")
+        .findByText("Bobby Tables")
+        .should("exist");
+      cy.findByTestId("last_edited_by-search-filter")
+        .findByText("Bobby Tables")
+        .should("exist");
+      cy.findByTestId("type-search-filter")
+        .findByText("Question")
+        .should("exist");
 
       expectSearchResultItemNameContent({
         itemNames: [

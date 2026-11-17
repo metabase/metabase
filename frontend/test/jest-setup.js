@@ -1,5 +1,6 @@
 import { webcrypto } from "crypto";
 import { TextDecoder, TextEncoder } from "util";
+import { deserialize, serialize } from "v8";
 
 import { TextDecoderStream } from "@stardazed/streams-text-encoding";
 import {
@@ -76,6 +77,11 @@ global.ReadableStream = ReadableStream;
 global.TransformStream = TransformStream;
 global.WritableStream = WritableStream;
 global.TextDecoderStream = TextDecoderStream;
+
+// jsdom + Jest lacks structuredClone, which the app relies on in the browser.
+// v8's serializer implements the structured-clone algorithm (Map, Date, BigInt, ...).
+global.structuredClone =
+  global.structuredClone || ((value) => deserialize(serialize(value)));
 
 // https://github.com/jsdom/jsdom/issues/3002
 Range.prototype.getBoundingClientRect = () => ({

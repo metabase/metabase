@@ -1,16 +1,18 @@
 (ns metabase.xrays.api.automagic-dashboards
   (:require
    [buddy.core.codecs :as codecs]
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.indexed-entities.core :as indexed-entities]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
@@ -40,14 +42,16 @@
   [:fn
    {:error/fn  (fn [_ _]
                  (i18n/tru "invalid value for prefix"))
-    :api/regex #"[A-Za-z]+"}
+    :api/regex   #"[A-Za-z]+"
+    :json-schema {:type "string"}}
    (fn [prefix]
      (some #(not-empty (automagic-dashboards.dashboard-templates/get-dashboard-templates [% prefix])) ["table" "metric" "field"]))])
 
 (def ^:private DashboardTemplate
   (mu/with-api-error-message
    [:fn
-    {:api/regex #"[A-Za-z]+"}
+    {:api/regex   #"[A-Za-z]+"
+     :json-schema {:type "string"}}
     (fn [dashboard-template]
       (some (fn [toplevel]
               (some (comp automagic-dashboards.dashboard-templates/get-dashboard-template
@@ -83,7 +87,8 @@
    ;; TODO (Cam 10/7/25) -- not clear whether we expect `-` and `_` as per RFC 4648 here or if we expect form-encoded
    ;; `+` and `/`... accept either for now I guess
    {:api/regex #"(?:[A-Za-z0-9\-_]|(?:%2B)|(?:%2F))+(?:(?:%3D)|=){0,2}"
-    :error/fn  (fn [_ _] (i18n/tru "value couldn''t be parsed as base64 encoded JSON"))}
+    :error/fn    (fn [_ _] (i18n/tru "value couldn''t be parsed as base64 encoded JSON"))
+    :json-schema {:type "string"}}
    decode-base64-json])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -92,7 +97,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards ordered by interestingness."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (-> (xrays.db/database id)
       api/read-check
@@ -100,12 +105,11 @@
 
 ;; ----------------------------------------- API Endpoints for viewing a transient dashboard ----------------
 
-(defn- adhoc-query-read-check
+(defn adhoc-query-read-check
+  "Return `query` if the user has data and source card permissions; otherwise throw a 403."
   [query]
   (api/check-403
-   (query-perms/check-data-perms (:dataset_query query)
-                                 (query-perms/required-perms-for-query (:dataset_query query))
-                                 :throw-exceptions? false))
+   (query-perms/can-run-query? (:dataset_query query)))
   query)
 
 (defn- ensure-int
@@ -147,8 +151,9 @@
                                   [:map
                                    [:dataset_query ::ads/query]]]
   "Wrap query map into a Query object (mostly to facilitate type dispatch)."
-  [query :- :map]
-  (let [query (api.macros/decode-and-validate-params :body ::lib-be.schema/maybe-legacy-query query)]
+  [query :- ms/RingRequestBody]
+  (let [query (api.macros/decode-and-validate-params :body ::lib-be.schema/maybe-legacy-query
+                                                     (walk/keywordize-keys query))]
     (mi/instance :model/Query
                  (merge (queries/query->database-and-table-ids query)
                         {:dataset_query query}))))
@@ -193,12 +198,12 @@
     :api/regex #"(?:[A-Za-z0-9\-._~=]|%[0-9A-Fa-f]{2})+"}])
 
 (def ^:private ComparisonEntity
-  (let [entity-types [:adhoc :segment :table]]
+  (let [entity-types [:adhoc :question :segment :table]]
     (mu/with-api-error-message
      (into [:enum
             {:api/regex (u.regex/re-or (map name entity-types))}]
            entity-types)
-     (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\""))))
+     (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"question\", \"segment\", or \"adhoc\""))))
 
 (defn- coerce-show
   "Show is either nil, \"all\", or a number. If it's a string it needs to be converted into a keyword."
@@ -207,7 +212,9 @@
 
 (mu/defn get-automagic-dashboard
   "Return an automagic dashboard for entity `entity` with id `id`."
-  [entity :- Entity entity-id-or-query show]
+  [entity              :- Entity
+   entity-id-or-query  :- ::entity-id-or-query
+   show                :- [:maybe [:or [:= "all"] nat-int?]]]
   (if (= entity :transform)
     (transforms.dashboard/dashboard (->entity entity entity-id-or-query))
     (-> (->entity entity entity-id-or-query)
@@ -219,18 +226,19 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query"
   "Return an automagic dashboard for entity `entity` with id `id`."
-  [{:keys [entity entity-id-or-query]} :- [:map
+  [{:keys [entity entity-id-or-query]} :- [:map {:closed true}
                                            [:entity             Entity]
                                            [:entity-id-or-query ::entity-id-or-query]]
-   {:keys [show]} :- [:map
+   {:keys [show]} :- [:map {:closed true}
                       [:show {:optional true} [:maybe [:or [:= "all"] nat-int?]]]]]
   (get-automagic-dashboard entity entity-id-or-query show))
 
 (defn- dashboard-metadata [dashboard]
   (letfn [(normalize-card [card]
-            (-> card
-                (m/update-existing :dataset_query lib-be/normalize-query)
-                (dissoc :id)))
+            (->> (-> card
+                     (m/update-existing :dataset_query lib-be/normalize-query)
+                     (dissoc :id))
+                 (lib/normalize ::queries.schema/card)))
           (normalize-series [series]
             (map normalize-card series))
           (normalize-dashcard [{:keys [card], :as dashcard}]
@@ -252,7 +260,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/query_metadata"
   "Return all metadata for an automagic dashboard for entity `entity` with id `id`."
-  [{:keys [entity entity-id-or-query]} :- [:map
+  [{:keys [entity entity-id-or-query]} :- [:map {:closed true}
                                            [:entity             Entity]
                                            [:entity-id-or-query ::entity-id-or-query]]]
   (dashboard-metadata (get-automagic-dashboard entity entity-id-or-query nil)))
@@ -261,8 +269,7 @@
   "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."
   [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model}]
   (when-let [field-id (:id (some #(when ((comp #{field-ref} :field_ref) %) %) rsmd))]
-    (let [fields (t2/hydrate (xrays.db/fields-targeting field-id) :table)]
-      (perms/prime-table-perms-cache {:table-ids (into #{} (map :table_id) fields)})
+    (let [fields (t2/hydrate (xrays.db/fields-targeting field-id) :table :can_read)]
       (for [{:keys [table_id id] :as field} fields
             :when (mi/can-read? field)]
         {:linked-table-id table_id
@@ -289,11 +296,18 @@
                                                        :description nil}}}}
      cards)))
 
+(defn- linked-dashboard-name
+  [model-name model-pk indexed-value]
+  (if indexed-value
+    (format "Here's a look at \"%s\" from \"%s\"" indexed-value model-name)
+    (format "Here's a look at \"%s\" #%s" model-name model-pk)))
+
 (defn- create-linked-dashboard
-  "For each joinable table from `model`, create an x-ray dashboard as a tab."
-  [{{indexed-entity-name :name :keys [model_pk]} :model-index-value
-    {model-name :name :as model}                 :model
-    :keys                                        [linked-tables]}]
+  "For each joinable table from `model`, create an x-ray dashboard as a tab, filtered on the record whose primary key
+  is `model-pk`. `indexed-value` is that record's display value as the requesting user sees it, or nil when they may
+  not read it; it only ever decorates the name and description."
+  [{{model-name :name :as model} :model
+    :keys                        [linked-tables model-pk indexed-value]}]
   (if (seq linked-tables)
     (let [child-dashboards (map (fn [{:keys [linked-table-id linked-field-id]}]
                                   (let [table (xrays.db/table linked-table-id)
@@ -301,12 +315,13 @@
                                     (automagic-dashboards.core/automagic-analysis
                                      table
                                      {:show         :all
-                                      :query-filter [(lib/= (lib.metadata/field mp linked-field-id) model_pk)]})))
+                                      :query-filter [(lib/= (lib.metadata/field mp linked-field-id) model-pk)]})))
                                 linked-tables)
           seed-dashboard   (-> (first child-dashboards)
                                (merge
-                                {:name         (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
-                                 :description  (format "A dashboard focusing on information linked to %s" indexed-entity-name)
+                                {:name         (linked-dashboard-name model-name model-pk indexed-value)
+                                 :description  (format "A dashboard focusing on information linked to %s"
+                                                       (or indexed-value (format "\"%s\" #%s" model-name model-pk)))
                                  :parameters   []
                                  :param_fields {}})
                                (dissoc :transient_name
@@ -333,7 +348,7 @@
                        :tabs      []})))
         (update seed-dashboard
                 :dashcards (fn [cards] (add-source-model-link model cards)))))
-    {:name      (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
+    {:name      (linked-dashboard-name model-name model-pk indexed-value)
      :dashcards (add-source-model-link
                  model
                  [{:row                    0
@@ -353,23 +368,24 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/model_index/:model-index-id/primary_key/:pk-id"
-  "Return an automagic dashboard for an entity detail specified by `entity`
-  with id `id` and a primary key of `indexed-value`."
-  [{:keys [model-index-id pk-id]} :- [:map
+  "Return an automagic dashboard for the record of the model indexed by `model-index-id` whose primary key is
+  `pk-id`. The record's value, used in the title, is read through the QP as the requesting user (never from
+  `model_index_value`, which is not permission-checked); a `pk-id` they cannot resolve yields a dashboard titled
+  by the pk, with no matching rows, rather than a 404."
+  [{:keys [model-index-id pk-id]} :- [:map {:closed true}
                                       [:model-index-id :int]
                                       [:pk-id          :int]]]
   (api/let-404 [model-index (xrays.db/model-index model-index-id)
-                model (xrays.db/card (:model_id model-index))
-                model-index-value (xrays.db/model-index-value model-index-id pk-id)]
+                model (xrays.db/card (:model_id model-index))]
     ;; `->entity` does a read check on the model but this is here as well to be extra sure.
     (api/read-check :model/Card (:model_id model-index))
-    (let [linked (linked-entities {:model             model
-                                   :model-index       model-index
-                                   :model-index-value model-index-value})]
-      (create-linked-dashboard {:model             model
-                                :linked-tables     linked
-                                :model-index       model-index
-                                :model-index-value model-index-value}))))
+    (let [linked (linked-entities {:model       model
+                                   :model-index model-index})]
+      (create-linked-dashboard {:model         model
+                                :linked-tables linked
+                                :model-index   model-index
+                                :model-pk      pk-id
+                                :indexed-value (indexed-entities/value-for-pk model-index pk-id)}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -377,12 +393,12 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"
   "Return an automagic dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`."
-  [{:keys [entity entity-id-or-query prefix dashboard-template]} :- [:map
+  [{:keys [entity entity-id-or-query prefix dashboard-template]} :- [:map {:closed true}
                                                                      [:entity             Entity]
                                                                      [:entity-id-or-query ::entity-id-or-query]
                                                                      [:prefix             Prefix]
                                                                      [:dashboard-template DashboardTemplate]]
-   {:keys [show]} :- [:map
+   {:keys [show]} :- [:map {:closed true}
                       [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
       (automagic-dashboards.core/automagic-analysis {:show               (coerce-show show)
@@ -395,11 +411,11 @@
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/cell/:cell-query"
   "Return an automagic dashboard analyzing cell in automagic dashboard for entity `entity` defined by query
   `cell-query`."
-  [{:keys [entity entity-id-or-query cell-query]} :- [:map
+  [{:keys [entity entity-id-or-query cell-query]} :- [:map {:closed true}
                                                       [:entity             Entity]
                                                       [:entity-id-or-query ::entity-id-or-query]
                                                       [:cell-query         ::cell-query]]
-   {:keys [show]} :- [:map
+   {:keys [show]} :- [:map {:closed true}
                       [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
       (automagic-dashboards.core/automagic-analysis {:show       (coerce-show show)
@@ -412,13 +428,13 @@
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template"
   "Return an automagic dashboard analyzing cell in question with id `id` defined by query `cell-query` using
   dashboard-template `dashboard-template`."
-  [{:keys [entity entity-id-or-query cell-query prefix dashboard-template]} :- [:map
+  [{:keys [entity entity-id-or-query cell-query prefix dashboard-template]} :- [:map {:closed true}
                                                                                 [:entity             Entity]
                                                                                 [:entity-id-or-query ::entity-id-or-query]
                                                                                 [:prefix             Prefix]
                                                                                 [:dashboard-template DashboardTemplate]
                                                                                 [:cell-query         ::cell-query]]
-   {:keys [show]} :- [:map
+   {:keys [show]} :- [:map {:closed true}
                       [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
       (automagic-dashboards.core/automagic-analysis {:show               (coerce-show show)
@@ -435,12 +451,12 @@
   [{:keys [entity
            entity-id-or-query
            comparison-entity
-           comparison-entity-id-or-query]} :- [:map
+           comparison-entity-id-or-query]} :- [:map {:closed true}
                                                [:entity-id-or-query            ::entity-id-or-query]
                                                [:entity                        Entity]
                                                [:comparison-entity             ComparisonEntity]
                                                [:comparison-entity-id-or-query ::entity-id-or-query]]
-   {:keys [show]} :- [:map
+   {:keys [show]} :- [:map {:closed true}
                       [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
@@ -461,14 +477,14 @@
            prefix
            dashboard-template
            comparison-entity
-           comparison-entity-id-or-query]} :- [:map
+           comparison-entity-id-or-query]} :- [:map {:closed true}
                                                [:entity                        Entity]
                                                [:entity-id-or-query            ::entity-id-or-query]
                                                [:prefix                        Prefix]
                                                [:dashboard-template            DashboardTemplate]
                                                [:comparison-entity             ComparisonEntity]
                                                [:comparison-entity-id-or-query ::entity-id-or-query]]
-   {:keys [show]} :- [:map
+   {:keys [show]} :- [:map {:closed true}
                       [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
@@ -490,13 +506,13 @@
            entity-id-or-query
            cell-query
            comparison-entity
-           comparison-entity-id-or-query]} :- [:map
+           comparison-entity-id-or-query]} :- [:map {:closed true}
                                                [:entity                        Entity]
                                                [:entity-id-or-query            ::entity-id-or-query]
                                                [:cell-query                    ::base-64-encoded-json]
                                                [:comparison-entity             ComparisonEntity]
                                                [:comparison-entity-id-or-query ::entity-id-or-query]]
-   {:keys [show]} :- [:map
+   {:keys [show]} :- [:map {:closed true}
                       [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
@@ -519,7 +535,7 @@
            prefix
            dashboard-template
            comparison-entity
-           comparison-entity-id-or-query]} :- [:map
+           comparison-entity-id-or-query]} :- [:map {:closed true}
                                                [:entity                        Entity]
                                                [:entity-id-or-query            ::entity-id-or-query]
                                                [:prefix                        Prefix]
@@ -527,7 +543,7 @@
                                                [:cell-query                    ::base-64-encoded-json]
                                                [:comparison-entity             ComparisonEntity]
                                                [:comparison-entity-id-or-query ::entity-id-or-query]]
-   {:keys [show]} :- [:map
+   {:keys [show]} :- [:map {:closed true}
                       [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)

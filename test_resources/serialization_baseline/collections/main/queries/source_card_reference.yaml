@@ -1,6 +1,5 @@
 name: Source Card Reference
 entity_id: gt4OaWYAuDWRHn5Irnd4h
-created_at: '2026-04-02T02:59:02.778668Z'
 creator_id: admin@example.com
 display: table
 collection_id: cOlQuErIeS0ExAmPlE2x1
@@ -202,12 +201,9 @@ result_metadata:
   lib/source: source/previous-stage
   lib/source-column-alias: total_revenue
   qp/implicit-field?: true
-visualization_settings:
-  column_settings: null
+visualization_settings: {}
 card_schema: 24
 serdes/meta:
-- id: gt4OaWYAuDWRHn5Irnd4h
-  label: source_card_reference
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question

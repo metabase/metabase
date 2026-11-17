@@ -4,11 +4,15 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.events.core :as events]
+   [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metrics.core :as metrics]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]
+   [metabase.util.performance :refer [dropv]]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
@@ -77,7 +81,7 @@
       (metrics/sync-dimensions! :metadata/metric (:id metric))
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/values"))]
-        (is (re-find #"Dimension not found" (:message response)))))))
+        (is (re-find #"Dimension not found" response))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              GET /api/metric/:id/dimension/:key/search/:query                                  |
@@ -117,7 +121,7 @@
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/search")
                                            :query "test")]
-        (is (re-find #"Dimension not found" (:message response)))))))
+        (is (re-find #"Dimension not found" response))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               GET /api/metric/:id/dimension/:key/remapping                                     |
@@ -157,7 +161,7 @@
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/remapping")
                                            :value "1")]
-        (is (re-find #"Dimension not found" (:message response)))))))
+        (is (re-find #"Dimension not found" response))))))
 
 (deftest dimension-remapping-requires-value-param-test
   (testing "GET /api/metric/:id/dimension/:key/remapping requires value parameter"
@@ -270,7 +274,7 @@
                                (assoc-in % [:target 2] (mt/id :users :name))
                                %)
                             dimension_mappings)]
-        (t2/update! :model/Card (:id metric) {:dimension_mappings mappings})
+        (t2/update! :model/Card :id (:id metric) {:dimension_mappings mappings})
         (let [response (mt/user-http-request :crowberto :get 200
                                              (str "metric/" (:id metric) "/dimension"))]
           (is (not (some #(= orphan-id (:id %)) (:added response)))))
@@ -338,6 +342,72 @@
               "the addition is persisted")
           (is (= [default-id] (mapv :id (filter :default resp)))
               "the existing default is preserved"))))))
+
+(defn- do-with-removed-model-expression-dimension!
+  "Create a metric on a model with the custom column \"Is Cheap\", remove that column's dimension so it becomes
+   addable, and call `f` with the metric's id and the addable entry from GET."
+  [f]
+  (let [mp    (mt/metadata-provider)
+        price (lib.metadata/field mp (mt/id :venues :price))
+        query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                  (lib/expression "Is Cheap" (lib/case [[(lib/< price 2) true]] false)))]
+    (mt/with-temp [:model/Card model  {:name          "Venues Model"
+                                       :type          :model
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :venues)
+                                       :dataset_query query}
+                   :model/Card metric {:name          "Model Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :venues)
+                                       :dataset_query (-> (lib/query mp (lib.metadata/card mp (:id model)))
+                                                          (lib/aggregate (lib/count)))}]
+      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (mt/user-http-request :crowberto :post 200 (str "metric/" (:id metric) "/dimension/remove")
+                            {:dimension_ids [(get-dimension-id (t2/select-one :model/Card :id (:id metric))
+                                                               "Is Cheap")]})
+      (let [addable (->> (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension")
+                                               :with-addable true)
+                         :addable
+                         (mapcat :dimensions)
+                         (m/find-first #(= "Is Cheap" (:name %))))]
+        (is (some? addable))
+        (when (some? addable)
+          (f (:id metric) addable))))))
+
+(defn- add-dimensions! [metric-id status dimensions]
+  (mt/user-http-request :crowberto :post status (str "metric/" metric-id "/dimension/add") {:dimensions dimensions}))
+
+(defn- added-dimensions-named [dimension-name dimensions]
+  (filter #(= dimension-name (:name %)) dimensions))
+
+(deftest add-model-expression-dimension-echoed-from-addable-test
+  (testing "POST /api/metric/:id/dimension/add accepts an addable model custom column (#85634)"
+    (do-with-removed-model-expression-dimension!
+     (fn [metric-id addable]
+       (is (= ["field" {} "Is Cheap"] (:mapping_target addable))
+           "the addable mapping target is the type-less target key")
+       (is (=? [{:id (:id addable)
+                 :name "Is Cheap"
+                 :effective_type "type/Boolean"}]
+               (added-dimensions-named "Is Cheap" (add-dimensions! metric-id 200 [addable]))))))))
+
+(deftest add-model-expression-dimension-with-typed-target-test
+  (testing "POST /api/metric/:id/dimension/add still accepts a full field ref carrying type options"
+    (do-with-removed-model-expression-dimension!
+     (fn [metric-id addable]
+       (let [typed (assoc addable :mapping_target ["field"
+                                                   {:base-type "type/Boolean" :effective-type "type/Boolean"}
+                                                   "Is Cheap"])]
+         (is (=? [{:id (:id addable)
+                   :name "Is Cheap"}]
+                 (added-dimensions-named "Is Cheap" (add-dimensions! metric-id 200 [typed])))))))))
+
+(deftest add-dimension-rejects-non-field-target-test
+  (testing "POST /api/metric/:id/dimension/add rejects a mapping target that isn't a :field target key"
+    (do-with-removed-model-expression-dimension!
+     (fn [metric-id addable]
+       (add-dimensions! metric-id 400 [(assoc addable :mapping_target ["expression" {} "Is Cheap"])])))))
 
 (deftest add-dimension-validation-test
   (testing "POST /api/metric/:id/dimension/add validates names and descriptions"
@@ -432,8 +502,9 @@
         (is (= "week" (:default_temporal_unit resp)))
         (is (= :week (:default-temporal-unit stored)))
         (is (= "week" (:default_temporal_unit fetched)))
-        (is (not-any? #{:event/metric-dimensions-update} @topics)
-            "changing presentation metadata does not invalidate the dependency graph")))))
+        (is (some #{:event/card-update} @topics)
+            (str "a presentation-only dimension edit still announces a Card update, so remote sync marks the "
+                 "metric dirty; re-running the dependency graph is the accepted cost"))))))
 
 (deftest update-dimension-default-temporal-unit-validation-test
   (testing "default_temporal_unit must be visible and compatible with the dimension type"
@@ -513,7 +584,7 @@
             a        (:id (first added))
             b        (:id (second added))
             defaults (fn [resp] (into #{} (comp (filter :default) (map :id)) resp))]
-        (t2/update! :model/Card (:id metric)
+        (t2/update! :model/Card :id (:id metric)
                     {:dimensions (mapv #(assoc % :default true)
                                        (t2/select-one-fn :dimensions :model/Card :id (:id metric)))})
         (is (= #{a} (defaults (mt/user-http-request :crowberto :post 200
@@ -573,7 +644,7 @@
     (with-seeded-metric [metric]
       (let [ids            (->> (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension"))
                                 :added (mapv :id))
-            [listed unlisted] [(vec (reverse (take 2 ids))) (vec (drop 2 ids))]
+            [listed unlisted] [(vec (reverse (take 2 ids))) (dropv 2 ids)]
             resp           (mt/user-http-request :crowberto :post 200
                                                  (str "metric/" (:id metric) "/dimension/reorder")
                                                  {:dimension_ids listed})]
@@ -705,3 +776,147 @@
                    "the filtered query executes and returns a count")
                (is (< filtered total)
                    "filtering by a single joined product category returns fewer rows than unfiltered")))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |            Curated dimensions: modernizing a pre-curation metric that ALREADY has dimensions                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- legacy-dimension-set
+  "The `{:dimensions ... :dimension-mappings ...}` a metric on `query` would have had at `card_schema` 23:
+   the same full set [[metrics/compute-full-dimension-set]] produces, but *without* the table-prefixed
+   `:display-name`s that schema 24 introduced. `owner-key` seeds the dimension ids; pass the metric's
+   `:entity_id`, as the schema-24 upgrade does."
+  [owner-key query]
+  (let [computed-pairs (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) owner-key query)
+        {:keys [dimensions dimension-mappings]}
+        (lib-metric/reconcile-dimensions-and-mappings computed-pairs nil nil)]
+    {:dimensions         (lib-metric/extract-persisted-dimensions dimensions)
+     :dimension-mappings dimension-mappings}))
+
+(defn- legacy-curated-metric!
+  "Insert a metric on ORDERS whose row looks like a metric that was curated *before* schema 24: previous
+   release's `card_schema` and a persisted dimension set using the old un-prefixed `:display-name`s.
+   `f` receives the metric id.
+
+   Distinct from [[pre-curation-metric!]], which leaves `:dimensions` NULL and so exercises the backfill
+   branch of the schema-24 upgrade rather than the modernization branch."
+  [f]
+  (let [orders-q (orders-metric-query)]
+    (mt/with-temp [:model/Card metric {:name          "Orders Count"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :orders)
+                                       :dataset_query orders-q}]
+      (let [{:keys [dimensions dimension-mappings]} (legacy-dimension-set (:entity_id metric) orders-q)]
+        ;; Raw UPDATE so nothing bumps the schema back up or re-modernizes on the way in.
+        (t2/query-one {:update :report_card
+                       :set    {:card_schema        23
+                                :dimensions         (json/encode dimensions)
+                                :dimension_mappings (json/encode dimension-mappings)}
+                       :where  [:= :id (:id metric)]})
+        (f (:id metric))))))
+
+(defn- stored-card
+  "Read `card-id` straight out of `report_card`, bypassing `:model/Card`'s after-select. Necessary for any
+   assertion about what was actually *persisted* — a `t2/select-one` re-runs the schema upgrade on read and
+   would report the modernized value whether or not it ever reached the database."
+  [card-id]
+  (let [row (t2/query-one {:select [:card_schema :dimensions]
+                           :from   [:report_card]
+                           :where  [:= :id card-id]})]
+    (update row :dimensions #(some-> % (json/decode true)))))
+
+(defn- display-name-by-field-id [dimensions]
+  (into {} (map (juxt #(-> % :sources first :field-id) :display-name)) dimensions))
+
+(deftest legacy-curated-metric-dimensions-modernized-on-read-test
+  (testing (str "UXW-4987: a metric with the previous release's `card_schema` and dimensions ALREADY "
+                "persisted in the old un-prefixed form is modernized on read — the schema-24 upgrade "
+                "rewrites implicitly-joined dimensions' `:display-name`s to carry their group prefix.")
+    (legacy-curated-metric!
+     (fn [metric-id]
+       (testing "precondition: the stored dimensions are the un-prefixed, pre-24 form"
+         (let [{:keys [card_schema dimensions]} (stored-card metric-id)
+               stored-names (display-name-by-field-id dimensions)]
+           (is (= 23 card_schema))
+           (is (= "ID" (stored-names (mt/id :products :id))))
+           (is (= "ID" (stored-names (mt/id :people :id))))))
+       (let [dims  (:dimensions (t2/select-one :model/Card :id metric-id))
+             names (display-name-by-field-id dims)]
+         (testing "implicitly-joined dimensions gain their group prefix"
+           (is (= "Product - ID" (names (mt/id :products :id))))
+           (is (= "User - ID" (names (mt/id :people :id)))))
+         (testing "own-table dimensions are left alone"
+           (is (= "ID" (names (mt/id :orders :id))))))))))
+
+(deftest legacy-curated-metric-unrelated-update-leaves-vintage-alone-test
+  (testing (str "UXW-4987: an update that touches no schema-governed column must NOT bump `card_schema`. "
+                "Stamping the current version while leaving the legacy dimensions in place would strand "
+                "them — the schema-24 upgrade would never run again and the un-prefixed `:display-name`s "
+                "would become permanent.")
+    (legacy-curated-metric!
+     (fn [metric-id]
+       (t2/update! :model/Card :id metric-id {:name "Renamed"})
+       (let [{:keys [card_schema dimensions]} (stored-card metric-id)
+             stored-names (display-name-by-field-id dimensions)]
+         (is (= "Renamed" (t2/select-one-fn :name :model/Card :id metric-id))
+             "the rename itself is persisted")
+         (is (= 23 card_schema)
+             "the vintage is left behind, so the read-time upgrade keeps applying")
+         (testing "the stored dimensions are untouched"
+           (is (= "ID" (stored-names (mt/id :products :id))))
+           (is (= "ID" (stored-names (mt/id :people :id))))))
+       (testing "and reads still modernize"
+         (let [names (display-name-by-field-id
+                      (:dimensions (t2/select-one :model/Card :id metric-id)))]
+           (is (= "Product - ID" (names (mt/id :products :id))))
+           (is (= "User - ID" (names (mt/id :people :id))))))))))
+
+(deftest legacy-curated-metric-governed-update-migrates-whole-group-test
+  (testing (str "UXW-4987: an update that DOES touch a schema-governed column migrates the whole group and "
+                "stamps `:card_schema`, so the vintage and the representation move together.")
+    (legacy-curated-metric!
+     (fn [metric-id]
+       ;; `:dataset_query` is a migration trigger: upgrade 24 derives a metric's dimensions from it.
+       (t2/update! :model/Card :id metric-id {:dataset_query (people-metric-query)})
+       (let [{:keys [card_schema dimensions]} (stored-card metric-id)
+             stored-names (display-name-by-field-id dimensions)]
+         (is (= card/current-card-schema-version card_schema)
+             "the vintage advances alongside the migrated columns")
+         (testing "the dimensions written alongside that bump are the modernized ones"
+           (is (= "Product - ID" (stored-names (mt/id :products :id))))
+           (is (= "User - ID" (stored-names (mt/id :people :id))))
+           (is (= "ID" (stored-names (mt/id :orders :id))))))))))
+
+(deftest legacy-curated-metric-explicit-dimensions-win-over-migration-test
+  (testing (str "UXW-4987: when the caller supplies `:dimensions` explicitly, those values win over the "
+                "migrated ones — writing back an already-modernized set must not re-prefix it into "
+                "`User - User - ID`.")
+    (legacy-curated-metric!
+     (fn [metric-id]
+       (let [modernized (:dimensions (t2/select-one :model/Card :id metric-id))]
+         (t2/update! :model/Card :id metric-id {:dimensions modernized})
+         (let [{:keys [card_schema dimensions]} (stored-card metric-id)
+               stored-names (display-name-by-field-id dimensions)]
+           (is (= card/current-card-schema-version card_schema))
+           (is (= "Product - ID" (stored-names (mt/id :products :id))))
+           (is (= "User - ID" (stored-names (mt/id :people :id))))
+           (doseq [[field-id display-name] stored-names]
+             (is (not (re-find #"(.+ - )\1" display-name))
+                 (format "field %d has a doubled group prefix: %s" field-id display-name)))))))))
+
+(deftest legacy-curated-metric-not-modernized-twice-test
+  (testing (str "UXW-4987: once persisted, the modernization must not be applied a second time. If the "
+                "`card_schema` bump were lost, the next read would re-prefix already-prefixed names and "
+                "produce `User - User - ID`.")
+    (legacy-curated-metric!
+     (fn [metric-id]
+       (metrics/sync-dimensions! :metadata/metric metric-id)
+       (let [names (display-name-by-field-id
+                    (:dimensions (t2/select-one :model/Card :id metric-id)))]
+         (is (= "User - ID" (names (mt/id :people :id)))
+             "re-reading after the write does not double-prefix")
+         (is (= "Product - ID" (names (mt/id :products :id))))
+         (doseq [[field-id display-name] names]
+           (is (not (re-find #"(.+ - )\1" display-name))
+               (format "field %d has a doubled group prefix: %s" field-id display-name))))))))

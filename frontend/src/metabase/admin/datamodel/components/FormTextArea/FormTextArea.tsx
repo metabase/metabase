@@ -3,8 +3,9 @@ import type { Ref, TextareaHTMLAttributes } from "react";
 import { forwardRef } from "react";
 
 import CS from "metabase/css/core/index.css";
+import { Box } from "metabase/ui";
 
-import { FormTextAreaRoot } from "./FormTextArea.styled";
+import S from "./FormTextArea.module.css";
 
 interface FormTextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   touched?: boolean;
@@ -16,12 +17,12 @@ const FormTextArea = forwardRef(function FormTextArea(
   ref: Ref<HTMLTextAreaElement>,
 ) {
   return (
-    <FormTextAreaRoot
+    <Box
+      component="textarea"
       {...props}
       ref={ref}
-      className={cx(CS.input, className)}
-      touched={touched}
-      error={error}
+      className={cx(CS.input, { [S.error]: touched && error }, className)}
+      w="100%"
     />
   );
 });

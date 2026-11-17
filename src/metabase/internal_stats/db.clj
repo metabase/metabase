@@ -5,44 +5,47 @@
    [metabase.app-db.core :as mdb]
    [metabase.internal-stats.util :as u]
    [metabase.models.interface :as mi]
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn enabled-data-app-count
-  "The number of enabled data apps without a sync error."
+(mu/defn enabled-data-app-count
+  "The number of enabled data apps."
   []
-  (t2/count :data_app :enabled true :sync_error nil))
+  (t2/count :data_app :enabled true))
 
-(defn embedded-dashboard-count
+(mu/defn embedded-dashboard-count
   "The number of unarchived Dashboards with embedding enabled."
   []
   (t2/count :model/Dashboard :enable_embedding true :archived false))
 
-(defn embedded-question-count
+(mu/defn embedded-question-count
   "The number of unarchived question Cards with embedding enabled."
   []
   (t2/count :model/Card :enable_embedding true :archived false :type :question))
 
-(defn proxied-ai-usage-tokens-by-model
+(mu/defn proxied-ai-usage-tokens-by-model
   "The model and total tokens of the proxied AiUsageLog rows on `date`, grouped by model."
-  [date]
+  [date :- ms/TemporalInstant]
   (t2/select [:model/AiUsageLog :model [:%sum.total_tokens :tokens]]
              {:where    [:and
                          :ai_proxied
                          [:= [:cast :created_at :date] [:cast date :date]]]
               :group-by [:model]}))
 
-(defn proxied-ai-usage-tokens-on
+(mu/defn proxied-ai-usage-tokens-on
   "The total tokens of the proxied AiUsageLog rows on `date`, or nil."
-  [date]
+  [date :- ms/TemporalInstant]
   (t2/select-one-fn :sum
                     [:model/AiUsageLog [:%sum.total_tokens :sum]]
                     {:where [:and
                              :ai_proxied
                              [:= [:cast :created_at :date] [:cast date :date]]]}))
 
-(defn proxied-metabot-user-message-count-on
+(mu/defn proxied-metabot-user-message-count-on
   "The number of proxied, unforked user MetabotMessages on `date`."
-  [date]
+  [date :- ms/TemporalInstant]
   (t2/select-one-fn :cnt
                     [:model/MetabotMessage [:%count.id :cnt]]
                     :role "user"
@@ -51,9 +54,9 @@
                              :ai_proxied
                              [:= [:cast :created_at :date] [:cast date :date]]]}))
 
-(defn proxied-metabot-user-count-on
+(mu/defn proxied-metabot-user-count-on
   "The `:cnt` of distinct Users with proxied, unforked MetabotMessages on `date`."
-  [date]
+  [date :- ms/TemporalInstant]
   ;; New rows stamp `metabot_message.user_id`; legacy rows fall back to the conversation's user.
   (t2/query-one {:select [[[:count [:distinct [:coalesce :m.user_id :c.user_id]]] :cnt]]
                  :from   [[:metabot_message :m]]
@@ -105,20 +108,24 @@
                                     public-link-condition]
                          [:inline false]]]) :internal]])
 
-(defn query-execution-statistics-all-time
+(mu/defn query-execution-statistics-all-time
   "The QueryExecution counts per embedding client over all time."
   []
   (t2/select-one query-execution-statistics))
 
-(defn query-execution-statistics-since
+(mu/defn query-execution-statistics-since
   "The QueryExecution counts per embedding client for executions started after `started-after`."
-  [started-after]
+  [started-after :- ms/TemporalInstant]
   (t2/select-one query-execution-statistics {:where [:> :started_at started-after]}))
 
-(defn query-execution-statistics-on
-  "The QueryExecution counts per embedding client for executions started on the day of `date`."
-  [date]
-  (t2/select-one query-execution-statistics {:where [:= [:cast :started_at :date] [:cast date :date]]}))
+(mu/defn query-execution-statistics-between
+  "The QueryExecution counts per embedding client for executions started in `[start, end)`."
+  [start :- ms/TemporalInstant
+   end   :- ms/TemporalInstant]
+  ;; A bare range on `started_at` lets the DB use `idx_query_execution_started_at`; casting the column would not.
+  (t2/select-one query-execution-statistics {:where [:and
+                                                     [:>= :started_at start]
+                                                     [:< :started_at end]]}))
 
 (defn- and-not-nil
   ([not-nil-field]
@@ -132,28 +139,30 @@
   (condp = (mdb/db-type)
     :mysql [:json_contains_path
             :dataset_query
-            ^:allow-raw-sql [:inline "one"]
-            ^:allow-raw-sql [:inline "$.native.\"template-tags\".*"]]
+            "one"
+            "$.native.\"template-tags\".*"]
     :postgres [:jsonb_path_exists
                [:cast :dataset_query :jsonb]
-               ^:allow-raw-sql [:inline "$.native.\"template-tags\" ? (exists(@.*))"]]))
+               ;; the path is a `jsonpath`, not a value: as a `?` parameter Postgres binds it as `varchar` and can't
+               ;; find a matching `jsonb_path_exists` overload, so it has to be a real SQL literal
+               (h2x/literal "$.native.\"template-tags\" ? (exists(@.*))")]))
 
 (defn- contains-embedding-param
   [param]
   (condp = (mdb/db-type)
     :mysql [:!= [:json_search
                  :embedding_params
-                 ^:allow-raw-sql [:inline "one"]
+                 "one"
                  param]
             nil]
     :postgres [:jsonb_path_exists
                [:cast :embedding_params :jsonb]
-               ^:allow-raw-sql [:inline "$.* ? (@ == $val)"]
-               [:jsonb_build_object ^:allow-raw-sql [:inline "val"] param]]))
+               (h2x/literal "$.* ? (@ == $val)")
+               [:jsonb_build_object "val" param]]))
 
 (def ^:private embedding-on [:= :enable_embedding [:inline true]])
 
-(defn question-statistics-all-time
+(mu/defn question-statistics-all-time
   "Aggregate counts of unarchived, non-internal Cards over all time: totals, native vs GUI, dashboard
   questions, embedded, publicly shared, and (where the app db supports JSON path queries) counts
   broken down by template-tag parameters and embedding-parameter locking."
@@ -193,7 +202,7 @@
                                :with_disabled_params])))
      {:where (mi/exclude-internal-content-hsql :model/Card)})))
 
-(defn active-personal-user-email-domain-count
+(mu/defn active-personal-user-email-domain-count
   "The `:count` of distinct email domains of active personal Users."
   []
   (let [domain-expr (condp contains? (mdb/db-type)
@@ -207,21 +216,21 @@
                                     [:= :is_active true]
                                     [:= :type "personal"]]} :distinct_emails]]})))
 
-(defn active-jwt-user-count
+(mu/defn active-jwt-user-count
   "The number of active personal Users whose SSO source is JWT."
   []
   ;; Because this count is needed *during* token checks, it uses `t2/table-name` to avoid the `after-select` method on
   ;; users, which calls an EE method that needs ... a token check :|
   (t2/count (t2/table-name :model/User) :is_active true :sso_source "jwt" :type "personal"))
 
-(defn active-tenant-user-count
+(mu/defn active-tenant-user-count
   "The number of active personal Users belonging to a Tenant."
   []
   ;; Because this count is needed *during* token checks, it uses `t2/table-name` to avoid the `after-select` method on
   ;; users, which calls an EE method that needs ... a token check :|
   (t2/count (t2/table-name :model/User) :is_active true :tenant_id [:not= nil] :type "personal"))
 
-(defn tenants-with-active-users-count
+(mu/defn tenants-with-active-users-count
   "The `:count` of Tenants with at least one active personal User."
   []
   (t2/query-one {:select [[[:count [:distinct :tenant_id]] :count]]

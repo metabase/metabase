@@ -2,8 +2,14 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
-import { Ellipsified } from "metabase/ui";
-import { Avatar, Flex, Icon, Select, type SelectProps } from "metabase/ui";
+import {
+  Avatar,
+  Ellipsified,
+  Flex,
+  Icon,
+  Select,
+  type SelectProps,
+} from "metabase/ui";
 import { isEmail } from "metabase/utils/email";
 import type { User, UserId } from "metabase-types/api";
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
@@ -57,6 +63,7 @@ export const UserInput = ({
   return (
     <Select<string | null>
       comboboxProps={{
+        keepMounted: false,
         middlewares: {
           flip: true,
           size: {

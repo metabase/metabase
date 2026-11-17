@@ -1,11 +1,8 @@
 import { type Reducer, combineReducers, createReducer } from "@reduxjs/toolkit";
-import { assoc, merge } from "icepick";
-import _ from "underscore";
 
 import {
   createCardPublicLink,
   deleteCardPublicLink,
-  timelineEventApi,
   updateCardEmbeddingParams,
   updateCardEnableEmbedding,
 } from "metabase/api";
@@ -28,6 +25,7 @@ import type {
   Range,
 } from "metabase/redux/store";
 import { clone } from "metabase/utils/clone";
+import { deepMerge } from "metabase/utils/deep-merge";
 import type {
   Card,
   CollectionItemModel,
@@ -62,7 +60,6 @@ import {
   CLOSE_SIDEBARS,
   CLOSE_TIMELINES,
   DESELECT_TIMELINE_EVENTS,
-  HIDE_TIMELINE_EVENTS,
   LOAD_OBJECT_DETAIL_FK_REFERENCES,
   ON_CLOSE_SUMMARY,
   OPEN_CHART_SETTINGS,
@@ -91,7 +88,6 @@ import {
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   SET_SNIPPET_COLLECTION_ID,
   SHOW_CHART_SETTINGS,
-  SHOW_TIMELINE_EVENTS,
   SOFT_RELOAD_CARD,
   TOGGLE_DATA_REFERENCE,
   TOGGLE_SNIPPET_SIDEBAR,
@@ -482,7 +478,9 @@ const metadataDiff = createReducer<Record<string, Partial<Field>>>(
         const { name, changes } = action.payload;
         return {
           ...state,
-          [name]: state[name] ? merge(state[name], changes) : changes,
+          [name]: Object.hasOwn(state, name)
+            ? deepMerge(state[name], changes)
+            : changes,
         };
       })
       .addCase(CANCEL_QUESTION_CHANGES, () => ({}));
@@ -518,10 +516,17 @@ const parameterValues = createReducer<ParameterValuesMap>({}, (builder) => {
       string,
       { type: string; payload: { parameterValues: ParameterValuesMap } }
     >(INITIALIZE_QB, (_state, action) => action.payload.parameterValues)
-    .addCase<string, { type: string; payload: { id: string; value: unknown } }>(
-      SET_PARAMETER_VALUE,
-      (state, action) => assoc(state, action.payload.id, action.payload.value),
-    );
+    .addCase<
+      string,
+      {
+        type: string;
+        payload: { id: string; value: ParameterValuesMap[string] };
+      }
+    >(SET_PARAMETER_VALUE, (state, action) => {
+      const { id, value } = action.payload;
+      // Keep the same state object when nothing changed.
+      return state[id] === value ? state : { ...state, [id]: value };
+    });
 });
 
 const currentState = createReducer<{
@@ -577,28 +582,6 @@ const parentEntity = createReducer<QueryBuilderParentEntityState>(
       .addCase(CLOSE_QB, () => DEFAULT_PARENT_ENTITY_STATE);
   },
 );
-
-const visibleTimelineEventIds = createReducer<number[]>([], (builder) => {
-  builder
-    .addCase(INITIALIZE_QB, () => [])
-    .addCase<string, { type: string; payload: TimelineEvent[] }>(
-      SHOW_TIMELINE_EVENTS,
-      (state, action) =>
-        _.uniq([...state, ...action.payload.map((event) => event.id)]),
-    )
-    .addCase<string, { type: string; payload: TimelineEvent[] }>(
-      HIDE_TIMELINE_EVENTS,
-      (state, action) => {
-        const eventIdsToHide = action.payload.map((event) => event.id);
-        return state.filter((eventId) => !eventIdsToHide.includes(eventId));
-      },
-    )
-    .addCase(RESET_QB, () => [])
-    .addMatcher(
-      timelineEventApi.endpoints.createTimelineEvent.matchFulfilled,
-      (state, action) => [...state, action.payload.id],
-    );
-});
 
 const selectedTimelineEventIds = createReducer<number[]>([], (builder) => {
   builder
@@ -748,7 +731,6 @@ export const queryBuilderReducer: Reducer<QueryBuilderState> = combineReducers({
   parameterValues,
   currentState,
   parentEntity,
-  visibleTimelineEventIds,
   selectedTimelineEventIds,
   card,
 });

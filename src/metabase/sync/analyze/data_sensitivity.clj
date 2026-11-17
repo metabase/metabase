@@ -3,18 +3,20 @@
   [[metabase.analyze.core/infer-data-sensitivity]], writing `:PUBLIC` when no rule matches so each field is scanned
   once. Selects fields whose `data_sensitivity` is `NULL` (or `PUBLIC` too under `force?`) across every active table
   in the database, hidden and cruft tables included. Inert unless [[metabase.sync.settings/data-sensitivity-scan-enabled]]
-  is true, except through [[scan-data-sensitivity!]]. User-set labels are protected by the `FieldUserSettings`
-  overlay applied on every Field update. [[reset-data-sensitivity!]] clears the classifier's own labels so a rule
-  change can reach fields that already carry a category."
+  is true, except through [[scan-data-sensitivity!]]. Fields with a label a user set in `FieldUserSettings` are never
+  scanned. [[reset-data-sensitivity!]] clears the classifier's own labels so a rule change can reach fields that
+  already carry a category."
   (:require
    [metabase.analyze.core :as analyze]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.settings :as sync.settings]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -30,29 +32,18 @@
   {:fields-scanned 0 :fields-labeled 0 :fields-failed 0})
 
 (def ^:private ScanOptions
-  [:map
+  [:map {:closed true}
    [:force?          {:optional true} [:maybe :boolean]]
    [:ignore-setting? {:optional true} [:maybe :boolean]]])
-
-(defn- selection-clause [force?]
-  (if force?
-    [:or [:= :data_sensitivity nil] [:= :data_sensitivity "PUBLIC"]]
-    [:= :data_sensitivity nil]))
 
 (defn- skip? [ignore-setting?]
   (and (not ignore-setting?)
        (not (sync.settings/data-sensitivity-scan-enabled))))
 
 (mu/defn- fields-to-scan :- [:sequential i/FieldInstance]
-  [table :- i/TableInstance
-   force?]
-  (t2/select :model/Field
-             {:where    [:and
-                         [:= :table_id (u/the-id table)]
-                         [:= :active true]
-                         [:not= :visibility_type "retired"]
-                         (selection-clause force?)]
-              :order-by [[:id :asc]]}))
+  [table  :- i/TableInstance
+   force? :- [:maybe :boolean]]
+  (sync.db/fields-to-scan-for-data-sensitivity (u/the-id table) force?))
 
 (mu/defn- classify-and-save!
   "Returns the inferred category, nil when no rule matched (in which case `:PUBLIC` was written), or the Exception."
@@ -60,7 +51,7 @@
    table :- i/TableInstance]
   (sync-util/with-error-handling (format "Error classifying data sensitivity for %s" (sync-util/name-for-logging field))
     (let [category (analyze/infer-data-sensitivity field {:name (:name table) :entity_type (:entity_type table)})]
-      (t2/update! :model/Field (u/the-id field) {:data_sensitivity (or category :PUBLIC)})
+      (sync.db/update-field! (u/the-id field) {:data_sensitivity (or category :PUBLIC)})
       category)))
 
 (mu/defn scan-table! :- Stats
@@ -87,24 +78,17 @@
 
 (mu/defn- table-ids-with-unscanned-fields :- [:maybe [:set pos-int?]]
   [database :- i/DatabaseInstance
-   force?]
-  (t2/select-fn-set :table_id :model/Field
-                    {:select   [[:metabase_field.table_id :table_id]]
-                     :from     [:metabase_field]
-                     :join     [[:metabase_table] [:= :metabase_field.table_id :metabase_table.id]]
-                     :where    [:and
-                                [:= :metabase_table.db_id (u/the-id database)]
-                                [:= :metabase_table.active true]
-                                [:= :metabase_field.active true]
-                                [:not= :metabase_field.visibility_type "retired"]
-                                (selection-clause force?)]
-                     :group-by [:metabase_field.table_id]}))
+   force?   :- [:maybe :boolean]]
+  (sync.db/table-ids-with-fields-to-scan-for-data-sensitivity (u/the-id database) force?))
+
+(def ^:private LogProgressFn
+  [:=> [:cat :string [:schema i/TableInstance]] :nil])
 
 (mu/defn scan-fields-for-db! :- Stats
   "Label every unscanned Field in every active table of `database`. `log-fn` is accepted for parity with the other
   analyze steps and not called: the step reports per table through the log, not the progress bar."
   [database :- i/DatabaseInstance
-   _log-fn
+   _log-fn  :- [:maybe LogProgressFn]
    & {:keys [force? ignore-setting?]} :- [:maybe ScanOptions]]
   (if (skip? ignore-setting?)
     zero-stats
@@ -115,51 +99,46 @@
                          (map #(scan-table! % :force? force? :ignore-setting? true)))
                    (partial merge-with +)
                    zero-stats
-                   (t2/reducible-select :model/Table
-                                        :id [:in table-ids]
-                                        {:order-by [[:schema :asc] [:name :asc]]}))))))
-
-(defn- scope-clause [database-or-table]
-  (case (t2/model database-or-table)
-    :model/Table    [:= :table_id (u/the-id database-or-table)]
-    :model/Database [:in :table_id ^:allow-subquery {:select [:id]
-                                                     :from   [:metabase_table]
-                                                     :where  [:= :db_id (u/the-id database-or-table)]}]))
-
-(def ^:private classifier-label-clause
-  "A non-null `data_sensitivity` with no value in the `FieldUserSettings` mirror was written by the classifier."
-  [:and
-   [:not= :data_sensitivity nil]
-   [:not [:exists ^:allow-subquery {:select [1]
-                                    :from   [[:metabase_field_user_settings :s]]
-                                    :where  [:and
-                                             [:= :s.field_id :metabase_field.id]
-                                             [:not= :s.data_sensitivity nil]]}]]])
+                   (sync.db/tables-by-schema-and-name-reducible table-ids))))))
 
 (mu/defn reset-data-sensitivity! :- :int
-  "REPL entry point: clear every classifier-written `data_sensitivity` in a Database or a single Table so the next
+  "REPL entry point: clear every classifier-written `data_sensitivity` in the Database with `database-id` so the next
   scan recomputes them, including fields that carry a category and would otherwise never be reselected. Labels with
   a value in the `FieldUserSettings` mirror are human-set and untouched. Returns the number of fields cleared."
-  [database-or-table :- [:or i/DatabaseInstance i/TableInstance]]
-  (let [n (t2/query-one {:update :metabase_field
-                         :set    {:data_sensitivity nil}
-                         :where  [:and (scope-clause database-or-table) classifier-label-clause]})]
-    (log/infof "Data sensitivity reset %d classifier-written labels in %s" n (sync-util/name-for-logging database-or-table))
+  [database-id :- ::lib.schema.id/database]
+  (let [n (sync.db/reset-classifier-data-sensitivity-for-database! database-id)]
+    (log/infof "Data sensitivity reset %d classifier-written labels in %s"
+               n (sync-util/name-for-logging (driver.u/lib-database database-id)))
     n))
 
+(mu/defn reset-table-data-sensitivity! :- :int
+  "Like [[reset-data-sensitivity!]], for a single `table`."
+  [table :- i/TableInstance]
+  (let [n (sync.db/reset-classifier-data-sensitivity-for-table! (u/the-id table))]
+    (log/infof "Data sensitivity reset %d classifier-written labels in %s" n (sync-util/name-for-logging table))
+    n))
+
+(def ^:private ScanDataSensitivityOptions
+  [:maybe [:map {:closed true}
+           [:force? {:optional true} [:maybe :boolean]]
+           [:reset? {:optional true} [:maybe :boolean]]]])
+
 (mu/defn scan-data-sensitivity! :- Stats
-  "REPL entry point: scan a Database or a single Table regardless of the `data-sensitivity-scan-enabled` setting.
-  With `:force? true` fields already labeled `:PUBLIC` are rescanned too; fields carrying a category are not. With
-  `:reset? true` every classifier-written label is cleared first via [[reset-data-sensitivity!]] so the whole scope
-  is recomputed under the current rules, and `:fields-reset` is added to the stats. User-set labels survive in
-  every mode because the `FieldUserSettings` overlay is applied on every Field update."
-  [database-or-table :- [:or i/DatabaseInstance i/TableInstance]
-   & {:keys [force? reset?]} :- [:maybe [:map
-                                         [:force? {:optional true} [:maybe :boolean]]
-                                         [:reset? {:optional true} [:maybe :boolean]]]]]
-  (let [reset (when reset? (reset-data-sensitivity! database-or-table))
-        stats (case (t2/model database-or-table)
-                :model/Table    (scan-table! database-or-table :force? force? :ignore-setting? true)
-                :model/Database (scan-fields-for-db! database-or-table (constantly nil) :force? force? :ignore-setting? true))]
+  "Scan the Database with `database-id` for data sensitivity regardless of the setting; `:force?` rescans `:PUBLIC`
+  Fields and `:reset?` clears the classifier's labels first."
+  [database-id                 :- ::lib.schema.id/database
+   & {:keys [force? reset?]}   :- ScanDataSensitivityOptions]
+  (let [reset (when reset? (reset-data-sensitivity! database-id))
+        stats (scan-fields-for-db! (driver.u/lib-database database-id) (constantly nil)
+                                   :force? force? :ignore-setting? true)]
+    (cond-> stats
+      reset (assoc :fields-reset reset))))
+
+(mu/defn scan-table-data-sensitivity! :- Stats
+  "Like [[scan-data-sensitivity!]], for a single `table`."
+  [table                     :- i/TableInstance
+   & {:keys [force? reset?]} :- ScanDataSensitivityOptions]
+  (let [reset (when reset? (reset-table-data-sensitivity! table))
+        stats (scan-table! table :force? force? :ignore-setting? true)]
     (cond-> stats
       reset (assoc :fields-reset reset))))

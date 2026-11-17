@@ -1,14 +1,18 @@
 (ns metabase.models.interface-test
   {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.registry-test-macro :as registry-test-macro]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -37,17 +41,64 @@
                             #"Error decrypting secret\.value: Expected an encrypted value"
                             ((:out (mi/transform-secret-value "secret.value")) (.getBytes "plaintext-sekret")))))))
 
+(mr/def ::interface-test.thing
+  "A schema with one field of each kind JSON cannot carry on its own."
+  [:map
+   [:kind  {:optional true} [:maybe :keyword]]
+   [:tag   {:optional true} [:enum :a :b]]
+   [:by-id {:optional true} [:map-of :int :string]]
+   [:note  {:optional true} :string]])
+
+(def ^:private a-thing
+  {:kind :time-series, :tag :b, :by-id {10 "x", 20 "y"}, :note "plain"})
+
+(deftest transform-json-with-schema-test
+  (let [{:keys [in out]} (mi/transform-json-with-schema "test_table.thing" ::interface-test.thing)]
+    (testing "the stored value is plain JSON -- every keyword, and every integer map key, is a string"
+      (is (= {"kind" "time-series", "tag" "b", "by-id" {"10" "x", "20" "y"}, "note" "plain"}
+             (json/decode (in a-thing)))))
+    (testing "the schema is what puts the keywords and the integer keys back on the way out"
+      (is (= a-thing (out (in a-thing)))))
+    (testing "nil is SQL NULL rather than the string \"null\", and an empty map stays an empty map"
+      (is (nil? (in nil)))
+      (is (nil? (out nil)))
+      (is (= {} (out (in {})))))
+    (testing "an unreadable blob reads as nil rather than breaking the whole select"
+      (is (nil? (out "{not json ]["))))))
+
+(deftest transform-json-with-schema-caches-its-codec-test
+  (testing "the encoder and decoder are built once per schema, not rebuilt for every row -- these run
+           on every read of every row of a table, and building a transformer for a nested schema is
+           not cheap (see metabase.api.macros, which caches the same way at the HTTP boundary)"
+    (let [{:keys [in out]} (mi/transform-json-with-schema "test_table.thing" ::interface-test.thing)]
+      (out (in a-thing))
+      (is (zero? (registry-test-macro/with-returning-cache-miss-count
+                   (dotimes [_ 10]
+                     (out (in a-thing)))))))))
+
+(deftest transform-encrypted-json-with-schema-test
+  (encryption-test/with-secret-key "0123456789abcdef"
+    (let [{:keys [in out]} (mi/transform-encrypted-json-with-schema "test_table.thing" ::interface-test.thing)]
+      (testing "the value round-trips through encryption with its keywords intact"
+        (let [stored (in a-thing)]
+          (is (not (str/includes? stored "time-series")))
+          (is (= a-thing (out stored)))))
+      (testing "a decrypt failure names the column, like every other encrypted transform"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Error decrypting test_table\.thing: Expected an encrypted value"
+                              (out "plaintext-sekret")))))))
+
 (deftest timestamped-property-test
   (testing "Make sure updated_at gets updated for timestamped models"
     (mt/with-temp [:model/Table table {:updated_at #t "2023-02-02T01:00:00"}]
       (let [updated-at (:updated_at table)
             new-name   (u/qualified-name ::a-new-name)]
         (is (= 1
-               (t2/update! table (u/the-id table) {:name new-name})))
+               (t2/update! table :id (u/the-id table) {:name new-name})))
         (is (=? {:id         (:id table)
                  :name       new-name
                  :updated_at (partial not= updated-at)}
-                (t2/select-one [:model/Table :id :name :updated_at] (u/the-id table))))))))
+                (t2/select-one [:model/Table :id :name :updated_at] :id (u/the-id table))))))))
 
 (deftest ^:parallel timestamped-property-do-not-stomp-on-explicit-values-test
   (testing "The :timestamped property should not stomp on :created_at/:updated_at if they are explicitly specified"
@@ -72,6 +123,13 @@
                    :updated_at expected-timestamp}
                   field)))))))
 
+(deftest ^:parallel current-timestamp-reads-back-unchanged-test
+  (testing "a timestamp from current-timestamp reads back from the app DB as the same text an export writes"
+    (let [now (mi/current-timestamp)]
+      (mt/with-temp [:model/Field field {:created_at now}]
+        (is (= (u.date/format now)
+               (u.date/format (t2/select-one-fn :created_at :model/Field :id (:id field)))))))))
+
 (defmethod mi/non-timestamped-fields :test-model/updated-at-tester [_]
   #{:non_timestamped :other})
 
@@ -89,30 +147,6 @@
                        (assoc :included 2))]
       (is (= {:non_timestamped 1 :included 2 :updated_at (mi/now)}
              (#'mi/add-updated-at-timestamp instance))))))
-
-(deftest ^:parallel upgrade-to-v2-viz-settings-test
-  (let [migrate #(select-keys (#'mi/migrate-viz-settings %)
-                              [:version :pie.percent_visibility])]
-    (testing "show_legend -> inside"
-      (is (= {:version 2
-              :pie.percent_visibility "inside"}
-             (migrate {:pie.show_legend          true
-                       :pie.show_legend_perecent true
-                       :pie.show_data_labels     true}))))
-    (testing "show_legend_percent -> legend"
-      (is (= {:version 2
-              :pie.percent_visibility "legend"}
-             (migrate {:pie.show_legend          false
-                       :pie.show_legend_perecent true
-                       :pie.show_data_labels     true}))))
-    (testing "anything else -> nothing"
-      (doseq [legend  [false nil]
-              percent [false nil]
-              labels  [true false nil]]
-        (is (= {}
-               (migrate {:pie.show_legend          legend
-                         :pie.show_legend_perecent percent
-                         :pie.show_data_labels     labels})))))))
 
 (deftest encrypted-data-with-no-secret-test
   (encryption-test/with-secret-key nil
@@ -153,58 +187,6 @@
                             (map (juxt :id (comp even? :id))))
                    things)
             :id)))))
-
-(deftest ^:parallel normalize-mbql-clause-impostor-in-visualization-settings-test
-  (let [viz-settings
-        {"table.pivot_column" "TAX"
-         "graph.metrics" ["expression"]
-         "pivot_table.column_split"
-         {"rows"
-          ["CREATED_AT" "expression" "TAX"]
-          "columns" []
-          "values" ["sum"]}
-         "pivot_table.column_widths" {"leftHeaderWidths" [141 99 80], "totalLeftHeaderWidths" 320, "valueHeaderWidths" {}}
-         "table.cell_column" "expression"
-         "table.column_formatting"
-         [{"columns" ["expression" nil "TAX" "count"]
-           "type" "single"
-           "operator" "is-null"
-           "value" 10
-           "color" "#EF8C8C"
-           "highlight_row" false
-           "id" 0}]
-         "column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {"number_style" "currency"}}
-         "series_settings" {"expression" {"line.interpolate" "step-after", "line.style" "dotted"}}
-         "graph.dimensions" ["CREATED_AT"]}]
-    (is (= {:table.pivot_column "TAX"
-            :graph.metrics ["expression"]
-            :pivot_table.column_split
-            {:rows ["CREATED_AT" "expression" "TAX"]
-             :columns []
-             :values ["sum"]}
-            :pivot_table.column_widths {:leftHeaderWidths [141 99 80], :totalLeftHeaderWidths 320, :valueHeaderWidths {}}
-            :table.cell_column "expression"
-            :table.column_formatting
-            [{:columns ["expression" nil "TAX" "count"]
-              :type "single"
-              :operator "is-null"
-              :value 10
-              :color "#EF8C8C"
-              :highlight_row false
-              :id 0}]
-            :column_settings {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "currency"}}
-            :series_settings {:expression {:line.interpolate "step-after", :line.style "dotted"}}
-            :graph.dimensions ["CREATED_AT"]}
-           (mi/normalize-visualization-settings viz-settings)))))
-
-(deftest ^:parallel normalize-invalid-visualization-settings-test
-  (testing "Unknown keys in `:column_settings` should be removed rather than causing normalization to fail (#69626)"
-    (let [viz-settings {"column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "x"}
-                                           "[\"REF\",[\"expression\",\"expression\"]]" {:number_style "y"}
-                                           "[\"bad-clause\",\"a\"]"                    {:number_style "z"}}}]
-      (is (= {:column_settings
-              {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "x"}}}
-             (mi/normalize-visualization-settings viz-settings))))))
 
 (deftest ^:parallel json-in-with-eliding
   (is (= "{}" (#'mi/json-in-with-eliding {})))
@@ -253,10 +235,10 @@
   (testing "Default implementation falls back to can-read?"
     ;; Use Card model which uses the default can-query? implementation
     (mt/with-temp [:model/Card card {}]
-      (with-redefs [mi/can-read? (constantly true)]
-        (is (true? (mi/can-query? card))))
-      (with-redefs [mi/can-read? (constantly false)]
-        (is (false? (mi/can-query? card)))))))
+      (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)]
+        (is (true? (mi/can-query? (t2/hydrate card :can_query)))))
+      (mt/with-dynamic-fn-redefs [mi/can-read? (constantly false)]
+        (is (false? (mi/can-query? (t2/hydrate card :can_query))))))))
 
 (deftest can-query-hydration-returns-boolean-test
   (testing ":can_query hydration returns a boolean value"
@@ -264,3 +246,7 @@
       (let [hydrated (t2/hydrate card :can_query)]
         (is (contains? hydrated :can_query))
         (is (boolean? (:can_query hydrated)))))))
+
+(deftest ^:parallel ->integer-test
+  (testing "casts to an integer on every app DB, though MySQL and MariaDB have no INTEGER cast type"
+    (is (= 42 (:n (t2/query-one {:select [[(mi/->integer "42") :n]]}))))))

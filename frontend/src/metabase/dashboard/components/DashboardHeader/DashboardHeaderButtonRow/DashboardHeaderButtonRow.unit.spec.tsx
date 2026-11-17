@@ -2,15 +2,15 @@ import userEvent from "@testing-library/user-event";
 
 import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import {
+  createMockDashboardState,
+  createMockStoreDashboard,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { DashboardActionKey } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
 import { DASHBOARD_APP_ACTIONS } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import {
-  createMockDashboardState,
-  createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { IconName } from "metabase-types/api";
 import {
@@ -123,6 +123,7 @@ const setup = ({
   hasEmailSetup = true,
   hasSlackSetup = true,
   refreshPeriod = null,
+  isArchived = false,
 }: Partial<{
   isEditing: boolean;
   hasModelActionsEnabled: boolean;
@@ -133,6 +134,7 @@ const setup = ({
   hasEmailSetup: boolean;
   hasSlackSetup: boolean;
   refreshPeriod: number | null;
+  isArchived: boolean;
 }>) => {
   setupBookmarksEndpoints([]);
   setupNotificationChannelsEndpoints({
@@ -149,6 +151,7 @@ const setup = ({
   const MOCK_DASHCARD = createMockDashboardCard();
   const MOCK_DASHBOARD = createMockDashboard({
     dashcards: [MOCK_DASHCARD],
+    archived: isArchived,
   });
   const MOCK_STORE_DASHBOARD = createMockStoreDashboard({
     ...MOCK_DASHBOARD,
@@ -390,6 +393,32 @@ describe("DashboardHeaderButtonRow", () => {
       await expectButtonsToExistInHeader({
         expectedButtons: [DASHBOARD_ACTION.AUTO_REFRESH_INDICATOR],
       });
+    });
+  });
+
+  describe("when the dashboard is archived", () => {
+    it("should hide the edit, sharing, auto-refresh, bookmark and overflow buttons", () => {
+      setup({
+        isEditing: false,
+        isAdmin: true,
+        refreshPeriod: 60,
+        isArchived: true,
+      });
+
+      expect(screen.getByLabelText("info icon")).toBeInTheDocument();
+      [
+        "pencil icon",
+        "share icon",
+        "subscription icon",
+        "clock icon",
+        "bookmark icon",
+        "ellipsis icon",
+      ].forEach((iconLabel) => {
+        expect(screen.queryByLabelText(iconLabel)).not.toBeInTheDocument();
+      });
+      expect(
+        screen.queryByTestId("sharing-menu-button"),
+      ).not.toBeInTheDocument();
     });
   });
 

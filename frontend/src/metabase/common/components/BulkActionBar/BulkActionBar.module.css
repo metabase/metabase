@@ -1,68 +1,13 @@
-.BulkActionButton {
-  color: var(--mb-color-text-primary-inverse);
-  border-color: color-mix(
-    in srgb,
-    var(--mb-color-background_page-secondary),
-    transparent 100%
-  );
-  background-color: color-mix(
-    in srgb,
-    var(--mb-color-background_page-secondary),
-    transparent 90%
-  );
-
-  &:hover {
-    color: var(--mb-color-text-primary-inverse);
-    border-color: color-mix(
-      in srgb,
-      var(--mb-color-background_page-primary),
-      transparent 100%
-    );
-    background-color: color-mix(
-      in srgb,
-      var(--mb-color-background_page-secondary),
-      transparent 70%
-    );
-  }
-
-  &:disabled,
-  &:disabled:hover {
-    color: var(--mb-color-text-disabled-inverse);
-    border-color: color-mix(
-      in srgb,
-      var(--mb-color-background_surface-disabled-inverse),
-      transparent 100%
-    );
-    background-color: var(--mb-color-background_surface-disabled-inverse);
-  }
+/* The full-width wrapper must not block clicks on the page beneath it */
+.clickThrough {
+  pointer-events: none;
 }
 
-.BulkActionDangerButton {
-  &:hover {
-    color: var(--mb-color-text-primary-inverse);
-    border-color: color-mix(
-      in srgb,
-      var(--mb-color-background_page-primary),
-      transparent 100%
-    );
-    background-color: var(--mb-color-feedback-negative);
-  }
-
-  &:disabled:hover {
-    color: var(--mb-color-text-disabled);
-    border-color: color-mix(
-      in srgb,
-      var(--mb-color-background_page-primary),
-      transparent 100%
-    );
-    background-color: color-mix(
-      in srgb,
-      var(--mb-color-background_page-primary),
-      transparent 90%
-    );
-  }
-}
-
-.BulkActionButtonLabel {
-  display: inline-flex;
+.toastCard {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2.5rem;
+  pointer-events: auto;
 }

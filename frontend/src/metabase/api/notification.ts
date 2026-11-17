@@ -1,4 +1,7 @@
+import _ from "underscore";
+
 import type {
+  AdminNotificationCountsResponse,
   AdminNotificationDetail,
   AdminNotificationListParams,
   AdminNotificationListResponse,
@@ -7,6 +10,7 @@ import type {
   ListNotificationsRequest,
   Notification,
   NotificationId,
+  SendNotificationResponse,
   UnsubscribeRequest,
   UnsubscribeResponse,
   UpdateNotificationRequest,
@@ -91,14 +95,23 @@ export const notificationApi = Api.injectEndpoints({
       },
     ),
     sendUnsavedNotification: builder.mutation<
-      void,
+      SendNotificationResponse,
       CreateNotificationRequest | UpdateNotificationRequest
     >({
       query: (body) => ({
         method: "POST",
         url: `/api/notification/send`,
-        body,
+        // In edit mode the alert modal passes the full Notification it fetched,
+        // including the server-managed `creator`, which the endpoint ignores.
+        body: _.omit(body, "creator"),
       }),
+    }),
+    getAdminNotificationCounts: builder.query<
+      AdminNotificationCountsResponse,
+      void
+    >({
+      query: () => ({ method: "GET", url: "/api/notification/admin/counts" }),
+      providesTags: [adminNotificationListTag(), listTag("notification")],
     }),
     adminListNotifications: builder.query<
       AdminNotificationListResponse,
@@ -176,6 +189,7 @@ export const {
   useUpdateNotificationMutation,
   useUnsubscribeFromNotificationMutation,
   useSendUnsavedNotificationMutation,
+  useGetAdminNotificationCountsQuery,
   useAdminListNotificationsQuery,
   useLazyAdminListNotificationsQuery,
   useBulkNotificationActionMutation,

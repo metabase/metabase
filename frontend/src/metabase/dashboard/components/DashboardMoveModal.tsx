@@ -17,7 +17,7 @@ import type { CollectionId, Dashboard } from "metabase-types/api";
 
 import S from "./DashboardMoveModal.module.css";
 
-function DashboardMoveModal({
+export function DashboardMoveModal({
   dashboard,
   onClose,
 }: {

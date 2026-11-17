@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen, within } from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type { CollectionId } from "metabase-types/api";
 
 import { setup } from "./setup";
@@ -227,6 +228,25 @@ describe("CollectionHeader", () => {
 
       expect(onDeleteBookmark).toHaveBeenCalledWith(myCollection);
     });
+
+    it("should not offer to bookmark the root collection", () => {
+      setup({
+        collection: {
+          id: ROOT_COLLECTION.id,
+          name: ROOT_COLLECTION.name,
+          can_write: true,
+        },
+        isBookmarked: false,
+      });
+
+      expect(
+        screen.getByDisplayValue(ROOT_COLLECTION.name),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Bookmark" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("bookmark icon")).not.toBeInTheDocument();
+    });
   });
 
   describe("collection menu", () => {
@@ -238,6 +258,74 @@ describe("CollectionHeader", () => {
       expect(await screen.findByText("Move")).toBeInTheDocument();
       expect(screen.getByText("Move to trash")).toBeInTheDocument();
     });
+  });
+
+  describe("root and personal collections", () => {
+    const PERSONAL_COLLECTION = {
+      name: "Robert Tableton's Personal Collection",
+      personal_owner_id: 1,
+      is_personal: true,
+      can_write: true,
+    };
+
+    it("should only offer to edit permissions of the root collection to admins", async () => {
+      setup({
+        collection: {
+          id: ROOT_COLLECTION.id,
+          name: ROOT_COLLECTION.name,
+          can_write: true,
+        },
+        isAdmin: true,
+      });
+
+      expect(screen.getByTestId("collection-name-heading")).toHaveValue(
+        "Our analytics",
+      );
+      await userEvent.click(screen.getByLabelText("ellipsis icon"));
+      expect(
+        await screen.findByRole("menuitem", { name: /Edit permissions/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: /Move/ }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
+    });
+
+    it("should not offer a collection menu for the root collection to non-admins with curate access", async () => {
+      setup({
+        collection: {
+          id: ROOT_COLLECTION.id,
+          name: ROOT_COLLECTION.name,
+          can_write: true,
+        },
+        isAdmin: false,
+      });
+
+      expect(screen.getByTestId("collection-name-heading")).toHaveValue(
+        "Our analytics",
+      );
+      expect(
+        await screen.findByRole("button", { name: "More info" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
+    });
+
+    it.each([true, false])(
+      "should not offer a collection menu for a personal collection (isAdmin: %s)",
+      async (isAdmin) => {
+        setup({ collection: PERSONAL_COLLECTION, isAdmin });
+
+        expect(screen.getByTestId("collection-name-heading")).toHaveValue(
+          PERSONAL_COLLECTION.name,
+        );
+        expect(
+          await screen.findByRole("button", { name: "More info" }),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByLabelText("ellipsis icon"),
+        ).not.toBeInTheDocument();
+      },
+    );
   });
 
   describe("new collection button", () => {
@@ -289,6 +377,17 @@ describe("CollectionHeader", () => {
         collection: { can_write: false },
         uploadsEnabled: true,
         canUpload: true,
+        isAdmin: false,
+      });
+
+      expect(screen.queryByLabelText("Upload data")).not.toBeInTheDocument();
+    });
+
+    it("should not show the upload button if uploads are enabled but the user cannot upload to the database", () => {
+      setup({
+        collection: { can_write: true },
+        uploadsEnabled: true,
+        canUpload: false,
         isAdmin: false,
       });
 

@@ -1,11 +1,12 @@
-// eslint-disable-next-line no-restricted-imports
-import styled from "@emotion/styled";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import embedJsExampleImage from "assets/img/embed-js-example.png";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { Box, Button, Group, Text } from "metabase/ui";
+
+import S from "./EmbedHomepage.module.css";
 
 type EmbedJsContentProps = {
   embedJsDocsUrl: string;
@@ -22,16 +23,12 @@ export const EmbedJsContent = ({
 }: EmbedJsContentProps) => {
   const cta = match({ variant, hasEmbeddingFeature })
     .with({ variant: "ee", hasEmbeddingFeature: true }, () => (
-      <Button
-        component={Link}
-        to={"/admin/embedding/setup-guide"}
-        variant="outline"
-      >
+      <Button component={Link} to={"/embedding/get-started"}>
         {t`Go to setup guide`}
       </Button>
     ))
     .with({ variant: "ee", hasEmbeddingFeature: false }, () => (
-      <Button component={Link} to={"/admin/settings/license"} variant="outline">
+      <Button component={Link} to={"/admin/settings/license"}>
         {t`Activate license`}
       </Button>
     ))
@@ -51,9 +48,13 @@ export const EmbedJsContent = ({
         {t`A JavaScript library built on top of Metabase’s modular embedding SDK that lets you embed individual components (charts, dashboards, query builder) using plain JS — no React setup required. You get per-component controls like drill-through, parameters, downloads, theming.`}
       </Text>
       {showImage && (
-        <EmbedJsImage
-          src="/app/assets/img/embed-js-example.png"
+        <Box
+          component="img"
+          className={S.border}
+          src={embedJsExampleImage}
           alt="Modular embedding example"
+          w="100%"
+          mb="lg"
         />
       )}
       <Group gap="lg">
@@ -61,17 +62,10 @@ export const EmbedJsContent = ({
 
         <ExternalLink href={embedJsDocsUrl}>
           <Button
-            variant={cta ? "subtle" : "outline"}
+            variant={cta ? "subtle" : "default"}
           >{t`Read the docs`}</Button>
         </ExternalLink>
       </Group>
     </Box>
   );
 };
-
-const EmbedJsImage = styled.img`
-  width: 100%;
-  margin-bottom: 1rem;
-  border-radius: 8px;
-  border: 1px solid ${({ theme }) => theme.colors["border-neutral"]};
-`;

@@ -93,7 +93,9 @@
                                         :status-code status-code
                                         :hm/response (loggable-response hm-response)
                                         :message message
-                                        :error_message ((comp :status-reason :body) hm-response)})))))
+                                        :error_message ((comp :status-reason :body) hm-response)
+                                        ;; Harbormaster's status and body, to help debug a failed request
+                                        :response/keys #{:hm/response}})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; MB <-> HM APIs
@@ -152,7 +154,7 @@
 
 (mu/defn- hm-delete-conn! :- :hm-client/http-reply
   "Delete (presumably a gdrive) connection on HM."
-  [conn-id]
+  [conn-id :- ms/NonBlankString]
   (hm.client/make-request :delete (str "/api/v2/mb/connections/" conn-id)))
 
 (defn- reset-gsheets-status!
@@ -175,7 +177,7 @@
 
 (mu/defn hm-get-gdrive-conn :- :hm-client/http-reply
   "Get a specific gdrive connection by id."
-  [id]
+  [id :- ms/NonBlankString]
   (when-not id
     (throw (ex-info "Cannot fetch Google Drive connection: ID is nil" {})))
   (hm.client/make-request :get (str "/api/v2/mb/connections/" id)))
@@ -196,7 +198,7 @@
 
 (mu/defn- hm-create-gdrive-conn! :- :hm-client/http-reply
   "Creating a gdrive connection on HM starts the sync w/ drive folder or sheet."
-  [resource-url]
+  [resource-url :- ms/NonBlankString]
   (hm.client/make-request :post "/api/v2/mb/connections" {:type (url-type resource-url) :secret {:resources [resource-url]}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -226,7 +228,7 @@
 
 (api.macros/defendpoint :post "/connection" :- :gsheets/response
   "Hook up a new google drive folder or sheet that will be watched and have its content ETL'd into Metabase."
-  [{} {} {:keys [url]} :- [:map [:url ms/NonBlankString]]]
+  [{} {} {:keys [url]} :- [:map {:closed true} [:url ms/NonBlankString]]]
   (let [attached-dwh (gsheets.db/attached-dwh-database-id)]
     (when-not (some? attached-dwh)
       (analytics.event/track-event! :snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
@@ -338,12 +340,12 @@
   stop showing the setup widget.
 
   Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`."
-  [] :- :gsheets/response
+  []
   (handle-get-connection))
 
 (mu/defn- hm-sync-conn! :- :hm-client/http-reply
   "Sync a (presumably a gdrive) connection on HM."
-  [conn-id]
+  [conn-id :- ms/NonBlankString]
   (hm.client/make-request :put (str "/api/v2/mb/connections/" conn-id "/sync")))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -370,11 +372,7 @@
                    :sync_started_at (seconds-from-epoch-now))
             (throw-error 502 (tru "Error requesting sync") response)))))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/connection"
+(api.macros/defendpoint :delete "/connection" :- [:map {:closed true} [:status [:= "not-connected"]]]
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
   []
   (analytics.event/track-event! :snowplow/simple_event {:event "sheets_disconnected"})
@@ -398,7 +396,6 @@
 
   (do
     ;; This is what the notify endpoint calls to do a sync on the attached dwh:
-    #_{:clj-kondo/ignore [:metabase/modules]}
     (require '[metabase.sync.sync-metadata :as sync-metadata])
     (sync-metadata/sync-db-metadata!
-     (gsheets.db/attached-dwh-database))))
+     (:id (gsheets.db/attached-dwh-database)))))

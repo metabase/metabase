@@ -12,6 +12,10 @@ import {
   setupTableEndpoints,
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
+import {
+  setupAdhocQueryMetadataEndpoint,
+  setupCardDataset,
+} from "__support__/server-mocks/dataset";
 import { setupEntityIdEndpoint } from "__support__/server-mocks/entity-id";
 import {
   act,
@@ -33,7 +37,9 @@ import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { SdkQuestionTitleProps } from "embedding-sdk-bundle/types/question";
-import type { BaseEntityId, CardId } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type { BaseEntityId, CardId, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -44,6 +50,7 @@ import {
   createMockDatasetData,
   createMockParameter,
   createMockTable,
+  createMockUnsavedCard,
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
@@ -99,6 +106,7 @@ const TEST_ENTITY_ID = createMockEntityId();
 const TEST_CARD = createMockCard({
   name: "My Question",
   parameters: [TEST_PARAM],
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
 });
 
 function makeMockNavigation(
@@ -124,6 +132,7 @@ const setup = async ({
   withChartTypeSelector = false,
   initialSqlParameters,
   cardId = TEST_CARD_ID,
+  deserializedCard,
   preventWaitForLoader = false,
   mockNavigation,
 }: Partial<
@@ -132,6 +141,7 @@ const setup = async ({
       isValidCard?: boolean;
       withCustomLayout?: boolean;
       cardId: BaseEntityId | CardId | null;
+      deserializedCard?: UnsavedCard;
       preventWaitForLoader?: boolean;
       mockNavigation?: SdkInternalNavigationContextValue;
     }
@@ -157,6 +167,10 @@ const setup = async ({
   setupTableEndpoints(TEST_TABLE);
 
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
+  setupCardDataset({ dataset: TEST_DATASET });
+  setupAdhocQueryMetadataEndpoint(
+    createMockCardQueryMetadata({ databases: [TEST_DB], tables: [TEST_TABLE] }),
+  );
 
   setupEntityIdEndpoint({ card: { [TEST_ENTITY_ID]: TEST_CARD_ID } });
 
@@ -178,6 +192,7 @@ const setup = async ({
     <SdkInternalNavigationContext.Provider value={mockNavigation ?? null}>
       <SdkQuestion
         questionId={cardId}
+        deserializedCard={deserializedCard}
         title={title}
         withChartTypeSelector={withChartTypeSelector}
         initialSqlParameters={initialSqlParameters}
@@ -193,7 +208,12 @@ const setup = async ({
     },
   );
 
-  if (!preventWaitForLoader) {
+  if (preventWaitForLoader) {
+    // These callers assert on the loader, so wait for it to appear rather than
+    // for it to go. The provider settles while this waits, which keeps that
+    // update inside act().
+    await screen.findByTestId("loading-indicator");
+  } else {
     await waitForLoaderToBeRemoved();
   }
 };
@@ -384,10 +404,24 @@ describe("InteractiveQuestion", () => {
     expect(screen.getByTestId("query-visualization-root")).toBeInTheDocument();
   });
 
+  it("should keep showing the loader while there is no question source yet (EMB-2390)", async () => {
+    await setup({ cardId: null, preventWaitForLoader: true });
+
+    expect(await screen.findByTestId("loading-indicator")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/To run your code, click on the Run button/),
+    ).not.toBeInTheDocument();
+    expect(fetchMock.callHistory.calls("dataset-post")).toHaveLength(0);
+  });
+
   describe("navigation stack initialization", () => {
     it("should push a question entry with id=null for an ad-hoc question (questionId is null)", async () => {
       const mockNavigation = makeMockNavigation();
-      await setup({ cardId: null, mockNavigation });
+      await setup({
+        cardId: null,
+        deserializedCard: createMockUnsavedCard(),
+        mockNavigation,
+      });
 
       expect(mockNavigation.push).toHaveBeenCalledWith({
         type: "question",
@@ -401,6 +435,7 @@ describe("InteractiveQuestion", () => {
         type: "dashboard" as const,
         id: 1,
         name: "Sales Dashboard",
+        navigationId: "visit-1",
       };
       const mockNavigation = makeMockNavigation({ stack: [existingEntry] });
       await setup({ mockNavigation });

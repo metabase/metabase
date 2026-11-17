@@ -433,6 +433,7 @@ Columns:
 - Metabase Version
 - Auth Method
 - Is Sandboxed
+- Sandbox Details
 - Is Impersonated
 - Is Db Routed
 - Parameters
@@ -567,6 +568,11 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - card-delete
 - card-public-link-created
 - card-public-link-deleted
+- card-test-create
+- card-test-delete
+- card-test-run-start
+- card-test-run-timeout
+- card-test-update
 - card-update
 - channel-create
 - channel-update
@@ -603,17 +609,20 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - group-membership-update
 - group-update
 - install
+- mcp-jwt-token-issued
 - measure-create
 - measure-delete
 - measure-update
 - mfa-disabled
 - mfa-enrolled
+- mfa-required-enrollment-failed
 - mfa-verification-failed
 - notification-create
 - notification-unsubscribe
 - notification-unsubscribe-ex
 - notification-unsubscribe-undo-ex
 - notification-update
+- password-changed
 - password-reset-initiated
 - password-reset-successful
 - remote-sync-create-branch
@@ -626,6 +635,8 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - segment-create
 - segment-delete
 - segment-update
+- session-revoked
+- sessions-revoked
 - setting-update
 - subscription-create
 - subscription-delete
@@ -647,6 +658,11 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - transform-run-canceled
 - transform-run-start
 - transform-run-timeout
+- transform-test-create
+- transform-test-delete
+- transform-test-run-start
+- transform-test-run-timeout
+- transform-test-update
 - update-permission-failure
 - update-transform
 - upload-append
@@ -664,10 +680,10 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 The Query Source column on the [Query log](#query-log) model takes one of:
 
 - action
+- action-execute
 - ad-hoc
 - agent
 - cache-refresh
-- collection
 - csv-download
 - dashboard
 - dashboard-subscription
@@ -679,7 +695,9 @@ The Query Source column on the [Query log](#query-log) model takes one of:
 - exploration
 - json-download
 - map-tiles
+- metabot
 - metric
+- public-action-execute
 - public-csv-download
 - public-dashboard
 - public-json-download
@@ -702,6 +720,7 @@ The Entity Type column on the [Content](#content) model takes one of:
 - dashboard
 - document
 - event
+- exploration
 - glossary
 - model
 - question

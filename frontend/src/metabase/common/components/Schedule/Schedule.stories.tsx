@@ -1,15 +1,16 @@
 import type { Store } from "@reduxjs/toolkit";
 import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
+import type { ComponentType } from "react";
 import { t } from "ttag";
 
 import { getPublicStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 
 import { Schedule } from "./Schedule";
 import { cronToBuilderValue } from "./cron";
@@ -22,7 +23,7 @@ const storeInitialState = createMockState({
 // Unjustified type cast. FIXME
 const store = getPublicStore(storeInitialState) as unknown as Store<State>;
 
-const ReduxDecorator = (Story: StoryFn) => {
+const ReduxDecorator = (Story: ComponentType) => {
   return (
     <MetabaseReduxProvider store={store}>
       <Story />

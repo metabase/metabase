@@ -1,15 +1,3 @@
-.ModalExternalLink {
-  color: var(--mb-color-core-brand);
-  font-size: 0.75rem;
-  line-height: 1rem;
-  font-weight: bold;
-  text-decoration: none;
-
-  &:hover {
-    text-decoration: underline;
-  }
-}
-
 .code {
   background-color: var(--mb-color-background_page-secondary);
   border-radius: var(--mantine-radius-sm);

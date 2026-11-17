@@ -17,7 +17,7 @@
     (encryption-test/with-secret-key "secret"
       (mt/with-model-cleanup [:model/Channel]
         (let [channel (t2/insert-returning-instance! :model/Channel notification.tu/default-can-connect-channel)]
-          (is (encryption/possibly-encrypted-string? (t2/select-one-fn :details :channel (:id channel)))))))))
+          (is (encryption/possibly-encrypted-string? (t2/select-one-fn :details :channel :id (:id channel)))))))))
 
 (deftest channel-details-json-encoding-test
   (testing "JSON-encoding a Channel includes :details only for callers who can write it"
@@ -48,15 +48,15 @@
                                          :channel_type "metabase-test"
                                          :enabled true}]
     (testing "do not try to delete pulse-channel if active doesn't change"
-      (is (pos? (t2/update! :model/Channel id {:name "New name"})))
-      (is (zero? (t2/update! :model/Channel id {:active true})))
-      (is (t2/exists? :model/PulseChannel pc-id)))
+      (is (pos? (t2/update! :model/Channel :id id {:name "New name"})))
+      (is (zero? (t2/update! :model/Channel :id id {:active true})))
+      (is (t2/exists? :model/PulseChannel :id pc-id)))
     (testing "deactivate channel"
-      (t2/update! :model/Channel id {:active false})
+      (t2/update! :model/Channel :id id {:active false})
       (testing "will delete pulse channels"
-        (is (not (t2/exists? :model/PulseChannel pc-id))))
+        (is (not (t2/exists? :model/PulseChannel :id pc-id))))
       (testing "will change the name"
-        (is (= (format "DEACTIVATED_%d New name" id) (t2/select-one-fn :name :model/Channel id)))))))
+        (is (= (format "DEACTIVATED_%d New name" id) (t2/select-one-fn :name :model/Channel :id id)))))))
 
 (deftest channel-template-email-details-test
   (mt/with-model-cleanup [:model/ChannelTemplate]
@@ -113,9 +113,9 @@
                                                       :details      {:type    :email/handlebars-text
                                                                      :subject "Hello"
                                                                      :body    "Original body"}}]
-        (t2/update! :model/ChannelTemplate id {:details {:type    :email/handlebars-text
-                                                         :subject "Hello"
-                                                         :body    "Updated body"}})
+        (t2/update! :model/ChannelTemplate :id id {:details {:type    :email/handlebars-text
+                                                             :subject "Hello"
+                                                             :body    "Updated body"}})
         (is (= 1.0 (mt/metric-value system :metabase-notification/template-update
                                     {:channel-type :channel/email})))))))
 

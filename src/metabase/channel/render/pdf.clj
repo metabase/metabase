@@ -37,7 +37,6 @@
    [better-cond.core :as b]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.channel.db :as channel.db]
    [metabase.channel.render.body :as body]
@@ -48,6 +47,7 @@
    [metabase.channel.render.pdf.markdown :as md]
    [metabase.channel.render.pdf.typeset :as typeset]
    [metabase.channel.render.png :as png]
+   [metabase.channel.render.table :as table]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.shared :as channel.shared]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
@@ -58,6 +58,7 @@
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru trun]]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [metabase.util.memoize :as memo]
    [toucan2.core :as t2])
   (:import
@@ -74,6 +75,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *debug-boxes*
   "When true, fill the *allocated* bounding box (the full space available, not the content's actual extent) behind
   each chart (red) and each card title / heading card (light blue), so one can see how much of its cell the content
@@ -141,6 +143,7 @@
 ;; page draws we collect link rectangles into `*link-rects*` and add the annotations afterward.
 ;; --------------------------------------------------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *link-rects*
   "While a page renders, an atom holding a vector of `{:x0 :y0 :x1 :y1 :href}` rectangles for the clickable link
   annotations to add to the page once drawing is done."
@@ -459,44 +462,46 @@
 
   Returns nil for dashcard kinds we don't render (placeholder/action), or for a card with no part -- a card whose
   query failed or was hidden while empty (`card.hide_empty`), which `execute-dashboard` omits."
-  [dashcard parameters parts-by-dashcard-id]
-  (let [inline (resolve-inline-params dashcard parameters)
-        geom   (cond-> (select-keys dashcard [:row :col :size_x :size_y])
-                 (seq inline) (assoc :inline-params inline))]
-    (cond
-      (:card_id dashcard)
-      ;; Reuse the pre-executed part. Large results stay disk-backed (a StreamingTempFileStorage handle, see
-      ;; [[metabase.notification.payload.temp-storage]]) here and are realized lazily at draw time in
-      ;; [[render-card-cell!]] -- so only the card being drawn is resident in memory, exactly as the email channel
-      ;; walks its parts one at a time to keep its memory watermark low.
-      (when-let [part (get parts-by-dashcard-id (:id dashcard))]
-        (assoc geom
-               :kind :card
-               :part (cond-> part
-                       (seq inline) (assoc :inline-params inline))))
+  ([dashcard parameters parts-by-dashcard-id]
+   (dashcard->cell dashcard parameters parts-by-dashcard-id (notification.payload/link-card-entities [dashcard])))
+  ([dashcard parameters parts-by-dashcard-id link-card-entities]
+   (let [inline (resolve-inline-params dashcard parameters)
+         geom   (cond-> (select-keys dashcard [:row :col :size_x :size_y])
+                  (seq inline) (assoc :inline-params inline))]
+     (cond
+       (:card_id dashcard)
+       ;; Reuse the pre-executed part. Large results stay disk-backed (a StreamingTempFileStorage handle, see
+       ;; [[metabase.notification.payload.temp-storage]]) here and are realized lazily at draw time in
+       ;; [[render-card-cell!]] -- so only the card being drawn is resident in memory, exactly as the email channel
+       ;; walks its parts one at a time to keep its memory watermark low.
+       (when-let [part (get parts-by-dashcard-id (:id dashcard))]
+         (assoc geom
+                :kind :card
+                :part (cond-> part
+                        (seq inline) (assoc :inline-params inline))))
 
-      (notification.payload/virtual-card-of-type? dashcard "heading")
-      (assoc geom :kind :heading, :text (virtual-dashcard->text dashcard parameters))
+       (notification.payload/virtual-card-of-type? dashcard "heading")
+       (assoc geom :kind :heading, :text (virtual-dashcard->text dashcard parameters))
 
-      (notification.payload/virtual-card-of-type? dashcard "text")
-      (assoc geom :kind :text
-             :text    (virtual-dashcard->text dashcard parameters)
-             :align-h (text-card-align-h dashcard)
-             :align-v (text-card-align-v dashcard))
+       (notification.payload/virtual-card-of-type? dashcard "text")
+       (assoc geom :kind :text
+              :text    (virtual-dashcard->text dashcard parameters)
+              :align-h (text-card-align-h dashcard)
+              :align-v (text-card-align-v dashcard))
 
-      ;; link cards render as a markdown `### [name](url)` text cell (clickable like any md link);
-      ;; reuse the email conversion so they match, and so entity links are permission-checked.
-      (notification.payload/virtual-card-of-type? dashcard "link")
-      (when-let [part (notification.payload/dashcard-link-card->part dashcard)]
-        (assoc geom :kind :text, :text (:text part)))
+       ;; link cards render as a markdown `### [name](url)` text cell (clickable like any md link);
+       ;; reuse the email conversion so they match, and so entity links are permission-checked.
+       (notification.payload/virtual-card-of-type? dashcard "link")
+       (when-let [part (notification.payload/dashcard-link-card->part dashcard link-card-entities)]
+         (assoc geom :kind :text, :text (:text part)))
 
-      ;; iframe cards (embedded video/web players) can't render in a PDF -- show the target as a
-      ;; clickable link instead (autolinked bare URL).
-      (notification.payload/virtual-card-of-type? dashcard "iframe")
-      (when-let [url (iframe-url (get-in dashcard [:visualization_settings :iframe]))]
-        (assoc geom :kind :text, :text url))
+       ;; iframe cards (embedded video/web players) can't render in a PDF -- show the target as a
+       ;; clickable link instead (autolinked bare URL).
+       (notification.payload/virtual-card-of-type? dashcard "iframe")
+       (when-let [url (iframe-url (get-in dashcard [:visualization_settings :iframe]))]
+         (assoc geom :kind :text, :text url))
 
-      :else nil)))
+       :else nil))))
 
 (defn- build-cells
   "Order a tab's (or the untabbed dashboard's) dashcards and build cells, normalizing row numbers so the first
@@ -505,8 +510,9 @@
   (let [sorted  (sort dashboard-card/dashcard-comparator dashcards)
         min-row (if (seq sorted)
                   (apply min (map :row sorted))
-                  0)]
-    (into [] (comp (keep #(dashcard->cell % parameters parts-by-dashcard-id))
+                  0)
+        link-card-entities (notification.payload/link-card-entities sorted)]
+    (into [] (comp (keep #(dashcard->cell % parameters parts-by-dashcard-id link-card-entities))
                    (map  #(update % :row - min-row)))
           sorted)))
 
@@ -559,18 +565,6 @@
 ;; Drawing
 ;; --------------------------------------------------------------------------------------------
 
-(defn- card-body-png
-  "Rasterize a `:card` part's body (chart/table/scalar) to PNG bytes, WITHOUT its title or description -- those are
-  drawn natively at the PDF level.
-
-  Used for card types that can't fill an arbitrary box (gauge, funnel, progress, scalar, table, ...); resize
-  to fit while preserving aspect."
-  ^bytes [timezone {:keys [card dashcard result]} px-width]
-  (-> (render.card/render-pulse-card :inline timezone card dashcard result
-                                     {:channel.render/include-title?       false
-                                      :channel.render/include-description? false})
-      (render.card/png-from-render-info px-width)))
-
 (defn- draw-image-in-cell!
   "Draw `img`, resizing to fit (preserving aspect) within a cell rectangle, horizontally centered and top-anchored.
   Used for card types that can't fill an arbitrary box (scalar, gauge, ...). Horizontal centering keeps a narrow
@@ -589,6 +583,39 @@
 (defn- px->pt ^double [px]
   (* (double px)
      (/ 72.0 common/dpi)))
+
+(def ^:private body-target-dpi
+  "Device DPI a fixed-size card body aims for: the same a rectangular chart already gets, i.e. [[common/dpi]]
+  laid out and rasterized at [[common/chart-supersample]]."
+  (* common/dpi common/chart-supersample))
+
+(defn- fixed-body-scale
+  "Supersample factor that lands an `iw` x `ih` (logical px) card body at [[body-target-dpi]] once
+  [[draw-image-in-cell!]] has fit it into the `cell-w` x `cell-h` point box.
+
+  The fit cancels the factor out -- `min(cell-w/iw, cell-h/ih)` scales both terms -- so the drawn width
+  follows from the 1:1 dims, and with it the factor. No cap needed: it can't exceed `cell-w`."
+  [cell-w cell-h iw ih]
+  (if (or (zero? iw) (zero? ih))
+    1.0
+    (let [drawn-w-pt (min (double cell-w) (* iw (/ (double cell-h) ih)))
+          target-px  (/ (* drawn-w-pt body-target-dpi) 72.0)]
+      (max 1.0 (/ target-px iw)))))
+
+(defn- card-body-png
+  "Rasterize a `:card` part's body (chart/table/scalar) to PNG bytes, WITHOUT its title or description -- those
+  are drawn natively at the PDF level.
+
+  Used for card types that can't fill an arbitrary box (gauge, funnel, progress, scalar, table, ...), which
+  [[draw-image-in-cell!]] fits into the `cell-w` x `cell-h` point box preserving aspect. They lay out at their
+  intrinsic size, so they're supersampled by the magnification that fit will apply -- see [[fixed-body-scale]]."
+  ^bytes [timezone {:keys [card dashcard result]} cell-w cell-h]
+  (-> (render.card/render-pulse-card :inline timezone card dashcard result
+                                     {:channel.render/include-title?       false
+                                      :channel.render/include-description? false})
+      ;; the px width is CSSBox's layout viewport, not the output size -- the scale fn decides that
+      (render.card/png-from-render-info (-> cell-w pt->px (min 2200) (max 240) long)
+                                        {:channel.render/scale (partial fixed-body-scale cell-w cell-h)})))
 
 (defn- effective-display
   "The display type the card actually renders as. A visualizer dashcard overrides the underlying card's `:display`
@@ -623,7 +650,9 @@
   (binding [js.svg/*chart-size* {:width       w-px
                                  :height      h-px
                                  :scale       common/chart-supersample
-                                 :fit-within? true}]
+                                 :fit-within? true
+                                 :grid-size   (when (and (:size_x dashcard) (:size_y dashcard))
+                                                {:width (:size_x dashcard) :height (:size_y dashcard)})}]
     (let [viz                    (or (:visualization_settings dashcard)
                                      (:visualization_settings card))
           {:keys [content type]} (js.svg/*javascript-visualization* (cards-with-data card dashcard data) viz)]
@@ -836,27 +865,16 @@
                            (append-style header-divider-css))))
           items)))
 
-(defn- restyle-form
-  "Restyle one walked Hiccup form: the `<table>` gets [[table-css]] (fill the frame, drop its own
-  border/radius/margin); with `add-dividers?` header rows also get per-cell dividers. Everything else passes
-  through."
-  [add-dividers? form]
-  (cond
-    (and (element? form :table) (map? (second form)))
-    (append-style form table-css)
-
-    (and add-dividers? (element? form :tr) (header-row? form))
-    (add-header-dividers form)
-
-    :else form))
-
 (defn- restyle-table
   "Restyle the inner `<table>` to fill the card frame: `width:100%`, dropping its own border/radius/margin (the
   native frame and per-cell dividers remain). In the fixed-width clip box this fills the cell when the content
   is narrower (columns stretch, like the dashboard) and overflows-then-clips when it's wider. `add-dividers?`
   adds header dividers to match the body (native `:table` only -- pivots and object-detail border their cells)."
   [content add-dividers?]
-  (walk/postwalk #(restyle-form add-dividers? %) content))
+  (match/replace-all content
+    [:table #'map? & _] (append-style &match table-css)
+    (:and [:tr & _] #'header-row?) (cond-> &match
+                                     add-dividers? add-header-dividers)))
 
 (def ^:private footer-text-css
   "Font size and color shared by the card footers -- the native table's row-count footer and object-detail's
@@ -908,6 +926,14 @@
     :else
     {:footer nil :footer-h 0}))
 
+(defn- body-chart-type
+  "The chart type the table body is styled and footered as. A `:table` card whose \"Pivot table\" toggle applies
+  renders as an assembled grid, so it takes a pivot's treatment: no header dividers and no source row count."
+  [chart-type data]
+  (if (and (= :table chart-type) (body/simple-pivot? data))
+    :pivot
+    chart-type))
+
 (defn- table-body-png
   "Render a table-like card body (`:table`, `:pivot`, or `:object`) to PNG bytes sized to the `px-w` x `px-h`
   cell (logical pixels), supersampled at [[table-supersample]]x. The body is a `width:100%` table inside a
@@ -920,17 +946,21 @@
   clipped body so a short card can't hide it). A pivot has neither."
   ^bytes [timezone {:keys [card dashcard result]} chart-type px-w px-h]
   (let [;; Render directly, not via render-pulse-card: its <p>/.pulse-body margins escape CSSBox's
-        ;; height clip and push the image past the cell. body/render gives the bare table.
-        info     (body/render chart-type :inline timezone card dashcard (:data result))
+        ;; height clip and push the image past the cell. body/render gives the bare table. Opt out of the email/Slack
+        ;; fixed-width fallback for wrapping columns: CSSBox lays the table out at `px-w` and auto-wraps, so a fixed
+        ;; width would only overflow the page and clip the text (see [[table/*text-wrapping-fallback-width*]]).
+        info     (binding [table/*text-wrapping-fallback-width* nil]
+                   (body/render chart-type :inline timezone card dashcard (:data result)))
+        body-type (body-chart-type chart-type (:data result))
         note     (when (= :object chart-type) (object-detail-note (:content info)))
         ;; the note is body/render's trailing element, so drop it from the clipped body (it's pinned below)
         body     (cond-> (:content info) note pop)
-        {:keys [footer footer-h]} (card-footer chart-type note (count (get-in result [:data :rows])))
+        {:keys [footer footer-h]} (card-footer body-type note (count (get-in result [:data :rows])))
         max-h    (max 0 (- (long px-h) footer-h 2))
         clip-css (format "width:%dpx;max-height:%dpx;overflow:hidden" (long px-w) max-h)
         ;; the frame is stroked natively in draw-table-card!, so this wrapper has no border
         content  [:div
-                  [:div {:style clip-css} (restyle-table body (= :table chart-type))]
+                  [:div {:style clip-css} (restyle-table body (= :table body-type))]
                   footer]]
     (png/render-html-to-png (assoc info :content content) px-w {:channel.render/scale table-supersample})))
 
@@ -1149,7 +1179,7 @@
           ;; other types (and charts whose render produced no SVG): title-less body PNG,
           ;; fit preserving aspect
           :else
-          (when-let [body (card-body-png timezone part (-> cell-w pt->px (min 2200) (max 240) long))]
+          (when-let [body (card-body-png timezone part cell-w body-h)]
             (draw-image-in-cell! cs (PDImageXObject/createFromByteArray doc body "card")
                                  x body-top cell-w body-h)))))))
 

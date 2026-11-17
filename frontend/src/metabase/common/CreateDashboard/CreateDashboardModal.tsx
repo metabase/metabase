@@ -38,6 +38,7 @@ export const CreateDashboardModal = ({
 
   return (
     <Modal
+      density="relaxed"
       title={t`New dashboard`}
       onClose={() => onClose?.()}
       data-testid="new-dashboard-modal"

@@ -46,7 +46,8 @@ export function CategoryButton({
           className={S.settingsButton}
           aria-label={t`Configure ${item.name}`}
           aria-expanded={isExpanded}
-          variant="subtle"
+          variant="light"
+          selected={isExpanded}
           onClick={onConfigure}
         >
           <Icon name="sliders" />

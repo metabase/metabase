@@ -1,15 +1,15 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { dashboardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   cardIsEquivalent,
   cardParametersAreEquivalent,
 } from "metabase/common/utils/card";
+import type { CardQuestionBuilder } from "metabase/metadata-store";
 import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { setErrorPage } from "metabase/redux/app";
 import type { Dispatch } from "metabase/redux/store";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type {
   Card,
   Parameter,
@@ -77,14 +77,16 @@ async function verifyMatchingDashcardAndParameters({
 export function getParameterValuesForQuestion({
   card,
   queryParams,
-  metadata,
+  buildQuestion,
 }: {
   card: SeriesCard;
   queryParams?: ParameterValuesMap;
-  metadata: Metadata;
+  buildQuestion: CardQuestionBuilder;
 }) {
-  const parameters = getCardUiParameters(card, metadata);
-  return getParameterValuesByIdFromQueryParams(parameters, queryParams ?? {});
+  return getParameterValuesByIdFromQueryParams(
+    buildQuestion(card).parameters(),
+    queryParams ?? {},
+  );
 }
 
 /**

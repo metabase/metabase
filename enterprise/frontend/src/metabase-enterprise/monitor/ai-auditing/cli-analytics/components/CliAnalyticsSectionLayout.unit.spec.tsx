@@ -7,6 +7,7 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -14,7 +15,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -281,7 +281,7 @@ describe("CliAnalyticsSectionLayout", () => {
     });
 
     await screen.findByRole("heading", { name: "CLI analytics" });
-    await userEvent.click(await screen.findByRole("link", { name: "Calls" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Calls" }));
 
     await waitFor(() => {
       expect(router?.location.pathname).toBe(Urls.monitorAiAuditingCliCalls());
@@ -290,7 +290,7 @@ describe("CliAnalyticsSectionLayout", () => {
     expect(search).toContain("date=past7days~");
     expect(search).toContain("user=1");
 
-    await userEvent.click(await screen.findByRole("link", { name: "Usage" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Usage" }));
 
     await waitFor(() => {
       expect(router?.location.pathname).toBe(Urls.monitorAiAuditingCliUsage());
@@ -310,7 +310,7 @@ describe("CliAnalyticsSectionLayout", () => {
       screen.getByTestId("conversation-filters-date-select"),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole("link", { name: "Usage" }),
+      await screen.findByRole("tab", { name: "Usage" }),
     ).toBeInTheDocument();
 
     await waitFor(() => {
@@ -325,7 +325,7 @@ describe("CliAnalyticsSectionLayout", () => {
     const { router } = setup();
 
     await screen.findByRole("heading", { name: "CLI analytics" });
-    await userEvent.click(await screen.findByRole("link", { name: "Calls" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Calls" }));
 
     expect(router?.location.pathname).toBe(Urls.monitorAiAuditingCliCalls());
     expect(
@@ -438,7 +438,7 @@ describe("CliAnalyticsSectionLayout", () => {
       screen.getByTestId("conversation-filters-date-select"),
     ).toBeInTheDocument();
 
-    await userEvent.click(await screen.findByRole("link", { name: "Calls" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Calls" }));
     await screen.findByRole("treegrid", { name: "Calls" });
     expect(
       screen.getByTestId("conversation-filters-date-select"),
@@ -453,8 +453,8 @@ describe("CliAnalyticsSectionLayout", () => {
     ).toBeInTheDocument();
     expect(await screen.findByText("No CLI activity")).toBeInTheDocument();
 
-    expect(screen.getByRole("link", { name: "Usage" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Calls" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Usage" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Calls" })).toBeInTheDocument();
     expect(
       screen.getByTestId("conversation-filters-date-select"),
     ).toBeInTheDocument();

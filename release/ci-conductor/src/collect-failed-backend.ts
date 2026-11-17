@@ -27,8 +27,8 @@
 
 import { rmSync, writeFileSync } from "node:fs";
 
-import type { NormalizedTest } from "./contract.ts";
 import { normalizeBackendJunit } from "./adapters/backend.ts";
+import type { NormalizedTest } from "./contract.ts";
 import { log } from "./util.ts";
 
 // hawk `:only` accepts a vector of `ns/var` symbols, so the file contents can be
@@ -66,7 +66,9 @@ function main(): void {
     // the caller for the test step to read. "No confident set" has to mean "no
     // file", or that stale set is what gets uploaded and narrowed on next time.
     rmSync(OUTPUT_FILE, { force: true });
-    log(`not writing ${OUTPUT_FILE}: no confident failed-test set — caller should rerun the full suite`);
+    log(
+      `not writing ${OUTPUT_FILE}: no confident failed-test set — caller should rerun the full suite`,
+    );
     return;
   }
   writeFileSync(OUTPUT_FILE, vector);

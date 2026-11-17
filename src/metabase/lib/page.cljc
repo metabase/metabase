@@ -6,7 +6,7 @@
 
 (mu/defn current-page :- [:maybe ::lib.schema/page]
   "Return the `:page` in a query stage."
-  ([query]
+  ([query :- ::lib.schema/query]
    (current-page query -1))
 
   ([query        :- ::lib.schema/query
@@ -15,7 +15,8 @@
 
 (mu/defn with-page :- ::lib.schema/query
   "Set or remove the `:page` in a query stage."
-  ([query page]
+  ([query :- ::lib.schema/query
+    page  :- [:maybe ::lib.schema/page]]
    (with-page query -1 page))
 
   ([query        :- ::lib.schema/query

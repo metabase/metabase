@@ -3,6 +3,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-inspector.core :as inspector]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.test-util :as transforms.tu]
@@ -13,6 +15,21 @@
 (defn- default-schema []
   (t2/select-one-fn :schema :model/Table :id (mt/id :orders)))
 
+(defn- orders-query
+  "An MBQL query reading the `orders` table."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
+
+(defn- orders-products-query
+  "An MBQL query reading the `orders` table left-joined to `products`."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/join (orders-query)
+              (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                               [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                       (lib.metadata/field mp (mt/id :products :id)))]))))
+
 (defn- make-mbql-transform
   "Create a transform map for testing with an MBQL query."
   [query target-name & [schema]]
@@ -21,7 +38,7 @@
    :name (str "inspector_test_" target-name)
    :target {:schema (or schema (default-schema))
             :name target-name
-            :type :table}})
+            :type "table"}})
 
 ;; TODO: these tests create new tables in the default schema, which is fine for
 ;; most drivers, but not for cloud DBs like snowflake and bigquery, because
@@ -43,9 +60,7 @@
                               :schema (default-schema)
                               :name "g_inspector_nr"}]
         (let [transform-data (make-mbql-transform
-                              {:database (mt/id)
-                               :type "query"
-                               :query {:source-table (mt/id :orders)}}
+                              (orders-query)
                               target-name
                               (default-schema))]
           (mt/with-temp [:model/Transform transform transform-data]
@@ -64,9 +79,7 @@
                               :schema (default-schema)
                               :name "g_inspector_rdy"}]
         (let [transform-data (make-mbql-transform
-                              {:database (mt/id)
-                               :type "query"
-                               :query {:source-table (mt/id :orders)}}
+                              (orders-query)
                               target-name
                               (default-schema))]
           (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
@@ -74,7 +87,7 @@
             (transforms.execute/execute! transform {:run-method :manual})
             (transforms.tu/wait-for-table target-name 10000)
             ;; Reload transform to get latest state
-            (let [transform' (t2/select-one :model/Transform tid)
+            (let [transform' (t2/select-one :model/Transform :id tid)
                   result (inspector/discover-lenses transform')]
               (is (= :ready (:status result)))
               (is (some? (:target result)))
@@ -92,15 +105,13 @@
                               :schema (default-schema)
                               :name "g_inspector_src"}]
         (let [transform-data (make-mbql-transform
-                              {:database (mt/id)
-                               :type "query"
-                               :query {:source-table (mt/id :orders)}}
+                              (orders-query)
                               target-name
                               (default-schema))]
           (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
             (transforms.execute/execute! transform {:run-method :manual})
             (transforms.tu/wait-for-table target-name 10000)
-            (let [transform' (t2/select-one :model/Transform tid)
+            (let [transform' (t2/select-one :model/Transform :id tid)
                   result (inspector/discover-lenses transform')]
               (testing "sources contain table metadata"
                 (let [source (first (:sources result))]
@@ -126,15 +137,13 @@
                               :schema (default-schema)
                               :name "g_inspector_gs"}]
         (let [transform-data (make-mbql-transform
-                              {:database (mt/id)
-                               :type "query"
-                               :query {:source-table (mt/id :orders)}}
+                              (orders-query)
                               target-name
                               (default-schema))]
           (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
             (transforms.execute/execute! transform {:run-method :manual})
             (transforms.tu/wait-for-table target-name 10000)
-            (let [transform' (t2/select-one :model/Transform tid)
+            (let [transform' (t2/select-one :model/Transform :id tid)
                   lens (inspector/get-lens transform' "generic-summary" nil)]
               (is (= "generic-summary" (:id lens)))
               (is (= "Data Summary" (:display_name lens)))
@@ -156,25 +165,13 @@
                               :schema (default-schema)
                               :name "g_inspector_ja"}]
         (let [transform-data (make-mbql-transform
-                              {:database (mt/id)
-                               :type "query"
-                               :query {:source-table (mt/id :orders)
-                                       :joins [{:fields "all"
-                                                :strategy "left-join"
-                                                :alias "Products"
-                                                :condition [:=
-                                                            [:field (mt/id :orders :product_id)
-                                                             {:base-type "type/Integer"}]
-                                                            [:field (mt/id :products :id)
-                                                             {:base-type "type/Integer"
-                                                              :join-alias "Products"}]]
-                                                :source-table (mt/id :products)}]}}
+                              (orders-products-query)
                               target-name
                               (default-schema))]
           (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
             (transforms.execute/execute! transform {:run-method :manual})
             (transforms.tu/wait-for-table target-name 10000)
-            (let [transform' (t2/select-one :model/Transform tid)
+            (let [transform' (t2/select-one :model/Transform :id tid)
                   lens (inspector/get-lens transform' "join-analysis" nil)]
               (is (= "join-analysis" (:id lens)))
               (is (= "Join Analysis" (:display_name lens)))
@@ -196,15 +193,13 @@
                               :schema (default-schema)
                               :name "g_inspector_na"}]
         (let [transform-data (make-mbql-transform
-                              {:database (mt/id)
-                               :type "query"
-                               :query {:source-table (mt/id :orders)}}
+                              (orders-query)
                               target-name
                               (default-schema))]
           (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
             (transforms.execute/execute! transform {:run-method :manual})
             (transforms.tu/wait-for-table target-name 10000)
-            (let [transform' (t2/select-one :model/Transform tid)]
+            (let [transform' (t2/select-one :model/Transform :id tid)]
               ;; A simple query without joins shouldn't have join-analysis applicable
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Lens data not available"
                                     (inspector/get-lens transform' "join-analysis" nil))))))))))
@@ -220,25 +215,13 @@
                               :schema (default-schema)
                               :name "g_inspector_ji"}]
         (let [transform-data (make-mbql-transform
-                              {:database (mt/id)
-                               :type "query"
-                               :query {:source-table (mt/id :orders)
-                                       :joins [{:fields "all"
-                                                :strategy "left-join"
-                                                :alias "Products"
-                                                :condition [:=
-                                                            [:field (mt/id :orders :product_id)
-                                                             {:base-type "type/Integer"}]
-                                                            [:field (mt/id :products :id)
-                                                             {:base-type "type/Integer"
-                                                              :join-alias "Products"}]]
-                                                :source-table (mt/id :products)}]}}
+                              (orders-products-query)
                               target-name
                               (default-schema))]
           (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
             (transforms.execute/execute! transform {:run-method :manual})
             (transforms.tu/wait-for-table target-name 10000)
-            (let [transform' (t2/select-one :model/Transform tid)
+            (let [transform' (t2/select-one :model/Transform :id tid)
                   result (inspector/discover-lenses transform')]
               (testing "join-analysis is in available lenses"
                 (is (some #(= "join-analysis" (:id %)) (:available_lenses result))))

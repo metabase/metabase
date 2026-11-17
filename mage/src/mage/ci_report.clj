@@ -52,6 +52,7 @@
                 line)))
        (str/join "\n")))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *progress-log* nil)
 
 (defn- log-progress [msg]

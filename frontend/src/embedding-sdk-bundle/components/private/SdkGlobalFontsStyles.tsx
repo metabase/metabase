@@ -1,22 +1,19 @@
-// eslint-disable-next-line no-restricted-imports -- We sometimes need css-in-js in the SDK
+// eslint-disable-next-line eslint-js/no-restricted-imports -- We sometimes need css-in-js in the SDK
 import { Global, css } from "@emotion/react";
 import { useMemo } from "react";
 
-import { defaultFontFiles } from "metabase/css/core/fonts.styled";
+import "metabase/css/core/fonts.css";
 import { useSelector } from "metabase/redux";
 import { getFontFiles } from "metabase/styled-components/selectors";
 
 /**
  * css style to define the font files for the SDK
  */
-export const SdkFontsGlobalStyles = ({ baseUrl }: { baseUrl: string }) => {
+export const SdkFontsGlobalStyles = () => {
   const fontFiles = useSelector(getFontFiles);
 
   const fontStyles = useMemo(
     () => css`
-      // built in fonts
-      ${defaultFontFiles({ baseUrl })}
-
       // custom fonts
       ${fontFiles?.map(
         (file) => css`
@@ -30,7 +27,7 @@ export const SdkFontsGlobalStyles = ({ baseUrl }: { baseUrl: string }) => {
         `,
       )}
     `,
-    [fontFiles, baseUrl],
+    [fontFiles],
   );
 
   return <Global styles={fontStyles} />;

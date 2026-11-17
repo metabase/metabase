@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [metabase.sso.oidc.discovery :as discovery]
    [metabase.sso.oidc.http :as oidc.http]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -34,6 +35,33 @@
            :success false
            :error   "Discovery document is missing required endpoints (authorization, token, or JWKS)"})))))
 
+(def ^:private entra-token-hosts
+  "Well-known Entra ID token endpoints."
+  #{"login.microsoftonline.com"
+    "login.windows.net"
+    "login.microsoft.com"
+    "login-us.microsoftonline.com"
+    "login.microsoftonline.us"
+    "login.partner.microsoftonline.cn"
+    "login.chinacloudapi.cn"})
+
+(defn- entra-token-endpoint?
+  [token-endpoint]
+  (contains? entra-token-hosts (some-> token-endpoint java.net.URI. .getHost u/lower-case-en)))
+
+(defn- client-credentials-scopes
+  "Return the list of scopes to use for a client_credentials request for the given `token-endpoint`.
+
+  For most endpoints, this just returns `scopes`, but some endpoints might need to modify the scopes. Entra ID, for
+  example, requires a .default scope."
+  [token-endpoint client-id scopes]
+  (if (and (entra-token-endpoint? token-endpoint)
+           (not-any? #(str/ends-with? % "/.default") scopes))
+    ;; Entra ID only issues client_credentials tokens for a `{resource}/.default` scope (AADSTS1002012). When none is
+    ;; configured, ask for a token for the app itself, which needs no API permissions and should work for most setups.
+    (conj (vec scopes) (str client-id "/.default"))
+    scopes))
+
 (defn check-credentials
   "Validate client credentials by POSTing a client_credentials grant to the token endpoint.
 
@@ -51,7 +79,7 @@
                                           {:form-params {:grant_type    "client_credentials"
                                                          :client_id     client-id
                                                          :client_secret client-secret
-                                                         :scope         (str/join " " scopes)}
+                                                         :scope         (str/join " " (client-credentials-scopes token-endpoint client-id scopes))}
                                            :coerce      :always})
           status     (:status response)
           body       (:body response)

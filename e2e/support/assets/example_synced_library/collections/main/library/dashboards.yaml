@@ -1,0 +1,8 @@
+name: Dashboards
+entity_id: librarylibrarydashbrd
+slug: dashboards
+type: library-dashboards
+parent_id: librarylibrarylibrary
+serdes/meta:
+- model: Collection
+is_remote_synced: true

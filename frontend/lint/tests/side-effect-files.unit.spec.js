@@ -23,7 +23,16 @@ const REPO_ROOT = path.resolve(__dirname, "../../..");
 // anywhere fails CI until it is classified.
 describe("side-effect-files.json", () => {
   const registry = loadRegistry(DEFAULT_REGISTRY_PATH);
-  const effectFiles = [...scanEffectFiles().keys()];
+  // The scan runs in worker threads, so the files it reports arrive async.
+  let effectFiles;
+
+  // On a four-core CI runner the scan shares the cores with the other jest
+  // workers and has taken over two minutes, well past the 30s hook default.
+  const SCAN_TIMEOUT_MS = 5 * 60 * 1000;
+
+  beforeAll(async () => {
+    effectFiles = [...(await scanEffectFiles()).keys()];
+  }, SCAN_TIMEOUT_MS);
 
   it("lists every file the rule reports, with no stale global or entry entries", () => {
     const { missing, stale } = diffRegistry(registry, effectFiles);

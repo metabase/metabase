@@ -1,13 +1,25 @@
 {
   "teams": [
     {
-      "name": "Querying Platform",
-      "label": ".Team/QueryingPlatform",
+      "name": "Querying",
+      "label": ".Team/Querying",
       "members": [
+        "bshepherdson",
+        "dpsutton",
         "metamben",
         "rileythomp",
-        "camsaul",
         "technomancy"
+      ]
+    },
+    {
+      "name": "Data Apps",
+      "label": ".Team/DataApps",
+      "codeowner": "@metabase/data-apps",
+      "members": [
+        "ranquild",
+        "heypoom",
+        "sanex3339",
+        "NevRA"
       ]
     },
     {
@@ -15,12 +27,10 @@
       "label": ".Team/Graphy",
       "members": [
         "ranquild",
-        "ericnormand",
         "galdre",
-        "dpsutton",
         "escherize",
-        "bgrabow",
-        "alxnddr"
+        "alxnddr",
+        "tsplude"
       ]
     },
     {
@@ -30,15 +40,7 @@
         "WiNloSt",
         "npretto",
         "heypoom",
-        "sanex3339",
-        "lorem--ipsum"
-      ]
-    },
-    {
-      "name": "Admin Webapp",
-      "label": ".Team/AdminWebapp",
-      "members": [
-        "eliotmetabase"
+        "sanex3339"
       ]
     },
     {
@@ -54,17 +56,15 @@
     {
       "name": "Metabot",
       "label": ".Team/Metabot",
+      "codeowner": "@metabase/metabot",
       "members": [
-        "appleby",
-        "retro",
-        "sloansparger",
-        "tsplude",
         "lbrdnk",
         "crisptrutski",
-        "undrfined",
         "andreis",
         "prascuna",
-        "krever"
+        "Krever",
+        "svozniuk",
+        "radutoev"
       ]
     },
     {
@@ -75,26 +75,16 @@
       ]
     },
     {
-      "name": "DashViz",
-      "label": ".Team/DashViz",
-      "members": [
-        "eliotmetabase"
-      ]
-    },
-    {
       "name": "UX West",
       "label": ".Team/UXWest",
       "members": [
-        "eliotmetabase",
         "npfitz",
-        "johnswanson",
         "nvoxland",
-        "bshepherdson",
         "deniskaber",
         "andsalves",
         "kevinkelleher12",
         "AndreyChernykh",
-        "bowbahdoe"
+        "appleby"
       ]
     },
     {
@@ -114,7 +104,8 @@
         "olehk-mb",
         "annatomka",
         "brybacki",
-        "BillyBobFry"
+        "BillyBobFry",
+        "radex"
       ]
     },
     {
@@ -124,7 +115,6 @@
         "iethree",
         "bpander",
         "gantoreno",
-        "losrebellos",
         "tmashara"
       ]
     },
@@ -132,7 +122,9 @@
       "name": "Security Engineering",
       "label": ".Team/SecurityEngineering",
       "members": [
-        "enthym-aa"
+        "bowbahdoe",
+        "enthym-aa",
+        "johnswanson"
       ]
     }
   ]

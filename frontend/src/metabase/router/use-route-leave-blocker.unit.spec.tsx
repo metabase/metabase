@@ -1,10 +1,11 @@
 import userEvent from "@testing-library/user-event";
-import type { PropsWithChildren } from "react";
+import { type JSX, type PropsWithChildren, useLayoutEffect } from "react";
 
-import { act, renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/router";
+import { act, renderRoutes, renderWithProviders, screen } from "__support__/ui";
+import { Navigate, Route, useNavigate } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 
+import { hasUnsavedChanges } from "./route-leave-guards";
 import { useRouteLeaveBlocker } from "./use-route-leave-blocker";
 
 const shouldBlock = jest.fn();
@@ -263,6 +264,57 @@ describe("useRouteLeaveBlocker with several guards mounted", () => {
   });
 });
 
+function RedirectInLayoutEffect() {
+  const navigate = useNavigate();
+  useLayoutEffect(() => {
+    navigate("/c", { replace: true });
+  }, [navigate]);
+  return null;
+}
+
+const setupRedirectingDestination = (destination: JSX.Element) => {
+  const { router } = renderWithProviders(
+    <Route path="/">
+      <Route path="a" element={<Guard />} />
+      <Route path="b" element={destination} />
+      <Route path="c" element={<span>page c</span>} />
+    </Route>,
+    { withRouter: true, initialRoute: "/a" },
+  );
+
+  return { router: checkNotNull(router) };
+};
+
+// metabase#82316: `/admin` redirects on mount, and leaving a dirty page for it
+// left a blank screen.
+describe("useRouteLeaveBlocker when the destination redirects on mount", () => {
+  beforeEach(() => {
+    shouldBlock.mockReturnValue(true);
+  });
+
+  it("follows a redirect made from a layout effect", async () => {
+    const { router } = setupRedirectingDestination(<RedirectInLayoutEffect />);
+    act(() => router.navigate("/b"));
+
+    await userEvent.click(screen.getByRole("button", { name: "proceed" }));
+
+    expect(await screen.findByText("page c")).toBeInTheDocument();
+    expect(router.location.pathname).toBe("/c");
+  });
+
+  it("follows a redirect made from a passive effect", async () => {
+    const { router } = setupRedirectingDestination(
+      <Navigate to="/c" replace />,
+    );
+    act(() => router.navigate("/b"));
+
+    await userEvent.click(screen.getByRole("button", { name: "proceed" }));
+
+    expect(await screen.findByText("page c")).toBeInTheDocument();
+    expect(router.location.pathname).toBe("/c");
+  });
+});
+
 // A guard registers with the provider above it, which only a mounted router
 // supplies. Without one it registers nowhere, so it cannot hold a navigation it
 // has no way to release.
@@ -275,5 +327,79 @@ describe("useRouteLeaveBlocker outside a router", () => {
 
     expect(screen.getByTestId("blocker-state")).toHaveTextContent("unblocked");
     expect(shouldBlock).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Answers for a full page load, which unmounts every page rather than moving
+ * between them, so the exemptions a guard applies to a destination inside its
+ * own page do not hold for it.
+ */
+describe("hasUnsavedChanges", () => {
+  beforeEach(() => {
+    shouldBlock.mockReturnValue(false);
+  });
+
+  it("reports what a guard holds, whatever destination it exempts", () => {
+    // The shape of `isNavigationAllowed`: dirty, and happy to move inside its
+    // own page.
+    shouldBlock.mockImplementation(
+      ({ nextLocation }) => !nextLocation.pathname.startsWith("/a"),
+    );
+    setup();
+
+    expect(hasUnsavedChanges()).toBe(true);
+  });
+
+  it("reports nothing when no guard holds anything", () => {
+    setup();
+
+    expect(hasUnsavedChanges()).toBe(false);
+  });
+
+  /**
+   * The user was asked about this navigation and chose to leave the work
+   * behind, so it is no longer a reason to keep the page. The guard is still
+   * mounted while the destination's chunk is on its way, which is where this is
+   * asked from.
+   */
+  it("skips a guard that already let the navigation through", async () => {
+    shouldBlock.mockReturnValue(true);
+    const { router } = renderRoutes(
+      [
+        { path: "/a", element: <Guard /> },
+        // A chunk that never arrives, so the navigation stays in flight.
+        { path: "/b", lazy: () => new Promise<never>(() => {}) },
+      ],
+      { initialRoute: "/a" },
+    );
+
+    act(() => {
+      router?.navigate("/b");
+    });
+    expect(screen.getByTestId("blocker-state")).toHaveTextContent("blocked");
+    expect(hasUnsavedChanges()).toBe(true);
+
+    await userEvent.click(screen.getByRole("button", { name: "proceed" }));
+
+    expect(screen.getByTestId("blocker-state")).toBeInTheDocument();
+    expect(hasUnsavedChanges()).toBe(false);
+  });
+
+  // One slot holds the probe, so the provider that mounted last owns it.
+  // Unmounting an older one must not empty it.
+  it("keeps answering after an older provider unmounts", () => {
+    shouldBlock.mockReturnValue(true);
+    const { unmount: unmountOlder } = renderWithProviders(
+      <Route path="/">
+        <Route path="a" element={<Guard />} />
+      </Route>,
+      { withRouter: true, initialRoute: "/a" },
+    );
+    setup();
+
+    unmountOlder();
+
+    expect(hasUnsavedChanges()).toBe(true);
   });
 });

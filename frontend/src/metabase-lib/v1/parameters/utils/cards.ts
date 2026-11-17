@@ -1,12 +1,11 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/utils/types";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type Question from "metabase-lib/v1/Question";
 import type {
   ParameterWithTarget,
   UiParameter,
 } from "metabase-lib/v1/parameters/types";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getParameterTargetField } from "metabase-lib/v1/parameters/utils/targets";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -19,11 +18,11 @@ import type {
 import { isDimensionTarget } from "metabase-types/guards";
 
 export function getCardUiParameters(
-  card: SeriesCard,
-  metadata: Metadata,
+  question: Question,
   parameterValues: ParameterValuesMap = {},
-  parameters = getParametersFromCard(card, metadata),
+  parameters = getParametersFromCard(question.card(), question.metadata()),
 ): UiParameter[] {
+  const card = question.card();
   if (!card) {
     return [];
   }
@@ -35,8 +34,8 @@ export function getCardUiParameters(
     });
 
   return hasParamFields(card)
-    ? getSavedCardUiParameters(card, metadata, valuePopulatedParameters)
-    : getUnsavedCardUiParameters(card, metadata, valuePopulatedParameters);
+    ? getSavedCardUiParameters(card, valuePopulatedParameters)
+    : getUnsavedCardUiParameters(question, valuePopulatedParameters);
 }
 
 /**
@@ -55,15 +54,14 @@ function hasParamFields(card: SeriesCard) {
  */
 function getSavedCardUiParameters(
   card: SeriesCard,
-  metadata: Metadata,
   parameters: Parameter[] | ParameterWithTarget[],
 ): UiParameter[] {
   return parameters.map((parameter) => {
     const target = getParameterTarget(parameter);
-    const parameterFields = (card.param_fields?.[parameter.id] ?? [])
-      .map((field) => metadata.field(field.id))
-      .filter(isNotNull);
-    const fields = _.uniq(parameterFields, (field) => field.id);
+    const fields = _.uniq(
+      card.param_fields?.[parameter.id] ?? [],
+      (field) => field.id,
+    ).map(getParameterFieldInfo);
     if (fields.length > 0) {
       return {
         ...parameter,
@@ -84,12 +82,9 @@ function getSavedCardUiParameters(
  * against the query.
  */
 function getUnsavedCardUiParameters(
-  card: SeriesCard,
-  metadata: Metadata,
+  question: Question,
   parameters: Parameter[] | ParameterWithTarget[],
 ): UiParameter[] {
-  const question = new Question(card, metadata);
-
   return parameters.map((parameter) => {
     const target = getParameterTarget(parameter);
     const field =

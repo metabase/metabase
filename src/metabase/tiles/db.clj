@@ -2,19 +2,21 @@
   "Application database queries for the tiles module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(defn card
+(mu/defn card
   "The Card with `card-id`, or nil."
-  [card-id]
-  (t2/select-one :model/Card card-id))
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
-(defn dashboard
+(mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
-  [dashboard-id]
-  (t2/select-one :model/Dashboard dashboard-id))
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
-(defn dashcard
+(mu/defn dashcard
   "The DashboardCard with `dashcard-id`, or nil."
-  [dashcard-id]
-  (t2/select-one :model/DashboardCard dashcard-id))
+  [dashcard-id :- ::lib.schema.id/dashcard]
+  (t2/select-one :model/DashboardCard :id [:auto/param dashcard-id]))

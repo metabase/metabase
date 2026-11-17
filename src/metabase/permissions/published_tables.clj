@@ -10,11 +10,13 @@
 
 ;;; ---------------------------------------- Permission Check Functions ------------------------------------------------
 
-(defenterprise user-published-table-permission
-  "Returns `:query-builder` permission if table is published and user has collection access.
-  OSS implementation always returns nil - published tables only grant access in EE."
+(defenterprise published-table-permissions
+  "The `perm-type` value that publishing grants the user of `user-info` on each of the Tables with `table-ids`, as
+  `{table-id value}` holding only the Tables it grants one: `:query-builder` for `:perms/create-queries` on a Table
+  published into a Collection they read. OSS implementation returns nil, since published Tables grant access on EE
+  only."
   metabase-enterprise.data-studio.permissions.published-tables
-  [_user-id _perm-type _table-id]
+  [_user-info _perm-type _table-ids]
   nil)
 
 (defenterprise user-has-any-published-table-permission?
@@ -38,19 +40,11 @@
   [_table]
   false)
 
-(defenterprise published-table-visible-clause
-  "Returns a HoneySQL clause for published tables visible via collection permissions.
-  OSS implementation returns nil."
-  metabase-enterprise.data-studio.permissions.published-tables
-  [_table-id-column _user-info]
-  nil)
-
-(defenterprise published-table-perm-grant-rows
-  "Returns a HoneySQL SELECT producing (id, perm_type, perm_value) rows representing the permission
-  grants that published+visible-collection tables provide. Used as a UNION ALL branch in the
-  table_permissions CTE built by `visible-table-filter-with-cte`.
+(defenterprise published-table-clause
+  "A HoneySQL clause holding when the Table aliased `table-alias` is published into a Collection the user of
+  `user-info` can read, which grants `:perms/create-queries :query-builder`, or nil when nothing does.
 
   OSS implementation returns nil — published tables only grant access in EE."
   metabase-enterprise.data-studio.permissions.published-tables
-  [_user-info _perm-types _active-only?]
+  [_user-info _table-alias]
   nil)

@@ -1,5 +1,6 @@
 ---
 title: Implementing multimethods for your driver
+summary: Implement driver multimethods to extend Metabase's existing driver code to your own database.
 ---
 
 # Implementing multimethods for your driver
@@ -99,7 +100,7 @@ You can get a parent driver's implementation for a method by using `get-method`:
 
 This is the equivalent of calling `super.someMethod()` in object-oriented programming.
 
-You must pass the driver argument to the parent implementation as-is so any methods called by that method used the correct implementation. Here's two ways of calling parents that you should avoid:
+You must pass the driver argument to the parent implementation as-is so any methods called by that method use the correct implementation. Here are two ways of calling parents that you should avoid:
 
 ```clj
 (defmethod driver/mbql->native :bigquery [_ query]

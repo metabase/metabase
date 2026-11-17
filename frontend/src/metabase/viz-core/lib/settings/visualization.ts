@@ -1,11 +1,10 @@
-import { assocIn } from "icepick";
 import { t } from "ttag";
 
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import type {
   ColumnSettings,
-  DimensionReference,
   Series,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -14,7 +13,8 @@ import type {
   SettingsExtra,
   VisualizationSettingsDefinitions,
 } from "../../types";
-import { getVisualizationRaw } from "../registry";
+import { migrateStoredCustomVizSettings } from "../custom-viz/migrate-legacy-settings";
+import { getVisualization } from "../registry";
 import {
   getComputedSettings,
   getPersistableDefaultSettings,
@@ -60,21 +60,28 @@ const COMMON_SETTINGS: VisualizationSettingsDefinitions = {
   click_behavior: {},
 };
 
+export function getSettingDefinitionsForDisplay(
+  display: VisualizationDisplay | undefined,
+): VisualizationSettingsDefinitions {
+  const visualization = getVisualization(display ?? null);
+  const definitions = {
+    ...COMMON_SETTINGS,
+    ...visualization?.settings,
+  };
+  for (const id in definitions) {
+    // definitions has an `any` index signature; each definition is an object that gets tagged with its id
+    (definitions[id] as { id?: string }).id = id;
+  }
+  return definitions;
+}
+
 export function getSettingDefinitionsForSeries(
   series: Series | null | undefined,
 ): VisualizationSettingsDefinitions {
   if (!series) {
     return {};
   }
-  const visualization = getVisualizationRaw(series);
-  const definitions = {
-    ...COMMON_SETTINGS,
-    ...(visualization?.settings || {}),
-  };
-  for (const id in definitions) {
-    definitions[id].id = id;
-  }
-  return definitions;
+  return getSettingDefinitionsForDisplay(series[0]?.card?.display);
 }
 
 function normalizeColumnSettings(
@@ -82,8 +89,12 @@ function normalizeColumnSettings(
 ): Record<string, ColumnSettings> {
   const newColumnSettings: Record<string, ColumnSettings> = {};
   for (const oldColumnKey of Object.keys(columnSettings)) {
-    const [refOrName, fieldRef]: [string, DimensionReference] =
-      JSON.parse(oldColumnKey);
+    // column settings keys are JSON-serialized `[refOrName, fieldRef]` tuples
+    const parsedKey: unknown = JSON.parse(oldColumnKey);
+    const keyParts: readonly unknown[] = Array.isArray(parsedKey)
+      ? parsedKey
+      : [];
+    const [refOrName, fieldRef] = keyParts;
     // keys are re-serialized so legacy formatting differences don't matter
     const newColumnKey =
       refOrName === "ref" ? JSON.stringify(["ref", fieldRef]) : oldColumnKey;
@@ -94,17 +105,32 @@ function normalizeColumnSettings(
 
 export function getStoredSettingsForSeries(
   series: Series | null | undefined,
+  definitions?: VisualizationSettingsDefinitions,
 ): VisualizationSettings {
   let storedSettings = series?.[0]?.card?.visualization_settings ?? {};
+
   if (storedSettings.column_settings) {
     // normalize any settings stored under old style keys: [ref, [fk->, 1, 2]]
-    storedSettings = assocIn(
-      storedSettings,
-      ["column_settings"],
-      normalizeColumnSettings(storedSettings.column_settings),
-    );
+    storedSettings = {
+      ...storedSettings,
+      column_settings: normalizeColumnSettings(storedSettings.column_settings),
+    };
   }
-  return storedSettings;
+
+  return migrateStoredCustomVizSettings(
+    series?.[0]?.card?.display,
+    storedSettings,
+    () => definitions ?? getSettingDefinitionsForSeries(series),
+  );
+}
+
+export function adoptLegacyCustomVizSettings(
+  display: VisualizationDisplay | undefined,
+  storedSettings: VisualizationSettings,
+): VisualizationSettings {
+  return migrateStoredCustomVizSettings(display, storedSettings, () => {
+    return getSettingDefinitionsForDisplay(display);
+  });
 }
 
 export function getComputedSettingsForSeries(
@@ -116,7 +142,7 @@ export function getComputedSettingsForSeries(
   }
 
   const settingsDefs = getSettingDefinitionsForSeries(series);
-  const storedSettings = getStoredSettingsForSeries(series);
+  const storedSettings = getStoredSettingsForSeries(series, settingsDefs);
   return getComputedSettings(settingsDefs, series, storedSettings, extra);
 }
 

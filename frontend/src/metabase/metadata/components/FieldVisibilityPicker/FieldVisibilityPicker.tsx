@@ -8,8 +8,6 @@ import {
 } from "metabase/ui";
 import type { FieldVisibilityType } from "metabase-types/api";
 
-const DATA = getData();
-
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   value: FieldVisibilityType;
   onChange: (value: FieldVisibilityType) => void;
@@ -21,6 +19,8 @@ export const FieldVisibilityPicker = ({
   onChange,
   ...props
 }: Props) => {
+  const data = getData();
+
   const handleChange = (value: string) => {
     if (!isFieldVisibilityType(value)) {
       throw new Error("Unknown FieldVisibilityType. This should never happen");
@@ -41,10 +41,10 @@ export const FieldVisibilityPicker = ({
         position: "bottom-start",
         ...comboboxProps,
       }}
-      data={DATA}
+      data={data}
       placeholder={t`Select a field visibility`}
       renderOption={(item) => {
-        const option = DATA.find(
+        const option = data.find(
           (option) => option.value === item.option.value,
         );
 

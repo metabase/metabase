@@ -50,12 +50,12 @@
   way the JVM `cacerts` file is stored. Returns the trust store path."
   ^String [^ObjectPair pair]
   (let [pw       ^chars (.getSecond pair)
-        src      ^KeyStore (doto ^KeyStore (KeyStore/getInstance (KeyStore/getDefaultType))
-                             (.load (io/input-stream (.getFirst pair)) pw))
+        src      (doto ^KeyStore (KeyStore/getInstance (KeyStore/getDefaultType))
+                   (.load (io/input-stream (.getFirst pair)) pw))
         cert     (.getCertificate src (first (enumeration-seq (.aliases src))))
-        trust    ^KeyStore (doto ^KeyStore (KeyStore/getInstance "pkcs12")
-                             (.load nil nil)
-                             (.setCertificateEntry "ldap-ca" cert))
+        trust    (doto ^KeyStore (KeyStore/getInstance "pkcs12")
+                   (.load nil nil)
+                   (.setCertificateEntry "ldap-ca" cert))
         out      ^File (File/createTempFile "ldap-trust" ".ks")
         cert-alg (Security/getProperty "keystore.pkcs12.certProtectionAlgorithm")
         mac-alg  (Security/getProperty "keystore.pkcs12.macAlgorithm")]
@@ -86,7 +86,7 @@
                                              ldap-port     port
                                              ldap-security :ssl]
             (is (thrown? Exception
-                         (with-open [^java.lang.AutoCloseable _conn (#'ldap/get-connection)]))
+                         (with-open [^java.lang.AutoCloseable _conn (#'ldap/get-connection)] nil))
                 "a certificate outside the trust store must not complete the TLS handshake")))
         (testing "a certificate present in the configured trust store connects (positive control)"
           (mt/with-temporary-setting-values [ldap-host        "localhost"

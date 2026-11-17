@@ -16,11 +16,17 @@
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.public-sharing-rest.api :as api.public]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]))
+
+(defn- token-embedding-params
+  "The `:_embedding_params` a preview token carries, string-keyed like a stored `embedding_params`."
+  [unsigned-token]
+  (update-keys (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]) name))
 
 (defn- check-and-unsign [token]
   (api/check-superuser)
@@ -33,23 +39,20 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:token"
   "Fetch a Card you're considering embedding by passing a JWT `token`."
-  [{:keys [token]} :- [:map
+  [{:keys [token]} :- [:map {:closed true}
                        [:token api.embed.common/EncodedToken]]]
   (let [unsigned-token (check-and-unsign token)]
     (api.embed.common/card-for-unsigned-token unsigned-token
-                                              :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
+                                              :embedding-params (token-embedding-params unsigned-token))))
 
 (def ^:private max-results
   "Embedding previews need to be limited in size to avoid performance issues (#20938)."
   2000)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:token/query"
+  :- ::api.public/query-result-response
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
-  [{:keys [token]} :- [:map
+  [{:keys [token]} :- [:map {:closed true}
                        [:token api.embed.common/EncodedToken]]
    query-params :- api.embed.common/QueryParams]
   (let [unsigned-token (check-and-unsign token)
@@ -59,7 +62,7 @@
      :export-format    :api
      :card             card
      :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-     :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+     :embedding-params (token-embedding-params unsigned-token)
      :constraints      {:max-results max-results}
      :query-params     (api.embed.common/parse-query-params query-params))))
 
@@ -71,11 +74,11 @@
   [unsigned-token]
   (let [card-id (api.embed.common/unsigned-token->card-id unsigned-token)]
     (-> (api/check-404 (embedding-rest.db/card card-id))
-        (assoc :embedding_params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])))))
+        (assoc :embedding_params (token-embedding-params unsigned-token)))))
 
 (api.macros/defendpoint :get "/card/:token/params/:param-key/values" :- ms/FieldValuesResult
   "Embedded version of api.card filter values endpoint."
-  [{:keys [token param-key]} :- [:map
+  [{:keys [token param-key]} :- [:map {:closed true}
                                  [:token     string?]
                                  [:param-key string?]]]
   (let [unsigned-token (check-and-unsign token)
@@ -90,10 +93,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:token/params/:param-key/remapping"
   "Embedded version of api.card filter values endpoint."
-  [{:keys [token param-key]} :- [:map
+  [{:keys [token param-key]} :- [:map {:closed true}
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]
-   {:keys [value]}           :- [:map [:value :string]]]
+   {:keys [value]}           :- [:map {:closed true} [:value :string]]]
   (let [unsigned-token (check-and-unsign token)
         card           (preview-card-for-param-values unsigned-token)]
     (api.embed.common/card-param-remapped-value {:unsigned-token unsigned-token
@@ -107,11 +110,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token"
   "Fetch a Dashboard you're considering embedding by passing a JWT `token`. "
-  [{:keys [token]} :- [:map
+  [{:keys [token]} :- [:map {:closed true}
                        [:token api.embed.common/EncodedToken]]]
   (let [unsigned-token (check-and-unsign token)]
     (api.embed.common/dashboard-for-unsigned-token unsigned-token
-                                                   :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
+                                                   :embedding-params (token-embedding-params unsigned-token))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -119,7 +122,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
-  [{:keys [token param-key]} :- [:map
+  [{:keys [token param-key]} :- [:map {:closed true}
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]
    query-params :- api.embed.common/QueryParams]
@@ -151,20 +154,17 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/remapping"
   "Embedded version of the remapped dashboard param value endpoint."
-  [{:keys [token param-key]} :- [:map
+  [{:keys [token param-key]} :- [:map {:closed true}
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]
-   {:keys [value]} :- [:map [:value :string]]]
+   {:keys [value]} :- [:map {:closed true} [:value :string]]]
   (check-and-unsign token)
   (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value) {:preview true}))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+  :- ::api.public/query-result-response
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
-  [{:keys [token dashcard-id card-id]} :- [:map
+  [{:keys [token dashcard-id card-id]} :- [:map {:closed true}
                                            [:token api.embed.common/EncodedToken]
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
@@ -173,8 +173,8 @@
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         dashboard        (api/check-404 (embedding-rest.db/dashboard dashboard-id))
         dashcard         (api/check-404 (embedding-rest.db/dashcard dashcard-id))
-        card             (api/check-404 (embedding-rest.db/card card-id))
-        embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+        card             (api/check-404 (embedding-rest.db/active-card card-id))
+        embedding-params (token-embedding-params unsigned-token)
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (api.embed.common/process-query-for-dashcard
      :export-format    :api
@@ -185,13 +185,10 @@
      :token-params     token-params
      :query-params     (api.embed.common/parse-query-params query-params))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/card/:token/query"
+  :- ::api.public/query-result-response
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
-  [{:keys [token]} :- [:map
+  [{:keys [token]} :- [:map {:closed true}
                        [:token api.embed.common/EncodedToken]]
    query-params :- api.embed.common/QueryParams]
   (let [unsigned-token (check-and-unsign token)
@@ -201,17 +198,14 @@
      :export-format    :api
      :card             card
      :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-     :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+     :embedding-params (token-embedding-params unsigned-token)
      :query-params     (api.embed.common/parse-query-params query-params)
      :qp               qp.pivot/run-pivot-query)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+  :- ::api.public/query-result-response
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
-  [{:keys [token dashcard-id card-id]} :- [:map
+  [{:keys [token dashcard-id card-id]} :- [:map {:closed true}
                                            [:token api.embed.common/EncodedToken]
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
@@ -220,8 +214,8 @@
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         dashboard        (api/check-404 (embedding-rest.db/dashboard dashboard-id))
         dashcard         (api/check-404 (embedding-rest.db/dashcard dashcard-id))
-        card             (api/check-404 (embedding-rest.db/card card-id))
-        embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+        card             (api/check-404 (embedding-rest.db/active-card card-id))
+        embedding-params (token-embedding-params unsigned-token)
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (api.embed.common/process-query-for-dashcard
      :export-format    :api
@@ -240,13 +234,13 @@
 (api.macros/defendpoint :get "/tiles/card/:token/:zoom/:x/:y"
   "Generates a single tile image for an embedded Card using the map visualization."
   [{:keys [token zoom x y]}
-   :- [:map
+   :- [:map {:closed true}
        [:token api.embed.common/EncodedToken]
        [:zoom ms/Int]
        [:x ms/Int]
        [:y ms/Int]]
    {:keys [parameters latField lonField]}
-   :- [:map
+   :- [:map {:closed true}
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField ::api.tiles/legacy-ref]
        [:lonField ::api.tiles/legacy-ref]]]
@@ -267,7 +261,7 @@
 (api.macros/defendpoint :get "/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a Card on an embedded Dashboard using the map visualization."
   [{:keys [token dashcard-id card-id zoom x y]}
-   :- [:map
+   :- [:map {:closed true}
        [:token api.embed.common/EncodedToken]
        [:dashcard-id ms/PositiveInt]
        [:card-id     ms/PositiveInt]
@@ -275,7 +269,7 @@
        [:x           ms/Int]
        [:y           ms/Int]]
    {:keys [parameters latField lonField]}
-   :- [:map
+   :- [:map {:closed true}
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField ::api.tiles/legacy-ref]
        [:lonField ::api.tiles/legacy-ref]]]
@@ -283,7 +277,7 @@
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         dashboard        (api/check-404 (embedding-rest.db/dashboard dashboard-id))
         dashcard         (api/check-404 (embedding-rest.db/dashcard dashcard-id))
-        card             (api/check-404 (embedding-rest.db/card card-id))]
+        card             (api/check-404 (embedding-rest.db/active-card card-id))]
     (api.embed.common/process-tiles-query-for-dashcard
      dashboard dashcard card
      (api.embed.common/tile-parameters-for-dashboard

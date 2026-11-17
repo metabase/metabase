@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useField, useFormikContext } from "formik";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -82,7 +83,7 @@ export const DatabaseCacheScheduleField = ({
   };
 
   return (
-    <FormField title={title} description={description}>
+    <FormField mb="lg" title={title} description={description}>
       <ScheduleModePicker
         value={scheduleMode}
         onChange={handleScheduleModeChange}

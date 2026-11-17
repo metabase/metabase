@@ -14,6 +14,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
+   [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.api.conversations]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
@@ -37,7 +38,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
   (:import
    (java.io OutputStream)))
 
@@ -51,7 +53,7 @@
   have multiple participants (e.g. multiple users in a shared Slack thread)."
   [conversation-id]
   (when-let [conversation (metabot.db/conversation conversation-id)]
-    (api/check-403 (mi/can-read? conversation))))
+    (api/check-403 (mi/can-read? (t2/hydrate conversation :can_read)))))
 
 (defn- make-out-of-sync-fn
   [conversation-id parent-message-id retry-message-id]
@@ -192,18 +194,26 @@
 
   `:assistant-msg-id` is the PK of the placeholder assistant row created by
   [[metabot.persistence/start-turn!]]; the finally block UPDATEs that row.
-  `:external-id` is the assistant row's `external_id`, emitted as the SSE
-  `start` event's `messageId` so the client can correlate streamed messages
-  with feedback. `:user-external-id` is the turn's user row `external_id`,
+  `:external-id` is the assistant row's `external_id` — the client-minted
+  `assistant_message_id` when the request supplied one — echoed as the SSE
+  `start` event's `messageId` so a client that omitted one can still tell what
+  was persisted. `:user-external-id` is the turn's user row `external_id`,
   emitted as the `start` event's `messageMetadata.userMessageId`.
   `:state` is the reconstructed [[metabot.persistence/conversation-state]] —
   it seeds the agent loop as the immutable baseline for this turn's state."
-  [{:keys [metabot-id profile-id message context history conversation-id state debug?
+  [{:keys [metabot profile-id message context history conversation-id state debug?
            eval-session-id assistant-msg-id external-id user-external-id title-job]}]
-  (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
-                                                                  :profile-id (keyword profile-id)})
+  (let [enriched-context (metabot.context/create-context
+                          ;; Server-authoritative: decided from the request's client header here, on the
+                          ;; handler thread, before the agent moves to the streaming thread.
+                          (assoc context :in_host_app (metabot.context/host-app-request? (request/current-request)))
+                          {:metabot    metabot
+                           :profile-id (keyword profile-id)})
         messages         (concat history [message])]
-    (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
+    ;; a reasoning model can spend longer than MB_JETTY_ASYNC_RESPONSE_TIMEOUT on one turn
+    (sr/streaming-response {:content-type     "text/event-stream"
+                            :async-timeout-ms (metabot.settings/metabot-chat-turn-async-timeout-ms)}
+                           [^OutputStream os canceled-chan]
       (let [parts-atom  (atom [])
             memory-atom (atom nil)
             canceled?   (volatile! false)
@@ -213,27 +223,29 @@
             ;; this, such turns finalize as `:finished true :error nil` — indistinguishable
             ;; from a clean success.
             thrown     (volatile! nil)
+            ;; Read once, so the stream reports the same window the row's verdict is judged against.
+            window     (metabot.self/context-window-tokens (metabot.settings/llm-metabot-provider))
             xf         (comp (u/tee-xf parts-atom)
                              (self.core/parts->aisdk-sse-xf
-                              (cond-> {:message-id external-id
-                                       :context-window-tokens
-                                       (metabot.self/context-window-tokens
-                                        (metabot.settings/llm-metabot-provider))}
+                              (cond-> {:message-id            external-id
+                                       :context-window-tokens window}
                                 user-external-id (assoc :message-metadata {:userMessageId user-external-id})))
                              (inject-title-events-xf title-job conversation-id))]
         (try
           (transduce xf
                      (streaming-writer-rf os canceled-chan canceled?)
                      (agent/run-agent-loop
-                      (cond-> {:messages        messages
-                               :state           state
-                               :metabot-id      metabot-id
-                               :conversation-id conversation-id
-                               :profile-id      (keyword profile-id)
-                               :context         enriched-context
-                               :eval-session-id eval-session-id
-                               :memory-atom     memory-atom
-                               :tracking-opts   {:session-id conversation-id}}
+                      (cond-> {:messages              messages
+                               :state                 state
+                               :metabot               metabot
+                               :conversation-id       conversation-id
+                               :profile-id            (keyword profile-id)
+                               :context               enriched-context
+                               :eval-session-id       eval-session-id
+                               :memory-atom           memory-atom
+                               :tracking-opts         {:session-id conversation-id}
+                               ;; A query a tool is running stops when the client goes away.
+                               :request-canceled-chan canceled-chan}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
             (vreset! canceled? true)
@@ -278,10 +290,11 @@
                                      :else (:error (u/seek #(= :error (:type %)) combined-parts)))]
                 (metabot.persistence/finalize-assistant-turn!
                  assistant-msg-id combined-parts
-                 :profile-id profile-id
-                 :finished?  (not aborted?)
-                 :error      error-data
-                 :turn-state (some-> @memory-atom memory/turn-state)))
+                 :profile-id            profile-id
+                 :finished?             (not aborted?)
+                 :error                 error-data
+                 :turn-state            (some-> @memory-atom memory/turn-state)
+                 :context-window-tokens window))
               (catch Exception e
                 (log/error "Failed to finalize assistant turn"
                            {:conversation-id  conversation-id
@@ -299,10 +312,14 @@
   [{:keys [metabot_id profile_id message context conversation_id debug eval_session_id parent_message_id retry_message_id
            user_message_id assistant_message_id]} request-info]
   (let [message    (metabot.envelope/user-message message)
-        metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
-        _          (metabot.config/check-metabot-enabled! metabot-id)
+        metabot    (metabot.config/resolve-metabot metabot_id)
+        _          (metabot.config/check-metabot-enabled! metabot)
         _          (metabot.usage/check-metabase-managed-free-limit!)
-        profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
+        profile-id (metabot.config/resolve-dynamic-profile-id profile_id (:entity_id metabot))
+        ;; reject before `start-turn!` persists anything or the title job calls the LLM. An eval-only profile on an
+        ;; instance that doesn't run evals gets the same refusal, so nobody can tell it exists.
+        _          (when-not (profiles/profile-available? (keyword profile-id))
+                     (throw (ex-info (tru "Unknown profile") {:status-code 400 :profile-id profile-id})))
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))
         hostname   (analytics.core/extract-hostname (:origin request-info))
@@ -342,7 +359,7 @@
                      first-msg)]
       (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
       (native-agent-streaming-request
-       {:metabot-id       metabot-id
+       {:metabot          metabot
         :profile-id       profile-id
         :message          message
         :context          context
@@ -386,7 +403,7 @@
   "Send a chat message to the LLM via the AI Proxy."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:profile_id {:optional true} :string]
             [:metabot_id {:optional true} :string]
             [:message ms/NonBlankString]
@@ -413,14 +430,12 @@
                         :ip-address (request/ip-address req)}]
     (streaming-request body* request-info)))
 
-(api.macros/defendpoint :post "/feedback"  :- [:map
-                                               [:status [:= 204]]
-                                               [:body :nil]]
+(api.macros/defendpoint :post "/feedback" :- ::api/generic-204-no-content
   "Persist Metabot feedback."
   [_route-params
    _query-params
-   body :- [:map
-            [:metabot_id        ms/PositiveInt]
+   body :- [:map {:closed true}
+            [:metabot_id        {:optional true} [:or ms/PositiveInt :string]]
             [:message_id        ms/NonBlankString]
             [:positive          :boolean]
             [:issue_type        {:optional true} [:maybe :string]]
@@ -429,14 +444,12 @@
   (metabot.feedback/persist-feedback! body)
   api/generic-204-no-content)
 
-(api.macros/defendpoint :post "/source-feedback" :- [:map
-                                                     [:status [:= 204]]
-                                                     [:body :nil]]
+(api.macros/defendpoint :post "/source-feedback" :- ::api/generic-204-no-content
   "Persist Metabot source feedback."
   [_route-params
    _query-params
-   body :- [:map
-            [:metabot_id   ms/PositiveInt]
+   body :- [:map {:closed true}
+            [:metabot_id   {:optional true} [:or ms/PositiveInt :string]]
             [:message_id   ms/NonBlankString]
             [:source_id    ms/PositiveInt]
             [:source_type  [:enum "table" "card" "model"]]

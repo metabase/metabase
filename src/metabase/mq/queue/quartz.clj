@@ -29,13 +29,13 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.app-db.quartz :as app-db.quartz]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.quartz-affinity :as quartz-affinity]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.concurrency :as q.concurrency]
    [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.queue.registry :as q.registry]
-   [metabase.task.bootstrap :as task.bootstrap]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import
@@ -48,12 +48,10 @@
   "This backend's identifier, registered with `metabase.mq.init`; its `name` labels metrics."
   :queue.backend/quartz)
 
-;; Install the queue node-affinity DriverDelegate when Quartz's JDBC properties are set. Registered at
-;; load time, and here rather than in `metabase.mq.init`, because it is a property of *this* backend —
-;; init has no business knowing that one backend swaps out a Quartz internal. (`mq` depends on `task`,
-;; not the reverse, so `task.bootstrap` calls back into this rather than referencing `mq`.)
-;; install-delegate! falls back to the plain per-DB delegate if the affinity subclass can't be loaded.
-(task.bootstrap/register-jdbc-property-setter! quartz-affinity/install-delegate!)
+;; Install the queue node-affinity `DriverDelegate` when Quartz's JDBC properties are set.
+;; This registers here rather than in `metabase.mq.init` because the delegate belongs to this backend alone.
+;; If the affinity subclass can't be loaded, `install-delegate!` falls back to the plain per-database delegate.
+(app-db.quartz/register-jdbc-property-setter! quartz-affinity/install-delegate!)
 
 (def ^:private job-group
   "Quartz group every queue job/trigger lives in, so they're easy to isolate from the rest of the
@@ -131,9 +129,9 @@
 
 ;;; ------------------------------------ Waking the acquire loop ------------------------------------
 
-(task/defjob ^{:doc "Never fires. Exists only to give [[wake-scheduler!]] a durable job key to call
-                     `resumeJob` on."}
-  QueueSlotNudgeJob
+(task/defjob QueueSlotNudgeJob
+  "Never fires. Exists only to give [[wake-scheduler!]] a durable job key to call `resumeJob` on."
+  {:saved-class "metabase.mq.queue.quartz.QueueSlotNudgeJob"}
   [_ctx])
 
 (def ^:private nudge-job-key (jobs/key "queue-slot-nudge" job-group))
@@ -230,14 +228,16 @@
         (backoff-before-refire!)
         (throw (doto (JobExecutionException. t) (.setRefireImmediately true)))))))
 
-(task/defjob ^{:doc "Delivers a queue batch (non-exclusive queues; runs concurrently)."}
-  QueueMessageJob
+(task/defjob QueueMessageJob
+  "Delivers a queue batch (non-exclusive queues; runs concurrently)."
+  {:saved-class "metabase.mq.queue.quartz.QueueMessageJob"}
   [ctx]
   (deliver-batch! ctx))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Delivers a batch for an :exclusive queue — at most one execution per queue cluster-wide."}
-  ExclusiveQueueMessageJob
+(task/defjob ExclusiveQueueMessageJob
+  "Delivers a batch for an :exclusive queue — at most one execution per queue cluster-wide."
+  {:saved-class "metabase.mq.queue.quartz.ExclusiveQueueMessageJob"
+   :concurrent? false}
   [ctx]
   (deliver-batch! ctx))
 

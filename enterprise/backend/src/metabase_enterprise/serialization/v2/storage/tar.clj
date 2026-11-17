@@ -5,7 +5,7 @@
    [metabase-enterprise.serialization.dump :refer [yaml-content]]
    [metabase-enterprise.serialization.v2.protocols :as protocols]
    [metabase-enterprise.serialization.v2.storage.util :as storage.util]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.util.log :as log])
   (:import
    [java.io OutputStream]
@@ -23,34 +23,29 @@
     (.write tar-out content)
     (.closeArchiveEntry tar-out)))
 
-(defn- entry-path
-  "Build the tar entry path: dirname/resolved.../name.yaml"
-  ^String [dirname resolved]
-  (str dirname "/" (str/join "/" (drop-last resolved)) "/" (last resolved) ".yaml"))
-
 (defn tar-writer
   "Create a streaming tar.gz storage backend writing to `output`."
   [^OutputStream output ^String dirname]
   (let [gzip (GzipCompressorOutputStream. output (doto (GzipParameters.)
                                                    (.setModificationTime (System/currentTimeMillis))))
-        tar  (TarArchiveOutputStream. gzip 512 "UTF-8")
-        ctx  (serdes/storage-base-context)]
+        tar  (TarArchiveOutputStream. gzip 512 "UTF-8")]
     (.setLongFileMode tar TarArchiveOutputStream/LONGFILE_POSIX)
     (.setBigNumberMode tar TarArchiveOutputStream/BIGNUMBER_POSIX)
     (reify protocols/ExportWriter
-      (store-entity! [_ entity]
-        (let [resolved   (storage.util/resolve-storage-path ctx entity)
-              path       (entry-path dirname resolved)
-              content    (.getBytes ^String (yaml-content entity) "UTF-8")]
-          (log/trace "Storing" {:path (serdes/log-path-str (:serdes/meta entity))})
+      (store-entities! [_ batch]
+        (doseq [[resolved entity] batch
+                :let [path    (str dirname "/" (storage.util/yaml-file-path resolved))
+                      content (.getBytes ^String (storage.util/entity-yaml entity) "UTF-8")]]
+          (log/trace "Storing" {:path (serialization/log-str entity)})
           (put-entry! tar path content)
-          (:serdes/meta entity)))
+          (doseq [[segments ^String resource] (storage.util/resource-files resolved entity)]
+            (put-entry! tar (str dirname "/" (str/join "/" segments)) (.getBytes resource "UTF-8")))))
 
       (store-settings! [_ settings]
         (when (seq settings)
           (let [as-map  (into (sorted-map)
                               (for [{:keys [key value]} settings]
-                                [key value]))
+                                [(keyword key) value]))
                 content (.getBytes ^String (yaml-content as-map) "UTF-8")]
             (put-entry! tar (str dirname "/settings.yaml") content))))
 

@@ -23,10 +23,14 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
+   [metabase.pulse.schema :as pulse.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -34,6 +38,8 @@
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -44,10 +50,16 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive ::mi/read-policy.full-perms-for-perms-set))
+  (derive :hook/change-log))
+
+(def ^:private transform-pulse-parameters
+  "Toucan 2 transform for a Pulse's `:parameters`, normalized like a Dashboard's but with each `:type` optional."
+  {:in  (comp mi/json-in #(lib/normalize ::parameters.schema/parameters-with-optional-types %))
+   :out (comp (mi/catch-normalization-exceptions #(lib/normalize ::parameters.schema/parameters-with-optional-types %))
+              mi/json-out-with-keywordization)})
 
 (t2/deftransforms :model/Pulse
-  {:parameters mi/transform-json})
+  {:parameters transform-pulse-parameters})
 
 (defn- assert-valid-parameters [{:keys [parameters]}]
   (when-not (mr/validate [:maybe
@@ -75,6 +87,7 @@
       (collection/check-allowed-content :model/Pulse (:collection_id notification))
       (collection/check-collection-namespace :model/Pulse (:collection_id notification)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-moving-dashboard-subscriptions*
   "If true, allows the collection_id on a dashboard subscription to be modified. This should
   only be done when the associated dashboard is being moved to a new collection."
@@ -132,11 +145,26 @@
 ;;; non-admin can write a Dashboard Subscription only if they are its creator. (Admins have full read and write
 ;;; permissions for all objects.) These checks are handled by the `can-read?` and `can-write?` methods below.
 
-(defmethod mi/perms-objects-set :model/Pulse
-  [notification read-or-write]
-  (if (is-alert? notification)
-    (mi/perms-objects-set (alert->card notification) read-or-write)
-    (perms/perms-objects-set-for-parent-collection notification read-or-write)))
+(defn- collection-permits?
+  "Whether the current user has `permission` on the Collection of `notification`: its Card's for an Alert, its own
+  otherwise."
+  [notification permission]
+  (let [owner (if (is-alert? notification) (alert->card notification) notification)]
+    (api/check-500 (contains? owner :collection_id) "No :collection_id is set for the Collection check of a Pulse.")
+    (perms/collection-permission-at-least?
+     (get (perms/collection-permissions-for-user (api/current-user-info) [(:collection_id owner)] {:root-namespace nil})
+          (:collection_id owner))
+     permission)))
+
+(defn- alert-card-writable?
+  "Whether the current user writes the content of the Collection of the Card of `alert`, which takes write permission
+  on it and a Collection remote sync leaves writable."
+  [alert]
+  (let [card (alert->card alert)]
+    (api/check-500 (contains? card :collection_id) "No :collection_id is set for the Collection check of a Pulse.")
+    (contains? (collection/content-writable-collection-ids [(:collection_id card)]
+                                                           {:root-namespace nil, :audit-rules? false})
+               (:collection_id card))))
 
 (defn- current-user-is-creator?
   [notification]
@@ -151,23 +179,27 @@
     (boolean
      (some #{api/*current-user-id*} recipient-ids))))
 
-(defmethod mi/can-read? :model/Pulse
-  [notification]
-  (if (is-alert? notification)
-    (mi/current-user-has-full-permissions? :read notification)
-    (or api/*is-superuser?*
-        (current-user-is-creator? notification)
-        (current-user-is-recipient? notification))))
+(methodical/defmethod t2/simple-hydrate [:model/Pulse :can_read]
+  [_model k notification]
+  (vary-meta notification assoc k
+             (boolean
+              (if (is-alert? notification)
+                (collection-permits? notification :read)
+                (or api/*is-superuser?*
+                    (current-user-is-creator? notification)
+                    (current-user-is-recipient? notification))))))
 
 ;; Non-admins should be able to create subscriptions, and update subscriptions that they created, but not edit anyone
 ;; else's subscriptions (except for unsubscribing themselves, which uses a custom API).
-(defmethod mi/can-write? :model/Pulse
-  [notification]
-  (if (is-alert? notification)
-    (mi/current-user-has-full-permissions? :write notification)
-    (or api/*is-superuser?*
-        (and (mi/current-user-has-full-permissions? :read notification)
-             (current-user-is-creator? notification)))))
+(methodical/defmethod t2/simple-hydrate [:model/Pulse :can_write]
+  [_model k notification]
+  (assoc notification k
+         (boolean
+          (if (is-alert? notification)
+            (alert-card-writable? notification)
+            (or api/*is-superuser?*
+                (and (collection-permits? notification :read)
+                     (current-user-is-creator? notification)))))))
 
 (defn- can-read-attachments?
   "Return true if the card has attachments and those can be read. If it has no attachments, return true"
@@ -181,14 +213,18 @@
   [_m {cards :cards dashboard-id :dashboard_id collection-id :collection_id}]
   (and
    ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
-   (every? #(and
-             (mi/can-read? :model/Card (u/the-id %))
-             (can-read-attachments? %)) cards)
-   ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
-   ;; make sure we have write permissions for that collection
-   (or (nil? collection-id) (mi/can-write? :model/Collection collection-id))
+   (let [card-ids (into [] (comp (map u/the-id) (distinct)) cards)
+         readable (t2/hydrate (pulse.db/cards card-ids) :can_read)]
+     (and (= (count readable) (count card-ids))
+          (every? mi/can-read? readable)
+          (every? can-read-attachments? cards)))
+   ;; nil is root, except for a dashboard subscription, which the before-insert hook files with its dashboard
+   (cond
+     (some? collection-id) (some-> (pulse.db/collection collection-id) (t2/hydrate :can_write) mi/can-write?)
+     (some? dashboard-id)  true
+     :else                 (mi/can-write? (t2/hydrate collection/root-collection :can_write)))
    ;; prohibit creating dashboard subs if the the user doesn't have at least read access for the dashboard
-   (or (nil? dashboard-id) (mi/can-read? :model/Dashboard dashboard-id))))
+   (or (nil? dashboard-id) (some-> (pulse.db/dashboard dashboard-id) (t2/hydrate :can_read) mi/can-read?))))
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
@@ -200,7 +236,7 @@
   "Schema for the map we use to internally represent the base elements of a Card used for Notifications. id is not
   required since the card may be a placeholder."
   (mu/with-api-error-message
-   [:map
+   [:map {:closed true}
     [:include_csv                        ms/BooleanValue]
     [:include_xls                        ms/BooleanValue]
     [:format_rows       {:optional true} [:maybe ms/BooleanValue]]
@@ -229,7 +265,8 @@
      [:display            [:maybe ms/KeywordOrString]]
      [:collection_id      [:maybe ms/PositiveInt]]
      [:dashboard_id       [:maybe ms/PositiveInt]]
-     [:parameter_mappings [:maybe [:sequential ms/Map]]]]]
+     [:parameter_mappings [:maybe ::parameters.schema/parameter-mappings]]
+     [:pulse_id           {:optional true} [:maybe ms/PositiveInt]]]]
    (deferred-tru "value must be a map with the following keys `({0})`"
                  (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"
                                  "dashboard_id" "parameter_mappings"]))))
@@ -237,6 +274,52 @@
 (def CoercibleToCardRef
   "Schema for functions accepting either a `HybridPulseCard`, `CardRef`, or `CardBase`."
   [:or HybridPulseCard CardRef CardBase])
+
+(def ^:private RecipientInput
+  "One entry of `PulseChannelInput`'s `:recipients`: either a Metabase User (by `:id`) or a raw email address."
+  [:map {:closed true}
+   [:id    {:optional true} ms/PositiveInt]
+   [:email {:optional true} :string]])
+
+(def ^:private PulseChannelInput
+  "A PulseChannel as [[update-notification-channels!]]/[[create-pulse!]] accept it: a subset of `::pulse-channel`
+  columns (`:id`/`:pulse_id` filled in server-side when absent) plus `:recipients`."
+  [:map {:closed true}
+   [:id             {:optional true} ms/PositiveInt]
+   [:channel_type   {:optional true} [:or :keyword :string]]
+   [:channel_id     {:optional true} [:maybe ms/PositiveInt]]
+   [:details        {:optional true} ::pulse.schema/pulse-channel.details]
+   [:enabled        {:optional true} :boolean]
+   [:pulse_id       {:optional true} ::lib.schema.id/pulse]
+   [:entity_id      {:optional true} [:maybe :string]]
+   [:recipients     {:optional true} [:maybe [:sequential [:or RecipientInput :metabase.users.schema/user]]]]
+   [:schedule_type  {:optional true} [:or :keyword :string]]
+   [:schedule_day   {:optional true} [:maybe :string]]
+   [:schedule_hour  {:optional true} [:maybe :int]]
+   [:schedule_frame {:optional true} [:maybe [:or :keyword :string]]]
+   [:created_at     {:optional true} ms/TemporalInstant]
+   [:updated_at     {:optional true} ms/TemporalInstant]])
+
+(def ^:private UpdateNotificationInput
+  "What [[update-notification!]] accepts: the keys of a Pulse/Alert to update, all optional except `:id`."
+  [:map {:closed true}
+   [:id                    ms/PositiveInt]
+   [:name                {:optional true} ms/NonBlankString]
+   [:alert_condition     {:optional true} AlertConditions]
+   [:alert_above_goal    {:optional true} boolean?]
+   [:alert_first_only    {:optional true} boolean?]
+   [:skip_if_empty       {:optional true} boolean?]
+   [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position {:optional true} [:maybe ms/PositiveInt]]
+   [:cards               {:optional true} [:sequential CoercibleToCardRef]]
+   [:channels            {:optional true} [:sequential PulseChannelInput]]
+   [:archived            {:optional true} boolean?]
+   [:parameters          {:optional true} [:maybe [:sequential ::pulse.schema/pulse.parameter]]]])
+
+(def ^:private NotificationOrId
+  "A Pulse/Alert id, a full Pulse row, or [[update-notification!]]'s own argument map — the shapes
+  [[u/the-id]] is called with below."
+  [:or ms/PositiveInt ::pulse.schema/pulse UpdateNotificationInput])
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -248,14 +331,10 @@
    :id
    {:default []}))
 
-(def ^:dynamic *allow-hydrate-archived-cards*
-  "By default the :cards hydration method only return active cards,
-  but in cases we need to send email after a card is archived, we need to be able to hydrate archived card as well."
-  false)
-
 (mu/defn- cards* :- [:sequential HybridPulseCard]
-  [pulse-ids]
-  (pulse.db/pulse-cards-for-pulses pulse-ids *allow-hydrate-archived-cards*))
+  "The non-archived Cards of the Pulses with `pulse-ids`."
+  [pulse-ids :- [:sequential ms/PositiveInt]]
+  (pulse.db/pulse-cards-for-pulses pulse-ids))
 
 (methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
   [_model k pulses]
@@ -293,7 +372,7 @@
 (mu/defn retrieve-pulse :- [:maybe (ms/InstanceOf :model/Pulse)]
   "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert columns, since this is a
   *Pulse* and they will all be unset."
-  [pulse-or-id]
+  [pulse-or-id :- NotificationOrId]
   (some-> (pulse.db/pulse (u/the-id pulse-or-id))
           hydrate-notification
           notification->pulse))
@@ -301,7 +380,8 @@
 (mu/defn retrieve-notification :- [:maybe (ms/InstanceOf :model/Pulse)]
   "Fetch an Alert or Pulse, and do the 'standard' hydrations, adding `:channels` with `:recipients`, `:creator`, and
   `:cards`."
-  [notification-or-id & additional-conditions]
+  [notification-or-id :- NotificationOrId
+   & additional-conditions :- [:* [:or :keyword :boolean :nil]]]
   {:pre [(even? (count additional-conditions))]}
   (let [id   (u/the-id notification-or-id)
         opts (apply hash-map additional-conditions)]
@@ -324,10 +404,15 @@
 
 (mu/defn retrieve-alert :- [:maybe (ms/InstanceOf :model/Pulse)]
   "Fetch a single Alert by its `id` value, do the standard hydrations, and put it in the standard `Alert` format."
-  [alert-or-id]
+  [alert-or-id :- NotificationOrId]
   (some-> (pulse.db/alert (u/the-id alert-or-id))
           hydrate-notification
           notification->alert))
+
+(def ^:private RetrieveAlertsOpts
+  [:map {:closed true}
+   [:archived? {:optional true} [:maybe :boolean]]
+   [:user-id   {:optional true} [:maybe ms/PositiveInt]]])
 
 (mu/defn retrieve-alerts :- [:sequential (ms/InstanceOf :model/Pulse)]
   "Fetch all Alerts."
@@ -335,7 +420,7 @@
    (retrieve-alerts nil))
 
   ([{:keys [archived? user-id]
-     :or   {archived? false}}]
+     :or   {archived? false}} :- [:maybe RetrieveAlertsOpts]]
    (assert boolean? archived?)
    (for [alert (hydrate-notifications (pulse.db/alerts archived? user-id))
          :let  [alert (notification->alert alert)]
@@ -345,11 +430,17 @@
          :when (:card alert)]
      alert)))
 
+(def ^:private RetrievePulsesOpts
+  [:map {:closed true}
+   [:archived?    {:optional true} [:maybe :boolean]]
+   [:dashboard-id {:optional true} [:maybe ms/PositiveInt]]
+   [:user-id      {:optional true} [:maybe ms/PositiveInt]]])
+
 (mu/defn retrieve-pulses :- [:sequential (ms/InstanceOf :model/Pulse)]
   "Fetch all `Pulses`. When `user-id` is included, only fetches `Pulses` for which the provided user is the creator
   or a recipient."
   [{:keys [archived? dashboard-id user-id]
-    :or   {archived? false}}]
+    :or   {archived? false}} :- RetrievePulsesOpts]
   (for [pulse (pulse.db/pulses archived? dashboard-id user-id)]
     (-> pulse
         (dissoc :lower-name)
@@ -442,7 +533,7 @@
   "If the current user does not have collection read permissions for the pulse, but can still read the pulse due to
   being the creator or a recipient, we return it with some metadata removed."
   [pulse]
-  (if (mi/current-user-has-full-permissions? :read pulse)
+  (if (collection-permits? pulse :read)
     pulse
     (-> (dissoc pulse :cards)
         (update :channels
@@ -452,7 +543,7 @@
 (mu/defn retrieve-user-alerts-for-card
   "Find all alerts for `card-id` that `user-id` is set to receive"
   [{:keys [archived? card-id user-id]
-    :or   {archived? false}} :- [:map
+    :or   {archived? false}} :- [:map {:closed true}
                                  [:card-id pos-int?]
                                  [:user-id pos-int?]
                                  [:archived? {:optional true} boolean?]]]
@@ -463,7 +554,7 @@
 (mu/defn retrieve-alerts-for-cards
   "Find all alerts for `card-ids`, used for admin users"
   [{:keys [archived? card-ids]
-    :or   {archived? false}} :- [:map
+    :or   {archived? false}} :- [:map {:closed true}
                                  [:card-ids [:maybe [:or
                                                      [:sequential pos-int?]
                                                      [:set pos-int?]]]]
@@ -474,7 +565,7 @@
 
 (mu/defn card->ref :- CardRef
   "Create a card reference from a card or id"
-  [card :- :map]
+  [card :- [:or CoercibleToCardRef :metabase.queries.schema/card]]
   {:id                (u/the-id card)
    :include_csv       (get card :include_csv false)
    :include_xls       (get card :include_xls false)
@@ -491,7 +582,8 @@
   *  If a Card ID in `card-refs` has no corresponding existing `PulseCard` object, one will be created.
   *  If an existing `PulseCard` has no corresponding ID in CARD-IDs, it will be deleted.
   *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
-  [notification-or-id card-refs :- [:maybe [:sequential CardRef]]]
+  [notification-or-id :- NotificationOrId
+   card-refs           :- [:maybe [:sequential CardRef]]]
   ;; first off, just delete any cards associated with this pulse (we add them again below)
   (pulse.db/delete-pulse-cards-for-pulse! (u/the-id notification-or-id))
   ;; now just insert all of the cards that were given to us
@@ -517,7 +609,8 @@
     * If an existing `PulseChannel` has no corresponding entry in `channels`, it will be deleted.
 
     * All previously existing channels will be updated with their most recent information."
-  [notification-or-id channels :- [:sequential :map]]
+  [notification-or-id :- NotificationOrId
+   channels           :- [:sequential PulseChannelInput]]
   (let [existing-channels   (pulse.db/pulse-channels-for-pulse (u/the-id notification-or-id))
         channels            (map-indexed
                              (fn [idx channel]
@@ -551,7 +644,9 @@
 (mu/defn- create-notification-and-add-cards-and-channels!
   "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and
   add the Notification to `channels`. Returns the `id` of the newly created Notification."
-  [notification card-refs :- [:maybe [:sequential CardRef]] channels]
+  [notification :- ::pulse.schema/pulse.update
+   card-refs    :- [:maybe [:sequential CardRef]]
+   channels     :- [:sequential PulseChannelInput]]
   (t2/with-transaction [_conn]
     (let [notification (pulse.db/insert-pulse! notification)]
       (update-notification-cards! notification card-refs)
@@ -563,16 +658,16 @@
   PulseCards, PulseChannels, and PulseChannelRecipients.
 
   Returns the newly created Pulse, or throws an Exception."
-  [cards    :- [:sequential [:map-of :keyword :any]]
-   channels :- [:sequential [:map-of :keyword :any]]
-   kvs      :- [:map
+  [cards    :- [:sequential CardRef]
+   channels :- [:sequential PulseChannelInput]
+   kvs      :- [:map {:closed true}
                 [:name                                 ms/NonBlankString]
                 [:creator_id                           ms/PositiveInt]
                 [:skip_if_empty       {:optional true} [:maybe :boolean]]
                 [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                 [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                 [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
-                [:parameters          {:optional true} [:maybe [:sequential :map]]]
+                [:parameters          {:optional true} [:maybe [:sequential ::pulse.schema/pulse.parameter]]]
                 [:disable_links       {:optional true} [:maybe ms/BooleanValue]]]]
   (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
     ;; return the full Pulse (and record our create event).
@@ -590,33 +685,24 @@
     (retrieve-alert id)))
 
 (mu/defn- notification-or-id->existing-card-refs :- [:sequential CardRef]
-  [notification-or-id]
+  [notification-or-id :- NotificationOrId]
   (pulse.db/pulse-card-refs (u/the-id notification-or-id)))
 
 (mu/defn- card-refs-have-changed? :- :boolean
-  [notification-or-id new-card-refs :- [:sequential CardRef]]
+  [notification-or-id :- NotificationOrId
+   new-card-refs      :- [:sequential CardRef]]
   (not= (notification-or-id->existing-card-refs notification-or-id)
         new-card-refs))
 
-(mu/defn- update-notification-cards-if-changed! [notification-or-id new-card-refs]
+(mu/defn- update-notification-cards-if-changed!
+  [notification-or-id :- NotificationOrId
+   new-card-refs      :- [:sequential CardRef]]
   (when (card-refs-have-changed? notification-or-id new-card-refs)
     (update-notification-cards! notification-or-id new-card-refs)))
 
 (mu/defn update-notification!
   "Update the supplied keys in a `notification`."
-  [notification :- [:map
-                    [:id                    ms/PositiveInt]
-                    [:name                {:optional true} ms/NonBlankString]
-                    [:alert_condition     {:optional true} AlertConditions]
-                    [:alert_above_goal    {:optional true} boolean?]
-                    [:alert_first_only    {:optional true} boolean?]
-                    [:skip_if_empty       {:optional true} boolean?]
-                    [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
-                    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-                    [:cards               {:optional true} [:sequential CoercibleToCardRef]]
-                    [:channels            {:optional true} [:sequential :map]]
-                    [:archived            {:optional true} boolean?]
-                    [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
+  [notification :- UpdateNotificationInput]
   (pulse.db/update-pulse! (u/the-id notification)
                           (u/select-keys-when notification
                                               :present [:collection_id :collection_position :archived]

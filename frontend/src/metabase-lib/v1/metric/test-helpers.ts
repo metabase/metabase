@@ -1,18 +1,14 @@
+import { createMockMetadata } from "__support__/metadata";
+import type { JsMetadata } from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
-import Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { NormalizedMetric } from "metabase-types/api";
 
-export function createMetricMetadata(metrics: NormalizedMetric[]): Metadata {
-  const metadata = new Metadata();
-  for (const metric of metrics) {
-    const { collection: _normalizedCollectionId, ...rest } = metric;
-    metadata.metrics[metric.id] = { ...rest, collection: null };
-  }
-  return metadata;
+export function createMetricMetadata(metrics: NormalizedMetric[]): JsMetadata {
+  return createMockMetadata({ metrics });
 }
 
 export function setupDefinition(
-  metadata: Metadata,
+  metadata: JsMetadata,
   metricId: number,
 ): LibMetric.MetricDefinition {
   const provider = LibMetric.metadataProvider(metadata);

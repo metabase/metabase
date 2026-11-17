@@ -10,6 +10,7 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import type {
   MetabotChartProps,
+  MetabotIncompleteResponse,
   MetabotMessage,
   MetabotErrorMessage as SdkMetabotErrorMessage,
   UseMetabotResult,
@@ -17,10 +18,13 @@ import type {
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
 import {
+  type MetabotGeneratedCardPart,
+  type MetabotMessagePart,
   getFinalChartMessageIdsPerTurn,
   getMetabotConversationId,
+  isGeneratedCardPart,
+  isTextPart,
 } from "metabase/metabot/state";
-import type { MetabotChatMessage } from "metabase/metabot/state/types";
 import { useSelector } from "metabase/redux";
 import * as Urls from "metabase/urls";
 
@@ -78,6 +82,24 @@ export const useMetabot = (): UseMetabotResult => {
     [agentRetryMessage],
   );
 
+  const agentContinueResponse = agent.continueResponse;
+  const incompleteTurn = agent.incompleteTurn;
+  const incompleteResponse = useMemo<MetabotIncompleteResponse | null>(() => {
+    if (!incompleteTurn) {
+      return null;
+    }
+    return {
+      reason: incompleteTurn.reason,
+      message: incompleteTurn.message,
+      ...(agentContinueResponse && {
+        continueResponse: () =>
+          agentContinueResponse({ preventOpenSidebar: true }).then(
+            () => undefined,
+          ),
+      }),
+    };
+  }, [incompleteTurn, agentContinueResponse]);
+
   const agentCreateNewConversation = agent.createNewConversation;
   const resetConversation = useCallback(() => {
     chartComponentsCache.current.clear();
@@ -94,9 +116,10 @@ export const useMetabot = (): UseMetabotResult => {
   const messages = useMemo<MetabotMessage[]>(
     () =>
       agent.messages
-        .filter((message) => isPublicMessage(message, finalChartIds))
-        .map((message) =>
-          mapMessage(message, chartComponentsCache.current, authConfig),
+        .flatMap((message) => message.parts)
+        .filter((part) => isPublicPart(part, finalChartIds))
+        .map((part) =>
+          mapMessage(part, chartComponentsCache.current, authConfig),
         ),
     [agent.messages, finalChartIds, authConfig],
   );
@@ -104,11 +127,17 @@ export const useMetabot = (): UseMetabotResult => {
   const errorMessages = useMemo<SdkMetabotErrorMessage[]>(
     () =>
       agent.messages
-        .filter((m) => m.role === "agent" && m.type === "turn_errored")
-        .map(
-          (m) =>
-            m.display ?? { type: "message", message: t`Something went wrong` },
-        ),
+        .filter((m) => m.status.type === "errored")
+        .map((m) => {
+          const display = m.status.type === "errored" && m.status.display;
+          if (!display) {
+            return { type: "message", message: t`Something went wrong` };
+          }
+          return {
+            type: display.type === "aborted" ? "message" : display.type,
+            message: display.message,
+          };
+        }),
     [agent.messages],
   );
 
@@ -120,6 +149,7 @@ export const useMetabot = (): UseMetabotResult => {
 
     messages,
     errorMessages,
+    incompleteResponse,
     isProcessing: agent.isDoingScience,
     contextWindowPercentUsage: agent.contextWindowPercentUsage,
     isContextWindowFull: agent.isContextWindowFull,
@@ -167,20 +197,14 @@ function getCachedChartComponent(
 // see the comment on `MetabotMessage` in `embedding-sdk-bundle/types/metabot.ts`
 // for the full rationale.
 type PublicChatMessage =
-  | Extract<MetabotChatMessage, { type: "text" }>
-  | (Extract<MetabotChatMessage, { type: "data_part" }> & {
-      part: { type: "data-generated_entity"; data: { type: "card" } };
-    });
+  | Extract<MetabotMessagePart, { type: "text" }>
+  | MetabotGeneratedCardPart;
 
-const isPublicMessage = (
-  message: MetabotChatMessage,
+const isPublicPart = (
+  part: MetabotMessagePart,
   finalChartIds: Set<string>,
-): message is PublicChatMessage =>
-  message.type === "text" ||
-  (message.type === "data_part" &&
-    message.part.type === "data-generated_entity" &&
-    message.part.data.type === "card" &&
-    finalChartIds.has(message.id));
+): part is PublicChatMessage =>
+  isTextPart(part) || (isGeneratedCardPart(part) && finalChartIds.has(part.id));
 
 const mapMessage = (
   message: PublicChatMessage,

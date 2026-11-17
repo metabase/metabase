@@ -2,41 +2,47 @@
   "Application database queries for the library module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(defn card-types-in-collections
-  "The set of Card types present in the Collections with `collection-ids`."
-  [collection-ids]
-  (t2/select-fn-set :type [:model/Card :type] :collection_id [:in collection-ids]))
+(mu/defn card-types-in-collections
+  "The set of types of the unarchived Cards in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select-fn-set :type [:model/Card :type] :collection_id [:in collection-ids] :archived false))
 
-(defn published-table-in-collections?
-  "Whether a published Table exists in the Collections with `collection-ids`."
-  [collection-ids]
-  (t2/exists? :model/Table :is_published true :collection_id [:in collection-ids]))
+(mu/defn published-table-in-collections?
+  "Whether an unarchived published Table exists in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/exists? :model/Table :is_published true :archived_at nil :collection_id [:in collection-ids]))
 
-(defn library-collections
-  "The readable Library, Library-data, and Library-metrics Collections, ordered by name."
+(mu/defn dashboard-in-collections?
+  "Whether an unarchived Dashboard exists in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/exists? :model/Dashboard :collection_id [:in collection-ids] :archived false))
+
+(mu/defn library-collections
+  "The readable Library Collections, ordered by name."
   []
   (t2/select :model/Collection
              {:where    [:and
-                         [:in :type [collection/library-collection-type
-                                     collection/library-data-collection-type
-                                     collection/library-metrics-collection-type]]
-                         (collection/visible-collection-filter-clause
-                          :id
-                          {:include-archived-items    :exclude
-                           :include-trash-collection? false
-                           :permission-level          :read
-                           :archive-operation-id      nil})]
+                         [:in :type (vec collection/library-collection-types)]
+                         (perms/visible-collections-filter-clause :collection.id (api/current-user-info) {:include-archived-items    :exclude
+                                                                                                          :include-trash-collection? false
+                                                                                                          :permission-level          :read
+                                                                                                          :archive-operation-id      nil
+                                                                                                          :root-namespace            nil})]
               :order-by [[:%lower.name :asc]]}))
 
-(defn collection-type
+(mu/defn collection-type
   "The type of the Collection with `collection-id`."
-  [collection-id]
+  [collection-id :- ::lib.schema.id/collection]
   (t2/select-one-fn :type [:model/Collection :type] :id collection-id))
 
-(defn unarchived-card-collection-types-reducible
+(mu/defn unarchived-card-collection-types-reducible
   "Reducible distinct Collection ID and Card type pairs of the unarchived Cards."
   []
   (t2/reducible-query {:select-distinct [:collection_id :type]

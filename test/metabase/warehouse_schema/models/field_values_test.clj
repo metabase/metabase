@@ -174,7 +174,7 @@
 
 (defn distinct-field-values
   [id]
-  (field-values/distinct-values (t2/select-one :model/Field id)))
+  (field-values/distinct-values (t2/select-one :model/Field :id id)))
 
 (deftest distinct-values-test
   (testing "Correctly get distinct field values for text fields"
@@ -200,7 +200,7 @@
       (select-keys [:values :human_readable_values])))
 
 (defn- sync-and-find-values! [db field-values-id]
-  (sync/sync-database! db)
+  (sync/sync-database! (:id (t2/select-one :model/Database :id (u/the-id db))))
   (find-values field-values-id))
 
 (deftest implicit-deduplication-test
@@ -328,7 +328,9 @@
                                                                        @release))
                              (catch Throwable _ ::threw)))]
       @started
-      (let [stalled-future @(:future-ref (get @registry ::stalled))]
+      ;; the registry entry exists before the fetch starts, but its future is stored just after
+      ;; submission, so `started` can fire before :future-ref is populated
+      (let [stalled-future (tu/poll-until 10000 @(:future-ref (get @registry ::stalled)))]
         ;; backdate the entry's timer so the next call through detached-fetch! sees it as stalled.
         ;; Backdating this one entry rather than shortening the max age keeps the sweep from
         ;; touching fetches other tests may have in flight.
@@ -454,14 +456,14 @@
                                           :is_full_sync true
                                           :details      "{\"db\": \"mem:temp\"}"}]
          ;; Sync the database so we have the new table and it's fields
-         (sync/sync-database! db)
+         (sync/sync-database! (:id db))
          (let [table-id        (t2/select-one-fn :id :model/Table :db_id (u/the-id db) :name "FOO")
                field-id        (t2/select-one-fn :id :model/Field :table_id table-id :name "CATEGORY_ID")
                ;; Manually activate Field values since they are not created during sync (#53387)
                _               (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id field-id))
                field-values-id (t2/select-one-fn :id :model/FieldValues :field_id field-id)]
            ;; Add in human readable values for remapping
-           (is (t2/update! :model/FieldValues field-values-id {:human_readable_values ["a" "b" "c"]}))
+           (is (t2/update! :model/FieldValues :id field-values-id {:human_readable_values ["a" "b" "c"]}))
            (let [expected-original-values {:values                [1 2 3]
                                            :human_readable_values ["a" "b" "c"]}
                  expected-updated-values  {:values                [-2 -1 0 1 2 3]
@@ -498,7 +500,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid human-readable-values"
-             (t2/update! :model/FieldValues id {:human_readable_values {"1" "A", "2", "B"}})))))))
+             (t2/update! :model/FieldValues :id id {:human_readable_values {"1" "A", "2", "B"}})))))))
 
 (deftest rescanned-human-readable-values-test
   (testing "Make sure FieldValues are calculated and saved correctly when remapping is in place (#13235)"
@@ -565,7 +567,7 @@
                                [full-id {:type :sandbox, :hash_key "random-hash"}]]]
         (is (thrown-with-msg? ExceptionInfo
                               #"Can't update field_id, type, or hash_key for a FieldValues."
-                              (t2/update! :model/FieldValues id update-map)))))
+                              (t2/update! :model/FieldValues :id id update-map)))))
     (testing "The model hooks permits mention of the existing values"
       (doseq [[id update-map] [[full-id {:field_id (mt/id :venues :id)}]
                                [sandbox-id {:type :sandbox}]
@@ -574,7 +576,7 @@
                                [full-id {:hash_key nil}]
                                [full-id {:type :full, :hash_key nil}]
                                [sandbox-id {:type :sandbox, :hash_key "random-hash"}]]]
-        (is (some? (t2/update! :model/FieldValues id update-map)))))))
+        (is (some? (t2/update! :model/FieldValues :id id update-map)))))))
 
 (deftest insert-full-field-values-should-remove-all-cached-field-values
   (doseq [explicitly-full? [false true]]
@@ -590,7 +592,7 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (t2/update! :model/FieldValues (:id fv) {:values [1 2 3]})
+    (t2/update! :model/FieldValues :id (:id fv) {:values [1 2 3]})
     (is (not (t2/exists? :model/FieldValues :id (:id sandbox-fv))))))
 
 (deftest update-full-field-without-values-should-remove-not-all-cached-field-values
@@ -599,7 +601,7 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (t2/update! :model/FieldValues (:id fv) {:updated_at (t/zoned-date-time)})
+    (t2/update! :model/FieldValues :id (:id fv) {:updated_at (t/zoned-date-time)})
     (is (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))
 
 (deftest select-coherence-test
@@ -840,7 +842,7 @@
                    :model/Field    {f2-id :id} {:table_id table-id :name "dupe" :base_type :type/Integer
                                                 :parent_id parent-id}]
       (let [fields [(t2/select-one :model/Field :id f1-id) (t2/select-one :model/Field :id f2-id)]]
-        (with-redefs [qp/process-query (fn [_query] {:data {:rows [[0 "a"] [0 "b"] [1 "42"]]}})]
+        (mt/with-dynamic-fn-redefs [qp/process-query (fn [_query] {:data {:rows [[0 "a"] [0 "b"] [1 "42"]]}})]
           (is (= {f1-id {:values ["a" "b"] :raw-count 2}
                   f2-id {:values [42] :raw-count 1}}
                  (distinct-batch/run-distinct-batch table fields))))))))

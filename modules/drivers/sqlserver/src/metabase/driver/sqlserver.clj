@@ -1,6 +1,6 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
-  (:refer-clojure :exclude [mapv get-in not-empty])
+  (:refer-clojure :exclude [empty? mapv get-in not-empty])
   (:require
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
@@ -26,20 +26,22 @@
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
-   [metabase.util.performance :as perf :refer [mapv get-in not-empty]]
+   [metabase.util.performance :refer [empty? mapv get-in not-empty]]
    [next.jdbc :as next.jdbc])
   (:import
-   (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
+   (com.microsoft.sqlserver.jdbc ISQLServerConnection)
+   (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Statement Time Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.util UUID)))
@@ -77,17 +79,21 @@
                               :transforms/python                      true
                               :transforms/table                       true
                               :transforms/index-ddl                   true
+                              :transforms/testing                     true
                               :jdbc/statements                        false
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
                               :describe-is-generated                  true
-                              :table-privileges                       true}]
+                              :workspace                              true
+                              :table-privileges                       true
+                              :stage-ctes                             true
+                              :stage-ctes/nested                      false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :sqlserver
   [_driver]
   ;; SQL Server emits `db.schema.table` (3-part) when crossing databases. Single-DB
-  ;; queries are typically `schema.table`, but table remapping rows must be keyed
+  ;; queries are typically `schema.table`, but workspace remap rows must be keyed
   ;; on the more general 3-part shape.
   [:db :schema])
 
@@ -109,10 +115,6 @@
 (defmethod driver/db-start-of-week :sqlserver
   [_]
   :sunday)
-
-(defmethod driver.sql/default-schema :sqlserver
-  [_]
-  "dbo")
 
 (defn- quote-schema [s] (sql.u/quote-name :sqlserver :schema s))
 (defn- quote-field  [s] (sql.u/quote-name :sqlserver :field s))
@@ -167,6 +169,42 @@
     (keyword "decimal identity")  :type/Decimal
     (keyword "numeric identity")  :type/Decimal} column-type))
 
+(def ^:private jdbc-type->base-type
+  {Types/BIGINT                  :type/BigInteger
+   Types/BIT                     :type/Boolean
+   Types/BOOLEAN                 :type/Boolean
+   Types/CHAR                    :type/Text
+   Types/DATE                    :type/Date
+   Types/DECIMAL                 :type/Decimal
+   Types/DOUBLE                  :type/Float
+   Types/FLOAT                   :type/Float
+   Types/INTEGER                 :type/Integer
+   Types/LONGNVARCHAR            :type/Text
+   Types/LONGVARCHAR             :type/Text
+   Types/NCHAR                   :type/Text
+   Types/NUMERIC                 :type/Decimal
+   Types/NVARCHAR                :type/Text
+   Types/REAL                    :type/Float
+   Types/SMALLINT                :type/Integer
+   Types/TIME                    :type/Time
+   Types/TIME_WITH_TIMEZONE      :type/TimeWithTZ
+   Types/TIMESTAMP               :type/DateTime
+   Types/TIMESTAMP_WITH_TIMEZONE :type/DateTimeWithZoneOffset
+   Types/TINYINT                 :type/Integer
+   Types/VARCHAR                 :type/Text})
+
+(defmethod sql-jdbc.sync/describe-table-fields :sqlserver
+  [driver conn table db-name-or-nil]
+  ;; When TYPE_NAME is a user-defined type alias (`CREATE TYPE Key10 FROM varchar(10)`),
+  ;; `database-type->base-type` can't resolve it. The MSSQL JDBC driver already exposes the underlying
+  ;; base type as `DATA_TYPE` (a `java.sql.Types` code), so use it as a fallback. `:database-type` stays
+  ;; the alias name, so the original type is still visible in field metadata.
+  (into #{}
+        (map (fn [{:keys [base-type jdbc-type] :as col}]
+               (cond-> col
+                 (= base-type :type/*) (assoc :base-type (get jdbc-type->base-type jdbc-type base-type)))))
+        ((get-method sql-jdbc.sync/describe-table-fields :sql-jdbc) driver conn table db-name-or-nil)))
+
 (defmulti ^:private type->database-type
   "Internal type->database-type multimethod for SQL Server that dispatches on type."
   {:arglists '([type])}
@@ -192,51 +230,99 @@
   (type->database-type base-type))
 
 (defmethod sql-jdbc.conn/connection-details->spec :sqlserver
-  [_ {:keys [user password db host port instance domain ssl]
-      :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
+  [_ {:keys [user password db host port instance domain ssl auth-mode
+             ad-client-id ad-client-secret ad-managed-identity-client-id]
+      :or   {user "dbuser", password "dbpassword", db "", host "localhost"
+             auth-mode "sql"}
       :as   details}]
-  (-> {:applicationName    driver-api/mb-version-and-process-identifier
-       :subprotocol        "sqlserver"
-       ;; it looks like the only thing that actually needs to be passed as the `subname` is the host; everything else
-       ;; can be passed as part of the Properties
-       :subname            (str "//" host)
-       ;; everything else gets passed as `java.util.Properties` to the JDBC connection.  (passing these as Properties
-       ;; instead of part of the `:subname` is preferable because they support things like passwords with special
-       ;; characters)
-       :database           db
-       :password           password
-       ;; Wait up to 10 seconds for connection success. If we get no response by then, consider the connection failed
-       :loginTimeout       10
-       ;; apparently specifying `domain` with the official SQLServer driver is done like `user:domain\user` as opposed
-       ;; to specifying them separately as with jTDS see also:
-       ;; https://social.technet.microsoft.com/Forums/sqlserver/en-US/bc1373f5-cb40-479d-9770-da1221a0bc95/connecting-to-sql-server-in-a-different-domain-using-jdbc-driver?forum=sqldataaccess
-       :user               (str (when domain (str domain "\\"))
-                                user)
-       :encrypt            (boolean ssl)
-       ;; only crazy people would want this. See https://docs.microsoft.com/en-us/sql/connect/jdbc/configuring-how-java-sql-time-values-are-sent-to-the-server?view=sql-server-ver15
-       :sendTimeAsDatetime false}
-      ;; only include `port` if it is specified; leave out for dynamic port: see
-      ;; https://github.com/metabase/metabase/issues/7597
-      ;; only include `instanceName` if supplied — mssql-jdbc treats an empty string as a named instance and
-      ;; initiates SQL Server Browser lookup, which breaks Microsoft Fabric / Synapse serverless endpoints
-      ;; that drop the connection whenever the property is present (#81270)
-      (merge (when port {:port port})
-             (when-not (str/blank? instance) {:instanceName instance}))
-      (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
+  (let [base       {:applicationName    driver-api/mb-version-and-process-identifier
+                    :subprotocol        "sqlserver"
+                    ;; it looks like the only thing that actually needs to be passed as the `subname` is the host;
+                    ;; everything else can be passed as part of the Properties. Passing them as Properties (instead of
+                    ;; part of the `:subname`) is preferable because they support things like passwords with special
+                    ;; characters.
+                    :subname            (str "//" host)
+                    :database           db
+                    ;; Wait up to 10 seconds for connection success. If we get no response by then, consider the
+                    ;; connection failed.
+                    :loginTimeout       10
+                    :encrypt            (boolean ssl)
+                    ;; only crazy people would want this. See
+                    ;; https://docs.microsoft.com/en-us/sql/connect/jdbc/configuring-how-java-sql-time-values-are-sent-to-the-server?view=sql-server-ver15
+                    :sendTimeAsDatetime false}
+        auth-props (case auth-mode
+                     ;; https://learn.microsoft.com/en-us/sql/connect/jdbc/connecting-using-azure-active-directory-authentication?view=sql-server-ver17#connect-using-activedirectoryserviceprincipal-authentication-mode
+                     "ad-service-principal"
+                     {:authentication "ActiveDirectoryServicePrincipal"
+                      :user           ad-client-id
+                      :password       ad-client-secret}
 
-(def ^:private disallowed-additional-opts
-  #"(?i)(?:socketFactoryClass|socketFactoryConstructorArg|trustManagerClass|trustManagerConstructorArg|accessTokenCallbackClass)")
+                     ;; https://learn.microsoft.com/en-us/sql/connect/jdbc/connecting-using-azure-active-directory-authentication?view=sql-server-ver17#connect-using-activedirectoryserviceprincipalcertificate-authentication-mode
+                     "ad-service-principal-certificate"
+                     (let [cert-file     (driver-api/secret-value-as-file!  :sqlserver details "ad-client-certificate")
+                           cert-password (driver-api/secret-value-as-string :sqlserver details "ad-client-certificate-password")
+                           key-file      (driver-api/secret-value-as-file!  :sqlserver details "ad-client-key")
+                           key-password  (driver-api/secret-value-as-string :sqlserver details "ad-client-key-password")]
+                       (cond-> {:authentication    "ActiveDirectoryServicePrincipalCertificate"
+                                :user              ad-client-id
+                                :clientCertificate cert-file}
+                         (not (str/blank? cert-password)) (assoc :password cert-password)
+                         key-file                         (assoc :clientKey key-file)
+                         (not (str/blank? key-password))  (assoc :clientKeyPassword key-password)))
+
+                     ;; https://learn.microsoft.com/en-us/sql/connect/jdbc/connecting-using-azure-active-directory-authentication?view=sql-server-ver17#connect-using-activedirectorymanagedidentity-authentication-mode
+                     ;; Managed identity pulls a token from the Azure Instance Metadata Service of the Metabase
+                     ;; host, i.e. it authenticates as the host's cloud identity rather than something the admin
+                     ;; chose. Metabase Cloud runs on AWS, where the endpoint does not exist at all; even on an
+                     ;; Azure host it would be ambient-authority auth.
+                     ;; Missing :user = default identity; set :user for user-assigned managed identity.
+                     "ad-managed-identity"
+                     (do
+                       (when (driver-api/is-hosted?)
+                         (throw (ex-info (tru (str "Azure AD managed identity is not available on Metabase Cloud. "
+                                                   "Use an Azure AD service principal or SQL Server authentication."))
+                                         {:auth-mode auth-mode})))
+                       (cond-> {:authentication "ActiveDirectoryManagedIdentity"}
+                         (not (str/blank? ad-managed-identity-client-id))
+                         (assoc :user ad-managed-identity-client-id)))
+
+                     ;; "sql" (default), nil (legacy connections without auth-mode), or any unknown value.
+                     ;; apparently specifying `domain` with the official SQLServer driver is done like
+                     ;; `user:domain\user` as opposed to specifying them separately as with jTDS. See also:
+                     ;; https://social.technet.microsoft.com/Forums/sqlserver/en-US/bc1373f5-cb40-479d-9770-da1221a0bc95/connecting-to-sql-server-in-a-different-domain-using-jdbc-driver?forum=sqldataaccess
+                     {:user     (str (when domain (str domain "\\")) user)
+                      :password password})]
+    (-> (merge base auth-props)
+        ;; only include `port` if it is specified; leave out for dynamic port: see
+        ;; https://github.com/metabase/metabase/issues/7597
+        ;; only include `instanceName` if supplied — mssql-jdbc treats an empty string as a named instance and
+        ;; initiates SQL Server Browser lookup, which breaks Microsoft Fabric / Synapse serverless endpoints
+        ;; that drop the connection whenever the property is present (#81270)
+        (merge (when port {:port port})
+               (when-not (str/blank? instance) {:instanceName instance}))
+        (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon))))
+
+(def ^:private sqlserver-disallowed-parameters
+  ["socketFactoryClass" "socketFactoryConstructorArg" "trustManagerClass" "trustManagerConstructorArg"
+   "accessTokenCallbackClass"])
+
+(defmethod driver/disallowed-connection-parameters :sqlserver
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) sqlserver-disallowed-parameters))
 
 (defmethod driver/validate-db-details! :sqlserver
-  [_driver {:keys [host additional-options]}]
-  (when-let [match (some->> (str host ";" additional-options) (re-find disallowed-additional-opts))]
-    (throw (ex-info "Potentially dangerous keys in connection details" {:disallowed-key match}))))
+  [driver {:keys [host] :as details}]
+  ;; `host` is written into the connection string too, so a property can be smuggled in through it after a `;`
+  (when-let [match (driver.u/disallowed-connection-parameter driver host)]
+    (throw (ex-info "Potentially dangerous keys in connection details" {:status-code 400, :disallowed-key match})))
+  (driver.u/validate-connection-parameters! driver details))
 
 (defmethod driver/can-connect? :sqlserver
   [driver details]
   (driver/validate-db-details! driver details)
   ((get-method driver/can-connect? :sql-jdbc) driver details))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *field-options*
   "The options part of the `:field` clause we're currently compiling."
   nil)
@@ -484,14 +570,8 @@
   "Parsed xml may contain whitespace elements as `\"\n\n\t\t\"` in its contents. Leave only maps in content for
   purposes of [[zone-id->windows-zone]]."
   [parsed]
-  (perf/postwalk
-   (fn [x]
-     (if (and (map? x)
-              (contains? x :content)
-              (seq (:content x)))
-       (update x :content (partial filter map?))
-       x))
-   parsed))
+  (match/replace-all parsed
+    {:content #'seq} (update &match :content (partial filter map?))))
 
 (defonce
   ^{:private true
@@ -634,9 +714,13 @@
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :page]
   [_driver _top-level-clause honeysql-form {{:keys [items page]} :page}]
-  (assoc honeysql-form :offset [:raw (format "%d ROWS FETCH NEXT %d ROWS ONLY"
-                                             (* items (dec page))
-                                             items)]))
+  (-> honeysql-form
+      ;; SQL Server rejects OFFSET/FETCH without an ORDER BY (#81988). Supply a placeholder when the
+      ;; caller didn't provide one; the row order is unspecified either way.
+      (cond-> (empty? (:order-by honeysql-form))
+        (assoc :order-by [[{:select [nil]}]]))
+      (assoc :offset (sql.qp/inline-num (* items (dec page)))
+             :fetch  (sql.qp/inline-num items))))
 
 (defn- optimized-temporal-buckets
   "If `field-clause` is being truncated temporally to `:year`, `:month`, or `:day`, return a optimized set of
@@ -856,6 +940,7 @@
   [driver [_ _opts arg]]
   (sql.qp/->honeysql driver [:percentile {} arg 0.5]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *compared-field-options*
   "This variable is set to the options of the field we are comparing
   (presumably in a filter)."
@@ -1186,11 +1271,35 @@
         modified-sql (sql-tools/add-into-clause driver sql-query table-name)]
     [modified-sql sql-params]))
 
+(defmethod driver/temp-table-name :sqlserver
+  [_driver]
+  (str "#mb_test_" (str/replace (str (random-uuid)) "-" "")))
+
+(defmethod driver/compile-create-temp-table :sqlserver
+  [driver {:keys [table query]}]
+  (let [{sql-query :query sql-params :params} query
+        ^String table-name (first (sql.qp/format-honeysql driver (keyword table)))]
+    [(sql-tools/add-into-clause driver sql-query table-name) sql-params]))
+
+(defmethod driver/do-with-test-connection :sqlserver
+  [driver database f]
+  ((get-method driver/do-with-test-connection :sql-jdbc)
+   driver
+   database
+   (fn [^Connection conn]
+     (let [^ISQLServerConnection sqlserver-conn (.unwrap conn ISQLServerConnection)
+           prepare-method                        (.getPrepareMethod sqlserver-conn)]
+       (.setPrepareMethod sqlserver-conn "scopeTempTablesToConnection")
+       (try
+         (f conn)
+         (finally
+           (.setPrepareMethod sqlserver-conn prepare-method)))))))
+
 (defmethod driver/compile-insert :sqlserver
   [driver {:keys [query output-table]}]
   (let [{sql-query :query sql-params :params} query
         ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
-    [(format "INSERT INTO %s %s" table-name sql-query) sql-params]))
+    [(sql-tools/add-insert-clause driver sql-query table-name) sql-params]))
 
 (defmethod driver/run-transform! [:sqlserver :table-incremental]
   [driver transform-details opts]
@@ -1226,7 +1335,7 @@
 
 (defmethod driver/rename-table! :sqlserver
   [_driver db-id old-table-name new-table-name]
-  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
     (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
       (let [sql (format "EXEC sp_rename %s, %s;"
                         (sql.u/quote-literal (name old-table-name) :ansi)
@@ -1244,6 +1353,121 @@
             (if schema
               (str (quote-identifier (name schema)) "." (quote-identifier (name table-name)))
               (quote-identifier (name table-name))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/init-workspace-isolation! :sqlserver
+  [driver database workspace]
+  (let [schema-name      (:schema workspace)
+        {:keys [user password]} (:database_details workspace)
+        username         user
+        escaped-password (sql.u/escape-sql password :ansi)
+        escaped-username (sql.u/escape-sql username :ansi)
+        escaped-schema   (sql.u/escape-sql schema-name :ansi)
+        quoted-user      (quote-field username)
+        quoted-schema    (quote-schema schema-name)]
+    ;; SQL Server: create login (server level), then user (database level), then schema
+    (try
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver (driver.u/ensure-lib-database database) {:write? true}
+       (fn [^Connection conn]
+         (with-open [^Statement stmt (.createStatement conn)]
+           (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
+                                     "CREATE LOGIN %s WITH PASSWORD = N'%s'")
+                                escaped-username quoted-user escaped-password)
+                        ;; the login may survive a failed teardown; without this it would keep
+                        ;; its old password while the new one gets persisted
+                        (format "ALTER LOGIN %s WITH PASSWORD = N'%s'" quoted-user escaped-password)
+                        (format "IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '%s') CREATE USER %s FOR LOGIN %s"
+                                escaped-username quoted-user quoted-user)
+                        (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA %s')"
+                                escaped-schema quoted-schema)
+                        ;; Least-privilege grant on the workspace's own schema (vs. the old GRANT
+                        ;; CONTROL, dropping EXECUTE, VIEW DEFINITION, REFERENCES, and re-grant rights):
+                        ;;   ALTER  - create/drop/sp_rename objects in the schema
+                        ;;   SELECT, INSERT, UPDATE, DELETE - full DML (SQL Server, unlike Postgres,
+                        ;;            does not confer DML from ALTER/ownership, so grant it explicitly)
+                        (format "GRANT ALTER, SELECT, INSERT, UPDATE, DELETE ON SCHEMA::%s TO %s"
+                                quoted-schema quoted-user)
+                        ;; db-level CREATE TABLE: SELECT INTO (transform materialization) needs it too
+                        (format "GRANT CREATE TABLE TO %s" quoted-user)]]
+             (.addBatch ^Statement stmt ^String sql))
+           (.executeBatch ^Statement stmt))))
+      (catch Throwable t
+        (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password escaped-password]))))
+    nil))
+
+(defmethod driver/destroy-workspace-isolation! :sqlserver
+  [driver database workspace]
+  (let [schema-name      (:schema workspace)
+        username         (-> workspace :database_details :user)
+        escaped-schema   (sql.u/escape-sql schema-name :ansi)
+        escaped-username (sql.u/escape-sql username :ansi)
+        quoted-schema    (quote-schema schema-name)
+        quoted-user      (quote-field username)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver (driver.u/ensure-lib-database database) {:write? true}
+     (fn [^Connection conn]
+       (with-open [^Statement stmt (.createStatement conn)]
+         ;; mssql-jdbc runs the whole batch in one T-SQL scope, so DECLAREd
+         ;; variable names must be unique across the batch entries.
+         (doseq [sql [;; Table names come from the warehouse. QUOTENAME puts each schema name and table name in
+                      ;; brackets and escapes any `]` in it.
+                      (format (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
+                                   "SELECT @drop_tables_sql += 'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + '; ' "
+                                   "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
+                                   "EXEC sp_executesql @drop_tables_sql")
+                              escaped-schema)
+                      (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA %s"
+                              escaped-schema quoted-schema)
+                      (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER %s"
+                              escaped-username quoted-user)
+                      ;; Kill all sessions using this login before dropping it
+                      (format (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
+                                   "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                                   "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
+                                   "EXEC sp_executesql @kill_sessions_sql")
+                              escaped-username)
+                      (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN %s"
+                              escaped-username quoted-user)]]
+           (.addBatch ^Statement stmt ^String sql))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/batch-exception t)))))))))
+
+(defmethod driver/grant-workspace-read-access! :sqlserver
+  [driver database workspace schemas]
+  (let [username (-> workspace :database_details :user)
+        db-name  (:db (:details database))]
+    (when-not username
+      (throw (ex-info (tru "Cannot grant workspace read access. Workspace details have no read user — initialization may have failed. Re-run workspace initialization and retry.")
+                      {:workspace-id (:id workspace) :step :grant})))
+    (when (str/blank? db-name)
+      (throw (ex-info (tru "Cannot grant workspace read access. SQL Server connection details must include a ''db'' (database name). Set it in the database connection and retry.")
+                      {:database-id (:id database) :step :grant})))
+    ;; SQL Server connection is bound to one DB (`:db` in details). Per-schema
+    ;; grant: SELECT on the schema covers existing + future objects within it.
+    (let [quoted-user (quote-field username)]
+      (doseq [schema schemas]
+        (when (str/blank? schema)
+          (throw (ex-info (tru "Cannot grant workspace read access. Input schema name is blank. Remove the blank entry from the workspace input schemas and retry.")
+                          {:database-id (:id database) :step :grant}))))
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver (driver.u/ensure-lib-database database) {:write? true}
+       (fn [^Connection conn]
+         (with-open [^Statement stmt (.createStatement conn)]
+           (doseq [schema schemas]
+             (.addBatch ^Statement stmt
+                        ^String (format "GRANT SELECT ON SCHEMA::%s TO %s"
+                                        (quote-schema schema)
+                                        quoted-user)))
+           (try
+             (.executeBatch ^Statement stmt)
+             (catch Throwable t
+               (throw (driver.u/batch-exception t))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Indexes (Index Manager)                                               |

@@ -19,8 +19,8 @@ Before people can send alerts to a webhook, an admin or someone with [settings a
 
 To create a webhook:
 
-1. Click the **grid** icon in top right corner and select **Admin**.
-2. In the Admin console, go **Settings > Webhooks**.
+1. Click the **grid** icon in the top right corner and select **Admin**.
+2. In the Admin console, go to **Settings > Webhooks**.
 3. In **Webhooks for alerts**, click **Add a webhook**.
 4. Metabase will show you a short form to fill out:
 
@@ -41,7 +41,7 @@ Metabase will send the "attached" visualization as a base64-encoded PNG in the `
 
 ![The encoded PNG chart](./images/payload-chart.png)
 
-And the data as seen in the table view, which Metabase will send as a `raw_data`.
+And the data as seen in the table view, which Metabase will send as `raw_data`.
 
 ![Results as table view](./images/table-view.png)
 

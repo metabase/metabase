@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { type ReactNode, useMemo, useState } from "react";
 import { useMount } from "react-use";
 
@@ -7,12 +8,11 @@ import { useEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-
 import { useGetGuestEmbedSignedToken } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-get-guest-embed-signed-token";
 import { useIsSsoEnabledAndConfigured } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-is-sso-enabled-and-configured";
 import { shouldAllowPreviewAndNavigation } from "metabase/embedding/embedding-iframe-sdk-setup/utils/should-allow-preview-and-navigation";
-import {
-  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
-  type SdkIframeEmbedSetupModalInitialState,
-} from "metabase/plugins";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
+import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
 
+import { EMBED_STEPS } from "../constants";
 import {
   SdkIframeEmbedSetupContext,
   type SdkIframeEmbedSetupContextType,
@@ -43,10 +43,14 @@ export const SdkIframeEmbedSetupProvider = ({
   const isSimpleEmbedFeatureAvailable =
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled();
 
-  const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
-  const isSimpleEmbeddingTermsAccepted = !useSetting("show-simple-embed-terms");
+  // One setting backs both since 0.65.0; only the terms they gate still differ.
+  const isModularEmbeddingEnabled = useSetting("enable-embedding-modular");
+  const isSimpleEmbeddingEnabled = isModularEmbeddingEnabled;
+  const isGuestEmbedsEnabled = isModularEmbeddingEnabled;
 
-  const isGuestEmbedsEnabled = useSetting("enable-embedding-static");
+  const isSimpleEmbeddingTermsAccepted = !useSetting(
+    "show-modular-embed-terms",
+  );
   const isGuestEmbedsTermsAccepted = !useSetting("show-static-embed-terms");
 
   const isSsoEnabledAndConfigured = useIsSsoEnabledAndConfigured();
@@ -73,19 +77,6 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const modelCount = searchData?.total ?? 0;
 
-  // Default to the embed options step if both resource type and id are provided.
-  // This is to skip the experience and resource selection steps as we know both.
-  const defaultStep: SdkIframeEmbedSetupStep = useMemo(() => {
-    if (!!initialState?.resourceType && !!initialState?.resourceId) {
-      return "select-embed-options";
-    }
-
-    return "select-embed-experience";
-  }, [initialState]);
-
-  const [currentStep, setCurrentStep] =
-    useState<SdkIframeEmbedSetupStep>(defaultStep);
-
   const {
     settings,
     defaultSettings,
@@ -101,6 +92,27 @@ export const SdkIframeEmbedSetupProvider = ({
     isGuestEmbedsEnabled,
     isSsoEnabledAndConfigured,
   });
+
+  const defaultStep: SdkIframeEmbedSetupStep = useMemo(() => {
+    if (initialState?.resourceType && initialState.resourceId) {
+      // When the resources are already pre-selected,
+      // start at the options step when the experience supports it.
+      const selectOptionsStep = EMBED_STEPS.find(
+        (step) =>
+          step.id === "select-embed-options" &&
+          !step.excludedExperiences?.includes(defaultSettings.experience),
+      );
+
+      if (selectOptionsStep) {
+        return selectOptionsStep.id;
+      }
+    }
+
+    return "select-embed-experience";
+  }, [initialState, defaultSettings.experience]);
+
+  const [currentStep, setCurrentStep] =
+    useState<SdkIframeEmbedSetupStep>(defaultStep);
 
   // Which embed experience are we setting up?
   const experience = useMemo(

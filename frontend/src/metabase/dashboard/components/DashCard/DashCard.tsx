@@ -2,11 +2,15 @@ import cx from "classnames";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useMount, useUpdateEffect } from "react-use";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { addParameter, duplicateCard } from "metabase/dashboard/actions";
+import {
+  addParameter,
+  duplicateCard,
+  getNewCardUrlFromDashboard,
+} from "metabase/dashboard/actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
@@ -14,9 +18,9 @@ import {
   getDashcardResultsError,
   isDashcardLoading,
 } from "metabase/dashboard/utils";
-import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { getMetadata } from "metabase/metadata-store";
+import EmbedFrameS from "metabase/embedding/theme.module.css";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
@@ -34,7 +38,6 @@ import {
   extendCardWithDashcardSettings,
   getVisualizationRaw,
 } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   DashCardId,
@@ -51,7 +54,10 @@ import {
 import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
 import { DashCardVisualization } from "./DashCardVisualization";
-import type { DashCardOnChangeCardAndRunHandler } from "./types";
+import type {
+  DashCardGetCardHref,
+  DashCardOnChangeCardAndRunHandler,
+} from "./types";
 import { useAutoScrollIntoView } from "./use-auto-scroll-into-view";
 
 function preventDragging(event: React.SyntheticEvent) {
@@ -128,6 +134,11 @@ function DashCardInner({
   const getHref = useCallback(
     () => getDashcardHref(store.getState(), dashcard.id),
     [store, dashcard.id],
+  );
+  const getCardHref = useCallback<DashCardGetCardHref>(
+    (opts) =>
+      getNewCardUrlFromDashboard(store.getState(), { ...opts, dashcard }),
+    [store, dashcard],
   );
   const [isPreviewingCard, setIsPreviewingCard] = useState(!dashcard.justAdded);
   const cardRootRef = useRef<HTMLDivElement>(null);
@@ -338,12 +349,10 @@ function DashCardInner({
     ? onEditVisualizationClick
     : undefined;
 
-  const metadata = useSelector(getMetadata);
-  const question = useMemo(() => {
-    return isQuestionCard(dashcard.card)
-      ? new Question(dashcard.card, metadata)
-      : null;
-  }, [dashcard.card, metadata]);
+  const question =
+    useQuestionFromCard(
+      isQuestionCard(dashcard.card) ? dashcard.card : undefined,
+    ) ?? null;
 
   return (
     <ErrorBoundary>
@@ -404,7 +413,6 @@ function DashCardInner({
         <DashCardVisualization
           dashcard={dashcard}
           question={question}
-          metadata={metadata}
           series={series}
           gridSize={gridSize}
           gridItemWidth={gridItemWidth}
@@ -413,6 +421,7 @@ function DashCardInner({
           expectedDuration={expectedDuration}
           error={error}
           getHref={navigateToNewCardFromDashboard ? getHref : undefined}
+          getCardHref={navigateToNewCardFromDashboard ? getCardHref : undefined}
           isAction={isAction}
           isEditingDashCardClickBehavior={isEditingDashCardClickBehavior}
           isEditingDashboardLayout={isEditingDashboardLayout}

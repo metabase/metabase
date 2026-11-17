@@ -3,62 +3,47 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [java-time.api :as t]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
-(defn table
+(def ^:private Temporal
+  "A `java.time` instant, date, or date-time."
+  [:fn #(instance? java.time.temporal.Temporal %)])
+
+(mu/defn table
   "The Table with `table-id`, or nil."
-  [table-id]
+  [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
-(defn source-card-metadata
-  "The entity id, result metadata, and type of the Card with `card-id`, or nil."
-  [card-id]
-  (t2/select-one [:model/Card :entity_id :result_metadata :type :card_schema] :id card-id))
-
-(defn dashcard-series-exists?
+(mu/defn dashcard-series-exists?
   "Whether the Card with `card-id` is a series of the DashboardCard with `dashcard-id`."
-  [card-id dashcard-id]
+  [card-id     :- [:maybe ::lib.schema.id/card]
+   dashcard-id :- [:maybe ::lib.schema.id/dashcard]]
   (t2/exists? :model/DashboardCardSeries :card_id card-id :dashboardcard_id dashcard-id))
 
-(defn cache-entry
-  "`row-fn` applied to the results and updated-at of the QueryCache entry for `query-hash`, or nil."
-  [row-fn query-hash]
-  (t2/select-one-fn row-fn [:model/QueryCache :results :updated_at] :query_hash query-hash))
+(mu/defn insert-query-executions!
+  "Insert the QueryExecution `rows`. Runs in its own (possibly nested) transaction so that if the app DB rejects a
+  row, the failure is rolled back to a savepoint instead of aborting a caller's enclosing transaction."
+  [rows :- [:sequential
+            ::queries.schema/query-execution.update]]
+  (t2/with-transaction [_conn]
+    (t2/insert! :model/QueryExecution rows)))
 
-(defn claim-cache-refresh-lease!
-  "Set `refresh_started_at` of the QueryCache entry for `query-hash` to `started-at` if its lease (defaulting to
-  `lease-free-sentinel`) is older than `lease-cutoff`, returning the number of rows updated."
-  [query-hash lease-free-sentinel lease-cutoff started-at]
-  (t2/update! (t2/table-name :model/QueryCache)
-              {:query_hash                                         query-hash
-               [:coalesce :refresh_started_at lease-free-sentinel] [:< lease-cutoff]}
-              {:refresh_started_at started-at}))
-
-(defn delete-cache-entry!
-  "Delete the QueryCache entry for `query-hash`."
-  [query-hash]
-  (t2/delete! (t2/table-name :model/QueryCache) :query_hash query-hash))
-
-(defn delete-cache-entries-updated-before!
-  "Delete the QueryCache entries last updated at or before `updated-before`."
-  [updated-before]
-  (t2/delete! (t2/table-name :model/QueryCache) :updated_at [:<= updated-before]))
-
-(defn insert-query-executions!
-  "Insert the QueryExecution `rows`."
-  [rows]
-  (t2/insert! :model/QueryExecution rows))
-
-(defn set-card-result-metadata!
+(mu/defn set-card-result-metadata!
   "Set the result metadata of the Card with `card-id` without touching `updated_at`."
-  [card-id result-metadata]
-  (t2/update! :model/Card card-id {:result_metadata result-metadata
-                                   :updated_at      :updated_at}))
+  [card-id         :- ::lib.schema.id/card
+   result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
+  (t2/update! :model/Card :id card-id {:result_metadata result-metadata
+                                       :updated_at      :updated_at}))
 
-(defn update-cards-last-used-at!
+(mu/defn update-cards-last-used-at!
   "Move `last_used_at` of each Card in `card-id->timestamp` forward to its timestamp, without touching `updated_at`."
-  [card-id->timestamp]
+  [card-id->timestamp :- [:map-of ::lib.schema.id/card Temporal]]
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log leaves out usage stats
   (t2/query {:update [(t2/table-name :model/Card)]
              :where  [:in :id (keys card-id->timestamp)]
              :set    {:last_used_at (into [:case]
@@ -67,7 +52,7 @@
                                                   card-id->timestamp))
                       :updated_at :updated_at}}))
 
-(defn card-database-ids
-  "The `:id`, `:database_id`, and `:card_schema` of the Cards with `card-ids`."
-  [card-ids]
-  (t2/select [:model/Card :id :database_id :card_schema] :id [:in card-ids]))
+(mu/defn card-database-ids
+  "The `:id` and `:database_id` of the Cards with `card-ids`."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select [:model/Card :id :database_id] :id [:in card-ids]))

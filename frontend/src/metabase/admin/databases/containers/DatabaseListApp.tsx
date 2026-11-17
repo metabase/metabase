@@ -1,14 +1,16 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { useEffect, useMemo, useState } from "react";
 
+import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
 import {
   useAddSampleDatabaseMutation,
   useListDatabasesQuery,
+  useListEnginesQuery,
 } from "metabase/api";
 import { LoadingAndGenericErrorWrapper } from "metabase/common/components/LoadingAndGenericErrorWrapper";
 import { getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { useSetting } from "metabase/settings";
 import { isSyncInProgress } from "metabase/utils/syncing";
 
 import { DatabaseList } from "../components/DatabaseList";
@@ -22,14 +24,17 @@ export const DatabaseListApp = (props: DatabaseListAppProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const deletes = useSelector(getDeletes);
   const deletionError = useSelector(getDeletionError);
-  const engines = useSetting("engines");
+  const { data: engines = {} } = useListEnginesQuery();
 
   const [addSampleDb, addSampleDbResult] = useAddSampleDatabaseMutation();
 
   const [pollingInterval, setPollingInterval] = useState<number>();
 
   const databasesReq = useListDatabasesQuery(
-    PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps,
+    {
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps,
+      include_stubs: true,
+    },
     { pollingInterval },
   );
 
@@ -41,22 +46,24 @@ export const DatabaseListApp = (props: DatabaseListAppProps) => {
   }, [isSyncing]);
 
   return (
-    <LoadingAndGenericErrorWrapper
-      loading={databasesReq.isLoading}
-      error={databasesReq.error}
-      noWrapper
-    >
-      <DatabaseList
-        {...props}
-        databases={dbs}
-        addSampleDatabase={addSampleDb}
-        isAddingSampleDatabase={addSampleDbResult.isLoading}
-        addSampleDatabaseError={addSampleDbResult.isError}
-        engines={engines}
-        deletes={deletes}
-        deletionError={deletionError}
-        isAdmin={isAdmin}
-      />
-    </LoadingAndGenericErrorWrapper>
+    <AdminSettingsLayout>
+      <LoadingAndGenericErrorWrapper
+        loading={databasesReq.isLoading}
+        error={databasesReq.error}
+        noWrapper
+      >
+        <DatabaseList
+          {...props}
+          databases={dbs}
+          addSampleDatabase={addSampleDb}
+          isAddingSampleDatabase={addSampleDbResult.isLoading}
+          addSampleDatabaseError={addSampleDbResult.isError}
+          engines={engines}
+          deletes={deletes}
+          deletionError={deletionError}
+          isAdmin={isAdmin}
+        />
+      </LoadingAndGenericErrorWrapper>
+    </AdminSettingsLayout>
   );
 };

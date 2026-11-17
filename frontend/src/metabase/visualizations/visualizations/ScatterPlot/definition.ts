@@ -8,6 +8,7 @@ import {
   GRAPH_DATA_SETTINGS,
   GRAPH_GOAL_SETTINGS,
   GRAPH_TREND_SETTINGS,
+  LEGEND_POSITION_SETTINGS,
   SPLIT_PANELS_SETTINGS,
   TIMELINE_EVENTS_SETTINGS,
   TOOLTIP_SETTINGS,
@@ -23,8 +24,9 @@ const ScatterViz: Omit<
   getUiName: () => t`Scatter`,
   identifier: "scatter",
   iconName: "bubble",
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  noun: t`scatter plot`,
+  get noun() {
+    return t`scatter plot`;
+  },
   minSize: getMinSize("scatter"),
   defaultSize: getDefaultSize("scatter"),
   settings: {
@@ -33,6 +35,7 @@ const ScatterViz: Omit<
     ...GRAPH_TREND_SETTINGS,
     ...GRAPH_COLORS_SETTINGS,
     ...GRAPH_AXIS_SETTINGS,
+    ...LEGEND_POSITION_SETTINGS,
     ...GRAPH_DATA_SETTINGS,
     ...SPLIT_PANELS_SETTINGS,
     ...TOOLTIP_SETTINGS,

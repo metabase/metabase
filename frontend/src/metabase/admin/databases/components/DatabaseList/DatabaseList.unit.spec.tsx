@@ -1,24 +1,41 @@
-import { render, screen } from "__support__/ui";
-import { createMockDatabase } from "metabase-types/api/mocks";
+import { setupEnginesEndpoint } from "__support__/server-mocks";
+import { renderWithProviders, screen } from "__support__/ui";
+import {
+  createMockDatabase,
+  createMockEngines,
+} from "metabase-types/api/mocks";
 
 import { DatabaseList } from "./DatabaseList";
 
 const CREATE_SAMPLE_DATABASE_BUTTON_LABEL = "Bring the sample database back";
 
 interface SetupOpts {
-  isSampleDb: boolean;
+  isSampleDb?: boolean;
+  isStub?: boolean;
   isAdmin: boolean;
 }
 
-async function setup({ isSampleDb, isAdmin }: SetupOpts) {
-  const databases = [createMockDatabase({ is_sample: isSampleDb })];
+async function setup({
+  isSampleDb = false,
+  isStub = false,
+  isAdmin,
+}: SetupOpts) {
+  const databases = [
+    createMockDatabase({
+      engine: "postgres",
+      is_sample: isSampleDb,
+      is_stub: isStub,
+    }),
+  ];
+  const engines = createMockEngines();
+  setupEnginesEndpoint(engines);
 
-  render(
+  renderWithProviders(
     <DatabaseList
       databases={databases}
       isAdmin={isAdmin}
       deletes={[]}
-      engines={{}}
+      engines={engines}
       addSampleDatabase={() => {}}
       deletionError={false}
       isAddingSampleDatabase={false}
@@ -42,6 +59,34 @@ describe("DatabaseListApp", () => {
     expect(
       screen.queryByText(CREATE_SAMPLE_DATABASE_BUTTON_LABEL),
     ).not.toBeInTheDocument();
+  });
+
+  it("marks stub databases as stubbed", async () => {
+    await setup({ isStub: true, isAdmin: true });
+
+    expect(screen.getByText("Stubbed")).toBeInTheDocument();
+  });
+
+  it("links each database to its admin page", async () => {
+    await setup({ isAdmin: true });
+
+    expect(screen.getByRole("link", { name: "Database" })).toHaveAttribute(
+      "href",
+      "/admin/databases/1",
+    );
+  });
+
+  it("does not mark regular databases as stubbed", async () => {
+    await setup({ isAdmin: true });
+
+    expect(screen.queryByText("Stubbed")).not.toBeInTheDocument();
+  });
+
+  it("shows each database's engine and the date it was added", async () => {
+    await setup({ isAdmin: true });
+
+    expect(await screen.findByText("PostgreSQL")).toBeInTheDocument();
+    expect(screen.getByText("Added January 1, 2015")).toBeInTheDocument();
   });
 
   it("does not show restore sample database button to non-admins", async () => {

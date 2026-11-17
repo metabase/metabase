@@ -1,20 +1,17 @@
 import _ from "underscore";
 
 import { trackSimpleEvent } from "metabase/analytics";
-import type {
-  SdkIframeEmbedSettingKey,
-  SdkIframeEmbedSettings,
-} from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import { getAuthSubTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-sub-type-for-settings";
 import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
+import type { SdkIframeEmbedSettingKey } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import { countEmbeddingParameterOptions } from "metabase/embedding/lib/count-embedding-parameter-options";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
-import type { Card, Dashboard, EmbeddingParameters } from "metabase-types/api";
-
 import type {
   SdkIframeEmbedSetupExperience,
-  SdkIframeEmbedSetupSettings,
-} from "./types";
+  SdkIframeEmbedSetupModalInitialState,
+} from "metabase/embedding/types";
+import type { Card, Dashboard, EmbeddingParameters } from "metabase-types/api";
+
+import type { SdkIframeEmbedSetupSettings } from "./types";
 import {
   getDefaultSdkIframeEmbedSettings,
   getResourceIdFromSettings,
@@ -104,8 +101,9 @@ export const trackEmbedWizardResourceSelectionCompleted = ({
   });
 };
 
-const getEmbedSettingsToCompare = (settings: Partial<SdkIframeEmbedSettings>) =>
-  _.omit(_.omit(settings, ...EMBED_SETTINGS_TO_IGNORE), _.isUndefined);
+const getEmbedSettingsToCompare = (
+  settings: Partial<SdkIframeEmbedSetupSettings>,
+) => _.omit(_.omit(settings, ...EMBED_SETTINGS_TO_IGNORE), _.isUndefined);
 
 export const trackEmbedWizardOptionsCompleted = ({
   experience,
@@ -215,13 +213,14 @@ const buldEventDetailsPartsForGuestEmbedResource = ({
 ];
 
 const buildEventDetailsPartsForSettings = (
-  settings: Partial<SdkIframeEmbedSettings>,
+  settings: Partial<SdkIframeEmbedSetupSettings>,
 ) => {
   const options: string[] = [];
 
   for (const _optionKey in settings) {
     // Unjustified type cast. FIXME
-    const optionKey = _optionKey as keyof SdkIframeEmbedSettings;
+    const optionKey = _optionKey as keyof SdkIframeEmbedSetupSettings &
+      SdkIframeEmbedSettingKey;
 
     if (!EMBED_SETTINGS_TO_TRACK.includes(optionKey)) {
       continue;

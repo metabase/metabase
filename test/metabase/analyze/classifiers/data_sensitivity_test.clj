@@ -9,7 +9,7 @@
    (infer field-name base-type nil nil))
   ([field-name base-type semantic-type table-context]
    (classifiers.data-sensitivity/infer-data-sensitivity
-    {:name field-name :base_type base-type :semantic_type semantic-type}
+    {:id 1 :name field-name :base_type base-type :semantic_type semantic-type}
     table-context)))
 
 (deftest ^:parallel name->tokens-test
@@ -230,7 +230,8 @@
 (deftest ^:parallel fingerprint-rule-test
   (let [infer-fp (fn [base-type percent-email]
                    (classifiers.data-sensitivity/infer-data-sensitivity
-                    {:name        "col_7"
+                    {:id          1
+                     :name        "col_7"
                      :base_type   base-type
                      :fingerprint {:type {:type/Text {:percent-email percent-email}}}}
                     nil))]

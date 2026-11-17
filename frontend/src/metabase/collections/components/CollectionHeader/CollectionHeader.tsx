@@ -1,9 +1,13 @@
+import type { JSX } from "react";
+
 import { useUpdateCollectionMutation } from "metabase/api";
+import type { CollectionTypeFilterModel } from "metabase/collections/components/CollectionContent/constants";
 import {
   isInstanceAnalyticsCollection,
   isLibraryCollection,
   isTrashedCollection,
 } from "metabase/common/collections/utils";
+import { PLUGIN_AUDIT } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 import type { Collection, UpdateCollectionRequest } from "metabase-types/api";
 
@@ -11,7 +15,6 @@ import { CollectionMenu } from "../CollectionMenu";
 
 import CollectionBookmark from "./CollectionBookmark";
 import { CollectionCaption } from "./CollectionCaption";
-import { CollectionExportAnalytics } from "./CollectionExportAnalytics";
 import S from "./CollectionHeader.module.css";
 import { CollectionInfoSidebarToggle } from "./CollectionInfoSidebarToggle";
 import { CollectionNewButton } from "./CollectionNewButton";
@@ -28,6 +31,7 @@ export interface CollectionHeaderProps {
   canUpload: boolean;
   uploadsEnabled: boolean;
   onSaveFile: (file: File) => void;
+  onFilterByType?: (model: CollectionTypeFilterModel) => void;
 }
 
 export const CollectionHeader = ({
@@ -39,6 +43,7 @@ export const CollectionHeader = ({
   onSaveFile,
   canUpload,
   uploadsEnabled,
+  onFilterByType,
 }: CollectionHeaderProps): JSX.Element => {
   const [updateCollection] = useUpdateCollectionMutation();
 
@@ -96,7 +101,7 @@ export const CollectionHeader = ({
           {showTimelinesButton && (
             <CollectionTimeline collection={collection} />
           )}
-          {showExportButton && <CollectionExportAnalytics />}
+          {showExportButton && <PLUGIN_AUDIT.CollectionExportAnalytics />}
           {isInstanceAnalytics && (
             <CollectionPermissions collection={collection} />
           )}
@@ -109,6 +114,7 @@ export const CollectionHeader = ({
           <CollectionInfoSidebarToggle
             collection={collection}
             onUpdateCollection={handleUpdateCollection}
+            onFilterByType={onFilterByType}
           />
           {showCollectionMenu && (
             <CollectionMenu

@@ -71,7 +71,7 @@ module.exports = {
               },
               sourceMaps: false,
               minify: false,
-              env: { targets: ["defaults"] },
+              env: {},
             },
           },
         ],

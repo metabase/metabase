@@ -9,7 +9,6 @@
              [me.flowthing.pp :as pp]
              [metabase.config.core :as config]
              [clojure.pprint :as pprint]
-             ^{:clj-kondo/ignore [:discouraged-namespace]}
              [metabase.util.jvm :as u.jvm]
              [metabase.util.string :as u.str]
              [potemkin :as p]
@@ -20,13 +19,13 @@
    [clojure.data :refer [diff]]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [flatland.ordered.map :refer [ordered-map]]
    [medley.core :as m]
    [metabase.util.format :as u.format]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
    [metabase.util.namespaces :as u.ns]
    [metabase.util.number :as u.number]
@@ -106,6 +105,19 @@
                          :clj  'Throwable)
                       ~'_)))
 
+(defn run-each!
+  "Call each thunk in `steps`, a sequence of `[label thunk]` pairs, in order, whether or not an earlier one throws.
+  Returns the `[label exception]` pairs of the thunks that threw, in order, or an empty vector."
+  [steps]
+  (into []
+        (keep (fn [[label thunk]]
+                (try
+                  (thunk)
+                  nil
+                  (catch #?(:clj Throwable :cljs :default) e
+                    [label e]))))
+        steps))
+
 (defn strip-error
   "Transforms the error in a list of strings to log"
   ([e]
@@ -180,11 +192,8 @@
 (defn recursive-map-keys
   "Recursively replace the keys in a map with the value of `(f key)`."
   [f m]
-  (walk/postwalk
-   #(if (map? %)
-      (m/map-keys f %)
-      %)
-   m))
+  (match/replace-all m
+    #'map? (m/map-keys f &match)))
 
 (defn trimmed-string
   "`value` trimmed of surrounding whitespace, or nil when it is not a string or has nothing left once trimmed."
@@ -486,7 +495,7 @@
     (round-to-decimals 2 35.5058998M) -> 35.51"
   ^Double [^Integer decimal-place, ^Number number]
   {:pre [(integer? decimal-place) (number? number)]}
-  #?(:clj  (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP))
+  #?(:clj  (double (.setScale (bigdec number) decimal-place java.math.RoundingMode/HALF_UP))
      :cljs (parse-double (.toFixed number decimal-place))))
 
 (defn real-number?
@@ -547,7 +556,7 @@
   replaced with underscores in order to support languages that don't use the Latin alphabet; see metabase#3818).
 
   Optionally specify `:max-length` which will truncate the slug after that many characters."
-  (^String [^String s]
+  (^String [^String s :- [:maybe :string]]
    (slugify s {}))
   (^String [s :- [:maybe :string]
             {:keys [max-length unicode?]} :- [:maybe
@@ -599,8 +608,18 @@
       (throw (error (tru "Not something with an ID: {0}" (pr-str object-or-id))))))
 
 (def ^java.util.regex.Pattern uuid-regex
-  "A regular expression for matching canonical string representations of UUIDs."
+  "A regular expression for matching canonical lowercase string representations of UUIDs."
   #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")
+
+(defn uuid-string?
+  "True if `s` is a string in the canonical 8-4-4-4-12 hex form of a UUID, in either case."
+  [s]
+  ;; On the JVM, `parse-uuid` and `UUID/fromString` accept any five dash-separated groups of hex digits.
+  ;; Case is ignored because some callers check values that users type, such as ClickHouse filter values.
+  ;; Checking the length first avoids lower-casing long input.
+  (boolean (and (string? s)
+                (= 36 (count s))
+                (re-matches uuid-regex (lower-case-en s)))))
 
 (defn one-or-many
   "Wraps a single element in a sequence; returns sequences as-is. In lots of situations we'd like to accept either a
@@ -664,9 +683,13 @@
      (select-non-nil-keys {:a 100, :b nil} #{:a :b :c})
      ;; -> {:a 100}"
   [m ks]
-  (into {} (for [k     ks
-                 :when (some? (get m k))]
-             {k (get m k)})))
+  (persistent!
+   (reduce (fn [acc k]
+             (let [v (get m k)]
+               (cond-> acc
+                 (some? v) (assoc! k v))))
+           (transient {})
+           ks)))
 
 (defn select-keys-when
   "Returns a map that only contains keys that are either `:present` or `:non-nil`. Combines behavior of `select-keys`
@@ -805,13 +828,12 @@
             pprint-to-str)
      :cljs pprint-to-str))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *profile-level*
   "Impl for `profile` macro -- don't use this directly. Nesting-level for the `profile` macro e.g. 0 for a top-level
   `profile` form or 1 for a form inside that."
   0)
 
-;; only called from `profile` macroexpansions, so clojure-lsp sees no usage
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn -profile-print-time
   "Impl for [[profile]] macro -- don't use this directly. Prints the `___ took ___` message at the conclusion of a
   [[profile]]d form."
@@ -915,19 +937,6 @@
 #?(:clj (defn- regexp? [x]
           (instance? java.util.regex.Pattern x)))
 
-(derive :dispatch-type/nil        :dispatch-type/*)
-(derive :dispatch-type/boolean    :dispatch-type/*)
-(derive :dispatch-type/string     :dispatch-type/*)
-(derive :dispatch-type/keyword    :dispatch-type/*)
-(derive :dispatch-type/number     :dispatch-type/*)
-(derive :dispatch-type/integer    :dispatch-type/number)
-(derive :dispatch-type/map        :dispatch-type/*)
-(derive :dispatch-type/sequential :dispatch-type/*)
-(derive :dispatch-type/set        :dispatch-type/*)
-(derive :dispatch-type/symbol     :dispatch-type/*)
-(derive :dispatch-type/fn         :dispatch-type/*)
-(derive :dispatch-type/regex      :dispatch-type/*)
-
 (defn dispatch-type-keyword
   "In Cljs `(type 1) is `js/Number`, but `(isa? 1 js/Number)` isn't truthy, so dispatching off of [[clojure.core/type]]
   doesn't really work the way we'd want. Also, type names are different between Clojure and ClojureScript.
@@ -935,12 +944,9 @@
   This function exists as a workaround: use it as a multimethod dispatch function for Cljc multimethods that would
   have dispatched on `type` if they were written in pure Clojure.
 
-  Returns `:dispatch-type/*` if there is no mapping for the current type, but you can add more as needed if
-  appropriate. All type keywords returned by this method also derive from `:dispatch-type/*`, meaning you can write an
-  implementation for `:dispatch-type/*` and use it as a fallback method.
+  Returns `:dispatch-type/unknown` for a type it does not classify.
 
-  Think of `:dispatch-type/*` as similar to how you would use `Object` if you were dispatching
-  off of `type` in pure Clojure."
+  There is no hierarchy relating these keywords, so a catch-all method has to be `:default`."
   [x]
   (cond
     (nil? x)              :dispatch-type/nil
@@ -956,7 +962,7 @@
     (fn? x)               :dispatch-type/fn
     (regexp? x)           :dispatch-type/regex
     ;; we should add more mappings here as needed
-    :else                 :dispatch-type/*))
+    :else                 :dispatch-type/unknown))
 
 (defn assoc-dissoc
   "Called like `(assoc m k v)`, this does [[assoc]] if `(some? v)`, and [[dissoc]] if not.
@@ -1320,7 +1326,7 @@
    Returns the number of items processed."
   [proc reducible]
   (let [cnt (volatile! 0)]
-    (reduce (fn [_ item] (vswap! cnt inc) (proc item)) nil reducible)
+    (run! (fn [item] (vswap! cnt inc) (proc item)) reducible)
     @cnt))
 
 (defn generate-nano-id

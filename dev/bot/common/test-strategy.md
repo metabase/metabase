@@ -42,5 +42,5 @@ Search for existing tests of the buggy function/component first — add to the e
 ### Running tests
 
 - **Backend**: `./bin/test-agent :only '[metabase.foo-test/issue-12345-test]'`
-- **Frontend unit**: `bun run test-unit-keep-cljs path/to/file.unit.spec.ts`
+- **Frontend unit**: `bun run test-unit-keep-cljs --testPathPatterns=path/to/file.unit.spec.ts`
 - **Cypress**: `npx cypress run --spec e2e/test/scenarios/category/file.cy.spec.ts`

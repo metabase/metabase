@@ -21,6 +21,7 @@ interface RunQuestionQueryParams {
   signal?: AbortSignal;
   dispatch: Dispatch;
   initialVisualization?: QueryVisualizationDisplayType;
+  ignoreCache?: boolean;
 }
 
 export async function runQuestionQuerySdk(
@@ -35,6 +36,7 @@ export async function runQuestionQuerySdk(
     signal,
     dispatch,
     initialVisualization,
+    ignoreCache = false,
   } = params;
 
   if (question.isSaved()) {
@@ -92,7 +94,7 @@ export async function runQuestionQuerySdk(
       runQuestionQuery(question, {
         dispatch,
         signal,
-        ignoreCache: false,
+        ignoreCache,
         isDirty: isQueryDirty,
         token,
         ...(isGuestEmbed && {
@@ -146,7 +148,7 @@ export function shouldRunCardQuery({
   question: Question;
   isGuestEmbed: boolean | null;
 }): boolean {
-  // Questions fetched from `/api/embed/*` endpoints have some fields missing, and it forces the this.legacyNativeQuery().canRun() to return `false`
+  // Questions fetched from `/api/embed/*` endpoints have some fields missing, and it forces question.canRun() to return `false`
   // To avoid it we just force-return true
   if (isGuestEmbed) {
     return true;

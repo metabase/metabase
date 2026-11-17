@@ -10,7 +10,6 @@ semantic_type: type/SerializedJSON
 dimensions: []
 preview_display: false
 position: 22
-custom_position: 0
 database_position: 22
 has_field_values: auto-list
 serdes/meta:

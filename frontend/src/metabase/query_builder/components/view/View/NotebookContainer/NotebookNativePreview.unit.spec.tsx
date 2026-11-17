@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupCardDashboardsEndpoint } from "__support__/server-mocks/card";
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockQueryBuilderState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";

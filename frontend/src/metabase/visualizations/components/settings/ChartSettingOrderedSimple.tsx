@@ -1,11 +1,10 @@
 import { arrayMove } from "@dnd-kit/sortable";
-import { updateIn } from "icepick";
 import { useCallback } from "react";
 import { t } from "ttag";
 
 import type { DragEndEvent } from "metabase/common/components/Sortable";
 import { Box } from "metabase/ui";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { isEmpty } from "metabase/utils/validate";
 import type { Series } from "metabase-types/api";
 
@@ -55,7 +54,9 @@ export const ChartSettingOrderedSimple = ({
         (item) => item.key === selectedItem.key,
       );
       onChange(
-        updateIn(orderedItems, [index, "enabled"], (enabled) => !enabled),
+        orderedItems.map((item, i) =>
+          i === index ? { ...item, enabled: !item.enabled } : item,
+        ),
       );
     },
     [orderedItems, onChange],
@@ -76,7 +77,7 @@ export const ChartSettingOrderedSimple = ({
 
   const getItemTitle = useCallback((item: SortableItem) => {
     if (isEmpty(item.name)) {
-      return NULL_DISPLAY_VALUE;
+      return getNullDisplayValue();
     }
 
     return item.name;

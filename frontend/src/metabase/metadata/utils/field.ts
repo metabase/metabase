@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { is_coerceable } from "cljs/metabase.types.core";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { getGlobalSettingsForColumn } from "metabase/viz-core";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isTypeFK, isa } from "metabase-lib/v1/types/utils/isa";
@@ -7,7 +8,6 @@ import type {
   Database,
   Field,
   FieldFormattingSettings,
-  FieldId,
   SchemaName,
   Table,
 } from "metabase-types/api";
@@ -46,14 +46,6 @@ export function canCoerceFieldType(field: Field): boolean {
   );
 }
 
-export function getRawTableFieldId(field: Field): FieldId {
-  if (typeof field.id !== "number") {
-    throw new Error("getRawFieldId supports only raw table fields");
-  }
-
-  return field.id;
-}
-
 export function getFieldCurrency(
   fieldSettings?: FieldFormattingSettings,
 ): string {
@@ -82,7 +74,7 @@ export function getFieldDisplayName(
     field.dimensions?.[0]?.name ||
     field.display_name ||
     getFieldRawName(field) ||
-    NULL_DISPLAY_VALUE;
+    getNullDisplayValue();
 
   if (table) {
     if (schema) {

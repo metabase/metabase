@@ -23,7 +23,9 @@ function DatabaseListContainer(props: DatabaseListContainerProps) {
   const { pathname } = useLocation();
   const previousPathname = usePrevious(pathname);
 
-  const { isFetching, error } = useListDatabasesQuery({ include: "tables" });
+  const { data, isFetching, error } = useListDatabasesQuery({
+    include: "tables",
+  });
 
   useEffect(() => {
     const pathnameChanged =
@@ -38,7 +40,11 @@ function DatabaseListContainer(props: DatabaseListContainerProps) {
       className={cx(CS.flexFull, CS.relative)}
       sidebar={<BaseSidebar />}
     >
-      <DatabaseList loading={isFetching} loadingError={error} />
+      <DatabaseList
+        entities={data?.data ?? []}
+        loading={isFetching}
+        loadingError={error}
+      />
     </SidebarLayout>
   );
 }

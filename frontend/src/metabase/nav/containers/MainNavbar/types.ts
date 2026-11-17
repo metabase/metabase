@@ -6,6 +6,7 @@ export interface MainNavbarOwnProps {
   location: Location;
   params: {
     slug?: string;
+    cardId?: string;
     pageId?: string;
   };
   dashboard?: StoreDashboard;

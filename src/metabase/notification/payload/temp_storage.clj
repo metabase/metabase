@@ -178,11 +178,11 @@
   [^StreamingTempFileStorage storage ^java.io.Writer w]
   (.write w (.toString storage)))
 
-(def ^:private ResidentBudget
+(def ResidentBudget
   "Shared mutable budget threaded across all of a notification's cards (created once per notification by
   [[make-resident-budget]]). `:resident` is an atom tracking the cells currently held in memory across cards;
   the rest are the cell limits used to decide when a query spills to disk. See [[should-spill?]]."
-  [:map
+  [:map {:closed true}
    [:resident       [:fn #(instance? clojure.lang.IAtom %)]]
    [:per-card     pos-int?]    ; spill a single query once it alone holds this many cells in memory
    [:resident-cap pos-int?]    ; once resident cells exceed this across cards, squeeze remaining queries down to `:floor`
@@ -190,10 +190,20 @@
 
 (def ^:private NotificationRffOptions
   "Options controlling how [[notification-rff]] decides when to spill to disk."
-  [:map
+  [:map {:closed true}
    ;; shared across a notification's cards so they can't collectively exhaust memory. A standalone query just passes its
    ;; own freshly-made budget.
    [:budget ResidentBudget]])
+
+(def ^:private FileContext
+  "A debugging label for the data [[notification-rff]] is storing: only ever `pr-str`'d into a log line or frozen
+  into a spill file's preamble, never read back by key."
+  [:map {:closed true}
+   [:dashboard_id {:optional true} [:maybe pos-int?]]
+   [:card_id      {:optional true} [:maybe pos-int?]]
+   [:dashcard_id  {:optional true} [:maybe pos-int?]]
+   [:card-id      {:optional true} [:maybe pos-int?]]
+   [:context      {:optional true} symbol?]])
 
 (defn make-resident-budget
   "Create a shared [[ResidentBudget]] for one notification. `limits` is a map of `:per-card`/`:resident-cap`/`:floor`
@@ -370,7 +380,8 @@
     in the temp file preamble and on the resulting StreamingTempFileStorage (for debugging)."
   ([options :- NotificationRffOptions]
    (notification-rff options {}))
-  ([options :- NotificationRffOptions file-context]
+  ([options :- NotificationRffOptions
+    file-context :- FileContext]
    (fn rff [metadata]
      ;; `row-storage` is OUR side storage for rows (it spills to disk); the query processor's reducing accumulator is
      ;; the `result` map, which we thread through untouched until completion - exactly like

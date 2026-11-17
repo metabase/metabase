@@ -90,18 +90,21 @@ describe("metabot > threading", () => {
     await enterChatMessage("Are you sure?");
     second.sendResponse();
     expect(await screen.findByText("Sure.")).toBeInTheDocument();
+    const secondReqBody = await lastReqBody(second);
 
     const agentSpy = mockAgentEndpoint({ events: [] });
     await enterChatMessage("Hi again!");
     const reqBody = await lastReqBody(agentSpy);
-    expect(reqBody?.parent_message_id).toBe("msg_second_turn");
+    expect(reqBody?.parent_message_id).toBe(
+      secondReqBody?.assistant_message_id,
+    );
   });
 
   it("should send the aborted turn's message id as parent_message_id on the next message", async () => {
     setup();
 
     const [pause] = createPauses(1);
-    mockAgentEndpoint({
+    const firstSpy = mockAgentEndpoint({
       stream: createMockSSEStream(
         (async function* () {
           yield { type: "start", messageId: "msg_aborted_turn" };
@@ -119,18 +122,19 @@ describe("metabot > threading", () => {
         screen.queryByTestId("metabot-stop-response"),
       ).not.toBeInTheDocument();
     });
+    const firstReqBody = await lastReqBody(firstSpy);
 
     const agentSpy = mockAgentEndpoint({ events: [] });
     await enterChatMessage("Nevermind, hi!");
     const reqBody = await lastReqBody(agentSpy);
-    expect(reqBody?.parent_message_id).toBe("msg_aborted_turn");
+    expect(reqBody?.parent_message_id).toBe(firstReqBody?.assistant_message_id);
   });
 
   it("should thread onto the prior successful turn after an errored turn is rewound", async () => {
     setup();
 
     // a first successful turn establishes the pointer to fall back to
-    mockAgentEndpoint({
+    const first = mockAgentEndpoint({
       events: [
         { type: "start", messageId: "msg_good_turn" },
         { type: "text-start", id: "t1" },
@@ -141,6 +145,7 @@ describe("metabot > threading", () => {
     });
     await enterChatMessage("first prompt");
     expect(await screen.findByText("First answer.")).toBeInTheDocument();
+    const firstReqBody = await lastReqBody(first);
 
     // a second turn fails at the stream level
     mockAgentEndpoint({ events: erroredResponse });
@@ -152,6 +157,6 @@ describe("metabot > threading", () => {
     const agentSpy = mockAgentEndpoint({ events: [] });
     await enterChatMessage("third prompt");
     const reqBody = await lastReqBody(agentSpy);
-    expect(reqBody?.parent_message_id).toBe("msg_good_turn");
+    expect(reqBody?.parent_message_id).toBe(firstReqBody?.assistant_message_id);
   });
 });

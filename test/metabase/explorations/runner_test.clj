@@ -15,7 +15,11 @@
    [metabase.metabot.self.claude]
    [metabase.metabot.usage]
    [metabase.permissions.core :as perms]
+   [metabase.queries.core :as queries]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [toucan2.core :as t2])
@@ -76,6 +80,14 @@
   [eq-id]
   (eqr/stored-results eq-id))
 
+(defn- preprocess-count
+  "Calls `thunk`, returning `[result number-of-preprocesses]`."
+  [thunk]
+  (let [calls (atom 0)
+        orig  (dynamic-redefs/original-fn #'qp.preprocess/preprocess)]
+    (dynamic-redefs/with-dynamic-fn-redefs [qp.preprocess/preprocess (fn [& args] (swap! calls inc) (apply orig args))]
+      [(thunk) @calls])))
+
 (deftest run-one-iteration-happy-path-test
   (testing "A pending row gets executed, the linked stored_result holds result_data, and status flips to done"
     (mt/with-temp [:model/User u {:email "happy@example.com"}
@@ -99,6 +111,26 @@
         (is (pos? (count (:result_data sr))))
         (is (= 1 (:row_count sr))
             "the QP's top-level :row_count (1 row for an unbucketed count) is persisted on the snapshot")))))
+
+(deftest run-one-iteration-stores-resolved-source-ids-on-the-stored-result-test
+  (let [venues-count (fn []
+                       (lib/->legacy-MBQL
+                        (let [mp (mt/metadata-provider)]
+                          (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                              (lib/aggregate (lib/count))))))]
+    (mt/with-temp [:model/User u {:email "sr-resolved-source-ids@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u) :dataset_query (venues-count)}]
+      (let [thread (temp-thread! (:id u))
+            row    (pending-query! (:id thread) (:id card) (venues-count))
+            _      (drain-until-terminal! (:id row))
+            sr     (stored-result-for (:id row))]
+        (testing "the stored result carries the resolved source ids its token was computed over"
+          (is (= {:table-ids #{(mt/id :venues)} :table-query-ids #{(mt/id :venues)}}
+                 (dissoc (:resolved_source_ids sr) :query-digest))))
+        (testing "the cached-result gate uses them rather than preprocessing the stored query"
+          (is (= [true 0]
+                 (request/with-current-user (mt/user->id :rasta)
+                   (preprocess-count #(queries/viewer-can-view-cached-result? sr))))))))))
 
 (deftest run-one-iteration-records-stored-result-use-test
   (testing "Running a query records a stored_result_use row tying the snapshot to the exploration"
@@ -296,7 +328,7 @@
                                    (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))
             llm-calls (atom 0)]
         (mt/with-dynamic-fn-redefs [metabase.metabot.usage/check-usage-limits!
-                                    (fn [] "you've hit your AI usage limit")
+                                    (fn [& _] "you've hit your AI usage limit")
                                     metabase.metabot.self.claude/claude
                                     (fn [& _] (swap! llm-calls inc) [])]
           (drain-until-terminal! (:id row))
@@ -374,13 +406,74 @@
         (with-redefs [qp.context/build-row-context (constantly {::stub true})
                       qp.variants/dataset-query    (fn [_variant _ctx]
                                                      (reset! seen api/*current-user-id*)
-                                                     (lib/->legacy-MBQL (let [mp (mt/metadata-provider)]
-                                                                          (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                                                              (lib/aggregate (lib/count))))))
+                                                     (let [mp (mt/metadata-provider)]
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                           (lib/aggregate (lib/count)))))
                       qp.variants/query-name       (constantly "stub name")]
           (runner/run-query! (:id row)))
         (is (= (:id u) @seen)
             "discovery must run as the exploration's creator, not with no user bound")))))
+
+(deftest finalize-row-stores-the-resolved-source-ids-test
+  (testing "finalizing a deferred row stores the resolved source ids its lens stamp was computed over beside the stamp"
+    (mt/with-temp [:model/User u {:email "resolved-source-ids@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL
+                                                     (let [mp (mt/metadata-provider)]
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                           (lib/aggregate (lib/count)))))}]
+      (let [thread (temp-thread! (:id u))
+            row    (deferred-query! (:id thread) (:id card))]
+        (with-redefs [qp.context/build-row-context (constantly {::stub true})
+                      qp.variants/dataset-query    (fn [_variant _ctx]
+                                                     (let [mp (mt/metadata-provider)]
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                                                           (lib/aggregate (lib/count)))))
+                      qp.variants/query-name       (constantly "stub name")]
+          (runner/run-query! (:id row)))
+        (is (= {:table-ids       #{(mt/id :checkins)}
+                :table-query-ids #{(mt/id :checkins)}}
+               (-> (t2/select-one-fn :resolved_source_ids :model/ExplorationQuery :id (:id row))
+                   (dissoc :query-digest))))))))
+
+(deftest stored-resolved-source-ids-stand-in-only-for-their-own-query-test
+  (mt/with-temp [:model/User u {:email "resolved-source-ids-digest@example.com"}
+                 :model/Card card {:type :metric
+                                   :creator_id (:id u)
+                                   :dataset_query (lib/->legacy-MBQL
+                                                   (let [mp (mt/metadata-provider)]
+                                                     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                         (lib/aggregate (lib/count)))))}]
+    (let [thread (temp-thread! (:id u))
+          row    (deferred-query! (:id thread) (:id card))
+          stored {:table-ids #{(mt/id :checkins)} :table-query-ids #{(mt/id :checkins)}}
+          resolve-reloaded (fn []
+                             (let [reloaded (t2/select-one :model/ExplorationQuery :id (:id row))]
+                               (preprocess-count
+                                #(query-perms/query->resolved-source-ids (:dataset_query reloaded)
+                                                                         (:resolved_source_ids reloaded)))))]
+      (with-redefs [qp.context/build-row-context (constantly {::stub true})
+                    qp.variants/dataset-query    (fn [_variant _ctx]
+                                                   (let [mp (mt/metadata-provider)]
+                                                     (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                                                         (lib/aggregate (lib/count)))))
+                    qp.variants/query-name       (constantly "stub name")]
+        (runner/run-query! (:id row)))
+      (testing "the stored value is used for the query it was stamped from, as it reads back from the app DB"
+        (is (= [stored 0] (resolve-reloaded))))
+      (testing "once the row's query changes, the query is resolved live"
+        (t2/update! :model/ExplorationQuery :id (:id row)
+                    {:dataset_query (lib/->legacy-MBQL
+                                     (let [mp (mt/metadata-provider)]
+                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                           (lib/aggregate (lib/count)))))})
+        (let [[resolved preprocesses] (resolve-reloaded)]
+          (is (= #{(mt/id :venues)} (:table-ids resolved)))
+          (is (pos? preprocesses))))
+      (testing "a stored value without a digest is not used"
+        (t2/update! :model/ExplorationQuery :id (:id row) {:resolved_source_ids stored})
+        (is (= #{(mt/id :venues)} (:table-ids (first (resolve-reloaded)))))))))
 
 (defn- store-fake-result!
   [query-id qp-result]
@@ -426,7 +519,7 @@
   Bypasses the API to keep these tests focused on the runner-side guards."
   [thread-id]
   (let [now (OffsetDateTime/now)]
-    (t2/update! :model/ExplorationThread thread-id
+    (t2/update! :model/ExplorationThread :id thread-id
                 {:canceled_at now :completed_at now})))
 
 (deftest run-query-skips-canceled-thread-test
@@ -510,7 +603,7 @@
     (mt/with-temp [:model/User u {:email "cancel-plan@example.com"}]
       (let [thread (temp-thread! (:id u))
             called (atom 0)]
-        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (t2/update! :model/ExplorationThread :id (:id thread) {:started_at (OffsetDateTime/now)})
         (cancel-thread! (:id thread))
         (mt/with-dynamic-fn-redefs [metabase.explorations.query-plan/generate-query-plan!
                                     (fn [_] (swap! called inc) :ok)]
@@ -525,7 +618,7 @@
         ;; Set started_at so the thread is past the draft phase. No EQs and no timeline pairs
         ;; means the two NOT-EXISTS predicates trivially hold — without canceled_at IS NULL, the
         ;; CAS would fire.
-        (t2/update! :model/ExplorationThread (:id thread)
+        (t2/update! :model/ExplorationThread :id (:id thread)
                     {:started_at (OffsetDateTime/now)})
         (cancel-thread! (:id thread))
         (is (false? (claim-analysis-if-ready! (:id thread)))
@@ -540,7 +633,7 @@
             completed_at nil, stranding the client on a spinner forever."
     (mt/with-temp [:model/User u {:email "atomic-complete@example.com"}]
       (let [thread (temp-thread! (:id u))]
-        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (t2/update! :model/ExplorationThread :id (:id thread) {:started_at (OffsetDateTime/now)})
         ;; no pending queries → the claim fires
         (is (true? (claim-analysis-if-ready! (:id thread))))
         (let [after (t2/select-one :model/ExplorationThread :id (:id thread))]
@@ -553,7 +646,7 @@
             write cannot be lost to a crash after the claim commits"
     (mt/with-temp [:model/User u {:email "sync-complete@example.com"}]
       (let [thread (temp-thread! (:id u))]
-        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (t2/update! :model/ExplorationThread :id (:id thread) {:started_at (OffsetDateTime/now)})
         (runner/maybe-complete-thread! (:id thread))
         (is (some? (:completed_at (t2/select-one :model/ExplorationThread :id (:id thread))))
             "completed_at is set by the time maybe-complete-thread! returns")))))
@@ -597,7 +690,7 @@
                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread (temp-thread! (:id u))
             called (atom 0)]
-        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (t2/update! :model/ExplorationThread :id (:id thread) {:started_at (OffsetDateTime/now)})
         (pending-query! (:id thread) (:id card)
                         (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
         (mt/with-dynamic-fn-redefs [metabase.explorations.query-plan/generate-query-plan!
@@ -614,7 +707,7 @@
       (let [thread (temp-thread! (:id u))
             called (atom 0)]
         ;; a planner that claimed this thread long ago and died before inserting anything
-        (t2/update! :model/ExplorationThread (:id thread)
+        (t2/update! :model/ExplorationThread :id (:id thread)
                     {:started_at            (.minusMinutes (OffsetDateTime/now) 30)
                      :query_plan_started_at (.minusMinutes (OffsetDateTime/now) 30)})
         (mt/with-dynamic-fn-redefs [metabase.explorations.query-plan/generate-query-plan!
@@ -632,7 +725,7 @@
       (let [thread (temp-thread! (:id u))
             called (atom 0)]
         ;; the thread planned, produced no queries, and its analysis was already claimed/completed
-        (t2/update! :model/ExplorationThread (:id thread)
+        (t2/update! :model/ExplorationThread :id (:id thread)
                     {:started_at          (OffsetDateTime/now)
                      :analysis_started_at (OffsetDateTime/now)})
         (mt/with-dynamic-fn-redefs [metabase.explorations.query-plan/generate-query-plan!
@@ -647,7 +740,7 @@
             polling and the failure is diagnosable"
     (mt/with-temp [:model/User u {:email "fail-plan@example.com"}]
       (let [thread (temp-thread! (:id u))]
-        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (t2/update! :model/ExplorationThread :id (:id thread) {:started_at (OffsetDateTime/now)})
         (runner/fail-plan! (:id thread) "the queue gave up")
         (let [after (t2/select-one :model/ExplorationThread :id (:id thread))]
           (is (some? (:completed_at after))
@@ -667,7 +760,7 @@
                                      :creator_id (:id u)
                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread (temp-thread! (:id u))]
-        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (t2/update! :model/ExplorationThread :id (:id thread) {:started_at (OffsetDateTime/now)})
         (pending-query! (:id thread) (:id card)
                         (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
         (runner/fail-plan! (:id thread) "a duplicate delivery ran out of retries")
@@ -707,7 +800,7 @@
                                    (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))]
         ;; Backdate our pending row 100s; the global oldest-age must be at least that (MIN(created_at)
         ;; is no later than our row), regardless of other tests' pending rows.
-        (t2/update! :model/ExplorationQuery (:id row)
+        (t2/update! :model/ExplorationQuery :id (:id row)
                     {:created_at (.minusSeconds (OffsetDateTime/now) 100)})
         (is (>= (oldest-pending-age-seconds) 100)
             "oldest-pending-age is at least the age of our backdated pending row")))))

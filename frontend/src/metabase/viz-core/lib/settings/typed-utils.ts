@@ -1,4 +1,4 @@
-import { getIn } from "icepick";
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import _ from "underscore";
 
 import type {
@@ -12,7 +12,10 @@ import type {
   VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
 } from "../../types";
+import { migrateStoredDashcardCustomVizSettings } from "../custom-viz/migrate-legacy-settings";
 import { getVisualization } from "../registry";
+
+import { getSettingDefinitionsForDisplay } from "./visualization";
 
 // Merge two settings objects together.
 // Settings from the second argument take precedence over the first.
@@ -30,8 +33,8 @@ export function mergeSettings(
       merged[key] = {};
       for (const nestedKey of Object.keys({ ...first[key], ...second[key] })) {
         merged[key][nestedKey] = mergeSettings(
-          getIn(first, [key, nestedKey]) || {},
-          getIn(second, [key, nestedKey]) || {},
+          first[key]?.[nestedKey] || {},
+          second[key]?.[nestedKey] || {},
         );
       }
     }
@@ -93,11 +96,18 @@ export function extendCardWithDashcardSettings<
     return isSettingHiddenOnDashboards(settings[key] ?? {});
   });
 
+  const cardSettings = card.visualization_settings ?? {};
+
   return {
     ...card,
     visualization_settings: mergeSettings(
-      card?.visualization_settings,
-      _.omit(dashcardSettings, settingsToOmit),
+      cardSettings,
+      migrateStoredDashcardCustomVizSettings(
+        card.display,
+        cardSettings,
+        _.omit(dashcardSettings ?? {}, settingsToOmit),
+        () => getSettingDefinitionsForDisplay(card.display),
+      ),
     ),
   };
 }

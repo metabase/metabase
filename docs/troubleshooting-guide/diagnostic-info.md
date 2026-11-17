@@ -1,5 +1,6 @@
 ---
 title: Diagnostic information for troubleshooting
+summary: Download diagnostic info and server logs to share when reporting a problem.
 ---
 
 # Diagnostic information for troubleshooting
@@ -27,8 +28,8 @@ Metabase will log errors, both on the server and in the browser console, dependi
 
 **Checking for Javascript console errors:** Metabase will send debugging information and errors to your browser's developer console. To open the developer console, follow the instructions for your web browser:
 
-- [Chrome](https://developers.google.com/web/tools/chrome-devtools/open#console)
-- [Edge](https://docs.microsoft.com/en-us/microsoft-edge/devtools-guide-chromium)
+- [Chrome](https://developer.chrome.com/docs/devtools/open)
+- [Edge](https://learn.microsoft.com/en-us/microsoft-edge/devtools/landing/)
 - [Firefox](https://firefox-source-docs.mozilla.org/devtools-user/)
 - [Safari](https://support.apple.com/guide/safari-developer/develop-menu-dev39df999c1/mac)
 

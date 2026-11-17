@@ -1,6 +1,13 @@
 import { type PropsWithChildren, type ReactNode, forwardRef } from "react";
 
+import { useLazyGetTableQuery, useLazyListTablesQuery } from "metabase/api";
+import {
+  requiresNativeCollection,
+  setNativeQueryDatabaseId,
+  setNativeQueryDefaultCollection,
+} from "metabase/querying/native";
 import { Flex } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { DataSourceSelectors } from "../DataSourceSelectors/DataSourceSelectors";
@@ -25,30 +32,41 @@ export const TopBar = forwardRef<HTMLDivElement, TopBarProps>(function TopBar(
     isNativeEditorOpen,
     readOnly,
     editorContext,
-    setDatasetQuery,
+    setQuery,
     onSetDatabaseId,
     focusEditor,
     databaseIsDisabled,
     databaseDisabledTooltip,
   } = useNativeQueryEditorContext();
+  const [fetchTable] = useLazyGetTableQuery();
+  const [fetchTables] = useLazyListTablesQuery();
 
   if (!question) {
     return null;
   }
 
-  const setTableId = (tableId: TableId) => {
-    const table = query.metadata().table(tableId);
-    if (table && table.name !== query.collection()) {
-      setDatasetQuery(query.setCollectionName(table.name));
+  const setTableId = async (tableId: TableId) => {
+    const table = await fetchTable({ id: tableId }).unwrap();
+    if (table.name !== Lib.nativeExtras(query)?.collection) {
+      setQuery(Lib.withNativeExtras(query, { collection: table.name }));
     }
   };
 
-  const setDatabaseId = (databaseId: DatabaseId) => {
-    if (question.databaseId() !== databaseId) {
-      setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
-      onSetDatabaseId?.(databaseId);
-      focusEditor();
+  const setDatabaseId = async (databaseId: DatabaseId) => {
+    if (question.databaseId() === databaseId) {
+      return;
     }
+    const newQuery = setNativeQueryDatabaseId(
+      query,
+      databaseId,
+      question.metadata(),
+    );
+    const tables = requiresNativeCollection(newQuery)
+      ? await fetchTables({ dbId: databaseId }).unwrap()
+      : [];
+    setQuery(setNativeQueryDefaultCollection(newQuery, tables));
+    onSetDatabaseId?.(databaseId);
+    focusEditor();
   };
 
   return (

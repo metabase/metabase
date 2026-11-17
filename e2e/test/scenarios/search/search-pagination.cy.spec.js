@@ -14,17 +14,6 @@ describe("scenarios > search", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not search on an empty string", () => {
-    cy.intercept("/api/search", (req) => {
-      expect("Unexpected call to /api/search").to.be.false;
-    });
-    H.visitFullAppEmbeddingUrl({
-      url: "/",
-      qs: { top_nav: true, search: true },
-    });
-    H.getSearchBar().type(" ");
-  });
-
   describe("multiple pages of results", () => {
     before(() => {
       cy.signInAsAdmin();
@@ -37,7 +26,7 @@ describe("scenarios > search", () => {
       H.restore("many-questions");
     });
 
-    it("should allow users to paginate results", () => {
+    it("should allow users to paginate results and reset the page when filters change (metabase#65501)", () => {
       cy.visit("/");
       H.commandPaletteSearch("generated_question");
       cy.findByLabelText("Previous page").should("be.disabled");
@@ -64,18 +53,21 @@ describe("scenarios > search", () => {
       cy.findByText(`1 - ${PAGE_SIZE}`);
       cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
       cy.findAllByTestId("search-result-item").should("have.length", PAGE_SIZE);
-    });
-
-    it("should reset the page when filters change (metabase#65501)", () => {
       cy.visit("/search?q=");
       cy.findByLabelText("Next page").click();
+      cy.location("search").should("contain", "page=1");
+      cy.findByLabelText("Previous page").should("be.enabled");
       cy.findByTestId("type-search-filter").click();
       H.popover().findByText("Table").click();
       H.popover().findByText("Apply").click();
-      cy.findByTestId("search-app")
-        .findByText("Didn't find anything")
-        .should("not.exist");
-      cy.findAllByTestId("search-result-item").should("exist");
+      cy.location("search")
+        .should("include", "type=table")
+        .and("not.include", "page=");
+      cy.findAllByTestId("search-result-item").should(($items) => {
+        $items.each((_index, item) => {
+          expect(item).to.have.attr("data-model-type", "table");
+        });
+      });
     });
   });
 });

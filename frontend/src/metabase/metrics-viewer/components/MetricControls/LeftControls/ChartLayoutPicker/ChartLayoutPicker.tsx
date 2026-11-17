@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import { trackStackedSeriesEnabled } from "metabase/metrics-viewer/analytics";
-import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
+import { SegmentedControl } from "metabase/ui";
 
-import S from "./ChartLayoutPicker.module.css";
+type ChartLayout = "default" | "stack";
 
 type ChartLayoutPickerProps = {
   isStacked: boolean;
@@ -14,50 +14,33 @@ export function ChartLayoutPicker({
   isStacked,
   onToggle,
 }: ChartLayoutPickerProps) {
+  const handleChange = (layout: ChartLayout) => {
+    const stacked = layout === "stack";
+    onToggle(stacked);
+    if (stacked) {
+      trackStackedSeriesEnabled();
+    }
+  };
+
   return (
-    <Flex
-      className={S.root}
-      gap="xxs"
-      bg="background_page-secondary"
-      p="xxs"
-      bdrs="sm"
+    <SegmentedControl<ChartLayout>
       data-testid="chart-layout-picker"
-    >
-      <Tooltip label={t`Default layout`}>
-        <ActionIcon
-          w="2rem"
-          h="1.5rem"
-          variant={!isStacked ? "filled" : "subtle"}
-          bg={!isStacked ? "background_page-primary" : undefined}
-          onClick={() => onToggle(false)}
-          aria-label={t`Default layout`}
-          className={!isStacked ? S.selected : undefined}
-        >
-          <Icon
-            name="chart_layout_default"
-            c={!isStacked ? "core-brand" : "text-primary"}
-          />
-        </ActionIcon>
-      </Tooltip>
-      <Tooltip label={t`Stack layout`}>
-        <ActionIcon
-          w="2rem"
-          h="1.5rem"
-          variant={isStacked ? "filled" : "subtle"}
-          bg={isStacked ? "background_page-primary" : undefined}
-          onClick={() => {
-            onToggle(true);
-            trackStackedSeriesEnabled();
-          }}
-          aria-label={t`Stack layout`}
-          className={isStacked ? S.selected : undefined}
-        >
-          <Icon
-            name="chart_layout_stack"
-            c={isStacked ? "core-brand" : "text-primary"}
-          />
-        </ActionIcon>
-      </Tooltip>
-    </Flex>
+      data={[
+        {
+          value: "default",
+          ariaLabel: t`Default layout`,
+          icon: "chart_layout_default",
+          withTooltip: true,
+        },
+        {
+          value: "stack",
+          ariaLabel: t`Stack layout`,
+          icon: "chart_layout_stack",
+          withTooltip: true,
+        },
+      ]}
+      value={isStacked ? "stack" : "default"}
+      onChange={handleChange}
+    />
   );
 }

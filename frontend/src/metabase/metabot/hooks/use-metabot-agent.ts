@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useDispatch, useSelector } from "metabase/redux";
 
@@ -16,6 +16,10 @@ import {
   useMetabotConversation,
 } from "./use-metabot-conversation";
 
+type AgentSubmitInputOptions = SubmitInputOptions & {
+  preventOpenSidebar?: boolean;
+};
+
 export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
   const dispatch = useDispatch();
   const conversationId = useSelector((state) =>
@@ -29,25 +33,39 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     [dispatch, agentId],
   );
 
+  const withSidebarReveal = useCallback(
+    (options?: AgentSubmitInputOptions): SubmitInputOptions => ({
+      ...options,
+      onBeforeSubmit: () => {
+        if (!visible && !options?.preventOpenSidebar) {
+          setVisible(true);
+        }
+      },
+    }),
+    [setVisible, visible],
+  );
+
   const submitInput = useCallback(
     (
       prompt: Parameters<typeof conversation.submitInput>[0],
-      options?: SubmitInputOptions & { preventOpenSidebar?: boolean },
-    ) =>
-      conversation.submitInput(prompt, {
-        ...options,
-        onBeforeSubmit: () => {
-          if (!visible && !options?.preventOpenSidebar) {
-            setVisible(true);
-          }
-        },
-      }),
-    [conversation, setVisible, visible],
+      options?: AgentSubmitInputOptions,
+    ) => conversation.submitInput(prompt, withSidebarReveal(options)),
+    [conversation, withSidebarReveal],
+  );
+
+  const conversationContinueResponse = conversation.continueResponse;
+  const continueResponse = useMemo(
+    () =>
+      conversationContinueResponse &&
+      ((options?: AgentSubmitInputOptions) =>
+        conversationContinueResponse(withSidebarReveal(options))),
+    [conversationContinueResponse, withSidebarReveal],
   );
 
   return {
     ...conversation,
     submitInput,
+    continueResponse,
     visible,
     setVisible,
     createNewConversation: useCallback(

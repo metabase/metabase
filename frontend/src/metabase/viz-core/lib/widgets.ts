@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type Question from "metabase-lib/v1/Question";
 import type {
   Series,
@@ -66,12 +67,16 @@ function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
     getWrapperStyle,
     getSection,
     getHidden,
+    getTitle,
     ...settingDefProps
   } = settingDef;
 
   return {
     ...settingDefProps,
     id: settingId,
+    title:
+      getTitle?.(resolvedObject, computedSettings, extra) ??
+      settingDefProps.title,
     value,
     section: getSection?.(resolvedObject, computedSettings, extra),
     hidden: getHidden?.(resolvedObject, computedSettings, extra) ?? false,
@@ -131,7 +136,7 @@ export function getSettingsWidgetsForSeries(
   extra: SettingsExtra = {},
 ) {
   const settingsDefs = getSettingDefinitionsForSeries(series);
-  const storedSettings = getStoredSettingsForSeries(series);
+  const storedSettings = getStoredSettingsForSeries(series, settingsDefs);
   const computedSettings = getComputedSettingsForSeries(series);
 
   return getSettingsWidgets(

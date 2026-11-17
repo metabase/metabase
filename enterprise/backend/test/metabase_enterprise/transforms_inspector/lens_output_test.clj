@@ -2,6 +2,7 @@
   "Tests for lens card output validation and trigger flow."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-inspector.core]
    [metabase-enterprise.transforms-inspector.lens.core :as lens.core]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -12,6 +13,8 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase-enterprise.transforms-inspector.core/keep-me)
 
 ;;; -------------------------------------------------- Test context helpers --------------------------------------------------
 
@@ -31,7 +34,7 @@
 (defn- build-table-info
   "Build a table info map with fields from a real table."
   [table-id]
-  (let [table  (t2/select-one :model/Table table-id)
+  (let [table  (t2/select-one :model/Table :id table-id)
         fields (collect-field-metadata table-id)]
     {:table_id     table-id
      :table_name   (:name table)
@@ -85,12 +88,12 @@
                            :join-structure     join-structure}
      :visited-fields      {:all #{(mt/id :orders :product_id) (mt/id :products :id)}}
      :has-column-matches? true
-     :column-matches      [{:output-column  (:name (t2/select-one :model/Field (mt/id :products :price)))
-                            :output-field   {:name (:name (t2/select-one :model/Field (mt/id :products :price)))
+     :column-matches      [{:output-column  (:name (t2/select-one :model/Field :id (mt/id :products :price)))
+                            :output-field   {:name (:name (t2/select-one :model/Field :id (mt/id :products :price)))
                                              :id   (mt/id :products :price)
                                              :base_type :type/Float}
                             :input-columns  [{:source-table-id   (mt/id :orders)
-                                              :source-table-name (:name (t2/select-one :model/Table (mt/id :orders)))
+                                              :source-table-name (:name (t2/select-one :model/Table :id (mt/id :orders)))
                                               :name              "TOTAL"
                                               :id                (mt/id :orders :total)}]}]}))
 

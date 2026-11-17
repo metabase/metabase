@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useEffect, useState } from "react";
 
 import { AppBarContainer } from "metabase/app/nav/AppBar";
@@ -7,10 +8,12 @@ import {
   getIsAppBarVisible,
   getIsDataApp,
   getIsDataStudioApp,
+  getIsEmbeddingHubApp,
   getIsMonitorApp,
   getIsNavBarEnabled,
-} from "metabase/app/selectors";
+} from "metabase/app/nav/selectors";
 import { AppBanner } from "metabase/common/components/AppBanner";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import {
   Archived,
   GenericError,
@@ -21,28 +24,34 @@ import {
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import CS from "metabase/css/core/index.css";
-import ScrollToTop from "metabase/hoc/ScrollToTop";
+import { EmbedSetupModals } from "metabase/embedding/embedding-iframe-sdk-setup/components/EmbedSetupModals";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor } from "metabase/redux/store";
 import { Outlet, useLocation } from "metabase/router";
 import { getErrorPage } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { useGetSettingsQuery } from "metabase/settings";
+import { useGetSettingsQuery, useTokenRefresh } from "metabase/settings";
 import { StatusListing } from "metabase/status/components/StatusListing";
+import { Box, Flex } from "metabase/ui";
 import { initializeIframeResizer } from "metabase/utils/dom";
 
-import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
+import S from "./AppComponent.module.css";
 import { AppKBarProvider } from "./AppKBarProvider";
-import ErrorBoundary from "./ErrorBoundary";
+import ScrollToTop from "./ScrollToTop";
 import { trackPageView } from "./analytics";
-import { useTokenRefresh } from "./api/utils/use-token-refresh";
 import { Metabot } from "./metabot/components/Metabot";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
 
-const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
+const getErrorComponent = ({
+  status,
+  data,
+  context,
+  message,
+}: AppErrorDescriptor) => {
   if (status === 403 || data?.error_code === "unauthorized") {
     return <Unauthorized />;
   }
@@ -55,7 +64,7 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (data?.error_code === "archived" && context === "query-builder") {
     return <Archived entityName="question" linkTo="/questions/archive" />;
   }
-  return <GenericError details={data?.message} />;
+  return <GenericError details={message} />;
 };
 
 export function App() {
@@ -74,6 +83,9 @@ export function App() {
   );
   const isMonitorApp = useSelector((state) =>
     getIsMonitorApp(state, routerProps),
+  );
+  const isEmbeddingHubApp = useSelector((state) =>
+    getIsEmbeddingHubApp(state, routerProps),
   );
   const isDataApp = useSelector((state) => getIsDataApp(state, routerProps));
   const isAppBarVisible = useSelector((state) =>
@@ -106,28 +118,50 @@ export function App() {
       <ScrollToTop>
         <AppKBarProvider>
           <KeyboardTriggeredErrorModal />
-          <AppContainer className={CS.spread}>
+          <Flex className={CS.spread} direction="column">
             <AppBanner />
             {isAppBarVisible && <AppBarContainer />}
-            <AppContentContainer isAdminApp={isAdminApp}>
+            <Flex
+              className={cx(
+                CS.overflowHidden,
+                S.printFullHeight,
+                S.printOverflowVisible,
+              )}
+              flex="1 1 auto"
+              direction={isAdminApp ? "column" : "row"}
+              pos="relative"
+              bg="background_page-primary"
+            >
               {isNavBarEnabled && <Navbar />}
-              <AppContent ref={setViewportElement}>
+              <Box
+                component="main"
+                ref={setViewportElement}
+                className={cx(CS.overflowAuto, S.printOverflowVisible)}
+                w="100%"
+                h="100%"
+                style={{ scrollMarginTop: APP_BAR_HEIGHT }}
+              >
                 <ContentViewportContext.Provider
                   value={viewportElement ?? null}
                 >
                   {errorPage ? getErrorComponent(errorPage) : <Outlet />}
                 </ContentViewportContext.Provider>
-              </AppContent>
+              </Box>
               <UndoListing />
               <StatusListing />
               <NewModals />
+              <EmbedSetupModals />
               <Metabot
                 hide={
-                  isAdminApp || isDataStudioApp || isMonitorApp || isDataApp
+                  isAdminApp ||
+                  isDataStudioApp ||
+                  isMonitorApp ||
+                  isEmbeddingHubApp ||
+                  isDataApp
                 }
               />
-            </AppContentContainer>
-          </AppContainer>
+            </Flex>
+          </Flex>
           <Palette />
         </AppKBarProvider>
       </ScrollToTop>

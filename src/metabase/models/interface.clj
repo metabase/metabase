@@ -13,16 +13,16 @@
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [clojure.walk :as walk]
-   [medley.core :as m]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
+   [metabase.app-db.core :as mdb]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.models.db :as models.db]
    [metabase.models.dispatch :as models.dispatch]
-   [metabase.models.json-migration :as jm]
    [metabase.models.resolution]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
@@ -32,17 +32,24 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.string :as string]
    [methodical.core :as methodical]
    [potemkin :as p]
+   [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
+   [toucan2.pipeline :as t2.pipeline]
    [toucan2.protocols :as t2.protocols]
+   [toucan2.tools.before-delete :as t2.before-delete]
    [toucan2.tools.before-insert :as t2.before-insert]
+   [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.util :as t2.u])
   (:import
    (java.sql Blob)
+   (java.time OffsetDateTime ZoneOffset)
+   (java.time.temporal ChronoUnit)
    (toucan2.instance Instance)))
 
 (set! *warn-on-reflection* true)
@@ -58,6 +65,7 @@
   model
   instance])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *deserializing?*
   "This is dynamically bound to true when deserializing. A few pieces of the Toucan magic are undesirable for
   deserialization and are skipped based on this var. (Entity ids are not one of them: the insert hook generates an
@@ -175,10 +183,9 @@
   (json-out obj false))
 
 (defn- elide-data [obj]
-  (walk/postwalk (fn [x] (cond
-                           (string? x) (string/elide x 250)
-                           (and (sequential? x) (> (count x) 50)) (take 50 x)
-                           :else x)) obj))
+  (match/replace-all obj
+    #'string? (string/elide &match 250)
+    (xs :guard (and (sequential? xs) (> (count xs) 50))) (take 50 xs)))
 
 (defn- json-in-with-eliding
   [obj]
@@ -235,6 +242,11 @@
   {:in  u/qualified-name
    :out keyword})
 
+(def transform-boolean
+  "Transform for booleans; a boolean computed in SQL comes back as a number from MySQL and MariaDB."
+  {:in  identity
+   :out (fn [v] (if (number? v) (pos? v) v))})
+
 (def transform-trim
   "Transform that trims whitespace on input and output. Useful for fixed-width char columns that pad with spaces."
   {:in  str/trim
@@ -255,23 +267,23 @@
 
 (mu/defn assert-enum
   "Assert that a value is one of the values in `enum`."
-  [enum :- [:set :any]
-   value]
+  [enum  :- [:set [:maybe [:or :keyword :string]]]
+   value :- [:maybe [:or :keyword :string]]]
   (when-not (contains? enum value)
     (throw (ex-info (format "Invalid value %s. Must be one of %s" value (str/join ", " enum)) {:status-code 400
                                                                                                :value       value}))))
 
 (mu/defn assert-optional-enum
   "Assert that a value is one of the values in `enum` or `nil`."
-  [enum :- [:set :any]
-   value :- :any]
+  [enum :- [:set [:or :keyword :string]]
+   value :- [:maybe [:or :keyword :string]]]
   (when (some? value)
     (assert-enum enum value)))
 
 (mu/defn assert-namespaced
   "Assert that a value is a namespaced keyword under `qualified-ns`."
   [qualified-ns :- string?
-   value]
+   value        :- [:or :keyword :string]]
   (when-not (= qualified-ns (-> value keyword namespace))
     (throw (ex-info (format "Must be a namespaced keyword under :%s, got: %s" qualified-ns value) {:status-code 400
                                                                                                    :value       value}))))
@@ -347,6 +359,59 @@
   {:in  encrypted-json-in
    :out (decrypt-error-context source cached-encrypted-json-out)})
 
+(def ^:private json-schema-transformer
+  "The same [[malli.transform/json-transformer]] [[metabase.api.macros]] decodes request bodies with, so a
+  value has one JSON shape rather than one for the wire and another for the app DB."
+  (mtx/json-transformer))
+
+(defn- json-schema-encoder [schema]
+  (mr/cached ::json-schema-encoder schema #(mc/encoder schema json-schema-transformer)))
+
+(defn- json-schema-decoder [schema]
+  (mr/cached ::json-schema-decoder schema #(mc/decoder schema json-schema-transformer)))
+
+(defn transform-json-with-schema
+  "Like [[transform-json]], but runs the value through `schema`'s malli JSON encoder and decoder, so a column
+  can hold keywords and anything else JSON cannot carry on its own. `source` is a \"table.column\" string,
+  named in the log message when a blob cannot be read.
+
+  Values always go through `schema`; there is no string passthrough, since an already-encoded string would
+  skip the decode this transform exists to do.
+
+  An unreadable blob reads as `nil` rather than throwing, so one bad row cannot break a whole `t2/select`. It
+  is logged at `:log-level` (`:warn` by default); pass `:error` when a failure carries a security
+  consequence."
+  ([source schema]
+   (transform-json-with-schema source schema nil))
+
+  ([source schema {:keys [log-level] :or {log-level :warn}}]
+   {:in  (fn [v]
+           (when (some? v)
+             (json/encode ((json-schema-encoder schema) v))))
+    :out (fn [s]
+           (when (string? s)
+             (try
+               ((json-schema-decoder schema) (json/decode+kw s))
+               (catch Throwable e
+                 (if (= log-level :error)
+                   (log/errorf e "Failed to parse %s; returning nil" source)
+                   (log/warnf e "Failed to parse %s; returning nil" source))
+                 nil))))}))
+
+(defn transform-encrypted-json-with-schema
+  "[[transform-json-with-schema]] for a column that is also encrypted at rest. [[decrypt-error-context]] names
+  the column when a decrypt fails, instead of a bare \"Expected an encrypted value\".
+
+  Unlike [[transform-encrypted-json]], the decrypt is not memoized: that cache holds both ciphertext and
+  decoded value for an hour, which is the wrong trade for the unbounded blobs these columns tend to hold."
+  ([source schema]
+   (transform-encrypted-json-with-schema source schema nil))
+
+  ([source schema opts]
+   (let [{:keys [in out]} (transform-json-with-schema source schema opts)]
+     {:in  (comp encryption/maybe-encrypt in)
+      :out (comp out (decrypt-error-context source encryption/maybe-decrypt))})))
+
 (defn transform-encrypted-text
   "Whole-column encrypted text transform for the column named by `source` (a \"table.column\" string, used in decrypt
   error messages). When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read (see
@@ -355,140 +420,6 @@
   [source]
   {:in  encryption/maybe-encrypt
    :out (decrypt-error-context source encryption/maybe-decrypt)})
-
-;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
-;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
-(mr/def ::viz-settings-ref
-  "Apparently in some cases legacy viz settings keys can be wrapped in `[:ref ...]` e.g.
-
-    [:ref [:field 1 nil]]"
-  [:tuple
-   {:decode/normalize vec}
-   [:= {:decode/normalize keyword} :ref]
-   [:ref ::mbql.s/Reference]])
-
-(mr/def ::viz-settings-name
-  "Apparently in some cases legacy viz settings keys can be wrapped in `[:ref ...]` e.g.
-
-    [:ref [:field 1 nil]]"
-  [:tuple
-   {:decode/normalize vec}
-   [:= {:decode/normalize keyword} :name]
-   :string])
-
-;;; TODO (Cam 2026-02-18) move this out of the `models` module, it should either go into its own
-;;; `visualization-settings` module or into `queries` (so it can live with Saved Questions and friends). See
-;;; also [[metabase.models.visualization-settings]].
-(defn normalize-visualization-settings
-  "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
-   to MBQL 4 clauses so things work correctly."
-  [viz-settings]
-  (letfn [(normalize-column-settings-key [k]
-            (some-> k
-                    u/qualified-name
-                    json/decode
-                    ((fn [x]
-                       (cond
-                         (not (sequential? x)) x
-                         (= (first x) "ref")   (lib/normalize ::viz-settings-ref x)
-                         (= (first x) "name")  (lib/normalize ::viz-settings-name x)
-                         :else                 (try
-                                                 (mbql.normalize/normalize x)
-                                                 (catch Throwable e
-                                                   (log/debugf "Error normalizing column settings key %s: %s" (pr-str x) (ex-message e))
-                                                   nil)))))
-                    json/encode))
-          (normalize-column-settings [column-settings]
-            (into {} (for [[k v] column-settings
-                           ;; remove nil (bad) keys
-                           :let  [k (normalize-column-settings-key k)]
-                           :when (some? k)]
-                       [k (walk/keywordize-keys v)])))
-          (mbql-field-clause? [form]
-            (and (vector? form)
-                 (#{"field-id"
-                    "fk->"
-                    "datetime-field"
-                    "joined-field"
-                    "binning-strategy"
-                    "field"
-                    "aggregation"
-                    "expression"}
-                  (first form))))
-          (normalize-mbql-clauses [form]
-            (cond
-              (mbql-field-clause? form)
-              (try
-                (mbql.normalize/normalize form)
-                (catch Exception e
-                  (log/warnf "Unable to normalize visualization-settings part %s: %s"
-                             (pr-str form)
-                             (ex-message e))
-                  form))
-
-              (sequential? form)
-              (into (empty form) (map normalize-mbql-clauses) form)
-
-              (map? form)
-              (into (empty form)
-                    (map (fn [[k v]]
-                           ;; don't recurse into `:columns` if they are COLUMN NAMES! -- if the first column name is
-                           ;; something like "expression" then we don't want to accidentally treat it as an
-                           ;; `:expression` ref. Some `:columns` lists is viz settings do contain MBQL clauses
-                           ;; tho :unamused:
-                           (let [column-names? (and (= k :columns)
-                                                    (sequential? v)
-                                                    (every? (complement mbql-field-clause?) v))]
-                             [k (cond-> v
-                                  (not column-names?) normalize-mbql-clauses)])))
-                    form)
-
-              :else
-              form))]
-    (->
-     viz-settings
-     (dissoc "column_settings" "graph.metrics")
-     walk/keywordize-keys
-     ;; "key" is an old unused value
-     (m/update-existing :table.columns (fn [cols] (mapv #(dissoc % :key) cols)))
-     (cond-> (get viz-settings "column_settings")
-       (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings"))))
-     normalize-mbql-clauses
-     ;; exclude graph.metrics from normalization as it may start with the word "expression" but it is not
-     ;; MBQL (metabase#15882)
-     (cond-> (get viz-settings "graph.metrics")
-       (assoc :graph.metrics (get viz-settings "graph.metrics"))))))
-
-(jm/def-json-migration migrate-viz-settings*)
-
-(def ^:private viz-settings-current-version 2)
-
-(defmethod ^:private migrate-viz-settings* [1 2] [viz-settings _]
-  (let [{percent? :pie.show_legend_perecent ;; [sic]
-         legend?  :pie.show_legend} viz-settings
-        new-visibility              (cond
-                                      legend?  "inside"
-                                      percent? "legend")
-        new-linktype                (when (= "page" (-> viz-settings :click_behavior :linkType))
-                                      "dashboard")]
-    (cond-> viz-settings
-      ;; if nothing was explicitly set don't default to "off", let the FE deal with it
-      new-visibility (assoc :pie.percent_visibility new-visibility)
-      new-linktype   (assoc-in [:click_behavior :linkType] new-linktype))))
-
-(defn- migrate-viz-settings
-  [viz-settings]
-  (let [new-viz-settings (migrate-viz-settings* viz-settings viz-settings-current-version)]
-    (cond-> new-viz-settings
-      (not= new-viz-settings viz-settings) (jm/update-version viz-settings-current-version))))
-
-;; migrate-viz settings was introduced with v. 2, so we'll never be in a situation where we can downgrade from 2 to 1.
-;; See sample code in SHA d597b445333f681ddd7e52b2e30a431668d35da8
-
-(def transform-visualization-settings
-  "Transform for viz-settings."
-  {:in  (comp json-in migrate-viz-settings)
-   :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
 
 (def ^{:arglists '([s])} ^:private validate-cron-string
   (let [validator (mr/validator u.cron/CronScheduleString)]
@@ -552,7 +483,20 @@
   and H2 and `now(6)` for MySQL/MariaDB (`now()` for MySQL only return second resolution; `now(6)` uses the
   max (nanosecond) resolution)."
   []
-  (h2x/current-datetime-honeysql-form ((requiring-resolve 'metabase.app-db.core/db-type))))
+  (h2x/current-datetime-honeysql-form (mdb/db-type)))
+
+(defn ->integer
+  "Return a HoneySQL form casting `expr` to an integer in the app DB: `SIGNED` for MySQL/MariaDB, which have no
+  `INTEGER` cast type."
+  [expr]
+  [:cast expr (case (mdb/db-type)
+                :mysql :signed
+                :integer)])
+
+(defn current-timestamp
+  "The current moment in UTC at the microsecond precision of the app DB's timestamp columns, so it reads back unchanged."
+  []
+  (.truncatedTo (OffsetDateTime/now ZoneOffset/UTC) ChronoUnit/MICROS))
 
 (defn- add-created-at-timestamp [obj & _]
   (cond-> obj
@@ -607,6 +551,38 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
+
+(t2/define-before-insert :hook/dependencies
+  [instance]
+  (dependencies.hooks/before-insert &model instance)
+  instance)
+
+(t2/define-before-update :hook/dependencies
+  [instance]
+  (dependencies.hooks/before-update &model instance)
+  instance)
+
+(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* :hook/dependencies :default]
+  "Run the before-update hooks of a `:hook/dependencies` model in the transaction of its UPDATE, which Toucan otherwise
+  opens only after them, so the dependency marks commit or roll back with the UPDATE and after-commit work sees it."
+  [rf query-type model parsed-args resolved-query]
+  (t2.conn/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
+    (next-method rf query-type model parsed-args resolved-query)))
+
+(t2/define-before-delete :hook/dependencies
+  [instance]
+  instance)
+
+(methodical/defmethod t2.before-delete/before-delete :before :hook/dependencies
+  [model instance]
+  (dependencies.hooks/before-delete model instance)
+  instance)
+
+(doseq [hook [:hook/timestamped? :hook/created-at-timestamped? :hook/updated-at-timestamped? :hook/entity-id]]
+  (methodical/prefer-method! #'t2.before-insert/before-insert hook :hook/dependencies))
+
+(doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
+  (methodical/prefer-method! #'t2.before-update/before-update hook :hook/dependencies))
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.
@@ -621,7 +597,7 @@
   {:pre [(map? row-map)]}
   (let [model (t2/resolve-model modelable)]
     (try
-      (models.db/after-select-via-identity-query model row-map)
+      (models.db/after-select-via-identity-query {:model model :row row-map})
       (catch Throwable e
         (throw (ex-info (format "Error doing after-select for model %s: %s" model (ex-message e))
                         {:model model}
@@ -633,76 +609,65 @@
 
 ;;; TODO -- consider moving all this stuff into the `permissions` module
 
-(defmulti perms-objects-set
-  "Return a set of permissions object paths that a user must have access to in order to access this object. This should
-  be something like
-
-    #{\"/db/1/schema/public/table/20/\"}
-
-  `read-or-write` will be either `:read` or `:write`, depending on which permissions set we're fetching (these will be
-  the same sets for most models; they can ignore this param)."
-  {:arglists '([instance read-or-write])}
-  dispatch-on-model)
-
-(defmethod perms-objects-set :default
-  [_instance _read-or-write]
-  nil)
-
-(defmulti can-read?
-  "Return whether [[metabase.api.common/*current-user*]] has *read* permissions for an object. You should typically use
-  one of these implementations:
-
-  *  `(constantly true)`
-  *  `superuser?`
-  *  `(partial current-user-has-full-permissions? :read)` (you must also implement [[perms-objects-set]] to use this)
-  *  `(partial current-user-has-partial-permissions? :read)` (you must also implement [[perms-objects-set]] to use
-     this)"
-  {:arglists '([instance] [model pk])}
-  dispatch-on-model)
-
-(defmulti can-write?
-  "Return whether [[metabase.api.common/*current-user*]] has *write* permissions for an object. You should typically use
-  one of these implementations:
-
-  *  `(constantly true)`
-  *  `superuser?`
-  *  `(partial current-user-has-full-permissions? :write)` (you must also implement [[perms-objects-set]] to use this)
-  *  `(partial current-user-has-partial-permissions? :write)` (you must also implement [[perms-objects-set]] to use
-      this)"
-  {:arglists '([instance] [model pk])}
-  dispatch-on-model)
-
-(defmulti can-query?
-  "Return whether [[metabase.api.common/*current-user*]] has *query* permissions for an object (i.e., can run
-  queries against it). This is separate from [[can-read?]] which determines if the user can see the object's
-  metadata.
-
-  For data model entities like Tables and Databases, `can-read?` means 'can see metadata' while `can-query?`
-  means 'can execute queries against'. For collection entities, `can-query?` typically falls back to `can-read?`.
-
-  The default implementation falls back to [[can-read?]] for backward compatibility."
-  {:arglists '([instance] [model pk])}
-  dispatch-on-model)
-
-(defmethod can-query? :default
-  ;; Default implementation: fall back to can-read? for backward compatibility
-  ([instance]
-   (can-read? instance))
-  ([model pk]
-   (can-read? model pk)))
-
-;; only reached through the :can_write hydration key, never called by name
-#_{:clj-kondo/ignore [:unused-private-var]}
-(define-simple-hydration-method ^:private hydrate-can-write
-  :can_write
-  "Hydration method for `:can_write`."
+(defn- model-name
+  "The name of the model of `instance`, for a message."
   [instance]
-  (can-write? instance))
+  (let [model (some-> instance t2/model)]
+    (cond
+      (class? model)   (.getSimpleName ^Class model)
+      (keyword? model) (name model)
+      :else            (str model))))
 
-(methodical/defmethod t2/simple-hydrate [:default :can_query]
-  "Hydration method for `:can_query`. Returns whether the current user can execute queries against this object."
+(defn- hydrated-answer
+  "The `answer` hydration left under `k` for `instance`, throwing when there is none."
+  [instance k answer]
+  (when (nil? answer)
+    (throw (ex-info (format "No %s is hydrated on a %s." k (model-name instance))
+                    {:status-code 500})))
+  answer)
+
+(defn can-read?
+  "Whether the current user reads `instance`, as its `:can_read` hydration answered in its metadata."
+  [instance]
+  (hydrated-answer instance :can_read (:can_read (meta instance))))
+
+(defn can-write?
+  "Whether the current user writes `instance`, as its `:can_write` hydration answered."
+  [instance]
+  (hydrated-answer instance :can_write (:can_write instance)))
+
+(defn can-query?
+  "Whether the current user runs queries against `instance`, as its `:can_query` hydration answered."
+  [instance]
+  (hydrated-answer instance :can_query (:can_query instance)))
+
+(methodical/defmethod t2.hydrate/needs-hydration? [:default :can_read]
+  "Whether `instance` lacks the answer `:can_read` hydration keeps in its metadata, since `:can_read` is not a key of
+  the row."
+  [_model _k instance]
+  (nil? (:can_read (meta instance))))
+
+(defn- no-check-hydration
+  "Throws for `instance`, whose model has no hydration of the check `k`."
+  [k instance]
+  (throw (ex-info (format "%s has no %s hydration." (model-name instance) k) {:status-code 500})))
+
+(methodical/defmethod t2.hydrate/simple-hydrate [:default :can_read]
+  "Throws: a model answers `:can_read` in a hydration of its own."
   [_model k instance]
-  (assoc instance k (can-query? instance)))
+  (no-check-hydration k instance))
+
+(methodical/defmethod t2.hydrate/simple-hydrate [:default :can_write]
+  "Throws: a model answers `:can_write` in a hydration of its own."
+  [_model k instance]
+  (no-check-hydration k instance))
+
+(methodical/defmethod t2.hydrate/batched-hydrate [:default :can_query]
+  "Sets `:can_query` on each of `instances` to its `:can_read`, for a model that answers both alike."
+  [_model k instances]
+  (for [instance (t2/hydrate instances :can_read)]
+    (when instance
+      (assoc instance k (can-read? instance)))))
 
 (defmulti can-create?
   "NEW! Check whether or not current user is allowed to CREATE a new instance of `model` with properties in map
@@ -740,16 +705,6 @@
     (str (format "%s does not yet have an implementation for `can-update?`. " (name (models.dispatch/model instance)))
          "Please consider adding one. See dox for `can-update?` for more details."))))
 
-(defmulti visible-filter-clause
-  "Return a map with:
-   - :clause - honey SQL WHERE clause fragment to filter records visible to the user
-   - :with - optional vector of CTE definitions [[name query] ...] to be merged into the query
-
-  Uses the map of permission type->minimum permission-level for filtering.
-  Defaults to returning a no-op false statement {:clause [:= 0 1]}."
-  {:arglists '([model column-or-exp user-info perm-type->perm-level])}
-  dispatch-on-model)
-
 (defn superuser?
   "Is [[metabase.api.common/*current-user*]] is a superuser? Ignores args. Intended for use as an implementation
   of [[can-read?]] and/or [[can-write?]]."
@@ -761,84 +716,25 @@
   []
   @(requiring-resolve 'metabase.api.common/*current-user-id*))
 
-(defn- current-user-permissions-set []
-  @@(requiring-resolve 'metabase.api.common/*current-user-permissions-set*))
+(methodical/defmethod t2/simple-hydrate [::read-policy.always-allow :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean true)))
 
-(defn- current-user-has-root-permissions? []
-  (contains? (current-user-permissions-set) "/"))
+(methodical/defmethod t2/simple-hydrate [::write-policy.always-allow :can_write]
+  [_model k instance]
+  (assoc instance k (boolean true)))
 
-(mu/defn- check-perms-with-fn
-  ([fn-symb       :- qualified-symbol?
-    read-or-write :- [:enum :read :write]
-    a-model       :- qualified-keyword?
-    object-id     :- [:or pos-int? string?]]
-   (or (current-user-has-root-permissions?)
-       (check-perms-with-fn fn-symb read-or-write (models.db/entity-by-pk a-model (first (t2/primary-keys a-model)) object-id))))
+(methodical/defmethod t2/simple-hydrate [::read-policy.superuser :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (superuser?))))
 
-  ([fn-symb       :- qualified-symbol?
-    read-or-write :- [:enum :read :write]
-    object        :- :map]
-   (and object
-        (check-perms-with-fn fn-symb (perms-objects-set object read-or-write))))
-
-  ([fn-symb   :- qualified-symbol?
-    perms-set :- [:set :string]]
-   ;; resolves the permissions implementation lazily to avoid a models -> permissions load cycle
-   (let [f #_{:clj-kondo/ignore [:metabase/modules]} (requiring-resolve fn-symb)]
-     (assert f)
-     (u/prog1 (f (current-user-permissions-set) perms-set)
-       (log/tracef "Perms check: %s -> %s" (pr-str (list fn-symb (current-user-permissions-set) perms-set)) <>)))))
-
-(def ^{:arglists '([read-or-write model object-id] [read-or-write object] [perms-set])}
-  current-user-has-full-permissions?
-  "Implementation of [[can-read?]]/[[can-write?]] for the old permissions system. `true` if the current user has *full*
-  permissions for the paths returned by its implementation of [[perms-objects-set]]. (`read-or-write` is either `:read` or
-  `:write` and passed to [[perms-objects-set]]; you'll usually want to partially bind it in the implementation map)."
-  (partial check-perms-with-fn 'metabase.permissions.models.permissions/set-has-full-permissions-for-set?))
-
-(defmethod can-read? ::read-policy.always-allow
-  ([_instance]
-   true)
-  ([_model _pk]
-   true))
-
-(defmethod can-write? ::write-policy.always-allow
-  ([_instance]
-   true)
-  ([_model _pk]
-   true))
-
-(defmethod can-read? ::read-policy.full-perms-for-perms-set
-  ([instance]
-   (current-user-has-full-permissions? :read instance))
-  ([model pk]
-   (current-user-has-full-permissions? :read model pk)))
-
-(defmethod can-write? ::write-policy.full-perms-for-perms-set
-  ([instance]
-   (current-user-has-full-permissions? :write instance))
-  ([model pk]
-   (current-user-has-full-permissions? :write model pk)))
-
-(defmethod can-read? ::read-policy.superuser
-  ([_instance]
-   (superuser?))
-  ([_model _pk]
-   (superuser?)))
-
-(defmethod can-write? ::write-policy.superuser
-  ([_instance]
-   (superuser?))
-  ([_model _pk]
-   (superuser?)))
+(methodical/defmethod t2/simple-hydrate [::write-policy.superuser :can_write]
+  [_model k instance]
+  (assoc instance k (boolean (superuser?))))
 
 (defmethod can-create? ::create-policy.superuser
   [_model _m]
   (superuser?))
-
-(defmethod visible-filter-clause :default
-  [_m _column-or-expression _user-info _perm-type->perm-level]
-  {:clause [:= [:inline 0] [:inline 1]]})
 
 ;;;; [[to-json]]
 
@@ -868,6 +764,11 @@
   [_original-model dest-key _hydrated-key]
   [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])
 
+(mr/def ::hydratable-item
+  "An item to hydrate: usually a Toucan instance, but callers may pass a plain map (or nil, for a sparse position)
+  since this helper only assocs a hydration key onto it."
+  [:maybe [:map {:closed false, ::mr/deliberately-open true, :description "a Toucan instance or a plain map"}]])
+
 (mu/defn instances-with-hydrated-data
   ;; TODO: this example is wrong, we don't get a vector of tables
   "Helper function to write batched hydrations.
@@ -882,11 +783,13 @@
            {:id 2 :tables [...tables-from-db-2]}]
 
   - key->hydrated-items-fn: is a function that returns a map with key is `instance-key` and value is the hydrated data of that instance."
-  [instances                      :- [:sequential :any]
+  [instances                      :- [:sequential ::hydratable-item]
    hydration-key                  :- :keyword
    instance-key->hydrated-data-fn :- fn?
    instance-key                   :- :keyword
-   & [{:keys [default] :as _options}]]
+   & [{:keys [default] :as _options}] :- [:* [:map {:closed true}
+                                              [:default {:optional true}
+                                               [:maybe [:or :boolean number? [:map {:closed true}] [:= []]]]]]]]
   (when (seq instances)
     (let [key->hydrated-items (instance-key->hydrated-data-fn)]
       (for [item instances]

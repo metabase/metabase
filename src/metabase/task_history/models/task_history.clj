@@ -5,12 +5,14 @@
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
    [java-time.api :as t]
+   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.task-history.db :as task-history.db]
    [metabase.task-history.models.task-run :as task-run]
+   [metabase.task-history.schema :as task-history.schema]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -28,17 +30,25 @@
 (methodical/defmethod t2/table-name :model/TaskHistory [_model] :task_history)
 
 (doto :model/TaskHistory
-  (derive :metabase/model)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive :metabase/model))
 
 ;;; Permissions to read or write Task. If `advanced-permissions` is enabled it requires superusers or non-admins with
 ;;; monitoring permissions, Otherwise it requires superusers.
-(defmethod mi/perms-objects-set :model/TaskHistory
-  [_task _read-or-write]
-  #{(if (premium-features/enable-advanced-permissions?)
-      (perms/application-perms-path :monitoring)
-      "/")})
+(defn- can-access?
+  "Whether the current user may read and write TaskHistory rows: a superuser, or, with advanced permissions, a user with the
+  monitoring permission."
+  []
+  (if (premium-features/enable-advanced-permissions?)
+    (contains? (perms/application-permissions-for-user (api/current-user-info)) :monitoring)
+    (mi/superuser?)))
+
+(methodical/defmethod t2/simple-hydrate [:model/TaskHistory :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (can-access?))))
+
+(methodical/defmethod t2/simple-hydrate [:model/TaskHistory :can_write]
+  [_model k instance]
+  (assoc instance k (boolean (can-access?))))
 
 (defn cleanup-task-history!
   "Deletes older TaskHistory rows. Will order TaskHistory by `ended_at` and delete everything after `num-rows-to-keep`.
@@ -75,7 +85,7 @@
 
 (def FilterParams
   "Schema for filter for task history."
-  [:map
+  [:map {:closed true}
    [:status {:optional true} (into [:enum] task-history-status)]
    [:task {:optional true} [:string {:min 1}]]])
 
@@ -84,20 +94,25 @@
 
 (def SortParams
   "Sorting map schema."
-  [:map
+  [:map {:closed true}
    [:sort_column    {:default :started_at} (into [:enum] available-sort-columns)]
    [:sort_direction {:default :desc}       [:enum :asc :desc]]])
+
+(def FilterAndSortParams
+  "The query params of `GET /api/task`: [[FilterParams]] and [[SortParams]] together. `:merge` merges the two maps'
+  properties, so the result is closed like both of its halves."
+  [:merge FilterParams SortParams])
 
 (mu/defn all
   "Return all TaskHistory entries, filtered if `filter` is provided, applying `limit` and `offset` if not nil."
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]
-   {:keys [status task sort_column sort_direction]} :- [:maybe [:merge FilterParams SortParams]]]
+   {:keys [status task sort_column sort_direction]} :- [:maybe FilterAndSortParams]]
   (task-history.db/task-histories status task (or sort_column :started_at) (or sort_direction :desc) limit offset))
 
 (mu/defn total
   "Return count of all, or filtered if `filter` is provided, task history entries."
-  [{:keys [status task]} :- FilterParams]
+  [{:keys [status task]} :- [:maybe FilterAndSortParams]]
   (task-history.db/task-history-count status task))
 
 (defn unique-tasks
@@ -119,9 +134,11 @@
   [:map {:closed true}
    [:task                             ms/NonBlankString] ; task name, i.e. `send-pulses`. Conventionally lisp-cased
    [:db_id           {:optional true} [:maybe :int]]     ; DB involved, for sync operations or other tasks where this is applicable.
-   [:on-success-info {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]
-   [:on-fail-info    {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]
-   [:task_details    {:optional true} [:maybe :map]]])   ; additional map of details to include in the recorded row
+   [:on-success-info {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any]
+                                               ::task-history.schema/task-history.update]]]
+   [:on-fail-info    {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo (ms/InstanceOfClass Throwable)]
+                                               ::task-history.schema/task-history.update]]]
+   [:task_details    {:optional true} [:maybe ::task-history.schema/task-history.task-details]]]) ; additional map of details to include in the recorded row
 
 (defn- ns->ms [nanoseconds]
   (long (/ nanoseconds 1e6)))
@@ -133,6 +150,7 @@
                             info)]
     (task-history.db/update-task-history! th-id updated-info)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Clock *log-capture-clock*
   "The java.time.Clock used for captured log message `:timestamp` values. Can be overridden for tests."
   (Clock/systemUTC))
@@ -202,7 +220,8 @@
 
 (mu/defn do-with-task-history
   "Impl for `with-task-history` macro; see documentation below."
-  [info :- TaskHistoryInfo f]
+  [info :- TaskHistoryInfo
+   f    :- ifn?]
   (let [on-success-info (or (:on-success-info info) (fn [& args] (first args)))
         on-fail-info    (or (:on-fail-info info) (fn [& args] (first args)))
         info            (dissoc info :on-success-info :on-fail-info)

@@ -10,6 +10,7 @@ import {
 } from "__support__/server-mocks";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,
@@ -18,7 +19,6 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { CacheConfig, TokenFeatures } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";

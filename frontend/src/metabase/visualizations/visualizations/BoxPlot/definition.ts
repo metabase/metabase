@@ -7,6 +7,7 @@ import {
   type ComputedVisualizationSettings,
   GRAPH_AXIS_SETTINGS,
   GRAPH_GOAL_SETTINGS,
+  LEGEND_POSITION_SETTINGS,
   type VisualizationDefinition,
   getDefaultSize,
   getMinSize,
@@ -19,8 +20,9 @@ export const BOXPLOT_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Box Plot`,
   identifier: "boxplot",
   iconName: "boxplot",
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  noun: t`box plot`,
+  get noun() {
+    return t`box plot`;
+  },
   minSize: getMinSize("boxplot"),
   defaultSize: getDefaultSize("boxplot"),
   maxMetricsSupported: Infinity,
@@ -48,6 +50,7 @@ export const BOXPLOT_CHART_DEFINITION: VisualizationDefinition = {
     ...BOXPLOT_SETTINGS,
     ...GRAPH_GOAL_SETTINGS,
     ...GRAPH_AXIS_SETTINGS,
+    ...LEGEND_POSITION_SETTINGS,
     ...BOXPLOT_DATA_SETTINGS,
   },
 };

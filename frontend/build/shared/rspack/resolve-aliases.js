@@ -6,8 +6,10 @@ const { IS_DEV_MODE } = require("../constants");
 
 const ROOT_PATH = path.resolve(__dirname, "../../../..");
 const ASSETS_PATH = ROOT_PATH + "/resources/frontend_client/app/assets";
-const FONTS_PATH = ROOT_PATH + "/resources/frontend_client/app/fonts";
-const IMAGES_PATH = ROOT_PATH + "/resources/frontend_client/app/img";
+const LOCALES_PATH = ROOT_PATH + "/resources/frontend_client/app/locales";
+// Bundled font sources. Deliberately outside resources/ so they are not packaged
+// into the jar twice: the build emits hashed copies into app/dist/fonts.
+const FONTS_PATH = ROOT_PATH + "/frontend/fonts";
 const DOCS_PATH = ROOT_PATH + "/docs";
 const FRONTEND_BUILD_CONFIGS_PATH = ROOT_PATH + "/frontend/build";
 const SRC_PATH = ROOT_PATH + "/frontend/src/metabase";
@@ -39,7 +41,8 @@ const resolveEnterprisePathOrNoop = (/** @type {string} */ subpath) =>
 const RESOLVE_ALIASES = {
   "build-configs": FRONTEND_BUILD_CONFIGS_PATH,
   assets: ASSETS_PATH,
-  img: IMAGES_PATH,
+  // Written by the `:translations` build step, which runs before the frontend one.
+  locales: LOCALES_PATH,
   fonts: FONTS_PATH,
   docs: DOCS_PATH,
   metabase: SRC_PATH,
@@ -51,10 +54,6 @@ const RESOLVE_ALIASES = {
   __support__: TEST_SUPPORT_PATH,
   e2e: E2E_PATH,
   style: SRC_PATH + "/css/core/index",
-  // NOTE @kdoh - 7/24/18
-  // icepick 2.x is es6 by default, to maintain backwards compatibility
-  // with ie11 point to the minified version
-  icepick: ROOT_PATH + "/node_modules/icepick/icepick.min",
   // conditionally load either the EE plugins file or a empty file in the CE code tree
   "ee-plugins":
     process.env.MB_EDITION === "ee"
@@ -77,4 +76,4 @@ const RESOLVE_ALIASES = {
       : SRC_PATH + "/plugins/noop",
 };
 
-module.exports = { RESOLVE_ALIASES };
+module.exports = { ENTERPRISE_SRC_PATH, RESOLVE_ALIASES };

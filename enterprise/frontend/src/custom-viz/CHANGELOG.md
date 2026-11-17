@@ -2,11 +2,37 @@
 
 This changelog covers the `@metabase/custom-viz` npm package — the API and CLI for building custom visualizations for Metabase. Changes to how Metabase itself hosts custom visualization plugins are covered by the [Metabase changelog](https://www.metabase.com/changelog).
 
+## Unreleased
+
+### Features
+
+- `FormatValueOptions` and `ColumnVisualizationSettings` include the duration options `duration_unit`, `duration_style` and `duration_precision`, used when `number_style` is `"duration"` ([#87151](https://github.com/metabase/metabase/pull/87151)).
+
+## 2.0.1
+
+### Bug Fixes
+
+- **Security:** updated Vite in scaffolded projects from 8.0.16 to 8.1.6 to pick up upstream security fixes ([#85837](https://github.com/metabase/metabase/pull/85837)).
+- The scaffolded dev server no longer crashes when an asset file disappears before it's copied, which happened with editors that save through atomic writes, or when a directory is added to `public/assets`. One save now triggers a single reload. Assets deleted from `public/assets` are now removed from `dist/assets` too ([#83597](https://github.com/metabase/metabase/pull/83597)).
+
+### Fix the asset watcher in existing projects
+
+After upgrading, copy the new config from the package:
+
+```
+cp node_modules/@metabase/custom-viz/dist/templates/vite.config.ts vite.config.ts
+```
+
+If you've customized `vite.config.ts`, port the `syncAssets` function and the `watch(assetsDirSrc, ...)` callback from that file instead.
+
 ## 2.0.0
 
 ### ⚠ BREAKING CHANGES
 
 - `column` and `column_settings` are now reserved setting ids, contributed to every visualization by Metabase to power the built-in per-column formatting popover. Plugins that declared their own settings under these ids must rename them — the `Settings` type now rejects those keys with a type error ([#78128](https://github.com/metabase/metabase/pull/78128)).
+- Plugin settings are now stored under `custom:<plugin name>:<setting id>` keys in a question's `visualization_settings`, so a plugin can never write one of Metabase's own settings. Plugins keep using their own ids: `settings`, `onChangeSettings`, `readDependencies`, `writeDependencies`, and `eraseDependencies` are translated by Metabase and refer to the plugin's own settings only ([#81181](https://github.com/metabase/metabase/pull/81181)).
+- `onChangeSettings` and the dependency lists are typed to the plugin's own setting ids. Writes to Metabase settings such as `card.title` or `click_behavior` no longer take effect ([#81181](https://github.com/metabase/metabase/pull/81181)).
+- Plugin settings saved by earlier plugin versions are adopted under the new keys automatically. Metabase settings an earlier plugin version already wrote, including `click_behavior`, stay stored and keep taking effect until removed, so review click behavior on existing custom visualization cards ([#81181](https://github.com/metabase/metabase/pull/81181)).
 - `ClickObject` is no longer generic and no longer has a `settings` field. Metabase attaches the visualization's current settings to every click itself and ignores anything passed under `settings`, so a click can't redirect dashboard click behavior. A `click_behavior` saved by an earlier plugin version stays in effect until removed ([#81181](https://github.com/metabase/metabase/pull/81181)).
 - The top-level `colorScheme` visualization prop moved into the new `renderingContext` prop (see Features below). Read `props.renderingContext.colorScheme` instead of `props.colorScheme` ([#78429](https://github.com/metabase/metabase/pull/78429)).
 - The `id` field of the visualization definition is removed. It was never read — Metabase identifies a visualization by `name` in `metabase-plugin.json`. Delete it from your `defineConfig` call.

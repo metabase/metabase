@@ -176,3 +176,12 @@
   regardless of whether the Card has a native query or not."
   [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]
   (boolean (some-> query not-empty lib/native-only-query?)))
+
+(mu/defn supports-implicit-actions? :- :boolean
+  "Whether a model with `query` supports implicit actions: every stage is MBQL with no clauses, so it is a raw table."
+  [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]
+  (boolean (and (seq query)
+                (every? (fn [stage-number]
+                          (and (lib/mbql-stage? query stage-number)
+                               (not (lib/has-clauses? query stage-number))))
+                        (range 0 (count (:stages query)))))))

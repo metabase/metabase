@@ -7,9 +7,9 @@ import {
   setupGdriveServiceAccountEndpoint,
   setupGdriveSyncEndpoint,
 } from "__support__/server-mocks";
+import { createMockSettingsState } from "__support__/state";
 import { act, renderWithProviders, screen } from "__support__/ui";
 import { dayjs } from "metabase/dayjs";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { Settings } from "metabase-types/api";
 import {
   createMockDatabase,

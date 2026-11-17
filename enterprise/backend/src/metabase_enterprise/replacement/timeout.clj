@@ -18,9 +18,11 @@
     (catch Throwable t
       (log/errorf "Error timing out old source replacement runs: %s" (ex-message t)))))
 
-(task/defjob ^{:doc "Timeout long-running source replacement runs."
-               org.quartz.DisallowConcurrentExecution true}
-  TimeoutReplacementRuns [ctx]
+(task/defjob TimeoutReplacementRuns
+  "Timeout long-running source replacement runs."
+  {:saved-class "metabase_enterprise.replacement.timeout.TimeoutReplacementRuns"
+   :concurrent? false}
+  [ctx]
   (timeout-replacement-runs! ctx))
 
 (defn- start-job! []

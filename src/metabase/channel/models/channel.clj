@@ -5,11 +5,11 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.channel.db :as channel.db]
-   [metabase.channel.template.handlebars :as handlebars]
+   [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -35,35 +35,54 @@
 ;;                                           :model/Channel                                        ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
+(def ^:private RowTimestamp
+  "A `created_at`/`updated_at` column: a `java.time` value on the way out, and -- because a notification update echoes
+  back the channel and template it was handed -- the ISO string it was encoded as on the way back in."
+  [:maybe [:or ms/TemporalInstant ms/TemporalString]])
+
+(defn- stringify-auth-info-keys
+  "An HTTP channel's `:auth-info` is keyed by the header or parameter names the user chose, so it is string-keyed, as
+  `::channel.schema/http-details` says, rather than keywordized like the rest of the details."
+  [details]
+  (cond-> details
+    (map? (:auth-info details)) (update :auth-info update-keys u/qualified-name)))
+
 (t2/deftransforms :model/Channel
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))
-   :details (mi/transform-encrypted-json "channel.details")})
+   :details (update (mi/transform-encrypted-json "channel.details") :out #(comp stringify-auth-info-keys %))})
 
 (mr/def ::Channel
   "Channel schema."
-  [:map
-   [:name                         string?]
-   [:type                         :keyword]
-   ;; per-channel-type connection config (a Slack token, an HTTP url and auth, ...) -- free-form like database details
-   [:details                      ms/Map]
-   [:active      {:optional true} :boolean]
-   [:description {:optional true} [:maybe string?]]])
+  [:merge
+   [:map {:closed true}
+    [:name                         string?]
+    [:type                         :keyword]
+    [:active      {:optional true} :boolean]
+    [:description {:optional true} [:maybe string?]]
+    [:id          {:optional true} ms/PositiveInt]
+    [:created_at  {:optional true} RowTimestamp]
+    [:updated_at  {:optional true} RowTimestamp]]
+   ::channel.schema/channel.details-by-type])
 
-(defmethod mi/can-write? :model/Channel
-  [& _]
-  (or (mi/superuser?)
-      (perms/current-user-has-application-permissions? :setting)))
+(methodical/defmethod t2/simple-hydrate [:model/Channel :can_write]
+  [_model k instance]
+  (assoc instance k
+         (boolean
+          (or (mi/superuser?)
+              (perms/current-user-has-application-permissions? :setting)))))
 
-(defmethod mi/can-read? :model/Channel
-  [_channel]
-  (or (mi/superuser?)
-      (perms/current-user-has-application-permissions? :setting)))
+(methodical/defmethod t2/simple-hydrate [:model/Channel :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k
+             (boolean
+              (or (mi/superuser?)
+                  (perms/current-user-has-application-permissions? :setting)))))
 
 (methodical/defmethod mi/to-json :model/Channel
   "Only include `:details` for callers who can write the channel, matching `remove-details-if-needed` in the channel
   API. Encoding at the model boundary keeps every response that returns a Channel consistent."
   [channel json-generator]
-  (next-method (if (mi/can-write? channel)
+  (next-method (if (mi/can-write? (t2/hydrate channel :can_write))
                  channel
                  (dissoc channel :details))
                json-generator))
@@ -80,22 +99,15 @@
       ;; Limit to 254 characters to avoid hitting character limit
       (assoc :name (u/truncate (format "DEACTIVATED_%d %s" (:id instance) (:name instance)) 254)))))
 
-(defmethod serdes/entity-id "Channel" [_ {:keys [name]}] name)
+(defmethod serialization/storage-paths :model/Channel [_ entities _ctx]
+  (mapv (fn [channel]
+          [{:label "channels"} {:label (:name channel) :key (:name channel)}])
+        entities))
 
-(defmethod serdes/load-find-local "Channel"
-  [path]
-  (channel.db/channel-by-name (:id (last path))))
-
-(defmethod serdes/generate-path "Channel" [_ channel]
-  [(serdes/infer-self-path "Channel" channel)])
-
-(defmethod serdes/storage-path "Channel" [channel _ctx]
-  [{:label "channels"} {:label (:name channel) :key (serdes/entity-id "Channel" channel)}])
-
-(defmethod serdes/make-spec "Channel"
-  [_model-name _opts]
-  {:copy           [:name :description :type :details :active]
-   :transform      {:created_at (serdes/date)}
+(defmethod serialization/spec :model/Channel [_]
+  {:schema   ::channel.schema/external-channel
+   :identity [:name]
+   :copy     [:name :description :type :details :active]
    :defaults {:active true}})
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -106,60 +118,36 @@
   {:channel_type  (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))
    :details       mi/transform-json})
 
-(def ^:private channel-template-details-type
-  #{:email/handlebars-text
-    :email/handlebars-resource})
-
-(mr/def ::ChannelTemplateEmailDetails
-  [:merge
-   [:map
-    [:type                            (apply ms/enum-keywords-and-strings channel-template-details-type)]
-    [:subject                         string?]
-    [:recipient-type {:optional true} (ms/enum-keywords-and-strings :cc :bcc)]]
-   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
-            :dispatch         (comp keyword :type)}
-    [:email/handlebars-resource
-     [:map
-      [:path [:and
-              string?
-              [:fn {:error/message "invalid template path"}
-               handlebars/valid-template-name?]]]]]
-    [:email/handlebars-text
-     [:map
-      [:body string?]]]]])
-
 (def ^:private channel-template-entries
   "Entries every channel template has, whatever its `:channel_type`."
   [[:id           {:optional true} ms/PositiveInt]
    [:name         {:optional true} ms/NonBlankString]
-   [:channel_type                  [:fn #(= "channel" (-> % keyword namespace))]]])
+   [:channel_type                  [:fn {:json-schema {:type "string"}} #(= "channel" (-> % keyword namespace))]]])
+
+(def ^:private channel-template-row-entries
+  "[[channel-template-entries]] plus the timestamps a stored template carries. Kept out of the user-provided schema
+  below, which describes a request body rather than a row."
+  (into channel-template-entries
+        [[:created_at {:optional true} RowTimestamp]
+         [:updated_at {:optional true} RowTimestamp]]))
 
 (mr/def ::ChannelTemplate
   "Channel Template schema."
   [:merge
-   (into [:map] channel-template-entries)
+   (into [:map {:closed true}] channel-template-row-entries)
    [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
             :dispatch         (comp keyword :channel_type)}
-    [:channel/email [:map [:details ::ChannelTemplateEmailDetails]]]
-    [::mc/default   [:map]]]])
-
-(mr/def ::ChannelTemplateEmailDetailsUserProvided
-  "Email template details schema for API-provided templates. Only handlebars-text is allowed;
-  handlebars-resource is restricted to internal use only."
-  [:map
-   [:type    (ms/enum-keywords-and-strings :email/handlebars-text)]
-   [:subject string?]
-   [:recipient-type {:optional true} (ms/enum-keywords-and-strings :cc :bcc)]
-   [:body    string?]])
+    [:channel/email [:map {:closed true} [:details ::channel.schema/channel-template.email-details]]]
+    [::mc/default   [:map {:closed true} [:details {:optional true} :nil]]]]])
 
 (mr/def ::ChannelTemplateUserProvided
   "Channel Template schema for API-provided templates. Does not allow handlebars-resource."
   [:merge
-   (into [:map] channel-template-entries)
+   (into [:map {:closed true}] channel-template-entries)
    [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
             :dispatch         (comp keyword :channel_type)}
-    [:channel/email [:map [:details ::ChannelTemplateEmailDetailsUserProvided]]]
-    [::mc/default   [:map]]]])
+    [:channel/email [:map {:closed true} [:details ::channel.schema/channel-template.email-details.user-provided]]]
+    [::mc/default   [:map {:closed true}]]]])
 
 (defn- check-valid-channel-template
   [channel-template]
@@ -202,7 +190,9 @@
 (defmethod analytics.core/known-labels :metabase-notification/template-create [_] template-channel-labels)
 (defmethod analytics.core/known-labels :metabase-notification/template-update [_] template-channel-labels)
 
-(defmethod mi/can-write? :model/ChannelTemplate
-  [& _]
-  (or (mi/superuser?)
-      (perms/current-user-has-application-permissions? :setting)))
+(methodical/defmethod t2/simple-hydrate [:model/ChannelTemplate :can_write]
+  [_model k instance]
+  (assoc instance k
+         (boolean
+          (or (mi/superuser?)
+              (perms/current-user-has-application-permissions? :setting)))))

@@ -4,7 +4,7 @@ import {
 } from "metabase/common/utils/card";
 import { utf8_to_b64url } from "metabase/utils/encoding";
 import * as Lib from "metabase-lib";
-import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockDashCardDataSeries,
@@ -13,11 +13,9 @@ import {
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 describe("deserializeCardFromQuery", () => {
-  const MBQL_QUERY = {
-    database: 1,
-    type: "query",
-    query: { "source-table": 2 },
-  };
+  const MBQL_QUERY = Lib.toLegacyQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  );
   const CARD_PAYLOAD = {
     dataset_query: MBQL_QUERY,
     display: "bar",
@@ -40,6 +38,24 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
     );
   }
 
+  it("uses a number for a metric with an empty filter stage (#84409)", () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+        },
+      ],
+    });
+
+    const result = getMetricSeriesWithDefaultDisplay(
+      [createMetricSeries(Lib.appendStage(query))],
+      SAMPLE_PROVIDER,
+    );
+
+    expect(result[0].card.display).toBe("scalar");
+  });
+
   it("uses a bar chart for a metric with a binned numeric breakout", () => {
     const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [
@@ -50,8 +66,7 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
             {
               type: "column",
               name: "TOTAL",
-              sourceName: "ORDERS",
-              bins: 10,
+              binning: { strategy: "num-bins", numBins: 10 },
             },
           ],
         },
@@ -60,7 +75,7 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
 
     const result = getMetricSeriesWithDefaultDisplay(
       [createMetricSeries(query)],
-      SAMPLE_METADATA,
+      SAMPLE_PROVIDER,
     );
 
     expect(result[0].card.display).toBe("bar");
@@ -72,16 +87,14 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
         {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
-          breakouts: [
-            { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
-          ],
+          breakouts: [{ type: "column", name: "CREATED_AT" }],
         },
       ],
     });
 
     const result = getMetricSeriesWithDefaultDisplay(
       [createMetricSeries(query)],
-      SAMPLE_METADATA,
+      SAMPLE_PROVIDER,
     );
 
     expect(result[0].card.display).toBe("line");
@@ -95,7 +108,7 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
       ),
     ];
 
-    expect(getMetricSeriesWithDefaultDisplay(series, SAMPLE_METADATA)).toBe(
+    expect(getMetricSeriesWithDefaultDisplay(series, SAMPLE_PROVIDER)).toBe(
       series,
     );
   });

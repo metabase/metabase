@@ -10,6 +10,9 @@ import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { DashboardContextProvider } from "metabase/dashboard/context";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { DashboardCard } from "metabase-types/api";
 import {
   createMockCard,
@@ -17,7 +20,6 @@ import {
   createMockDashboardCard,
   createMockDashboardQueryMetadata,
   createMockDataset,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -28,9 +30,11 @@ import { DashboardSubscriptionsButton } from "./DashboardSubscriptionsButton";
 
 const tableCard = createMockCard({
   id: 1,
-  dataset_query: createMockStructuredDatasetQuery({
-    query: { "source-table": ORDERS_ID },
-  }),
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
+    }),
+  ),
   name: "Here is a card title",
 });
 const tableDashcard = createMockDashboardCard({
@@ -42,11 +46,15 @@ const tableDashcard = createMockDashboardCard({
 interface SetupOpts {
   dashcards?: DashboardCard[];
   emailConfigured?: boolean;
+  isDataApp?: boolean;
 }
 const setup = ({
   emailConfigured,
   dashcards = [tableDashcard],
+  isDataApp = false,
 }: SetupOpts = {}) => {
+  EMBEDDING_SDK_CONFIG.isDataApp = isDataApp;
+
   setupNotificationChannelsEndpoints({
     email: {
       configured: emailConfigured,
@@ -71,6 +79,10 @@ const setup = ({
 };
 
 describe("DashboardSubscriptionsButton", () => {
+  afterEach(() => {
+    EMBEDDING_SDK_CONFIG.isDataApp = false;
+  });
+
   it("should render the subscriptions button when email is configured", async () => {
     setup({ emailConfigured: true });
 
@@ -106,6 +118,22 @@ describe("DashboardSubscriptionsButton", () => {
     expect(
       screen.queryByRole("button", { name: "Subscriptions" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("should not render the subscriptions button and should not call pulse/form_input inside a data app", async () => {
+    // A subscription is scheduled email delivered out of band, so it is not part of the
+    // data-app surface. `/api/pulse` is unscoped for data apps, so a subscriptions button
+    // offered here would 403 as soon as it was clicked.
+    setup({ emailConfigured: true, isDataApp: true });
+
+    await waitFor(async () => {
+      expect(await getDashboardRequests()).toHaveLength(1);
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Subscriptions" }),
+    ).not.toBeInTheDocument();
+    expect(await getSubscriptionChannelInfoRequests()).toHaveLength(0);
   });
 });
 

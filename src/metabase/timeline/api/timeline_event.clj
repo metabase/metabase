@@ -13,6 +13,10 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]))
 
+(events/derive! :event/timeline-create :metabase/event)
+(events/derive! :event/timeline-update :metabase/event)
+(events/derive! :event/timeline-delete :metabase/event)
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -22,7 +26,7 @@
   [_route-params
    _query-params
    {:keys [timestamp time_matters icon timeline_id source question_id] :as body}
-   :- [:map
+   :- [:map {:closed true}
        [:name         ms/NonBlankString]
        [:description  {:optional true} [:maybe :string]]
        [:timestamp    ms/TemporalString]
@@ -63,7 +67,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch the [[TimelineEvent]] with `id`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/read-check :model/TimelineEvent id))
 
@@ -73,11 +77,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a [[TimelineEvent]]."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [timestamp]
-    :as   timeline-event-updates} :- [:map
+    :as   timeline-event-updates} :- [:map {:closed true}
                                       [:name         {:optional true} [:maybe ms/NonBlankString]]
                                       [:description  {:optional true} [:maybe :string]]
                                       [:timestamp    {:optional true} [:maybe ms/TemporalString]]
@@ -90,7 +94,7 @@
         timeline-event-updates (cond-> timeline-event-updates
                                  (boolean timestamp) (update :timestamp u.date/parse))]
     (collection/check-allowed-to-change-collection existing timeline-event-updates)
-    (when (api/column-will-change? :timeline_id existing timeline-event-updates)
+    (when (api/column-will-change? (:timeline_id existing) (get timeline-event-updates :timeline_id ::api/not-provided))
       (api/write-check :model/Timeline (:timeline_id timeline-event-updates)))
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
     (timeline.db/update-timeline-event! id
@@ -100,13 +104,9 @@
     (u/prog1 (timeline.db/timeline-event id)
       (events/publish-event! :event/timeline-update {:object (timeline.db/timeline (:timeline_id <>)) :user-id api/*current-user-id*}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a [[TimelineEvent]]."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/TimelineEvent id)
   (let [timeline-event (api/write-check :model/TimelineEvent id)]

@@ -1,6 +1,5 @@
 (ns metabase.config.core
   (:require
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.java.io :as io]
    [clojure.string :as str]
    [environ.core :as env]
@@ -91,8 +90,7 @@
 ;; These are convenience functions for accessing config values that ensures a specific return type
 ;;
 ;; TODO - These names are bad. They should be something like `int`, `boolean`, and `keyword`, respectively. See
-;; https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#dont-repeat-namespace-alias-in-function-names
-;; for discussion
+;; "Function Naming" in .claude/skills/_shared/clojure-style-guide.md
 (defn config-int  "Fetch a configuration key and parse it as an integer." ^Integer [k] (some-> k config-str Integer/parseInt))
 (defn config-long "Fetch a configuration key and parse it as a Long."     ^Long    [k] (some-> k config-str Long/parseLong))
 (defn config-bool "Fetch a configuration key and parse it as a boolean."  ^Boolean [k] (some-> k config-str Boolean/parseBoolean))
@@ -194,6 +192,7 @@
    This is needed in the OSS edition to filter out users for setup/has-user-setup."
   13371338)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *disable-setting-cache*
   "Whether to disable database cache. Here for loading circularity reasons."
   false)
@@ -204,6 +203,7 @@
   []
   (not (false? (config-bool :mb-load-sample-content))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *request-id*
   "A unique identifier for the current request. This is bound by
   `metabase.server.middleware.request-id/wrap-request-id`."

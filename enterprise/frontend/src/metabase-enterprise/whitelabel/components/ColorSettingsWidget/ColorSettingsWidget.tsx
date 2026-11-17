@@ -15,14 +15,6 @@ export const ColorSettingsWidget = () => {
   } = useAdminSetting("application-colors");
   const theme = useMantineTheme();
 
-  const themeColors = Object.fromEntries(
-    Object.entries(theme.colors).map(([colorName, color]) => [
-      colorName,
-      // Unjustified type cast. FIXME
-      color[theme.primaryShade as number],
-    ]),
-  );
-
   const handleChange = async (newValue: ColorSettingsType) => {
     await updateSetting({
       key: "application-colors",
@@ -42,10 +34,6 @@ export const ColorSettingsWidget = () => {
   }
 
   return (
-    <ColorSettings
-      initialColors={colorSettings}
-      themeColors={themeColors}
-      onChange={onChangeDebounced}
-    />
+    <ColorSettings initialColors={colorSettings} onChange={onChangeDebounced} />
   );
 };

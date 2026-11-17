@@ -14,5 +14,5 @@
                     ;; `:lib/uuid` is optional, as it will be added automatically
                     [:map
                      [:lib/uuid {:optional true} ::lib.schema.common/uuid]]]]
-   v]
+   v    :- ::lib.schema.literal/value.value]
   [:value (assoc opts :lib/uuid (str (random-uuid))) v])

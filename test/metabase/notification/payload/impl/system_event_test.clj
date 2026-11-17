@@ -195,7 +195,7 @@
                             (mt/with-temporary-setting-values [site-url "https://metabase.com"]
                               (-> (notification.tu/with-captured-channel-send!
                                     (user/create-and-invite-user! {:first_name "Newbie" :email (mt/random-email)}
-                                                                  {:first_name "Admin" :email "admin@metabase.com"}
+                                                                  {:id (mt/user->id :crowberto) :first_name "Admin" :email "admin@metabase.com"}
                                                                   false
                                                                   invite-target))
                                   :channel/email first :message first :content)))]
@@ -215,7 +215,7 @@
                               (mt/with-temporary-setting-values [site-url "https://metabase.com"]
                                 (-> (notification.tu/with-captured-channel-send!
                                       (user/create-and-invite-user! {:first_name "Newbie" :email (mt/random-email)}
-                                                                    {:first_name "Admin" :email "admin@metabase.com"}
+                                                                    {:id (mt/user->id :crowberto) :first_name "Admin" :email "admin@metabase.com"}
                                                                     false
                                                                     invite-target))
                                     :channel/email first :message first :content)))]
@@ -234,7 +234,7 @@
                                                               site-name "SuperStar"]
                              (-> (notification.tu/with-captured-channel-send!
                                    (user/create-and-invite-user! {:first_name "Newbie" :email (mt/random-email)}
-                                                                 {:first_name "Ngoc" :email "ngoc@metabase.com"}
+                                                                 {:id (mt/user->id :crowberto) :first_name "Ngoc" :email "ngoc@metabase.com"}
                                                                  false
                                                                  invite-target))
                                  :channel/email first)))

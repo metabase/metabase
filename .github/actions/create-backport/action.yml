@@ -21,6 +21,8 @@ runs:
         TARGET_BRANCH: release-x.${{ inputs.target-version }}.x
         ORIGINAL_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
         ORIGINAL_TITLE: ${{ github.event.pull_request.title }}
+        ORIGINAL_AUTHOR: ${{ github.event.pull_request.user.login }}
+        ORIGINAL_AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
         COMMIT: ${{ inputs.backport-commit }}
       shell: bash
@@ -72,7 +74,11 @@ runs:
 
         git push -u origin ${BACKPORT_BRANCH}
 
-        PR_ARGS=(--base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" --label "was-backported" --assignee "${{ github.event.pull_request.user.login }}" --title "🤖 v${TARGET_VERSION} backported \"${ORIGINAL_TITLE}\"" --body "${PR_BODY}")
+        PR_ARGS=(--base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" --label "was-backported" --title "🤖 v${TARGET_VERSION} backported \"${ORIGINAL_TITLE}\"" --body "${PR_BODY}")
+        # GitHub does not let a bot account be the assignee of a PR.
+        if [ "$ORIGINAL_AUTHOR_TYPE" != "Bot" ]; then
+          PR_ARGS+=(--assignee "${ORIGINAL_AUTHOR}")
+        fi
         if [ "$CONFLICTS" -gt 0 ]; then
           PR_ARGS+=(--draft)
         fi
@@ -85,15 +91,25 @@ runs:
 
         git checkout ${{ github.sha }}
 
-    - name: Approve and Merge the PR
+    # Approving takes a different token than the one that opened the PR: GitHub won't let a token
+    # approve its own pull request.
+    - name: Approve the backport PR
       if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
-      run: |
-        gh pr review --approve "$PR_NUMBER"
-        gh pr merge --squash --auto "$PR_NUMBER"
+      run: gh pr review --approve "$PR_NUMBER"
       shell: bash
       env:
-        # uses a different token than the token that created the PR so we can approve and merge it
         GH_TOKEN: ${{ inputs.github-token-2 }}
+        PR_NUMBER: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
+
+    # Merging, though, has to use `github-token` rather than the `GITHUB_TOKEN` that approves: GitHub
+    # starts no workflow run for a push made with `GITHUB_TOKEN`, so an auto-merge enabled with it
+    # lands the backport on the release branch with no CI at all.
+    - name: Merge the backport PR
+      if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
+      run: gh pr merge --squash --auto "$PR_NUMBER"
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
         PR_NUMBER: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
 
     - uses: ./.github/actions/notify-pull-request

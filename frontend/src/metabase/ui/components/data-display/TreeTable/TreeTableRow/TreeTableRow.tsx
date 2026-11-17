@@ -1,7 +1,7 @@
 import type { Row, Table } from "@tanstack/react-table";
 import { flexRender } from "@tanstack/react-table";
 import cx from "classnames";
-import type { MouseEvent } from "react";
+import type { JSX, MouseEvent } from "react";
 import { memo, useMemo } from "react";
 import { t } from "ttag";
 
@@ -41,13 +41,43 @@ interface TreeTableRowContentProps<
   isLoading?: boolean;
   isExpanded: boolean;
   canExpand: boolean;
-  getSelectionState?: (row: Row<TData>) => SelectionState;
+  selectionState: SelectionState;
+  isCheckboxDisabled: boolean;
   onCheckboxClick?: (row: Row<TData>, index: number, event: MouseEvent) => void;
   onRowClick?: (row: Row<TData>, event: MouseEvent) => void;
   onRowDoubleClick?: (row: Row<TData>, event: MouseEvent) => void;
   rowProps?: Record<string, unknown>;
   hierarchical?: boolean;
   isClickable?: boolean;
+  isStatic?: boolean;
+}
+
+function getRowTabIndex({
+  isStatic,
+  isDisabled,
+  isKeyboardFocused,
+}: {
+  isStatic?: boolean;
+  isDisabled?: boolean;
+  isKeyboardFocused: boolean;
+}): number | undefined {
+  if (isStatic) {
+    return undefined;
+  }
+  return isKeyboardFocused && !isDisabled ? 0 : -1;
+}
+
+function getRowSelectionState<TData extends TreeNodeData>(
+  row: Row<TData>,
+  getSelectionState?: (row: Row<TData>) => SelectionState,
+): SelectionState {
+  if (getSelectionState) {
+    return getSelectionState(row);
+  }
+  if (row.getIsSelected()) {
+    return "all";
+  }
+  return row.getIsSomeSelected() ? "some" : "none";
 }
 
 // Memoized component that does not depend on virtualItem for performance reasons
@@ -68,7 +98,8 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
   isLoading,
   isExpanded,
   canExpand,
-  getSelectionState,
+  selectionState,
+  isCheckboxDisabled,
   onCheckboxClick,
   onRowClick,
   onRowDoubleClick,
@@ -77,23 +108,13 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
   rowProps,
   hierarchical = false,
   isClickable,
+  isStatic,
 }: TreeTableRowContentProps<TData>) {
   const isKeyboardFocused = activeRowId === row.id;
   const isSelected = selectedRowId === row.id;
   const isActive = isKeyboardFocused || isSelected;
   const indent = row.depth * indentWidth;
   const visibleCells = row.getVisibleCells();
-
-  const selectionState = getSelectionState
-    ? getSelectionState(row)
-    : row.getIsSelected()
-      ? "all"
-      : row.getIsSomeSelected()
-        ? "some"
-        : "none";
-
-  const isCheckboxDisabled =
-    isDisabled || (!getSelectionState && !row.getCanSelect());
 
   const handleCheckboxToggle = (event: MouseEvent) => {
     event.stopPropagation();
@@ -111,11 +132,12 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
     <Flex
       {...rowProps}
       role="row"
-      tabIndex={isDisabled ? -1 : isKeyboardFocused ? 0 : -1}
+      tabIndex={getRowTabIndex({ isStatic, isDisabled, isKeyboardFocused })}
       data-keyboard-active={isKeyboardFocused ? true : undefined}
       data-disabled={isDisabled ? true : undefined}
       className={cx(S.content, classNames?.row, {
         [S.clickable]: isClickable,
+        [S.static]: isStatic,
         [S.active]: isActive,
         [classNames?.rowActive ?? ""]: isActive && classNames?.rowActive,
         [S.disabled]: isDisabled,
@@ -253,8 +275,15 @@ export function TreeTableRow<TData extends TreeNodeData>({
   renderSubRow,
   hierarchical = true,
   isClickable,
+  isStatic,
 }: TreeTableRowProps<TData>) {
   const rowProps = useMemo(() => getRowProps?.(row), [getRowProps, row]);
+
+  // Selection is read outside the memoized content: a row keeps its identity when only its selection changes
+  const selectionState = getRowSelectionState(row, getSelectionState);
+  const isCheckboxDisabled = Boolean(
+    isDisabled || (!getSelectionState && !row.getCanSelect()),
+  );
 
   const content = (
     <TreeTableRowContent
@@ -272,7 +301,8 @@ export function TreeTableRow<TData extends TreeNodeData>({
       isLoading={isLoading}
       isExpanded={isExpanded}
       canExpand={canExpand}
-      getSelectionState={getSelectionState}
+      selectionState={selectionState}
+      isCheckboxDisabled={isCheckboxDisabled}
       onCheckboxClick={onCheckboxClick}
       onRowClick={onRowClick}
       onRowDoubleClick={onRowDoubleClick}
@@ -281,6 +311,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
       rowProps={rowProps}
       hierarchical={hierarchical}
       isClickable={isClickable}
+      isStatic={isStatic}
     />
   );
 

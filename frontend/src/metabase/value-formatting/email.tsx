@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { isEmail } from "metabase/utils/email";
 import { removeNewLines } from "metabase/utils/formatting";
 import type { ColumnSettings } from "metabase-types/api";

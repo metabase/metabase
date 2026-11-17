@@ -3,13 +3,15 @@ import type { ComponentProps } from "react";
 import { Flex } from "metabase/ui";
 
 import { Sidesheet } from "./Sidesheet";
-import { TestPagedSidesheet, TestTabbedSidesheet } from "./Sidesheet.samples";
+import {
+  TestPagedSidesheet,
+  TestSectionedSidesheet,
+} from "./Sidesheet.samples";
 import { SidesheetButton, SidesheetButtonWithChevron } from "./SidesheetButton";
 import { SidesheetCard } from "./SidesheetCard";
 import { SidesheetCardSection } from "./SidesheetCardSection";
 
 const args = {
-  size: "md",
   title: "My Awesome Sidesheet",
   onClose: () => {},
   isOpen: true,
@@ -26,9 +28,19 @@ const argTypes = {
   isOpen: {
     control: { type: "boolean" },
   },
+  offset: {
+    control: { type: "boolean" },
+  },
 };
 
 type SidesheetProps = ComponentProps<typeof Sidesheet>;
+
+// Wait for the portaled panel, then capture the full viewport and overlay.
+const sidesheetLokiParameters = {
+  loki: {
+    chromeSelector: 'body:has([data-testid="sidesheet"]:not([data-hidden]))',
+  },
+};
 
 const DefaultTemplate = (args: SidesheetProps) => (
   <Sidesheet {...args}>Call me Ishmael ...</Sidesheet>
@@ -61,7 +73,7 @@ const WithSectionedCardsTemplate = (args: SidesheetProps) => (
 
 const PagedSidesheetTemplate = () => <TestPagedSidesheet />;
 
-const TabbedSidesheetTemplate = () => <TestTabbedSidesheet />;
+const SectionedSidesheetTemplate = () => <TestSectionedSidesheet />;
 
 const SidesheetButtonTemplate = () => (
   <Flex maw="30rem" direction="column" gap="xl">
@@ -91,6 +103,15 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
+  parameters: sidesheetLokiParameters,
+};
+
+export const Offset = {
+  render: DefaultTemplate,
+  args: {
+    offset: true,
+  },
+  parameters: sidesheetLokiParameters,
 };
 
 export const WithCards = {
@@ -108,9 +129,10 @@ export const WithSubPages = {
   name: "With sub pages",
 };
 
-export const WithTabs = {
-  render: TabbedSidesheetTemplate,
-  name: "With tabs",
+export const WithSectionsActionsAndFooter = {
+  render: SectionedSidesheetTemplate,
+  name: "With sections, actions, and footer",
+  parameters: sidesheetLokiParameters,
 };
 
 export const SidesheetButtons = {

@@ -1,10 +1,10 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useAdminSetting } from "metabase/settings";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import {
   ActionIcon,
   Box,
@@ -85,11 +85,7 @@ export function ManageCustomVizPage() {
             </Button>
             <Menu position="bottom-end">
               <Menu.Target>
-                <ActionIcon
-                  variant="subtle"
-                  size="lg"
-                  aria-label={t`More options`}
-                >
+                <ActionIcon variant="subtle" aria-label={t`More options`}>
                   <Icon name="ellipsis" />
                 </ActionIcon>
               </Menu.Target>
@@ -126,7 +122,7 @@ export function ManageCustomVizPage() {
           mih="15rem"
           p="xxl"
         >
-          <Text c="text-disabled">{t`You don't have any custom visualizations.`}</Text>
+          <Text c="text-secondary">{t`You don't have any custom visualizations.`}</Text>
         </Group>
       )}
 

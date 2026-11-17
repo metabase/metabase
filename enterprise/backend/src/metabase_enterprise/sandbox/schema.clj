@@ -6,7 +6,8 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema]))
 
 (mr/def ::attribute-remappings
   "value must be a valid attribute remappings map (attribute name -> remapped name)"
@@ -32,6 +33,22 @@
   {:in  (comp mi/json-in normalize-attribute-remappings)
    :out (comp normalize-attribute-remappings mi/json-out-without-keywordization)})
 
+(mr/def ::sandbox.attribute-remappings
+  "The `:attribute_remappings` column of a Sandbox, decoded."
+  ::attribute-remappings)
+
 (mr/def ::sandbox
-  [:map
-   [:id ::lib.schema.id/sandbox]])
+  "A Sandbox as selected from the app DB: every column of `:sandboxes`, plus `:table` some callers hydrate onto it."
+  [:merge
+   ::sandbox.update
+   [:map {:closed true}
+    [:id                   ms/PositiveInt]
+    [:table                {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
+
+(mr/def ::sandbox.update
+  "What an update (or insert) of a Sandbox accepts: every column of `:sandboxes` except `id`, all optional."
+  [:map {:closed true}
+   [:group_id             {:optional true} [:maybe ms/PositiveInt]]
+   [:table_id             {:optional true} [:maybe ::lib.schema.id/table]]
+   [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
+   [:attribute_remappings {:optional true} [:maybe ::sandbox.attribute-remappings]]])

@@ -1,14 +1,15 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import Funnel from "metabase/static-viz/components/FunnelChart";
 import Gauge from "metabase/static-viz/components/Gauge";
 import { createColorGetter } from "metabase/static-viz/lib/colors";
-import type { ColorPalette } from "metabase/ui/colors/types";
+import type { ColorSettings } from "metabase-types/api/settings";
 
 export type LegacyStaticChartType = "gauge" | "funnel";
 
 export interface LegacyStaticChartProps {
   type: LegacyStaticChartType;
   options: any;
-  colors?: ColorPalette;
+  colors?: ColorSettings;
   hasDevWatermark?: boolean;
 }
 

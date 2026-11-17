@@ -1,0 +1,1 @@
+When the answer needs a value, write SQL with `create_sql_query` and run it with `run_query`. `run_query` runs only a single read-only SELECT statement: one statement, which may use CTEs and UNION, that changes and locks nothing. If a figure takes two steps, such as a change between two periods or a count within the top item, compute both steps in one statement with CTEs.

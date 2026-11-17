@@ -32,9 +32,11 @@ export {
 export { queryToSearch, toFacadeLocation } from "./location";
 export { createLocationMirror, type LocationMirror } from "./location-mirror";
 export {
+  getCanGoBack,
   getIsNavigationPending,
+  getPendingNavigationPath,
+  getRouterLocation,
   navigate,
   notifyLocationListeners,
   subscribeLocation,
 } from "./navigator";
-export { getRawBrowserHistory } from "./raw-history";

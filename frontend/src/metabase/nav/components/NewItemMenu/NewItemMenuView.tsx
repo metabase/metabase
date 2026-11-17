@@ -6,6 +6,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { getUserCanWriteToCollections } from "metabase/current-user";
 import { NewMenuItemAIExploration } from "metabase/metabot/components/NewMenuItemAIExploration";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/settings";
@@ -33,8 +34,10 @@ export const NewItemMenuView = ({
   hasDataAccess,
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
+  onCloseNavbar,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
+  const buildQuestion = useQuestionFromOptsBuilder();
 
   const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
@@ -47,14 +50,8 @@ export const NewItemMenuView = ({
   const menuItems = useMemo(() => {
     const items = [];
 
-    if (hasDataAccess) {
-      items.push(
-        <NewMenuItemAIExploration
-          key="nlq"
-          collectionId={collectionId}
-          hasNlqAccess={hasNlqAccess}
-        />,
-      );
+    if (hasDataAccess && hasNlqAccess) {
+      items.push(<NewMenuItemAIExploration key="nlq" />);
     }
 
     if (hasDataAccess) {
@@ -62,12 +59,11 @@ export const NewItemMenuView = ({
         <Menu.Item
           key="question"
           component={ForwardRefLink}
-          to={Urls.newQuestion({
-            mode: "notebook",
-            creationType: "custom_question",
-            collectionId,
-            cardType: "question",
-          })}
+          to={Urls.newQuestion(
+            buildQuestion({ collectionId, cardType: "question" }),
+            { mode: "notebook", creationType: "custom_question" },
+          )}
+          onClick={onCloseNavbar}
           leftSection={<Icon name="insight" />}
         >
           {t`Question`}
@@ -80,13 +76,16 @@ export const NewItemMenuView = ({
         <Menu.Item
           key="native"
           component={ForwardRefLink}
-          to={Urls.newQuestion({
-            DEPRECATED_RAW_MBQL_type: "native",
-            creationType: "native_question",
-            collectionId,
-            cardType: "question",
-            DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
-          })}
+          to={Urls.newQuestion(
+            buildQuestion({
+              DEPRECATED_RAW_MBQL_type: "native",
+              collectionId,
+              cardType: "question",
+              DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
+            }),
+            { creationType: "native_question" },
+          )}
+          onClick={onCloseNavbar}
           leftSection={<Icon name="sql" />}
         >
           {hasDatabaseWithJsonEngine ? t`Native query` : t`SQL query`}
@@ -114,6 +113,7 @@ export const NewItemMenuView = ({
         key="document"
         component={ForwardRefLink}
         to="/document/new"
+        onClick={onCloseNavbar}
         leftSection={<Icon name="document" />}
       >
         {t`Document`}
@@ -130,6 +130,8 @@ export const NewItemMenuView = ({
     dispatch,
     canWriteToCollections,
     hasNlqAccess,
+    onCloseNavbar,
+    buildQuestion,
   ]);
 
   if (menuItems.length === 0) {

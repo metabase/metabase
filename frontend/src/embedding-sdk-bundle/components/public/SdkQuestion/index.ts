@@ -12,6 +12,7 @@ export {
   type QuestionSettingsProps as InteractiveQuestionQuestionSettingsProps,
   type QuestionSettingsDropdownProps as InteractiveQuestionQuestionSettingsDropdownProps,
   type QuestionVisualizationProps as InteractiveQuestionQuestionVisualizationProps,
+  type RefreshButtonProps as InteractiveQuestionRefreshButtonProps,
   type ResetButtonProps as InteractiveQuestionResetButtonProps,
   type SaveButtonProps as InteractiveQuestionSaveButtonProps,
   type SaveQuestionFormProps as InteractiveQuestionSaveQuestionFormProps,

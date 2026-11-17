@@ -15,6 +15,7 @@
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -29,6 +30,7 @@
      (every-pred string? #'setup/token-match?)]]
    (i18n/deferred-tru "Token does not match the setup token.")))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *allow-api-setup-after-first-user-is-created*
   "We must not allow users to setup multiple super users after the first user is created. But tests still need to be able
   to. This var is redef'd to false by certain tests to allow that."
@@ -69,14 +71,14 @@
    {{first-name :first_name, last-name :last_name, :keys [email password]} :user
     {site-name :site_name
      site-locale :site_locale} :prefs}
-   :- [:map
+   :- [:map {:closed true}
        [:token SetupToken]
-       [:user [:map
+       [:user [:map {:closed true}
                [:email      ms/Email]
                [:password   ms/ValidPassword]
                [:first_name {:optional true} [:maybe ms/NonBlankString]]
                [:last_name  {:optional true} [:maybe ms/NonBlankString]]]]
-       [:prefs [:map
+       [:prefs [:map {:closed true}
                 [:site_name   ms/NonBlankString]
                 [:site_locale {:optional true} [:maybe ms/ValidLocale]]]]]
    request]
@@ -86,7 +88,7 @@
                 (let [user-info (setup-create-user! {:email email
                                                      :first-name first-name
                                                      :last-name last-name
-                                                     :password password
+                                                     :password (u.secret/expose password)
                                                      :device-info (request/device-info request)})]
                   (setup-set-settings! {:email email :site-name site-name :site-locale site-locale})
                   ;; the setup token can never be used again now that the first User exists -- clear it out so we don't

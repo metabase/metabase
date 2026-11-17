@@ -1,10 +1,9 @@
 import { useDebouncedValue, useResizeObserver } from "@mantine/hooks";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
-import { getIn } from "icepick";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Link } from "metabase/common/components/Link";
 import { useDispatch } from "metabase/redux";
 import { loginGoogle } from "metabase/redux/auth";
@@ -14,6 +13,7 @@ import * as Urls from "metabase/urls";
 import { getCspNonce } from "metabase/utils/csp";
 
 import S from "./GoogleButton.module.css";
+import { getErrors } from "./utils";
 
 interface GoogleButtonProps {
   redirectUrl?: string;
@@ -102,9 +102,4 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
       )}
     </Box>
   );
-};
-
-const getErrors = (error: unknown): string[] => {
-  const errors = getIn(error, ["data", "errors"]);
-  return errors ? Object.values(errors) : [];
 };

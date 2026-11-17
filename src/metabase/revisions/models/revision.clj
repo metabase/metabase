@@ -1,18 +1,26 @@
 (ns metabase.revisions.models.revision
   (:require
    [clojure.data :as data]
+   [malli.core :as mc]
    [metabase.config.core :as config]
+   [metabase.explorations.schema]
+   [metabase.measures.schema]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision.diff :refer [diff-strings*]]
+   [metabase.segments.schema]
+   [metabase.transforms.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
+
+(set! *warn-on-reflection* true)
 
 (defn toucan-model?
   "Check if `model` is a toucan model."
@@ -43,7 +51,7 @@
         ;; an error if a field in an earlier version has since been dropped, but is still present in the revision.
         ;; This is best effort — other kinds of schema changes could still break the ability to revert successfully.
         revert-instance (select-keys serialized-instance valid-columns)]
-    (revisions.db/update-entity! model id revert-instance)))
+    (revisions.db/update-entity! id {:model model :row revert-instance})))
 
 (defmulti diff-map
   "Return a map describing the difference between `object-1` and `object-2`."
@@ -58,15 +66,34 @@
        :after  after})))
 
 (defmulti diff-strings
-  "Return a seq of string describing the difference between `object-1` and `object-2`.
+  "Return a seq of string describing the difference between `object-1` and `object-2`, naming the Collections and
+  Dashboards they moved between from `names` (see [[readable-names]]).
 
   Each string in the seq should be i18n-ed."
-  {:arglists '([model object-1 object-2])}
+  {:arglists '([model object-1 object-2 names])}
   mi/dispatch-on-model)
 
 (defmethod diff-strings :default
-  [model o1 o2]
-  (diff-strings* (name model) o1 o2))
+  [model o1 o2 names]
+  (diff-strings* (name model) o1 o2 names))
+
+(mr/def ::names
+  "The names of the Collections and Dashboards the current user can read, by id, for revision descriptions."
+  [:map {:closed true}
+   [:collection-names [:map-of pos-int? :string]]
+   [:dashboard-names  [:map-of pos-int? :string]]])
+
+(mu/defn readable-names :- ::names
+  "The names of the Collections and Dashboards that the revision `objects` reference and the current user can read,
+  loaded and checked together."
+  [objects :- [:sequential [:fn {:error/message "a revision object"} map?]]]
+  (let [ids   (fn [k] (into [] (comp (keep k) (filter pos-int?) (distinct)) objects))
+        names (fn [rows]
+                (into {}
+                      (comp (filter mi/can-read?) (map (juxt :id :name)))
+                      (t2/hydrate rows :can_read)))]
+    {:collection-names (names (revisions.db/collections-by-ids (ids :collection_id)))
+     :dashboard-names  (names (revisions.db/dashboards-by-ids (ids :dashboard_id)))}))
 
 (defmulti revision-readable?
   "Whether the current user may see the revision whose serialized snapshot is `object`. Defaults to true: a caller
@@ -78,6 +105,27 @@
 (defmethod revision-readable? :default
   [_model _object]
   true)
+
+(defmulti revisions-readable?
+  "Whether the current user may see each of the revisions whose serialized snapshots are `objects`, as a vector of
+  booleans in the order of `objects`. Defaults to [[revision-readable?]] of each; models whose check reads the app DB
+  override this to answer the whole list at once."
+  {:arglists '([model objects])}
+  mi/dispatch-on-model)
+
+(defmethod revisions-readable? :default
+  [model objects]
+  (mapv #(boolean (revision-readable? model %)) objects))
+
+(defmulti check-revert-available
+  "Throw a 402 unless the token has the premium feature that a revert of `model` to a revision needs. The default
+  throws nothing."
+  {:arglists '([model])}
+  mi/dispatch-on-model)
+
+(defmethod check-revert-available :default
+  [_model]
+  nil)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -137,18 +185,18 @@
 ;;; # Functions
 
 (defn- revision-changes
-  [model prev-revision revision]
+  [model prev-revision revision names]
   (cond
     (:is_creation revision)  [(deferred-tru "created this")]
     (:is_reversion revision) [(deferred-tru "reverted to an earlier version")]
     ;; We only keep [[revision/max-revisions]] number of revision per entity.
     ;; prev-revision can be nil when we generate description for oldest revision
     (nil? prev-revision)     [(deferred-tru "modified this")]
-    :else                    (diff-strings model (:object prev-revision) (:object revision))))
+    :else                    (diff-strings model (:object prev-revision) (:object revision) names)))
 
 (defn- revision-description-info
-  [model prev-revision revision]
-  (let [changes (revision-changes model prev-revision revision)]
+  [model prev-revision revision names]
+  (let [changes (revision-changes model prev-revision revision names)]
     {:description          (if (seq changes)
                              (u/build-sentence changes)
                              ;; HACK: before #30285 we record revision even when there is nothing changed,
@@ -160,16 +208,20 @@
      :has_multiple_changes (> (count changes) 1)}))
 
 (defn add-revision-details
-  "Add enriched revision data such as `:diff` and `:description` as well as filter out some unnecessary props."
-  [model revision prev-revision]
-  (-> revision
-      (assoc :diff (diff-map model (:object prev-revision) (:object revision)))
-      (merge (revision-description-info model prev-revision revision))
-      ;; add revision user details
-      (t2/hydrate :user)
-      (update :user select-keys [:id :first_name :last_name :common_name])
-      ;; Filter out irrelevant info
-      (dissoc :model :model_id :user_id :object)))
+  "Add enriched revision data such as `:diff` and `:description` as well as filter out some unnecessary props, naming
+  Collections and Dashboards from `names`, the [[readable-names]] of the two revisions when not given."
+  ([model revision prev-revision]
+   (add-revision-details model revision prev-revision
+                         (readable-names (into [] (keep :object) [revision prev-revision]))))
+  ([model revision prev-revision names]
+   (-> revision
+       (assoc :diff (diff-map model (:object prev-revision) (:object revision)))
+       (merge (revision-description-info model prev-revision revision names))
+       ;; add revision user details
+       (t2/hydrate :user)
+       (update :user select-keys [:id :first_name :last_name :common_name])
+       ;; Filter out irrelevant info
+       (dissoc :model :model_id :user_id :object))))
 
 (mu/defn revisions
   "Get the revisions for `model` with `id` in reverse chronological order."
@@ -185,40 +237,60 @@
   [model :- [:fn toucan-model?]
    id    :- pos-int?]
   (when-let [revisions (revisions model id)]
-    (loop [acc [], [r1 r2 & more] (filterv #(revision-readable? model (:object %)) revisions)]
-      (if-not r2
-        (conj acc (add-revision-details model r1 nil))
-        (recur (conj acc (add-revision-details model r1 r2))
-               (conj more r2))))))
+    (let [visible (t2/hydrate (into []
+                                    (comp (filter first) (map second))
+                                    (map vector (revisions-readable? model (map :object revisions)) revisions))
+                              :user)
+          names   (readable-names (into [] (keep :object) visible))]
+      (loop [acc [], [r1 r2 & more] visible]
+        (if-not r2
+          (conj acc (add-revision-details model r1 nil names))
+          (recur (conj acc (add-revision-details model r1 r2 names))
+                 (conj more r2)))))))
+
+(def ^:private PushRevisionInput
+  (into [:multi {:dispatch :entity}]
+        (conj (vec (for [[model schema] revisions.db/revisioned-model-select-schema]
+                     [model [:map {:closed true}
+                             [:id                            pos-int?]
+                             [:object                        schema]
+                             [:entity                        [:= model]]
+                             [:user-id                       pos-int?]
+                             [:is-creation? {:optional true} [:maybe :boolean]]
+                             [:message      {:optional true} [:maybe :string]]]]))
+              [::mc/default [:map {:closed true}
+                             [:id                            pos-int?]
+                             [:object                        ::revisions.db/unregistered-model-object]
+                             [:entity                        [:fn toucan-model?]]
+                             [:user-id                       pos-int?]
+                             [:is-creation? {:optional true} [:maybe :boolean]]
+                             [:message      {:optional true} [:maybe :string]]]])))
 
 (mu/defn push-revision!
   "Record a new Revision for `entity` with `id` if it's changed compared to the last revision.
   Returns `object` or `nil` if the object does not changed."
   [{:keys [id entity user-id object
            is-creation? message]
-    :or   {is-creation? false}}     :- [:map {:closed true}
-                                        [:id                            pos-int?]
-                                        [:object                        :map]
-                                        [:entity                        [:fn toucan-model?]]
-                                        [:user-id                       pos-int?]
-                                        [:is-creation? {:optional true} [:maybe :boolean]]
-                                        [:message      {:optional true} [:maybe :string]]]]
+    :or   {is-creation? false}}     :- PushRevisionInput]
   (let [entity-name (name entity)
         serialized-object (serialize-instance entity id (dissoc object :message))
         last-object (revisions.db/latest-revision-object entity-name id)
-        ;; For Card entities, ensure :card_schema is excluded from comparison
-        ;; Old revisions might have :card_schema added by after-select, but this field
-        ;; shouldn't trigger new revisions as it's a technical/internal field
-        last-object-for-comparison (cond-> last-object
-                                     (= entity :model/Card) (dissoc :card_schema))]
+        ;; For Card entities, ensure :card_schema is excluded from comparison. It is a
+        ;; technical/internal marker, so on its own it should not trigger a new revision. It has to come off
+        ;; BOTH sides: `serialize-instance :model/Card` keeps it, so dropping it only from the last revision
+        ;; made every Card compare as changed and recorded a revision on every push.
+        ;; It stays in the object we store, because `revert-to-revision! :model/Card` reads it back.
+        for-comparison (fn [m]
+                         (cond-> m
+                           (= entity :model/Card) (dissoc :card_schema)))]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? serialized-object))
     ;; the last-object could have nested object, e.g: Dashboard can have multiple Card in it,
     ;; even though we call `post-select` on the `object`, the nested object might not be transformed correctly
     ;; E.g: Cards inside Dashboard will not be transformed
     ;; so to be safe, we'll just compare them as string
-    (when-not (= (json/encode serialized-object)
-                 (json/encode last-object-for-comparison))
+    (when-not (= (json/encode (for-comparison serialized-object))
+                 (json/encode (for-comparison last-object)))
       (revisions.db/insert-revision! {:model        entity-name
                                       :model_id     id
                                       :user_id      user-id

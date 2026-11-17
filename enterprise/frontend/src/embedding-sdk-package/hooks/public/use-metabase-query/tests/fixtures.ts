@@ -1,6 +1,16 @@
 /* eslint-disable metabase/no-external-references-for-sdk-package-code */
 
-import { createMockCard } from "metabase-types/api/mocks";
+import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import type { Field, TestAggregationSpec } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockDatabase,
+  createMockField,
+  createMockMeasure,
+  createMockSegment,
+  createMockTable,
+} from "metabase-types/api/mocks";
 
 const column = <
   TFieldId extends number,
@@ -8,7 +18,7 @@ const column = <
   TName extends string,
   TDisplayName extends string,
   TJsType extends string,
-  TOptions extends object = object,
+  const TOptions extends object = object,
 >(
   fieldId: TFieldId,
   tableId: TTableId,
@@ -53,35 +63,16 @@ const metadataField = (
   name: string,
   displayName: string,
   baseType: string,
-  options: object = {},
-) => ({
-  id,
-  table_id: tableId,
-  name,
-  display_name: displayName,
-  base_type: baseType,
-  effective_type: baseType,
-  ...options,
-});
-
-const cardMetadata = (
-  id: number,
-  name: string,
-  sourceTable: number,
-  aggregation?: [["sum", ["field", number, null]]],
+  options: Partial<Field> = {},
 ) =>
-  createMockCard({
+  createMockField({
     id,
+    table_id: tableId,
     name,
-    ...(aggregation && { type: "metric" }),
-    dataset_query: {
-      type: "query",
-      database: 1,
-      query: {
-        "source-table": sourceTable,
-        ...(aggregation && { aggregation }),
-      },
-    },
+    display_name: displayName,
+    base_type: baseType,
+    effective_type: baseType,
+    ...options,
   });
 
 export const TEST_SCHEMA = {
@@ -90,12 +81,16 @@ export const TEST_SCHEMA = {
       type: "table" as const,
       id: 1,
       fields: {
-        id: column(100, 1, "ID", "ID", "number"),
+        id: column(100, 1, "ID", "ID", "number", { slug: "id" }),
         createdAt: column(103, 1, "CREATED_AT", "Created At", "Date", {
-          baseType: "type/DateTime",
+          slug: "created_at",
         }),
-        amount: column(102, 1, "AMOUNT", "Amount", "number"),
-        status: column(101, 1, "STATUS", "Status", "string"),
+        amount: column(102, 1, "AMOUNT", "Amount", "number", {
+          slug: "amount",
+        }),
+        status: column(101, 1, "STATUS", "Status", "string", {
+          slug: "status",
+        }),
       },
       segments: {
         completed: { type: "segment" as const, id: 11, tableId: 1 },
@@ -105,7 +100,8 @@ export const TEST_SCHEMA = {
           type: "measure" as const,
           id: 21,
           tableId: 1,
-          columns: [{ name: "sum", displayName: "Sum", jsType: "number" }],
+          name: "Revenue",
+          columns: [{ name: "count", displayName: "Count", jsType: "number" }],
         },
       },
     },
@@ -113,7 +109,7 @@ export const TEST_SCHEMA = {
       type: "table" as const,
       id: 2,
       fields: {
-        price: column(201, 2, "PRICE", "Price", "number"),
+        price: column(201, 2, "PRICE", "Price", "number", { slug: "price" }),
       },
       segments: {
         active: { type: "segment" as const, id: 12, tableId: 2 },
@@ -132,6 +128,7 @@ export const TEST_SCHEMA = {
     revenue: {
       type: "metric" as const,
       id: 31,
+      name: "Revenue",
       sourceTableId: 1,
       mappedTableIds: [1, 2],
       columns: [{ name: "sum", displayName: "Revenue", jsType: "number" }],
@@ -173,52 +170,112 @@ export const TEST_SCHEMA = {
   },
 } as const;
 
-export const TEST_METADATA = {
-  databases: {
-    1: {
-      id: 1,
-      name: "Test Database",
-      features: ["basic-aggregations", "binning", "expressions"],
-    },
-  },
-  tables: {
-    1: { id: 1, db_id: 1, name: "orders", display_name: "Orders" },
-    2: { id: 2, db_id: 1, name: "products", display_name: "Products" },
-  },
-  fields: {
-    100: metadataField(100, 1, "ID", "ID", "type/Integer"),
-    101: metadataField(101, 1, "STATUS", "Status", "type/Text"),
-    102: metadataField(102, 1, "AMOUNT", "Amount", "type/Float"),
-    103: metadataField(103, 1, "CREATED_AT", "Created At", "type/DateTime"),
-    104: metadataField(104, 1, "PRODUCT_ID", "Product ID", "type/Integer", {
-      semantic_type: "type/FK",
-      fk_target_field_id: 200,
-    }),
-    200: metadataField(200, 2, "ID", "ID", "type/Integer", {
-      semantic_type: "type/PK",
-    }),
-    202: metadataField(202, 2, "NAME", "Name", "type/Text"),
-  },
-  segments: {
-    11: { id: 11, table_id: 1, name: "Completed" },
-  },
-  measures: {
-    21: {
-      id: 21,
-      name: "Revenue",
-      table_id: 1,
-      definition: {
-        type: "query",
-        database: 1,
-        query: {
-          "source-table": 1,
-          aggregation: [["count"]],
-        },
-      },
-    },
-  },
-  questions: {
-    41: cardMetadata(41, "Orders question", 1),
-    31: cardMetadata(31, "Revenue", 1, [["sum", ["field", 102, null]]]),
-  },
+const TABLES = [
+  createMockTable({
+    id: 1,
+    db_id: 1,
+    name: "orders",
+    display_name: "Orders",
+    fields: [
+      metadataField(100, 1, "ID", "ID", "type/Integer"),
+      metadataField(101, 1, "STATUS", "Status", "type/Text"),
+      metadataField(102, 1, "AMOUNT", "Amount", "type/Float", {
+        fingerprint: { type: { "type/Number": { min: 0, max: 100 } } },
+      }),
+      metadataField(103, 1, "CREATED_AT", "Created At", "type/DateTime"),
+      metadataField(104, 1, "PRODUCT_ID", "Product ID", "type/Integer", {
+        semantic_type: "type/FK",
+        fk_target_field_id: 200,
+      }),
+    ],
+  }),
+  createMockTable({
+    id: 2,
+    db_id: 1,
+    name: "products",
+    display_name: "Products",
+    fields: [
+      metadataField(200, 2, "ID", "ID", "type/Integer", {
+        semantic_type: "type/PK",
+      }),
+      metadataField(202, 2, "NAME", "Name", "type/Text"),
+    ],
+  }),
+];
+
+const DATABASE = createMockDatabase({
+  id: 1,
+  name: "Test Database",
+  features: ["basic-aggregations", "binning", "expressions"],
+  tables: TABLES,
+});
+
+const SEGMENTS = [
+  createMockSegment({ id: 11, table_id: 1, name: "Completed" }),
+];
+
+const BASE_PROVIDER = Lib.metadataProvider(
+  1,
+  createMockMetadata({ databases: [DATABASE], segments: SEGMENTS }),
+);
+
+const MEASURES = [
+  createMockMeasure({
+    id: 21,
+    name: "Revenue",
+    table_id: 1,
+    definition: Lib.toJsQuery(
+      Lib.createTestQuery(BASE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: 1 },
+            aggregations: [{ type: "operator", operator: "count" }],
+          },
+        ],
+      }),
+    ),
+  }),
+];
+
+const cardMetadata = (
+  id: number,
+  name: string,
+  sourceTable: number,
+  aggregation?: TestAggregationSpec,
+) =>
+  createMockCard({
+    id,
+    name,
+    ...(aggregation && { type: "metric" }),
+    dataset_query: Lib.toLegacyQuery(
+      Lib.createTestQuery(BASE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: sourceTable },
+            ...(aggregation && { aggregations: [aggregation] }),
+          },
+        ],
+      }),
+    ),
+  });
+
+const QUESTIONS = {
+  41: cardMetadata(41, "Orders question", 1),
+  31: cardMetadata(31, "Revenue", 1, {
+    type: "operator",
+    operator: "sum",
+    args: [{ type: "column", fieldId: 102 }],
+  }),
 };
+
+export const TEST_METADATA = {
+  tables: { 1: TABLES[0], 2: TABLES[1] },
+  questions: QUESTIONS,
+};
+
+export const TEST_JS_METADATA = createMockMetadata({
+  databases: [DATABASE],
+  segments: SEGMENTS,
+  measures: MEASURES,
+  questions: Object.values(QUESTIONS),
+});

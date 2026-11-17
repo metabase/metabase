@@ -7,6 +7,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  within,
 } from "__support__/ui";
 import {
   createBlock,
@@ -511,5 +512,75 @@ describe("ExplorationPage thread-ready toasts", () => {
         (call) => call[0]?.message === "Added Thread A",
       ),
     ).toHaveLength(1);
+  });
+});
+
+describe("archived exploration", () => {
+  it("shows the trash banner and restores the exploration from it", async () => {
+    explorationData = {
+      ...makeMultiPageExploration(),
+      archived: true,
+      can_restore: true,
+      can_delete: true,
+    };
+    const updateUrl = `path:/api/exploration/${explorationData.id}`;
+    fetchMock.put(updateUrl, { ...explorationData, archived: false });
+
+    renderExplorationPage();
+
+    const banner = await screen.findByTestId("archive-banner");
+    expect(banner).toHaveTextContent("This research is in the trash.");
+
+    fireEvent.click(within(banner).getByText("Restore"));
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called(updateUrl)).toBe(true);
+    });
+    expect(
+      await fetchMock.callHistory.lastCall(updateUrl)?.request?.json(),
+    ).toEqual({ archived: false });
+  });
+
+  it("permanently deletes the exploration from the trash banner and lands on the trash page", async () => {
+    explorationData = {
+      ...makeMultiPageExploration(),
+      archived: true,
+      can_restore: true,
+      can_delete: true,
+    };
+    const deleteUrl = `path:/api/exploration/${explorationData.id}`;
+    fetchMock.delete(deleteUrl, 204);
+
+    const { router } = renderExplorationPage();
+    if (!router) {
+      throw new Error("expected router");
+    }
+
+    const banner = await screen.findByTestId("archive-banner");
+    fireEvent.click(within(banner).getByText("Delete permanently"));
+
+    const modal = await screen.findByTestId("delete-confirmation");
+    expect(fetchMock.callHistory.called(deleteUrl)).toBe(false);
+    fireEvent.click(
+      within(modal).getByRole("button", { name: "Delete permanently" }),
+    );
+
+    await waitFor(() => {
+      expect(router.location.pathname).toBe("/trash");
+    });
+    expect(
+      fetchMock.callHistory.calls(deleteUrl, { method: "DELETE" }),
+    ).toHaveLength(1);
+    expect(
+      await screen.findByText("This item has been permanently deleted."),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show the trash banner for an exploration that is not archived", () => {
+    explorationData = makeMultiPageExploration();
+
+    renderExplorationPage();
+
+    expect(screen.queryByTestId("archive-banner")).not.toBeInTheDocument();
   });
 });

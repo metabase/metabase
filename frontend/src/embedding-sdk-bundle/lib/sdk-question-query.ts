@@ -17,7 +17,7 @@ export function getCardFromSdkQuestionQuery(
     // `MetabaseQueryObject` is the public structural mirror of `DatasetQuery`
     // and deliberately omits its opaque marker, so it cannot be assigned to the
     // internal type without an assertion.
-    dataset_query: query as DatasetQuery,
+    dataset_query: query as unknown as DatasetQuery,
     display: "table",
     visualization_settings: {},
   };

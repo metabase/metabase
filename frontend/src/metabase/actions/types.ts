@@ -1,4 +1,3 @@
-import type Field from "metabase-lib/v1/metadata/Field";
 import type {
   ActionFormOption,
   FieldSettings as BaseFieldSettings,
@@ -8,10 +7,12 @@ import type {
   WritebackQueryAction,
 } from "metabase-types/api";
 
+// A fetched action always carries a description; creating one need not send it.
 type BaseCreateActionParams = Pick<
   WritebackAction,
-  "name" | "description" | "model_id" | "parameters" | "visualization_settings"
->;
+  "name" | "model_id" | "parameters" | "visualization_settings"
+> &
+  Partial<Pick<WritebackAction, "description">>;
 
 type BaseUpdateActionParams = {
   id: WritebackAction["id"];
@@ -40,9 +41,7 @@ export type UpdateActionParams =
   | UpdateQueryActionParams
   | UpdateImplicitActionParams;
 
-export type FieldSettings = BaseFieldSettings & {
-  field?: Field;
-};
+export type FieldSettings = BaseFieldSettings;
 
 export type ActionFormFieldProps = {
   name: string;
@@ -52,7 +51,6 @@ export type ActionFormFieldProps = {
   type: InputComponentType;
   optional?: boolean;
   options?: ActionFormOption[];
-  field?: Field;
 };
 
 export type ActionFormProps = {

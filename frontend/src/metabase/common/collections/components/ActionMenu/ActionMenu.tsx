@@ -135,11 +135,15 @@ function ActionMenuInner({
 
     const handler = () => {
       const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+      const type = getItemBookmarkType(item);
+      if (type == null) {
+        return;
+      }
 
       if (!isBookmarked) {
         trackCollectionItemBookmarked(item);
       }
-      toggleBookmark?.({ id: item.id, type: getItemBookmarkType(item) });
+      toggleBookmark?.({ id: item.id, type });
     };
     return handler;
   }, [createBookmark, deleteBookmark, isBookmarked, item]);

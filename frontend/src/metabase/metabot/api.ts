@@ -1,5 +1,6 @@
 import { Api } from "metabase/api";
 import { idTag, invalidateTags, listTag } from "metabase/api/tags";
+import type { MetabotMessage } from "metabase/metabot/state/types";
 import type {
   Card,
   DeleteSuggestedMetabotPromptRequest,
@@ -14,6 +15,7 @@ import type {
   MetabotInfo,
   MetabotSlackSettings,
   MetabotSourceFeedback,
+  MetabotStateContext,
   RegenerateSuggestedMetabotPromptsResponse,
   SaveMetabotEntityRequest,
   SuggestedMetabotPromptsRequest,
@@ -21,7 +23,16 @@ import type {
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
 
-import type { MetabotConversationDetail } from "./utils/normalize-fetched-chat-messages";
+export type MetabotConversationDetail = {
+  conversation_id: string;
+  created_at: string;
+  title: string | null;
+  user_id: number | null;
+  forked_from_conversation_id: string | null;
+  state?: MetabotStateContext;
+  messages: MetabotMessage[];
+  context_window_tokens?: number;
+};
 
 export const metabotApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -86,7 +97,7 @@ export const metabotApi = Api.injectEndpoints({
         invalidateTags(error, [
           listTag("metabot"),
           idTag("metabot", id),
-          idTag("metabot-prompt-suggestions", id),
+          listTag("metabot-prompt-suggestions"),
         ]),
     }),
     getSuggestedMetabotPrompts: builder.query<
@@ -98,9 +109,7 @@ export const metabotApi = Api.injectEndpoints({
         url: `/api/metabot/metabot/${metabot_id}/prompt-suggestions`,
         params,
       }),
-      providesTags: (_, __, { metabot_id }) => [
-        idTag("metabot-prompt-suggestions", metabot_id),
-      ],
+      providesTags: () => [listTag("metabot-prompt-suggestions")],
     }),
     deleteSuggestedMetabotPrompt: builder.mutation<
       void,
@@ -110,10 +119,8 @@ export const metabotApi = Api.injectEndpoints({
         method: "DELETE",
         url: `/api/metabot/metabot/${metabot_id}/prompt-suggestions/${prompt_id}`,
       }),
-      invalidatesTags: (_, error, { metabot_id }) =>
-        invalidateTags(error, [
-          idTag("metabot-prompt-suggestions", metabot_id),
-        ]),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("metabot-prompt-suggestions")]),
     }),
     regenerateSuggestedMetabotPrompts: builder.mutation<
       RegenerateSuggestedMetabotPromptsResponse,
@@ -123,10 +130,8 @@ export const metabotApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/metabot/metabot/${metabot_id}/prompt-suggestions/regenerate`,
       }),
-      invalidatesTags: (_, error, metabot_id) =>
-        invalidateTags(error, [
-          idTag("metabot-prompt-suggestions", metabot_id),
-        ]),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("metabot-prompt-suggestions")]),
     }),
     metabotGenerateContent: builder.query<
       MetabotGenerateContentResponse,

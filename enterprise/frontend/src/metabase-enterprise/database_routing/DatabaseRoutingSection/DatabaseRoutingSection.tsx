@@ -11,6 +11,7 @@ import {
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import {
   skipToken,
+  useListEnginesQuery,
   useListTransformsQuery,
   useListUserAttributesQuery,
 } from "metabase/api";
@@ -20,7 +21,6 @@ import { useToast } from "metabase/common/hooks/use-toast";
 import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { useSetting } from "metabase/settings";
 import {
   Alert,
   Box,
@@ -51,7 +51,7 @@ export const DatabaseRoutingSection = ({
 }) => {
   const [sendToast] = useToast();
 
-  const engines = useSetting("engines");
+  const { data: engines = {} } = useListEnginesQuery();
 
   const isAdmin = useSelector(getUserIsAdmin);
   const userAttribute = database.router_user_attribute ?? undefined;
