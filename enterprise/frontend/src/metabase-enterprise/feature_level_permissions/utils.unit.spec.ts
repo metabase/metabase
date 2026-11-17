@@ -72,6 +72,46 @@ describe("getDataColumns", () => {
     });
   });
 
+  describe("tenant groups", () => {
+    const DOWNLOAD_COLUMN = {
+      name: "Download results",
+      hint: "Downloads of native queries are only allowed if a group has download permissions for the entire database.",
+    };
+
+    it("offers tenant groups no table metadata, database or transform columns at the database level", () => {
+      PLUGIN_TRANSFORMS.isEnabled = true;
+
+      expect(
+        getDataColumns({
+          subject: "schemas",
+          groupType: "external",
+          isExternal: true,
+          showTransformPermissions: true,
+        }),
+      ).toStrictEqual([DOWNLOAD_COLUMN]);
+    });
+
+    it("offers tenant groups no table metadata column at the schema level", () => {
+      expect(
+        getDataColumns({
+          subject: "tables",
+          groupType: "external",
+          isExternal: true,
+        }),
+      ).toStrictEqual([DOWNLOAD_COLUMN]);
+    });
+
+    it("offers tenant groups no table metadata column at the table level", () => {
+      expect(
+        getDataColumns({
+          subject: "fields",
+          groupType: "external",
+          isExternal: true,
+        }),
+      ).toStrictEqual([DOWNLOAD_COLUMN]);
+    });
+  });
+
   describe("tables subject (schema level)", () => {
     it("returns 2 columns without Transforms regardless of PLUGIN_TRANSFORMS.isEnabled", () => {
       const expectedColumns = [
