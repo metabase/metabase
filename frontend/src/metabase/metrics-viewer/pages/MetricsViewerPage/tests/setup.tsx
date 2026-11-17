@@ -28,6 +28,7 @@ import {
 import { Route } from "metabase/router";
 import type {
   DatasetColumn,
+  DatetimeUnit,
   InstanceFilter,
   Measure,
   Metric,
@@ -40,6 +41,7 @@ import type {
 } from "metabase-types/api";
 import {
   createMockColumn,
+  createMockMeasure,
   createMockSearchResult,
 } from "metabase-types/api/mocks";
 
@@ -298,30 +300,10 @@ export const FEEDBACK_METRIC: Metric = {
   ],
 };
 
-export const TEST_MEASURE: Measure = {
+export const TEST_MEASURE: Measure = createMockMeasure({
   id: 100,
   name: "Test Measure",
-  description: "",
   table_id: 2,
-  archived: false,
-  // The explorer reads measures through their dimensions, not their query.
-  definition: {
-    "lib/type": "mbql/query",
-    database: 1,
-    stages: [
-      {
-        "lib/type": "mbql.stage/mbql",
-        "source-table": 2,
-        aggregation: [
-          ["sum", {}, ["field", { "base-type": "type/Float" }, 13]],
-        ],
-      },
-    ],
-  },
-  definition_description: "",
-  created_at: "2021-01-01T00:00:00Z",
-  updated_at: "2021-01-01T00:00:00Z",
-  creator_id: 1,
   dimensions: [
     timeDimension(
       "measure-created-at",
@@ -348,7 +330,7 @@ export const TEST_MEASURE: Measure = {
     ),
   ],
   dimension_mappings: [],
-};
+});
 
 // ── Dataset mock ──
 
@@ -369,7 +351,7 @@ const DIMENSION_VALUES: Record<string, DimensionValues> = {
 };
 
 type DimensionRefOptions = {
-  "temporal-unit"?: string;
+  "temporal-unit"?: DatetimeUnit;
   binning?: unknown;
 };
 
