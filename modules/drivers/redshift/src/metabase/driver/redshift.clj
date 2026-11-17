@@ -63,7 +63,9 @@
          ;; Can pick a profile from the host's AWS config files
          "Profile"
          ;; Instantiates an arbitrary class (an IAM credentials provider)
-         "plugin_name"]))
+         "plugin_name"
+         ;; Writes the driver log to a chosen local directory
+         "LogPath"]))
 
 (doseq [[feature supported?] {:atomic-renames                   true
                               :connection-impersonation         true

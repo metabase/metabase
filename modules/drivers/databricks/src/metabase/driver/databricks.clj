@@ -85,7 +85,9 @@
          ;; Reads Google credentials from a local file
          "GoogleCredentialsFile"
          ;; Reads a private key from a local file
-         "Auth_JWT_Key_File"]))
+         "Auth_JWT_Key_File"
+         ;; Writes the driver log to a chosen local directory
+         "LogPath"]))
 
 (defn- catalog-present?
   [jdbc-spec catalog]

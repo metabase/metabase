@@ -51,7 +51,9 @@
          ;; Instantiates an Arbitrary Class
          "CredentialsProvider"
          ;; Can pick a profile from the host's AWS config files
-         "ProfileName"]))
+         "ProfileName"
+         ;; Writes the driver log to a chosen local directory
+         "LogPath"]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          metabase.driver method impls                                          |
