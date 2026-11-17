@@ -162,7 +162,7 @@
 (defn- saved-test
   "A saved test: the id of its subject under `subject-key`, of schema `subject-id-schema`, the subject itself when
   hydrated under `subject`, of schema `subject-schema`, the inputs that stand in for the tables the subject reads, and
-  the expectations checked against its output."
+  the expectations checked after the subject runs."
   [subject-key subject-id-schema subject subject-schema]
   [:map {:closed true}
    [:id           ms/PositiveInt]

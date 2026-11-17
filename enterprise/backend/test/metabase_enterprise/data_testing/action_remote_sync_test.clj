@@ -54,3 +54,28 @@
                                        #"\.yaml$" "")
                           "/refunds_one_order.yaml")
                      (remote-sync.tu/entity-path! url "main" t))))))))))
+
+(deftest dirty-list-shows-action-tests-under-their-actions-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}]
+          (mt/with-actions [{model-id :id}      {:type :model :dataset_query (data-testing.test-util/categories-query)
+                                                 :name "Synced model" :collection_id (:id synced)}
+                            {:keys [action-id]} {:name "Refund"}]
+            (mt/with-temp [:model/ActionTest t {:action_id action-id :name "Edited test"}]
+              (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
+                                                            {:branch "main" :message "Push"})]
+                (is (=? {:status "successful"} (remote-sync.tu/wait-for-task! task_id))))
+              (t2/update! :model/ActionTest :id (:id t) {:description "changed"})
+              (testing "a changed action test is listed with its action, the action's model, and the model's collection"
+                (is (=? {:id          (:id t)
+                         :model       "actiontest"
+                         :sync_status "update"
+                         :data        {:action {:id    action-id
+                                                :name  "Refund"
+                                                :model {:id         model-id
+                                                        :name       "Synced model"
+                                                        :collection {:id (:id synced) :name "Synced"}}}}}
+                        (some #(when (= "actiontest" (:model %)) %)
+                              (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")))))))))))))

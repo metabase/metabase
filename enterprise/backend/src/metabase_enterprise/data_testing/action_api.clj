@@ -56,9 +56,11 @@
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :post "/" :- ::data-testing.schema/action-test
-  "Create an action test. A run gives the action's parameters the test's `parameters`, by parameter id or slug, as a run
-  of the action does: a parameter left out takes its default, and a value for a hidden parameter is refused. The
-  action's SQL then runs against the test's inputs, and the expectations read the tables after it, by their real names.
+  "Create an action test. A run gives the action's parameters the test's `parameters`, by parameter id or slug, as
+  `POST /api/action/:id/execute` does: a parameter left out takes its default, and a value for a hidden parameter or
+  for no parameter of the action is refused. A test that leaves a required parameter with no value and no default is
+  refused. The action's SQL then runs against the test's inputs, and the expectations read the tables after it, by
+  their real names.
 
   Only query actions can be tested, on a database with actions enabled. The action's SQL must be one INSERT, UPDATE or
   DELETE statement, and an `equals` expectation is refused: an action has no output to compare."
@@ -70,7 +72,8 @@
   (data-testing.db/insert-action-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/action-test
-  "Update an action test. The rules of creating one apply to the updated test."
+  "Update an action test. An update that changes the action, the parameter values, the inputs or the expectations is
+  checked as a new test is; an update of only the name or description is not."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
@@ -93,9 +96,12 @@
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result
-  "Run an action test. Needs read access to the test and native query access to the database of the action's query.
-  The action's SQL runs on the test's temp tables, in a transaction that is rolled back: no real table changes, and no
-  audit row records an action run.
+  "Run an action test. Needs read access to the test, permission to run the action's query with the test's parameter
+  values, and native query access to the database of that query.
+  The action's SQL runs on the test's temp tables, in a transaction that is rolled back, so the tables the SQL names do
+  not change. The rollback does not undo a change made outside the transaction, such as an advanced sequence or the
+  work of a function that commits on a connection of its own. The run is recorded in the test's run history and in
+  the audit log as an action-test run, not as an execution of the action.
 
   A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,
   including one that could not be evaluated, which comes back as that expectation's own `:error`.

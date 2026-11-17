@@ -1152,6 +1152,13 @@
   [_card-id]
   nil)
 
+(defenterprise delete-model-action-tests!
+  "Delete the tests of the actions of the model `model-id` through Toucan, so that each test's delete hook runs. No-op
+  in OSS."
+  metabase-enterprise.data-testing.models.action-test
+  [_model-id]
+  nil)
+
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
   [{:keys [id] :as card}]
@@ -1160,6 +1167,9 @@
   ;; test id of the test's runs to null. A delete of cards that skips this hook leaves those runs' test id naming no
   ;; test.
   (delete-card-tests! id)
+  ;; The same holds for the tests of a model's actions: deleting the model removes its actions, and their tests, by
+  ;; database cascade.
+  (delete-model-action-tests! id)
   ;; delete any ParameterCard that the parameters on this card linked to
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card
