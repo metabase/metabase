@@ -279,10 +279,16 @@ describe("ManageApiKeys", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Done" }));
     const table = screen.getByTestId("api-keys-table");
-    const row = await within(table).findByRole("row", {
+    await waitFor(() => {
+      expect(
+        within(
+          within(table).getByRole("row", { name: /production api key/i }),
+        ).getByText("mb_1Key..."),
+      ).toBeInTheDocument();
+    });
+    const row = within(table).getByRole("row", {
       name: /production api key/i,
     });
-    expect(within(row).getByText("mb_1Key...")).toBeInTheDocument();
     expect(within(row).queryByText("mb_ProB...")).not.toBeInTheDocument();
     expect(
       within(
@@ -321,13 +327,18 @@ describe("ManageApiKeys", () => {
     await userEvent.type(keyName, "Different key name");
 
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(async () => {
+    await waitFor(() => {
       expect(
-        await fetchMock.callHistory
-          .lastCall(EDIT_URL, { method: "PUT" })
-          ?.request?.json(),
-      ).toEqual({ group_id: 4, name: "Different key name" });
+        fetchMock.callHistory.calls(EDIT_URL, { method: "PUT" }),
+      ).toHaveLength(1);
     });
+    const editBody: unknown = JSON.parse(
+      String(
+        fetchMock.callHistory.lastCall(EDIT_URL, { method: "PUT" })?.options
+          .body,
+      ),
+    );
+    expect(editBody).toEqual({ group_id: 4, name: "Different key name" });
     await waitFor(() => {
       expect(getListCalls()).toHaveLength(2);
     });

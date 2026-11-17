@@ -3,9 +3,11 @@ import type { ComponentType } from "react";
 
 import { getStore, mainReducers } from "__support__/entities-store";
 import { createMockSettingsState } from "__support__/state";
-import { screen, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
+import { apiKeyApi } from "metabase/admin/settings/api/api-key";
 import { getSettingsRoutes } from "metabase/admin/settingsRoutes";
 import { type RouteObject, toRouteObjects } from "metabase/router";
+import { settingsApi } from "metabase/settings/api";
 import type { ApiKey } from "metabase-types/api";
 
 import { setup, testApiKeys } from "./AuthenticationSettingsPage.setup";
@@ -97,13 +99,19 @@ describe("AuthenticationSettingsPage (OSS)", () => {
   });
 
   it("should show the API keys card without a count when there are no keys", async () => {
-    await setup({ apiKeys: [] });
+    const { store } = await setup({ apiKeys: [] });
 
     const card = await screen.findByTestId("api-keys-setting");
     expect(within(card).getByText("API Keys")).toBeInTheDocument();
     expect(fetchMock.callHistory.calls("path:/api/api-key/count")).toHaveLength(
       1,
     );
+    // a count of 0 changes nothing visible, so wait for it before the negative check
+    await waitFor(() => {
+      expect(
+        apiKeyApi.endpoints.countApiKeys.select()(store.getState()).data,
+      ).toBe(0);
+    });
     expect(within(card).queryByTestId("card-badge")).not.toBeInTheDocument();
     expect(
       within(card).getByRole("button", { name: "Set up" }),
@@ -132,9 +140,16 @@ describe("AuthenticationSettingsPage (OSS)", () => {
     const UserProvisioningRoute = await loadSettingsRouteComponent(
       "authentication/user-provisioning",
     );
-    await setup({ page: <UserProvisioningRoute /> });
+    const { store } = await setup({ page: <UserProvisioningRoute /> });
 
     expect(await screen.findByTestId("google-setting")).toBeInTheDocument();
+    // the page picks its providers from the settings, so wait for them before the negative checks
+    await waitFor(() => {
+      expect(
+        settingsApi.endpoints.getSessionProperties.select()(store.getState())
+          .isSuccess,
+      ).toBe(true);
+    });
     expect(screen.getByTestId("ldap-setting")).toBeInTheDocument();
     expect(screen.getByTestId("api-keys-setting")).toBeInTheDocument();
     expect(screen.queryByTestId("saml-setting")).not.toBeInTheDocument();

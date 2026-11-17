@@ -99,7 +99,7 @@ export const setup = async ({
   setupTokenStatusEndpoint({ valid: isEnterprise });
   fetchMock.get("path:/api/ee/sso/oidc", []);
 
-  renderWithProviders(
+  return renderWithProviders(
     <div>
       {page ?? <AuthenticationSettingsPage tab={tab} />}
       <UndoListing />
