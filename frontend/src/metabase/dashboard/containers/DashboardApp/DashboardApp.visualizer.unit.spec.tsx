@@ -1680,6 +1680,35 @@ describe("DashboardApp > visualizer", () => {
       data: createMockDatasetData({ cols: [], rows: [] }),
     });
     const CARDS = [...ALL_CARDS, BASE_QUESTION, INVALID_QUESTION];
+    const FUNNEL_DASHCARD_WITH_INVALID_QUESTION =
+      createMockVisualizerDashboardCard({
+        id: 43,
+        dashboard_id: DASHBOARD_ID,
+        card_id: BASE_QUESTION.id,
+        card: BASE_QUESTION,
+        series: [INVALID_QUESTION],
+        size_x: 16,
+        size_y: 10,
+        visualization_settings: {
+          visualization: {
+            display: "funnel",
+            columnValuesMapping: {
+              METRIC: [
+                columnRef("COLUMN_1", "1", BASE_QUESTION),
+                columnRef("COLUMN_2", "1", INVALID_QUESTION),
+              ],
+              DIMENSION: [
+                `$_card:${BASE_QUESTION.id}_name`,
+                `$_card:${INVALID_QUESTION.id}_name`,
+              ],
+            },
+            settings: {
+              "funnel.metric": "METRIC",
+              "funnel.dimension": "DIMENSION",
+            },
+          },
+        },
+      });
 
     it("should add a second question to a scalar dashcard (metabase#22265)", async () => {
       const baseDashcard = createMockDashboardCard({
@@ -1745,34 +1774,7 @@ describe("DashboardApp > visualizer", () => {
     });
 
     it("should edit a dashcard whose added question has lost its columns (metabase#22265, VIZ-676)", async () => {
-      const funnelDashcard = createMockVisualizerDashboardCard({
-        id: 43,
-        dashboard_id: DASHBOARD_ID,
-        card_id: BASE_QUESTION.id,
-        card: BASE_QUESTION,
-        series: [INVALID_QUESTION],
-        size_x: 16,
-        size_y: 10,
-        visualization_settings: {
-          visualization: {
-            display: "funnel",
-            columnValuesMapping: {
-              METRIC: [
-                columnRef("COLUMN_1", "1", BASE_QUESTION),
-                columnRef("COLUMN_2", "1", INVALID_QUESTION),
-              ],
-              DIMENSION: [
-                `$_card:${BASE_QUESTION.id}_name`,
-                `$_card:${INVALID_QUESTION.id}_name`,
-              ],
-            },
-            settings: {
-              "funnel.metric": "METRIC",
-              "funnel.dimension": "DIMENSION",
-            },
-          },
-        },
-      });
+      const funnelDashcard = FUNNEL_DASHCARD_WITH_INVALID_QUESTION;
       await setup({
         dashcards: [funnelDashcard],
         cards: CARDS,
@@ -1807,5 +1809,38 @@ describe("DashboardApp > visualizer", () => {
         ]),
       );
     });
+
+    // Remove .failing once a failed series no longer hides "Edit visualization"
+    it.failing(
+      "should edit a dashcard whose added question fails to run (metabase#22265)",
+      async () => {
+        const funnelDashcard = FUNNEL_DASHCARD_WITH_INVALID_QUESTION;
+        await setup({
+          dashcards: [funnelDashcard],
+          cards: CARDS,
+          datasets: {
+            ...DATASETS,
+            [BASE_QUESTION.id]: scalarDataset(1),
+            // the backend's error shape (catch_exceptions.clj)
+            [INVALID_QUESTION.id]: createMockDataset({
+              status: "failed",
+              error: "Syntax error",
+              data: createMockDatasetData({ cols: [], rows: [] }),
+            }),
+          },
+        });
+        await editDashboard();
+
+        const dashcard = await findDashcard(funnelDashcard.id);
+        expect(
+          await within(dashcard).findByText(
+            "Some columns are missing, this card might not render correctly.",
+          ),
+        ).toBeInTheDocument();
+        expect(
+          within(dashcard).getByLabelText("Edit visualization"),
+        ).toBeInTheDocument();
+      },
+    );
   });
 });
