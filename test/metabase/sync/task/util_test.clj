@@ -9,7 +9,7 @@
    [metabase.util.quick-task :as quick-task])
   (:import
    (java.util.concurrent LinkedBlockingQueue TimeUnit)
-   (org.quartz JobDataMap JobDetail JobExecutionContext Trigger)))
+   (org.quartz JobDataMap JobDetail JobExecutionContext SimpleTrigger Trigger)))
 
 (set! *warn-on-reflection* true)
 
@@ -41,6 +41,14 @@
 
 (def ^:private recording-job
   (sync.task.util/job RecordingJob "metabase.task.util-test.job" "Record run"))
+
+(deftest ^:parallel trigger-test
+  (let [^SimpleTrigger trigger (#'sync.task.util/trigger recording-job 7)]
+    (testing "key is fixed per job and target"
+      (is (= "metabase.task.util-test.trigger.7" (.getName (.getKey trigger)))))
+    (testing "fires once and keeps its fire time however long it waits"
+      (is (= 0 (.getRepeatCount trigger)))
+      (is (= Trigger/MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY (.getMisfireInstruction trigger))))))
 
 (deftest schedule-with-scheduler-test
   (.clear runs)

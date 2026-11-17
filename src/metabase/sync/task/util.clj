@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
@@ -23,7 +24,8 @@
    (jobs/store-durably)))
 
 (defn- trigger
-  "A one-shot trigger of `job` for the target `id`, with a key that is the same for every request of that target."
+  "A one-shot trigger of `job` for the target `id`, with a key that is the same for every request of that target, that
+  keeps its place among waiting triggers however long it waits."
   [^JobDetail job id]
   (let [job-key (.getKey job)]
     (triggers/build
@@ -31,7 +33,10 @@
      (triggers/with-identity (triggers/key (format "%s.trigger.%d" (str/replace (.getName job-key) #"\.job$" "") id)))
      (triggers/using-job-data {"id" id})
      (triggers/for-job job-key)
-     (triggers/start-now))))
+     (triggers/start-now)
+     (triggers/with-schedule
+      (simple/schedule
+       (simple/with-misfire-handling-instruction-ignore-misfires))))))
 
 (defn run-for-target!
   "Call `f` with the target id that `job-context` carries, logging the message of what it throws."
