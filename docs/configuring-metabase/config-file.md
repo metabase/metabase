@@ -259,7 +259,7 @@ Whereas in the config file, you'd translate that to:
 name-of-variable
 ```
 
-So for example, if you wanted to specify the `MB_EMAIL_FROM_NAME` in the `config.yml` file:
+So for example, if you wanted to specify the [`MB_EMAIL_FROM_NAME`](./environment-variables.md#mb_email_from_name) in the `config.yml` file:
 
 ```yml
 version: 1

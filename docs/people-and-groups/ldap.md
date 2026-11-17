@@ -37,6 +37,8 @@ Until you save your server settings, the **Attributes** and **Group mapping** se
 
 Then save your changes. Metabase will automatically pull the [required attributes](#required-ldap-attributes) from your LDAP directory.
 
+On self-hosted Metabases, you can also set these server settings with the environment variables [`MB_LDAP_HOST`](../configuring-metabase/environment-variables.md#mb_ldap_host), [`MB_LDAP_PORT`](../configuring-metabase/environment-variables.md#mb_ldap_port), [`MB_LDAP_SECURITY`](../configuring-metabase/environment-variables.md#mb_ldap_security), [`MB_LDAP_BIND_DN`](../configuring-metabase/environment-variables.md#mb_ldap_bind_dn), and [`MB_LDAP_PASSWORD`](../configuring-metabase/environment-variables.md#mb_ldap_password), or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ## User provisioning
 
 User provisioning is enabled by default. When someone logs in via LDAP, Metabase creates an account for them if they don't have one, and reactivates their account if it is deactivated. The switch saves on its own, so you don't need to click **Save changes** after you change it.
@@ -53,6 +55,8 @@ The **User schema** section on this same page is where you can adjust settings r
 
 For example, let's say you're configuring LDAP for your company, WidgetCo, where your base DN is `dc=widgetco,dc=com`. If entries for employees are all stored within an organizational unit in your LDAP server named `People`, you'll want to supply the user search base field with the DN `ou=People,dc=widgetco,dc=com`. This tells Metabase to begin searching for matching entries at that location within the LDAP server.
 
+On self-hosted Metabases, you can also set the user search base with the [`MB_LDAP_USER_BASE`](../configuring-metabase/environment-variables.md#mb_ldap_user_base) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ### User filter
 
 You'll see the following grayed-out default value in the **User filter** field:
@@ -64,6 +68,8 @@ You'll see the following grayed-out default value in the **User filter** field:
 When a person logs into Metabase, this command confirms that the login they supplied matches either a UID _or_ email field in your LDAP server, _and_ that the matching entry has an objectClass of `inetOrgPerson`.
 
 This default command will work for most LDAP servers, since `inetOrgPerson` is a widely-adopted objectClass. But if your company for example uses a different objectClass to categorize employees, this field is where you can set a different command for how Metabase finds and authenticates an LDAP entry upon a person logging in.
+
+On self-hosted Metabases, you can also set the user filter with the [`MB_LDAP_USER_FILTER`](../configuring-metabase/environment-variables.md#mb_ldap_user_filter) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 ## Group mapping
 
@@ -109,6 +115,8 @@ If the mapping points to a built-in group such as Administrators, Metabase doesn
 {% include plans-blockquote.html feature="LDAP advanced features" is_plural=true %}
 
 If your directory doesn't list each person's groups on their own entry, Metabase looks up membership on the group entries instead. **Group membership filter** sets that lookup filter. Metabase replaces the placeholders `{dn}` and `{uid}` with the person's distinguished name and UID.
+
+On self-hosted Metabases, you can also set the filter with the [`MB_LDAP_GROUP_MEMBERSHIP_FILTER`](../configuring-metabase/environment-variables.md#mb_ldap_group_membership_filter) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 ## Syncing user attributes with LDAP
 

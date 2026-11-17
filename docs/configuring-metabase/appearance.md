@@ -112,6 +112,8 @@ This message is the text Metabase presents when it's loading a query. Options in
 - "Running query..."
 - "Loading results..."
 
+On self-hosted Metabases, you can also set the loading message with the [`MB_LOADING_MESSAGE`](./environment-variables.md#mb_loading_message) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
+
 ## Names
 
 _Admin > Settings > Appearance > Conceal Metabase_
@@ -121,6 +123,8 @@ _Admin > Settings > Appearance > Conceal Metabase_
 You can change every place in the app that says “Metabase” to something like “Acme Analytics,” or whatever you want to call your Metabase app.
 
 Setting a custom application name will also hide the "How to use Metabase" section in the navigation.
+
+On self-hosted Metabases, you can also set the application name with the [`MB_APPLICATION_NAME`](./environment-variables.md#mb_application_name) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
 
 ### Documentation and references
 
@@ -160,6 +164,8 @@ What people see when Metabase prompts them to log in.
 - No illustration
 - Custom
 
+On self-hosted Metabases, you can also set this illustration with the [`MB_LOGIN_PAGE_ILLUSTRATION`](./environment-variables.md#mb_login_page_illustration) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
+
 ### Landing page
 
 The illustration people see on the landing page when they log in. To choose which page people land on, see [Homepage](./settings.md#homepage).
@@ -167,6 +173,8 @@ The illustration people see on the landing page when they log in. To choose whic
 - Lighthouse
 - No illustration
 - Custom
+
+On self-hosted Metabases, you can also set this illustration with the [`MB_LANDING_PAGE_ILLUSTRATION`](./environment-variables.md#mb_landing_page_illustration) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
 
 ### When calculations return no results
 
@@ -178,6 +186,8 @@ Metabase will display this illustration when questions or dashboard cards contai
 - No illustration
 - Custom
 
+On self-hosted Metabases, you can also set this illustration with the [`MB_NO_DATA_ILLUSTRATION`](./environment-variables.md#mb_no_data_illustration) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
+
 ### When no objects can be found
 
 Metabase will display this illustration when searches don't return any results.
@@ -185,6 +195,8 @@ Metabase will display this illustration when searches don't return any results.
 - Sailboat
 - No illustration
 - Custom
+
+On self-hosted Metabases, you can also set this illustration with the [`MB_NO_OBJECT_ILLUSTRATION`](./environment-variables.md#mb_no_object_illustration) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
 
 ## Further reading
 

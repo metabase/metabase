@@ -7,7 +7,7 @@ summary: Connect MCP-compatible AI clients to Metabase to search, explore, and q
 
 ![A metric viewed through an MCP client connected to Metabase](./images/metric-in-mcp.png)
 
-Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions. 
+Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions.
 
 The MCP server is available on every Metabase plan. Some controls, like [MCP tools access](./usage-controls.md#mcp-tools-access) and [MCP analytics](#mcp-analytics), require a [Pro or Enterprise plan](https://www.metabase.com/pricing).
 
@@ -229,7 +229,7 @@ See [Agent-driven development](./agent-driven-development.md).
 
 Some clients don't support connecting to MCP servers running on localhost. For example, Claude Desktop doesn't permit local connections, but Claude Code does.
 
-For containerized setups, like when testing locally, you may need to set the `MB_SITE_URL` environment variable to the URL you point to in order to authenticate your client. For example, if you're playing around with a Metabase on localhost, you should set:
+For containerized setups, like when testing locally, you may need to set the [`MB_SITE_URL`](../configuring-metabase/environment-variables.md#mb_site_url) environment variable to the URL you point to in order to authenticate your client. For example, if you're playing around with a Metabase on localhost, you should set:
 
 ```
 MB_SITE_URL: http://localhost:3000

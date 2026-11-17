@@ -109,6 +109,8 @@ Different IdPs use different names for the Identity Provider URL. Here are some 
 | [Okta](saml-okta.md)   | Identity Provider Single-Sign On URL |
 | OneLogin               | SAML 2.0 Endpoint (HTTP)             |
 
+On self-hosted Metabases, you can also set the identity provider URL with the [`MB_SAML_IDENTITY_PROVIDER_URI`](../configuring-metabase/environment-variables.md#mb_saml_identity_provider_uri) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ### SAML identity provider certificate
 
 The SAML identity provider certificate is an encoded certificate that Metabase will use when connecting to the IdP URI. The certificate will look like a big blob of text that you'll want to copy and paste carefully — the spacing is important!
@@ -123,9 +125,11 @@ Note that your certificate text may include header and footer comments that look
 | [Okta](saml-okta.md)   | X.509 Certificate   |
 | OneLogin               | X.509 Certificate   |
 
+On self-hosted Metabases, you can also set the certificate with the [`MB_SAML_IDENTITY_PROVIDER_CERTIFICATE`](../configuring-metabase/environment-variables.md#mb_saml_identity_provider_certificate) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ### SAML application name
 
-Metabase uses the application name in requests to your IdP. The default is `Metabase`.
+Metabase uses the application name in requests to your IdP. The default is `Metabase`. On self-hosted Metabases, you can also set it with the [`MB_SAML_APPLICATION_NAME`](../configuring-metabase/environment-variables.md#mb_saml_application_name) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 ### SAML identity provider issuer
 
@@ -136,6 +140,8 @@ The SAML identity provider issuer is a required unique identifier for the IdP. Y
 | [Auth0](saml-auth0.md) | Identity Provider Login URL |
 | [Okta](saml-okta.md)   | Identity Provider Issuer    |
 | OneLogin               | Issuer URL                  |
+
+On self-hosted Metabases, you can also set the issuer with the [`MB_SAML_IDENTITY_PROVIDER_ISSUER`](../configuring-metabase/environment-variables.md#mb_saml_identity_provider_issuer) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 ### Sign SSO requests
 
@@ -148,6 +154,8 @@ If your IdP encrypts SAML responses, you'll need to ensure this section is fille
 - **SAML keystore path:** the absolute path to the keystore file to use for signing SAML requests.
 - **SAML keystore password:** the magic spell that will open the keystore.
 - **SAML keystore alias:** the alias for the key that Metabase should use for signing SAML requests.
+
+On self-hosted Metabases, you can also set these with the environment variables [`MB_SAML_KEYSTORE_PATH`](../configuring-metabase/environment-variables.md#mb_saml_keystore_path), [`MB_SAML_KEYSTORE_PASSWORD`](../configuring-metabase/environment-variables.md#mb_saml_keystore_password), and [`MB_SAML_KEYSTORE_ALIAS`](../configuring-metabase/environment-variables.md#mb_saml_keystore_alias), or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 ## SAML Single logout (SLO)
 
@@ -166,7 +174,7 @@ https://metabase.example.com/auth/sso/handle_slo
 SLO isn’t configurable from the Metabase interface. To enable it, you’ll need to set the following options using environment variables or your Metabase configuration file:
 
 - [`MB_SAML_SLO_ENABLED`](../configuring-metabase/environment-variables.md#mb_saml_slo_enabled) to `true`;
-- [`MB_SAML_IDENTITY_PROVIDER_URI`](../configuring-metabase/environment-variables.md#mb_saml_identity_provider_uri) to your IdP’s SLO endpoint;
+- [`MB_SAML_IDENTITY_PROVIDER_SLO_URI`](../configuring-metabase/environment-variables.md#mb_saml_identity_provider_slo_uri) to your IdP’s SLO endpoint;
 - [`MB_SESSION_COOKIE_SAMESITE`](../configuring-metabase/environment-variables.md#mb_session_cookie_samesite) to `none`.
 
 For the `MB_SESSION_COOKIE_SAMESITE` setting to work with `none`, Metabase must be served over HTTPS. Browsers like Chrome will block cookies in cross-site requests if SSL is not enabled. Without HTTPS, logout requests from your IdP (such as Okta) won’t include the session cookie, which means Metabase won’t be able to end the session properly.

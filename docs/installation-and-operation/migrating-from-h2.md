@@ -181,7 +181,7 @@ If you have your H2 file backed up somewhere safe, go ahead and remove the old c
 
 When Metabase is starting up, it will typically attempt to determine if any changes are required to the application database, and, if so, will execute those changes automatically. If for some reason you wanted to see what these changes are and run them manually on your database then we let you do that.
 
-Simply set the following environment variable before launching Metabase:
+Simply set the [`MB_DB_AUTOMIGRATE`](../configuring-metabase/environment-variables.md#mb_db_automigrate) environment variable before launching Metabase:
 
     export MB_DB_AUTOMIGRATE=false
 

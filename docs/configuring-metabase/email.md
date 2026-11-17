@@ -89,6 +89,8 @@ To set up email on self-hosted Metabase:
 
 3. Click **Save changes**.
 
+On self-hosted Metabases, you can also set these values with the environment variables [`MB_EMAIL_SMTP_HOST`](./environment-variables.md#mb_email_smtp_host), [`MB_EMAIL_SMTP_PORT`](./environment-variables.md#mb_email_smtp_port), [`MB_EMAIL_SMTP_SECURITY`](./environment-variables.md#mb_email_smtp_security), [`MB_EMAIL_SMTP_USERNAME`](./environment-variables.md#mb_email_smtp_username), and [`MB_EMAIL_SMTP_PASSWORD`](./environment-variables.md#mb_email_smtp_password), or, on Pro and Enterprise plans, in the [config file](./config-file.md).
+
 ## Configure email settings
 
 _Admin > Settings > Email_
@@ -102,6 +104,8 @@ Once you set up your email, you can configure:
 - **From Name**: The name you want to use for the sender of emails.
 - **From address**: The email address you want to use for the sender of emails.
 - **Reply-to address**: The email address you want replies to go to, if different from the From address.
+
+On self-hosted Metabases, you can also set these with the environment variables [`MB_EMAIL_FROM_NAME`](./environment-variables.md#mb_email_from_name), [`MB_EMAIL_FROM_ADDRESS`](./environment-variables.md#mb_email_from_address), and [`MB_EMAIL_REPLY_TO`](./environment-variables.md#mb_email_reply_to), or, on Pro and Enterprise plans, in the [config file](./config-file.md).
 
 ### Add recipients as CC or BCC
 

@@ -16,9 +16,13 @@ You can configure these settings by clicking the **grid icon** in the upper righ
 
 How you’d like to refer to this instance of Metabase.
 
+On self-hosted Metabases, you can also set the site name with the [`MB_SITE_NAME`](./environment-variables.md#mb_site_name) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
+
 ## Site URL
 
 The site URL is the web address that people use to access your Metabase instance. Make sure to include `http://` or `https://` to make sure it’s reachable. This feature is only available for self-hosted Metabases. For customers on Metabase Cloud, check out [Custom domains](https://www.metabase.com/docs/latest/cloud/custom-domain).
+
+On self-hosted Metabases, you can also set the site URL with the [`MB_SITE_URL`](./environment-variables.md#mb_site_url) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
 
 ### Redirect to HTTPS
 
@@ -29,6 +33,8 @@ To force all traffic to use HTTPS via redirect, click `http://` (under the **Sit
 For example, say you enable HTTPS redirect for a Metabase instance at the site URL "example.com". When someone enters an address like `example.com/data` in their browser's address bar, they'll get automatically redirected to a secure connection at `https://example.com/data`.
 
 > Note: if you haven't set up HTTPS on your server, Metabase will not let you enable HTTPS redirect. Instead, you'll get a warning saying "It looks like HTTPS is not properly configured."
+
+On self-hosted Metabases, you can also turn on the redirect with the [`MB_REDIRECT_ALL_REQUESTS_TO_HTTPS`](./environment-variables.md#mb_redirect_all_requests_to_https) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
 
 ## Homepage
 

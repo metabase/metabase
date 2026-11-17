@@ -39,6 +39,8 @@ Once you have your Google API `Client ID` (ending in `.apps.googleusercontent.co
 4. On the **Sign in with Google** card, click **Set up**.
 5. In the **Client ID** field, paste your Google API Client ID.
 
+On self-hosted Metabases, you can also set the client ID with the [`MB_GOOGLE_AUTH_CLIENT_ID`](../configuring-metabase/environment-variables.md#mb_google_auth_client_id) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ## Creating Metabase accounts with Google Sign-in
 
 > On [paid plans](https://www.metabase.com/pricing), you're [charged for each active account](https://www.metabase.com/how-billing-works#what-counts-as-a-user-account).

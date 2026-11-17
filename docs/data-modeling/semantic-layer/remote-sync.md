@@ -196,6 +196,8 @@ A Read-only Metabase doesn’t create a Library of its own. It gets the Library 
 
 At this point, you should be all set up. Exit Admin, then reload your browser. You should see the Library in your production Metabase.
 
+On self-hosted Metabases, you can also set up remote sync on a production Metabase with the environment variables [`MB_REMOTE_SYNC_URL`](../../configuring-metabase/environment-variables.md#mb_remote_sync_url), [`MB_REMOTE_SYNC_TYPE`](../../configuring-metabase/environment-variables.md#mb_remote_sync_type), [`MB_REMOTE_SYNC_TOKEN`](../../configuring-metabase/environment-variables.md#mb_remote_sync_token), [`MB_REMOTE_SYNC_BRANCH`](../../configuring-metabase/environment-variables.md#mb_remote_sync_branch), [`MB_REMOTE_SYNC_AUTO_IMPORT`](../../configuring-metabase/environment-variables.md#mb_remote_sync_auto_import), and [`MB_REMOTE_SYNC_AUTO_IMPORT_RATE`](../../configuring-metabase/environment-variables.md#mb_remote_sync_auto_import_rate), or, on Pro and Enterprise plans, in the [config file](../../configuring-metabase/config-file.md).
+
 ## Syncing transforms
 
 Remote sync versions your [transforms](../transforms/transforms-overview.md), including their tags, tests, folders, and Python libraries. Some things to keep in mind:

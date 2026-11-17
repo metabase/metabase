@@ -40,7 +40,7 @@ To set the instance-wide language:
 
 _Admin > Settings > Localization > Instance settings > Report timezone_
 
-Use **report timezone** to set a default display time zone for dates and times in Metabase. The report timezone setting is a display setting only, so changing the report timezone won't affect the time zone of any data in your database.
+Use **report timezone** to set a default display time zone for dates and times in Metabase. The report timezone setting is a display setting only, so changing the report timezone won't affect the time zone of any data in your database. On self-hosted Metabases, you can also set it with the [`MB_REPORT_TIMEZONE`](./environment-variables.md#mb_report_timezone) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
 
 Report timezone doesn't apply to `timestamp without time zone` data types, including the output of [`convertTimezone`](../questions/query-builder/expressions/converttimezone.md) expressions. For example:
 
@@ -78,7 +78,7 @@ This setting doesn't affect [SQL queries](../questions/native-editor/writing-sql
 
 ## Dates and times display settings
 
-You can configure the default formatting for dates and times. 
+You can configure the default formatting for dates and times.
 
 Note that people can also override these localization options for specific fields or questions. For more info, see [Formatting](../data-modeling/metadata/formatting.md).
 

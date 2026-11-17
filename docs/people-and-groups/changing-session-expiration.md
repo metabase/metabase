@@ -15,8 +15,6 @@ Clearing browser cookies or cache manually ends a session immediately, regardles
 
 MAX_SESSION_AGE controls the maximum number of minutes a session can live from the time of login. A person with hundreds of tabs open who hasn't rebooted in months will get logged out once MAX_SESSION_AGE is reached (even if they had checked the **Remember me** box on the login page).
 
-
-
 The default value is 14 days. To set a custom value, use the environment variable (in minutes):
 
 ```sh
@@ -30,7 +28,7 @@ This setting applies equally to everyone regardless of their browser behavior or
 
 {% include plans-blockquote.html feature="Session timeout" %}
 
-`MB_SESSION_TIMEOUT` controls how long a session can be inactive before it ends. Someone who opens Metabase in the morning, uses it for an hour, and then spends the rest of the day in other tools will be logged out once the inactivity window closes.
+[`MB_SESSION_TIMEOUT`](../configuring-metabase/environment-variables.md#mb_session_timeout) controls how long a session can be inactive before it ends. Someone who opens Metabase in the morning, uses it for an hour, and then spends the rest of the day in other tools will be logged out once the inactivity window closes.
 
 > **Note:** A dashboard left open with auto-refresh enabled counts as activity and keeps the session alive, even in a background tab. Scheduled alerts and dashboard subscriptions are server-side operations and do not reset the inactivity timer.
 
@@ -49,7 +47,7 @@ When both `MAX_SESSION_AGE` and `MB_SESSION_TIMEOUT` are configured, a session e
 
 By default, the login page has **Remember me** checked, so sessions survive browser closes and restarts. Without **Remember me**, closing the browser ends the session.
 
-`MB_SESSION_COOKIES` controls whether sessions end when the browser closes. Setting it to `true` removes the **Remember me** checkbox and enforces browser-close logout for everyone.
+[`MB_SESSION_COOKIES`](../configuring-metabase/environment-variables.md#mb_session_cookies) controls whether sessions end when the browser closes. Setting it to `true` removes the **Remember me** checkbox and enforces browser-close logout for everyone.
 
 ```sh
 MB_SESSION_COOKIES=true java -jar metabase.jar
