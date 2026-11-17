@@ -124,7 +124,8 @@
   "Whether the current user may run the saved `action-test`: they may read its action, run the action's query with the
   test's parameter values, and write the native SQL of a test against the Database of the action's query."
   [action-test :- ::data-testing.schema/action-test]
-  ;; Input SQL can read any table of the Database, and the guards do not check it, so reading the action is not enough.
+  ;; Input SQL can read any table of the Database, and the test validator does not check it, so reading the action is
+  ;; not enough.
   ;; A run compiles the action's query with the cards and snippets it includes, and a refusal can quote their SQL, so
   ;; the user must be allowed to run that query. It is checked with the test's values: a query missing a required value
   ;; cannot be preprocessed, and its required permissions would fall back to access to the Database.
@@ -182,7 +183,7 @@
                :creator_id serialization/user-transform}})
 
 (defmethod serialization/storage-paths :model/ActionTest [_ entities _ctx]
-  ;; An action's path reads its own collection and, for an action of a model, the model.
+  ;; An action's path reads its collection, and whether it belongs to a model.
   (data-testing.models/subject-storage-paths entities :model/Action :action_id {:collection_id :model/Collection
                                                                                 :model_id      :model/Card}))
 
