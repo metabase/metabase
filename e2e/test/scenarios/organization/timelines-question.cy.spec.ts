@@ -164,12 +164,6 @@ describe("scenarios > organization > timelines > question", () => {
         events: EVENTS,
       }).then(({ timeline }) => cy.wrap(timeline.id).as("timelineId")),
     );
-    cy.intercept(
-      { method: "GET", url: "/api/timeline?include=events", times: 1 },
-      (request) => {
-        request.on("response", (response) => response.setDelay(5000));
-      },
-    ).as("getDelayedTimelines");
     H.visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
@@ -189,7 +183,6 @@ describe("scenarios > organization > timelines > question", () => {
       { path: ["Our analytics", collectionName] },
       { wrapId: true },
     );
-    cy.wait("@getDelayedTimelines");
     cy.get<CardId>("@questionId").then((id) =>
       cy.get<TimelineId>("@timelineId").then((timelineId) =>
         cy
