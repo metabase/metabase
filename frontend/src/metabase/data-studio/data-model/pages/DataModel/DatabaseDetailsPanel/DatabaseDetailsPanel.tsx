@@ -18,6 +18,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
+import type { DataLayer } from "metabase/metadata/data-layers";
 import { useDispatch } from "metabase/redux";
 import { ActionIcon, Icon, Menu, Stack } from "metabase/ui";
 import type { Database, DatabaseId } from "metabase-types/api";
@@ -36,6 +37,8 @@ import {
   getTableStats,
 } from "../sync-details";
 
+import { DataLayersSection } from "./DataLayersSection";
+
 const NAME_MAX_LENGTH = 254;
 
 interface DatabaseDetailsPanelProps {
@@ -43,15 +46,19 @@ interface DatabaseDetailsPanelProps {
   databaseId: DatabaseId;
   defaultWidth: number;
   onWidthChange: (width: number) => void;
+  dataLayers: DataLayer[];
+  onDataLayersChange: (layers: DataLayer[]) => void;
   onClose: () => void;
 }
 
-/** The drawer panel for a database: name, description, syncing, and stats. */
+/** The drawer panel for a database: name, description, data layers, syncing, and stats. */
 export function DatabaseDetailsPanel({
   ref,
   databaseId,
   defaultWidth,
   onWidthChange,
+  dataLayers,
+  onDataLayersChange,
   onClose,
 }: DatabaseDetailsPanelProps) {
   const {
@@ -83,7 +90,12 @@ export function DatabaseDetailsPanel({
       ) : database == null ? (
         <DatabaseDetailsSkeleton />
       ) : (
-        <DatabaseDetails key={database.id} database={database} />
+        <DatabaseDetails
+          key={database.id}
+          database={database}
+          dataLayers={dataLayers}
+          onDataLayersChange={onDataLayersChange}
+        />
       )}
     </DetailPanel>
   );
@@ -133,7 +145,15 @@ function DatabaseActionsMenu({ databaseId }: { databaseId: DatabaseId }) {
   );
 }
 
-function DatabaseDetails({ database }: { database: Database }) {
+function DatabaseDetails({
+  database,
+  dataLayers,
+  onDataLayersChange,
+}: {
+  database: Database;
+  dataLayers: DataLayer[];
+  onDataLayersChange: (layers: DataLayer[]) => void;
+}) {
   const formatNumber = useNumberFormatter({ maximumFractionDigits: 0 });
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [updateDatabase] = useUpdateDatabaseMutation();
@@ -201,6 +221,8 @@ function DatabaseDetails({ database }: { database: Database }) {
           />
         </DetailsTable>
       </SidebarSection>
+
+      <DataLayersSection layers={dataLayers} onChange={onDataLayersChange} />
 
       <SidebarSection title={t`Syncing`}>
         <DetailsTable>

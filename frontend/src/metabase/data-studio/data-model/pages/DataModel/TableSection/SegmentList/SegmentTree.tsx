@@ -11,14 +11,13 @@ import {
 } from "metabase/metadata/segment-groups";
 import {
   type CohortProposal,
-  type SystemSegmentRole,
   getSystemSegmentRoleLabel,
   useTableSegments,
 } from "metabase/metadata/table-segments";
 import { useSelector } from "metabase/redux";
 import { Badge, Button, Icon, Stack, Text, Title, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { Segment, SegmentId, Table } from "metabase-types/api";
+import type { Segment, Table } from "metabase-types/api";
 
 import {
   ClausePills,
@@ -56,16 +55,8 @@ import {
   useSegmentGroupProposals,
 } from "./SegmentGroups";
 import { DefaultSegmentBadge } from "./SegmentItem";
+import type { SegmentListUrls } from "./SegmentList";
 import { useInlineSegmentSaves } from "./use-inline-segment-saves";
-
-/** Where the tree's segments open; the Library and Connected data differ */
-export type SegmentListUrls = {
-  segment: (segmentId: SegmentId) => string;
-  systemSegment: (role: SystemSegmentRole) => string;
-  newSegment: string;
-  segmentGroup: (groupId: string) => string;
-  newSegmentGroup: string;
-};
 
 const STAGE_INDEX = -1;
 

@@ -12,7 +12,7 @@ import {
 import { useSelector } from "metabase/redux";
 import { Button, Icon, Stack, Text, Title, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { Measure, MeasureId, Table } from "metabase-types/api";
+import type { Measure, Table } from "metabase-types/api";
 
 import {
   AggregationClausePicker,
@@ -36,16 +36,9 @@ import { ProposalActions } from "../ListSection";
 import { useTableQuery } from "../table-segments";
 
 import { getMemberNames, useMeasureGroupProposals } from "./MeasureGroups";
+import type { MeasureListUrls } from "./MeasureList";
 import { buildMeasureQuery, useMeasureProposals } from "./MeasureProposals";
 import { useInlineMeasureSaves } from "./use-inline-measure-saves";
-
-/** Where the tree's measures open; the Library and Connected data differ */
-export type MeasureListUrls = {
-  measure: (measureId: MeasureId) => string;
-  newMeasure: string;
-  measureGroup: (groupId: string) => string;
-  newMeasureGroup: string;
-};
 
 const STAGE_INDEX = -1;
 

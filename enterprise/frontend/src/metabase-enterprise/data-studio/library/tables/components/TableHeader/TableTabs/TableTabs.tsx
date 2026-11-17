@@ -56,6 +56,14 @@ function getTabs(
   }
 
   tabs.push({
+    label: t`Hierarchies`,
+    to: Urls.dataStudioTableHierarchies(table.id),
+    isSelected: location.pathname.startsWith(
+      Urls.dataStudioTableHierarchies(table.id),
+    ),
+  });
+
+  tabs.push({
     label: t`Segments`,
     to: Urls.dataStudioTableSegments(table.id),
     isSelected: location.pathname.startsWith(

@@ -15,6 +15,7 @@ export const EMPTY_FILTERS: FilterState = {
   ownerUserId: null,
   unusedOnly: null,
   publishedOnly: null,
+  hiddenOnly: null,
   noMainDateOnly: null,
   noRoleOnly: null,
 };

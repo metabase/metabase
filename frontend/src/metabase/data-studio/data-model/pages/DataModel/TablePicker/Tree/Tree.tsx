@@ -21,6 +21,9 @@ import {
 
 import { EmptyState } from "./EmptyState";
 
+// PROTOTYPE: which databases and schemas were left expanded or collapsed
+const EXPANDED_STATE_STORAGE_KEY = "metabase-prototype-data-tree-expanded";
+
 interface Props {
   path: TreePath;
   isLibraryEnabled: boolean;
@@ -43,7 +46,10 @@ export function Tree({
     setSelectedDatabases,
   } = useSelection();
   const { databaseId, schemaName } = path;
-  const { isExpanded, toggle } = useExpandedState(path);
+  // PROTOTYPE: remembered across visits, in this browser
+  const { isExpanded, toggle } = useExpandedState(path, {
+    storageKey: EXPANDED_STATE_STORAGE_KEY,
+  });
   const { tree, reload, isLoading } = useTableLoader();
 
   useEffect(() => {

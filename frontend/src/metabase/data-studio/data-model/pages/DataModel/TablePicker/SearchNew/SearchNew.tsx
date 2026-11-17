@@ -5,8 +5,10 @@ import { t } from "ttag";
 import { useListDatabasesQuery } from "metabase/api";
 import { useListTablesQuery } from "metabase/api/table";
 import { trackDataStudioTablePickerSearchPerformed } from "metabase/common/data-studio/analytics";
+import { useDataLayers } from "metabase/metadata/data-layers";
 import { parseRouteParams } from "metabase/metadata/pages/shared/utils";
 import {
+  getTableHiddenReason,
   useTableStructures,
   useTablesWithFields,
 } from "metabase/metadata/table-structure";
@@ -125,6 +127,7 @@ export function SearchNew({
     "orphan-only": filters.ownerUserId === "unknown" ? true : undefined,
     "unused-only": filters.unusedOnly === true ? true : undefined,
     "published-only": filters.publishedOnly === true ? true : undefined,
+    include_hidden: filters.hiddenOnly === true ? true : undefined,
   });
   const { data: databases, isLoading: isLoadingDatabases } =
     useListDatabasesQuery();
@@ -151,10 +154,13 @@ export function SearchNew({
   // PROTOTYPE: mocked. Structure filters need each table's fields and are
   // applied here, since there's no API for them yet
   const hasStructureFilters =
-    filters.noMainDateOnly === true || filters.noRoleOnly === true;
+    filters.hiddenOnly === true ||
+    filters.noMainDateOnly === true ||
+    filters.noRoleOnly === true;
   const { tables: tablesWithFields, isLoading: isLoadingFields } =
     useTablesWithFields(filteredTables, { isEnabled: hasStructureFilters });
   const { getTableStructure } = useTableStructures();
+  const { getTableDataLayer } = useDataLayers();
 
   const resultTables = useMemo(() => {
     if (!hasStructureFilters) {
@@ -162,14 +168,21 @@ export function SearchNew({
     }
     return tablesWithFields.filter((table) => {
       const structure = getTableStructure(table);
+      const hiddenReason = getTableHiddenReason({
+        table,
+        role: structure.role,
+        dataLayer: getTableDataLayer(table.db_id, table.schema, table.id).layer,
+      });
       return (
         (filters.noRoleOnly !== true || structure.role == null) &&
-        (filters.noMainDateOnly !== true || structure.mainDateField == null)
+        (filters.noMainDateOnly !== true || structure.mainDateField == null) &&
+        (filters.hiddenOnly !== true || hiddenReason != null)
       );
     });
   }, [
     filteredTables,
     filters,
+    getTableDataLayer,
     getTableStructure,
     hasStructureFilters,
     tablesWithFields,

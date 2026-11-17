@@ -27,7 +27,9 @@ import {
 } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
+  AddableDimensionGroup,
   AddableMetricDimension,
+  MetricDimension,
   MetricDimensionGroup,
   MetricId,
 } from "metabase-types/api";
@@ -40,6 +42,7 @@ interface AddDimensionsPanelProps {
   onDone: () => void;
 }
 
+/** Adds dimensions to a saved metric from the columns the server offers */
 export function AddDimensionsPanel({
   metricId,
   onDone,
@@ -54,11 +57,6 @@ export function AddDimensionsPanel({
     "include-orphaned": true,
   });
   const [addDimensions] = useAddMetricDimensionsMutation();
-
-  const groups = data?.addable ?? [];
-  const groupIds = groups.map(({ group }) => group.id);
-  const isSearchActive = search.length > 0 || Boolean(debouncedSearch);
-  const isEmpty = groups.length === 0;
 
   const handleAdd = async (
     group: MetricDimensionGroup,
@@ -87,6 +85,51 @@ export function AddDimensionsPanel({
   };
 
   return (
+    <AddDimensionsPanelView
+      groups={data?.addable ?? NO_GROUPS}
+      isLoading={isLoading}
+      error={error}
+      search={search}
+      isSearchActive={search.length > 0 || Boolean(debouncedSearch)}
+      onSearchChange={setSearch}
+      onAdd={handleAdd}
+      onDone={onDone}
+    />
+  );
+}
+
+const NO_GROUPS: AddableDimensionGroup[] = [];
+
+interface AddDimensionsPanelViewProps<
+  TDimension extends MetricDimension = AddableMetricDimension,
+> {
+  groups: { group: MetricDimensionGroup; dimensions: TDimension[] }[];
+  isLoading: boolean;
+  error: unknown;
+  search: string;
+  isSearchActive: boolean;
+  onSearchChange: (search: string) => void;
+  onAdd: (group: MetricDimensionGroup, dimension: TDimension) => void;
+  onDone: () => void;
+}
+
+/** The addable-dimension picker, independent of where dimensions are stored */
+export function AddDimensionsPanelView<
+  TDimension extends MetricDimension = AddableMetricDimension,
+>({
+  groups,
+  isLoading,
+  error,
+  search,
+  isSearchActive,
+  onSearchChange,
+  onAdd,
+  onDone,
+}: AddDimensionsPanelViewProps<TDimension>) {
+  const groupIds = groups.map(({ group }) => group.id);
+  const isEmpty = groups.length === 0;
+
+  return (
     <Stack gap="lg" className={S.column} data-testid="add-dimensions-panel">
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Box>
@@ -106,7 +149,7 @@ export function AddDimensionsPanel({
           placeholder={t`Search…`}
           value={search}
           leftSection={<Icon name="search" />}
-          onChange={(event) => setSearch(event.currentTarget.value)}
+          onChange={(event) => onSearchChange(event.currentTarget.value)}
         />
       )}
 
@@ -148,7 +191,7 @@ export function AddDimensionsPanel({
                         <UnstyledButton
                           key={dimension.id}
                           className={S.addableRow}
-                          onClick={() => handleAdd(group, dimension)}
+                          onClick={() => onAdd(group, dimension)}
                         >
                           <Group gap="sm" wrap="nowrap">
                             <Icon

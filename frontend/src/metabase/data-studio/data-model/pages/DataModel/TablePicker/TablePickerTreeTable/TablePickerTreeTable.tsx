@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import type { ExpandedState, OnChangeFn, Row } from "@tanstack/react-table";
 import {
   type MouseEvent,
@@ -9,8 +10,11 @@ import {
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useListUsersQuery } from "metabase/api";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
+import {
+  DATA_LAYER_VISIBILITY_ICONS,
+  useDataLayers,
+} from "metabase/metadata/data-layers";
 import {
   getTableRoleIcon,
   getTableRoleLabel,
@@ -18,10 +22,6 @@ import {
   useTableFields,
   useTableStructures,
 } from "metabase/metadata/table-structure";
-import {
-  DATA_LAYER_ICONS,
-  getDataLayerLabel,
-} from "metabase/metadata/utils/data-layer";
 import type { SelectionState, TreeTableColumnDef } from "metabase/ui";
 import {
   Box,
@@ -33,7 +33,7 @@ import {
   TreeTable,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { Table, UserId } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 
 import { useSelection } from "../../contexts/SelectionContext";
 import {
@@ -66,6 +66,11 @@ import {
 } from "../utils";
 
 const NUMBER_FORMAT_OPTIONS = { maximumFractionDigits: 0 };
+
+// The fixed columns (Role, Data layer) take about 430px; past them, names
+// keep about 240px before Published, then Rows, give way
+const MIN_WIDTH_WITH_PUBLISHED = 920;
+const MIN_WIDTH_WITH_ROWS = 800;
 
 interface Props {
   tree: RootNode;
@@ -102,13 +107,7 @@ export function TablePickerTreeTable({
     typeof useTreeTableInstance<TablePickerTreeNode>
   > | null>(null);
 
-  const { data: usersData } = useListUsersQuery();
-  const ownerNameById = useMemo(() => {
-    const users = usersData?.data ?? [];
-    return new Map<UserId, string>(
-      users.map((user) => [user.id, user.common_name]),
-    );
-  }, [usersData]);
+  const { getTableDataLayer, getSchemaDataLayer } = useDataLayers();
 
   const flatTreeData = useMemo(() => transformToTreeTableFormat(tree), [tree]);
   const customPropertyParents = useCustomPropertyParents(
@@ -228,6 +227,12 @@ export function TablePickerTreeTable({
     [handleCheckboxToggle],
   );
 
+  const { ref: frameRef, width: frameWidth } = useElementSize();
+  // Names need room first: Published goes, then Rows. Shown until measured
+  const isMeasured = frameWidth > 0;
+  const showPublished = !isMeasured || frameWidth >= MIN_WIDTH_WITH_PUBLISHED;
+  const showRows = !isMeasured || frameWidth >= MIN_WIDTH_WITH_ROWS;
+
   const columns: TreeTableColumnDef<TablePickerTreeNode>[] = useMemo(() => {
     const columnDefs: TreeTableColumnDef<TablePickerTreeNode>[] = [
       {
@@ -252,44 +257,37 @@ export function TablePickerTreeTable({
           ) : null,
       },
       {
-        id: "owner",
-        header: t`Owner`,
-        width: 140,
-        cell: ({ row }) => {
-          if (row.original.type !== "table" || !row.original.table) {
-            return null;
-          }
-          const ownerId = row.original.table.owner_user_id;
-          const ownerName =
-            ownerId != null && ownerNameById.has(ownerId)
-              ? ownerNameById.get(ownerId)
-              : (row.original.table.owner_email ?? null);
-          return ownerName ? (
-            <Box data-testid="table-owner">{ownerName}</Box>
-          ) : null;
-        },
-      },
-      {
         id: "data-layer",
-        header: t`Visibility layer`,
+        header: t`Data layer`,
         width: 150,
         cell: ({ row }) => {
-          if (row.original.type !== "table" || !row.original.table) {
-            return null;
-          }
-          const dataLayer = row.original.table.data_layer;
-          if (dataLayer == null) {
+          // PROTOTYPE: mocked. A schema's layer; a table's own layer, else
+          // its schema's, as the drawer's Data layer row shows it
+          const { type, table, databaseId, schemaName } = row.original;
+          const layer =
+            type === "schema" && databaseId != null && schemaName != null
+              ? getSchemaDataLayer(databaseId, schemaName)
+              : type === "table" && table
+                ? getTableDataLayer(table.db_id, table.schema, table.id).layer
+                : undefined;
+          if (layer == null) {
             return null;
           }
           return (
-            <Group gap="sm" wrap="nowrap" data-testid="table-data-layer">
-              <Icon name={DATA_LAYER_ICONS[dataLayer]} c="text-secondary" />
-              <Box>{getDataLayerLabel(dataLayer)}</Box>
+            <Group gap="sm" wrap="nowrap" data-testid={`${type}-data-layer`}>
+              <Icon
+                name={DATA_LAYER_VISIBILITY_ICONS[layer.visibility]}
+                c="text-secondary"
+              />
+              <Box>{layer.name}</Box>
             </Group>
           );
         },
       },
-      {
+    ];
+
+    if (showRows) {
+      columnDefs.push({
         id: "rows",
         header: t`Rows`,
         width: "auto",
@@ -304,10 +302,10 @@ export function TablePickerTreeTable({
             </Box>
           ) : null;
         },
-      },
-    ];
+      });
+    }
 
-    if (isLibraryEnabled) {
+    if (isLibraryEnabled && showPublished) {
       columnDefs.push({
         id: "published",
         header: t`Published`,
@@ -330,7 +328,14 @@ export function TablePickerTreeTable({
     }
 
     return columnDefs;
-  }, [isLibraryEnabled, ownerNameById, formatNumber]);
+  }, [
+    isLibraryEnabled,
+    formatNumber,
+    getTableDataLayer,
+    getSchemaDataLayer,
+    showRows,
+    showPublished,
+  ]);
 
   const expandedState = useMemo(
     () => Object.fromEntries([...expandedIds].map((id) => [id, true])),
@@ -469,17 +474,20 @@ export function TablePickerTreeTable({
   );
 
   return (
-    <TreeTable
-      instance={instance}
-      showCheckboxes
-      onRowClick={handleRowClick}
-      getSelectionState={getSelectionState}
-      onCheckboxClick={handleCheckboxClick}
-      isChildrenLoading={isChildrenLoading}
-      isRowDisabled={isRowDisabled}
-      getRowProps={getRowProps}
-      ariaLabel={t`Tables`}
-    />
+    // Stands in for the card as the table's flex parent, so it still fills it
+    <Box ref={frameRef} display="flex" flex={1} miw={0} mih={0}>
+      <TreeTable
+        instance={instance}
+        showCheckboxes
+        onRowClick={handleRowClick}
+        getSelectionState={getSelectionState}
+        onCheckboxClick={handleCheckboxClick}
+        isChildrenLoading={isChildrenLoading}
+        isRowDisabled={isRowDisabled}
+        getRowProps={getRowProps}
+        ariaLabel={t`Tables`}
+      />
+    </Box>
   );
 }
 

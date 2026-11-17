@@ -138,6 +138,7 @@ export function TableFieldsPage() {
                 getFieldHref={(fieldId) =>
                   Urls.dataStudioTableFields(tableId, fieldId)
                 }
+                hierarchiesHref={Urls.dataStudioTableHierarchies(tableId)}
                 onClose={closeField}
                 onPreviewClick={togglePreview}
               />

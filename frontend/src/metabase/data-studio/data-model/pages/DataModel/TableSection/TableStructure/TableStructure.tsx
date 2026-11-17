@@ -12,6 +12,7 @@ import {
   SettingsCard,
   SettingsRow,
 } from "metabase/data-studio/common/components/SettingsSection";
+import { useDataLayers } from "metabase/metadata/data-layers";
 import {
   type HistoryBinding,
   type ScdDetailsOverrides,
@@ -20,6 +21,7 @@ import {
   getPeriodGranularityOptions,
   getRowIdentityLabel,
   getScdTypeForHistoryShape,
+  getTableHiddenReason,
   getTableRoleOptions,
   getTableRoleRowDescription,
   isRoleA,
@@ -32,6 +34,7 @@ import {
   Icon,
   Select,
   Stack,
+  Text,
   TextInput,
   Transition,
   type TransitionProps,
@@ -96,6 +99,12 @@ export function TableStructure({
   const { role } = structure;
   const isHistoryRole = role != null && isRoleA(role, "role/HistoryDimension");
   const historyInfo = getHistoryFieldInfo();
+  const { getTableDataLayer } = useDataLayers();
+  const hiddenReason = getTableHiddenReason({
+    table,
+    role,
+    dataLayer: getTableDataLayer(table.db_id, table.schema, table.id).layer,
+  });
 
   const structureSectionRef = useRef<HTMLDivElement>(null);
 
@@ -248,6 +257,16 @@ export function TableStructure({
           }
         />
       )}
+      <DetailsRow
+        label={t`Visibility`}
+        value={
+          hiddenReason ? (
+            <Text>{t`Hidden: ${hiddenReason}`}</Text>
+          ) : (
+            <Text>{t`Shown to people who can see its data layer`}</Text>
+          )
+        }
+      />
       {role && isRoleA(role, "role/PeriodicSnapshotFact") && (
         <DetailsRow
           label={t`Period`}

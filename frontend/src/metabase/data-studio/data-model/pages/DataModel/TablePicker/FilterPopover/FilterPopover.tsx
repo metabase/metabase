@@ -111,6 +111,13 @@ export function FilterPopover({ filters, isLibraryEnabled, onSubmit }: Props) {
             }
           />
           <Checkbox
+            label={t`Hidden`}
+            checked={form.hiddenOnly === true}
+            onChange={(e) =>
+              setForm((form) => ({ ...form, hiddenOnly: e.target.checked }))
+            }
+          />
+          <Checkbox
             label={t`No main date`}
             checked={form.noMainDateOnly === true}
             onChange={(e) =>

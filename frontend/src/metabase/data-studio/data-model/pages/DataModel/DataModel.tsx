@@ -19,6 +19,7 @@ import {
   PreviewSection,
   type PreviewType,
 } from "metabase/metadata/components";
+import { useDataLayers } from "metabase/metadata/data-layers";
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -47,6 +48,7 @@ import { SchemaDetailsPanel } from "./SchemaDetailsPanel";
 import { RouterTablePicker } from "./TablePicker";
 import type { ChangeOptions, TreePath } from "./TablePicker/types";
 import { TableSection } from "./TableSection";
+import { TableActionsMenu } from "./TableSection/TableActionsMenu";
 import { TableAttributesEditBulk } from "./TableSection/TableAttributesEditBulk";
 import {
   DRAWER_PANEL_WIDTH,
@@ -138,6 +140,14 @@ function DataModelContent() {
   // The tree path the person last clicked. The tree also selects a lone
   // database or schema on its own, and that must not open a drawer.
   const [pickedPath, setPickedPath] = useState<TreePath | null>(null);
+  const {
+    getDataLayers,
+    setDataLayers,
+    getSchemaDataLayer,
+    setSchemaDataLayerId,
+    getSchemaDisplayName,
+    setSchemaDisplayName,
+  } = useDataLayers();
 
   const handlePathChange = useCallback(
     (path: TreePath, options?: ChangeOptions) => {
@@ -271,6 +281,10 @@ function DataModelContent() {
           databaseId={container.databaseId}
           defaultWidth={panelWidths.database}
           onWidthChange={handlePanelWidthChange("database")}
+          dataLayers={getDataLayers(container.databaseId)}
+          onDataLayersChange={(layers) =>
+            setDataLayers(container.databaseId, layers)
+          }
           onClose={closeContainerDetails}
         />
       );
@@ -282,8 +296,21 @@ function DataModelContent() {
         ref={scrollToPanel}
         databaseId={databaseId}
         schemaName={schemaName}
+        displayName={getSchemaDisplayName(databaseId, schemaName)}
+        onDisplayNameChange={(displayName) =>
+          setSchemaDisplayName(databaseId, schemaName, displayName)
+        }
         defaultWidth={panelWidths.schema}
         onWidthChange={handlePanelWidthChange("schema")}
+        dataLayers={getDataLayers(databaseId)}
+        dataLayer={getSchemaDataLayer(databaseId, schemaName)}
+        onDataLayerChange={(layerId) =>
+          setSchemaDataLayerId(databaseId, schemaName, layerId)
+        }
+        onManageDataLayers={() => {
+          setPickedPath({ databaseId });
+          navigate(Urls.dataStudioData({ databaseId }));
+        }}
         onClose={closeContainerDetails}
       />
     );
@@ -329,6 +356,7 @@ function DataModelContent() {
             canPublish={canPublish}
             hasLibrary={hasLibrary}
             onUpdate={() => onUpdateCallback?.()}
+            onClose={closeDrawer}
           />
         </DetailPanel>
       )}
@@ -344,6 +372,16 @@ function DataModelContent() {
             label={t`Table`}
             title={table?.display_name}
             isLoading={isLoading}
+            actions={
+              table && (
+                <TableActionsMenu
+                  table={table}
+                  canPublish={canPublish}
+                  hasLibrary={hasLibrary}
+                  onUpdate={handleTableUpdate}
+                />
+              )
+            }
             onClose={closeDrawer}
             data-testid="table-section-header"
           />
@@ -362,8 +400,6 @@ function DataModelContent() {
                 table={table}
                 activeFieldId={fieldId}
                 activeTab={activeTab}
-                canPublish={canPublish}
-                hasLibrary={hasLibrary}
                 onUpdate={handleTableUpdate}
               />
             )
