@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase-enterprise.workspaces.core :as ws]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -146,6 +147,53 @@
                                             (:error-code (mt/user-http-request :crowberto :post 422 (str path "/run")))))))
                                  (finally
                                    (t2/delete! :model/DataTestRun :test_type "action" :test_id test-id)))))))))
+
+(defn- do-in-workspace-mode!
+  "Call `thunk` with this instance in workspace mode, the test database in the workspace, and the real categories table
+  remapped to a workspace copy, `ws_action_test.categories`, which does not exist: a query that reached it would fail."
+  [thunk]
+  (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id :categories))]
+    (try
+      (ws/set-instance-workspace! {:name      "action-test-ws"
+                                   :databases {(mt/id) {:input_schemas [schema]
+                                                        :output        {:schema "ws_action_test"}}}})
+      (t2/insert! :model/TableRemapping {:database_id     (mt/id)
+                                         :from_db         ""
+                                         :from_schema     schema
+                                         :from_table_name name
+                                         :to_db           ""
+                                         :to_schema       "ws_action_test"
+                                         :to_table_name   name})
+      (thunk)
+      (finally
+        (ws/clear-instance-workspace!)
+        (t2/delete! :model/TableRemapping :database_id (mt/id) :to_schema "ws_action_test")))))
+
+(deftest ^:synchronized action-tests-run-on-a-workspace-instance-test
+  (testing "On a workspace instance, which refuses to run an action, an action test runs on the same terms as anywhere else"
+    (mt/with-premium-features #{:transforms-testing}
+      (do-with-action!
+       nil
+       (fn [action-id]
+         (do-in-workspace-mode!
+          (fn []
+            (testing "premise: the instance is in workspace mode, so running the action itself is refused"
+              (is (ws/workspace-mode?))
+              (is (= "Actions is not supported on a workspace instance."
+                     (mt/user-http-request :crowberto :post 400 (str "action/" action-id "/execute")
+                                           {:parameters parameters}))))
+            (let [created (mt/user-http-request :crowberto :post 200 "ee/action-test" (body action-id))]
+              (try
+                (testing "saving the test is not refused"
+                  (is (pos-int? (:id created))))
+                (testing "the run passes: the action's SQL ran on the temp table, not on the real table or its workspace copy"
+                  (is (=? {:status "passed" :expectations [{:status "passed"}]}
+                          (mt/user-http-request :crowberto :post 200 (str "ee/action-test/" (:id created) "/run")))))
+                (testing "the real table is not written"
+                  (is (= [] (data-testing.test-util/renamed-categories "Wood Shop"))))
+                (finally
+                  (t2/delete! :model/DataTestRun :test_type "action" :test_id (:id created))
+                  (t2/delete! :model/ActionTest :id (:id created))))))))))))
 
 (deftest permissions-test
   (mt/with-premium-features #{:transforms-testing}
