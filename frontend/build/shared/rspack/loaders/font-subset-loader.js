@@ -113,15 +113,15 @@ async function rewrite(loader) {
       return block.replace(urls[0][0], `url("~generated-fonts/${latin}")`);
     }
 
-    const withChunk = (chunkRel, range) =>
-      block
+    const withChunk = (face, chunkRel, range) =>
+      face
         .replace(urls[0][0], `url("~generated-fonts/${chunkRel}")`)
         .replace(/\}$/, `  unicode-range: ${range};\n}`);
 
     return (
-      withChunk(latin, LATIN_UNICODE_RANGE) +
+      withChunk(block, latin, LATIN_UNICODE_RANGE) +
       "\n\n" +
-      withChunk(rest, REST_UNICODE_RANGE)
+      withChunk(swapped(block), rest, REST_UNICODE_RANGE)
     );
   };
 
@@ -136,6 +136,17 @@ async function rewrite(loader) {
   }
   out.push(css.slice(cursor));
   return out.join("");
+}
+
+/**
+ * The second chunk is never on the critical path, so it always swaps. Without
+ * this the default family would hide the characters in it while it downloads,
+ * where the system font used to draw them at once.
+ */
+function swapped(face) {
+  return face.includes("font-display:")
+    ? face
+    : face.replace(/\}$/, "  font-display: swap;\n}");
 }
 
 /**
