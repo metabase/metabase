@@ -10,6 +10,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.util :as u])
@@ -104,3 +105,23 @@
             (str driver " reports no hosts at all for details that name none, which reads as \"this database is"
                  " nowhere\" and lets the connection through unchecked -- but its client will substitute a host of"
                  " its own and connect. Report where it would really connect, or throw."))))))
+
+(def ^:private dangerous-parameters
+  {:mysql      ["credentialType"]
+   :mongo      ["proxyHost" "authMechanism=MONGODB-OIDC"]
+   :vertica    ["OAuthJsonConfig"]
+   :postgres   ["authenticationPluginClassName" "connectExecutor" "connectExecutorArg" "datatype.point"]
+   :redshift   ["authenticationPluginClassName" "AuthProfile" "IniFile" "Profile" "plugin_name" "datatype.point"]
+   :clickhouse ["typeMappings" "jdbc_type_mappings" "type_hint_mapping" "jdbc_json_parser_factory"
+                "jdbc_metrics_recorder" "dialect" "load_balancing_policy"]
+   :athena     ["AdfsWiaEnabled" "CredentialsProvider" "AwsCredentialsProviderClass" "CredentialsProviderArguments"
+                "aws_credentials_provider_arguments" "ProfileName"]
+   :databricks ["GoogleCredentialsFile" "Auth_JWT_Key_File"]
+   :snowflake  ["client_config_file" "CRL_RESPONSE_CACHE_DIR" "ENABLE_DIAGNOSTICS" "DIAGNOSTICS_ALLOWLIST_FILE"
+                "private_key_file"]})
+
+(deftest ^:parallel dangerous-parameters-are-disallowed-test
+  (mt/test-drivers (filter dangerous-parameters (tx.env/test-drivers))
+    (doseq [parameter (dangerous-parameters driver/*driver*)]
+      (testing parameter
+        (is (some? (driver.u/disallowed-connection-parameter driver/*driver* (str parameter "=x"))))))))

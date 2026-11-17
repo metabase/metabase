@@ -14,6 +14,9 @@ title: Driver interface changelog
 - `metabase.driver/disallowed-connection-parameters` names now match ignoring percent-encoding, `_ . - +` and
   whitespace as well as case.
 
+- `metabase.driver/disallowed-connection-parameters` now has a `:postgres` method, which Redshift extends.
+  If your driver derives from `:postgres` and overrides the method, extend `:postgres`'s list rather than `:sql-jdbc`'s.
+
 ## Metabase 0.65.3
 
 - `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while
