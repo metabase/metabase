@@ -4,7 +4,8 @@ import { DATA_APP_DIAGNOSTIC_MAX_CHARS } from "../constants/diagnostics-channel"
 import { truncateDiagnosticText } from "./diagnostics-limits";
 import { sdkCallCapture } from "./sdk-call-capture";
 
-const METABASE_URL = "http://localhost:3000";
+// The page reaches the instance through the dev server, on its own origin.
+const PAGE_ORIGIN = window.location.origin;
 
 const jsonResponse = (body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -22,10 +23,10 @@ const realFetch = window.fetch;
 
 let originalFetch: jest.Mock<Promise<Response>, []>;
 
-const setup = (metabaseUrl: string = METABASE_URL) => {
+const setup = () => {
   originalFetch = jest.fn(async () => jsonResponse({}));
   window.fetch = originalFetch;
-  sdkCallCapture.install(metabaseUrl);
+  sdkCallCapture.install();
 };
 
 // The capture records off the critical path (the app gets its response first),
@@ -49,11 +50,16 @@ describe("SdkCallCapture", () => {
   it("records a Metabase call and ignores everything else", async () => {
     setup();
 
-    await call(`${METABASE_URL}/api/card/1`);
-    await call("https://example.com/thing");
+    await call(`${PAGE_ORIGIN}/api/card/1`);
+    await call("/api/card/2");
+    await call("https://example.com/api/thing");
+    // The page's own traffic to the dev server: the bundle and the feed.
+    await call("/@data-app-bundle.js");
+    await call("/__data-app/diagnostics");
 
-    expect(calls()).toHaveLength(1);
+    expect(calls()).toHaveLength(2);
     expect(calls()[0]).toMatchObject({ endpoint: "/api/card/1", status: 200 });
+    expect(calls()[1]).toMatchObject({ endpoint: "/api/card/2", status: 200 });
   });
 
   it("reads a successful response through a clone, never the original", async () => {
@@ -64,7 +70,7 @@ describe("SdkCallCapture", () => {
     const clone = jest.spyOn(exported, "clone");
     originalFetch.mockResolvedValue(exported);
 
-    await call(`${METABASE_URL}/api/dataset/json`);
+    await call(`${PAGE_ORIGIN}/api/dataset/json`);
 
     expect(clone).toHaveBeenCalled();
     expect(exported.bodyUsed).toBe(false);
@@ -73,10 +79,10 @@ describe("SdkCallCapture", () => {
   it("records the request method from init or a Request", async () => {
     setup();
 
-    await call(`${METABASE_URL}/api/card/1`, { method: "post" });
+    await call(`${PAGE_ORIGIN}/api/card/1`, { method: "post" });
     expect(calls()[0].method).toBe("POST");
 
-    await call(new Request(`${METABASE_URL}/api/card/2`, { method: "PUT" }));
+    await call(new Request(`${PAGE_ORIGIN}/api/card/2`, { method: "PUT" }));
     expect(calls()[1].method).toBe("PUT");
   });
 
@@ -86,7 +92,7 @@ describe("SdkCallCapture", () => {
       errorResponse(400, { message: 'Table "orders" is not in the manifest' }),
     );
 
-    await call(`${METABASE_URL}/api/dataset`);
+    await call(`${PAGE_ORIGIN}/api/dataset`);
 
     // The status alone leaves the author — and an agent reading the feed —
     // with "a query failed" and nowhere to go next.
@@ -102,7 +108,7 @@ describe("SdkCallCapture", () => {
       new Response("<html>502 Bad Gateway</html>", { status: 502 }),
     );
 
-    await call(`${METABASE_URL}/api/dataset`);
+    await call(`${PAGE_ORIGIN}/api/dataset`);
 
     expect(calls()[0]).toMatchObject({
       status: 502,
@@ -116,7 +122,7 @@ describe("SdkCallCapture", () => {
       jsonResponse({ status: "failed", error: "Table does not exist" }),
     );
 
-    await call(`${METABASE_URL}/api/dataset`);
+    await call(`${PAGE_ORIGIN}/api/dataset`);
 
     expect(calls()[0]).toMatchObject({
       status: 200,
@@ -128,7 +134,7 @@ describe("SdkCallCapture", () => {
     setup();
     originalFetch.mockResolvedValue(jsonResponse({ status: "failed" }));
 
-    await call(`${METABASE_URL}/api/dataset`);
+    await call(`${PAGE_ORIGIN}/api/dataset`);
 
     expect(calls()[0]).toMatchObject({ status: 200, error: "Query failed" });
   });
@@ -139,7 +145,7 @@ describe("SdkCallCapture", () => {
       jsonResponse({ status: "completed", data: { rows: [[1]] } }),
     );
 
-    await call(`${METABASE_URL}/api/dataset`);
+    await call(`${PAGE_ORIGIN}/api/dataset`);
 
     expect(calls()[0]).toMatchObject({ status: 200, error: undefined });
   });
@@ -152,7 +158,7 @@ describe("SdkCallCapture", () => {
       jsonResponse({ status: "failed", pad: "x".repeat(200 * 1024) }),
     );
 
-    await call(`${METABASE_URL}/api/dataset`);
+    await call(`${PAGE_ORIGIN}/api/dataset`);
 
     expect(calls()[0]).toMatchObject({ status: 200, error: undefined });
   });
@@ -163,7 +169,7 @@ describe("SdkCallCapture", () => {
       jsonResponse({ status: "completed", rows: 1 }),
     );
 
-    const response = await call(`${METABASE_URL}/api/dataset`);
+    const response = await call(`${PAGE_ORIGIN}/api/dataset`);
 
     expect(await response.json()).toEqual({ status: "completed", rows: 1 });
   });
@@ -172,7 +178,7 @@ describe("SdkCallCapture", () => {
     setup();
     originalFetch.mockResolvedValue(new Response("", { status: 500 }));
 
-    await call(`${METABASE_URL}/api/dataset`);
+    await call(`${PAGE_ORIGIN}/api/dataset`);
 
     expect(calls()[0]).toMatchObject({ status: 500, error: undefined });
   });
@@ -181,7 +187,7 @@ describe("SdkCallCapture", () => {
     setup();
     originalFetch.mockResolvedValue(errorResponse(400, { message: "nope" }));
 
-    const response = await call(`${METABASE_URL}/api/dataset`);
+    const response = await call(`${PAGE_ORIGIN}/api/dataset`);
 
     // We read the body to report the reason. Reading the response itself rather
     // than a clone would leave the SDK's own error handling with a consumed
@@ -194,7 +200,7 @@ describe("SdkCallCapture", () => {
     const message = "x".repeat(DATA_APP_DIAGNOSTIC_MAX_CHARS + 1000);
     originalFetch.mockResolvedValue(errorResponse(400, { message }));
 
-    await call(`${METABASE_URL}/api/dataset`);
+    await call(`${PAGE_ORIGIN}/api/dataset`);
 
     // Truncating here as well as in the collector would re-truncate the already
     // truncated string and chop up its own "… (truncated)" marker.
@@ -211,7 +217,7 @@ describe("SdkCallCapture", () => {
       new Response("x".repeat(200 * 1024), { status: 502 }),
     );
 
-    await call(`${METABASE_URL}/api/dataset`);
+    await call(`${PAGE_ORIGIN}/api/dataset`);
 
     const { status, error } = calls()[0];
     expect(status).toBe(502);
@@ -221,7 +227,7 @@ describe("SdkCallCapture", () => {
   it("keeps the querystring out of the recorded endpoint", async () => {
     setup();
 
-    await call(`${METABASE_URL}/api/card/1?token=secret&foo=bar`);
+    await call(`${PAGE_ORIGIN}/api/card/1?token=secret&foo=bar`);
 
     // The feed is served over HTTP and read by tools outside the browser, so
     // anything credential-shaped in a query parameter must not reach it.
@@ -232,7 +238,7 @@ describe("SdkCallCapture", () => {
   it("records the time the call took", async () => {
     setup();
 
-    await call(`${METABASE_URL}/api/card/1`);
+    await call(`${PAGE_ORIGIN}/api/card/1`);
 
     expect(calls()[0].durationMs).toEqual(expect.any(Number));
   });
@@ -243,7 +249,7 @@ describe("SdkCallCapture", () => {
       new DOMException("The user aborted a request.", "AbortError"),
     );
 
-    await expect(window.fetch(`${METABASE_URL}/api/dataset`)).rejects.toThrow();
+    await expect(window.fetch(`${PAGE_ORIGIN}/api/dataset`)).rejects.toThrow();
 
     // StrictMode remounts and superseded queries abort routinely; badging those
     // as errors trains the author to ignore the badge.
@@ -254,54 +260,11 @@ describe("SdkCallCapture", () => {
     setup();
     originalFetch.mockRejectedValue(new TypeError("Failed to fetch"));
 
-    await expect(window.fetch(`${METABASE_URL}/api/dataset`)).rejects.toThrow();
+    await expect(window.fetch(`${PAGE_ORIGIN}/api/dataset`)).rejects.toThrow();
 
     expect(calls()[0]).toMatchObject({
       status: null,
       error: "Failed to fetch",
     });
-  });
-
-  it("strips the base path of a sub-path deployment", async () => {
-    setup("https://acme.com/metabase");
-
-    await call("https://acme.com/metabase/api/dataset");
-
-    // Without stripping, every endpoint reads `/metabase/api/...`, which matches
-    // neither the paths the author knows nor the ones in the Metabase docs.
-    expect(calls()[0]).toMatchObject({ endpoint: "/api/dataset" });
-  });
-
-  it("passes through a same-origin call that sits outside the base path", async () => {
-    setup("https://acme.com/metabase");
-
-    // Another app on the same host is not the Metabase deployment; recording it
-    // would put a tenant's unrelated traffic into the data-app author's feed.
-    await call("https://acme.com/other-app/api/dataset");
-
-    expect(calls()).toHaveLength(0);
-  });
-
-  it("does nothing without a Metabase URL to watch", async () => {
-    const untouched = jest.fn(async () => jsonResponse({}));
-    window.fetch = untouched;
-
-    sdkCallCapture.install(undefined);
-    await call(`${METABASE_URL}/api/card/1`);
-
-    // `fetch` is left alone, so nothing is recorded.
-    expect(window.fetch).toBe(untouched);
-    expect(calls()).toHaveLength(0);
-  });
-
-  it("does nothing when the Metabase URL cannot be parsed", async () => {
-    const untouched = jest.fn(async () => jsonResponse({}));
-    window.fetch = untouched;
-
-    sdkCallCapture.install("not-a-url");
-    await call(`${METABASE_URL}/api/card/1`);
-
-    expect(window.fetch).toBe(untouched);
-    expect(calls()).toHaveLength(0);
   });
 });

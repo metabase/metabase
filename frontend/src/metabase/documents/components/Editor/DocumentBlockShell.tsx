@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { NodeViewWrapper } from "@tiptap/react";
 import cx from "classnames";
 

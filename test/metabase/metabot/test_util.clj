@@ -243,8 +243,9 @@
     (t2/query ["SELECT no_such_column FROM metabase_field"])))
 
 (def internal-failure
-  "What the model reads when a call fails inside Metabase. The turn ends there, and the user gets the generic error."
-  {:output "This call failed and the user was shown the error (:internal). Don't retry it."
+  "What the model reads when a call fails inside Metabase in a way no tool declared."
+  {:output (str "This call failed with an unexpected error. Don't retry the same call. "
+                "Try another approach, or tell the user it failed.")
    :error  {:class :unrecoverable :code :internal}})
 
 ;;; ──────────────────────────────────────────────────────────────────

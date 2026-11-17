@@ -19,7 +19,8 @@
 
 (defn- v-fifty-migration-time []
   (let [v50-migration-id "v50.2024-01-04T13:52:51"]
-    (->> (mdb/changelog-by-id (mdb/app-db) v50-migration-id) :dateexecuted)))
+    ;; :dateexecuted is expected to be a datetime already. Convert with t/local-date-time to fix cases like #65043
+    (->> (mdb/changelog-by-id (mdb/app-db) v50-migration-id) :dateexecuted t/local-date-time)))
 
 (defn- -show-updated-permission-modal []
   (if (t/after? (instance-create-time) (v-fifty-migration-time))

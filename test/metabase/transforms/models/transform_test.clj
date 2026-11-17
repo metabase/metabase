@@ -3,67 +3,67 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.search.core :as search]
+   [metabase.search.test-util :as search.tu]
    [metabase.stale-test :as stale-test]
    [metabase.staleness.core :as staleness]
    [metabase.test :as mt]
-   [metabase.transforms-base.query :as transforms-base.query]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.transforms-base.db :as transforms-base.db]
    [metabase.transforms.query-test-util :as query-test-util]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :once (fixtures/initialize :db))
+
 (deftest source-database-id-set-test
   (testing "inserting a transform correctly sets the source-database-id column"
     (mt/with-temp [:model/Transform transform
                    {:name   "Test Transform"
-                    :source {:type  "query"
-                             :query {:database (mt/id)
-                                     :type     "native"
-                                     :native   {:query "SELECT 1"}}}}]
+                    :source {:type  :query
+                             :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}]
       (is (= (mt/id) (:source_database_id transform)))))
   (testing "A transform with no source database has a nil source_database_id"
     (mt/with-temp [:model/Transform transform
                    {:name   "Test Transform"
-                    :source {:type "python"
-                             :body "print(\"hello\")"}}]
+                    :source {:type          :python
+                             :source-tables []
+                             :body          "print(\"hello\")"}}]
       (is (nil? (:source_database_id transform)))))
   (testing "updating a transform recomputes the source-database-id column from the source"
     (mt/with-temp [:model/Transform transform
                    {:name   "Test Transform"
-                    :source {:type "python"
-                             :body "print(\"hello\")"}}]
+                    :source {:type          :python
+                             :source-tables []
+                             :body          "print(\"hello\")"}}]
       (is (nil? (:source_database_id transform)))
-      (t2/update! :model/Transform :id (:id transform) {:source {:type  "query"
-                                                                 :query {:database (mt/id)
-                                                                         :type     "native"
-                                                                         :native   {:query "SELECT 1"}}}})
+      (t2/update! :model/Transform :id (:id transform) {:source {:type  :query
+                                                                 :query (lib/native-query (mt/metadata-provider) "SELECT 1")}})
       (is (= (mt/id) (t2/select-one-fn :source_database_id :model/Transform :id (:id transform)))))))
 
-(deftest source-database-deletion-sets-null-test
-  (testing "deleting a database referenced by a transform nulls the transform's source_database_id (ON DELETE SET NULL)"
+(deftest source-database-deletion-deletes-transform-test
+  (testing "deleting database deletes transforms reading from it"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Transform transform
                    {:name   "Test Transform"
-                    :source {:type  "query"
-                             :query {:database db-id
-                                     :type     "native"
-                                     :native   {:query "SELECT 1"}}}}]
+                    :source {:type  :query
+                             :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")}}]
       (is (= db-id (:source_database_id transform)))
       (t2/delete! :model/Database :id db-id)
-      (is (nil? (t2/select-one-fn :source_database_id :model/Transform :id (:id transform))))
-      ;; transform itself still exists
-      (is (some? (t2/select-one :model/Transform :id (:id transform)))))))
+      (is (not (t2/exists? :model/Transform :id (:id transform)))))))
 
 (defn- temp-transform-with-index! [thunk]
   (mt/with-temp [:model/Transform {transform-id :id}
                  {:name   (mt/random-name)
-                  :source {:type "query" :query (query-test-util/make-query :source-table "venues")}
+                  :source {:type :query :query (query-test-util/make-query :source-table "venues")}
                   :target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}}
                  :model/TableIndex {index-id :id}
                  {:transform_id transform-id
@@ -77,7 +77,7 @@
     (temp-transform-with-index!
      (fn [transform-id index-id]
        (t2/update! :model/Transform :id transform-id
-                   {:source {:type "query" :query (query-test-util/make-query :source-table "checkins")}})
+                   {:source {:type :query :query (query-test-util/make-query :source-table "checkins")}})
        (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id index-id))))))
   (testing "retargeting to a different table marks the transform's managed indexes for revalidation"
     (temp-transform-with-index!
@@ -91,26 +91,6 @@
        (t2/update! :model/Transform :id transform-id {:name "renamed"})
        (is (= :succeeded (t2/select-one-fn :status :model/TableIndex :id index-id)))))))
 
-(deftest can-read-write-on-orphaned-transform-test
-  (testing "superusers can read/write a transform whose source database has been deleted, data analysts cannot"
-    (mt/with-premium-features #{:transforms-basic :hosting}
-      (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Transform transform
-                     {:name   "Orphan Transform"
-                      :source {:type  "query"
-                               :query {:database db-id
-                                       :type     "native"
-                                       :native   {:query "SELECT 1"}}}}]
-        (t2/delete! :model/Database :id db-id)
-        (let [reloaded (t2/select-one :model/Transform :id (:id transform))]
-          (is (nil? (:source_database_id reloaded)))
-          (mt/with-current-user (mt/user->id :crowberto)
-            (is (mi/can-read? reloaded))
-            (is (mi/can-write? reloaded)))
-          (mt/with-current-user (mt/user->id :rasta)
-            (is (not (mi/can-read? reloaded)))
-            (is (not (mi/can-write? reloaded)))))))))
-
 (mt/when-ee-evailable
  (deftest native-transform-requires-query-builder-and-native-test
    (testing "Writing a native-query transform requires \"Query builder and native\" on the source database, even if the
@@ -120,13 +100,11 @@
                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
                       :model/Transform native-transform
                       {:name   "Native Transform"
-                       :source {:type  "query"
-                                :query {:database (mt/id)
-                                        :type     "native"
-                                        :native   {:query "SELECT 1"}}}}
+                       :source {:type  :query
+                                :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}
                       :model/Transform mbql-transform
                       {:name   "MBQL Transform"
-                       :source {:type  "query"
+                       :source {:type  :query
                                 :query (lib/query (mt/metadata-provider)
                                                   (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
          (let [native (t2/select-one :model/Transform :id (:id native-transform))
@@ -143,39 +121,20 @@
                  (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
                  (mt/with-current-user (mt/user->id :rasta)
                    (testing "native transform cannot be written"
-                     (is (not (mi/can-write? native))))
+                     (is (not (mi/can-write? (t2/hydrate native :can_write)))))
                    (testing "non-native (MBQL) transform is unaffected"
-                     (is (mi/can-write? mbql)))))
+                     (is (mi/can-write? (t2/hydrate mbql :can_write))))))
                (testing "with query-builder-and-native, native transform can be written"
                  (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder-and-native)
                  (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
                  (mt/with-current-user (mt/user->id :rasta)
-                   (is (mi/can-write? native))))))))))))
-
-(deftest execute-fails-clearly-when-source-db-deleted-test
-  (testing "running a query transform whose source database has been deleted fails with a clear error"
-    (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Transform transform
-                     {:name "Will be orphaned"
-                      :source {:type  :query
-                               :query {:database db-id
-                                       :type     :native
-                                       :native   {:query "SELECT 1"}}}}]
-        (t2/delete! :model/Database :id db-id)
-        (let [reloaded (t2/select-one :model/Transform :id (:id transform))
-              {:keys [status error]} (transforms-base.query/run-query-transform! reloaded nil)]
-          (is (= :failed status))
-          (is (re-find #"Source database for this transform has been deleted"
-                       (ex-message error))))))))
+                   (is (mi/can-write? (t2/hydrate native :can_write)))))))))))))
 
 (deftest no-events-during-deserialization-test
   (testing "Transform lifecycle hooks do not publish events during deserialization"
     (let [events-published (atom [])
-          source           {:type  "query"
-                            :query {:database (mt/id)
-                                    :type     "native"
-                                    :native   {:query "SELECT 1"}}}]
+          source           {:type  :query
+                            :query (lib/native-query (mt/metadata-provider) "SELECT 1")}]
       (with-redefs [events/publish-event! (fn [topic event]
                                             (swap! events-published conj [topic event]))]
         (testing "events fire normally for insert/update/delete"
@@ -202,26 +161,20 @@
   (testing "table_dependencies is not computed on insert — it is filled lazily on the first read"
     (mt/with-temp [:model/Transform {id :id}
                    {:name   "deps insert"
-                    :source {:type  "query"
-                             :query {:database (mt/id)
-                                     :type     "query"
-                                     :query    {:source-table (mt/id :orders)}}}}]
+                    :source {:type  :query
+                             :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
       (is (nil? (stored-deps id)))))
   (testing "changing the source invalidates any cached table_dependencies"
     (mt/with-temp [:model/Transform {id :id}
                    {:name   "deps update"
-                    :source {:type  "query"
-                             :query {:database (mt/id)
-                                     :type     "query"
-                                     :query    {:source-table (mt/id :orders)}}}}]
+                    :source {:type  :query
+                             :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
       ;; seed a cached value (as the lazy read path would)
       (t2/update! :model/Transform :id id {:table_dependencies [{:table (mt/id :orders)}]})
       (is (= [{:table (mt/id :orders)}] (stored-deps id)))
       (t2/update! :model/Transform :id id
-                  {:source {:type  "query"
-                            :query {:database (mt/id)
-                                    :type     "query"
-                                    :query    {:source-table (mt/id :people)}}}})
+                  {:source {:type  :query
+                            :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :people)))}})
       (is (nil? (stored-deps id))))))
 
 (defn- insert-run! [transform-id status months-ago]
@@ -356,16 +309,15 @@
                                                  (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}
                       :model/Transform transform
                       {:name   "Reads a Card"
-                       :source {:type  "query"
-                                :query {:database (mt/id)
-                                        :type     "native"
-                                        :native   {:query         (format "SELECT * FROM {{#%d}} AS c" card-id)
-                                                   :template-tags {(str "#" card-id)
-                                                                   {:id           (str "#" card-id)
-                                                                    :name         (str "#" card-id)
-                                                                    :display-name (str "#" card-id)
-                                                                    :type         :card
-                                                                    :card-id      card-id}}}}}}]
+                       :source {:type  :query
+                                :query (lib/with-template-tags
+                                         (lib/native-query (mt/metadata-provider) (format "SELECT * FROM {{#%d}} AS c" card-id))
+                                         {(str "#" card-id)
+                                          {:id           (str "#" card-id)
+                                           :name         (str "#" card-id)
+                                           :display-name (str "#" card-id)
+                                           :type         :card
+                                           :card-id      card-id}})}}]
          (mt/with-non-admin-groups-no-collection-perms collection
            (let [stored (t2/select-one :model/Transform :id (:id transform))
                  body   (into {} stored)]
@@ -376,14 +328,14 @@
                  (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
                  (testing "while the Card is unreadable"
                    (mt/with-current-user (mt/user->id :rasta)
-                     (is (not (mi/can-read? stored)))
-                     (is (not (mi/can-write? stored)))
+                     (is (not (mi/can-read? (t2/hydrate stored :can_read))))
+                     (is (not (mi/can-write? (t2/hydrate stored :can_write))))
                      (is (not (mi/can-create? :model/Transform body)))))
                  (perms/grant-collection-read-permissions! group-id collection)
                  (testing "once the Card is readable"
                    (mt/with-current-user (mt/user->id :rasta)
-                     (is (mi/can-read? stored))
-                     (is (mi/can-write? stored))
+                     (is (mi/can-read? (t2/hydrate stored :can_read)))
+                     (is (mi/can-write? (t2/hydrate stored :can_write)))
                      (is (mi/can-create? :model/Transform body)))))))))))))
 
 (deftest data-analyst-access-follows-the-advanced-permissions-feature-test
@@ -392,7 +344,7 @@
                    :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
                    :model/Transform transform
                    {:name   "MBQL Transform"
-                    :source {:type  "query"
+                    :source {:type  :query
                              :query (lib/query (mt/metadata-provider)
                                                (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
       (let [stored (t2/select-one :model/Transform :id (:id transform))]
@@ -404,11 +356,51 @@
             (mt/with-current-user (mt/user->id :rasta)
               (mt/when-ee-evailable
                (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
-                 (is (mi/can-read? stored))
-                 (is (mi/can-write? stored))
+                 (is (mi/can-read? (t2/hydrate stored :can_read)))
+                 (is (mi/can-write? (t2/hydrate stored :can_write)))
                  (is (mi/can-create? :model/Transform (into {} stored)))))
               (testing "and none once the feature is gone"
                 (mt/with-premium-features #{:transforms-basic :hosting}
-                  (is (not (mi/can-read? stored)))
-                  (is (not (mi/can-write? stored)))
+                  (is (not (mi/can-read? (t2/hydrate stored :can_read))))
+                  (is (not (mi/can-write? (t2/hydrate stored :can_write))))
                   (is (not (mi/can-create? :model/Transform (into {} stored)))))))))))))
+
+(deftest delete-while-run-writes-transform-does-not-deadlock-test
+  (testing "Deleting a transform while a run writes the transform row succeeds without a deadlock"
+    ;; The run updates the transform row, then upserts its search-index row in the same transaction
+    ;; (`with-temp-index-table` indexes synchronously). The delete must not take the search-index row before the
+    ;; transform row; delete capture purges the search-index row only after the delete commits.
+    ;; The redef pauses the run between its two writes while the delete starts and waits on the transform row.
+    (search.tu/with-temp-index-table
+      (let [transform-id   (t2/insert-returning-pk! :model/Transform
+                                                    {:name   "Deleted while running"
+                                                     :source {:type :python :source-tables [] :body "pass"}
+                                                     :target {:type "table" :schema "public" :name "deadlock_target"}})
+            run-updated    (promise)
+            search-update! (mt/original-fn #'search/update!)]
+        (try
+          (mt/with-dynamic-fn-redefs [search/update! (fn [instance & more]
+                                                       (when (= :model/Transform (t2/model instance))
+                                                         (deliver run-updated true)
+                                                         ;; Postgres checks a lock wait for a deadlock once,
+                                                         ;; `deadlock_timeout` (1 s by default) after the wait starts.
+                                                         ;; A longer pause gives the delete's wait that check before
+                                                         ;; the run writes the search-index row.
+                                                         (Thread/sleep 1500))
+                                                       (apply search-update! instance more))]
+            (let [run     (future
+                            (transforms-base.db/update-transform! transform-id {:target_table_id (mt/id :venues)}))
+                  delete  (future
+                            (deref run-updated 30000 nil)
+                            (t2/delete! :model/Transform :id transform-id))
+                  outcome (fn [fut]
+                            (try (deref fut 90000 ::timed-out)
+                                 (catch Exception e (ex-message (or (ex-cause e) e)))))]
+              (is (= 1 (outcome delete)))
+              (testing "the run ends without a deadlock"
+                (let [run-outcome (outcome run)]
+                  (is (not= ::timed-out run-outcome))
+                  (is (not (re-find #"(?i)deadlock" (str run-outcome))))))
+              (is (not (t2/exists? :model/Transform :id transform-id)))))
+          (finally
+            (t2/delete! :model/Transform :id transform-id)))))))

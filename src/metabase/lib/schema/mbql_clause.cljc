@@ -30,7 +30,7 @@
   @tag-registry)
 
 (def ^:private invalid-clause-schema
-  [:fn {:error/message "not a known MBQL clause"} (constantly false)])
+  (mu/never {:error/message "not a known MBQL clause"}))
 
 (mr/def ::schema-form
   "A Malli schema, in its unparsed (vector/keyword/registry-name) form."

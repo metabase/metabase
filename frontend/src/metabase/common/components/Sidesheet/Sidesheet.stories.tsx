@@ -3,7 +3,10 @@ import type { ComponentProps } from "react";
 import { Flex } from "metabase/ui";
 
 import { Sidesheet } from "./Sidesheet";
-import { TestPagedSidesheet, TestTabbedSidesheet } from "./Sidesheet.samples";
+import {
+  TestPagedSidesheet,
+  TestSectionedSidesheet,
+} from "./Sidesheet.samples";
 import { SidesheetButton, SidesheetButtonWithChevron } from "./SidesheetButton";
 import { SidesheetCard } from "./SidesheetCard";
 import { SidesheetCardSection } from "./SidesheetCardSection";
@@ -70,7 +73,7 @@ const WithSectionedCardsTemplate = (args: SidesheetProps) => (
 
 const PagedSidesheetTemplate = () => <TestPagedSidesheet />;
 
-const TabbedSidesheetTemplate = () => <TestTabbedSidesheet />;
+const SectionedSidesheetTemplate = () => <TestSectionedSidesheet />;
 
 const SidesheetButtonTemplate = () => (
   <Flex maw="30rem" direction="column" gap="xl">
@@ -126,9 +129,10 @@ export const WithSubPages = {
   name: "With sub pages",
 };
 
-export const WithTabs = {
-  render: TabbedSidesheetTemplate,
-  name: "With tabs",
+export const WithSectionsActionsAndFooter = {
+  render: SectionedSidesheetTemplate,
+  name: "With sections, actions, and footer",
+  parameters: sidesheetLokiParameters,
 };
 
 export const SidesheetButtons = {

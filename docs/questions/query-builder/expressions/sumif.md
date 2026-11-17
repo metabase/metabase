@@ -1,5 +1,6 @@
 ---
 title: SumIf
+summary: Add up a column's values only for the rows that meet a condition.
 ---
 
 # SumIf

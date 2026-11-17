@@ -5,6 +5,7 @@ import { getEngineNativeType } from "metabase/databases/utils/engine";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { trackNotebookNativePreviewShown } from "../../../../../analytics";
@@ -41,7 +42,9 @@ export const ToggleNativeQueryPreview = ({
     isShowingNotebookNativePreview,
   }: { isShowingNotebookNativePreview: boolean } = useSelector(getUiControls);
 
-  const engineType = getEngineNativeType(question.database()?.engine);
+  const engineType = getEngineNativeType(
+    Lib.databaseDisplayInfo(question.query())?.engine ?? undefined,
+  );
   const buttonText = isShowingNotebookNativePreview
     ? BUTTON_CLOSE_TEXT[engineType]
     : BUTTON_TEXT[engineType];

@@ -39,21 +39,21 @@ export type ActionResultForCreate = {
 };
 
 /**
- * Response from a single-row update — the affected primary keys.
+ * Response from a single-row update — the number of rows updated.
  *
  * @category useAction
  */
 export type ActionResultForUpdate = {
-  "rows-updated": readonly RowValue[];
+  "rows-updated": number;
 };
 
 /**
- * Response from a single-row delete — the affected primary keys.
+ * Response from a single-row delete — the number of rows deleted.
  *
  * @category useAction
  */
 export type ActionResultForDelete = {
-  "rows-deleted": readonly RowValue[];
+  "rows-deleted": number;
 };
 
 /**

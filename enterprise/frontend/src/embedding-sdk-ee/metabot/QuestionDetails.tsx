@@ -4,6 +4,7 @@ import { useBreakoutData } from "embedding-sdk-bundle/components/private/SdkQues
 import { useFilterData } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Filter/hooks/use-filter-data";
 import { useSummarizeData } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Summarize/use-summarize-data";
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
+import { getPrimarySourceMetadata } from "metabase/querying/common/utils";
 import { Text } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -61,16 +62,12 @@ function getAllTableNames(question?: Question) {
   }
 
   const query = question.query();
-  const sourceTableId = Lib.sourceTableOrCardId(query);
-  const sourceTable =
-    sourceTableId != null
-      ? Lib.tableOrCardMetadata(query, sourceTableId)
-      : null;
+  const source = getPrimarySourceMetadata(query);
   const joinedTables = Lib.joins(query, -1).map((join) =>
     Lib.joinedThing(query, join),
   );
 
-  return [sourceTable, ...joinedTables]
+  return [source, ...joinedTables]
     .filter(isNotNull)
     .map((table) => Lib.displayInfo(query, -1, table).displayName);
 }

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { build } from "vite";
+import { build, loadEnv } from "vite";
 
 import {
   DATA_APP_DEV_CONFIG_VIRTUAL_ID,
@@ -19,7 +19,7 @@ import {
 
 import { dataAppSandboxDevPlugin } from "./plugin";
 
-jest.mock("vite", () => ({ build: jest.fn() }));
+jest.mock("vite", () => ({ build: jest.fn(), loadEnv: jest.fn() }));
 jest.mock("../config/build-config", () => ({
   dataAppBuildPlugins: () => [],
   dataAppLibBuild: () => ({}),
@@ -27,6 +27,7 @@ jest.mock("../config/build-config", () => ({
 jest.mock("node:fs");
 
 const mockedBuild = jest.mocked(build);
+const mockedLoadEnv = jest.mocked(loadEnv);
 const mockedFs = jest.mocked(fs);
 
 const RESOLVED = (id: string) => `\0${id}`;
@@ -179,6 +180,7 @@ type RequestOptions = {
 type TestPlugin = {
   name: string;
   apply: string;
+  configResolved: (config: { mode: string; envDir: string | false }) => void;
   resolveId: (id: string) => string | undefined;
   load: (id: string) => string | undefined;
   configureServer: (server: FakeDevServer) => Promise<() => void>;
@@ -250,6 +252,28 @@ describe("dataAppSandboxDevPlugin", () => {
       expect(source).toContain(
         `export const rebuiltEvent = ${JSON.stringify(DATA_APP_REBUILT_EVENT)};`,
       );
+    });
+
+    it("tells the page the instance URL and keeps the instance out of its allowed hosts, but not the key", () => {
+      mockedLoadEnv.mockReturnValue({
+        DATA_APP_MB_URL: "http://localhost:3000",
+        DATA_APP_MB_API_KEY: "mb_dev_key",
+      });
+      const { plugin } = setup([
+        "http://localhost:3000",
+        "https://api.example.com",
+      ]);
+
+      plugin.configResolved({ mode: "development", envDir: "/repo" });
+      const source = plugin.load(RESOLVED(DATA_APP_DEV_CONFIG_VIRTUAL_ID));
+
+      expect(source).toContain(
+        `export const instanceUrl = "http://localhost:3000";`,
+      );
+      expect(source).toContain(
+        `export const allowedHosts = ${JSON.stringify(["https://api.example.com"])};`,
+      );
+      expect(source).not.toContain("mb_dev_key");
     });
 
     it("does not load unrelated ids", () => {

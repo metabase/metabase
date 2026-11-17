@@ -2,16 +2,19 @@ import { renderHook } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import * as Urls from "metabase/urls";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { createMockCard } from "metabase-types/api/mocks";
+import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 import { useHandleMcpDrillThrough } from "./useHandleMcpDrillThrough";
 
 const NEXT_CARD = createMockCard({
-  dataset_query: {
-    type: "query",
-    database: 1,
-    query: { "source-table": 2 },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+    }),
+  ),
 });
 
 describe("useHandleMcpDrillThrough", () => {

@@ -4,6 +4,8 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sso.common :as integrations.common]
+   [metabase.sso.ldap :as ldap]
+   [metabase.sso.ldap.settings :as ldap.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -262,3 +264,12 @@
                          :user_id (u/the-id user)
                          :group_id (u/the-id (perms-group/data-analyst))))
          (is (true? (boolean (t2/select-one-fn :is_data_analyst :model/User :id (u/the-id user))))))))))
+
+(deftest ldap-directory-user-logs-failed-lookup-test
+  (testing "failed LDAP lookup is logged and treats user as local user"
+    (mt/with-log-messages-for-level [messages :warn]
+      (mt/with-dynamic-fn-redefs [ldap.settings/ldap-enabled (constantly true)
+                                  ldap/find-user             (fn [_] (throw (ex-info "LDAP server unavailable" {})))]
+        (is (nil? (integrations.common/ldap-directory-user "user@metabase.com")))
+        (is (some #{"LDAP user lookup failed: LDAP server unavailable"}
+                  (map :message (messages))))))))

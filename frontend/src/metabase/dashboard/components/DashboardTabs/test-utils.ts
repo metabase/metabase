@@ -1,22 +1,24 @@
 import { getDefaultTab } from "metabase/dashboard/actions";
 import { INITIAL_DASHBOARD_STATE } from "metabase/dashboard/constants";
 import type { DashboardState } from "metabase/redux/store";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
 import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
-import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 const TEST_CARD = createMockCard({
-  dataset_query: {
-    database: SAMPLE_DB_ID,
-    type: "query",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.aggregateByCount(
+      Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [{ source: { type: "table", id: ORDERS_ID } }],
+      }),
+      -1,
+    ),
+  ),
 });
 
 export const TEST_DASHBOARD_STATE: DashboardState = {

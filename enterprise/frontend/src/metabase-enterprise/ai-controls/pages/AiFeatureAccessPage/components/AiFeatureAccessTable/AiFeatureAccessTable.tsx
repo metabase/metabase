@@ -45,12 +45,11 @@ export function AiFeatureAccessTable(props: AiFeatureAccessTableProps) {
       <TreeTable
         instance={instance}
         hierarchical={false}
+        static
         ariaLabel={t`AI feature access`}
         classNames={{
-          row: S.row,
           cell: S.cell,
           headerCell: S.headerCell,
-          rowActive: S.rowActive,
         }}
         styles={{
           // Using styles prop to override these instead of classNames because TreeTable uses the style prop internally :/

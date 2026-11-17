@@ -1,7 +1,4 @@
-export const getIsLocalhost = () => {
-  const { hostname } = window.location;
+import { isLoopbackHostname } from "metabase/utils/dom";
 
-  return (
-    hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]"
-  );
-};
+export const getIsLocalhost = () =>
+  isLoopbackHostname(window.location.hostname);

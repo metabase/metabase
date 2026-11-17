@@ -121,7 +121,6 @@ export interface CollectionItem {
   archived?: boolean;
   copy?: boolean;
   collection_position?: number | null;
-  collection_preview?: boolean | null;
   fully_parameterized?: boolean | null;
   based_on_upload?: TableId | null; // only for models
   collection?: Collection | null;

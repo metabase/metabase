@@ -1,4 +1,3 @@
-import { updateIn } from "icepick";
 import type { JSX } from "react";
 import { c, t } from "ttag";
 
@@ -28,6 +27,8 @@ import { InactiveStep } from "../InactiveStep";
 import { InviteUserForm } from "../InviteUserForm";
 import { SetupSection } from "../SetupSection";
 import type { NumberedStepProps } from "../types";
+
+import { getSubmitError } from "./utils";
 
 export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const { isStepActive, isStepCompleted } = useStep("db_connection");
@@ -123,10 +124,4 @@ const getStepTitle = (
   } else {
     return t`I'll add my own data later`;
   }
-};
-
-const getSubmitError = (error: unknown): unknown => {
-  return updateIn(error, ["data", "errors"], (errors) => ({
-    details: errors,
-  }));
 };

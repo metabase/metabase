@@ -5,6 +5,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.health-inspector.core :as health-inspector]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -134,7 +135,7 @@
     (swap! index-measures (fn [measures]
                             (let [keyed (if (map? measures)
                                           measures
-                                          (into {} (map (juxt :check-name identity)) measures))]
+                                          (u/index-by :check-name measures))]
                               (assoc keyed (:check-name descriptor) descriptor))))
     descriptor))
 

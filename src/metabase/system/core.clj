@@ -21,6 +21,7 @@
   available-timezones
   site-locale
   site-locale!
+  site-path
   site-url
   site-url!
   site-uuid

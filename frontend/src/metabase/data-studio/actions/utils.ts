@@ -95,7 +95,7 @@ const TAG_TYPE_BY_FIELD_TYPE: Record<FieldType, TemplateTagType> = {
 };
 
 export function getQueryParameters(query: Lib.Query): WritebackParameter[] {
-  return getTemplateTagParameters(Object.values(Lib.templateTags(query)));
+  return getTemplateTagParameters(Lib.templateTags(query));
 }
 
 function getFieldTypes(
@@ -140,7 +140,7 @@ export function getFieldSettingsFromQuery(
   query: Lib.Query,
   formSettings: ActionFormSettings,
 ): ActionFormSettings {
-  const tags = Object.values(Lib.templateTags(query));
+  const tags = Lib.templateTags(query);
   const fields = Object.fromEntries(
     getQueryParameters(query).map((parameter, index) => [
       parameter.id,
@@ -177,13 +177,10 @@ export function setTemplateTagFieldType(
   parameterId: string,
   fieldType: FieldType,
 ): Lib.Query {
-  const tags = Object.fromEntries(
-    Object.entries(Lib.templateTags(query)).map(([name, tag]) => [
-      name,
-      tag.id === parameterId
-        ? { ...tag, type: TAG_TYPE_BY_FIELD_TYPE[fieldType] }
-        : tag,
-    ]),
+  const tags = Lib.templateTags(query).map((tag) =>
+    tag.id === parameterId
+      ? { ...tag, type: TAG_TYPE_BY_FIELD_TYPE[fieldType] }
+      : tag,
   );
   return Lib.withTemplateTags(query, tags);
 }

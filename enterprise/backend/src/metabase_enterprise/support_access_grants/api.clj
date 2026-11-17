@@ -19,10 +19,11 @@
    body :- ::grants.schema/create-grant-request]
   (api/check-superuser)
   (api/create-check :model/SupportAccessGrantLog body)
-  (grants/create-grant! api/*current-user-id*
-                        (:grant_duration_minutes body)
-                        (:ticket_number body)
-                        (:notes body)))
+  (-> (grants/create-grant! api/*current-user-id*
+                            (:grant_duration_minutes body)
+                            (:ticket_number body)
+                            (:notes body))
+      (dissoc :token)))
 
 (api.macros/defendpoint :put "/:id/revoke"
   :- ::grants.schema/grant-response

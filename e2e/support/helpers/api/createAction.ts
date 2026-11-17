@@ -3,8 +3,6 @@ import type {
   CardId,
   CollectionId,
   ImplicitActionKind,
-  NativeDatasetQuery,
-  OpaqueDatasetQuery,
   ParameterId,
   ParameterTarget,
   TableId,
@@ -24,7 +22,8 @@ type BaseCreateActionOpts = {
 
 type CreateQueryActionOpts = BaseCreateActionOpts & {
   type: "query";
-  dataset_query: NativeDatasetQuery | OpaqueDatasetQuery;
+  // e2e tests still pass hand-written legacy MBQL; migrate them to the Lib test spec and drop `any`
+  dataset_query: any;
 };
 
 type CreateImplicitActionOpts = BaseCreateActionOpts & {

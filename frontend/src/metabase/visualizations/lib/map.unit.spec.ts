@@ -1,5 +1,8 @@
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { JsonQuery, Parameter } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { getTileUrl } from "./map";
 
@@ -16,11 +19,11 @@ describe("map", () => {
 
     describe("adhoc query", () => {
       it("should generate url for adhoc query", () => {
-        const datasetQuery: JsonQuery = {
-          database: 1,
-          type: "query",
-          query: { "source-table": 1 },
-        };
+        const datasetQuery: JsonQuery = Lib.toJsQuery(
+          Lib.createTestQuery(SAMPLE_PROVIDER, {
+            stages: [{ source: { type: "table", id: ORDERS_ID } }],
+          }),
+        );
         const encodedQuery = JSON.stringify(datasetQuery);
 
         const url = getTileUrl({
@@ -86,11 +89,11 @@ describe("map", () => {
       });
 
       it("should handle an x-ray dashboard", () => {
-        const datasetQuery: JsonQuery = {
-          database: 1,
-          type: "query",
-          query: { "source-table": 1 },
-        };
+        const datasetQuery: JsonQuery = Lib.toJsQuery(
+          Lib.createTestQuery(SAMPLE_PROVIDER, {
+            stages: [{ source: { type: "table", id: ORDERS_ID } }],
+          }),
+        );
         const encodedQuery = JSON.stringify(datasetQuery);
 
         const url = getTileUrl({

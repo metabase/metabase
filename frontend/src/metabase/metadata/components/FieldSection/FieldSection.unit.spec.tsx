@@ -7,7 +7,6 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Database, Field, Table } from "metabase-types/api";
 import {
@@ -68,7 +67,7 @@ function setup({
     [2, "2 remapped"],
   ],
 }: SetupOpts = {}) {
-  const id = getRawTableFieldId(field);
+  const id = field.id;
 
   setupDatabaseEndpoints(database);
   setupFieldValuesEndpoint(
@@ -100,7 +99,7 @@ function setup({
  * failing that one route exercises each handler's error branch.
  */
 function failFieldUpdates(field: Field = QUANTITY_FIELD) {
-  fetchMock.modifyRoute(`field-${getRawTableFieldId(field)}-put`, {
+  fetchMock.modifyRoute(`field-${field.id}-put`, {
     response: { status: 500 },
   });
 }
