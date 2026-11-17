@@ -211,4 +211,5 @@
     [:map {:closed true}
      [:revision-message {:optional true} [:maybe :string]]
      [:reverting? {:optional true} :boolean]
+     [:archived-with {:optional true} [:tuple :keyword pos-int?]]
      [:details {:optional true} [:map]]]]])

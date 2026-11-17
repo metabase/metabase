@@ -40,7 +40,8 @@
 (defmethod mi/after-archived-change :model/Timeline
   [_model rows changes]
   (doseq [{:keys [id]} rows]
-    (timeline.db/set-timeline-events-archived! id (boolean (:archived changes)))))
+    (events/with-event-context {:archived-with [:model/Timeline id]}
+      (timeline.db/set-timeline-events-archived! id (boolean (:archived changes))))))
 
 (t2/define-before-insert :model/Timeline
   [row]

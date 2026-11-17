@@ -58,7 +58,9 @@
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *context*
-  "The context that the events collected within it carry, such as the message of the revisions they cause."
+  "The context that the events collected within it carry, as `::events.schema/lifecycle` lists its keys: the
+  `:revision-message` of the revisions they cause, or the `[model id]` of the entity whose archive or restore carried
+  their rows, `:archived-with`."
   nil)
 
 (defonce ^:private owned-consumers

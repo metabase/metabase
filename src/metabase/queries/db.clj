@@ -373,6 +373,11 @@
   [model-id :- ms/PositiveInt]
   (t2/delete! :model/Action :model_id model-id))
 
+(mu/defn delete-actions-of-models!
+  "Delete the Actions of the Cards with `model-ids`, returning the number deleted."
+  [model-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/Action :model_id [:in model-ids]))
+
 (mu/defn actions-for-model
   "The Actions of the model Card with `model-id`."
   [model-id :- ms/PositiveInt]
@@ -417,6 +422,11 @@
   "The ParameterCards drawing values from the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select :model/ParameterCard :card_id card-id))
+
+(mu/defn parameter-cards-for-cards
+  "The ParameterCards drawing values from the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select :model/ParameterCard :card_id [:in card-ids]))
 
 (mu/defn parameter-card-card-ids
   "The set of Card IDs the parameters of the given parameterized object draw values from."

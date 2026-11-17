@@ -58,9 +58,10 @@
 (defmethod mi/after-archived-change :model/Exploration
   [_model rows changes]
   (doseq [{:keys [id]} rows]
-    (if (:archived changes)
-      (explorations.db/archive-summary-documents! id)
-      (explorations.db/unarchive-summary-documents! id))))
+    (events/with-event-context {:archived-with [:model/Exploration id]}
+      (if (:archived changes)
+        (explorations.db/archive-summary-documents! id)
+        (explorations.db/unarchive-summary-documents! id)))))
 
 (t2/define-before-insert :model/Exploration
   [{:keys [archived collection_id] :as exploration}]

@@ -522,55 +522,49 @@
       (empty? metadata-columns)
       (nil? (lib/find-matching-column (lib/->mbql5 value-field) metadata-columns))))
 
-(defn- update-parameters-using-card-as-values-source
-  "Update the config of parameter on any Dashboard/Card use this `card` as values source .
+(defn- reset-values-sources!
+  "Resets to the default source the parameters among those of the Cards and Dashboards that `parameter-cards` link to
+  whose ids `affected-param-ids` gives from the ParameterCards of one parameterized object."
+  [parameter-cards affected-param-ids]
+  (doseq [[[po-type po-id] param-cards]
+          (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
+    (let [parameters             (case po-type
+                                   :card      (queries.db/card-parameters po-id)
+                                   :dashboard (queries.db/dashboard-parameters po-id))
+          affected-param-ids-set (affected-param-ids param-cards parameters)
+          new-parameters         (map (fn [parameter]
+                                        (if (affected-param-ids-set (:id parameter))
+                                          (-> parameter
+                                              (assoc :values_source_type nil)
+                                              (dissoc :values_source_config))
+                                          parameter))
+                                      parameters)]
+      (when-not (= parameters new-parameters)
+        (case po-type
+          :card      (queries.db/update-card! po-id {:parameters new-parameters})
+          :dashboard (queries.db/update-dashboard! po-id {:parameters new-parameters}))))))
 
-  Remove parameter.values_source_type and set parameter.values_source_type to nil ( the default type ) when:
-  - card is archived
-  - card.result_metadata changes and the parameter values source field can't be found anymore"
+(defn- update-parameters-using-card-as-values-source
+  "Resets to the default source the parameters of any Dashboard or Card that take their values from a field of `card`
+  that its new `result_metadata` in `changes` no longer has; [[after-archived-change]] resets those of archived cards."
   [{:keys [id database_id]} changes]
-  (when (some #{:archived :result_metadata} (keys changes))
-    (let [parameter-cards  (queries.db/parameter-cards-for-card id)
-          metadata-columns (when-let [result-metadata (:result_metadata changes)]
+  (when (and (contains? changes :result_metadata) (not (:archived changes)))
+    (let [metadata-columns (when-let [result-metadata (:result_metadata changes)]
                              (lib/->card-metadata-columns
                               (lib-be/application-database-metadata-provider database_id)
                               result-metadata))]
-      (doseq [[[po-type po-id] param-cards]
-              (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
-        (let [parameters             (case po-type
-                                       :card      (queries.db/card-parameters po-id)
-                                       :dashboard (queries.db/dashboard-parameters po-id))
-              affected-param-ids-set (cond
-                                       ;; update all parameters that use this card as source
-                                       (:archived changes)
-                                       (set (map :parameter_id param-cards))
-
-                                       ;; update only parameters that have value_field no longer in this card
-                                       (:result_metadata changes)
-                                       (let [param-id->parameter (m/index-by :id parameters)]
-                                         (->> param-cards
-                                              (filter (fn [param-card]
-                                                        ;; if can't find the value-field in result_metadata, then we should
-                                                        ;; remove it
-                                                        (value-field-gone?
-                                                         metadata-columns
-                                                         (get-in (param-id->parameter (:parameter_id param-card))
-                                                                 [:values_source_config :value_field]))))
-                                              (map :parameter_id)
-                                              set))
-
-                                       :else #{})
-              new-parameters (map (fn [parameter]
-                                    (if (affected-param-ids-set (:id parameter))
-                                      (-> parameter
-                                          (assoc :values_source_type nil)
-                                          (dissoc :values_source_config))
-                                      parameter))
-                                  parameters)]
-          (when-not (= parameters new-parameters)
-            (case po-type
-              :card      (queries.db/update-card! po-id {:parameters new-parameters})
-              :dashboard (queries.db/update-dashboard! po-id {:parameters new-parameters}))))))))
+      (reset-values-sources!
+       (queries.db/parameter-cards-for-card id)
+       (fn [param-cards parameters]
+         (let [param-id->parameter (m/index-by :id parameters)]
+           (->> param-cards
+                (filter (fn [param-card]
+                          (value-field-gone?
+                           metadata-columns
+                           (get-in (param-id->parameter (:parameter_id param-card))
+                                   [:values_source_config :value_field]))))
+                (map :parameter_id)
+                set)))))))
 
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
@@ -617,9 +611,8 @@
                  (= (:type old-card-info) :model)
                  (not (query/supports-implicit-actions? (:dataset_query changes))))
         (disable-implicit-action-for-model! id))
-      (when (or (:archived changes)
-                (and (= (:type changes) :question)
-                     (= (:type old-card-info) :model)))
+      (when (and (= (:type changes) :question)
+                 (= (:type old-card-info) :model))
         (queries.db/delete-actions-of-model! id))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
@@ -1382,6 +1375,14 @@
         (doto (delete-alerts-if-changed original changes))
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))
+
+(defmethod mi/after-archived-change :model/Card
+  [_model rows changes]
+  (when (:archived changes)
+    (let [ids (mapv :id rows)]
+      (queries.db/delete-actions-of-models! ids)
+      (reset-values-sources! (queries.db/parameter-cards-for-cards ids)
+                             (fn [param-cards _parameters] (set (map :parameter_id param-cards)))))))
 
 (t2/define-after-update :model/Card
   [card]

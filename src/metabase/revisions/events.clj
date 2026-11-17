@@ -27,12 +27,21 @@
   {:model/Card      #{:updated_at :last_used_at :view_count :collection_position :cache_invalidated_at}
    :model/Dashboard #{:updated_at :last_viewed_at :view_count :collection_position :position}})
 
-(defn- owner
+(defn- carried-by-archive?
+  "Whether `event` is an update that the archive or restore of another entity carried to its row, which records no
+  Revision, but for a Document, whose every update recorded one before its events were published by its model."
+  [{:keys [model operation context]}]
+  (and (= :update operation)
+       (some? (:archived-with context))
+       (not= :model/Document model)))
+
+(defn- entity
   "The `[model id]` of the entity whose Revision the `event` calls for, or nil when it calls for none."
   [{:keys [model operation object previous-object context] :as event}]
   (cond
     (and (contains? revisioned-models model) (#{:create :update} operation))
     (when (and (or (not (:reverting? context)) (creator-recorded model))
+               (not (carried-by-archive? event))
                (not (and (= :update operation)
                          (every? (get ignored-columns model #{:updated_at}) (u.events/changed-keys event)))))
       [model (:id object)])
@@ -49,9 +58,10 @@
       (not= :update operation)
       (revision/row-changed? model id previous-object object)))
 
-(defn- push!
-  "Write the Revision of the entity `[model id]` as it is now, for the `events` of its writes, when they change it."
-  [[model id :as entity] events _all-events]
+(defn- revision-row
+  "The Revision row of the entity `[model id]` as it is now, for the `events` of its writes, or nil when they do not
+  change it or no user made them."
+  [[model id :as entity] events]
   (let [own        (first (filter #(and (= model (:model %)) (= :create (:operation %))) events))
         user-id    (some :user-id events)
         creator-id (when (and user-id own (creator-recorded model)) (:creator_id (:object own)))]
@@ -60,13 +70,30 @@
         (when (some #(changes-entity? entity %) events)
           (when-let [object (or (some #(when (= model (:model %)) (:object %)) events)
                                 (revisions.db/entity model id))]
-            (revision/record-revision! {:entity       model
-                                        :id           id
-                                        :object       object
-                                        :user-id      user-id
-                                        :is-creation? (boolean own)
-                                        :message      (some #(get-in % [:context :revision-message]) events)})))
+            (revision/revision-row {:entity       model
+                                    :id           id
+                                    :object       object
+                                    :user-id      user-id
+                                    :is-creation? (boolean own)
+                                    :message      (some #(get-in % [:context :revision-message]) events)})))
         (catch Throwable e
           (log/warnf "Failed to record a revision of %s %s: %s" model id (ex-message e)))))))
+
+(defn- owner
+  "The one owner of the events of a batch that call for a Revision, nil for the others."
+  [event]
+  (when (entity event)
+    ::revisions))
+
+(defn- push!
+  "Write, in one statement, the Revision of each entity that `events` change, as it is now."
+  [_owner events _all-events]
+  (let [by-entity (group-by entity events)
+        rows      (into [] (keep #(revision-row % (get by-entity %))) (distinct (map entity events)))]
+    (when (seq rows)
+      (try
+        (revision/record-revisions! rows)
+        (catch Throwable e
+          (log/warnf "Failed to record %d revisions: %s" (count rows) (ex-message e)))))))
 
 (events/register-owned-consumer! ::revisions owner push!)

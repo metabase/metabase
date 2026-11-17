@@ -38,9 +38,15 @@
 (events/derive! :event/card-update ::card-event)
 (events/derive! :event/card-delete ::card-event)
 
+(defn- carried-by-archive?
+  "Whether `event` is an update that the archive or restore of another entity carried to its row."
+  [event]
+  (some? (get-in event [:context :archived-with])))
+
 (methodical/defmethod events/publish-event! ::card-event
   [topic event]
-  (when-not (and (= :event/card-update topic) (noop-card-update? event))
+  (when-not (and (= :event/card-update topic)
+                 (or (noop-card-update? event) (carried-by-archive? event)))
     (record-lifecycle! topic event true)))
 
 (events/derive! ::dashboard-event ::event)
@@ -386,7 +392,10 @@
 
 (methodical/defmethod events/publish-event! ::document-event
   [topic {:keys [object] :as event}]
-  (record-lifecycle! (if (and (= :event/document-update topic) (true? (:archived object)) (u.events/changed? event :archived))
+  (record-lifecycle! (if (and (= :event/document-update topic)
+                              (true? (:archived object))
+                              (u.events/changed? event :archived)
+                              (not (carried-by-archive? event)))
                        :event/document-delete
                        topic)
                      event

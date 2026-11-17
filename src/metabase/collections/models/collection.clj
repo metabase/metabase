@@ -2094,12 +2094,13 @@
 (defmethod mi/after-archived-change :model/Collection
   [_model rows changes]
   (doseq [before rows]
-    (if (:archived changes)
-      (let [row (collections.db/collection (:id before))]
-        (when (:archived_directly row)
-          (archive-subtree! row)))
-      (when (:archived_directly before)
-        (restore-subtree! before)))))
+    (events/with-event-context {:archived-with [:model/Collection (:id before)]}
+      (if (:archived changes)
+        (let [row (collections.db/collection (:id before))]
+          (when (:archived_directly row)
+            (archive-subtree! row)))
+        (when (:archived_directly before)
+          (restore-subtree! before))))))
 
 (defn- archived-columns
   "`row`, an update, with the `archived_directly` and `archive_operation_id` its change of `archived` gives: a write that

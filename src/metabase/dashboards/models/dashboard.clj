@@ -90,9 +90,10 @@
 (defmethod mi/after-archived-change :model/Dashboard
   [_model rows changes]
   (doseq [{:keys [id]} rows]
-    (if (:archived changes)
-      (dashboards.db/archive-dashboard-questions! id)
-      (dashboards.db/unarchive-dashboard-questions! id))))
+    (events/with-event-context {:archived-with [:model/Dashboard id]}
+      (if (:archived changes)
+        (dashboards.db/archive-dashboard-questions! id)
+        (dashboards.db/unarchive-dashboard-questions! id)))))
 
 (t2/define-before-insert :model/Dashboard
   [dashboard]
