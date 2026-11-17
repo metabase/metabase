@@ -713,12 +713,22 @@ describe("ExpressionWidget > functions the database supports", () => {
 });
 
 describe("ExpressionWidget > custom aggregations", () => {
+  // "Custom Max" is suggested before "Custom Sum", so picking "Custom Sum" is
+  // not picking the first suggestion
   function createQueryWithCustomSum() {
     return Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [
         {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [
+            {
+              name: "Custom Max",
+              value: {
+                type: "operator",
+                operator: "max",
+                args: [{ type: "column", name: "TOTAL" }],
+              },
+            },
             {
               name: "Custom Sum",
               value: {
@@ -734,7 +744,7 @@ describe("ExpressionWidget > custom aggregations", () => {
   }
 
   async function selectCompletion(label: string) {
-    await waitForCompletions();
+    expect(await waitForCompletions()).toEqual(["Custom Max", label]);
     const suggestions = screen.getByTestId(
       "custom-expression-editor-suggestions",
     );
@@ -797,7 +807,7 @@ describe("ExpressionWidget > custom aggregations", () => {
     const [name, clause] = onChangeClause.mock.calls[0];
     expect(name).toBe("Derived");
     const nextQuery = Lib.aggregate(query, -1, clause);
-    const [, derived] = Lib.aggregations(nextQuery, -1);
+    const [, , derived] = Lib.aggregations(nextQuery, -1);
     expect(getReferencedColumnInfo(nextQuery, -1, derived)).toMatchObject({
       name: "Custom Sum",
       isAggregation: true,
@@ -808,7 +818,7 @@ describe("ExpressionWidget > custom aggregations", () => {
     const query = Lib.appendStage(createQueryWithCustomSum());
     const { onChangeClause } = await setup({ query, stageIndex: 1 });
 
-    await typeText("[Custom S");
+    await typeText("[Custom");
     await selectCompletion("Custom Sum");
     expect(getEditorValue()).toBe("[Custom Sum]");
     await formatExpression();
