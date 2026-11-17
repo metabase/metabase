@@ -189,11 +189,7 @@ describe("MetricSearchDropdown > browsing measures", () => {
   }
 
   function getPickerItem(name: string) {
-    const item = screen.getByText(name).closest("a");
-    if (!item) {
-      throw new Error(`No picker item named ${name}`);
-    }
-    return item;
+    return screen.getByRole("link", { name: new RegExp(name) });
   }
 
   it("disables tables without measures when browsing database measures", async () => {

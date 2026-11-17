@@ -7,6 +7,7 @@ import type { Metric } from "metabase-types/api";
 import {
   DEFAULT_METRICS,
   ORDERS_METRIC,
+  cleanupPage,
   click,
   enterFormula,
   findPills,
@@ -22,7 +23,6 @@ import {
   pickSearchResult,
   pressBackspace,
   pressDelete,
-  resetWindowLocation,
   runFormula,
   settle,
   setup,
@@ -35,8 +35,8 @@ jest.mock("metabase/visualizations/components/Visualization", () => ({
   default: jest.requireActual("./setup").MockVisualization,
 }));
 
-afterEach(() => {
-  resetWindowLocation();
+afterEach(async () => {
+  await cleanupPage();
 });
 
 function getIndicatorCount(pill: HTMLElement) {

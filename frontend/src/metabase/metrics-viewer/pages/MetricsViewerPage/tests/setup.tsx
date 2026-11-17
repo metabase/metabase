@@ -734,7 +734,15 @@ export async function reloadPage(page: ReturnType<typeof renderPage>) {
   return renderPage({ initialRoute: `${pathname}${search}${hash}` });
 }
 
-export function resetWindowLocation() {
+/**
+ * Lets responses and store notifications that are still in flight land inside
+ * `act` before the test ends, then resets the URL the page mirrored.
+ */
+export async function cleanupPage() {
+  await act(async () => {
+    await fetchMock.callHistory.flush(true);
+    await sleep(SETTLE_MS);
+  });
   window.history.replaceState(null, "", "/");
 }
 
@@ -948,6 +956,7 @@ export async function runFormula() {
       screen.queryByTestId("metrics-viewer-search-input"),
     ).not.toBeInTheDocument(),
   );
+  expect(screen.queryByTestId("run-expression-button")).not.toBeInTheDocument();
 }
 
 /**

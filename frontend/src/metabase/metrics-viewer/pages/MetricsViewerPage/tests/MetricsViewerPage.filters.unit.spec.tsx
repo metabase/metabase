@@ -5,8 +5,10 @@ import { screen, waitFor } from "__support__/ui";
 
 import {
   ORDERS_METRIC,
+  cleanupPage,
   click,
   findPills,
+  getChartColors,
   getChartDisplays,
   getColumnPickerButton,
   getDatasetRequests,
@@ -14,10 +16,8 @@ import {
   getMetricControls,
   getPillColors,
   getPills,
-  getChartColors,
   metricsState,
   openPillMenu,
-  resetWindowLocation,
   selectDimensionBreakout,
   settle,
   setup,
@@ -33,8 +33,8 @@ const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
 const ORDERS_STATE = metricsState([{ type: "metric", id: ORDERS_METRIC.id }]);
 
-afterEach(() => {
-  resetWindowLocation();
+afterEach(async () => {
+  await cleanupPage();
 });
 
 beforeEach(() => {
@@ -145,14 +145,16 @@ describe("MetricsViewerPage > filters", () => {
       event: "metrics_viewer_filter_edited",
       triggered_from: "metric_filter",
     });
-    await waitFor(() => {
-      const legendAfterEdit = screen.getByTestId(
-        "metrics-viewer-breakout-legend",
-      );
-      expect(legendAfterEdit).toHaveTextContent("Doohickey");
-      expect(legendAfterEdit).toHaveTextContent("Gadget");
-      expect(legendAfterEdit).toHaveTextContent("Gizmo");
-    });
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("metrics-viewer-breakout-legend"),
+      ).toHaveTextContent("Gizmo"),
+    );
+    const legendAfterEdit = screen.getByTestId(
+      "metrics-viewer-breakout-legend",
+    );
+    expect(legendAfterEdit).toHaveTextContent("Doohickey");
+    expect(legendAfterEdit).toHaveTextContent("Gadget");
     expect(getRequestedFilterValues("orders-product-category")).toContainEqual([
       "Doohickey",
       "Gadget",

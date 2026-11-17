@@ -9,6 +9,7 @@ import {
   ORDERS_METRIC,
   PRODUCTS_METRIC,
   USER_GROUP,
+  cleanupPage,
   click,
   closeDimensionPickerSidebar,
   enterFormula,
@@ -27,7 +28,6 @@ import {
   openTimeDimensionConfiguration,
   pressEnter,
   reloadPage,
-  resetWindowLocation,
   selectDimensionBreakout,
   selectMetricDimension,
   setup,
@@ -44,8 +44,8 @@ jest.mock("metabase/visualizations/components/Visualization", () => ({
 
 const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
-afterEach(() => {
-  resetWindowLocation();
+afterEach(async () => {
+  await cleanupPage();
 });
 
 const ORDERS_STATE = metricsState([{ type: "metric", id: ORDERS_METRIC.id }]);
