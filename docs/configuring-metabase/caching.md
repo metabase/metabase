@@ -8,7 +8,7 @@ redirect_from:
 
 # Caching query results
 
-For example, if your data only updates once a day, there's no point in querying the database more than once a day, as the data won't have changed. Returning cached results can be significantly faster, as your database won't have to recompute the results to load your question.
+If your data only updates once a day, there's no point in querying the database more than once a day, as the data won't have changed. Returning cached results can be significantly faster, as your database won't have to recompute the results to load your question.
 
 You can set [caching invalidation policies](#cache-invalidation-policies) for [questions](#question-caching-policy), [dashboards](#dashboard-caching-policy), and [databases](#database-caching-policy).
 

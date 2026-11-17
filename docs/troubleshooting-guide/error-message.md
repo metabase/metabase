@@ -5,7 +5,7 @@ summary: Match the error message you're seeing to the troubleshooting guide that
 
 # Troubleshooting error messages
 
-The exact wording depends on your database and Metabase version, so try to look for the closest match.
+Error messages vary by database and Metabase version, so look for the closest match.
 
 ## SQL editor
 

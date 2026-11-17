@@ -5,7 +5,7 @@ summary: The 250 ISO 3166-1 alpha-2 country codes and names Metabase's default w
 
 # Country codes
 
-The data comes from the GeoJSON world map file and includes 250 countries, territories, and administrative regions.
+The codes come from Metabase's GeoJSON world map file, and cover countries, territories, and administrative regions.
 
 Use these ISO 3166-1 alpha-2 country codes and country names when working with geographic data in Metabase.
 

@@ -11,7 +11,7 @@ _Data Studio > Dependency graph_
 
 {% include plans-blockquote.html feature="Replacing data sources" %}
 
-For example, let's say you created a transform that created a cleaned up version of your `orders` table, called `orders_clean`. Instead of rewriting all your questions that query the `orders` table, Admins can swap in the `order_clean` table everywhere the old `orders` table is referenced.
+Let's say you created a transform that created a cleaned up version of your `orders` table, called `orders_clean`. Instead of rewriting all your questions that query the `orders` table, admins can swap in the `orders_clean` table everywhere the old `orders` table is referenced.
 
 ## How replacing data sources works
 

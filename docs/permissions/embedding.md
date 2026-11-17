@@ -5,7 +5,7 @@ summary: Learn about which permissions tooling you should use depending on wheth
 
 # Configuring permissions for embedding
 
-You can use a single Metabase to manage permissions for all of your customers.
+You can use a single Metabase to manage permissions for all of your customers. Which tools you use depends on how you store your customer data:
 
 - [One database for all customers (commingled setups)](#one-database-for-all-customers-commingled-setups)
 - [One database per customer](#one-database-per-customer)

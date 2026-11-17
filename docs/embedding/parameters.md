@@ -8,7 +8,7 @@ redirect_from:
 
 # Embedding parameters
 
-If you're embedding with an iframe instead, check out [Parameters in iframe embeds](#parameters-in-iframe-embeds).
+Most of this page covers [modular embeds](./modular-embedding.md) with web components or the React SDK. If you're embedding with an iframe, check out [Parameters in iframe embeds](#parameters-in-iframe-embeds).
 
 ## Parameters differ between guest and SSO embeds
 

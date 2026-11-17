@@ -7,7 +7,7 @@ redirect_from:
 
 # SSL certificate
 
-Why you'd want to do this:
+You might want to use an SSL certificate if:
 
 - You're using Metabase Cloud and want to ensure the identity of the data warehouse you're connecting to (e.g., PostgreSQL, MySQL).
 - You're self-hosting Metabase and want to ensure the identity of a data warehouse hosted by an external provider. You can also use this method to ensure you're using the strictest connection parameters when connecting to your application database.

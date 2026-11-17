@@ -8,7 +8,7 @@ redirect_from:
 
 # Migrating to a production application database
 
-For more on why you should use Postgres as your app DB, check out [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
+To learn why you should use Postgres as your app DB, check out [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
 
 If you'd rather move to Metabase Cloud, check out [Migrate to Metabase Cloud](https://www.metabase.com/docs/latest/cloud/migrate/guide).
 

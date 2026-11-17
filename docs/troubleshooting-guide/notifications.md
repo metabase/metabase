@@ -5,6 +5,8 @@ summary: Fix alerts and dashboard subscriptions that fail to send.
 
 # Troubleshooting notifications
 
+## Long-running queries block the notification queue
+
 **Root cause:**
 
 When long running queries get stuck in the queue, they can block all other queries from running.

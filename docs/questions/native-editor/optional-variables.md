@@ -5,7 +5,7 @@ summary: Make parts of your SQL query optional by wrapping clauses in double bra
 
 # Optional variables
 
-For example, you can create an optional `WHERE` clause that contains a [SQL variable](./sql-parameters.md), so that if no value is supplied to the variable (either in the filter or via the URL), the query will still run as if there were no `WHERE` clause.
+A common use is an optional `WHERE` clause that contains a [SQL variable](./sql-parameters.md). If no value is supplied to the variable (either in the filter or via the URL), the query still runs as if there were no `WHERE` clause.
 
 To make a variable optional in your native query, put `[[ .. ]]` brackets around the entire clause containing the `{% raw %}{{variable}}{% endraw %}`. If someone inputs a value in the filter widget for the `variable`, Metabase will place the clause in the template; otherwise Metabase will ignore the clause and run the query as though the clause didn't exist.
 

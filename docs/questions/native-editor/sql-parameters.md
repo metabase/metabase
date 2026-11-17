@@ -9,7 +9,7 @@ redirect_from:
 
 ![Variables](../images/filter-and-parameter.png)
 
-These variables create widgets that people can use to plug in values for those variables. You can also connect [dashboard widgets to these parameters](../../dashboards/filters.md).
+Parameters (also called variables) create widgets that people can use to plug in values. You can also connect [dashboard widgets to these parameters](../../dashboards/filters.md).
 
 ## SQL variable types
 
