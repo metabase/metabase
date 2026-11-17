@@ -9,7 +9,9 @@
   See documentation in [[metabase.permissions.models.permissions]] for more information about the Metabase permissions system."
   (:require
    [clojure.set :as set]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
@@ -85,81 +87,13 @@
   "Fetch the `Data Analysts` permissions group"
   (magic-group data-analyst-magic-group-type))
 
-;;; --------------------------------------------------- Validation ---------------------------------------------------
+;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
 (defn exists-with-name?
   "Does a `PermissionsGroup` with `group-name` exist in the DB? (case-insensitive)"
   ^Boolean [group-name]
   {:pre [((some-fn keyword? string?) group-name)]}
   (permissions.db/group-exists-with-lower-name? (u/lower-case-en (name group-name))))
-
-(defn- check-name-not-already-taken
-  [group-name]
-  (when (exists-with-name? group-name)
-    (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))))
-
-(defn- check-not-magic-group
-  "Make sure we're not trying to edit/delete one of the magic groups, or throw an exception."
-  [{id :id}]
-  {:pre [(integer? id)]}
-  (doseq [magic-group [(all-users)
-                       (all-external-users)
-                       (admin)
-                       (data-analyst)]]
-    (when (= id (:id magic-group))
-      (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
-                      {:status-code 400})))))
-
-;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
-
-(t2/define-before-insert :model/PermissionsGroup
-  [{group-name :name, :as group}]
-  (u/prog1 group
-    (check-name-not-already-taken group-name)))
-
-(defn- set-default-permission-values!
-  [group]
-  (data-perms/with-global-permissions-lock
-    (let [db-ids (permissions.db/non-destination-database-ids)]
-      (data-perms/set-default-group-permissions! group db-ids (not (:is_tenant_group group))))))
-
-(t2/define-after-insert :model/PermissionsGroup
-  [group]
-  (u/prog1 group
-    (set-default-permission-values! group)))
-
-(t2/define-before-delete :model/PermissionsGroup
-  [{id :id, :as group}]
-  (check-not-magic-group group)
-  (setting/set-value-of-type!
-   :json :ldap-group-mappings
-   (when-let [mappings (setting/get :ldap-group-mappings)]
-     (zipmap (keys mappings)
-             (for [val (vals mappings)]
-               (remove (partial = id) val))))))
-
-(t2/define-before-update :model/PermissionsGroup
-  [group]
-  (let [changes (t2/changes group)]
-    (u/prog1 group
-      (when (contains? changes :name)
-        ;; Allow backfilling the entity ID for magic groups, but not changing anything else
-        (check-not-magic-group group))
-      (when-let [group-name (:name changes)]
-        (check-name-not-already-taken group-name)))))
-
-;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
-
-(methodical/defmethod t2/batched-hydrate [:model/PermissionsGroup :members]
-  "Batch hydration Users for a list of PermissionsGroups"
-  [_model k groups]
-  (mi/instances-with-hydrated-data
-   groups k
-   ;; `user_id` in the result is for legacy reasons, we should remove it
-   #(group-by :group_id (permissions.db/group-members (map :id groups)
-                                                      (boolean (premium-features/enable-advanced-permissions?))))
-   :id
-   {:default []}))
 
 (defn non-admin-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group."
@@ -194,6 +128,116 @@
     (throw (ex-info (tru "Tenant groups are not editable while the Tenants feature is disabled.")
                     {:status-code 400
                      :errors      {:tenant-group-ids (sort offending)}}))))
+
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
+(defn- check-name-not-already-taken
+  [group-name]
+  (when (exists-with-name? group-name)
+    (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))))
+
+(defn- check-not-magic-group
+  "Make sure we're not trying to edit/delete one of the magic groups, or throw an exception."
+  [{id :id}]
+  {:pre [(integer? id)]}
+  (doseq [magic-group [(all-users)
+                       (all-external-users)
+                       (admin)
+                       (data-analyst)]]
+    (when (= id (:id magic-group))
+      (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
+                      {:status-code 400})))))
+
+(t2/define-before-insert :model/PermissionsGroup
+  [{group-name :name, :as group}]
+  (u/prog1 group
+    (check-name-not-already-taken group-name)))
+
+(defn- set-default-permission-values!
+  [group]
+  (data-perms/with-global-permissions-lock
+    (let [db-ids (permissions.db/non-destination-database-ids)]
+      (data-perms/set-default-group-permissions! group db-ids (not (:is_tenant_group group))))))
+
+(t2/define-after-insert :model/PermissionsGroup
+  [group]
+  (u/prog1 group
+    (set-default-permission-values! group)))
+
+(t2/define-before-delete :model/PermissionsGroup
+  [{id :id, :as group}]
+  (check-not-magic-group group)
+  (setting/set-value-of-type!
+   :json :ldap-group-mappings
+   (when-let [mappings (setting/get :ldap-group-mappings)]
+     (zipmap (keys mappings)
+             (for [val (vals mappings)]
+               (remove (partial = id) val))))))
+
+(t2/define-before-update :model/PermissionsGroup
+  [group]
+  (let [changes (t2/changes group)]
+    (when (contains? changes :name)
+      (check-not-magic-group group))
+    (when-let [group-name (:name changes)]
+      (check-name-not-already-taken group-name))
+    (when (contains? changes :is_tenant_group)
+      (throw (ex-info (tru "You cannot change whether a group is a tenant group.") {:status-code 400})))
+    (when (contains? changes :magic_group_type)
+      (throw (ex-info (tru "You cannot change the type of a group.") {:status-code 400})))
+    group))
+
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
+
+(defn manageable-group-id-fn
+  "A predicate over group ids answering whether the current user manages the group, as a superuser for every group or
+  with advanced permissions as its group manager, answered for all groups with at most one query."
+  []
+  (cond
+    api/*is-superuser?*
+    (constantly true)
+
+    (and (premium-features/enable-advanced-permissions?)
+         config/ee-available?
+         api/*current-user-id*)
+    (let [managed-ids (set (permissions.db/managed-group-ids api/*current-user-id*))]
+      (fn [group-id] (contains? managed-ids group-id)))
+
+    :else
+    (constantly false)))
+
+(methodical/defmethod t2/batched-hydrate [:model/PermissionsGroup :can_read]
+  "Whether the current user can read each of `groups`, which they can when they manage it."
+  [_model k groups]
+  (let [manages? (manageable-group-id-fn)]
+    (for [group groups]
+      (when group
+        (vary-meta group assoc k (manages? (:id group)))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/PermissionsGroup :can_write]
+  "Whether the current user can write each of `groups`, which they can when they manage it."
+  [_model k groups]
+  (let [manages? (manageable-group-id-fn)]
+    (for [group groups]
+      (when group
+        (assoc group k (manages? (:id group)))))))
+
+(defmethod mi/can-create? :model/PermissionsGroup
+  [_model _group]
+  (boolean api/*is-superuser?*))
+
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
+
+(methodical/defmethod t2/batched-hydrate [:model/PermissionsGroup :members]
+  "Batch hydration Users for a list of PermissionsGroups"
+  [_model k groups]
+  (mi/instances-with-hydrated-data
+   groups k
+   ;; `user_id` in the result is for legacy reasons, we should remove it
+   #(group-by :group_id (permissions.db/group-members (map :id groups)
+                                                      (boolean (premium-features/enable-advanced-permissions?))))
+   :id
+   {:default []}))
 
 (defn- group-id->num-members
   "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty

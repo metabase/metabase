@@ -5121,6 +5121,39 @@
         (is (not (contains? (t2/select-one :osi_ai_context :entity_type "table" :entity_local_id 1) :id)))
         (is (thrown? Exception (t2/insert! :osi_ai_context (dissoc (row "table" 1) :entity_id))))))))
 
+(deftest revoke-transforms-without-native-test
+  (testing "ii2ymb revokes transforms where the group has no database-level native create-queries"
+    (impl/test-migrations ["ii2ymb"] [migrate!]
+      (let [group!      (fn [group-name] (t2/insert-returning-pk! :permissions_group {:name      group-name
+                                                                                      :entity_id (u/generate-nano-id)}))
+            native-gid  (group! "Transforms Native Group")
+            table-gid   (group! "Transforms Table Group")
+            builder-gid (group! "Transforms Builder Group")
+            db-id       (t2/insert-returning-pk! :metabase_database {:name       "Transforms Test DB"
+                                                                     :engine     "postgres"
+                                                                     :created_at :%now
+                                                                     :updated_at :%now
+                                                                     :details    "{}"})
+            table-id    (t2/insert-returning-pk! :metabase_table {:active     true
+                                                                  :db_id      db-id
+                                                                  :name       "a_table"
+                                                                  :created_at :%now
+                                                                  :updated_at :%now})
+            perm!       (fn [m] (t2/insert-returning-pk! :data_permissions (merge {:db_id db-id} m)))
+            transforms! (fn [group-id] (perm! {:group_id group-id :perm_type "perms/transforms" :perm_value "yes"}))
+            transforms  (fn [id] (t2/select-one-fn :perm_value :data_permissions :id id))]
+        (perm! {:group_id native-gid :perm_type "perms/create-queries" :perm_value "query-builder-and-native"})
+        (perm! {:group_id table-gid :perm_type "perms/create-queries" :perm_value "query-builder"
+                :table_id table-id :schema_name "public"})
+        (perm! {:group_id builder-gid :perm_type "perms/create-queries" :perm_value "query-builder"})
+        (let [native-id   (transforms! native-gid)
+              granular-id (transforms! table-gid)
+              builder-id  (transforms! builder-gid)]
+          (migrate!)
+          (is (= "yes" (transforms native-id)))
+          (is (= "no" (transforms granular-id)))
+          (is (= "no" (transforms builder-id))))))))
+
 (deftest archived-directly-columns-test
   (testing "pu1a7q, nq3c9x and tl5e3m add archived_directly, and pu2b8r, nq4d1y and tl6f4n mark archived rows whose collection is live"
     (impl/test-migrations ["pu1a7q" "tl6f4n"] [migrate!]

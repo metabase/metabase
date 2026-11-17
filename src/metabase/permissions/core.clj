@@ -64,6 +64,7 @@
   index-database-permissions
   is-superuser?
   is-data-analyst?
+  permission-implications
   permissions-for-user
   sandboxes-for-user
   with-sandboxes-for-user
@@ -73,6 +74,7 @@
   set-database-permission!
   set-table-permission!
   set-table-permissions!
+  table-level-value
   table-permissions-for-groups
   table-permissions-for-user
   user-has-highest-permission-anywhere?
@@ -142,7 +144,8 @@
   check-advanced-permissions-enabled
   check-group-manager
   check-has-application-permission
-  check-manager-of-group]
+  check-manager-of-group
+  has-application-permission?]
  [metabase.permissions.models.collection.graph
   graph
   update-graph!]

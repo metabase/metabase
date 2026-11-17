@@ -178,12 +178,11 @@
   "Fetch the details for a certain permissions group."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (perms/check-manager-of-group id)
-  (api/check-404 (empty? (perms/hidden-tenant-group-ids [id])))
-  (api/check-404
-   (some-> (permissions-rest.db/permissions-group id)
-           (t2/hydrate :members)
-           (maybe-fix-name (setting/get :use-tenants)))))
+  (let [group (api/read-check (permissions-rest.db/permissions-group id))]
+    (api/check-404 (empty? (perms/hidden-tenant-group-ids [id])))
+    (-> group
+        (t2/hydrate :members)
+        (maybe-fix-name (setting/get :use-tenants)))))
 
 (api.macros/defendpoint :get "/invite-group-ids"
   :- [:sequential ms/PositiveInt]
@@ -216,7 +215,7 @@
    {:keys [name is_tenant_group]} :- [:map {:closed true}
                                       [:name ms/NonBlankString]
                                       [:is_tenant_group {:optional true} [:maybe :boolean]]]]
-  (api/check-superuser)
+  (api/create-check :model/PermissionsGroup {:name name :is_tenant_group (boolean is_tenant_group)})
   (when is_tenant_group
     (when-not (premium-features/enable-tenants?)
       (throw (premium-features/ee-feature-error (tru "Tenants"))))
@@ -238,10 +237,8 @@
    _query-params
    {:keys [name]} :- [:map {:closed true}
                       [:name ms/NonBlankString]]]
-  (perms/check-manager-of-group group-id)
-  (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
-  (let [group (permissions-rest.db/permissions-group group-id)]
-    (api/check-404 group)
+  (let [group (api/write-check (permissions-rest.db/permissions-group group-id))]
+    (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
     (permissions-rest.db/rename-permissions-group! group-id name)
     ;; return the updated group
     (u/prog1 (permissions-rest.db/permissions-group group-id)
@@ -254,9 +251,8 @@
   "Delete a specific `PermissionsGroup`."
   [{:keys [group-id]} :- [:map {:closed true}
                           [:group-id ms/PositiveInt]]]
-  (perms/check-manager-of-group group-id)
-  (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
-  (let [group (permissions-rest.db/permissions-group group-id)]
+  (let [group (api/write-check (permissions-rest.db/permissions-group group-id))]
+    (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
     (permissions-rest.db/delete-permissions-group! group-id)
     (events/publish-event! :event/group-delete {:object group
                                                 :user-id api/*current-user-id*}))
@@ -296,14 +292,10 @@
                                                    [:user_id          ms/PositiveInt]
                                                    [:is_group_manager {:default false} [:maybe :boolean]]]]
   (let [is_group_manager (boolean is_group_manager)]
-    (perms/check-manager-of-group group_id)
+    (api/create-check :model/PermissionsGroupMembership {:group_id group_id :user_id user_id :is_group_manager is_group_manager})
     (perms/check-tenant-groups-visible! [group_id])
     (when is_group_manager
-      ;; enable `is_group_manager` require advanced-permissions enabled
-      (perms/check-advanced-permissions-enabled :group-manager)
-      (api/check
-       (permissions-rest.db/non-admin-user-exists? user_id)
-       [400 (tru "Admin cannot be a group manager.")]))
+      (perms/check-advanced-permissions-enabled :group-manager))
     (perms/add-user-to-group! user_id group_id is_group_manager)
     ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
     ;; let the frontend add it as appropriate
@@ -322,15 +314,9 @@
                                   [:is_group_manager :boolean]]]
   ;; currently this API is only used to update the `is_group_manager` flag and it requires advanced-permissions
   (perms/check-advanced-permissions-enabled :group-manager)
-  ;; Make sure only Super user or Group Managers can call this
-  (perms/check-group-manager)
-  (let [old (permissions-rest.db/group-membership id)]
-    (api/check-404 old)
+  (let [old (api/check-404 (permissions-rest.db/group-membership id))]
     (perms/check-tenant-groups-visible! [(:group_id old)])
-    (perms/check-manager-of-group (:group_id old))
-    (api/check
-     (permissions-rest.db/non-admin-user-exists? (:user_id old))
-     [400 (tru "Admin cannot be a group manager.")])
+    (api/write-check old)
     (permissions-rest.db/set-group-membership-manager! (:id old) is_group_manager)
     (permissions-rest.db/group-membership (:id old))))
 
@@ -338,8 +324,7 @@
   "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
   [{:keys [group-id]} :- [:map {:closed true}
                           [:group-id ms/PositiveInt]]]
-  (perms/check-manager-of-group group-id)
-  (api/check-404 (permissions-rest.db/permissions-group-exists? group-id))
+  (api/write-check (permissions-rest.db/permissions-group group-id))
   (api/check-400 (not= group-id (u/the-id (perms/admin-group))))
   (perms/check-tenant-groups-visible! [group-id])
   (perms/remove-all-users-from-group! group-id)
@@ -352,6 +337,6 @@
   (let [membership (permissions-rest.db/group-membership id)]
     (api/check-404 membership)
     (perms/check-tenant-groups-visible! [(:group_id membership)])
-    (perms/check-manager-of-group (:group_id membership))
+    (api/write-check membership)
     (perms/remove-user-from-group! (:user_id membership) (:group_id membership))
     api/generic-204-no-content))
