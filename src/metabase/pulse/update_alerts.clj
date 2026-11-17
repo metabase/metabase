@@ -63,6 +63,13 @@
                                   :actor         actor
                                   :notifications card-notifications})))
 
+(defn- card-change-broke-alert?
+  "Whether the change from `old-card` to `new-card` invalidates the alerts on the card."
+  [old-card new-card]
+  (or (display-change-broke-alert? old-card new-card)
+      (goal-missing? old-card new-card)
+      (multiple-breakouts? new-card)))
+
 ;;; TODO -- consider whether this should be triggered indirectly by an event e.g. `:event/card-update`
 (defn delete-alerts-if-needed!
   "Delete alerts if the card has been changed in a way that invalidates the alert"
@@ -71,11 +78,17 @@
     (card-archived? old-card new-card)
     (delete-alert-and-notify! :event/card-update.notification-deleted.card-archived actor new-card)
 
-    (or (display-change-broke-alert? old-card new-card)
-        (goal-missing? old-card new-card)
-        (multiple-breakouts? new-card))
+    (card-change-broke-alert? old-card new-card)
     (delete-alert-and-notify! :event/card-update.notification-deleted.card-changed actor new-card)
 
     ;; The change doesn't invalidate the alert, do nothing
     :else
     nil))
+
+(defn delete-alerts-if-card-changed!
+  "Delete alerts if the card has been changed in a way that invalidates the alert, other than by archiving it, which
+  [[delete-alerts-if-needed!]] handles."
+  [& {:keys [old-card new-card actor]}]
+  (when (and (not (card-archived? old-card new-card))
+             (card-change-broke-alert? old-card new-card))
+    (delete-alert-and-notify! :event/card-update.notification-deleted.card-changed actor new-card)))

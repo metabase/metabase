@@ -1,5 +1,6 @@
 (ns metabase.queries.events.cards-notification-deleted-on-card-save
   (:require
+   [metabase.api.common :as api]
    [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
@@ -46,6 +47,6 @@
                                                   :notification-recipient/raw-value
                                                   (-> recipient :details :value)
                                                   (throw (ex-info "Unknown recipient type" {:recipient recipient}))))))]
-      (send-message! card recipients recipients-with-no-links actor))
+      (send-message! card recipients recipients-with-no-links (or actor (when api/*current-user-id* @api/*current-user*))))
     (catch Throwable e
       (log/errorf "Error sending notification email: %s" (ex-message e)))))

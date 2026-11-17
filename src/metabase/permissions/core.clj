@@ -144,7 +144,8 @@
   check-advanced-permissions-enabled
   check-group-manager
   check-has-application-permission
-  check-manager-of-group]
+  check-manager-of-group
+  has-application-permission?]
  [metabase.permissions.models.collection.graph
   graph
   update-graph!]

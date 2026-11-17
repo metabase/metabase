@@ -845,17 +845,15 @@
     (when validate-query!
       (validate-query! dataset-query))
     (query-perms/check-run-permissions-for-query dataset-query)
-    (api/create-check :model/Card {:collection_id collection_id})
-    (create-card-response
-     (queries/create-card!
-      {:name                   card-name
-       :type                   card-type
-       :dataset_query          dataset-query
-       :display                (keyword (or display default-display))
-       :description            description
-       :collection_id          collection_id
-       :visualization_settings (or visualization_settings {})}
-      {:id api/*current-user-id*}))))
+    (let [card {:name                   card-name
+                :type                   card-type
+                :dataset_query          dataset-query
+                :display                (keyword (or display default-display))
+                :description            description
+                :collection_id          collection_id
+                :visualization_settings (or visualization_settings {})}]
+      (api/create-check :model/Card card)
+      (create-card-response (queries/create-card! card {:id api/*current-user-id*})))))
 
 (defn- apply-agent-card-patch!
   "Shared body for `update_question` / `update_metric`. `card-before-update` is the card the caller
@@ -906,22 +904,13 @@
     ;; A move (or archive that retargets the collection) requires write on BOTH the source and the
     ;; target collection. The caller's `api/write-check :model/Card` only covered the source entity.
     ;; Mirror the REST endpoint's `check-allowed-to-move` gate.
+    (api/update-check card-before-update card-updates)
     (collection/check-allowed-to-change-collection card-before-update card-updates)
     ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires data perms
     ;; to run the *new* query, otherwise a user with collection write on a card can repoint it at data
     ;; they cannot query. `queries/update-card!` does NOT run this check itself, so we run it here.
     (when (api/column-will-change? (:dataset_query card-before-update) (get card-updates :dataset_query ::api/not-provided))
-      (query-perms/check-run-permissions-for-query (:dataset_query card-updates))
-      ;; Reject cycles. `lib/check-card-overwrite` throws if the new query references this card
-      ;; transitively. Mirror REST's wrapping that promotes it to HTTP 400 instead of a 500.
-      (try
-        (lib/check-card-overwrite id (:dataset_query card-updates))
-        (catch clojure.lang.ExceptionInfo e
-          ;; Don't downgrade a more specific status if the throwing fn ever starts setting one
-          ;; (e.g. a 404 for a missing card).
-          (let [data (ex-data e)]
-            (throw (ex-info (ex-message e)
-                            (assoc data :status-code (or (:status-code data) 400))))))))
+      (query-perms/check-run-permissions-for-query (:dataset_query card-updates)))
     (queries/update-card! {:card-before-update    card-before-update
                            :card-updates          card-updates
                            :actor                 @api/*current-user*

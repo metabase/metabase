@@ -427,6 +427,7 @@
         {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
     {:copied     (into {} (for [[id to-copy] copy]
                             [id (queries/with-copy-source-card to-copy
+                                  (api/create-check :model/Card (assoc to-copy :collection_id dest-coll-id))
                                   (queries/create-card!
                                    (cond-> to-copy
                                      true                    (assoc :collection_id dest-coll-id)
@@ -878,6 +879,14 @@
    [:dashcards          {:optional true} [:maybe [:sequential TransientDashboardCard]]]
    [:tabs               {:optional true} [:maybe [:sequential UpdatedDashboardTab]]]])
 
+(defn- check-create-transient-dashboard-cards
+  "Checks the current user can create the new Cards of `dashboard` in the Collection `parent-collection-id`."
+  [dashboard parent-collection-id]
+  (doseq [{:keys [card series]} (:dashcards dashboard)
+          new-card              (cons card series)
+          :when                 (and (map? new-card) (not (pos-int? (:id new-card))) (seq (:dataset_query new-card)))]
+    (api/create-check :model/Card (assoc new-card :collection_id parent-collection-id))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -889,6 +898,7 @@
    _query-params
    dashboard :- TransientDashboard]
   (api/create-check :model/Dashboard {:collection_id parent-collection-id})
+  (check-create-transient-dashboard-cards dashboard parent-collection-id)
   (let [dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
     dashboard))
@@ -907,6 +917,7 @@
                                      "/"
                                      (collection/children-location
                                       (dashboards-rest.db/personal-collection-for-user api/*current-user-id*)))))
+        _         (check-create-transient-dashboard-cards dashboard parent-collection-id)
         dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
     dashboard))

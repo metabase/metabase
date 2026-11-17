@@ -14,6 +14,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.card-schema :as card-schema]
@@ -1245,7 +1246,7 @@
                                    ["with embedding parameters" {:embedding_params {}}]
                                    ["in a document" {:document_id document-id}]]]
             (testing label
-              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question, in no dashboard or document"
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question, in no dashboard or document|can hold only questions"
                                     (t2/update! :model/Card :id card-id changes)))
               (testing "moved in from elsewhere"
                 (mt/with-temp [:model/Card {other-id :id} (merge {:dataset_query (venues-query)} changes)]
@@ -1277,12 +1278,13 @@
             categories (lib.metadata/table mp (mt/id :categories))]
         (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}
                        :model/Card       {card-id :id}       {:collection_id collection-id :dataset_query venues}
+                       :model/Card       {same-id :id}       {:collection_id collection-id :dataset_query venues}
                        :model/Card       {other-id :id}      {:dataset_query venues}]
           (doseq [[label query message]
                   [["SQL" (lib/native-query mp "SELECT * FROM venues") #"must be built with the query builder"]
                    ["two stages" (lib/append-stage (lib/aggregate venues (lib/count))) #"single stage"]
                    ["a card as the source, even one in the same collection"
-                    (lib/query mp (lib.metadata/card mp card-id)) #"must read a table, not a card"]
+                    (lib/query mp (lib.metadata/card mp same-id)) #"must read a table, not a card"]
                    ["another card as the source" (lib/query mp (lib.metadata/card mp other-id)) #"must read a table, not a card"]
                    ["an explicit join"
                     (lib/join venues (lib/join-clause categories [(lib/= (lib.metadata/field mp (mt/id :venues :category_id))
@@ -1546,10 +1548,11 @@
       (binding [search.ingestion/*disable-updates* true]
         (mt/with-temp
           [:model/Card {a-id :id} {:name "Metric A", :type :metric, :dataset_query count-query}
-           :model/Card {b-id :id} {:name "Metric B", :type :metric, :dataset_query (metric-query a-id)}]
-          ;; close the cycle with a raw update -- the card API rejects cyclic saves, so this is the non-API path
-          ;; (serdes, remote sync, pre-check data) by which a cycle actually reaches the DB
-          (t2/update! :model/Card :id a-id {:dataset_query (metric-query b-id)})
+           :model/Card {b-id :id} {:name "Metric B", :type :metric, :dataset_query (metric-query a-id)}
+           :model/Card {c-id :id} {:name "Metric C", :type :metric, :dataset_query (metric-query b-id)}]
+          ;; close the cycle with a raw update -- the Card hooks reject cyclic saves, so this is how a cycle saved
+          ;; before they did reaches the DB
+          (t2/update! :report_card :id a-id {:dataset_query (t2/select-one-fn :dataset_query :report_card :id c-id)})
           (f a-id b-id))))))
 
 (deftest query-description-metric-reference-cycle-test
@@ -2000,41 +2003,50 @@
       (is (= #{(mt/id :categories)}
              (into #{} (map :table-id) (t2/select-one-fn :dimension_mappings :model/Card :id card-id)))))))
 
+(defn- update-checked!
+  "Updates Card `card-id` with `changes` after the update permission check of the current user, which throws when it
+  refuses."
+  [card-id changes]
+  (api/update-check (t2/select-one :model/Card :id card-id) changes)
+  (t2/update! :model/Card :id card-id changes))
+
+(defn- set-raw-visualization-settings!
+  "Stores `settings` as the visualization settings of Card `card-id` without the Card hooks, as a Card saved before the
+  timeline settings were validated holds them."
+  [card-id settings]
+  (t2/update! :report_card :id card-id {:visualization_settings (json/encode settings)}))
+
 (deftest new-card-timeline-selection-permissions-test
   (mt/with-temp [:model/Collection collection {}
                  :model/Timeline timeline {:collection_id (:id collection)}]
-    (perms/revoke-collection-permissions! (perms-group/all-users) collection)
-    (mt/with-test-user :rasta
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo #"You don't have permissions"
-           (mt/with-temp [:model/Card _ {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
-             nil))))
-    (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-    (mt/with-test-user :rasta
-      (mt/with-temp [:model/Card card {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
-        (is (= [(:id timeline)] (get-in card [:visualization_settings :timeline.selected_timeline_ids])))))))
+    (let [card {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+      (mt/with-test-user :rasta
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"
+                              (api/create-check :model/Card card))))
+      (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+      (mt/with-test-user :rasta
+        (is (true? (api/create-check :model/Card card)))))))
 
 (deftest with-copy-source-card-timeline-selection-permissions-test
   (mt/with-temp [:model/Collection collection {}
                  :model/Timeline timeline-a {:collection_id (:id collection)}
                  :model/Timeline timeline-b {:collection_id (:id collection)}]
     (perms/revoke-collection-permissions! (perms-group/all-users) collection)
-    ;; source cards are created outside `with-test-user` so their own insert isn't permission-checked
     (testing "a copy inheriting the exact source selection does not need a fresh read check"
       (mt/with-temp [:model/Card source {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline-a)]}}]
         (mt/with-test-user :rasta
           (card/with-copy-source-card source
-            (mt/with-temp [:model/Card copy {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline-a)]}}]
-              (is (= [(:id timeline-a)] (get-in copy [:visualization_settings :timeline.selected_timeline_ids]))))))))
+            (is (true? (api/create-check :model/Card {:visualization_settings
+                                                      {:timeline.selected_timeline_ids [(:id timeline-a)]}})))))))
     (testing "a copy whose selection differs from the source is still permission-checked"
       (mt/with-temp [:model/Card source {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline-a)]}}]
         (mt/with-test-user :rasta
           (card/with-copy-source-card source
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo #"You don't have permissions"
-                 (mt/with-temp [:model/Card _ {:visualization_settings
-                                               {:timeline.selected_timeline_ids [(:id timeline-a) (:id timeline-b)]}}]
-                   nil)))))))))
+                 (api/create-check :model/Card {:visualization_settings
+                                                {:timeline.selected_timeline_ids [(:id timeline-a) (:id timeline-b)]}})))))))))
 
 (deftest card-timeline-visibility-update-permissions-test
   (mt/with-temp [:model/Collection collection {}
@@ -2054,7 +2066,7 @@
         (mt/with-temp [:model/Card card {:display :line :visualization_settings before}]
           (mt/with-test-user :rasta
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"
-                                  (t2/update! :model/Card :id (:id card) {:visualization_settings after}))))
+                                  (update-checked! (:id card) {:visualization_settings after}))))
           (is (= before (t2/select-one-fn :visualization_settings :model/Card :id (:id card)))))))))
 
 (deftest card-timeline-visibility-on-a-display-without-events-test
@@ -2067,11 +2079,11 @@
       (perms/revoke-collection-permissions! (perms-group/all-users) collection)
       (mt/with-test-user :rasta
         (let [settings {:timeline.selected_timeline_ids [(:id timeline)] :timeline_events.enabled true}]
-          (t2/update! :model/Card :id (:id card) {:visualization_settings settings})
+          (update-checked! (:id card) {:visualization_settings settings})
           (is (= settings (t2/select-one-fn :visualization_settings :model/Card :id (:id card)))))
         (testing "switching to a display that draws them is still checked"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"
-                                (t2/update! :model/Card :id (:id card) {:display :line}))))))))
+                                (update-checked! (:id card) {:display :line}))))))))
 
 (deftest partially-readable-card-timeline-selection-test
   (testing "on a card that also selects a timeline the user cannot read"
@@ -2093,7 +2105,7 @@
             restore!         #(t2/update! :model/Card :id (:id card) {:visualization_settings (settings)})
             update-settings! (fn [settings]
                                (mt/with-test-user :rasta
-                                 (t2/update! :model/Card :id (:id card) {:visualization_settings settings}))
+                                 (update-checked! (:id card) {:visualization_settings settings}))
                                (t2/select-one-fn :visualization_settings :model/Card :id (:id card)))]
         (testing "an event of the readable timeline can be hidden and shown again"
           (restore!)
@@ -2128,35 +2140,37 @@
     (mt/with-test-user :rasta
       (testing "unrelated visualization edits preserve inaccessible saved selections"
         (let [settings (assoc (:visualization_settings card) :graph.show_values true)]
-          (t2/update! :model/Card :id (:id card) {:visualization_settings settings})
+          (update-checked! (:id card) {:visualization_settings settings})
           (is (= settings (t2/select-one-fn :visualization_settings :model/Card :id (:id card)))))
         (testing "an explicit empty selection can hide all events"
-          (t2/update! :model/Card :id (:id card) {:visualization_settings {:timeline.selected_timeline_ids []}})
+          (update-checked! (:id card) {:visualization_settings {:timeline.selected_timeline_ids []}})
           (is (= [] (get-in (t2/select-one :model/Card :id (:id card))
                             [:visualization_settings :timeline.selected_timeline_ids]))))))))
 
 (deftest card-timeline-selection-validation-test
   (mt/with-temp [:model/Card card {}]
-    (mt/with-test-user :rasta
-      (doseq [invalid-ids [false 1 "1" [0] [-1] ["1"] [nil]]]
-        (testing (pr-str invalid-ids)
-          (let [settings {:timeline.selected_timeline_ids invalid-ids}]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Selected timeline IDs must be"
-                                  (t2/update! :model/Card :id (:id card) {:visualization_settings settings}))))
-          (let [settings {:timeline.excluded_timeline_event_ids invalid-ids}]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Excluded timeline event IDs must be"
-                                  (t2/update! :model/Card :id (:id card) {:visualization_settings settings})))))))))
+    (doseq [invalid-ids [false 1 "1" [0] [-1] ["1"] [nil]]]
+      (testing (pr-str invalid-ids)
+        (let [settings {:timeline.selected_timeline_ids invalid-ids}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Selected timeline IDs must be"
+                                (t2/update! :model/Card :id (:id card) {:visualization_settings settings})))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Selected timeline IDs must be"
+                                (t2/insert! :model/Card {:name                   "Invalid timelines"
+                                                         :dataset_query          (mt/mbql-query venues)
+                                                         :display                :line
+                                                         :visualization_settings settings}))))
+        (let [settings {:timeline.excluded_timeline_event_ids invalid-ids}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Excluded timeline event IDs must be"
+                                (t2/update! :model/Card :id (:id card) {:visualization_settings settings}))))))))
 
 (deftest card-timeline-malformed-saved-selection-test
   (testing "a malformed selection saved before it was validated can still be repaired"
     (mt/with-temp [:model/Timeline timeline {}
-                   :model/Card card {:display                :line
-                                     :visualization_settings {:timeline.selected_timeline_ids 7}}]
+                   :model/Card card {:display :line}]
       (doseq [repaired [[(:id timeline)] []]]
-        ;; no bound user, so each case starts from the malformed value again
-        (t2/update! :model/Card :id (:id card) {:visualization_settings {:timeline.selected_timeline_ids 7}})
+        (set-raw-visualization-settings! (:id card) {:timeline.selected_timeline_ids 7})
         (mt/with-test-user :rasta
-          (t2/update! :model/Card :id (:id card) {:visualization_settings {:timeline.selected_timeline_ids repaired}}))
+          (update-checked! (:id card) {:visualization_settings {:timeline.selected_timeline_ids repaired}}))
         (is (= repaired
                (get-in (t2/select-one :model/Card :id (:id card))
                        [:visualization_settings :timeline.selected_timeline_ids])))))))
@@ -2164,13 +2178,13 @@
 (deftest card-timeline-malformed-saved-exclusions-test
   (testing "a malformed excluded-event list saved before it was validated does not block later edits"
     (mt/with-temp [:model/Timeline timeline {}
-                   :model/Card card {:display :line
-                                     :visualization_settings {:timeline.selected_timeline_ids       [(:id timeline)]
-                                                              :timeline.excluded_timeline_event_ids 5}}]
+                   :model/Card card {:display :line}]
+      (set-raw-visualization-settings! (:id card) {:timeline.selected_timeline_ids       [(:id timeline)]
+                                                   :timeline.excluded_timeline_event_ids 5})
       (mt/with-test-user :rasta
-        (t2/update! :model/Card :id (:id card)
-                    {:visualization_settings {:timeline.selected_timeline_ids       [(:id timeline)]
-                                              :timeline.excluded_timeline_event_ids []}})
+        (update-checked! (:id card)
+                         {:visualization_settings {:timeline.selected_timeline_ids       [(:id timeline)]
+                                                   :timeline.excluded_timeline_event_ids []}})
         (is (= [] (get-in (t2/select-one :model/Card :id (:id card))
                           [:visualization_settings :timeline.excluded_timeline_event_ids])))))))
 
@@ -2180,7 +2194,7 @@
                    :model/Card card {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
       (t2/delete! :model/Timeline :id (:id timeline))
       (mt/with-test-user :rasta
-        (t2/update! :model/Card :id (:id card) {:display :line})
+        (update-checked! (:id card) {:display :line})
         (is (= :line (t2/select-one-fn :display :model/Card :id (:id card))))))))
 
 (deftest card-timeline-selection-without-user-context-test
@@ -2229,3 +2243,85 @@
             (is (= card/current-card-schema-version (:card_schema card))))))
       (testing "the stored row is untouched by any of this"
         (is (= 23 (stored-card-schema card-id)))))))
+
+;;; ------------------------------------------- Rules every writer holds --------------------------------------------
+
+(defn- count-query
+  "A query on VENUES that can be saved as a metric."
+  []
+  (mt/mbql-query venues {:aggregation [[:count]]}))
+
+(deftest card-query-must-not-depend-on-itself-test
+  (testing "a Card whose query reads itself, directly or through other Cards, cannot be saved by any writer"
+    (mt/with-temp [:model/Card {a-id :id} {:dataset_query (mt/mbql-query venues)}
+                   :model/Card {b-id :id} {:dataset_query (mt/mbql-query venues)}]
+      (let [mp (mt/metadata-provider)]
+        (testing "directly"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot save card with cycles"
+                                (t2/update! :model/Card :id a-id {:dataset_query (lib/query mp (lib.metadata/card mp a-id))}))))
+        (testing "through another Card"
+          (t2/update! :model/Card :id b-id {:dataset_query (lib/query mp (lib.metadata/card mp a-id))})
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot save card with cycles"
+                                (t2/update! :model/Card :id a-id {:dataset_query (lib/query mp (lib.metadata/card mp b-id))})))
+          (is (= (mt/id :venues) (t2/select-one-fn :table_id :model/Card :id a-id))))
+        (testing "a new Card reading another Card is no cycle"
+          (mt/with-temp [:model/Card {c-id :id} {:dataset_query (lib/query mp (lib.metadata/card mp a-id))}]
+            (is (some? c-id))))))))
+
+(deftest model-display-is-table-test
+  (testing "a model displays as a table, unless it displays as a list"
+    (testing "on insert"
+      (mt/with-temp [:model/Card {bar-id :id}  {:type :model :display :bar :dataset_query (mt/mbql-query venues)}
+                     :model/Card {list-id :id} {:type :model :display :list :dataset_query (mt/mbql-query venues)}
+                     :model/Card {question-id :id} {:type :question :display :bar :dataset_query (mt/mbql-query venues)}]
+        (is (= :table (t2/select-one-fn :display :model/Card :id bar-id)))
+        (is (= :list (t2/select-one-fn :display :model/Card :id list-id)))
+        (is (= :bar (t2/select-one-fn :display :model/Card :id question-id)))
+        (testing "when a question becomes a model"
+          (t2/update! :model/Card :id question-id {:type :model})
+          (is (= :table (t2/select-one-fn :display :model/Card :id question-id))))
+        (testing "a model keeps a display it is given later"
+          (t2/update! :model/Card :id question-id {:display :line})
+          (is (= :line (t2/select-one-fn :display :model/Card :id question-id))))))))
+
+(deftest library-placement-is-checked-when-type-changes-test
+  (testing "a Card in a Library Metrics collection stays a metric, however its type is changed"
+    (mt/with-temp [:model/Collection {collection-id :id} {:type "library-metrics"}
+                   :model/Card       {card-id :id}       {:type          :metric
+                                                          :collection_id collection-id
+                                                          :dataset_query (count-query)}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics"
+                            (t2/update! :model/Card :id card-id {:type :question})))
+      (is (= :metric (t2/select-one-fn :type :model/Card :id card-id))))))
+
+(deftest alerts-are-deleted-when-card-change-breaks-them-test
+  (testing "an alert is deleted by any writer when the display of its Card changes to one it does not fit"
+    (notification.tu/with-card-notification
+      [notification {:card {:display :line}}]
+      (let [card-id (-> notification :payload :card_id)]
+        (testing "a change it still fits keeps the alert"
+          (t2/update! :model/Card :id card-id {:display :bar})
+          (is (t2/exists? :model/Notification :id (:id notification))))
+        (testing "a change it does not fit deletes the alert"
+          (t2/update! :model/Card :id card-id {:display :table})
+          (is (not (t2/exists? :model/Notification :id (:id notification)))))))))
+
+(deftest can-update-embedding-and-public-link-need-admin-test
+  (testing "making a Card embedded or public takes an admin, and making it private again takes the settings permission"
+    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
+      (let [card (t2/select-one :model/Card :id (:id card))]
+        (doseq [[description changes] [["embedding" {:enable_embedding true}]
+                                       ["public link" {:public_uuid (str (random-uuid)) :made_public_by_id (mt/user->id :crowberto)}]]]
+          (testing description
+            (is (false? (mt/with-current-user (mt/user->id :rasta)
+                          (boolean (mi/can-update? (t2/hydrate card :can_write) changes)))))
+            (is (true? (mt/with-current-user (mt/user->id :crowberto)
+                         (mi/can-update? (t2/hydrate card :can_write) changes))))))
+        (testing "an unchanged embedding value needs nothing"
+          (is (true? (mt/with-current-user (mt/user->id :rasta)
+                       (mi/can-update? (t2/hydrate card :can_write) {:enable_embedding (:enable_embedding card)})))))
+        (testing "removing a public link"
+          (is (false? (mt/with-current-user (mt/user->id :rasta)
+                        (boolean (mi/can-update? (t2/hydrate card :can_write) {:public_uuid nil :made_public_by_id nil})))))
+          (is (true? (mt/with-current-user (mt/user->id :crowberto)
+                       (mi/can-update? (t2/hydrate card :can_write) {:public_uuid nil :made_public_by_id nil})))))))))

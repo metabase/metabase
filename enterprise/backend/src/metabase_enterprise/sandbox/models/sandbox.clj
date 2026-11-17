@@ -249,6 +249,14 @@
   (when (contains? changes :result_metadata)
     (check-result-metadata-still-matches-sandboxed-tables! card-id new-result-metadata)))
 
+(defenterprise sandboxes-allow-card-update?
+  "Whether sandboxing lets the current user apply `changes`, the `:dataset_query`, `:archived` or `:result_metadata` of
+  a Card that really change, to a Card: only an admin may change them on one in the sandbox dependency set."
+  :feature :sandboxes
+  [{card-id :id} changes]
+  (not (and (some #(contains? changes %) [:dataset_query :archived :result_metadata])
+            (non-admin-affects-sandboxing? :card card-id))))
+
 (defenterprise pre-delete-check-sandbox-constraints
   "Checks sandbox constraints when a Card a sandbox is built out of is deleted."
   :feature :sandboxes

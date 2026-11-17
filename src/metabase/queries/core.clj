@@ -48,8 +48,7 @@
   check-allowed-to-create-card!
   check-allowed-to-run-query!
   check-allowed-to-update-card!
-  check-card-can-be-saved!
-  check-no-save-cycle!]
+  check-card-can-be-saved!]
  [metabase.queries.metadata
   batch-fetch-card-metadata
   ;; TODO does this belong here, or in the `dashboards` module?

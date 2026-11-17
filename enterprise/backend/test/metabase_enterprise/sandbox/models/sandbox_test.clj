@@ -10,10 +10,14 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
+   [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.measures.test-util :as measures.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -296,6 +300,79 @@
      (fn [{:keys [other]}]
        (t2/update! :model/Card :id (:id other) {:dataset_query (mt/mbql-query venues {:limit 1})})))))
 
+(deftest only-admins-can-update-a-card-a-sandbox-is-built-out-of-through-the-permission-check-test
+  (mt/with-premium-features #{:sandboxes}
+    (letfn [(update-check [card changes]
+              (api/update-check (t2/select-one :model/Card :id (:id card)) changes))
+            (guarded-changes []
+              [["query"           {:dataset_query (mt/mbql-query venues {:limit 1})}]
+               ["result metadata" {:result_metadata (venues-cols "ID" "NAME" "LATITUDE")}]
+               ["archive"         {:archived true}]])]
+      (testing "a non-admin is refused"
+        (with-card-policy
+          (fn [{:keys [card]}]
+            (mt/with-test-user :rasta
+              (doseq [[change-name changes] (guarded-changes)]
+                (testing change-name
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (update-check card changes)))))))))
+      (testing "an admin may do all of it"
+        (with-card-policy
+          (fn [{:keys [card]}]
+            (mt/with-test-user :crowberto
+              (doseq [[change-name changes] (guarded-changes)]
+                (testing change-name
+                  (is (true? (update-check card changes)))))))))
+      (testing "a value the card already has is no change"
+        (with-card-policy
+          (fn [{:keys [card]}]
+            (mt/with-test-user :rasta
+              (is (true? (update-check card {:dataset_query   (:dataset_query card)
+                                             :result_metadata (:result_metadata card)
+                                             :archived        false
+                                             :name            "Renamed"})))))))
+      (testing "an unrelated card is untouched"
+        (with-card-policy
+          (fn [{:keys [other]}]
+            (mt/with-test-user :rasta
+              (is (true? (update-check other {:dataset_query (mt/mbql-query venues {:limit 1})}))))))))))
+
+(deftest only-admins-can-change-a-card-a-sandbox-is-built-out-of-through-every-write-path-test
+  (mt/with-premium-features #{:sandboxes}
+    (with-card-policy
+      (fn [{:keys [card]}]
+        (let [card-id (:id card)
+              query   (:dataset_query card)]
+          (testing "PUT /api/card/:id"
+            (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dataset_query (mt/mbql-query venues {:limit 1})})
+            (is (= query (t2/select-one-fn :dataset_query :model/Card :id card-id))))
+          (testing "POST /api/revision/revert"
+            (revision/push-revision! {:object       (t2/select-one :model/Card :id card-id)
+                                      :entity       :model/Card
+                                      :id           card-id
+                                      :user-id      (mt/user->id :crowberto)
+                                      :is-creation? true})
+            (let [first-revision-id (t2/select-one-fn :id :model/Revision :model "Card" :model_id card-id)]
+              (t2/update! :model/Card :id card-id {:dataset_query (mt/mbql-query venues {:limit 2})})
+              (let [changed (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+                (revision/push-revision! {:object       (t2/select-one :model/Card :id card-id)
+                                          :entity       :model/Card
+                                          :id           card-id
+                                          :user-id      (mt/user->id :crowberto)
+                                          :is-creation? false})
+                (mt/user-http-request :rasta :post 403 "revision/revert" {:entity      :card
+                                                                          :id          card-id
+                                                                          :revision_id first-revision-id})
+                (is (= changed (t2/select-one-fn :dataset_query :model/Card :id card-id))))))
+          (testing "PUT /api/agent/v1/question/:id"
+            (mt/user-http-request :rasta :put 403 (str "agent/v1/question/" card-id) {:archived true})
+            (is (false? (t2/select-one-fn :archived :model/Card :id card-id))))
+          (testing "the question_write MCP tool"
+            (mt/with-test-user :rasta
+              (let [{:keys [result error]} (registry/call-tool v2.tu/all-scopes (str (random-uuid)) "question_write"
+                                                               {:method "update" :id card-id :archived true})]
+                (is (or (:isError result) error) (some-> error :message message/render))
+                (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))))))))))
+
 (defn- with-snippet-policy
   "A policy whose snippet `outer` splices in snippet `inner`, which in turn reads Card `nested-card` through a
   `{{#card}}` tag."
@@ -555,7 +632,7 @@
               original (t2/select-one-fn :result_metadata :model/Card :id card-id)
               latitude (api-venues-col "LATITUDE")]
           (is (= ["ID" "NAME" "CATEGORY_ID"] (sandboxed-venues-field-names)))
-          (is (= "You do not have permissions to modify a question that is used for row and column level security."
+          (is (= forbidden-message
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id)
                                        {:result_metadata (conj (vec original) latitude)})))
           (is (= original (t2/select-one-fn :result_metadata :model/Card :id card-id)))

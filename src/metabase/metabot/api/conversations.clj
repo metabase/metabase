@@ -218,8 +218,9 @@
       (when specified?
         (api/check-400 (= specified-collection-id dashboard-collection-id)
                        (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
-                            dashboard-collection-id specified-collection-id))))
-    (api/create-check :model/Card {:collection_id (:collection_id card)}))
+                            dashboard-collection-id specified-collection-id)))
+      (api/create-check :model/Card (assoc card :collection_id dashboard-collection-id)))
+    (api/create-check :model/Card card))
   ;; Create the card and stamp its origin in ONE transaction so they cannot desync.
   ;; The stamp is a raw table update — it should not run the Card model's heavy
   ;; before-update pipeline (query normalization, metadata population). The

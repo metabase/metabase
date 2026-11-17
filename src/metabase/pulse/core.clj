@@ -20,4 +20,5 @@
   retrieve-pulse
   update-pulse!]
  [metabase.pulse.update-alerts
+  delete-alerts-if-card-changed!
   delete-alerts-if-needed!])

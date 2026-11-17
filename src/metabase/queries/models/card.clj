@@ -219,10 +219,6 @@
                              (and (nil? (:exploration_id document))
                                   (mi/can-write? (t2/hydrate document :can_write)))))))))))))
 
-(defmethod mi/can-create? :model/Card
-  [_model {collection-id :collection_id}]
-  (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
-
 (def card-read-check-columns
   "The columns the `:can_read` hydration reads from a Card."
   [:id :collection_id :document_id])
@@ -915,34 +911,43 @@
               (filter selected-ids)
               (models.db/timeline-ids-of-events unhidden-ids))))))
 
-(defn- check-id-setting!
+(def ^:private timeline-visibility-keys
+  "The `visualization_settings` keys that select the timelines and timeline events a Card shows."
+  [:timeline.selected_timeline_ids :timeline.excluded_timeline_event_ids :timeline_events.enabled])
+
+(defn- check-id-setting
+  "Throws a 400 with `message` unless the value under `k` in `visibility`, when there is one, is a sequence of
+  positive integers."
   [visibility k message]
   (when-some [ids (get visibility k)]
     (api/check-400 (and (sequential? ids) (every? pos-int? ids)) message)))
 
-(defn- check-timeline-visibility-permissions!
+(defn- check-timeline-settings
+  "Throws a 400 unless the timeline ids in the `visualization_settings` of `card` are sequences of positive integers."
+  [card]
+  (let [visibility (select-keys (:visualization_settings card) timeline-visibility-keys)]
+    (check-id-setting visibility :timeline.excluded_timeline_event_ids
+                      (tru "Excluded timeline event IDs must be a sequence of positive integers."))
+    (check-id-setting visibility :timeline.selected_timeline_ids
+                      (tru "Selected timeline IDs must be a sequence of positive integers."))))
+
+(defn- timeline-selection-readable?
+  "Whether the current user can read every timeline `card` newly shows compared to `previous-card`, which is nil for a
+  new Card."
   [card previous-card]
-  ;; No bound user means an internal write (serdes import, migrations, tasks) rather than a request.
-  (when api/*current-user-id*
-    (let [visibility-keys     [:timeline.selected_timeline_ids :timeline.excluded_timeline_event_ids
-                               :timeline_events.enabled]
-          visibility          (select-keys (:visualization_settings card) visibility-keys)
-          previous-visibility (select-keys (:visualization_settings previous-card) visibility-keys)
-          draws-events?       (fn [visibility display]
-                                (and (events-enabled? visibility) (timeline-events-supported-display? display)))
-          reveals-all?        (and (draws-events? visibility (:display card))
-                                   (not (draws-events? previous-visibility (:display previous-card))))]
-      (when (or reveals-all? (not= visibility previous-visibility))
-        (check-id-setting! visibility :timeline.excluded_timeline_event_ids
-                           (tru "Excluded timeline event IDs must be a sequence of positive integers."))
-        (when (check-id-setting! visibility :timeline.selected_timeline_ids
-                                 (tru "Selected timeline IDs must be a sequence of positive integers."))
-          ;; Timelines the card already showed stay visible whatever the user saves, so only the difference is
-          ;; checked. Deleted timelines are skipped when rendering, so a stale id must not block saving the card.
-          (doseq [timeline (t2/hydrate (queries.db/timelines
-                                        (newly-revealed-timeline-ids visibility previous-visibility reveals-all?))
-                                       :can_read)]
-            (api/read-check timeline)))))))
+  (let [visibility          (select-keys (:visualization_settings card) timeline-visibility-keys)
+        previous-visibility (select-keys (:visualization_settings previous-card) timeline-visibility-keys)
+        draws-events?       (fn [visibility display]
+                              (and (events-enabled? visibility) (timeline-events-supported-display? display)))
+        reveals-all?        (and (draws-events? visibility (:display card))
+                                 (not (draws-events? previous-visibility (:display previous-card))))]
+    (or (not (or reveals-all? (not= visibility previous-visibility)))
+        ;; Timelines the card already showed stay visible whatever the user saves, so only the difference is
+        ;; checked. Deleted timelines are skipped when rendering, so a stale id must not block saving the card.
+        (every? mi/can-read?
+                (t2/hydrate (queries.db/timelines
+                             (newly-revealed-timeline-ids visibility previous-visibility reveals-all?))
+                            :can_read)))))
 
 (defn card-exposed-timeline-ids
   "The ids of the timelines whose events `card` shows on a dashboard."
@@ -987,7 +992,7 @@
         new-card-ids      (into #{} (comp exposed-card-ids (remove existing-card-ids)) new-dashcards)]
     (check-shared-dashboard-timeline-permissions-for-card-ids! dashboard new-card-ids)))
 
-;; before-insert can't take arguments, so the copy source is passed through a binding
+;; the create permission check takes only the new Card, so the copy source is passed through a binding
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *copy-source-card*
   "The Card a new Card is being copied from, if any. Its timeline visibility settings count as the previous state, so
@@ -995,11 +1000,100 @@
   nil)
 
 (defmacro with-copy-source-card
-  "Runs `body`, treating a Card inserted within it as a copy of `source-card`: an inherited timeline selection does
+  "Runs `body`, treating a Card created within it as a copy of `source-card`: an inherited timeline selection does
   not require read access to those timelines. `source-card` must be a Card the current user has already passed a
-  read check on, and `body` should perform only the single copy insert."
+  read check on, and `body` should perform only the create permission check and the single copy insert."
   [source-card & body]
   `(binding [*copy-source-card* ~source-card] ~@body))
+
+(defenterprise sandboxes-allow-card-update?
+  "Whether sandboxing lets the current user apply `changes`, the guarded columns of a Card that really change, to
+  `card`, which OSS always does."
+  metabase-enterprise.sandbox.models.sandbox
+  [_card _changes]
+  true)
+
+(defn- changed?
+  "Return whether there were any changes in the objects. ONLY keys in `after` are compared. If any are missing from
+  `before` an exception will be thrown.
+
+  returns false, `description` has not changed:
+  (changed? {:collection_id 1 :description \"foo\"}
+            {:description \"foo\"})
+
+  returns true, `description` has changed:
+  (changed? {:collection_id 1 :description \"foo\"}
+            {:description \"diff\"})
+
+  throws an exception, `before` is missing keys from `after`:
+  (changed? {:collection_id 1}
+            {:collection_id 1 :description \"foobar\"})
+
+  For keys that will be transformed before we insert them in the database, automatically runs
+  `(out-transform (in-transform ...))` before comparing to make sure we are comparing the canonical form."
+  [card-before updates]
+  ;; normalize the query before comparison
+  (let [transforms (t2/transforms :model/Card)
+        after (->> updates
+                   (map (fn [[k v]]
+                          (let [tvi (get-in transforms [k :in] identity)
+                                tvo (get-in transforms [k :out] identity)
+                                tv (tvo (tvi v))]
+                            [k tv])))
+                   (into {}))
+        before  (select-keys card-before (keys after))]
+    (when-not (set/subset? (set (keys after))
+                           (set (keys before)))
+      (throw (ex-info "`before-card` card is missing keys from `updates`"
+                      {:missing-keys (apply disj
+                                            (set (keys after))
+                                            (set (keys before)))})))
+    (boolean (some (fn [k] (api/column-will-change? (get before k) (get after k))) (keys after)))))
+
+(def ^:private sandbox-guarded-columns
+  "The columns of a Card only an admin may change while a sandbox depends on the Card."
+  [:dataset_query :archived :result_metadata])
+
+(def ^:private embedding-columns
+  "The columns that make a Card embedded, which only an admin may change."
+  [:enable_embedding :embedding_type :embedding_params])
+
+(def ^:private public-link-columns
+  "The columns that make a Card publicly shared."
+  #{:public_uuid :made_public_by_id})
+
+(defn- changing-columns
+  "The entries of `changes` for `columns` whose value differs from the one `card` has."
+  [card changes columns]
+  (into {} (filter (fn [[k v]] (changed? card {k v}))) (select-keys changes columns)))
+
+(defn- public-link-changes-only?
+  "Whether `changes` is not empty and touches nothing but the public link of a Card."
+  [changes]
+  (and (seq changes) (every? public-link-columns (keys changes))))
+
+(defn- public-link-change-permitted?
+  "Whether the current user may apply the public link entries of `changes`: an admin to make a Card public, and a user
+  with the settings permission to make it private again."
+  [changes]
+  (cond
+    (not-any? #(contains? changes %) public-link-columns) true
+    (some? (:public_uuid changes))                        (boolean api/*is-superuser?*)
+    :else                                                 (perms/has-application-permission? :setting)))
+
+(defmethod mi/can-create? :model/Card
+  [_model {collection-id :collection_id :as card}]
+  (and (collection/can-write-collection-or-root? collection-id {:root-namespace nil})
+       (timeline-selection-readable? card *copy-source-card*)))
+
+(defmethod mi/can-update? :model/Card
+  [card changes]
+  (and (or (public-link-changes-only? changes) (mi/can-write? card))
+       (public-link-change-permitted? changes)
+       (or (empty? (changing-columns card changes embedding-columns))
+           (boolean api/*is-superuser?*))
+       (timeline-selection-readable? (merge card changes) card)
+       (sandboxes-allow-card-update? card (changing-columns card changes sandbox-guarded-columns))))
 
 (defn- data-app-card-error
   "A 400 error for a card in a data app's collection, with `message`."
@@ -1049,9 +1143,36 @@
   #{:collection_id :dashboard_id :document_id :type :archived :public_uuid :enable_embedding :embedding_params
     :embedding_type :dataset_query :parameters})
 
+(defn- card-query
+  "The query of `card` with the metadata provider of its Database."
+  [{:keys [dataset_query]}]
+  (lib/query (lib-be/application-database-metadata-provider (:database dataset_query)) dataset_query))
+
+(defn- check-no-save-cycle
+  "Throws a 400 when the query of `card` depends on `card` itself through the Cards it reads."
+  [{:keys [id dataset_query] :as card}]
+  (when (and id (seq dataset_query))
+    (try
+      (lib/check-card-overwrite id (card-query card))
+      (catch clojure.lang.ExceptionInfo e
+        (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))))
+
+(defn- derive-model-display
+  "`card` with the `:table` display a model has, unless it is a `:list`."
+  [card]
+  (cond-> card
+    (and (model? card) (not= :list (keyword (:display card)))) (assoc :display :table)))
+
+(defn- delete-alerts-if-changed
+  "Deletes the alerts of `card`, which `changes` turn from `original`, that its new display, goal or breakouts no
+  longer fit."
+  [card original changes]
+  (when (some #(contains? changes %) [:display :visualization_settings :dataset_query])
+    (pulse/delete-alerts-if-card-changed! :old-card original :new-card card)))
+
 (t2/define-before-insert :model/Card
   [card]
-  (check-timeline-visibility-permissions! card *copy-source-card*)
+  (check-timeline-settings card)
   (u/prog1
     (-> card
         (assoc :metabase_version config/mb-version-string
@@ -1062,6 +1183,7 @@
         (u/assoc-default :entity_id (u/generate-nano-id))
         (u/assoc-default :type :question)
         card.metadata/populate-result-metadata
+        derive-model-display
         pre-insert
         populate-query-fields
         maybe-populate-initially-published-at
@@ -1122,14 +1244,17 @@
         ;; normalization preserving the instance's original.
         original (t2/original card)
         card     (normalize-card card)]
-    (when (or (contains? changes :visualization_settings) (contains? changes :display))
-      (check-timeline-visibility-permissions! card original))
-    (collection/check-allowed-content (:type card) (:collection_id changes))
+    (when (contains? changes :visualization_settings)
+      (check-timeline-settings card))
+    (when (or (contains? changes :collection_id) (contains? changes :type))
+      (collection/check-allowed-content (:type card) (:collection_id card)))
     (-> card
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
         (apply-dashboard-question-updates changes)
         (m/update-existing :dataset_query lib-be/normalize-query)
+        (cond-> (contains? changes :type) derive-model-display)
+        (cond-> (contains? changes :dataset_query) (doto check-no-save-cycle))
         (populate-result-metadata changes verified-result-metadata?)
         ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
         ;; Only allow it to nil out a stale table_id when the query itself is changing.
@@ -1137,6 +1262,7 @@
         (cond-> (some data-app-card-columns (keys changes)) (doto check-data-app-card))
         (clear-metabot-origin changes)
         (pre-update changes)
+        (doto (delete-alerts-if-changed original changes))
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))
 
@@ -1332,43 +1458,6 @@
   is the first. This is the case from the hydration function for moderation_reviews."
   [card]
   (-> card :moderation_reviews first :status #{"verified"} boolean))
-
-(defn- changed?
-  "Return whether there were any changes in the objects. ONLY keys in `after` are compared. If any are missing from
-  `before` an exception will be thrown.
-
-  returns false, `description` has not changed:
-  (changed? {:collection_id 1 :description \"foo\"}
-            {:description \"foo\"})
-
-  returns true, `description` has changed:
-  (changed? {:collection_id 1 :description \"foo\"}
-            {:description \"diff\"})
-
-  throws an exception, `before` is missing keys from `after`:
-  (changed? {:collection_id 1}
-            {:collection_id 1 :description \"foobar\"})
-
-  For keys that will be transformed before we insert them in the database, automatically runs
-  `(out-transform (in-transform ...))` before comparing to make sure we are comparing the canonical form."
-  [card-before updates]
-  ;; normalize the query before comparison
-  (let [transforms (t2/transforms :model/Card)
-        after (->> updates
-                   (map (fn [[k v]]
-                          (let [tvi (get-in transforms [k :in] identity)
-                                tvo (get-in transforms [k :out] identity)
-                                tv (tvo (tvi v))]
-                            [k tv])))
-                   (into {}))
-        before  (select-keys card-before (keys after))]
-    (when-not (set/subset? (set (keys after))
-                           (set (keys before)))
-      (throw (ex-info "`before-card` card is missing keys from `updates`"
-                      {:missing-keys (apply disj
-                                            (set (keys after))
-                                            (set (keys before)))})))
-    (boolean (some (fn [k] (api/column-will-change? (get before k) (get after k))) (keys after)))))
 
 (def ^:private card-compare-keys
   "When comparing a card to possibly unverify, only consider these keys as changing something 'important' about the

@@ -200,8 +200,6 @@
                        (contains? args :archived)            (assoc :archived (boolean archived))
                        new-query                             (assoc :dataset_query new-query))
         card-updates (api/updates-with-archived-directly card-before raw-updates)]
-    (when-some [query (:dataset_query card-updates)]
-      (queries/check-no-save-cycle! card-id query))
     (queries/check-allowed-to-update-card! card-before card-updates)
     (queries/update-card! {:card-before-update    card-before
                            :card-updates          card-updates

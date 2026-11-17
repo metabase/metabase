@@ -153,9 +153,14 @@
            {b-id :id}
            {:name "Metric B"
             :type :metric
-            :dataset_query (metric-query a-id)}]
-          ;; close the cycle A -> B -> A; nothing rejects reference cycles at write time
-          (t2/update! :model/Card :id a-id {:dataset_query (metric-query b-id)})
+            :dataset_query (metric-query a-id)}
+           :model/Card
+           {c-id :id}
+           {:name "Metric C"
+            :type :metric
+            :dataset_query (metric-query b-id)}]
+          ;; close the cycle A -> B -> A with a raw update, as a cycle saved before the Card hooks refused them is stored
+          (t2/update! :report_card :id a-id {:dataset_query (t2/select-one-fn :dataset_query :report_card :id c-id)})
           (let [result (#'search.ingestion/execute-all-function-attrs
                         (search.spec/spec "card")
                         {:dataset_query (json/encode (metric-query a-id))

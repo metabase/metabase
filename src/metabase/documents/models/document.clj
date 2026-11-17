@@ -317,7 +317,7 @@
   read access to any card the parameters draw values from, and query permission on the fields the parameter targets
   name."
   [{query :dataset_query :as card} creator]
-  (api/create-check :model/Card {:collection_id (:collection_id card)})
+  (api/create-check :model/Card card)
   (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
   (card/check-parameter-source-card-permissions (:parameters card))
   (query-perms/check-parameter-field-permissions
@@ -336,9 +336,9 @@
   write such a query themselves, e.g. a native card when they lack native query editing perms (UXW-5037). Running the
   clone is still gated by the usual runtime permission checks, the same ones that gate running the source card."
   [source-card creator]
-  (api/create-check :model/Card {:collection_id (:collection_id source-card)})
   (card/with-copy-source-card source-card
-    (card/create-card! (assoc source-card :type :question :dashboard_id nil) creator)))
+    (api/create-check :model/Card source-card))
+  (card/create-card! (assoc source-card :type :question :dashboard_id nil) creator))
 
 (mu/defn update-cards-in-ast :- [:map [:document :any]
                                  [:content_type :string]]

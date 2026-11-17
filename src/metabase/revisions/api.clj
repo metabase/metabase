@@ -143,7 +143,7 @@
                                                    {:allow-sensitive-fields? true}))
     (when (contains? #{:model/TransformTest :model/CardTest} model)
       (api/check-403 (mi/can-write? (t2/hydrate (merge instance (:object revision)) :can_write))))
-    (when (contains? #{:model/Transform :model/Segment :model/Measure :model/Dashboard} model)
+    (when (contains? #{:model/Transform :model/Segment :model/Measure :model/Dashboard :model/Card} model)
       (api/update-check instance (:object revision)))
     (when (contains? #{:model/Dashboard :model/Card} model)
       (collection/check-allowed-to-change-collection instance (:object revision))

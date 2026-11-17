@@ -330,6 +330,7 @@
                 (some? card-ids) (filter #(contains? card-ids (:id %))))]
     (t2/with-transaction [_conn]
       (mapv (fn [{:as card :keys [in_dashboards]}]
+              (api/update-check card {:dashboard_id (-> in_dashboards first :id)})
               (queries/update-card! {:card-before-update card
                                      :card-updates {:dashboard_id (-> in_dashboards first :id)}
                                      :actor @api/*current-user*
