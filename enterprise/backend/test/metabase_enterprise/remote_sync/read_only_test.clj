@@ -109,12 +109,12 @@
           (is (false? (mi/can-write? (t2/hydrate archived :can_write))))
           (is (false? (mi/can-write? (t2/hydrate card :can_write))))
           (is (false? (mi/can-write? (t2/hydrate snippet :can_write))))
-          (is (false? (mi/can-update? snippet {:archived false})))))
+          (is (false? (mi/can-update? (t2/hydrate snippet :can_write) {:archived false})))))
       (testing "on read-write instance, it can"
         (remote-sync.tu/with-remote-sync [url :read-write]
           (is (true? (mi/can-write? (t2/hydrate archived :can_write))))
           (is (true? (mi/can-write? (t2/hydrate card :can_write))))
-          (is (true? (mi/can-update? snippet {:archived false}))))))))
+          (is (true? (mi/can-update? (t2/hydrate snippet :can_write) {:archived false}))))))))
 
 (deftest table-write-check-loads-publication-columns-test
   (mt/with-temp [:model/Collection synced    {:name "Synced" :is_remote_synced true :location "/"}

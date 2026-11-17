@@ -99,7 +99,10 @@ rows declares `(mi/define-update-in-transaction :model/X)`. Trigger on the colum
 - `mi/can-read?`, `can-write?` and `can-query?` read the hydrated answer and throw when it is missing. For a list,
   `(mi/readable rows)` and `(mi/writable rows)` hydrate once and filter.
 - A hydration answers a whole list in a fixed number of queries: load the parents (tables, collections) once.
-- `can-update?` starts with `(mi/can-write? row)` and adds what depends on the change: write access to the collection
+- `can-update?` answers the whole question and calls `(mi/can-write? row)` itself; nothing adds it for you. A change
+  that needs no write access is a named predicate with a docstring saying who it is for: only the public link of a
+  Dashboard or Card, and a change to unsynced columns on a read-only remote-sync instance. On top of write access it
+  adds what depends on the change: write access to the collection
   or table the row moves to, a superuser-only column (`(mi/superuser?)`), a sandbox restriction. `changes` may repeat
   stored values, so test a column with `(api/column-will-change? (:col row) (get changes :col ::api/not-provided))`.
   `can-create?` and `can-update?` share a private predicate; neither calls the other. Both return a boolean and

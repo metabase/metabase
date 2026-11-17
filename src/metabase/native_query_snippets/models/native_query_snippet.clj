@@ -192,12 +192,18 @@
   [_snippet _changes]
   true)
 
+(defn- unsynced-change?
+  "Whether `changes` touch no synced column of `snippet`, which a read-only instance still accepts from a user the
+  other rules of the update allow."
+  [snippet changes]
+  (not (remote-sync/synced-changes? :model/NativeQuerySnippet snippet changes)))
+
 (defmethod mi/can-update? :model/NativeQuerySnippet
   [snippet changes]
-  (and (snippet.perms/can-update? snippet changes)
-       (sandboxes-allow-snippet-update? snippet changes)
-       (or (not (remote-sync/synced-changes? :model/NativeQuerySnippet snippet changes))
-           (not (remote-sync/read-only?)))))
+  (and (or (mi/can-write? snippet)
+           (unsynced-change? snippet changes))
+       (snippet.perms/can-update? snippet changes)
+       (sandboxes-allow-snippet-update? snippet changes)))
 
 ;;; ---------------------------------------------------- Serialization ----------------------------------------------------
 

@@ -196,17 +196,9 @@
    (or (not (contains? changes :creator_id))
        (= (:creator_id changes) (:creator_id instance))
        (mi/superuser?))
-   (or
-    (mi/superuser?)
-    (and
-     (current-user-is-creator? instance)
-     ;; if advanced-permissions is enabled, we require users to have subscription permissions
-     ;; and is the owner of the notification and can read the payload
-     (or
-      (not (premium-features/enable-advanced-permissions?))
-      (perms/current-user-has-application-permissions? :subscription))
-     (current-user-can-read-payload? instance)
-     (current-user-can-read-payload? (merge instance changes))))))
+   (mi/can-write? instance)
+   (or (mi/superuser?)
+       (current-user-can-read-payload? (merge instance changes)))))
 
 (methodical/defmethod t2/simple-hydrate [:model/Notification :can_write]
   ;; superuser, or the creator with subscription permissions who can read the payload (mirrors `can-update?`)

@@ -1069,7 +1069,8 @@
   (into {} (filter (fn [[k v]] (changed? card {k v}))) (select-keys changes columns)))
 
 (defn- public-link-changes-only?
-  "Whether `changes` is not empty and touches nothing but the public link of a Card."
+  "Whether `changes` is not empty and touches nothing but the public link of a Card, the one change that needs no write access to it: a settings manager may remove the
+  link of a Card they cannot write."
   [changes]
   (and (seq changes) (every? public-link-columns (keys changes))))
 

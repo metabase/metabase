@@ -102,7 +102,7 @@
 
 (defmethod mi/can-update? :model/CardTest
   [instance changes]
-  (and (can-save-test? (:card_id instance))
+  (and (mi/can-write? instance)
        (can-save-test? (:card_id changes (:card_id instance)))))
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------

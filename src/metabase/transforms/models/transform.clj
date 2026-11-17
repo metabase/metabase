@@ -340,12 +340,18 @@
     (when transform
       (assoc transform k (boolean (mi/can-read? transform))))))
 
+(defn- unsynced-change-writable?
+  "Whether the current user can apply `changes` that touch no synced column of `instance`, which a read-only instance
+  still accepts."
+  [instance changes]
+  (and (not (remote-sync/synced-changes? :model/Transform instance changes))
+       (transform-writable? instance)))
+
 (defmethod mi/can-update? :model/Transform
   [instance changes]
-  (and (transform-writable? instance)
-       (transform-writable? (merge instance changes))
-       (or (not (remote-sync/synced-changes? :model/Transform instance changes))
-           (not (remote-sync/read-only?)))))
+  (and (or (mi/can-write? instance)
+           (unsynced-change-writable? instance changes))
+       (transform-writable? (merge instance changes))))
 
 (defmethod mi/can-create? :model/Transform
   [_model instance]

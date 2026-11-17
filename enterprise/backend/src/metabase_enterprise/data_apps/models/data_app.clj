@@ -141,11 +141,17 @@
   (and api/*is-superuser?*
        (not (remote-sync/read-only?))))
 
+(defn- unsynced-change-writable?
+  "Whether the current user can apply `changes` that touch no synced column of `app`, which a read-only instance still
+  accepts."
+  [app changes]
+  (boolean (and api/*is-superuser?*
+                (not (remote-sync/synced-changes? :model/DataApp app changes)))))
+
 (defmethod mi/can-update? :model/DataApp
   [app changes]
-  (and api/*is-superuser?*
-       (or (not (remote-sync/synced-changes? :model/DataApp app changes))
-           (not (remote-sync/read-only?)))))
+  (or (mi/can-write? app)
+      (unsynced-change-writable? app changes)))
 
 ;; The collection goes first, while the row still references it: the reference is nullable so the database can clear
 ;; it, and the collection's own hooks delete what it holds and the grants on it.

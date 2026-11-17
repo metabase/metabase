@@ -135,12 +135,18 @@
   [_model instance]
   (can-save? (:transform_id instance)))
 
+(defn- unsynced-change-writable?
+  "Whether the current user can apply `changes` that touch no synced column of `instance`, which a read-only instance
+  still accepts."
+  [instance changes]
+  (and (not (remote-sync/synced-changes? :model/TransformTest instance changes))
+       (can-save? (:transform_id instance))))
+
 (defmethod mi/can-update? :model/TransformTest
   [instance changes]
-  (and (can-save? (:transform_id instance))
-       (can-save? (:transform_id changes (:transform_id instance)))
-       (or (not (remote-sync/synced-changes? :model/TransformTest instance changes))
-           (not (remote-sync/read-only?)))))
+  (and (or (mi/can-write? instance)
+           (unsynced-change-writable? instance changes))
+       (can-save? (:transform_id changes (:transform_id instance)))))
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 

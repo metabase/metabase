@@ -249,7 +249,8 @@
                                                             :type "category"}]}
          :model/Collection       coll      {:name "A collection"}]
         (mt/with-temporary-setting-values [enable-public-sharing true]
-          (let [columns    (set/difference (set (keys dashboard)) @#'impl.dashboard/excluded-columns-for-dashboard-revision)
+          (let [columns    (disj (set/difference (set (keys dashboard)) @#'impl.dashboard/excluded-columns-for-dashboard-revision)
+                                 :archived_directly)
                 update-col (fn [col value]
                              (cond
                                (= col :collection_id)              (:id coll)

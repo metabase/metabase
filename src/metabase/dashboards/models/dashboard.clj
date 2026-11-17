@@ -259,7 +259,8 @@
     true))
 
 (defn- changes-only-public-link?
-  "Whether `changes` change the public link of `dashboard` and nothing else."
+  "Whether `changes` change the public link of `dashboard` and nothing else, the one change that needs no write access
+  to it: a settings manager may remove the link of a Dashboard they cannot write."
   [dashboard changes]
   (boolean (and (public-link-change dashboard changes)
                 (every? #{:public_uuid :made_public_by_id} (keys changes)))))
