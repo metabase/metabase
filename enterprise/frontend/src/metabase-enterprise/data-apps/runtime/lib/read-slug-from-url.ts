@@ -1,4 +1,4 @@
-import { EMBEDDED_DATA_APP_PREFIX } from "embedding-sdk-shared/lib/embedded-data-app-path";
+import { EMBEDDED_DATA_APP_PREFIX } from "embedding-sdk-shared/data-apps/embedded-data-app-path";
 import { getMetabaseRootPath } from "embedding-sdk-shared/lib/get-current-metabase-instance-url";
 import { DATA_APP_EMBED_PREFIX } from "metabase/urls/data-apps";
 

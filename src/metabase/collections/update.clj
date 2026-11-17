@@ -13,7 +13,6 @@
    ;; back into this module. `notification.card` requires only events, the notification models,
    ;; and toucan.
    [metabase.notification.card :as notification.card]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -64,9 +63,8 @@
         ;; Check that we have write perms on the new parent collection
         (api/write-check new-parent)
         ;; ok, make sure we have perms to do this operation
-        (api/check-403
-         (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-                                                  (collection/perms-for-moving collection-before-update new-parent)))
+        (api/check-403 (collection/can-write-collection-ids?
+                        (vec (collection/collection-ids-for-moving collection-before-update new-parent))))
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location)))))
 
@@ -98,7 +96,8 @@
 
 (mu/defn update-collection!
   "Modify the collection with `id`, including archiving or unarchiving it, or moving it. Write-checks the collection,
-  gates `authority_level` behind superuser plus the Official Collections feature, applies the plain column updates,
+  refuses to archive a transforms folder with a 400, gates `authority_level` behind superuser plus the Official
+  Collections feature, applies the plain column updates,
   then moves or archives as `collection-updates` asks, and publishes the update and touch events. Returns the updated
   collection. The single source of truth for collection updates; REST and agent callers both go through here."
   [id                 :- ms/PositiveInt
@@ -108,6 +107,11 @@
     ;; tenant-specific-root-collection collections cannot be updated
     (api/check-400
      (not= (:type collection-before-update) collection/tenant-specific-root-collection-type))
+    ;; A transforms folder is deleted, never archived: an archived folder hides transforms that keep running. Check
+    ;; before any write, so a refused request changes nothing.
+    (api/check-400 (not (and (:archived collection-updates)
+                             (= (:namespace collection-before-update) collection/transforms-ns)))
+                   (tru "A transforms folder cannot be archived. Delete it instead."))
     ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword (:authority_level collection-updates))

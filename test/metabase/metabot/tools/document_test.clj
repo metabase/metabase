@@ -20,6 +20,7 @@
    [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
+   [metabase.metabot.tools.sql.validation :as sql.validation]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -29,15 +30,20 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- invoke-document-tool-with-memory-atom
+  "Call `tool-name` from the Documents profile through the runtime, with `memory-atom` holding the agent's memory."
+  [tool-name args memory-atom]
+  (binding [scope/*current-user-scope* api-scope/unrestricted]
+    (let [entries (agent-tools/->entries (:tools (profiles/get-profile :document-generate-content))
+                                         memory-atom nil :document-generate-content)]
+      ((get-in entries [tool-name :fn]) args))))
+
 (defn- invoke-document-tool
   "Call `tool-name` from the Documents profile through the runtime, with `memory` as the agent's memory."
   ([tool-name args]
    (invoke-document-tool tool-name args {}))
   ([tool-name args memory]
-   (binding [scope/*current-user-scope* api-scope/unrestricted]
-     (let [entries (agent-tools/->entries (:tools (profiles/get-profile :document-generate-content))
-                                          (atom memory) nil :document-generate-content)]
-       ((get-in entries [tool-name :fn]) args)))))
+   (invoke-document-tool-with-memory-atom tool-name args (atom memory))))
 
 (defn- mentions
   "Agent memory in which the user `@`-mentioned `references`."
@@ -148,6 +154,24 @@
                  (:structured-output (invoke-document-tool "document_schema_collect" {}
                                                            (mentions {(str "database:" (mt/id)) "Test Data"}))))))))))
 
+(deftest schema-collect-ddl-columns-once-test
+  (testing "the DDL of a table lists each column once, with a comma between columns"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [output (:output (invoke-document-tool "document_schema_collect" {:database_id (mt/id)} (mentions {})))]
+        (is (str/includes? output (str "CREATE TABLE PUBLIC.ORDERS (\n"
+                                       "  ID BIGINT,\n"
+                                       "  USER_ID INTEGER,\n"
+                                       "  PRODUCT_ID INTEGER,\n"
+                                       "  SUBTOTAL DOUBLE PRECISION,\n"
+                                       "  TAX DOUBLE PRECISION,\n"
+                                       "  TOTAL DOUBLE PRECISION,\n"
+                                       "  DISCOUNT DOUBLE PRECISION,\n"
+                                       "  CREATED_AT TIMESTAMP WITH TIME ZONE,\n"
+                                       "  QUANTITY INTEGER\n"
+                                       ");")))
+        (testing "no table has a column line with no comma before the next column"
+          (is (nil? (re-find #"[^,(]\n  \S" output))))))))
+
 (deftest document-construct-sql-chart-tool-test
   (testing "builds chart draft payload from SQL query"
     (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
@@ -211,6 +235,29 @@
           (is (str/includes? output "invalid Metabase `{{...}}` or `[[...]]` syntax"))
           (is (str/includes? output "Parser details: \"Invalid query: found '[[' or '{{' with no matching"))
           (is (not (str/includes? output "this edit did not change"))))))))
+
+(deftest document-construct-sql-chart-reference-test
+  (testing "a reference to a card that does not exist gets the SQL tools' recoverable error, and no draft"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [result (invoke-document-tool "document_construct_sql_chart"
+                                         (assoc sql-chart-args
+                                                :database_id (mt/id)
+                                                :sql (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v")))]
+        (is (= {:class :recoverable :code ::sql.common/missing-references} (:error result)))
+        (is (nil? (:structured-output result)))))))
+
+(deftest document-construct-sql-chart-skips-table-check-test
+  (testing "a table that does not exist records no reference warning, because the tool does not show warnings"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-dynamic-fn-redefs [qp/process-query (fn [& _] nil)]
+          (let [memory-atom (atom {})
+                result      (invoke-document-tool-with-memory-atom
+                             "document_construct_sql_chart"
+                             (assoc sql-chart-args :database_id (mt/id) :sql "SELECT * FROM no_such_account")
+                             memory-atom)]
+            (is (nil? (:error result)))
+            (is (empty? (::sql.validation/shown-reference-warnings @memory-atom)))))))))
 
 (deftest document-construct-sql-chart-blank-sql-test
   (testing "blank SQL gets the SQL tools' recovery step instead of a draft"

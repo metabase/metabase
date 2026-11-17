@@ -236,10 +236,10 @@
 
 (def ^:private header-alignment-table-columns
   "Viz settings naming every column, in result order. Their presence masked the bug (#71069)."
-  {:metabase.models.visualization-settings/table-columns
+  {:table.columns
    (vec (for [col-name (map :name header-alignment-cols)]
-          {:metabase.models.visualization-settings/table-column-name    col-name
-           :metabase.models.visualization-settings/table-column-enabled true}))})
+          {:name    col-name
+           :enabled true}))})
 
 (defn- rendered-table-headers
   "The titles actually rendered into the <th> cells of a `:table` part."
@@ -1396,13 +1396,13 @@
           test-rows [[1 "Alice"] [2 "Bob"]]
           test-data {:cols test-cols :rows test-rows}
           ;; Simulate duplicated table columns viz settings
-          viz-settings {:metabase.models.visualization-settings/table-columns
-                        [{:metabase.models.visualization-settings/table-column-name "ID"
-                          :metabase.models.visualization-settings/table-column-enabled true}
-                         {:metabase.models.visualization-settings/table-column-name "ID" ; duplicate
-                          :metabase.models.visualization-settings/table-column-enabled true}
-                         {:metabase.models.visualization-settings/table-column-name "NAME"
-                          :metabase.models.visualization-settings/table-column-enabled true}]}
+          viz-settings {:table.columns
+                        [{:name "ID"
+                          :enabled true}
+                         {:name "ID" ; duplicate
+                          :enabled true}
+                         {:name "NAME"
+                          :enabled true}]}
           [ordered-cols ordered-rows] (#'body/order-data test-data viz-settings)]
       (testing "should return cols without errors"
         (is (= 2 (count ordered-cols)))
@@ -1423,10 +1423,10 @@
           test-rows [[1 "Alice" "alice@example.com" "555-1234" "123 Main St" "Boston" "MA" "02101" "USA" "2024-01-01"]]
           test-data {:cols test-cols :rows test-rows}
           reordered-names ["EMAIL" "NAME" "CITY" "STATE" "ZIP" "ID" "PHONE" "ADDRESS" "COUNTRY" "CREATED_AT"]
-          viz-settings {:metabase.models.visualization-settings/table-columns
+          viz-settings {:table.columns
                         (vec (for [col-name reordered-names]
-                               {:metabase.models.visualization-settings/table-column-name col-name
-                                :metabase.models.visualization-settings/table-column-enabled true}))}
+                               {:name col-name
+                                :enabled true}))}
           [ordered-cols ordered-rows] (#'body/order-data test-data viz-settings)]
       (testing "cols should follow table-columns order"
         (is (= reordered-names (map :name ordered-cols))))
@@ -1438,10 +1438,10 @@
   (mt/with-column-remappings [orders.product_id products.title]
     (testing "order-data respect table-columns order from viz-settings and keep remapped columns (#62053)"
       (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders {:limit 1})
-                                       :visualization_settings {:metabase.models.visualization-settings/table-columns
+                                       :visualization_settings {:table.columns
                                                                 (vec (for [col-name ["QUANTITY" "CREATED_AT" "DISCOUNT" "TOTAL" "TAX" "SUBTOTAL" "USER_ID" "ID" "PRODUCT_ID"]]
-                                                                       {:metabase.models.visualization-settings/table-column-name col-name
-                                                                        :metabase.models.visualization-settings/table-column-enabled true}))}}]
+                                                                       {:name col-name
+                                                                        :enabled true}))}}]
         ;; trigger render to gather prep-data for rendering
         (let [table (body/render :table nil "UTC" card nil  (:data (:result (notification.execute/execute-card (mt/user->id :crowberto) (:id card)))))]
           (is (=  ["Quantity"

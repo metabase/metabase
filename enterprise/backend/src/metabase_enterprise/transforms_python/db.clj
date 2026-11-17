@@ -17,6 +17,11 @@
    _opts :- ::remote-sync.schema/synced-filter-opts]
   [:= (u/qualified-key alias :is_default) false])
 
+(mu/defn tables
+  "The Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select :model/Table :id [:in table-ids]))
+
 (mu/defn table-database-ids
   "The set of Database IDs of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]

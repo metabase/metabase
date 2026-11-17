@@ -45,6 +45,12 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))
 
+(mu/defn dashboard-collection-rows
+  "The Dashboards with `dashboard-ids` narrowed to `:id` and `:collection_id`, the columns their permission hydrations
+  read."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/select [:model/Dashboard :id :collection_id] :id [:in dashboard-ids]))
+
 (mu/defn insert-dashboard!
   "Insert the Dashboard `row` and return the inserted instance."
   [row :- ::dashboards.schema/dashboard.update]
@@ -143,10 +149,29 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
+(mu/defn cards-by-ids
+  "The Cards with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select :model/Card :id [:in ids])
+    []))
+
+(mu/defn actions-by-ids
+  "The Actions with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select :model/Action :id [:in ids])
+    []))
+
 (mu/defn card-query-columns
   "The query-relevant columns of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (queries/card-query-info card-id))
+
+(mu/defn card-collection-ids :- [:map-of ::lib.schema.id/card [:maybe ::lib.schema.id/collection]]
+  "A map of Card id to the id of its Collection, nil for the root, for the Cards with `card-ids`."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select-pk->fn :collection_id :model/Card :id [:in card-ids]))
 
 (mu/defn card-queries
   "A map of Card id to query for the Cards with `card-ids`."
@@ -300,9 +325,9 @@
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 
-(mu/defn ensure-integer-link-card-id
-  "Return `id` if it is an integer, else throw a 400."
-  [id :- ms/VisualizationSettingsValue]
+(defn ensure-integer-link-card-id
+  "Return `id`, a value the client sent as the id of a link card's entity, if it is an integer, else throw a 400."
+  [id]
   (when-not (integer? id)
     (throw (ex-info "Link card entity id must be an integer"
                     {:status-code 400, :id id})))
@@ -379,8 +404,32 @@
   [[link-card-info-rows]], or nil."
   [model :- :string
    id    :- [:or :int :string]]
-  (t2/select-one (serialization/link-card-model->toucan-model model)
-                 (h2x/assert-map-or-nil! (link-card-info-query-for-model model id))))
+  (if (= model "collection")
+    (some-> (t2/select-one [:model/Collection :id :name :description :type :namespace]
+                           :id (ensure-integer-link-card-id id))
+            (assoc :model model))
+    (t2/select-one (serialization/link-card-model->toucan-model model)
+                   (h2x/assert-map-or-nil! (link-card-info-query-for-model model id)))))
+
+(mu/defn link-card-entities
+  "The instances of the link-card `model` (a string like \"card\" or \"table\") with integer `ids`, projected like
+  [[link-card-entity]]; none for an unknown model."
+  [model :- :string
+   ids   :- [:sequential :int]]
+  (cond
+    (empty? ids)
+    []
+
+    (= model "collection")
+    (mapv #(assoc % :model model)
+          (t2/select [:model/Collection :id :name :description :type :namespace] :id [:in ids]))
+
+    (contains? serialization/link-card-model->toucan-model model)
+    (t2/select (serialization/link-card-model->toucan-model model)
+               (h2x/assert-map-or-nil! (link-card-info-query-for-model model ids)))
+
+    :else
+    []))
 
 (defn- link-card-info-query
   [link-card-model->ids]
@@ -389,6 +438,17 @@
     {:select   [:*]
      :from     [[^:allow-subquery {:union-all (map #(apply link-card-info-query-for-model %) link-card-model->ids)}
                  :alias_is_required_by_sql_but_not_needed_here]]}))
+
+(mu/defn link-card-collection-read-columns :- [:map-of ms/PositiveInt :map]
+  "The `:type` and `:namespace` of the Collections with `collection-ids`, the columns their read check reads that
+  [[link-card-info-rows]] does not carry, keyed by id."
+  [collection-ids :- [:sequential [:or :int :string]]]
+  (if (empty? collection-ids)
+    {}
+    (into {}
+          (map (juxt :id #(select-keys % [:type :namespace])))
+          (t2/select [:model/Collection :id :type :namespace]
+                     :id [:in (mapv ensure-integer-link-card-id collection-ids)]))))
 
 (mu/defn link-card-info-rows
   "The name, description, and related columns of the entities the link cards `link-card-model->ids`

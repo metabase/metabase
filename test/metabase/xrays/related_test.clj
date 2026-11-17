@@ -4,7 +4,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -189,8 +188,7 @@
                                                      :object   {}}
                  :model/DashboardCard _             {:card_id (:id card-1), :dashboard_id dash-id}
                  :model/DashboardCard _             {:card_id (:id card-2), :dashboard_id dash-id}]
-    (binding [api/*current-user-id*              (mt/user->id :rasta)
-              api/*current-user-permissions-set* (atom #{"/"})]
+    (mt/with-test-user :crowberto
       (is (=? [{:id dash-id}]
               ;; filter out dashboards unrelated to this test
               (filter #(= (:id %) dash-id)
