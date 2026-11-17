@@ -89,7 +89,7 @@
   (testing "when another writer inserts the same input first, the insert counts it on that row"
     (mt/with-empty-h2-app-db!
       (shadow-differences/record! (difference "SELECT 1"))
-      (let [seen-again! sql-tools.db/shadow-difference-seen-again!
+      (let [seen-again! (mt/original-fn #'sql-tools.db/shadow-difference-seen-again!)
             calls       (atom 0)]
         ;; the first update sees no row, as when two writers race to insert
         (mt/with-dynamic-fn-redefs [sql-tools.db/shadow-difference-seen-again!
