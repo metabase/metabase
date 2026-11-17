@@ -92,8 +92,12 @@
   [driver _feature _db]
   (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
 
-(defmethod driver/database-supports? [:sql-jdbc :jdbc/statements] [_driver _feature _db] true)
-(defmethod driver/database-supports? [:sql-jdbc :jdbc/set-query-timeout] [_driver _feature _db] true)
+(doseq [feature [:jdbc/statements
+                 :jdbc/set-query-timeout
+                 :mbql-5-native-query-execution]]
+  (defmethod driver/database-supports? [:sql-jdbc feature]
+    [_driver _feature _db]
+    true))
 
 (defmethod driver/db-default-timezone :sql-jdbc
   [driver database]

@@ -7,6 +7,7 @@ import Question from "metabase-lib/v1/Question";
 import type {
   ClickBehavior,
   ClickBehaviorTarget,
+  DatetimeUnit,
   Field,
   TemplateTagType,
 } from "metabase-types/api";
@@ -213,6 +214,63 @@ describe("metabase/dashboard/utils/click-behavior", () => {
         type: "variable",
         id: "my_field_filter",
       });
+    });
+
+    it("should produce a dimension target for a boolean custom column that accepts only boolean sources", () => {
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            expressions: [
+              {
+                name: "Boolean column",
+                value: {
+                  type: "operator",
+                  operator: "starts-with",
+                  args: [
+                    { type: "column", name: "CATEGORY" },
+                    { type: "literal", value: "Gi" },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      });
+      const question = new Question(
+        createMockCard({ dataset_query: Lib.toJsQuery(query) }),
+        metadata,
+      );
+
+      const target = getTargetsForQuestion(question).find(
+        ({ name }) => name === "Boolean column",
+      );
+
+      expect(target?.target).toEqual({
+        type: "dimension",
+        id: target?.id,
+        dimension: [
+          "dimension",
+          ["expression", "Boolean column", { "base-type": "type/Boolean" }],
+          { "stage-number": 0 },
+        ],
+      });
+      expect(
+        target?.sourceFilters.column(
+          createMockColumn({
+            base_type: "type/Boolean",
+            effective_type: "type/Boolean",
+          }),
+        ),
+      ).toBe(true);
+      expect(
+        target?.sourceFilters.column(
+          createMockColumn({
+            base_type: "type/Text",
+            effective_type: "type/Text",
+          }),
+        ),
+      ).toBe(false);
     });
 
     describe("filtering sources", () => {
@@ -766,6 +824,74 @@ describe("metabase/dashboard/utils/click-behavior", () => {
             clickBehavior,
           }),
         ).toEqual("2020-01-01~2020-01-31");
+      });
+    });
+
+    describe("binned date columns", () => {
+      const source = {
+        type: "column" as const,
+        id: "SOME_DATE",
+        name: "date",
+      };
+      const dimensionTarget: ClickBehaviorTarget = {
+        type: "dimension" as const,
+        id: '["dimension",["field",1,null]]',
+        dimension: ["dimension" as const, ["field", 1, null]],
+      };
+      const questionLink = {
+        type: "link" as const,
+        linkType: "question" as const,
+        targetId: 123,
+      };
+
+      const getData = (unit: DatetimeUnit) => ({
+        ...emptyData,
+        column: {
+          some_date: {
+            value: "2026-08-01T06:00:00Z",
+            column: createMockColumn({
+              effective_type: "type/DateTime",
+              unit,
+            }),
+          },
+        },
+      });
+
+      const formatForDateParameter = (unit: DatetimeUnit) =>
+        formatSourceForTarget(
+          source,
+          { type: "parameter" as const, id: "param123" },
+          {
+            data: getData(unit),
+            extraData: {
+              dashboard: createMockDashboard(),
+              parameters: [
+                createMockParameter({
+                  id: "param123",
+                  type: "date/all-options",
+                }),
+              ],
+            },
+            clickBehavior: { type: "crossfilter" as const },
+          },
+        );
+
+      it("should keep the time of an hour column for a dashboard date filter (metabase#58556)", () => {
+        expect(formatForDateParameter("hour")).toBe("2026-08-01T06:00");
+      });
+
+      it("should pass the whole month of a month column to a dashboard date filter (metabase#13785)", () => {
+        expect(formatForDateParameter("month")).toBe("2026-08");
+      });
+
+      it("should use the hour range of an hour column for a question dimension target (metabase#66277)", () => {
+        expect(
+          formatSourceForTarget(source, dimensionTarget, {
+            data: getData("hour"),
+            extraData: {},
+            clickBehavior: questionLink,
+          }),
+        ).toBe("2026-08-01T06:00~2026-08-01T07:00");
       });
     });
 

@@ -1358,46 +1358,177 @@
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- existing-workspace-principals
+  "Descriptions of the login, database user and schema named like the workspace's that already exist, such as
+  `login \"ws_user\"`. Empty when none do."
+  [^Connection conn username schema-name]
+  (with-open [stmt (.prepareStatement conn (str "SELECT "
+                                                "(SELECT COUNT(*) FROM master.sys.server_principals WHERE name = ?) AS login_count, "
+                                                "(SELECT COUNT(*) FROM sys.database_principals WHERE name = ?) AS user_count, "
+                                                "(SELECT COUNT(*) FROM sys.schemas WHERE name = ?) AS schema_count"))]
+    (.setString stmt 1 username)
+    (.setString stmt 2 username)
+    (.setString stmt 3 schema-name)
+    (with-open [rs (.executeQuery stmt)]
+      (.next rs)
+      (cond-> []
+        (pos? (.getInt rs "login_count"))  (conj (str "login " (quote-field username)))
+        (pos? (.getInt rs "user_count"))   (conj (str "database user " (quote-field username)))
+        (pos? (.getInt rs "schema_count")) (conj (str "schema " (quote-schema schema-name)))))))
+
+(defn- admin-session-permissions
+  "Whether the admin connection's login can see every session (`:view-sessions?`) and end another login's session
+  (`:end-sessions?`), with the login's name as QUOTENAME gives it (`:login`). Teardown reads sys.dm_exec_sessions,
+  which shows a login only its own sessions unless it has VIEW SERVER PERFORMANCE STATE on SQL Server 2022 and later,
+  or VIEW SERVER STATE before 2022. VIEW SERVER STATE implies VIEW SERVER PERFORMANCE STATE. HAS_PERMS_BY_NAME
+  returns NULL for a permission that the server does not know, so before 2022 the check falls back to VIEW SERVER
+  STATE. KILL needs ALTER ANY CONNECTION. A sysadmin has both."
+  [^Connection conn]
+  (with-open [stmt (.createStatement conn)
+              rs   (.executeQuery stmt (str "SELECT QUOTENAME(SUSER_SNAME()) AS login, "
+                                            "COALESCE(HAS_PERMS_BY_NAME(NULL, NULL, 'VIEW SERVER PERFORMANCE STATE'), "
+                                            "HAS_PERMS_BY_NAME(NULL, NULL, 'VIEW SERVER STATE')) AS view_sessions, "
+                                            "HAS_PERMS_BY_NAME(NULL, NULL, 'ALTER ANY CONNECTION') AS end_sessions"))]
+    (.next rs)
+    {:login          (.getString rs "login")
+     :view-sessions? (= 1 (.getInt rs "view_sessions"))
+     :end-sessions?  (= 1 (.getInt rs "end_sessions"))}))
+
+(defn- check-admin-can-end-sessions!
+  "Throws a 412 unless the admin connection's login, described by `permissions` from [[admin-session-permissions]], can
+  see and end the workspace user's sessions. Teardown ends them: ALTER LOGIN DISABLE leaves open sessions connected,
+  and a session that holds a lock makes the drops wait. An idle session makes DROP LOGIN fail."
+  [{:keys [login view-sessions? end-sessions?]}]
+  (let [missing (cond-> []
+                  (not view-sessions?) (conj "VIEW SERVER STATE")
+                  (not end-sessions?)  (conj "ALTER ANY CONNECTION"))]
+    (when (seq missing)
+      (throw (ex-info (format (str "The admin connection's login %s lacks %s, which it needs to see and end the workspace "
+                                   "user's sessions when it removes the workspace. Have an administrator run `USE master; %s` "
+                                   "and retry.")
+                              login
+                              (str/join " and " missing)
+                              (str/join " " (map #(format "GRANT %s TO %s;" % login) missing)))
+                      {:status-code 412, :workspace/cleanup? false})))))
+
+(defn- workspace-exists-error
+  "The 409 for a login, user or schema that init found already there, described by `found`. That object may belong to
+  another workspace, so the caller must not tear down the workspace that init was provisioning: see
+  `:workspace/cleanup?` in [[driver/init-workspace-isolation!]]."
+  [found cause]
+  (ex-info (str found " It may belong to another workspace, so it was left unchanged. Drop it by hand, or deprovision the"
+                " workspace that owns it, then provision again.")
+           {:status-code 409, :workspace/cleanup? false}
+           cause))
+
+(def ^:private duplicate-object-error-codes
+  "SQL Server error numbers for creating a login (15025), a database user (15023) or a schema (2714) whose name is
+  taken. SQL Server raises them whoever created the object. Init checks for these objects first, so during init one of
+  these errors means that the object was created after the check."
+  #{15025 15023 2714})
+
+(defn- workspace-init-sqls
+  "The batch that creates the workspace's login, database user and schema, grants the user access to that schema,
+  and grants the user CREATE TABLE in the database. No statement uses IF NOT EXISTS: if another session creates one of
+  these objects between the existence check and this batch, the batch fails."
+  [username password schema-name]
+  (let [quoted-user   (quote-field username)
+        quoted-schema (quote-schema schema-name)]
+    [(format "CREATE LOGIN %s WITH PASSWORD = N'%s'" quoted-user (sql.u/escape-sql password :ansi))
+     (format "CREATE USER %s FOR LOGIN %s" quoted-user quoted-user)
+     ;; CREATE SCHEMA must be the only statement in its T-SQL batch
+     (format "EXEC('CREATE SCHEMA %s')" quoted-schema)
+     ;; Least-privilege grant on the workspace's own schema (vs. the old GRANT
+     ;; CONTROL, dropping EXECUTE, VIEW DEFINITION, REFERENCES, and re-grant rights):
+     ;;   ALTER  - create/drop/sp_rename objects in the schema
+     ;;   SELECT, INSERT, UPDATE, DELETE - full DML (SQL Server, unlike Postgres,
+     ;;            does not confer DML from ALTER/ownership, so grant it explicitly)
+     (format "GRANT ALTER, SELECT, INSERT, UPDATE, DELETE ON SCHEMA::%s TO %s" quoted-schema quoted-user)
+     ;; db-level CREATE TABLE: SELECT INTO (transform materialization) needs it too
+     (format "GRANT CREATE TABLE TO %s" quoted-user)]))
+
+(defn- init-error
+  "`t`, from init before its transaction began to commit, marked so the caller does not tear the workspace down. Init
+  creates nothing before its transaction, and the transaction rolls back in full: CREATE LOGIN takes part in the
+  transaction like the database-level statements. A teardown could drop a login, user or schema of the same name that
+  another workspace owns."
+  [t]
+  (if (contains? (ex-data t) :workspace/cleanup?)
+    t
+    (ex-info (ex-message t) (assoc (ex-data t) :workspace/cleanup? false) t)))
+
 (defmethod driver/init-workspace-isolation! :sqlserver
   [driver database workspace]
   (let [schema-name      (:schema workspace)
         {:keys [user password]} (:database_details workspace)
-        username         user
         escaped-password (sql.u/escape-sql password :ansi)
-        escaped-username (sql.u/escape-sql username :ansi)
-        escaped-schema   (sql.u/escape-sql schema-name :ansi)
-        quoted-user      (quote-field username)
-        quoted-schema    (quote-schema schema-name)]
-    ;; SQL Server: create login (server level), then user (database level), then schema
+        ;; set just before COMMIT: from then on the transaction may have committed, and its objects need the teardown
+        committing?      (volatile! false)]
     (try
+      ;; SQL Server: create login (server level), then user (database level), then schema
       (sql-jdbc.execute/do-with-connection-with-options
        driver (driver.u/ensure-lib-database database) {:write? true}
        (fn [^Connection conn]
-         (with-open [^Statement stmt (.createStatement conn)]
-           (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
-                                     "CREATE LOGIN %s WITH PASSWORD = N'%s'")
-                                escaped-username quoted-user escaped-password)
-                        ;; the login may survive a failed teardown; without this it would keep
-                        ;; its old password while the new one gets persisted
-                        (format "ALTER LOGIN %s WITH PASSWORD = N'%s'" quoted-user escaped-password)
-                        (format "IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '%s') CREATE USER %s FOR LOGIN %s"
-                                escaped-username quoted-user quoted-user)
-                        (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA %s')"
-                                escaped-schema quoted-schema)
-                        ;; Least-privilege grant on the workspace's own schema (vs. the old GRANT
-                        ;; CONTROL, dropping EXECUTE, VIEW DEFINITION, REFERENCES, and re-grant rights):
-                        ;;   ALTER  - create/drop/sp_rename objects in the schema
-                        ;;   SELECT, INSERT, UPDATE, DELETE - full DML (SQL Server, unlike Postgres,
-                        ;;            does not confer DML from ALTER/ownership, so grant it explicitly)
-                        (format "GRANT ALTER, SELECT, INSERT, UPDATE, DELETE ON SCHEMA::%s TO %s"
-                                quoted-schema quoted-user)
-                        ;; db-level CREATE TABLE: SELECT INTO (transform materialization) needs it too
-                        (format "GRANT CREATE TABLE TO %s" quoted-user)]]
-             (.addBatch ^Statement stmt ^String sql))
-           (.executeBatch ^Statement stmt))))
+         (check-admin-can-end-sessions! (admin-session-permissions conn))
+         ;; The names are deterministic from the workspace id, so a login, user or schema of the same name may belong
+         ;; to another workspace, such as one restored from the same backup. Adopting it would hand that workspace's
+         ;; objects and grants to this one, and tearing this one down would drop them.
+         (let [existing (existing-workspace-principals conn user schema-name)]
+           (when (seq existing)
+             (throw (workspace-exists-error (str "SQL Server already has a " (str/join ", " existing) ".") nil))))
+         ;; one transaction, so a failed init leaves nothing behind
+         (.setAutoCommit conn false)
+         (try
+           (with-open [^Statement stmt (.createStatement conn)]
+             (doseq [sql (workspace-init-sqls user password schema-name)]
+               (.addBatch stmt ^String sql))
+             (.executeBatch stmt))
+           (vreset! committing? true)
+           (.commit conn)
+           (catch Throwable t
+             ;; Restore autocommit only after a rollback that succeeded: JDBC commits an open transaction when autocommit
+             ;; is turned back on, which would keep whatever part of the batch succeeded. A failed rollback or reset
+             ;; must not replace the error that caused it, and leaves the connection in a state the pool cannot be
+             ;; trusted to reset, so it is discarded. The reset error is attached to the scrubbed error as suppressed:
+             ;; scrubbing builds new exceptions and copies no suppressed ones.
+             (let [reset-error (try
+                                 (.rollback conn)
+                                 (.setAutoCommit conn true)
+                                 nil
+                                 (catch Throwable reset-error
+                                   (sql-jdbc.conn/discard-pooled-connection! conn)
+                                   reset-error))
+                   t           (driver.u/batch-exception t)
+                   scrubbed    (driver.u/scrub-exceptions t [password escaped-password])]
+               (when reset-error
+                 (.addSuppressed ^Throwable scrubbed (driver.u/scrub-exceptions reset-error [password escaped-password])))
+               (if (and (instance? java.sql.SQLException t)
+                        (duplicate-object-error-codes (.getErrorCode ^java.sql.SQLException t)))
+                 (throw (workspace-exists-error (ex-message scrubbed) scrubbed))
+                 (throw scrubbed)))))
+         (.setAutoCommit conn true)))
       (catch Throwable t
-        (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password escaped-password]))))
+        (throw (if @committing? t (init-error t)))))
     nil))
+
+(def ^:private workspace-lock-timeout-ms
+  "The most milliseconds a teardown statement waits for a lock that another session holds, such as a session of a login
+  other than the workspace user's on one of the workspace's tables."
+  30000)
+
+(defn- teardown-error
+  "The error that teardown throws for `errors`, the errors of its failed statements in the order they ran: the first
+  one, with each later one attached as suppressed. A first error of 1222, a lock timeout, becomes a 409 the caller can
+  retry."
+  ^Throwable [[^java.sql.SQLException first-error & later-errors]]
+  (let [^Throwable error (if (= 1222 (.getErrorCode first-error))
+                           (ex-info (str "Another session holds a lock that removing this workspace needs, such as a "
+                                         "session on one of its tables. Retry once that session ends.")
+                                    {:status-code 409} first-error)
+                           first-error)]
+    (doseq [^Throwable later-error later-errors]
+      (.addSuppressed error later-error))
+    error))
 
 (defmethod driver/destroy-workspace-isolation! :sqlserver
   [driver database workspace]
@@ -1406,35 +1537,80 @@
         escaped-schema   (sql.u/escape-sql schema-name :ansi)
         escaped-username (sql.u/escape-sql username :ansi)
         quoted-schema    (quote-schema schema-name)
-        quoted-user      (quote-field username)]
+        quoted-user      (quote-field username)
+        steps            [;; Disable the login and kill its sessions before any drop: a session of the workspace user
+                          ;; could hold a lock on one of its tables, and the drops would wait on it.
+                          [:disable-login
+                           (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') ALTER LOGIN %s DISABLE"
+                                   escaped-username quoted-user)]
+                          [:kill-sessions
+                           (format (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
+                                        "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                                        "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
+                                        "EXEC sp_executesql @kill_sessions_sql")
+                                   escaped-username)]
+                          ;; Table names come from the warehouse. QUOTENAME puts each schema name and table name in
+                          ;; brackets and escapes any `]` in it.
+                          [:drop-tables
+                           (format (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
+                                        "SELECT @drop_tables_sql += 'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + '; ' "
+                                        "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
+                                        "EXEC sp_executesql @drop_tables_sql")
+                                   escaped-schema)]
+                          [:drop-schema
+                           (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA %s"
+                                   escaped-schema quoted-schema)]
+                          [:drop-user
+                           (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER %s"
+                                   escaped-username quoted-user)]
+                          [:drop-login
+                           (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN %s"
+                                   escaped-username quoted-user)]]]
     (sql-jdbc.execute/do-with-connection-with-options
      driver (driver.u/ensure-lib-database database) {:write? true}
      (fn [^Connection conn]
        (with-open [^Statement stmt (.createStatement conn)]
-         ;; mssql-jdbc runs the whole batch in one T-SQL scope, so DECLAREd
-         ;; variable names must be unique across the batch entries.
-         (doseq [sql [(format (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
-                                   "SELECT @drop_tables_sql += 'DROP TABLE %s.[' + name + ']; ' "
-                                   "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
-                                   "EXEC sp_executesql @drop_tables_sql")
-                              quoted-schema escaped-schema)
-                      (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA %s"
-                              escaped-schema quoted-schema)
-                      (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER %s"
-                              escaped-username quoted-user)
-                      ;; Kill all sessions using this login before dropping it
-                      (format (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
-                                   "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
-                                   "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
-                                   "EXEC sp_executesql @kill_sessions_sql")
-                              escaped-username)
-                      (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN %s"
-                              escaped-username quoted-user)]]
-           (.addBatch ^Statement stmt ^String sql))
-         (try
-           (.executeBatch ^Statement stmt)
-           (catch Throwable t
-             (throw (driver.u/batch-exception t)))))))))
+         ;; Each statement waits for a lock at most [[workspace-lock-timeout-ms]]. SET LOCK_TIMEOUT lasts for the
+         ;; session, and the connection returns to the pool, so it is reset to -1 afterwards: the value every connection
+         ;; starts with, which waits without a bound.
+         (.execute stmt (format "SET LOCK_TIMEOUT %d" workspace-lock-timeout-ms))
+         (let [^Throwable error
+               (try
+                 ;; One statement at a time, not a batch, so that each error is that of the statement that failed. A
+                 ;; failed statement does not stop the ones after it: the user and the login are dropped whenever SQL
+                 ;; Server allows it. A user that owns no securable can be dropped while its schema stays, and a login
+                 ;; can be dropped while a user is mapped to it. DROP SCHEMA is skipped after DROP TABLE fails, such as
+                 ;; on a lock timeout (1222): a schema that holds a table cannot be dropped. The schema stays when it
+                 ;; holds an object that no statement drops, such as a sequence.
+                 (let [{:keys [errors]} (reduce (fn [{:keys [failed] :as result} [step ^String sql]]
+                                                  (if (and (= :drop-schema step) (contains? failed :drop-tables))
+                                                    result
+                                                    (try
+                                                      (.execute stmt sql)
+                                                      result
+                                                      (catch java.sql.SQLException e
+                                                        (-> result
+                                                            (update :failed conj step)
+                                                            (update :errors conj e))))))
+                                                {:failed #{}, :errors []}
+                                                steps)]
+                   (when (seq errors)
+                     (teardown-error errors)))
+                 (catch Throwable t
+                   t))
+               ;; A failed reset must not replace the teardown error, and leaves a connection whose lock timeout the
+               ;; pool cannot be trusted to reset, so the connection is discarded.
+               reset-error
+               (try
+                 (.execute stmt "SET LOCK_TIMEOUT -1")
+                 nil
+                 (catch Throwable reset-error
+                   (sql-jdbc.conn/discard-pooled-connection! conn)
+                   reset-error))]
+           (when (and error reset-error)
+             (.addSuppressed error reset-error))
+           (when-let [^Throwable e (or error reset-error)]
+             (throw e))))))))
 
 (defmethod driver/grant-workspace-read-access! :sqlserver
   [driver database workspace schemas]

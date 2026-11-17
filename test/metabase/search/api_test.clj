@@ -1781,6 +1781,31 @@
                 :type            nil}
                (-> result :data first :collection)))))))
 
+(deftest official-collection-search-result-authority-level-test
+  (testing "Collection search results carry their own official authority level, which the UI badges"
+    (let [search-name (str (random-uuid))]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name            (str search-name "-collection")
+                                                      :authority_level "official"}]
+        (is (=? [{:id                         coll-id
+                  :collection_authority_level "official"}]
+                (:data (mt/user-http-request :crowberto :get 200 "search"
+                                             :q search-name :models ["collection"]))))))))
+
+(deftest official-collection-item-search-result-authority-level-test
+  (testing "Card and dashboard search results carry the official authority level of their collection, which the UI badges"
+    (let [search-name (str (random-uuid))]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name            "Official parent"
+                                                      :authority_level "official"}
+                     :model/Card      {card-id :id} {:name          (str search-name "-card")
+                                                     :collection_id coll-id}
+                     :model/Dashboard {dash-id :id} {:name          (str search-name "-dashboard")
+                                                     :collection_id coll-id}]
+        (let [results (:data (mt/user-http-request :crowberto :get 200 "search"
+                                                   :q search-name :models ["card" "dashboard"]))]
+          (is (=? {"card"      [{:id card-id :collection {:id coll-id :authority_level "official"}}]
+                   "dashboard" [{:id dash-id :collection {:id coll-id :authority_level "official"}}]}
+                  (group-by :model results))))))))
+
 (deftest archived-search-results-with-no-write-perms-test
   (testing "Results which the searching user has no write permissions for are filtered out. (#24018, #33602)"
     ;; note that the collection does not start out archived, so that we can revoke/grant permissions on it
@@ -1801,7 +1826,7 @@
                                                      {:archived true}))
       (testing "Sanity check: Lucky should not be able to write our test Collection"
         (mt/with-test-user :lucky
-          (is (not (mi/can-write? :model/Collection collection-id)))))
+          (is (not (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id collection-id) :can_write))))))
       (is (= ["card test card is returned"]
              (->> (mt/user-http-request :lucky :get 200 "search" :archived true :q "test" :models ["card"])
                   :data
@@ -2020,26 +2045,27 @@
         ;; now (see note of the Card spec).
         (search/update! (t2/instance :model/Card {:id card-id}))
         (testing "The card data also include `dashboard` info"
-          (is (= {:id dash-id
-                  :name (named "dashboard")
-                  :moderation_status nil}
-                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
-                      :data
-                      (filter #(= card-id (:id %)))
-                      first
-                      :dashboard))))
+          (let [card (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                          :data
+                          (filter #(and (= "card" (:model %)) (= card-id (:id %))))
+                          first)]
+            (is (some? card))
+            (is (= {:id dash-id
+                    :name (named "dashboard")
+                    :moderation_status nil}
+                   (:dashboard card)))))
         (testing "Regular cards don't have it"
-          (is (nil?
-               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
-                    :data
-                    (filter #(= reg-card-id (:id %)))
-                    first
-                    :dashboard))))
+          (let [card (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                          :data
+                          (filter #(and (= "card" (:model %)) (= reg-card-id (:id %))))
+                          first)]
+            (is (some? card))
+            (is (nil? (:dashboard card)))))
         (testing "Dashboard questions are only returned if you pass `include_dashboard_questions=true`"
           (is (= []
                  (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "false")
                       :data
-                      (filter #(= card-id (:id %))))))))))
+                      (filter #(and (= "card" (:model %)) (= card-id (:id %)))))))))))
   (testing "Dashboard questions aren't searchable without a DashboardCard"
     (let [search-name (random-uuid)
           named #(str search-name "-" %)]

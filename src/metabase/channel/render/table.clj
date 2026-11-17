@@ -6,7 +6,7 @@
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.style :as style]
    [metabase.formatter.core :as formatter]
-   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -223,7 +223,7 @@
           (let [column       (nth columns col-idx)
                 column-name  (get column-names col-idx)
                 minibar-col  (first (filter #(= (:name column) (:name %)) minibar-cols))
-                col-settings (get-in viz-settings [::mb.viz/column-settings {::mb.viz/column-name column-name}] {})]
+                col-settings (lib/column-settings-for-name viz-settings column-name)]
             [:td {:style (style/style
                           (row-style-for-type cell)
                           (get col->styles (:name column))
@@ -240,7 +240,7 @@
                (render-minibar cell (get-in minibar-col [:fingerprint :type :type/Number]) (get col->styles (:name column)))
 
                ;; View as image
-               (and (= (get col-settings ::mb.viz/view-as) "image")
+               (and (= (:view_as col-settings) "image")
                     (image-url? cell))
                [:img {:src (hiccup.util/escape-html cell)
                       :style (style/style style/view-as-img-style)}]
@@ -279,17 +279,17 @@
   "Takes a vector of column definitions and visualization settings
   Returns a map of column identifier keys to style maps based on the visualization settings"
   [columns viz-settings]
-  (let [column-settings (get viz-settings ::mb.viz/column-settings)
+  (let [column-settings (:column_settings viz-settings)
         column-widths   (get viz-settings :table.column_widths)]
     (reduce
      (fn [acc [col-key col-setting]]
-       (let [column-name   (::mb.viz/column-name col-key)
+       (let [column-name   (:column-name (lib/parse-column-settings-key col-key))
              column-index  (first (keep-indexed
                                    (fn [idx col] (when (= (:name col) column-name) idx))
                                    columns))]
          (cond-> acc
            ;; text wrapping
-           (::mb.viz/text-wrapping col-setting)
+           (:text_wrapping col-setting)
            (assoc column-name (merge {:white-space "normal"}
                                      (cond
                                        (column-has-width column-widths column-index)
@@ -303,15 +303,15 @@
                                         :width     *text-wrapping-fallback-width*})))
 
            ;; text alignment
-           (::mb.viz/text-align col-setting)
-           (assoc column-name {:text-align (get-text-align (::mb.viz/text-align col-setting))})
+           (:text_align col-setting)
+           (assoc column-name {:text-align (get-text-align (:text_align col-setting))})
 
            ;; view as image
-           (= (::mb.viz/view-as col-setting) "image")
+           (= (:view_as col-setting) "image")
            (assoc column-name {:vertical-align "middle"})
 
            ;; minibar
-           (::mb.viz/show-mini-bar col-setting)
+           (:show_mini_bar col-setting)
            (assoc column-name (if (column-has-width column-widths column-index)
                                 {:width (nth column-widths column-index)
                                  :min-width (get-min-width column-widths column-index)}

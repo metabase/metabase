@@ -193,7 +193,7 @@ export function junitFailuresToFailedTests(
  * empty list) when it can't be retrieved, so the caller can tell "nothing
  * quarantined" from "couldn't check". Never throws. Logs the path and suite only
  * — never the host (public repo) or the secret. The retry policy is fixed rather
- * than injectable: the tests drive it on fake timers, so there's nothing to
+ * than injectable: the tests stub `fetchWithRetry`, so there's nothing to
  * shorten for them.
  */
 export async function fetchQuarantine(opts: {

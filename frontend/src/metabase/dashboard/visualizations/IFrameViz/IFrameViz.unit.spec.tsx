@@ -427,4 +427,106 @@ describe("IFrameViz", () => {
       expect(iframe).toHaveAttribute("src", "https://example.com/pb%26j");
     });
   });
+  describe("allowed-iframe-hosts", () => {
+    const ALLOWED_HOSTS = ["youtube.com", "player.videos.com"].join("\n");
+
+    // As in the edit mode after clicking "Done"
+    const setupPreview = (iframe: string) => {
+      const dashcard = createMockIFrameDashboardCard({
+        visualization_settings: { iframe },
+      });
+      const dashboard = createMockDashboard();
+      const renderPreview = (iframe: string) => (
+        <IFrameViz
+          dashcard={dashcard}
+          dashboard={dashboard}
+          isEditing={true}
+          isPreviewing={true}
+          onUpdateVisualizationSettings={jest.fn()}
+          settings={{ iframe }}
+          width={800}
+          height={600}
+          gridSize={{ width: 18, height: 6 }}
+          onTogglePreviewing={jest.fn()}
+        />
+      );
+      const { rerender } = renderWithProviders(renderPreview(iframe), {
+        storeInitialState: {
+          settings: createMockSettingsState({
+            "allowed-iframe-hosts": ALLOWED_HOSTS,
+          }),
+        },
+      });
+
+      // Same mounted instance, like editing the snippet of an existing card
+      const changeSnippet = (newIframe: string) =>
+        rerender(renderPreview(newIframe));
+
+      return { changeSnippet };
+    };
+
+    const FORBIDDEN_HOST_ERROR = /can not be embedded in iframe cards/;
+
+    it.each([
+      [
+        "https://youtube.com/watch?v=dQw4w9WgXcQ",
+        "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      ],
+      [
+        "player.videos.com/video/123456789",
+        "https://player.videos.com/video/123456789",
+      ],
+    ])("should render an iframe for an allowed host: %s", (input, src) => {
+      setupPreview(input);
+
+      expect(screen.getByTestId("iframe-visualization")).toHaveAttribute(
+        "src",
+        src,
+      );
+      expect(screen.queryByText(FORBIDDEN_HOST_ERROR)).not.toBeInTheDocument();
+    });
+
+    it.each([
+      "videos.com/video/123456789",
+      "www.videos.com/video",
+      "https://example.com",
+      "www.example.com",
+    ])("should show an error for a forbidden host: %s", (input) => {
+      setupPreview(input);
+
+      expect(
+        screen.queryByTestId("iframe-visualization"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText(FORBIDDEN_HOST_ERROR)).toBeInTheDocument();
+    });
+
+    it("should update the preview when the snippet changes", () => {
+      const { changeSnippet } = setupPreview(
+        "https://youtube.com/watch?v=dQw4w9WgXcQ",
+      );
+      expect(screen.getByTestId("iframe-visualization")).toHaveAttribute(
+        "src",
+        "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      );
+
+      changeSnippet("player.videos.com/video/123456789");
+      expect(screen.getByTestId("iframe-visualization")).toHaveAttribute(
+        "src",
+        "https://player.videos.com/video/123456789",
+      );
+
+      changeSnippet("https://example.com");
+      expect(
+        screen.queryByTestId("iframe-visualization"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText(FORBIDDEN_HOST_ERROR)).toBeInTheDocument();
+
+      changeSnippet("https://youtube.com/watch?v=dQw4w9WgXcQ");
+      expect(screen.getByTestId("iframe-visualization")).toHaveAttribute(
+        "src",
+        "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      );
+      expect(screen.queryByText(FORBIDDEN_HOST_ERROR)).not.toBeInTheDocument();
+    });
+  });
 });

@@ -1,7 +1,9 @@
 (ns metabase.timeline.models.timeline
   (:require
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
@@ -14,9 +16,39 @@
 
 (doto :model/Timeline
   (derive :metabase/model)
-  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+;;;; permissions
+
+(defn- check-can-read-keys
+  "Throws unless `timeline` has the columns its `:can_read` and `:can_write` hydrations read."
+  [timeline]
+  (api/check-500 (contains? timeline :collection_id) "No :collection_id is set for a Timeline."))
+
+(methodical/defmethod t2/batched-hydrate [:model/Timeline :can_read]
+  "Whether the current user reads each of `timelines`, as the content of its Collection."
+  [_model _k timelines]
+  (run! #(when % (check-can-read-keys %)) timelines)
+  (let [readable (collection/content-readable-collection-ids (map :collection_id (remove nil? timelines))
+                                                             {:root-namespace nil, :audit-rules? false})]
+    (for [timeline timelines]
+      (when timeline
+        (vary-meta timeline assoc :can_read (contains? readable (:collection_id timeline)))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Timeline :can_write]
+  "Whether the current user writes each of `timelines`, as the content of its Collection."
+  [_model _k timelines]
+  (run! #(when % (check-can-read-keys %)) timelines)
+  (let [writable (collection/content-writable-collection-ids (map :collection_id (remove nil? timelines))
+                                                             {:root-namespace nil, :audit-rules? false})]
+    (for [timeline timelines]
+      (when timeline
+        (assoc timeline :can_write (contains? writable (:collection_id timeline)))))))
+
+(defmethod mi/can-create? :model/Timeline
+  [_model {collection-id :collection_id}]
+  (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
 
 ;;;; transforms
 

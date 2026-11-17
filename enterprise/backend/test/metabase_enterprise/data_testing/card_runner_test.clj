@@ -15,6 +15,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
@@ -72,10 +73,8 @@
      {:name "name" :cast_type text-type}]))
 
 (defn- orders-rows
-  "An input standing in for the orders table with `rows` over its fields `field-keys`, all integers.
-
-  Rows rather than SQL: two rows of SQL need a `UNION`, and SQL Server cannot create a temp table from one. The columns
-  are named as the warehouse names the fields, since the card's SQL quotes those names."
+  "An input standing in for the orders table with `rows` over its fields `field-keys`, all integers. The columns are
+  named as the warehouse names the fields, since the card's SQL quotes those names."
   [field-keys rows]
   (let [[int-type] (data-testing.test-util/cast-types)
         mp         (mt/metadata-provider)
@@ -157,6 +156,79 @@
              (:status (run-card-test! (people-card)
                                       [(people-input one-person)]
                                       [{:type :empty :name "only the input row" :sql "SELECT * FROM {{output}} WHERE id <> 1"}])))))))
+
+(deftest equals-sql-expectations-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (let [run! (fn [& expectations]
+                 (outcomes (run-card-test! (people-card) [(people-input one-person)] expectations)))
+          sql  (fn [expectation-name sql] {:type :equals :name expectation-name :format :sql :sql sql})]
+      (testing "literal expected rows"
+        (let [results (run! (sql "same row" one-person)
+                            (sql "other name" "SELECT 1 AS id, 'xyz' AS name"))]
+          (is (= :passed (results "same row")))
+          (is (= {:status          :failed
+                  :row-counts      {:actual 1 :expected 1}
+                  :cell-mismatches [{:column "name" :expected "xyz" :actual "abc"}]}
+                 (-> (results "other name")
+                     (select-keys [:status :row-counts :cell-mismatches])
+                     ;; Each warehouse spells the column as it folds `name`.
+                     (update :cell-mismatches (partial mapv #(update % :column u/lower-case-en)))))
+              (pr-str (results "other name")))))
+      (testing "only the columns the expected query returns are compared"
+        (is (= {"name only" :passed}
+               (run! (sql "name only" "SELECT 'abc' AS name")))))
+      (testing "the expected query reads the input and the output through the run's temp tables"
+        (is (= {"from the input" :passed "from the output" :passed}
+               (run! (sql "from the input" (str "SELECT id, name FROM " (qualified :people)))
+                     (sql "from the output" "SELECT id, name FROM {{output}}")))))
+      (testing "a column the output lacks makes that expectation an error"
+        (is (= ::data-testing.errors/unknown-column
+               (get-in (run! (sql "no such column" "SELECT 1 AS nope")) ["no such column" :error :type]))))
+      (testing "an expected query that reads a table the test does not stand in for is refused before it runs"
+        (is (= ::data-testing.errors/unremapped-reference
+               (:error-type (refusal #(run! (sql "real table" (str "SELECT id FROM " (qualified :orders))))))))))))
+
+(deftest equals-sql-matches-columns-across-case-and-reports-the-expected-spelling-test
+  (mt/test-drivers #{:h2 :postgres}
+    (let [run! (fn [& expectations]
+                 (outcomes (run-card-test! (people-card) [(people-input one-person)] expectations)))
+          sql  (fn [expectation-name sql] {:type :equals :name expectation-name :format :sql :sql sql})]
+      (testing "an expected column matches the output column that differs from it only in case"
+        (is (= {"mixed case" :passed}
+               (run! (sql "mixed case" "SELECT 1 AS \"Id\", 'abc' AS \"Name\"")))))
+      (testing "a differing cell is found, and the report names each column as the expected query spells it"
+        (is (= {:status          :failed
+                :columns         ["Id" "Name"]
+                :cell-mismatches [{:column "Name" :expected "xyz" :actual "abc"}]}
+               (-> (run! (sql "differs" "SELECT 1 AS \"Id\", 'xyz' AS \"Name\""))
+                   (get "differs")
+                   (select-keys [:status :columns :cell-mismatches])
+                   (update :columns (partial mapv :name)))))))))
+
+(deftest equals-sql-column-errors-test
+  (mt/test-drivers #{:h2 :postgres}
+    (let [error-of (fn [card sql]
+                     (-> (run-card-test! card [(people-input one-person)]
+                                         [{:type :equals :name "e" :format :sql :sql sql}])
+                         outcomes
+                         (get-in ["e" :error])))]
+      (testing "control: one expected column on the output's id passes"
+        (is (= {"e" :passed}
+               (outcomes (run-card-test! (people-card) [(people-input one-person)]
+                                         [{:type :equals :name "e" :format :sql :sql "SELECT 1 AS \"id\""}])))))
+      (testing "two expected columns that match one output column are refused, naming the output column"
+        (let [{:keys [type message]} (error-of (people-card) "SELECT 1 AS \"id\", 1 AS \"ID\"")]
+          (is (= ::data-testing.errors/colliding-columns type))
+          (is (re-find #"(?i)\bid\b" message) message)))
+      (testing "a compared column that takes the name of the comparison's own column is refused"
+        (let [{:keys [type message]} (error-of (native-card (str "SELECT id AS __mb_src FROM " (qualified :people)))
+                                               "SELECT 1 AS __mb_src")]
+          (is (= ::data-testing.errors/colliding-columns type))
+          (is (re-find #"(?i)__mb_src" message) message)))
+      (testing "a column the expected query computes without a name is reported as the query's, with the fix"
+        (let [{:keys [type message]} (error-of (people-card) "SELECT 1")]
+          (is (= ::data-testing.errors/unknown-column type))
+          (is (re-find #"\bAS\b" message) message))))))
 
 (deftest card-with-a-repeated-column-name-is-refused-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
