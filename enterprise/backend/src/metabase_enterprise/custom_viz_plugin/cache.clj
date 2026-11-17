@@ -100,8 +100,8 @@
   manifest)
 
 (defn validate-bundle!
-  "Extract an uploaded tar+gzip `bundle-bytes` into a scratch directory and
-   validate its contents against the expected layout. Returns
+  "Read an uploaded tar+gzip `bundle-bytes` and validate its contents against the
+   expected layout. Returns
    `{:bytes bundle-bytes :hash sha :manifest m :version-str v}` on success.
    Throws ex-info with `:status-code 400` for any user-facing failure. Version
    mismatches don't fail validation; they surface as soft warnings at read time
@@ -112,52 +112,44 @@
   ;; an upload is refused by size before it is read; a bundle packed from imported files is measured here
   (when (> (alength bundle-bytes) max-bundle-bytes)
     (throw (ex-info (format "Bundle must be less than %dMB." max-bundle-mib) {:status-code 413})))
-  (let [scratch (Files/createTempDirectory "custom-viz-validate-"
-                                           (into-array FileAttribute []))]
-    (try
-      (try
-        (u.compress/untgz bundle-bytes (.toFile scratch) untgz-opts)
-        ;; refuse entry paths `untgz` accepts but an export can't unpack, such as `dist//index.js`
-        (u.compress/untgz-files bundle-bytes untgz-opts)
-        (catch Exception e
-          (if (:status-code (ex-data e))
-            ;; tar-bomb / oversize / entry-count failures carry their own clear message — re-raise.
-            (throw e)
-            (throw (ex-info (str "Bundle is not a valid tar.gz archive: " (ex-message e))
-                            {:status-code 400}
-                            e)))))
-      (let [manifest-file (.resolve scratch ^String (manifest/manifest-path))
-            bundle-file   (.resolve scratch ^String (dist-path bundle-rel-path))
-            _             (when-not (u.files/regular-file? manifest-file)
-                            (throw (ex-info (str (manifest/manifest-path) " not found in bundle")
-                                            {:status-code 400})))
-            parsed        (or (manifest/parse-manifest (String. (Files/readAllBytes manifest-file) "UTF-8"))
-                              (throw (ex-info (str (manifest/manifest-path) " is not valid JSON")
-                                              {:status-code 400})))
-            _             (when-not (u.files/regular-file? bundle-file)
-                            (throw (ex-info (str (dist-path bundle-rel-path) " not found in bundle")
-                                            {:status-code 400})))
-            version-str   (get-in parsed [:metabase :version])]
-        (when-let [error (manifest/validation-error parsed)]
-          (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
-                          {:status-code 400})))
-        (when (str/blank? (:name parsed))
-          (throw (ex-info (str (manifest/manifest-path) " is missing a \"name\" field")
-                          {:status-code 400})))
-        (when-let [error (manifest/identifier-error (:name parsed))]
-          (throw (ex-info (str (manifest/manifest-path) " is invalid: " error)
-                          {:status-code 400})))
-        (doseq [asset (manifest/asset-paths parsed)
-                :let  [path (str (.normalize (Path/of (dist-path (asset-rel-path asset)) (into-array String []))))]]
-          (when-not (u.files/regular-file? (.resolve scratch ^String path))
-            (throw (ex-info (str path " not found in bundle")
-                            {:status-code 400}))))
-        {:bytes       bundle-bytes
-         :hash        (bytes-hash bundle-bytes)
-         :manifest    parsed
-         :version-str version-str})
-      (finally
-        (delete-recursive! scratch)))))
+  ;; `untgz-files` also refuses entry paths an export can't unpack, such as `dist//index.js`
+  (let [files         (try
+                        (u.compress/untgz-files bundle-bytes untgz-opts)
+                        (catch Exception e
+                          (if (:status-code (ex-data e))
+                            ;; tar-bomb / oversize / entry-count failures carry their own clear message — re-raise.
+                            (throw e)
+                            (throw (ex-info (str "Bundle is not a valid tar.gz archive: " (ex-message e))
+                                            {:status-code 400}
+                                            e)))))
+        json          (or (get files (manifest/manifest-path))
+                          (throw (ex-info (str (manifest/manifest-path) " not found in bundle")
+                                          {:status-code 400})))
+        parsed        (or (manifest/parse-manifest (String. ^bytes json "UTF-8"))
+                          (throw (ex-info (str (manifest/manifest-path) " is not valid JSON")
+                                          {:status-code 400})))
+        _             (when-not (contains? files (dist-path bundle-rel-path))
+                        (throw (ex-info (str (dist-path bundle-rel-path) " not found in bundle")
+                                        {:status-code 400})))
+        version-str   (get-in parsed [:metabase :version])]
+    (when-let [error (manifest/validation-error parsed)]
+      (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
+                      {:status-code 400})))
+    (when (str/blank? (:name parsed))
+      (throw (ex-info (str (manifest/manifest-path) " is missing a \"name\" field")
+                      {:status-code 400})))
+    (when-let [error (manifest/identifier-error (:name parsed))]
+      (throw (ex-info (str (manifest/manifest-path) " is invalid: " error)
+                      {:status-code 400})))
+    (doseq [asset (manifest/asset-paths parsed)
+            :let  [path (str (.normalize (Path/of (dist-path (asset-rel-path asset)) (into-array String []))))]]
+      (when-not (contains? files path)
+        (throw (ex-info (str path " not found in bundle")
+                        {:status-code 400}))))
+    {:bytes       bundle-bytes
+     :hash        (bytes-hash bundle-bytes)
+     :manifest    parsed
+     :version-str version-str}))
 
 ;;; ------------------------------------------------ Files ------------------------------------------------
 
