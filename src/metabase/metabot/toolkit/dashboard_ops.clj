@@ -1003,6 +1003,49 @@
   (cond-> dc
     (seq (:series dc)) (update :series (partial mapv #(select-keys % [:id])))))
 
+(defn- connections
+  "The filter connections of `dashcards`, as a map of `[parameter-id dashcard-id slot]` to the card each one filters.
+   The slot is `:card` for the dashcard's own card, and the card's id for one of its series cards."
+  [dashcards]
+  (into {}
+        (for [{dashcard-id :id card-id :card_id :keys [parameter_mappings]} dashcards
+              {:keys [parameter_id] mapping-card-id :card_id} parameter_mappings]
+          [[parameter_id dashcard-id (if (= mapping-card-id card-id) :card mapping-card-id)] mapping-card-id])))
+
+(defn- unwired?
+  "Whether an `unwire_parameter` op in `ops` dropped the connection of `parameter-id` on `dashcard-id`."
+  [ops parameter-id dashcard-id]
+  (some (fn [{:keys [op parameter_id] :as unwire}]
+          (and (= "unwire_parameter" op)
+               (= parameter-id parameter_id)
+               (or (not (contains? unwire :dashcard_id))
+                   (= dashcard-id (:dashcard_id unwire)))))
+        ops))
+
+(defn- dropped-connections
+  "The filter connections of `current` that `payload` no longer has, as `{:parameter_id :dashcard_id :card_id}` maps,
+   with `:card_id` the card that is no longer filtered.
+   A connection counts only when its filter, its dashcard and, for a series card, that series card all survive, and
+   no `unwire_parameter` op in `ops` asked to drop it."
+  [current payload ops]
+  (let [surviving-parameter? (into #{} (map :id) (:parameters payload))
+        payload-dashcards    (u/index-by :id (:dashcards payload))
+        after                (connections (:dashcards payload))]
+    (->> (for [[[parameter-id dashcard-id slot :as k] card-id] (connections (:dashcards current))
+               :let  [dashcard (get payload-dashcards dashcard-id)]
+               :when (and (surviving-parameter? parameter-id)
+                          dashcard
+                          (or (= :card slot)
+                              (some #(= slot (:id %)) (:series dashcard)))
+                          (not (contains? after k))
+                          (not (unwired? ops parameter-id dashcard-id)))]
+           ;; A replaced card that wasn't connected again is reported under the card it shows now.
+           {:parameter_id parameter-id
+            :dashcard_id  dashcard-id
+            :card_id      (if (= :card slot) (:card_id dashcard) card-id)})
+         (sort-by (juxt :parameter_id :dashcard_id :card_id))
+         vec)))
+
 (defn compile-ops
   "Fold `ops` over `current`, a dashboard hydrated with `[:dashcards :series :card] :tabs`.
    Returns `{:dashcards :tabs :parameters}`, the full-replacement payload `update-dashboard!` saves.
@@ -1016,23 +1059,27 @@
    A card that an op gives a position stays where the op put it, and a resized card keeps its place unless such a
    card covers it.
    Either pushes down the cards it covers.
-   [[pushed-dashcard-ids]] reads which stored cards moved from the payload's metadata.
+   [[effects]] reads what else the ops did from the payload's metadata.
    Throws an error from [[errors]] on the first invalid op; read it with [[error-data]]."
   [current ops cards]
-  (let [state (-> (reduce-kv apply-op-at
-                             (assoc (init-state current cards) ::stored-card-ids (dashboard-card-ids current))
-                             (prepare-ops ops))
-                  check-tab-coverage!
-                  settle-layout)]
-    (-> state
-        (select-keys [:dashcards :tabs :parameters])
-        (update :dashcards (partial mapv series-ids))
-        (with-meta {::pushed-dashcard-ids (::pushed state)}))))
+  (let [ops     (prepare-ops ops)
+        state   (-> (reduce-kv apply-op-at
+                               (assoc (init-state current cards) ::stored-card-ids (dashboard-card-ids current))
+                               ops)
+                    check-tab-coverage!
+                    settle-layout)
+        payload (-> state
+                    (select-keys [:dashcards :tabs :parameters])
+                    (update :dashcards (partial mapv series-ids)))]
+    (with-meta payload
+               {::effects {:pushed-dashcard-ids  (::pushed state)
+                           :dropped-connections (dropped-connections current payload ops)}})))
 
-(defn pushed-dashcard-ids
-  "The ids of the stored dashcards [[compile-ops]] pushed down to make room for cards the ops placed, in save order.
-   `x` is the payload [[compile-ops]] returns, or a dashboard
-   [[metabase.metabot.toolkit.dashboard-write/write!]] returns, which carries them over.
-   Empty or nil when none moved."
-  [x]
-  (::pushed-dashcard-ids (meta x)))
+(defn effects
+  "What the ops did beyond the payload [[compile-ops]] returns, read from its metadata.
+   `:pushed-dashcard-ids` holds the ids of the stored dashcards pushed down to make room for cards the ops placed, in
+   save order.
+   `:dropped-connections` holds the filter connections the ops dropped without asking to, as
+   `{:parameter_id :dashcard_id :card_id}` maps."
+  [payload]
+  (::effects (meta payload)))

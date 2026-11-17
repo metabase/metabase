@@ -26,7 +26,6 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.toolkit.dashboard-op-schema :as dashboard-op-schema]
-   [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
    [toucan2.core :as t2]))
 
@@ -43,7 +42,7 @@
 ;;; ------------------------------------------------ Response ------------------------------------------------------
 
 (defn- dashboard-row
-  "The projection row for `dash`, a dashboard from [[dashboard-write/write!]], saved or not.
+  "The projection row for `dash`, the dashboard [[dashboard-write/write!]] returns, saved or not.
    It goes through the same hydration and redaction `get_content` uses, so both tools return the same shape."
   [dash]
   (-> dash
@@ -128,7 +127,9 @@
   per-display default sizes, and layout conventions. validate_only: true returns the layout the ops would
   produce without writing — but per-field parameter-mapping permission checks run only on the real save, so a
   clean dry run can still be rejected. A card that move, resize or an explicit position puts over others pushes
-  them down, and pushed_dashcard_ids lists them. Returns the resulting dashboard, so no follow-up read is needed.
+  them down, and pushed_dashcard_ids lists them. A filter connection the ops drop without unwire_parameter, as
+  replace_card or wire_parameter on a card with series can, is listed in dropped_connections; connect it again or
+  tell the user. Returns the resulting dashboard, so no follow-up read is needed.
   Requires write permission on the dashboard and read permission on each card an op wires. A card an op adds or
   makes a filter's value source needs read permission too, unless the dashboard already uses it."
   {:name           "dashboard_write"
@@ -141,7 +142,7 @@
    :args           dashboard-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [dispatched (v2.write/dispatch-write dashboard-write-entry args)
-        dash       (dashboard-errors/do-with-teaching-errors
+        written    (dashboard-errors/do-with-teaching-errors
                     #(case (first dispatched)
                        :create
                        (let [[_ body] dispatched
@@ -160,9 +161,10 @@
                                                   :attrs          (dashboard-attrs body)
                                                   :ops            (:ops body)
                                                   :validate-only? (boolean (:validate_only body))}))))
-        pushed     (dashboard-ops/pushed-dashcard-ids dash)]
+        {dash :dashboard {:keys [pushed-dashcard-ids dropped-connections]} :effects} written]
     (common/success-content
      (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                         (cond-> (projections/project :dashboard :concise (dashboard-row dash))
-                          (seq pushed) (assoc :pushed_dashcard_ids pushed))
+                          (seq pushed-dashcard-ids) (assoc :pushed_dashcard_ids pushed-dashcard-ids)
+                          (seq dropped-connections) (assoc :dropped_connections dropped-connections))
                         nil))))

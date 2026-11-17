@@ -359,6 +359,26 @@
          (testing "the result says which card moved, so the model can tell the user"
            (is (re-find (re-pattern (str "Card " dashcard-id " moved down")) (:output result)))))))))
 
+(deftest replace-chart-reports-dropped-filter-test
+  (sales-dashboard!
+   (fn [{:keys [card-id dash-id dashcard-id]}]
+     (t2/update! :model/Dashboard :id dash-id {:parameters [{:id "cat", :name "Category", :slug "category"
+                                                             :type "category"}]})
+     (t2/update! :model/DashboardCard :id dashcard-id
+                 {:parameter_mappings [{:parameter_id "cat"
+                                        :card_id      card-id
+                                        :target       [:dimension [:field (mt/id :venues :category_id) nil]]}]})
+     (mt/with-model-cleanup [:model/Card]
+       (mt/with-current-user (mt/user->id :rasta)
+         (let [result (binding [shared/*memory-atom* (chart-memory)]
+                        (call {:dashboard_id dash-id
+                               :ops          [{:op "replace_card", :dashcard_id dashcard-id, :chart_id "A"
+                                               :name "Venues"}]}
+                              :internal))]
+           (testing "the result names the filter the replaced card is no longer connected to"
+             (is (str/includes? (:output result)
+                                (str "The \"Category\" filter is no longer connected to dashcard " dashcard-id "."))))))))))
+
 (deftest replace-chart-on-dashboard-test
   (sales-dashboard!
    (fn [{:keys [card-id dash-id dashcard-id other-id]}]
