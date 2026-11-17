@@ -11,9 +11,11 @@
 (def ^:private seconds-in-a-day 86400)
 
 (defn truthy
-  "Prefer it when a (potentially nullable) boolean is true."
-  [column]
-  [:coalesce [:cast column (if (= :mysql (mdb/db-type)) :signed :integer)] [:inline 0]])
+  "An SQL expression that scores a nullable boolean column as 0 or 1.
+  The optional database type selects the integer cast."
+  ([column] (truthy (mdb/db-type) column))
+  ([db-type column]
+   [:coalesce [:cast column (if (= :mysql db-type) :signed :integer)] [:inline 0]]))
 
 (defn equal
   "Prefer it when it matches a specific (non-null) value"
