@@ -337,8 +337,8 @@ describe("App", () => {
           screen.queryByRole("checkbox", { name: "Query results" }),
         ).not.toBeInTheDocument();
         expect(
-          screen.queryByRole("checkbox", { name: /server logs/i }),
-        ).not.toBeInTheDocument();
+          screen.queryAllByRole("checkbox", { name: /server logs/i }),
+        ).toHaveLength(0);
 
         const report = await downloadReport(modal);
 
