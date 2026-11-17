@@ -248,13 +248,17 @@
 (mu/defn delete-transforms-folder! :- :nil
   "Delete the transforms folder `collection`, its subfolders and every Transform in them. With `delete-tables?`,
   drop the output table of each Transform first. Throws a 400 unless `collection` is in the transforms namespace,
-  and a 403 unless the current user can write every Transform inside; nothing is deleted then. Returns nil."
+  and a 403 unless the current user can write the folder, every subfolder and every Transform inside; nothing is
+  deleted then. Returns nil."
   [collection     :- :metabase.collections.schema/collection
    delete-tables? :- :boolean]
   (api/check-400 (= collections/transforms-ns (:namespace collection))
                  (deferred-tru "Only a transforms folder can be deleted this way."))
   (let [collection-ids (cons (:id collection) (collections/descendant-ids collection))
+        folders        (transforms.db/collections-by-ids collection-ids)
         transforms     (transforms.db/transforms-in-collections collection-ids)]
+    ;; The delete removes every subfolder, so it needs write permission on each of them, as an archive does.
+    (run! api/write-check folders)
     ;; Write permission on the folder does not cover its Transforms: theirs comes from the databases they read and
     ;; write, and from the premium feature of their type.
     (run! api/write-check transforms)

@@ -2296,6 +2296,29 @@
                (is (false? (t2/exists? :model/Collection :id [:in [folder-id subfolder-id]])))
                (is (false? (t2/exists? :model/Transform :id transform-id)))))))))))
 
+(deftest delete-transforms-folder-needs-write-permission-on-its-subfolders-test
+  ;; A data analyst can write every transforms folder, so the case is a user without that role whose group got write
+  ;; on the folder and only view on a subfolder.
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting :audit-app}
+    (mt/with-temp [:model/Collection {folder-id :id}    {:name "Folder" :namespace :transforms}
+                   :model/Collection {subfolder-id :id} {:name      "View-only subfolder"
+                                                         :namespace :transforms
+                                                         :location  (format "/%d/" folder-id)}]
+      (let [url       (format "transform/collection/%d" folder-id)
+            group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (mt/user->id :rasta))]
+        (doseq [group-id group-ids]
+          (perms/grant-collection-readwrite-permissions! group-id folder-id)
+          (perms/revoke-collection-permissions! group-id subfolder-id)
+          (perms/grant-collection-read-permissions! group-id subfolder-id))
+        (testing "a user who can only view a subfolder cannot delete its parent folder"
+          (mt/user-http-request :rasta :delete 403 url)
+          (is (= 2 (t2/count :model/Collection :id [:in [folder-id subfolder-id]]))))
+        (testing "with write permission on the subfolder the user can delete the folder"
+          (doseq [group-id group-ids]
+            (perms/grant-collection-readwrite-permissions! group-id subfolder-id))
+          (mt/user-http-request :rasta :delete 204 url)
+          (is (false? (t2/exists? :model/Collection :id [:in [folder-id subfolder-id]]))))))))
+
 (deftest delete-transforms-folder-blocked-by-transform-without-premium-feature-test
   (mt/with-temp [:model/Collection {folder-id :id}    {:name "Folder" :namespace :transforms}
                  :model/Transform  {transform-id :id} {:collection_id folder-id}]
