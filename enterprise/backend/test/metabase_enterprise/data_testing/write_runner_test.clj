@@ -2,14 +2,17 @@
   "Runs of a subject that modifies existing tables instead of returning rows. Each test gives a card a write plan in
   place of its own, so the runner's write step is tested apart from any subject type."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.executor :as data-testing.executor]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.util :as u])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -42,15 +45,15 @@
      :rows    [{"id" 1 "name" "paid"} {"id" 2 "name" "paid"}]}))
 
 (defn- write-plan
-  "A [[data-testing.subject/subject-plan]] that runs `sql` with `params` on the test database."
+  "A `::data-testing.subject/subject-plan` that runs `sql` with `params` on the test database."
   [sql params]
   {:database (data-testing.subject/testable-database (mt/id))
    :compiled {:query sql :params params}
    :writes?  true})
 
 (defn- do-with-write-subject!
-  "Call `f` with a card whose plan, for this test, is the write `sql` with `params`, and with a function returning the
-  parameters each plan was asked for."
+  "Call `f` with a card and a function returning the `:parameters` of each definition `subject-plan` was called with.
+  While `f` runs, `subject-plan` returns the write `sql` with `params` for any subject."
   [sql params f]
   (let [asked (atom [])]
     (mt/with-temp [:model/Card card {:dataset_query (lib/native-query (mt/metadata-provider)
@@ -81,7 +84,8 @@
       (:error-type (ex-data e)))))
 
 (defn- refund-1
-  "The write: person 1's `name` becomes `refunded`."
+  "The UPDATE of the people table that sets `name` to the first parameter where `id` is the second. Every test passes
+  `[\"refunded\" 1]`."
   []
   (str "UPDATE " (qualified :people) " SET name = ? WHERE id = ?"))
 
@@ -110,16 +114,22 @@
     (testing "the run reports the temp table of each input and no output table"
       (is (= [(qualified :people)]
              (vals (:tables (run-write! (refund-1) ["refunded" 1] [(people-rows)] [(reading refunded-only-1)]))))))
-    (testing "the real table is not written"
-      (is (= 0 (-> (mt/native-query {:query (str "SELECT count(*) FROM " (qualified :people) " WHERE name = 'refunded'")})
-                   mt/process-query
-                   mt/rows
-                   ffirst
-                   long))))))
+    (testing "the write statement names the input's temp table, not the real table"
+      (let [executed (atom [])
+            execute! (mt/original-fn #'data-testing.executor/execute!)]
+        (mt/with-dynamic-fn-redefs [data-testing.executor/execute! (fn [driver conn query]
+                                                                     (swap! executed conj (:query query))
+                                                                     (execute! driver conn query))]
+          (let [[temp-table] (keys (:tables (run-write! (refund-1) ["refunded" 1] [(people-rows)]
+                                                        [(reading refunded-only-1)])))
+                [statement :as statements] @executed]
+            (is (= 1 (count statements)))
+            (is (str/includes? statement temp-table))
+            (is (not (str/includes? (u/lower-case-en statement) (u/lower-case-en (qualified :people)))))))))))
 
 (deftest write-to-an-undeclared-table-is-refused-test
   (mt/test-drivers (drivers-that-write)
-    (testing "an INSERT whose target has no input is refused before any connection, naming the target"
+    (testing "an INSERT whose target has no input is refused, naming the target"
       (let [sql (str "INSERT INTO " (qualified :orders) " (id) SELECT id FROM " (qualified :people) " WHERE id = ?")
             e   (try (run-write! sql [1] [(people-rows)] [(reading refunded-only-1)])
                      nil
@@ -132,7 +142,7 @@
     (let [people (qualified :people)]
       (testing "control: one UPDATE runs"
         (is (nil? (refusal! (refund-1) ["refunded" 1] [(people-rows)] [(reading refunded-only-1)]))))
-      (testing "a procedure call names no table, so the input check cannot see what it writes"
+      (testing "a procedure call is refused: it names no table, so the input check cannot see what it writes"
         (is (= ::data-testing.errors/not-a-single-write
                (refusal! "CALL refund_order(?)" [1] [(people-rows)] [(reading refunded-only-1)]))))
       (testing "a second statement is refused, even when it writes a declared table"
@@ -154,13 +164,14 @@
   (mt/test-drivers (drivers-that-write)
     (testing "`equals` compares an output, and a write has none"
       (let [e (try (run-write! (refund-1) ["refunded" 1] [(people-rows)]
-                               [{:type :equals :name "compares the output" :format :rows
+                               [{:type :equals :name "person 1 only" :format :rows
                                  :columns [{:name "id" :cast_type (first (data-testing.test-util/cast-types))}]
                                  :rows    [{"id" 1}]}])
                    nil
                    (catch ExceptionInfo e e))]
         (is (= ::data-testing.errors/no-output (:error-type (ex-data e))))
-        (is (re-find #"compares the output" (ex-message e)))))))
+        (is (re-find #"\"person 1 only\"" (ex-message e)))
+        (is (re-find #"has no output" (ex-message e)))))))
 
 (deftest parameters-reach-the-subject-plan-test
   (mt/test-drivers (drivers-that-write)
@@ -174,3 +185,39 @@
                      :expectations [(reading refunded-only-1)]
                      :parameters   {"id" 1 "status" "refunded"}})))
          (is (= [{"id" 1 "status" "refunded"}] (asked))))))))
+
+(defn- fail-to-write!
+  "Run a saved test of a write that the warehouse rejects: it sets a column the people table does not have."
+  []
+  (run-write! (str "UPDATE " (qualified :people) " SET no_such_column = ? WHERE id = ?") ["x" 1]
+              [(people-rows)] [(reading refunded-only-1)]))
+
+(deftest failed-write-is-refused-naming-the-input-test
+  (mt/test-drivers (drivers-that-write)
+    (testing "a write the warehouse rejects is refused as a failed query, naming the input, not its temp table"
+      (let [e (try (fail-to-write!)
+                   nil
+                   (catch ExceptionInfo e e))]
+        (is (= ::data-testing.errors/query-failed (:error-type (ex-data e))))
+        (is (str/includes? (str (ex-message e)) (qualified :people)))))))
+
+(deftest temp-tables-are-dropped-after-a-failed-write-test
+  (mt/test-drivers (drivers-that-write)
+    (let [created     (atom [])
+          dropped     (atom [])
+          orig-create (mt/original-fn #'data-testing.executor/create-temp-table!)
+          orig-drop   (mt/original-fn #'data-testing.executor/drop-temp-table!)]
+      (mt/with-dynamic-fn-redefs [data-testing.executor/create-temp-table! (fn [driver conn table query]
+                                                                             (swap! created conj table)
+                                                                             (orig-create driver conn table query))
+                                  data-testing.executor/drop-temp-table!   (fn [driver conn table]
+                                                                             (swap! dropped conj table)
+                                                                             (orig-drop driver conn table))]
+        (testing "premise: the write is refused as a failed query"
+          (is (= ::data-testing.errors/query-failed
+                 (try (fail-to-write!)
+                      nil
+                      (catch ExceptionInfo e (:error-type (ex-data e)))))))
+        (testing "the run drops the temp table of its one input, and nothing else"
+          (is (= 1 (count @created)))
+          (is (= (set @created) (set @dropped))))))))

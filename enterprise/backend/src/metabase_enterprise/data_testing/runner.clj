@@ -1,18 +1,19 @@
 (ns metabase-enterprise.data-testing.runner
   "Orchestrates a test run over the module's separated concerns. Callers hand the runner the saved subject, and the
-  saved test to run or the inputs and expectations to validate; the runner owns the connection lifecycle, hands
+  saved test to run or the test definition to validate; the runner owns the connection lifecycle, hands
   ordinary arguments to each concern (no marshaled plan object), and owns the HTTP decisions.
 
     subject      — app-db: the subject's database and its query compiled to SQL, one method per subject type
     compile      — pure: referenced tables (once), then rewrites to temp tables
     validator    — pure: may this test run? every read faked, every rewritten query on temp tables
     executor     — the one place warehouse I/O lives: create/drop temp tables, run read-backs
-    expectations — check each expectation against the output temp table (via executor)
+    expectations — check each expectation against the output temp table, or the input temp tables after a write
+                   (via executor)
 
   Flow — compile the subject once, then thread that one result so the guard and the rewrite agree:
 
     subject-plan (app-db)     : the database, the subject's SQL, the names of its output
-      → referenced tables (pure): the tables the SQL reads
+      → referenced tables (pure): the tables the SQL reads or writes
       → name + rewrite (pure)   : a temp table per input, and the source reading them
       → validate (pure)         : reject a test that is incomplete, or whose queries would still
                                   read a real table
@@ -87,9 +88,9 @@
   [:fn #(satisfies? expectations.protocol/Expectation %)])
 
 (mr/def ::context
-  "What an expectation is given to build its queries and read their answers: the driver, the output temp table and
-  the columns it has (nil when the subject modifies tables), the input-table replacements, the token its SQL may write
-  for the output, and the expectation's own temp tables and their columns once they exist."
+  "What an expectation is given to build its queries and read their answers: the driver; the output temp table and
+  the columns it has, or a nil table and no columns when the subject modifies tables; the input-table replacements;
+  the token its SQL may write for the output; and the expectation's own temp tables and their columns once they exist."
   [:map {:closed true}
    [:driver             :keyword]
    [:output-table       [:maybe :string]]
@@ -199,7 +200,7 @@
           (data-testing.executor/drop-temp-table! driver conn table))))))
 
 (mu/defn- source-tables :- [:set ::data-testing.schema/table]
-  "The tables the subject's `sql` reads, or a refusal naming what would not parse."
+  "The tables the subject's `sql` reads or writes, or a refusal naming what would not parse."
   [driver :- :keyword
    sql    :- :string]
   (try
@@ -296,8 +297,8 @@
       (rethrow-remapped e ::data-testing.errors/query-failed (tru "The query under test failed to run:") labels))))
 
 (mu/defn- check-expectations :- [:sequential ::data-testing.schema/expectation-result]
-  "The result of every expectation against the output temp table, or against the input temp tables when the subject
-  modifies tables, passing ones included."
+  "The result of every expectation, passing ones included, against the output temp table, or against the input temp
+  tables when the subject modifies tables."
   [driver       :- :keyword
    conn         :- ::data-testing.schema/connection
    context      :- ::context
@@ -317,8 +318,8 @@
   read them, and the labels a message renders them as.
 
   Throws the run's typed refusals — an untestable subject or driver, SQL that will not parse, a write that is not one
-  INSERT, UPDATE or DELETE, a test the validator rejects — so a caller that only wants the answer to \"could this
-  run?\" gets it by asking for the plan and discarding it."
+  INSERT, UPDATE or DELETE or that cannot be checked, a test the validator rejects — so a caller that only wants the
+  answer to \"could this run?\" gets it by asking for the plan and discarding it."
   [subject-type                           :- ::data-testing.subject/subject-type
    subject                                :- ::data-testing.subject/subject
    {:keys [inputs expectations] :as definition} :- ::definition]

@@ -27,7 +27,7 @@
    ::no-expectations            400  ; The test checks nothing.
    ::unknown-placeholder        400  ; Expectation SQL writes a `{{...}}` that is not the output token.
    ::colliding-columns          400  ; An expectation compares one output column twice, or one the comparison names itself.
-   ::not-a-single-write         400  ; A subject that writes holds SQL other than one INSERT, UPDATE or DELETE.
+   ::not-a-single-write         400  ; A subject that writes holds SQL other than one INSERT, UPDATE or DELETE, or calls a function the write check refuses.
    ::no-output                  400  ; An expectation compares the output of a subject that writes and has none.
    ::invalid-parameters         400  ; The test's parameter values do not fit the action: a hidden or unknown parameter.
 
@@ -39,7 +39,7 @@
    ::duplicate-output-columns   422  ; The output of the query under test has two columns of one name.
    ::setup-failed               422  ; A test input could not be materialized.
    ::expectation-failed         422  ; An expectation's own query failed to execute.
-   ::uncheckable-write          422  ; The write of a subject cannot be checked in its database's SQL dialect.
+   ::uncheckable-write          422  ; The write of a subject cannot be checked: its database has no SQL dialect, or its SQL holds a list too long to parse.
    ::unsupported-action         422  ; Not a query action (an implicit action, say).
    ::actions-disabled           422  ; The action's database does not support actions, or has them turned off.
 

@@ -13,9 +13,11 @@
     could not match), and running it would hit the real table or error at execution. This covers the query under test
     and every expectation that carries the author's own SQL.
 
-  A subject that modifies existing tables counts the tables it modifies among those it reads, so both guards cover
-  them. The parser sees no table inside a procedure or a function, so [[ensure-single-write]] admits only one INSERT,
-  UPDATE or DELETE.
+  The parser reports the table an INSERT, UPDATE or DELETE writes among the tables a query reads, so both guards cover
+  the tables a subject modifies. The exception is a bare target named like a CTE of the same statement: the parser
+  takes it for the CTE, and the database writes the table. The parser sees no table inside a procedure or a function,
+  so [[ensure-single-write]] admits only one INSERT, UPDATE or DELETE, and refuses the functions it knows to run SQL
+  text or act outside the statement. A write made inside any other function goes unseen.
 
   [[table-label]] is here too, and is not validation: it is the one way this module renders a table in a message."
   (:require
@@ -199,14 +201,16 @@
 
 (mu/defn ensure-single-write :- :string
   "`sql` as SQLGlot rebuilt it, the string the run executes, when it is one INSERT, UPDATE or DELETE statement in
-  `driver`'s dialect that calls no function known to run SQL text or change the session. Throws
-  `::data-testing.errors/not-a-single-write` when it is not, and `::data-testing.errors/uncheckable-write` when the
-  dialect is unknown or the SQL is too large to check.
+  `driver`'s dialect that hides no SQL from the parser and calls no function the check refuses: one that runs SQL
+  text, takes a lock, waits, changes the session or reaches outside the database. Throws
+  `::data-testing.errors/not-a-single-write` when it is not, `::data-testing.errors/unparseable-source` when it does
+  not parse, and `::data-testing.errors/uncheckable-write` when the dialect is unknown or a literal list is too long
+  to parse.
 
-  A function that writes, called by a name the check does not know, passes."
+  Any other function passes, one known to write included: `nextval` and `setval` change a sequence."
   [driver :- :keyword
    sql    :- :string]
-  (let [{:keys [verdict error reason] checked :sql} (sql-tools/validate-executable-stmt driver sql "write")]
+  (let [{:keys [verdict error reason detail] checked :sql} (sql-tools/validate-executable-stmt driver sql "write")]
     (case verdict
       :allowed
       checked
@@ -214,8 +218,10 @@
       :disallowed
       (throw (data-testing.errors/ex
               ::data-testing.errors/not-a-single-write
-              (tru "The SQL under test must be one INSERT, UPDATE or DELETE statement that calls no function that runs SQL text. Only for such a statement can the test tell which tables the SQL writes.")
-              {}))
+              (tru "The SQL under test must be one INSERT, UPDATE or DELETE statement that hides no SQL from the parser and calls no function that runs SQL text, takes a lock, waits, changes the session or reaches outside the database.")
+              (cond-> {}
+                reason (assoc :reason reason)
+                detail (assoc :detail detail))))
 
       :unknown
       (if error
@@ -225,7 +231,7 @@
                 {}))
         (throw (data-testing.errors/ex
                 ::data-testing.errors/uncheckable-write
-                (tru "The SQL under test writes, and the test cannot check which tables it writes to in this database''s SQL dialect.")
+                (tru "The SQL under test writes, and the test cannot check which tables it writes to: this database''s SQL dialect is not supported, or the SQL holds a list of values too long to parse.")
                 {:reason reason}))))))
 
 (def ^:private compares-output
@@ -277,7 +283,7 @@
   (when-let [{expectation-name :name} (and writes? (first (filter (comp compares-output :type) expectations)))]
     (throw (data-testing.errors/ex
             ::data-testing.errors/no-output
-            (tru "Expectation {0} compares the output of the query under test, which modifies existing tables and has no output. Read the tables it modifies in an `empty` expectation."
+            (tru "Expectation {0} compares the output of the query under test, which modifies existing tables and has no output. Use an `empty` expectation whose SQL reads the tables the query under test modifies."
                  (pr-str expectation-name))
             {:expectation expectation-name})))
   (let [temp-tables (into #{} (map :table) (vals replacements))]

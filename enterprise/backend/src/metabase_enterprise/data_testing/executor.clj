@@ -34,7 +34,7 @@
       (log/warnf "Failed to drop data test temp table %s: %s" table (ex-message e)))))
 
 (mu/defn execute!
-  "Run the compiled statement `query`, which returns no rows, on `conn`."
+  "Run the compiled statement `query`, which must return no rows, on `conn`."
   [driver :- :keyword
    conn   :- ::data-testing.schema/connection
    query  :- ::data-testing.compile/compiled-query]

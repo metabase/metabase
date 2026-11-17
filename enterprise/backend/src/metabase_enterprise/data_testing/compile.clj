@@ -57,7 +57,7 @@
 ;;; ------------------------------------------------- Parsing -------------------------------------------------
 
 (mu/defn referenced-tables :- [:set ::data-testing.schema/table]
-  "The tables `sql` reads."
+  "The tables `sql` reads or writes."
   [driver :- :keyword
    sql    :- :string]
   (into #{}
@@ -92,7 +92,7 @@
 
 (mu/defn table-replacements :- ::table-replacements
   "The replacements mapping each input's table to its temp table in `input->table`, and each of `output-tables` to
-  `output-table`. `output-table` is nil only when `output-tables` is empty."
+  `output-table`. Pass a nil `output-table` only with an empty `output-tables`."
   [output-tables  :- [:sequential ::output-table]
    input->table   :- [:map-of ::data-testing.schema/input ::lib.schema.common/non-blank-string]
    output-table   :- [:maybe ::lib.schema.common/non-blank-string]
