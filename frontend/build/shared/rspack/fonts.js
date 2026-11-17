@@ -331,13 +331,15 @@ const FONT_FACES_VIRTUAL_MODULE = {
  * Fills in that module. A `pre` loader, so css-loader sees the rules and resolves their `url()`
  * against the chunks this writes.
  *
- * @type {{
+ * @param {{ unicodeRangesAsset?: string }} [loaderOptions] `unicodeRangesAsset` is the output path
+ *   to publish the chunk ranges at, for the one build whose output the backend reads
+ * @returns {{
  *   test: RegExp,
  *   enforce: "pre",
  *   use: { loader: string, options: { fontsDir: string, outputDir: string } }[],
  * }}
  */
-const FONT_FACES_RULE = {
+const fontFacesRule = (loaderOptions = {}) => ({
   test: /[\\/]frontend[\\/]fonts[\\/]fonts\.css$/,
   enforce: "pre",
   use: [
@@ -346,10 +348,13 @@ const FONT_FACES_RULE = {
       options: {
         fontsDir: path.join(ROOT, "frontend/fonts"),
         outputDir: path.join(ROOT, "node_modules/.cache/font-subsets"),
+        ...loaderOptions,
       },
     },
   ],
-};
+});
+
+const FONT_FACES_RULE = fontFacesRule();
 
 module.exports = {
   FONT_FACES_RULE,
@@ -357,6 +362,7 @@ module.exports = {
   LATIN_UNICODE_RANGE: unicodeRange(LATIN_RANGES),
   SUBSET_OPTIONS,
   REST_UNICODE_RANGE: unicodeRange(REST_RANGES),
+  fontFacesRule,
   latinCharacters: () => (latin ??= characters(LATIN_RANGES)),
   restCharacters: () => (rest ??= characters(REST_RANGES)),
   buildFontFaces,

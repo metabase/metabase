@@ -40,8 +40,19 @@ module.exports = function fontSubsetLoader() {
 };
 
 async function rewrite(loader) {
-  const { fontsDir, outputDir } = loader.getOptions();
+  const { fontsDir, outputDir, unicodeRangesAsset } = loader.getOptions();
   fs.mkdirSync(outputDir, { recursive: true });
+  // A rule written outside this stylesheet has to declare every chunk of a face
+  // with its range. The keys are the chunk names in the emitted filenames.
+  if (unicodeRangesAsset) {
+    loader.emitFile(
+      unicodeRangesAsset,
+      JSON.stringify({
+        latin: LATIN_UNICODE_RANGE,
+        rest: REST_UNICODE_RANGE,
+      }),
+    );
+  }
   // Nothing here comes from the module's own resource, so everything it is
   // built from has to invalidate it explicitly.
   loader.addDependency(require.resolve("../fonts"));

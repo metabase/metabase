@@ -27,9 +27,9 @@ const {
   CssVarsDeclarationPlugin,
 } = require("./frontend/build/shared/rspack/plugins/CssVarsDeclarationPlugin/css-vars-declaration-plugin");
 const {
-  FONT_FACES_RULE,
   FONT_FACES_VIRTUAL_MODULE,
   fontAssetName,
+  fontFacesRule,
 } = require("./frontend/build/shared/rspack/fonts");
 const {
   DropStylesEntryScriptPlugin,
@@ -262,7 +262,8 @@ const config = {
           filename: (pathData) => fontAssetName(pathData, "fonts"),
         },
       },
-      FONT_FACES_RULE,
+      // `metabase.util.fonts` reads the ranges to declare the chunks in pages it renders itself.
+      fontFacesRule({ unicodeRangesAsset: "font-unicode-ranges.json" }),
       {
         test: /\.css$/,
         use: [
