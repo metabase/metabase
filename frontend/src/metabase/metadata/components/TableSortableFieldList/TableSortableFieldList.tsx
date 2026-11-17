@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import _ from "underscore";
 
 import { SortableFieldList } from "metabase/metadata/components";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { FieldId, Table } from "metabase-types/api";
 
 type TableSortableFieldListProps = {
@@ -22,7 +21,7 @@ export function TableSortableFieldList({
   return (
     <SortableFieldList
       fields={fields}
-      getFieldKey={getRawTableFieldId}
+      getFieldKey={(field) => field.id}
       onChange={onChange}
     />
   );

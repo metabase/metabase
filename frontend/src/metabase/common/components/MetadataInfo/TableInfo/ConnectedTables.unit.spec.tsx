@@ -1,9 +1,7 @@
-import { createMockMetadataFromState } from "__support__/metadata";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Urls from "metabase/urls";
-import { checkNotNull } from "metabase/utils/types";
 import { createMockTable } from "metabase-types/api/mocks";
 import {
   PRODUCTS_ID,
@@ -59,15 +57,12 @@ describe("ConnectedTables", () => {
     expect(screen.getAllByText(/Bar-\d/)).toHaveLength(8);
   });
 
-  it("should link each table to a new question on it", () => {
-    const { state } = setup({ tables: [createProductsTable()] });
-    const newQuestion = checkNotNull(
-      createMockMetadataFromState(state).table(PRODUCTS_ID),
-    ).newQuestion();
+  it("should link each table to its table page", () => {
+    setup({ tables: [createProductsTable()] });
 
     expect(screen.getByRole("link", { name: /Products/ })).toHaveAttribute(
       "href",
-      Urls.question(newQuestion),
+      Urls.table({ id: PRODUCTS_ID, name: "Products" }),
     );
   });
 });

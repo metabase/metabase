@@ -180,7 +180,7 @@
             :let [field     (field-by-name (source-swap.util/column-match-key col-meta))
                   overrides (u/select-keys-when col-meta :non-nil metadata-override-keys)]
             :when (and field (seq overrides))]
-      (field-user-settings/upsert-user-settings field overrides))))
+      (field-user-settings/upsert-field-user-settings! field overrides))))
 
 (defn run-swap-model-with-transform!
   "Execute a transform, find the output table, then swap all dependents of the card

@@ -5,7 +5,7 @@ summary: "The Metabase CLI (mb) is a command-line client that drives a Metabase 
 
 # Metabase CLI
 
-The Metabase CLI (`mb`) is a command-line client for Metabase. `mb` logs in to a Metabase instance and lets you or an AI agent read and write content over the Metabase API: questions, dashboards, collections, transforms, and more.
+The [Metabase CLI](https://github.com/metabase/metabase-cli#readme) (`mb`) is a command-line client for Metabase. `mb` logs in to a Metabase instance and lets you or an AI agent read and write content over the Metabase API: questions, dashboards, collections, transforms, and more.
 
 > Looking for the commands built into the Metabase JAR, like `migrate` or `load-from-h2`? Check out [Metabase JAR commands](./commands.md).
 
@@ -30,6 +30,10 @@ mb --help
 ```
 
 To update to the latest version later, run `mb upgrade`.
+
+## List of commands
+
+See the [Metabase CLI README](https://github.com/metabase/metabase-cli#readme).
 
 ## Authenticate the CLI
 

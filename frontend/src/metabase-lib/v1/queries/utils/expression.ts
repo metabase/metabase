@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { unique_expression_name } from "cljs/metabase.lib.js";
 import type * as Lib from "metabase-lib";
 

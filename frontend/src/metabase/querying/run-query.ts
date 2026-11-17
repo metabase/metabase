@@ -10,7 +10,7 @@ import type {
   CardQueryRequest,
   DashboardCardQueryRequest,
   Dataset,
-  DatasetQuery,
+  JsonQuery,
 } from "metabase-types/api";
 
 import {
@@ -84,7 +84,7 @@ let adhocDatasetQueryCounter = 0;
 export function runAdhocDatasetQuery(
   dispatch: Dispatch,
   question: Question,
-  body: DatasetQuery & { parameters?: unknown[]; ignore_cache?: boolean },
+  body: JsonQuery & { ignore_cache?: boolean },
   signal?: AbortSignal,
 ): Promise<Dataset> {
   const isPivot = shouldUsePivotEndpoint(question);

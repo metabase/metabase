@@ -22,6 +22,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api-keys.core :as api-key]
    [metabase.api-keys.schema :as api-keys.schema]
+   [metabase.api-scope.workspace-manager :as api-scope.workspace-manager]
    [metabase.api.macros.scope :as scope]
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
@@ -39,8 +40,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.password :as u.password]
-   [metabase.util.string :as string]))
+   [metabase.util.password :as u.password]))
 
 (set! *warn-on-reflection* true)
 
@@ -100,7 +100,7 @@
   "Validates that the given session-key looks like a session key (a UUID string). Session keys are only ever compared
   against `core_session.key_hashed`; this check short-circuits obviously-invalid values before we hash them."
   [session-key]
-  (or (not session-key) (string/valid-uuid? session-key)))
+  (or (not session-key) (u/uuid-string? session-key)))
 
 (mu/defn- current-user-info-for-session :- [:maybe [:merge
                                                     ::request.schema/current-user-info
@@ -128,29 +128,30 @@
             (assoc :metabase/authed-session-key-hash session-key-hash
                    :embedding/auth-method            (or auth-provider "session")))))))
 
-(def ^:private api-key-that-should-never-match (str (random-uuid)))
-(def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
-
-(defn do-useless-hash
-  "Password check that will always fail, used to avoid exposing any info about existing users or API keys via timing
-  attacks."
-  []
-  (u.password/verify-password api-key-that-should-never-match "" hash-that-should-never-match))
-
 (defn- matching-api-key?
   "Whether `passed-api-key` matches the hash stored in `user-data`. The stored bcrypt hash is encrypted at rest and this
   path reads the raw column (bypassing the model's decrypting transform), so it is decrypted before the bcrypt compare;
   a value that is not valid ciphertext — e.g. a plaintext hash injected via direct SQL — decrypts to nil and is
   rejected rather than trusted. With no usable hash we still compute a useless hash so the two cases can't be told apart
   by timing."
-  [{:keys [api-key] :as _user-data} passed-api-key]
+  [{:keys [api-key] :as _user-data} passed-api-key salt]
   (if-let [stored-hash (when api-key
                          (u/ignore-exceptions (encryption/maybe-decrypt api-key)))]
-    (u.password/verify-password passed-api-key "" stored-hash)
-    (do-useless-hash)))
+    (u.password/verify-password passed-api-key salt stored-hash)
+    (u.password/do-useless-hash)))
+
+(def ^:private api-key-scopes
+  "The API keys this middleware authenticates, by the key's `scope` column: the scope the key's hash is salted for
+  (`api-key/key-hash-salt`), and the `:token-scopes` of the request. A key whose scope is not here does not
+  authenticate: SCIM keys belong to the SCIM endpoints alone."
+  {nil                 {:scope nil, :token-scopes nil}
+   "workspace-manager" {:scope        :workspace-manager
+                        :token-scopes #{api-scope.workspace-manager/workspace-manager}}})
 
 (mu/defn- current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]
-  "Return User ID and superuser status for an API Key with `api-key-id"
+  "Return User ID and superuser status for the raw key `api-key`. A `workspace-manager` key is checked against its
+  salted hash and also sets `:token-scopes`, so it reaches only the endpoints tagged with that scope. Return nil for a key whose scope is
+  neither nil nor `workspace-manager`."
   [api-key :- [:maybe :string]]
   (when (and api-key
              (init-status/complete?))
@@ -168,10 +169,14 @@
       (let [user-info (-> (server.db/api-key-user-info (api-key/prefix api-key)
                                                        (premium-features/enable-advanced-permissions?))
                           (m/update-existing :is-group-manager? boolean))]
-        (when (matching-api-key? user-info api-key)
-          (-> user-info
-              (dissoc :api-key)
-              (assoc :embedding/auth-method "api-key")))))))
+        (when (and (matching-api-key? user-info api-key
+                                      (api-key/key-hash-salt (:scope (api-key-scopes (:api-key-scope user-info)))))
+                   (contains? api-key-scopes (:api-key-scope user-info)))
+          (let [token-scopes (:token-scopes (api-key-scopes (:api-key-scope user-info)))]
+            (-> user-info
+                (dissoc :api-key :api-key-scope)
+                (cond-> token-scopes (assoc :token-scopes token-scopes))
+                (assoc :embedding/auth-method "api-key"))))))))
 
 (mr/def ::oauth-bearer
   "Fns that authenticate a request by its OAuth bearer token, the scope that grants full access, the scopes that make
@@ -330,8 +335,8 @@
   `(request/do-with-current-user ~request (fn [] ~@body)))
 
 (defn bind-current-user
-  "Middleware that binds [[metabase.api.common/*current-user*]], [[*current-user-id*]], [[*is-superuser?*]],
-  [[*current-user-permissions-set*]], and [[metabase.settings.models.setting/*user-local-values*]].
+  "Middleware that binds [[metabase.api.common/*current-user*]], [[*current-user-id*]], [[*is-superuser?*]], and
+  [[metabase.settings.models.setting/*user-local-values*]].
 
   *  `*current-user-id*`                int ID or nil of user associated with request
   *  `*current-user*`                   delay that returns current user (or nil) from DB
@@ -339,7 +344,6 @@
                                         Overrides `site-locale` if set.
   *  `*is-superuser?*`                  Boolean stating whether current user is a superuser.
   *  `*is-group-manager?*`              Boolean stating whether current user is a group manager of at least one group.
-  *  `*current-user-permissions-set*`   delay that returns the set of permissions granted to the current user from DB
   *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]
   (fn [request respond raise]

@@ -15,7 +15,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.appearance.core :as appearance]
    [metabase.logger.core :as logger]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.server.streaming-response :as sr]
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
@@ -75,7 +75,7 @@
   These are not loaded namespaces; each prefix captures every logger nested under it (e.g.
   `metabase-enterprise.serialization` captures `metabase-enterprise.serialization.v2.extract`)."
   ['metabase-enterprise.serialization
-   'metabase.models.serialization])
+   'metabase.serialization])
 
 (defn- log-export-error!
   "Log a serialization export error, honoring `full-stacktrace` (full trace vs stripped one-liner)."
@@ -112,7 +112,7 @@
         report (with-open [_logger (logger/for-ns log-output serialization-logger-prefixes
                                                   {:additive *additive-logging*})]
                  (try
-                   (serdes/with-cache
+                   (serialization/with-export-transaction
                      (v2.storage/store! entities writer))
                    (catch Exception e
                      (reset! error e)
@@ -163,10 +163,9 @@
                                           :count  cnt
                                           :files  (.listFiles dst)})))
                        (log/infof "In total %s entries unpacked, source dir detected" cnt)
-                       (serdes/with-cache
-                         (-> (v2.ingest/ingest-yaml (.getPath path))
-                             (v2.load/load-metabase! {:continue-on-error continue-on-error
-                                                      :reindex?          reindex?}))))
+                       (v2.load/load-metabase! (v2.ingest/ingest-yaml (.getPath path))
+                                               {:continue-on-error continue-on-error
+                                                :reindex?          reindex?}))
                      (catch Exception e
                        (reset! err e)
                        (if full-stacktrace
@@ -246,7 +245,8 @@
        [:continue_on_error {:default false} (mu/with ms/BooleanValue {:description "Do not break execution on errors"})]
        [:full_stacktrace   {:default false} (mu/with ms/BooleanValue {:description "Show full stacktraces in the logs"})]]]
   (api/check-superuser)
-  (let [opts               {:targets                  (mapv #(vector "Collection" %)
+  (let [opts               {:targets                  (mapv #(vector :model/Collection
+                                                                     (cond-> % (string? %) (str/replace #"^eid:" "")))
                                                             collection)
                             :no-collections           (and (empty? collection)
                                                            (not all-collections?))
@@ -315,7 +315,7 @@
                                              :continue-on-error continue-on-error?
                                              :full-stacktrace   full-stacktrace?
                                              :reindex?          reindex-search?})
-          imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
+          imported           (into (sorted-set) (map (comp name first)) (:seen report))]
       (analytics/track-event! :snowplow/serialization
                               {:event         :serialization
                                :direction     "import"
@@ -323,7 +323,7 @@
                                :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
                                :models        (str/join "," imported)
                                :count         (if (contains? imported "Setting")
-                                                (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
+                                                (inc (count (remove #(= :model/Setting (first %)) (:seen report))))
                                                 (count (:seen report)))
                                :error_count   (count (:errors report))
                                :success       (not error-message)

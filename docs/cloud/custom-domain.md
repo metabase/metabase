@@ -1,5 +1,6 @@
 ---
 title: "Changing your domain name"
+summary: Serve your Metabase from your own domain name instead of metabaseapp.com.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true

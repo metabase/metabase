@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting Metabase on Docker
+summary: Fix common problems running Metabase in Docker, from containers that exit to application databases that don't persist.
 ---
 
 # Troubleshooting Metabase on Docker

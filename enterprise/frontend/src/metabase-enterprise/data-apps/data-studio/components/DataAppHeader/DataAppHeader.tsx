@@ -19,20 +19,20 @@ type DataAppHeaderProps = {
 export function DataAppHeader({ app }: DataAppHeaderProps) {
   return (
     <PaneHeader
-      title={<PanelHeaderTitle>{app.display_name}</PanelHeaderTitle>}
+      title={<PanelHeaderTitle>{app.name}</PanelHeaderTitle>}
       menu={<DataAppMoreMenu app={app} />}
       tabs={
         <PillTabNavigation
           tabs={[
-            { label: t`Overview`, to: Urls.dataStudioDataApp(app.name) },
+            { label: t`Overview`, to: Urls.dataStudioDataApp(app.slug) },
             {
               label: t`Questions`,
-              to: Urls.dataStudioDataAppQuestions(app.name),
+              to: Urls.dataStudioDataAppQuestions(app.slug),
             },
-            { label: t`Actions`, to: Urls.dataStudioDataAppActions(app.name) },
+            { label: t`Actions`, to: Urls.dataStudioDataAppActions(app.slug) },
             {
               label: t`Permissions`,
-              to: Urls.dataStudioDataAppPermissions(app.name),
+              to: Urls.dataStudioDataAppPermissions(app.slug),
             },
           ]}
         />
@@ -40,7 +40,7 @@ export function DataAppHeader({ app }: DataAppHeaderProps) {
       breadcrumbs={
         <DataStudioBreadcrumbs>
           <Link to={Urls.dataStudioDataApps()}>{t`Data apps`}</Link>
-          {app.display_name}
+          {app.name}
         </DataStudioBreadcrumbs>
       }
       data-testid="data-app-header"

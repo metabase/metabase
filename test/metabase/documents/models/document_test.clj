@@ -7,8 +7,8 @@
    [metabase.documents.models.document :as document]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.serialization.core :as serialization]
    [metabase.stale-test :as stale-test]
    [metabase.staleness.core :as staleness]
    [metabase.test :as mt]
@@ -223,34 +223,35 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                                 (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
 
-(deftest validate-collection-move-permissions-allows-move-from-root-test
-  (testing "allows move when old collection is nil (moving from root)"
+(deftest validate-collection-move-permissions-move-from-root-test
+  (testing "moving from root (old collection nil) requires write permission on root"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {new-collection-id :id} {:name "New Collection"}
                      :model/User {user-id :id} {}]
         (mt/with-current-user user-id
-          ;; Grant write permission to new collection
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
-          ;; Should not throw any exception when old collection is nil
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (document/validate-collection-move-permissions nil new-collection-id)))
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection/root-collection)
           (is (some? (document/validate-collection-move-permissions nil new-collection-id))))))))
 
-(deftest validate-collection-move-permissions-allows-move-to-root-test
-  (testing "allows move when new collection is nil (moving to root)"
+(deftest validate-collection-move-permissions-move-to-root-test
+  (testing "moving to root (new collection nil) requires write permission on root"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
                      :model/User {user-id :id} {}]
         (mt/with-current-user user-id
-          ;; Grant write permission to old collection
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
-          ;; Should not throw any exception when new collection is nil
-          (is (nil? (document/validate-collection-move-permissions old-collection-id nil))))))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (document/validate-collection-move-permissions old-collection-id nil)))
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection/root-collection)
+          (is (some? (document/validate-collection-move-permissions old-collection-id nil))))))))
 
 (deftest validate-collection-move-permissions-allows-move-both-nil-test
-  (testing "allows move when both collections are nil"
+  (testing "allows move when both collections are nil and the user can write root"
     (mt/with-temp [:model/User {user-id :id} {}]
       (mt/with-current-user user-id
-        ;; Should not throw any exception when both collections are nil
-        (is (nil? (document/validate-collection-move-permissions nil nil)))))))
+        (is (some? (document/validate-collection-move-permissions nil nil)))))))
 
 (deftest validate-collection-move-permissions-throws-400-nonexistent-collection-test
   (testing "throws 400 when new collection does not exist"
@@ -429,27 +430,14 @@
 
 ;;; ------------------------------------------------- Serialization Tests -------------------------------------------
 
-(deftest document-serdes-spec-test
-  (testing "Document serialization spec includes all required fields"
-    (let [spec (serdes/make-spec "Document" {})]
-      (is (= [:archived :archived_directly :content_type :entity_id :name :collection_position]
-             (:copy spec)))
-      (is (= [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id :is_placeholder] (:skip spec)))
-      (is (contains? (:transform spec) :document))
-      (is (contains? (:transform spec) :collection_id))
-      (is (contains? (:transform spec) :creator_id))
-      (testing "foreign key transformers are properly configured"
-        (is (get-in spec [:transform :collection_id ::serdes/fk]))
-        (is (get-in spec [:transform :creator_id ::serdes/fk]))))))
-
 (deftest document-serdes-dependencies-test
   (testing "Document dependencies method works correctly"
     (testing "with collection and creator"
       (let [document {:collection_id 123
                       :creator_id 456
-                      :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-            deps (serdes/deserialization-dependencies document)]
-        (is (= #{[{:model "Collection" :id 123}]}
+                      :serdes/meta [{:model "Document"}]}
+            deps (first (serialization/import-dependencies :model/Document [document]))]
+        (is (= #{[:model/Collection 123]}
                deps))))))
 
 (deftest document-serdes-smartlink-single-reference-test
@@ -462,10 +450,10 @@
                                                      :attrs {"entityId" [{:model "Card" :id 789}]
                                                              "model" "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 789}]))
-      (is (contains? deps [{:model "Collection" :id 123}])))))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 789]))
+      (is (contains? deps [:model/Collection 123])))))
 
 (deftest document-serdes-smartlink-multiple-references-test
   (testing "multiple smartLink references of different types"
@@ -480,15 +468,15 @@
                                                      :attrs {"entityId" [{:model "Dashboard" :id 456}]
                                                              "model" "dashboard"}}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Table" :id 321}]
+                                                     :attrs {"entityId" [{:model "Database" :id "db"} {:model "Table" :id "t"}]
                                                              "model" "table"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 789}]))
-      (is (contains? deps [{:model "Dashboard" :id 456}]))
-      (is (contains? deps [{:model "Table" :id 321}]))
-      (is (contains? deps [{:model "Collection" :id 123}])))))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 789]))
+      (is (contains? deps [:model/Dashboard 456]))
+      (is (contains? deps [:model/Table ["db" nil "t"]]))
+      (is (contains? deps [:model/Collection 123])))))
 
 (deftest document-serdes-smartlink-nested-structure-test
   (testing "nested smartLink in complex prose mirror structure"
@@ -504,10 +492,10 @@
                                                                            :attrs {"entityId" [{:model "Card" :id 999}]
                                                                                    "model" "card"}}]}]}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 999}]))
-      (is (contains? deps [{:model "Collection" :id 123}])))))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 999]))
+      (is (contains? deps [:model/Collection 123])))))
 
 (deftest document-serdes-smartlink-no-smartlinks-test
   (testing "document with no smartLinks"
@@ -517,9 +505,9 @@
                                :content [{:type "paragraph"
                                           :content [{:type "text" :text "Plain text only"}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (= #{[{:model "Collection" :id 123}]}
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (= #{[:model/Collection 123]}
              deps)))))
 
 (deftest document-serdes-smartlink-unknown-model-test
@@ -535,10 +523,10 @@
                                                      :attrs {"entityId" [{:model "Card" :id 456}]
                                                              "model" "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 456}]))
-      (is (not (some #(= (:model (first %)) "unknown-model") deps))))))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 456]))
+      (is (= #{[:model/Card 456] [:model/Collection 123]} deps)))))
 
 (deftest document-serdes-smartlink-missing-entity-id-test
   (testing "smartLink with missing entityId is ignored"
@@ -552,9 +540,9 @@
                                                      :attrs {"entityId" [{:model "Card" :id 456}]
                                                              "model" "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 456}]))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 456]))
       (is (= 2 (count deps)))))) ; collection and one valid card
 
 (deftest document-serdes-smartlink-duplicate-references-test
@@ -570,9 +558,9 @@
                                                      :attrs {"entityId" [{:model "Card" :id 789}]
                                                              "model" "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 789}]))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 789]))
       (is (= 2 (count deps)))))) ; collection and one unique card
 
 (deftest document-serdes-smartlink-empty-content-test
@@ -582,9 +570,9 @@
                     :document {:type "doc"
                                :content []}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (= #{[{:model "Collection" :id 123}]}
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (= #{[:model/Collection 123]}
              deps)))))
 
 (deftest document-serdes-smartlink-missing-model-test
@@ -599,9 +587,9 @@
                                                      :attrs {"entityId" [{:model "Card" :id 456}]
                                                              "model" "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 456}]))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 456]))
       (is (= 2 (count deps)))))) ; collection and one valid card
 
 (deftest document-serdes-smartlink-nil-attrs-test
@@ -616,9 +604,9 @@
                                                      :attrs {"entityId" [{:model "Card" :id 456}]
                                                              "model" "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 456}]))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 456]))
       (is (= 2 (count deps)))))) ; collection and one valid card
 
 (deftest document-serdes-smartlink-mixed-content-test
@@ -643,15 +631,15 @@
                                                      :content [{:type "tableCell"
                                                                 :content [{:type "paragraph"
                                                                            :content [{:type "smartLink"
-                                                                                      :attrs {"entityId" [{:model "Table" :id 321}]
+                                                                                      :attrs {"entityId" [{:model "Database" :id "db"} {:model "Table" :id "t"}]
                                                                                               "model" "table"}}]}]}]}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 789}]))
-      (is (contains? deps [{:model "Dashboard" :id 456}]))
-      (is (contains? deps [{:model "Table" :id 321}]))
-      (is (contains? deps [{:model "Collection" :id 123}]))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 789]))
+      (is (contains? deps [:model/Dashboard 456]))
+      (is (contains? deps [:model/Table ["db" nil "t"]]))
+      (is (contains? deps [:model/Collection 123]))
       (is (= 4 (count deps)))))) ; 3 smartLinks + collection
 
 (deftest document-serdes-smartlink-non-prose-mirror-test
@@ -663,25 +651,28 @@
                                           :attrs {"entityId" [{:model "Card" :id 456}]
                                                   "model" "card"}}]}
                     :content_type "application/json" ; Not prose-mirror
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Collection" :id 123}])))))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (= #{[:model/Collection 123]} deps)))))
 
-(deftest document-serdes-descendants-embedded-cards-test
-  (testing "Document descendants includes embedded cards"
+(defn- export-dependencies [document-id]
+  (first (serialization/export-dependencies :model/Document [(t2/select-one :model/Document :id document-id)])))
+
+(deftest document-serdes-export-dependencies-embedded-cards-test
+  (testing "Document export dependencies includes embedded cards"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "cardEmbed"
                                                                             :attrs {"id" 456}}
                                                                            {:type "cardEmbed"
                                                                             :attrs {"id" 789}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id {})]
-        (is (= {["Card" 456] {"Document" document-id}
-                ["Card" 789] {"Document" document-id}}
-               descendants))))))
+      (let [deps (export-dependencies document-id)]
+        (is (= #{[:model/Card 456]
+                 [:model/Card 789]}
+               deps))))))
 
-(deftest document-serdes-descendants-smart-links-test
-  (testing "Document descendants includes smart links"
+(deftest document-serdes-export-dependencies-smart-links-test
+  (testing "Document export dependencies includes smart links"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"
                                                                             :attrs {"entityId" 456
@@ -690,13 +681,13 @@
                                                                             :attrs {"entityId" 789
                                                                                     "model" "dashboard"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id {})]
-        (is (= {["Card" 456] {"Document" document-id}
-                ["Dashboard" 789] {"Document" document-id}}
-               descendants))))))
+      (let [deps (export-dependencies document-id)]
+        (is (= #{[:model/Card 456]
+                 [:model/Dashboard 789]}
+               deps))))))
 
-(deftest document-serdes-descendants-mixed-content-test
-  (testing "Document descendants includes both embedded cards and smart links"
+(deftest document-serdes-export-dependencies-mixed-content-test
+  (testing "Document export dependencies includes both embedded cards and smart links"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "cardEmbed"
                                                                             :attrs {"id" 111}}
@@ -707,28 +698,23 @@
                                                                             :attrs {"entityId" 333
                                                                                     "model" "table"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id {})]
-        (is (= {["Card" 111] {"Document" document-id}
-                ["Card" 222] {"Document" document-id}
-                ["Table" 333] {"Document" document-id}}
-               descendants))))))
+      (let [deps (export-dependencies document-id)]
+        (is (= #{[:model/Card 111]
+                 [:model/Card 222]
+                 [:model/Table 333]}
+               deps))))))
 
-(deftest document-serdes-descendants-empty-document-test
-  (testing "Document descendants handles document with no embedded content"
+(deftest document-serdes-export-dependencies-empty-document-test
+  (testing "Document export dependencies handles document with no embedded content"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "paragraph"
                                                                             :content [{:type "text" :text "Plain text only"}]}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id {})]
-        (is (= {} descendants))))))
+      (let [deps (export-dependencies document-id)]
+        (is (= #{} deps))))))
 
-(deftest document-serdes-descendants-nonexistent-document-test
-  (testing "Document descendants returns nil for non-existent document"
-    (let [descendants (serdes/descendants "Document" 99999999 {})]
-      (is (nil? descendants)))))
-
-(deftest document-serdes-descendants-unknown-smart-link-model-test
-  (testing "Document descendants ignores smart links with unknown model types"
+(deftest document-serdes-export-dependencies-unknown-smart-link-model-test
+  (testing "Document export dependencies ignores smart links with unknown model types"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"
                                                                             :attrs {"entityId" 456
@@ -737,15 +723,13 @@
                                                                             :attrs {"entityId" 789
                                                                                     "model" "unknown-model"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id {})]
-        ;; Should only include the known model type
-        (is (= {["Card" 456] {"Document" document-id}}
-               descendants))
-        ;; Should not include unknown model
-        (is (not (contains? descendants ["Unknown" 789])))))))
+      (let [deps (export-dependencies document-id)]
+        (is (= #{[:model/Card 456]}
+               deps))
+        (is (not (contains? deps [:model/Unknown 789])))))))
 
-(deftest document-serdes-descendants-duplicate-references-test
-  (testing "Document descendants handles duplicate references correctly"
+(deftest document-serdes-export-dependencies-duplicate-references-test
+  (testing "Document export dependencies handles duplicate references correctly"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "cardEmbed"
                                                                             :attrs {"id" 456}}
@@ -753,22 +737,19 @@
                                                                             :attrs {"entityId" 456
                                                                                     "model" "card"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id {})]
-        ;; Should merge duplicate references - same card referenced twice
-        (is (= {["Card" 456] {"Document" document-id}}
-               descendants))
-        ;; Should only have one entry for the card
-        (is (= 1 (count descendants)))))))
+      (let [deps (export-dependencies document-id)]
+        (is (= #{[:model/Card 456]}
+               deps))
+        (is (= 1 (count deps)))))))
 
-(deftest document-serdes-descendants-non-prose-mirror-test
-  (testing "Document descendants handles non-prose-mirror documents"
+(deftest document-serdes-export-dependencies-non-prose-mirror-test
+  (testing "Document export dependencies handles non-prose-mirror documents"
     (mt/with-temp [:model/Document {document-id :id} {:document {:some "other format"}
                                                       :content_type "application/json"}] ; Not prose-mirror
-      (let [descendants (serdes/descendants "Document" document-id {})]
-        (is (nil? descendants))))))
+      (is (empty? (export-dependencies document-id))))))
 
-(deftest document-serdes-descendants-all-model-types-test
-  (testing "Document descendants correctly maps all supported smart link model types"
+(deftest document-serdes-export-dependencies-all-model-types-test
+  (testing "Document export dependencies correctly maps all supported smart link model types"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"
                                                                             :attrs {"entityId" 111
@@ -780,15 +761,14 @@
                                                                             :attrs {"entityId" 333
                                                                                     "model" "table"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id {})]
-        (is (= {["Card" 111] {"Document" document-id}
-                ["Dashboard" 222] {"Document" document-id}
-                ["Table" 333] {"Document" document-id}}
-               descendants))
-        ;; Verify all supported model types are included
-        (is (contains? descendants ["Card" 111]))
-        (is (contains? descendants ["Dashboard" 222]))
-        (is (contains? descendants ["Table" 333]))))))
+      (let [deps (export-dependencies document-id)]
+        (is (= #{[:model/Card 111]
+                 [:model/Dashboard 222]
+                 [:model/Table 333]}
+               deps))
+        (is (contains? deps [:model/Card 111]))
+        (is (contains? deps [:model/Dashboard 222]))
+        (is (contains? deps [:model/Table 333]))))))
 
 (deftest no-events-during-deserialization-test
   (testing "Document after-update hook does not publish events during deserialization (#72293)"
@@ -827,8 +807,8 @@
 (defn- export-document-ast
   "Run a document row through the serdes `:document` export transform and return the exported AST."
   [document]
-  ((get-in (serdes/make-spec "Document" {}) [:transform :document :export-with-context])
-   document :document nil))
+  (first ((get-in (serialization/spec :model/Document) [:transform :document :export])
+          serialization/app-db-store [document] [(:document document)] {})))
 
 (deftest document-serdes-static-card-embed-test
   (testing "A static (snapshot-backed) cardEmbed"
@@ -842,14 +822,14 @@
                      export-document-ast
                      :content
                      first)]
-        (testing "still rewrites its Card :id to a portable serdes path — the ephemeral Card is a real serdes entity"
+        (testing "still rewrites its Card :id to a serdes path — the ephemeral Card is a real serdes entity"
           (is (vector? (get-in node [:attrs "id"])))
           (is (= "Card" (:model (first (get-in node [:attrs "id"]))))))
         (testing "drops :stored_result_id — a raw local id for a row that is not a serdes entity, which would resolve to an unrelated snapshot on import"
           (is (not (contains? (:attrs node) "stored_result_id"))))))))
 
 (deftest document-serdes-live-card-embed-keeps-attrs-test
-  (testing "A live cardEmbed exports its :id as a portable path and is otherwise untouched"
+  (testing "A live cardEmbed exports its :id as a serdes path and is otherwise untouched"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Card       {card-id :id} {:collection_id coll-id}]
       (let [node (-> {:content_type "application/json+vnd.prose-mirror"
@@ -862,35 +842,11 @@
         (is (= "Card" (:model (first (get-in node [:attrs "id"])))))
         (is (= "abc" (get-in node [:attrs "_id"])))))))
 
-(deftest serdes-extract-query-excludes-exploration-documents-test
-  (testing "serdes never extracts an exploration Summary document"
-    (mt/with-temp [:model/Collection  {coll-id :id}    {}
-                   :model/User        {user-id :id}    {:email "serdes-doc@example.com"}
-                   :model/Exploration {expl-id :id}    {:name "Explo" :creator_id user-id}
-                   :model/Document    {plain-id :id}   {:name "Plain" :creator_id user-id
-                                                        :collection_id coll-id}
-                   :model/Document    {summary-id :id} {:name           "Summary"
-                                                        :creator_id     user-id
-                                                        :collection_id  coll-id
-                                                        :exploration_id expl-id}]
-      (let [eid       #(t2/select-one-fn :entity_id :model/Document :id %)
-            ;; A caller-supplied id filter must still compose — this is also the shape a full
-            ;; (untargeted) export takes, where the Collection descendants filter never runs.
-            extracted (into #{}
-                            (map :entity_id)
-                            (serdes/extract-all "Document" {:filter-column :id
-                                                            :filter-ids    [plain-id summary-id]}))]
-        (is (contains? extracted (eid plain-id))
-            "an ordinary document is still exported")
-        (is (not (contains? extracted (eid summary-id)))
-            "a Summary document is never exported — it is not first-class content, and its body embeds
-             values computed under its creator's data-access lens")))))
-
 (defn- import-document-ast
   "Run an exported AST back through the serdes `:document` import transform."
   [document]
-  ((get-in (serdes/make-spec "Document" {}) [:transform :document :import-with-context])
-   document :document nil))
+  (first ((get-in (serialization/spec :model/Document) [:transform :document :import])
+          serialization/app-db-store [document] [(:document document)] {:create-missing? true})))
 
 (deftest document-serdes-card-embed-round-trips-test
   (testing "a cardEmbed's Card id survives export and comes back on import"
@@ -904,7 +860,7 @@
             imported (import-document-ast
                       {:content_type "application/json+vnd.prose-mirror"
                        :document     exported})]
-        (testing "export rewrites the id to a portable path"
+        (testing "export rewrites the id to a serdes path"
           (is (vector? (get-in exported [:content 0 :attrs "id"]))))
         (testing "import rewrites it back to this instance's Card id — on the serialized form the id
                   is a serdes path, so any guard that expects a raw integer skips the node and leaves

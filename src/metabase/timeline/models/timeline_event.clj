@@ -1,9 +1,11 @@
 (ns metabase.timeline.models.timeline-event
   (:require
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
-   [metabase.timeline.schema]
+   [metabase.timeline.schema :as timeline.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -12,9 +14,7 @@
 (doto :model/TimelineEvent
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive :hook/entity-id))
 
 ;;;; schemas
 
@@ -45,11 +45,29 @@
 
 ;;;; permissions
 
-(defmethod mi/perms-objects-set :model/TimelineEvent
-  [event read-or-write]
-  (let [timeline (or (:timeline event)
-                     (timeline.db/timeline (:timeline_id event)))]
-    (mi/perms-objects-set timeline read-or-write)))
+(defn- timeline-permissions
+  "Whether the current user passes `check`, `mi/can-read?` or `mi/can-write?`, on the Timeline of each of `events`, by
+  Timeline id, the Timelines hydrated with `k` together."
+  [k check events]
+  (run! #(when % (api/check-500 (contains? % :timeline_id) "No :timeline_id is set for a TimelineEvent.")) events)
+  (let [ids (into [] (comp (remove nil?) (keep :timeline_id) (distinct)) events)]
+    (if (seq ids)
+      (into {} (map (juxt :id check)) (t2/hydrate (vals (timeline.db/timelines-by-id ids)) k))
+      {})))
+
+(methodical/defmethod t2/batched-hydrate [:model/TimelineEvent :can_read]
+  [_model k events]
+  (let [permissions (timeline-permissions k mi/can-read? events)]
+    (for [event events]
+      (when event
+        (vary-meta event assoc :can_read (boolean (get permissions (:timeline_id event))))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/TimelineEvent :can_write]
+  [_model k events]
+  (let [permissions (timeline-permissions k mi/can-write? events)]
+    (for [event events]
+      (when event
+        (assoc event :can_write (boolean (get permissions (:timeline_id event))))))))
 
 (defmethod mi/can-create? :model/TimelineEvent
   [_ {:keys [timeline]}]
@@ -101,14 +119,15 @@
 
 ;;;; serialization
 
-(defmethod serdes/generate-path "TimelineEvent" [_ event]
-  [(serdes/infer-self-path "Timeline" (timeline.db/timeline (:timeline_id event)))
-   (serdes/infer-self-path "TimelineEvent" event)])
+(defmethod serialization/spec :model/TimelineEvent [_]
+  {:schema    ::timeline.schema/external-timeline-event
+   :copy      [:archived :description :entity_id :icon :name :time_matters :timezone]
+   :parent    {:model :model/Timeline :key :timeline_id :order (juxt :name :entity_id)}
+   :transform {:timeline_id serialization/import-only-transform
+               :creator_id serialization/user-transform
+               :timestamp  serialization/date-transform}
+   :defaults  {:archived false}})
 
-(defmethod serdes/make-spec "TimelineEvent" [_model-name _opts]
-  {:copy      [:archived :description :entity_id :icon :name :time_matters :timezone]
-   :skip      []
-   :transform {:creator_id  (serdes/fk :model/User)
-               :timeline_id (serdes/parent-ref)
-               :timestamp   (serdes/date)}
-   :defaults {:archived false}})
+(defmethod remote-sync/spec :model/TimelineEvent
+  [_model]
+  {:synced-filter-clause timeline.db/synced-timeline-events-clause})

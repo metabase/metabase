@@ -120,12 +120,12 @@ function setup({
 
 const getCountCalls = () =>
   fetchMock.callHistory.calls("path:/api/ee/content-diagnostics/counts");
-const getTab = (name: string) => screen.getByRole("link", { name });
+const getTab = (name: string) => screen.getByRole("tab", { name });
 
 async function switchTab(name: string, emptyState: string) {
   await userEvent.click(getTab(name));
   expect(await screen.findByText(emptyState)).toBeVisible();
-  expect(getTab(name)).toHaveAttribute("aria-current", "page");
+  expect(getTab(name)).toHaveAttribute("aria-selected", "true");
 }
 
 async function visitAllTabs() {

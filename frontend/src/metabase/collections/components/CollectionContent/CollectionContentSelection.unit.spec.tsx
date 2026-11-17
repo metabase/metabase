@@ -5,12 +5,14 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupDashboardEndpoints,
   setupDashboardQuestionCandidatesEndpoint,
   setupDatabasesEndpoints,
   setupNullGetUserKeyValueEndpoints,
   setupSearchEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import {
   fireEvent,
   renderWithProviders,
@@ -19,11 +21,14 @@ import {
   within,
 } from "__support__/ui";
 import * as Analytics from "metabase/analytics";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { Route } from "metabase/router";
-import type { Collection, CollectionItem } from "metabase-types/api";
+import type { Collection, CollectionItem, User } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
+  createMockDashboard,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { CollectionContent } from "./CollectionContent";
@@ -69,15 +74,28 @@ const defaultItems = [
   tableDashboard,
 ];
 
+type SetupOpts = {
+  collection?: Collection;
+  collectionItems?: CollectionItem[];
+  otherCollections?: Collection[];
+  rootCollection?: Collection;
+  currentUser?: User;
+};
+
 async function setup({
   collection = defaultCollection,
   collectionItems = defaultItems,
-}: {
-  collection?: Collection;
-  collectionItems?: CollectionItem[];
-} = {}) {
-  setupCollectionByIdEndpoint({ collections: [collection] });
-  setupCollectionsEndpoints({ collections: [collection] });
+  otherCollections = [],
+  rootCollection = createMockCollection(ROOT_COLLECTION),
+  currentUser = createMockUser(),
+}: SetupOpts = {}) {
+  setupCollectionByIdEndpoint({
+    collections: [collection, rootCollection, ...otherCollections],
+  });
+  setupCollectionsEndpoints({
+    collections: [collection, ...otherCollections],
+    rootCollection,
+  });
   setupCollectionItemsEndpoint({ collection, collectionItems });
   setupBookmarksEndpoints([]);
   setupDatabasesEndpoints([]);
@@ -91,7 +109,11 @@ async function setup({
       path="/"
       element={<CollectionContent collectionId={collection.id} />}
     />,
-    { withRouter: true, withDND: true },
+    {
+      withRouter: true,
+      withDND: true,
+      storeInitialState: createMockState({ currentUser }),
+    },
   );
 
   await screen.findByTestId("pinned-items");
@@ -321,6 +343,67 @@ describe("CollectionContent selection", () => {
     expect(screen.getByText(tableQuestion.name)).toBeInTheDocument();
     expect(getPinnedSection().getAllByRole("link")).toHaveLength(2);
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("should not offer to pin, but should offer to duplicate a dashboard to the personal collection, in a read-only collection (metabase#20043)", async () => {
+    const personalCollection = createMockCollection({
+      id: 30,
+      name: "Read Only Tableton's Personal Collection",
+      personal_owner_id: 5,
+      is_personal: true,
+      can_write: true,
+    });
+    const readOnlyCollection = createMockCollection({
+      ...defaultCollection,
+      can_write: false,
+    });
+    setupDashboardEndpoints(
+      createMockDashboard({
+        id: tableDashboard.id,
+        name: tableDashboard.name,
+        collection_id: readOnlyCollection.id,
+      }),
+    );
+    await setup({
+      collection: readOnlyCollection,
+      collectionItems: defaultItems.map((item) => ({
+        ...item,
+        collection_id: readOnlyCollection.id,
+      })),
+      otherCollections: [personalCollection],
+      rootCollection: createMockCollection({
+        ...ROOT_COLLECTION,
+        can_write: false,
+      }),
+      currentUser: createMockUser({
+        id: 5,
+        personal_collection_id: personalCollection.id,
+      }),
+    });
+
+    const row = screen.getByRole("row", {
+      name: new RegExp(tableDashboard.name),
+    });
+    await userEvent.click(within(row).getByLabelText("Actions"));
+
+    const menu = await screen.findByRole("menu");
+    expect(
+      within(menu).getByRole("menuitem", { name: /Duplicate/ }),
+    ).toBeInTheDocument();
+    expect(within(menu).queryByText("Pin this")).not.toBeInTheDocument();
+
+    await userEvent.click(
+      within(menu).getByRole("menuitem", { name: /Duplicate/ }),
+    );
+
+    const modal = await screen.findByRole("dialog", {
+      name: new RegExp(`^Duplicate "${tableDashboard.name}"`),
+    });
+    await waitFor(() =>
+      expect(
+        within(modal).getByTestId("collection-picker-button"),
+      ).toHaveTextContent(personalCollection.name),
+    );
   });
 
   it("should toggle a table row with shift+click without navigating", async () => {

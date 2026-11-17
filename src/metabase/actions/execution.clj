@@ -27,7 +27,9 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
+   [toucan2.core :as t2]))
 
 (def ^:private RequestParameters
   "Parameters as passed in from an endpoint, of shape `{<parameter-id> <value>}`."
@@ -41,7 +43,7 @@
 (defn- check-action-read-perms
   "Throws a permissions error unless the current user, when there is one, can read `action`."
   [action]
-  (when (and api/*current-user-id* (not (mi/can-read? action)))
+  (when (and api/*current-user-id* (not (mi/can-read? (t2/hydrate action :can_read))))
     (throw (ex-info (tru "You do not have permissions to run this action.")
                     {:type qp.error-type/missing-required-permissions, :status-code 403}))))
 
@@ -242,6 +244,7 @@
   ([action              :- ::actions.schema/action.executable
     request-parameters  :- RequestParameters
     opts                :- [:maybe ExecuteActionOpts]]
+   (workspaces/check-not-in-workspace-mode! "Actions")
    (let [;; if a value is supplied for a hidden parameter, it should raise an error
          field-settings         (get-in action [:visualization_settings :fields])
          hidden-param-ids       (->> (vals field-settings)

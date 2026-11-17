@@ -20,7 +20,6 @@
         "graph.dimensions": ["CREATED_AT"],
         "graph.metrics": ["sum_3", "min_3", "max_3"]
       },
-      "collection_preview": true,
       "entity_id": "7LgC3kVdHRl8vLwelM_I-",
       "display": "line",
       "parameter_mappings": [],

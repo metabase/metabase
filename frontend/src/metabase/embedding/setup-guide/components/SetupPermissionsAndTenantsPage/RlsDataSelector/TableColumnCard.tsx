@@ -3,7 +3,11 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
-import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import type {
+  OmniPickerItem,
+  OmniPickerQuestionItem,
+  OmniPickerTableItem,
+} from "metabase/common/components/Pickers";
 import { DataPickerModal } from "metabase/common/components/Pickers/DataPicker";
 import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
 import type {
@@ -53,7 +57,7 @@ export const TableColumnCard = ({
 
   const handleTableSelect = useCallback(
     (item: MiniPickerPickableItem) => {
-      if (item.model === "table") {
+      if (item.model === "table" && typeof item.id === "number") {
         onChange({
           tableId: item.id,
           columnId: null,
@@ -67,8 +71,15 @@ export const TableColumnCard = ({
   );
 
   const handleModalSelect = useCallback(
-    (tableId: TableId) => {
-      onChange({ tableId, columnId: null, tableName: null, columnName: null });
+    (item: OmniPickerTableItem | OmniPickerQuestionItem) => {
+      if (item.model === "table" && typeof item.id === "number") {
+        onChange({
+          tableId: item.id,
+          columnId: null,
+          tableName: null,
+          columnName: null,
+        });
+      }
       closeBrowse();
     },
     [onChange, closeBrowse],
@@ -110,6 +121,7 @@ export const TableColumnCard = ({
     (pickerItem: MiniPickerItem | OmniPickerItem) => {
       const isAlreadySelected =
         pickerItem.model === "table" &&
+        typeof pickerItem.id === "number" &&
         selectedTableIds.includes(pickerItem.id);
       const isOurAnalytics =
         pickerItem.model === "collection" && pickerItem.id === "root";
