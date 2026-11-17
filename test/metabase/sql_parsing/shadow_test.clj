@@ -14,8 +14,6 @@
   (reify protocol/SqlParser
     (referenced-tables [_ dialect sql] (f :referenced-tables [dialect sql]))
     (referenced-fields [_ dialect sql] (f :referenced-fields [dialect sql]))
-    (returned-columns-lineage [_ dialect sql schema sqlglot-schema]
-      (f :returned-columns-lineage [dialect sql schema sqlglot-schema]))
     (validate-query [_ dialect sql schema sqlglot-schema] (f :validate-query [dialect sql schema sqlglot-schema]))
     (simple-query [_ dialect sql] (f :simple-query [dialect sql]))
     (add-into-clause [_ dialect sql table-name] (f :add-into-clause [dialect sql table-name]))
@@ -55,7 +53,6 @@
   [parser]
   {:referenced-tables        (protocol/referenced-tables parser "postgres" "sql")
    :referenced-fields        (protocol/referenced-fields parser "postgres" "sql")
-   :returned-columns-lineage (protocol/returned-columns-lineage parser "postgres" "sql" "public" {})
    :validate-query           (protocol/validate-query parser "postgres" "sql" "public" {})
    :simple-query             (protocol/simple-query parser "postgres" "sql")
    :add-into-clause          (protocol/add-into-clause parser "postgres" "sql" "t")
@@ -125,11 +122,11 @@
 
 (deftest comparison-that-throws-is-counted-test
   (mt/with-prometheus-system! [_ system]
-    ;; lineage normalization destructures each column; a number cannot be
+    ;; single-stmt-of-type normalization updates the :sql key of a map; a vector has no such key
     (let [parser (shadow-parser (stub-parser (fn [_ _] [1])) (stub-parser (fn [_ _] [1])))]
-      (is (= [1] (protocol/returned-columns-lineage parser "postgres" "sql" nil {})))
-      (wait-until #(pos? (comparisons system "returned-columns-lineage" "comparison-failed")))
-      (is (== 1 (comparisons system "returned-columns-lineage" "comparison-failed"))))))
+      (is (= [1] (protocol/single-stmt-of-type parser "postgres" "sql" "read")))
+      (wait-until #(pos? (comparisons system "single-stmt-of-type" "comparison-failed")))
+      (is (== 1 (comparisons system "single-stmt-of-type" "comparison-failed"))))))
 
 (deftest difference-logs-method-dialect-and-caller-thread-test
   (testing "a difference logs the method, dialect and caller's thread, never the SQL, at most once a minute per method"
@@ -179,10 +176,6 @@
         (is (= :mismatch (shadow/classify :field-references
                                           (outcome {:used_fields [] :returned_fields [a b] :errors []})
                                           (outcome {:used_fields [] :returned_fields [b a] :errors []}))))))
-    (testing "returned-columns-lineage: the order of a column's dependencies"
-      (is (= :match (shadow/classify :returned-columns-lineage
-                                     (outcome [["x" false [[nil "s" "t" "a"] [nil "s" "t" "b"]]]])
-                                     (outcome [["x" false [[nil "s" "t" "b"] [nil "s" "t" "a"]]]])))))
     (testing "transpile-sql: layout, but not what is inside literals, quoted names or comments"
       (doseq [[a b] [["SELECT\n  a\nFROM t\nJOIN b\n  ON x" "SELECT\n  a\nFROM t\nJOIN b ON x"]
                      ["WHERE (\n  a = 1\n)" "WHERE (a = 1)"]]]

@@ -3,8 +3,8 @@
   generate, walk, read and set arguments, build nodes. Function names follow the sqlglot Python API they stand in for
   (`sql_tools.py` is the reference).
 
-  The other `metabase.sql-parsing.sqlglot-java.*` namespaces use these and also call the port's `Scope`, `Qualify`,
-  `Lineage` and expression classes directly. The boundary is that directory, as [[metabase.sql-parsing.sqlglot-java]]
+  The other `metabase.sql-parsing.sqlglot-java.*` namespaces use these and also call the port's `Scope`, `Qualify`
+  and expression classes directly. The boundary is that directory, as [[metabase.sql-parsing.sqlglot-java]]
   describes."
   (:require
    [clojure.string :as str]

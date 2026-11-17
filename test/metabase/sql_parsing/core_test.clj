@@ -150,22 +150,6 @@
             (is (=? validate-expected validated) (pr-str sql))
             (is (= classified validated) (pr-str sql))))))))
 
-;;; ------------------------------------------- returned-columns-lineage -------------------------------------------
-
-(defn- unordered-dependencies
-  "Lineage with each column's dependencies as a set: their order is not stable from one run to the next."
-  [lineage]
-  (mapv (fn [[column pure? dependencies]] [column pure? (set dependencies)]) lineage))
-
-(deftest ^:parallel returned-columns-lineage-test
-  (testing "the columns a query returns, whether each is a table column passed through, and the columns it reads"
-    (doseq [{:keys [name sql dialect default-schema schema expected]} (case-files/cases "returned_columns")]
-      (testing name
-        (is (= (unordered-dependencies expected)
-               (unordered-dependencies
-                (sql-parsing/returned-columns-lineage (sql-tools/sqlglot-parser) dialect sql default-schema (or schema {}))))
-            (pr-str sql))))))
-
 ;;; ------------------------------------------------- validate-query -----------------------------------------------
 
 (deftest ^:parallel validate-query-test
