@@ -54,6 +54,13 @@
   }
 }
 
+/* A column that tells what the row is about. The expression does not use it. */
+.context {
+  td& {
+    color: var(--mb-color-text-secondary);
+  }
+}
+
 /* The result of the expression, after a dashed line. It takes the rest of
    the width. */
 .result {

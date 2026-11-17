@@ -13,6 +13,8 @@ type PreviewTableProps = {
   rows: RowValues[];
   /** True when the first column is the primary key. */
   hasKey: boolean;
+  /** The number of context columns, which come after the key. */
+  contextCount?: number;
   /** Renders the values of the result column in place of the format of the column. */
   renderResult?: (value: RowValues[number]) => ReactNode;
 };
@@ -26,6 +28,7 @@ export function PreviewTable({
   cols,
   rows,
   hasKey,
+  contextCount = 0,
   renderResult,
 }: PreviewTableProps) {
   const settings = useMemo(
@@ -54,9 +57,11 @@ export function PreviewTable({
   );
   const resultIndex = cols.length - 1;
 
+  const contextStart = hasKey ? 1 : 0;
   const cellClassName = (index: number) =>
     cx(S.cell, {
       [S.key]: hasKey && index === 0,
+      [S.context]: index >= contextStart && index < contextStart + contextCount,
       [S.result]: index === resultIndex,
     });
 

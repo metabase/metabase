@@ -45,6 +45,20 @@ export const EXPRESSION_HIDE_AI_SETTING: BooleanPrototypeSetting = {
   defaultValue: false,
 };
 
+export const EXPRESSION_PREVIEW_CONTEXT_SETTING: SegmentedPrototypeSetting = {
+  key: "expression-preview-context",
+  type: "segmented",
+  label: "Context columns in the expression preview",
+  description:
+    "Columns that the expression doesn't use but that tell what a row is about, like a title. On-device AI picks them with Gemini Nano in Chrome, and uses the title when the model isn't there.",
+  options: [
+    { value: "off", label: "Off" },
+    { value: "heuristic", label: "Title" },
+    { value: "model", label: "On-device AI" },
+  ],
+  defaultValue: "model",
+};
+
 /**
  * The settings of the current prototype, in the order the prototype settings
  * submenu shows them. Each prototype branch lists its own settings here and
@@ -55,4 +69,5 @@ export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
   EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
   EXPRESSION_SQL_FIXES_SETTING,
   EXPRESSION_HIDE_AI_SETTING,
+  EXPRESSION_PREVIEW_CONTEXT_SETTING,
 ];

@@ -5,6 +5,10 @@ import { t } from "ttag";
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
+import {
+  EXPRESSION_PREVIEW_CONTEXT_SETTING,
+  usePrototypeSetting,
+} from "metabase/prototype";
 import { formatExpressionParts } from "metabase/querying/expressions";
 import { Flex, Icon, Loader, Text } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
@@ -14,6 +18,11 @@ import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
 
 import S from "./ExpressionPreview.module.css";
 import { PreviewTable } from "./PreviewTable";
+import {
+  type ContextColumnsMode,
+  getContextCandidates,
+  pickContextColumns,
+} from "./context-columns";
 
 // Rows to run the expression on, and rows to show from them.
 const QUERY_ROW_COUNT = 200;
@@ -86,10 +95,45 @@ export function ExpressionPreview({
     };
   }, [expressionMode, clause]);
 
+  // Columns that tell what a row is about, for the expression that they were
+  // picked for. The preview waits for them, so that it runs once.
+  const [contextMode] = usePrototypeSetting(EXPRESSION_PREVIEW_CONTEXT_SETTING);
+  const [context, setContext] = useState<{
+    clause: Lib.ExpressionClause;
+    names: string[];
+  }>();
+  useEffect(() => {
+    if (expressionMode === "aggregation") {
+      return;
+    }
+    let isCancelled = false;
+    const { query, stageIndex, expressionIndex, name } = latestRef.current;
+    getContextNames(
+      // The options of the setting are the values of the mode.
+      contextMode as ContextColumnsMode,
+      query,
+      stageIndex,
+      expressionMode === "filter" ? undefined : expressionIndex,
+      clause,
+      name ?? "",
+    ).then((names) => {
+      if (!isCancelled) {
+        setContext({ clause, names });
+      }
+    });
+    return () => {
+      isCancelled = true;
+    };
+  }, [expressionMode, clause, contextMode]);
+  const contextNames = context?.clause === clause ? context.names : undefined;
+
   const preview = useMemo(() => {
     const { query, stageIndex, expressionMode, expressionIndex, name } =
       latestRef.current;
     if (expressionMode === "aggregation" && aggregationParts == null) {
+      return null;
+    }
+    if (expressionMode !== "aggregation" && contextNames == null) {
       return null;
     }
     const preview =
@@ -107,10 +151,11 @@ export function ExpressionPreview({
             expressionMode === "filter" ? undefined : expressionIndex,
             clause,
             name ?? "",
+            contextNames ?? [],
           );
     return preview && { ...preview, name };
     // `name` is in the dependencies only to run again with a new name.
-  }, [clause, name, aggregationParts]);
+  }, [clause, name, aggregationParts, contextNames]);
   const queries = useMemo(
     () =>
       preview == null
@@ -181,6 +226,7 @@ export function ExpressionPreview({
             preview.name ?? null,
             preview.usedNames,
             preview.primaryKeyName,
+            preview.contextNames,
           )
         : null,
     // `seed` picks other rows on request.
@@ -239,6 +285,7 @@ export function ExpressionPreview({
               cols={sample.cols}
               rows={sample.rows}
               hasKey={sample.hasKey}
+              contextCount={sample.contextCount}
               renderResult={
                 expressionMode === "filter" ? renderFilterResult : undefined
               }
@@ -251,11 +298,11 @@ export function ExpressionPreview({
 }
 
 /**
- * The query up to the custom columns: the earlier custom columns stay, because
- * the expression can use them, and the steps after the custom columns go. It
- * returns only the columns that the expression uses, and the expression.
+ * The query up to the custom columns with the expression, and the columns
+ * that the expression uses. The earlier custom columns stay, because the
+ * expression can use them, and the steps after the custom columns go.
  */
-function getPreviewQuery(
+function getPreviewBase(
   query: Lib.Query,
   stageIndex: number,
   expressionIndex: number | undefined,
@@ -277,7 +324,7 @@ function getPreviewQuery(
     return null;
   }
   let previewQuery = Lib.expression(base, stageIndex, name, clause);
-  const used = getUsedColumns(previewQuery, stageIndex, clause);
+  const used = getUsedColumnsDeep(previewQuery, stageIndex, clause);
   const usedNames = new Set(
     used.map(
       (column) =>
@@ -309,6 +356,58 @@ function getPreviewQuery(
       expressionNames.add(info.longDisplayName);
     }
   }
+  return { previewQuery, used, usedNames };
+}
+
+/** The names of the columns that tell what a row is about. */
+async function getContextNames(
+  mode: ContextColumnsMode,
+  query: Lib.Query,
+  stageIndex: number,
+  expressionIndex: number | undefined,
+  clause: Lib.ExpressionClause,
+  name: string,
+) {
+  if (mode === "off") {
+    return [];
+  }
+  const base = getPreviewBase(query, stageIndex, expressionIndex, clause, name);
+  if (base == null) {
+    return [];
+  }
+  const { previewQuery, usedNames } = base;
+  const candidates = getContextCandidates(
+    previewQuery,
+    stageIndex,
+    Lib.fieldableColumns(previewQuery, stageIndex),
+    usedNames,
+  );
+  const source = await formatExpressionParts(
+    Lib.expressionParts(previewQuery, stageIndex, clause),
+    { query: previewQuery, stageIndex },
+  );
+  return pickContextColumns(mode, source, name, candidates);
+}
+
+/**
+ * The preview query of a custom column or a filter. It returns only the key,
+ * the context columns, the columns that the expression uses, and the
+ * expression.
+ */
+function getPreviewQuery(
+  query: Lib.Query,
+  stageIndex: number,
+  expressionIndex: number | undefined,
+  clause: Lib.ExpressionClause,
+  name: string,
+  contextNames: string[],
+) {
+  const base = getPreviewBase(query, stageIndex, expressionIndex, clause, name);
+  if (base == null) {
+    return null;
+  }
+  const { used, usedNames } = base;
+  let { previewQuery } = base;
 
   // The primary key of the source table, so that a row can be found again.
   const finalFieldable = Lib.fieldableColumns(previewQuery, stageIndex);
@@ -323,12 +422,19 @@ function getPreviewQuery(
       ? Lib.displayInfo(previewQuery, stageIndex, primaryKey).longDisplayName
       : null;
 
-  // Custom columns always come back. Of the other columns, only the key and
-  // the used ones.
+  const contextColumns = finalFieldable.filter((column) =>
+    contextNames.includes(
+      Lib.displayInfo(previewQuery, stageIndex, column).longDisplayName,
+    ),
+  );
+
+  // Custom columns always come back. Of the other columns, only the key, the
+  // context and the used ones.
   const fields = [
     ...new Set(
       [
         primaryKey,
+        ...contextColumns,
         ...used.map((column) =>
           Lib.findMatchingColumn(
             previewQuery,
@@ -347,6 +453,7 @@ function getPreviewQuery(
     query: Lib.limit(previewQuery, stageIndex, QUERY_ROW_COUNT),
     usedNames,
     primaryKeyName,
+    contextNames,
   };
 }
 
@@ -434,6 +541,7 @@ function getAggregationPreviewQuery(
     ),
     usedNames: null,
     primaryKeyName: null,
+    contextNames: [],
   };
 }
 
@@ -459,6 +567,44 @@ function splitByFilter(query: Lib.Query, stageIndex: number, name: string) {
   return [kept, removed].map((filter) =>
     Lib.limit(Lib.filter(query, stageIndex, filter), stageIndex, half),
   );
+}
+
+/**
+ * The columns that the expression uses, and the columns that the custom
+ * columns among them use, down to the columns of the data. A custom column
+ * shows after the columns that it uses.
+ */
+function getUsedColumnsDeep(
+  query: Lib.Query,
+  stageIndex: number,
+  clause: Lib.ExpressionClause,
+) {
+  const expressions = new Map(
+    Lib.expressions(query, stageIndex).map((expression) => [
+      Lib.displayInfo(query, stageIndex, expression).displayName,
+      expression,
+    ]),
+  );
+  const seen = new Set<string>();
+  const result: Lib.ColumnMetadata[] = [];
+  const visit = (clause: Lib.ExpressionClause) => {
+    for (const column of getUsedColumns(query, stageIndex, clause)) {
+      const info = Lib.displayInfo(query, stageIndex, column);
+      if (seen.has(info.longDisplayName)) {
+        continue;
+      }
+      seen.add(info.longDisplayName);
+      const expression = info.isCalculated
+        ? expressions.get(info.displayName)
+        : undefined;
+      if (expression != null) {
+        visit(expression);
+      }
+      result.push(column);
+    }
+  };
+  visit(clause);
+  return result;
 }
 
 function getUsedColumns(
@@ -490,6 +636,7 @@ function getSample(
   /** Null shows all the columns. */
   usedNames: Set<string> | null,
   primaryKeyName: string | null,
+  contextNames: string[],
 ) {
   const foundIndex = cols.findIndex((col) => col.display_name === name);
   const resultIndex = foundIndex >= 0 ? foundIndex : cols.length - 1;
@@ -497,15 +644,27 @@ function getSample(
     (col, index) =>
       index !== resultIndex && col.display_name === primaryKeyName,
   );
-  // The primary key, the used columns, then the result.
+  const contextIndexes = contextNames
+    .map((name) =>
+      cols.findIndex(
+        (col, index) =>
+          index !== resultIndex &&
+          index !== keyIndex &&
+          col.display_name === name,
+      ),
+    )
+    .filter((index) => index >= 0);
+  // The primary key, the context columns, the used columns, then the result.
   const order = [
     ...(keyIndex >= 0 ? [keyIndex] : []),
+    ...contextIndexes,
     ...cols
       .map((_, index) => index)
       .filter(
         (index) =>
           index !== resultIndex &&
           index !== keyIndex &&
+          !contextIndexes.includes(index) &&
           (usedNames == null || usedNames.has(cols[index].display_name)),
       ),
     resultIndex,
@@ -535,6 +694,7 @@ function getSample(
     rows: picked.map(reorder),
     resultIndex: order.length - 1,
     hasKey: keyIndex >= 0,
+    contextCount: contextIndexes.length,
   };
 }
 
