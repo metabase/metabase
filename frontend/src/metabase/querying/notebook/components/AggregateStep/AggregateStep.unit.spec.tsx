@@ -97,6 +97,36 @@ function createAggregatedQuery() {
   });
 }
 
+function createQueryWithBracketNamedExpressions() {
+  const onePlusOne = {
+    type: "operator",
+    operator: "+",
+    args: [
+      { type: "literal", value: 1 },
+      { type: "literal", value: 1 },
+    ],
+  } as const;
+
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        expressions: [
+          { name: "Other [2026]", value: onePlusOne },
+          { name: "MyCC [2027]", value: onePlusOne },
+        ],
+        aggregations: [
+          {
+            type: "operator",
+            operator: "sum",
+            args: [{ type: "column", name: "MyCC [2027]" }],
+          },
+        ],
+      },
+    ],
+  });
+}
+
 interface SetupOpts {
   step?: NotebookStep;
 }
@@ -378,6 +408,26 @@ describe("AggregateStep", () => {
         args: [{ operator: "not-in", args: [expect.anything(), 1, 2] }],
       },
     });
+  });
+
+  it("should escape brackets of a custom column name when converting an aggregation to a custom expression (metabase#15316)", async () => {
+    setup({
+      step: createMockNotebookStep({
+        query: createQueryWithBracketNamedExpressions(),
+      }),
+    });
+
+    await userEvent.click(screen.getByText("Sum of MyCC [2027]"));
+    const backButton = await screen.findByRole("button", { name: "Back" });
+    expect(backButton).toHaveTextContent("Sum of ...");
+    await userEvent.click(backButton);
+    await userEvent.click(await screen.findByText("Custom Expression"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("custom-expression-query-editor")).toHaveValue(
+        "Sum([MyCC \\[2027\\]])",
+      ),
+    );
   });
 
   describe("metrics", () => {

@@ -314,6 +314,42 @@ describe("FilterStep", () => {
       expect(getRecentFilterName()).toBe("If is equal to 2");
     });
 
+    it("should filter a boolean custom column that uses the `in` function", async () => {
+      const { getRecentQuery, getRecentFilter } = setupWithQueryUpdates({
+        query: createQueryWithExpression(PRODUCTS_ID, {
+          name: "InColumn",
+          value: {
+            type: "operator",
+            operator: "in",
+            args: [
+              { type: "literal", value: "Gadget" },
+              { type: "column", name: "VENDOR" },
+              { type: "column", name: "CATEGORY" },
+            ],
+          },
+        }),
+      });
+
+      await userEvent.click(
+        screen.getByText("Add filters to narrow your answer"),
+      );
+      await userEvent.click(await screen.findByText("InColumn"));
+      expect(
+        await screen.findByTestId("boolean-filter-picker"),
+      ).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+
+      expect(await screen.findByText("InColumn is true")).toBeInTheDocument();
+      const filterParts = checkNotNull(
+        Lib.booleanFilterParts(getRecentQuery(), 0, getRecentFilter()),
+      );
+      expect(filterParts.operator).toBe("=");
+      expect(filterParts.values).toEqual([true]);
+      expect(
+        Lib.displayInfo(getRecentQuery(), 0, filterParts.column).displayName,
+      ).toBe("InColumn");
+    });
+
     it("should handle `in` and `notIn` custom expression filters", async () => {
       const { getRecentQuery, getRecentFilter } = setupWithQueryUpdates({
         query: createQueryWithExpression(PRODUCTS_ID),

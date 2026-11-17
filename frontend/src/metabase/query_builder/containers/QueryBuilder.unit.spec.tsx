@@ -13,9 +13,26 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { mockGetBoundingClientRect } from "__support__/utils";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
-import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
+  createMockUnsavedCard,
+} from "metabase-types/api/mocks";
+import {
+  ORDERS,
+  ORDERS_ID,
+  createOrdersIdDatasetColumn,
+} from "metabase-types/api/mocks/presets";
+
+import { getQuestion } from "../store/selectors";
 
 import {
   TEST_CARD,
@@ -320,6 +337,99 @@ describe("QueryBuilder", () => {
           ? JSON.parse(urlSearchParams.get("query") ?? "{}")
           : {};
       expect(query?.native.query).toEqual("SELECT 1");
+    });
+  });
+
+  describe("column header drills", () => {
+    const CUSTOM_DATE_CARD = createMockUnsavedCard({
+      display: "table",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              fields: [{ type: "column", name: "ID" }],
+              expressions: [
+                {
+                  name: "CustomDate",
+                  value: { type: "column", fieldId: ORDERS.CREATED_AT },
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    });
+
+    const CUSTOM_DATE_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        rows: [[1, "2027-12-11T00:00:00Z"]],
+        cols: [
+          createOrdersIdDatasetColumn(),
+          createMockColumn({
+            id: undefined,
+            table_id: undefined,
+            name: "CustomDate",
+            display_name: "CustomDate",
+            source: "fields",
+            field_ref: ["expression", "CustomDate"],
+            base_type: "type/DateTime",
+            effective_type: "type/DateTime",
+          }),
+        ],
+      }),
+    });
+
+    mockGetBoundingClientRect({ width: 1000, height: 800 });
+
+    it("should add a date range filter to a custom column from its column header", async () => {
+      const { store } = await setup({
+        card: CUSTOM_DATE_CARD,
+        dataset: CUSTOM_DATE_DATASET,
+      });
+
+      const headerCell = await screen.findByRole("columnheader", {
+        name: "CustomDate",
+      });
+      await userEvent.click(within(headerCell).getByText("CustomDate"));
+      expect(
+        await screen.findByRole("button", { name: /Filter by this column/ }),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        screen.getByRole("button", { name: /Filter by this column/ }),
+      );
+      expect(
+        await screen.findByTestId("date-filter-picker"),
+      ).toBeInTheDocument();
+      await userEvent.click(screen.getByText("Fixed date range…"));
+      const startDateInput = await screen.findByLabelText("Start date");
+      await userEvent.clear(startDateInput);
+      await userEvent.type(startDateInput, "12/10/2027");
+      const endDateInput = screen.getByLabelText("End date");
+      await userEvent.clear(endDateInput);
+      await userEvent.type(endDateInput, "01/05/2028");
+      await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+
+      expect(
+        await within(await screen.findByTestId("qb-filters-panel")).findByText(
+          "CustomDate is Dec 10, 2027 – Jan 5, 2028",
+        ),
+      ).toBeInTheDocument();
+
+      const query = checkNotNull(getQuestion(store.getState())).query();
+      const filters = Lib.filters(query, -1);
+      expect(filters).toHaveLength(1);
+      const filterParts = checkNotNull(
+        Lib.specificDateFilterParts(query, -1, filters[0]),
+      );
+      expect(filterParts).toMatchObject({
+        operator: "between",
+        values: [new Date(2027, 11, 10), new Date(2028, 0, 5)],
+        hasTime: false,
+      });
+      expect(Lib.displayInfo(query, -1, filterParts.column).displayName).toBe(
+        "CustomDate",
+      );
     });
   });
 });

@@ -96,15 +96,20 @@ function setupWithQueryUpdates({ query }: SetupWithQueryUpdatesOpts) {
 
   renderWithProviders(<ExpressionStepWithQueryUpdates />);
 
-  function getRecentExpressionNames(): string[] {
+  function getRecentQuery(): Lib.Query {
     expect(onQueryChange).toHaveBeenCalled();
     const [recentQuery] = checkNotNull(onQueryChange.mock.lastCall);
+    return recentQuery;
+  }
+
+  function getRecentExpressionNames(): string[] {
+    const recentQuery = getRecentQuery();
     return Lib.expressions(recentQuery, 0).map(
       (expression) => Lib.displayInfo(recentQuery, 0, expression).displayName,
     );
   }
 
-  return { getRecentExpressionNames };
+  return { getRecentQuery, getRecentExpressionNames };
 }
 
 async function addExpression({
@@ -134,6 +139,41 @@ function createProductsQueryWithExpressionReferences() {
           { name: "Foo", value: { type: "column", name: "PRICE" } },
           { name: "Bar", value: { type: "column", name: "Foo" } },
           { name: "Quu", value: { type: "column", name: "Bar" } },
+        ],
+      },
+    ],
+  });
+}
+
+function createProductsQueryWithInExpression() {
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: PRODUCTS_ID },
+        expressions: [
+          {
+            name: "Price plus one",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "column", name: "PRICE" },
+                { type: "literal", value: 1 },
+              ],
+            },
+          },
+          {
+            name: "InColumn",
+            value: {
+              type: "operator",
+              operator: "in",
+              args: [
+                { type: "literal", value: "Gadget" },
+                { type: "column", name: "VENDOR" },
+                { type: "column", name: "CATEGORY" },
+              ],
+            },
+          },
         ],
       },
     ],
@@ -305,4 +345,44 @@ describe("Notebook Editor > Expression Step", () => {
       expect(screen.getByTestId("expression-name")).toHaveValue(expressionName);
     },
   );
+  it("should replace an `in` custom column with `notIn` in place, keeping its name", async () => {
+    const { getRecentQuery, getRecentExpressionNames } = setupWithQueryUpdates({
+      query: createProductsQueryWithInExpression(),
+    });
+
+    await userEvent.click(screen.getByText("InColumn"));
+    const input = await screen.findByTestId("custom-expression-query-editor");
+    await waitFor(() =>
+      expect(input).toHaveValue('in("Gadget", [Vendor], [Category])'),
+    );
+    await userEvent.clear(input);
+    await userEvent.type(input, 'notIn("Gadget", [[Vendor], [[Category])');
+    await act(async () => {
+      input.blur();
+    });
+    expect(screen.getByTestId("expression-name")).toHaveValue("InColumn");
+    const updateButton = screen.getByRole("button", { name: "Update" });
+    await waitFor(() => expect(updateButton).toBeEnabled());
+    await userEvent.click(updateButton);
+
+    expect(getRecentExpressionNames()).toEqual(["Price plus one", "InColumn"]);
+    expect(screen.getByText("Price plus one")).toBeInTheDocument();
+    expect(screen.getByText("InColumn")).toBeInTheDocument();
+
+    const recentQuery = getRecentQuery();
+    const [otherExpression, inColumnExpression] = Lib.expressions(
+      recentQuery,
+      0,
+    );
+    expect(
+      Lib.expressionParts(recentQuery, 0, inColumnExpression),
+    ).toMatchObject({
+      operator: "not-in",
+      args: ["Gadget", expect.anything(), expect.anything()],
+    });
+    expect(Lib.expressionParts(recentQuery, 0, otherExpression)).toMatchObject({
+      operator: "+",
+      args: [expect.anything(), 1],
+    });
+  });
 });
