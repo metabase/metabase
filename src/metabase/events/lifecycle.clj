@@ -58,6 +58,12 @@
   (collect! model :delete instance {:previous-object (t2.realize/realize instance)})
   instance)
 
+(methodical/defmethod t2.pipeline/build :before [:toucan.query-type/delete.* :hook/events :default]
+  "Run the captures of the rows of a DELETE once for the statement, after its before-delete hooks and before it runs."
+  [_query-type model _parsed-args resolved-query]
+  (events.batch/capture-deletes! (model-of model))
+  resolved-query)
+
 (defmacro ^:private define-write-batch
   [query-type]
   `(methodical/defmethod t2.pipeline/transduce-query :around [~query-type :hook/events :default]
@@ -67,6 +73,21 @@
 
 (define-write-batch :toucan.query-type/insert.*)
 (define-write-batch :toucan.query-type/update.*)
-(define-write-batch :toucan.query-type/delete.*)
+
+(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/delete.* :hook/events :default]
+  [rf query-type model parsed-args resolved-query]
+  (events.batch/do-with-write-batch
+   (fn []
+     (let [model* (model-of model)]
+       (events.batch/capture-statement!
+        model*
+        (first (t2/primary-keys model*))
+        (fn [columns]
+          (t2.pipeline/transduce-query (t2.pipeline/default-rf :toucan.query-type/select.instances)
+                                       :toucan.query-type/select.instances
+                                       model*
+                                       (assoc (dissoc parsed-args :queryable) :columns columns)
+                                       resolved-query))))
+     (next-method rf query-type model parsed-args resolved-query))))
 
 (mi/prefer-hook-trait! :hook/events)

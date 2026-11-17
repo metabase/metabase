@@ -11,13 +11,15 @@
 (set! *warn-on-reflection* true)
 
 (defn- capture-cascade
-  "What the delete of a row makes the database delete or null in tracked tables, as `[table-name row-ids action]`s."
-  [{:keys [operation model previous-object]}]
-  (when (and (= :delete operation) (premium-features/enable-change-log?))
-    (let [fks   (change-log.cascade/foreign-keys)
-          table (change-log.log/table-of model)]
-      (when (seq (change-log.cascade/referenced-columns fks table))
-        (not-empty (vec (change-log.cascade/changes fks table [previous-object])))))))
+  "What a DELETE statement of `model` makes the database delete or null in tracked tables, as
+  `[table-name row-ids action]`s, from the rows that `select-rows` selects before the delete hooks run."
+  [model select-rows]
+  (when (premium-features/enable-change-log?)
+    (let [fks        (change-log.cascade/foreign-keys)
+          table      (change-log.log/table-of model)
+          referenced (change-log.cascade/referenced-columns fks table)]
+      (when (seq referenced)
+        (not-empty (vec (change-log.cascade/changes fks table (select-rows referenced))))))))
 
 (defn- own-changes
   [{:keys [operation model id] :as event}]
@@ -36,5 +38,5 @@
                                    (concat (own-changes event) (get-in event [:captures :change-log])))
                                  events))))
 
-(events/register-capture! :change-log capture-cascade)
+(events/register-statement-capture! :change-log capture-cascade)
 (events/register-owned-consumer! :change-log (constantly :log) log-events!)

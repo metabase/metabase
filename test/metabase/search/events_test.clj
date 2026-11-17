@@ -16,6 +16,8 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
+   [metabase.util :as u]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
@@ -76,18 +78,41 @@
 (deftest capture-disabled-without-engine-test
   (testing "delete capture enumerates nothing when no search engine is active"
     (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
-      (is (nil? (#'search.events/capture-dependents card-delete))))))
+      (is (nil? (#'search.events/capture-dependents [card-delete]))))))
 
 (deftest capture-disabled-with-updates-test
   (testing "capture is skipped while search updates are disabled, as for tests against an old schema"
     (binding [search.ingestion/*disable-updates* true]
-      (is (nil? (#'search.events/capture-dependents card-delete))))))
+      (is (nil? (#'search.events/capture-dependents [card-delete]))))))
 
 (deftest only-deletes-are-captured-test
   (testing "only a delete is captured"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (is (nil? (#'search.events/capture-dependents (assoc card-delete :operation :create))))
-      (is (nil? (#'search.events/capture-dependents (assoc card-delete :operation :update)))))))
+      (is (nil? (#'search.events/capture-dependents [(assoc card-delete :operation :create)])))
+      (is (nil? (#'search.events/capture-dependents [(assoc card-delete :operation :update)]))))))
+
+(deftest capture-per-statement-test
+  (testing "a delete of several rows enumerates their dependents once, with a number of queries that does not grow with the rows"
+    (letfn [(capture-queries [n]
+              (mt/with-temp [:model/Collection {coll-id :id} {}]
+                (doseq [i (range n)]
+                  (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card) :collection_id coll-id :name (str "c" i))))
+                (let [calls (atom [])
+                      orig  (dynamic-redefs/original-fn #'search/cascading-documents)]
+                  (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [:search.engine/appdb])
+                                              search.ingestion/ingest-maybe-async! (constantly nil)
+                                              search/cascading-documents
+                                              (fn [instances]
+                                                (t2/with-call-count [call-count]
+                                                  (u/prog1 (orig instances)
+                                                    (swap! calls conj [(count instances) (call-count)]))))]
+                    (t2/delete! :model/Card :collection_id coll-id))
+                  @calls)))]
+      (let [[[one-rows one-queries] :as one] (capture-queries 1)
+            [[three-rows three-queries] :as three] (capture-queries 3)]
+        (is (= 1 (count one) (count three)))
+        (is (= [1 3] [one-rows three-rows]))
+        (is (= one-queries three-queries))))))
 
 (deftest model-index-feeds-the-index-on-delete-only-test
   (testing "a ModelIndex feeds the index on delete, and its inserts and updates do not"
@@ -559,11 +584,20 @@
 (deftest failed-reindex-still-reconciles-cascades-test
   (testing "when the re-derivation of the deleted rows throws, the cascade reconcile still runs"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Card   {card-id :id}   {:name "Failing Reindex Model", :type :model}
-                     :model/Action {action-id :id} {:name "Cascaded Action", :model_id card-id, :type :query}]
-        (mt/with-dynamic-fn-redefs [search/bulk-update! (fn [_instances] (throw (ex-info "reindex failed" {})))]
-          (t2/delete! :model/Card :id card-id))
-        (is (= 0 (indexed-count "action" action-id)))))))
+      (mt/with-temp [:model/Card {card-id :id} {:name "Failing Reindex Model", :type :model}]
+        (let [mi-id   (t2/insert-returning-pk! :model/ModelIndex {:model_id   card-id
+                                                                  :pk_ref     (mt/$ids $venues.id)
+                                                                  :value_ref  (mt/$ids $venues.name)
+                                                                  :schedule   "0 0 0 * * ? *"
+                                                                  :state      "indexed"
+                                                                  :creator_id (mt/user->id :rasta)})
+              indexed #(indexed-count "indexed-entity" (str mi-id ":1"))]
+          (t2/insert! :model/ModelIndexValue [{:model_index_id mi-id, :model_pk 1, :name "Red Medicine"}])
+          (search.ingestion/bulk-ingest! [["indexed-entity" [:= mi-id :this.model_index_id]]])
+          (is (= 1 (indexed)))
+          (mt/with-dynamic-fn-redefs [search/bulk-update! (fn [_instances] (throw (ex-info "reindex failed" {})))]
+            (t2/delete! :model/Card :id card-id))
+          (is (= 0 (indexed))))))))
 
 (deftest cascade-enumeration-failure-keeps-the-delete-test
   (testing "a search error while enumerating cascaded documents is logged, and the delete still succeeds"
@@ -608,7 +642,7 @@
     (is (= {:result nil, :interrupted? true}
            (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances]
                                                                     (throw (InterruptedException. "interrupted")))]
-             (outcome-and-interrupt #(#'search.events/capture-dependents card-delete)))))))
+             (outcome-and-interrupt #(#'search.events/capture-dependents [card-delete])))))))
 
 (deftest reconcile-interrupt-stops-and-is-restored-test
   (testing "an interrupt while reconciling stops the remaining search-models and reaches the caller"

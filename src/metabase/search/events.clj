@@ -18,22 +18,23 @@
       (and (= :delete operation) (isa? model :search/indexed-deletes))))
 
 (defn- capture-dependents
-  "The documents that the delete of a row leaves unpurgeable. A search error must not fail the delete: it skips the
-  enumeration and leaves those documents to the scheduled reindex."
-  [{:keys [operation model previous-object]}]
-  (when (and (= :delete operation)
-             (feeds-index? model operation)
-             (not search.ingestion/*disable-updates*)
-             (search/supports-index?))
-    (try
-      (search/cascading-documents [(t2/instance model previous-object)])
-      (catch InterruptedException e
-        (.interrupt (Thread/currentThread))
-        (log/errorf e "Interrupted; skipping search cascade enumeration for %s" model)
-        nil)
-      (catch Exception e
-        (log/errorf e "Skipping search cascade enumeration for %s" model)
-        nil))))
+  "The documents that the delete of the rows of the delete `events` of one model leaves unpurgeable. A search error
+  must not fail the delete: it skips the enumeration and leaves those documents to the scheduled reindex."
+  [events]
+  (when-let [{:keys [model operation]} (first events)]
+    (when (and (= :delete operation)
+               (feeds-index? model operation)
+               (not search.ingestion/*disable-updates*)
+               (search/supports-index?))
+      (try
+        (search/cascading-documents (mapv #(t2/instance model (:previous-object %)) events))
+        (catch InterruptedException e
+          (.interrupt (Thread/currentThread))
+          (log/errorf e "Interrupted; skipping search cascade enumeration for %s" model)
+          nil)
+        (catch Exception e
+          (log/errorf e "Skipping search cascade enumeration for %s" model)
+          nil)))))
 
 (defn- updated-instance
   "The row of an update as an instance that knows its changes."

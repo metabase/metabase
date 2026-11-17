@@ -17,6 +17,7 @@
    [metabase.sync.db :as sync.db]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
@@ -511,6 +512,32 @@
             (testing "and the database deleted and updated those rows"
               (is (nil? (t2/select-one :model/Field :id (:id f))))
               (is (nil? (t2/select-one-fn :fk_target_field_id :model/Field :id (:id fk)))))))))))
+
+(deftest cascade-capture-per-statement-test
+  (testing "a delete of several rows enumerates their cascades once, with a number of queries that does not grow with the rows"
+    (when config/ee-available?
+      (mt/with-premium-features #{:change-log}
+        (letfn [(capture-queries [n]
+                  (mt/with-temp [:model/Database db {}]
+                    (doseq [i (range n)]
+                      (t2/insert! :model/Table {:db_id (:id db), :name (str "t" i), :active true}))
+                    (let [calls (atom [])
+                          rows  (atom [])
+                          orig  (dynamic-redefs/original-fn #'change-log.cascade/changes)]
+                      (mt/with-dynamic-fn-redefs [change-log.cascade/changes
+                                                  (fn [fks table deleted]
+                                                    (t2/with-call-count [call-count]
+                                                      (u/prog1 (doall (orig fks table deleted))
+                                                        (when (= "metabase_table" table)
+                                                          (swap! rows conj [table (count deleted)])
+                                                          (swap! calls conj (call-count))))))]
+                        (t2/delete! :model/Table :db_id (:id db)))
+                      {:rows @rows, :queries (first @calls)})))]
+          (let [one   (capture-queries 1)
+                three (capture-queries 3)]
+            (is (= [["metabase_table" 1]] (:rows one)))
+            (is (= [["metabase_table" 3]] (:rows three)))
+            (is (= (:queries one) (:queries three)))))))))
 
 (deftest cascade-from-untracked-model-test
   (is (not (contains? change-log.log/tracked-models :model/DashboardCard)))
