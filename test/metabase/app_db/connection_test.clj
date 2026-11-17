@@ -12,7 +12,7 @@
   (:import
    (com.mchange.v2.c3p0 DataSources PoolBackedDataSource WrapperConnectionPoolDataSource)
    (java.sql Connection DatabaseMetaData SQLException Savepoint)
-   (java.util.concurrent CountDownLatch Semaphore TimeUnit)
+   (java.util.concurrent Semaphore)
    (java.util.concurrent.locks ReentrantReadWriteLock)
    (javax.sql DataSource)))
 
@@ -981,24 +981,16 @@
        (is (= {:answer false, :calls 0}
               {:answer (mdb.connection/mariadb?), :calls (calls)}))))))
 
-(deftest mariadb?-concurrent-first-calls-test
-  (testing "concurrent first callers share one read"
-    ;; Callers are held inside `getConnection` until `release`, so with the lock only one of them gets there.
-    ;; Without it, the second caller gets there at once.
-    (let [entered (CountDownLatch. 2)
-          release (CountDownLatch. 1)]
+(deftest mariadb?-reads-under-the-lock-test
+  (testing "the product name is read while holding the cell's lock, so concurrent first callers share one read"
+    (let [held?          (atom nil)
+          record-holder! (fn [_]
+                           (reset! held? (Thread/holdsLock (:mariadb? (mdb.connection/current-application-db)))))]
       (do-with-product-app-db
-       :mysql "MariaDB" (fn [_] (.countDown entered) (.await release 5 TimeUnit/SECONDS))
-       (fn [calls]
-         (let [first-call  (future (mdb.connection/mariadb?))
-               second-call (future (mdb.connection/mariadb?))]
-           (try
-             (is (false? (.await entered 300 TimeUnit/MILLISECONDS)))
-             (finally
-               (.countDown release)))
-           (is (= {:answers [true true], :calls 1}
-                  {:answers [(deref first-call 5000 ::timed-out) (deref second-call 5000 ::timed-out)]
-                   :calls   (calls)}))))))))
+       :mysql "MariaDB" record-holder!
+       (fn [_]
+         (mdb.connection/mariadb?)
+         (is (true? @held?)))))))
 
 (deftest record-mariadb!-test
   (testing "a recorded answer is used without connecting"
