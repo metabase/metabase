@@ -1,9 +1,11 @@
 (ns metabase.pulse.broken-subscriptions-test
   (:require
    [clojure.test :refer :all]
+   [metabase.channel.email.messages :as messages]
    [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
    [metabase.pulse.models.pulse :as models.pulse]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest broken-subscription-data-logic-test
   (testing "Ensure underlying logic of fixing broken pulses works (#30100)"
@@ -122,3 +124,68 @@
               (is (false? (:archived bad-pulse))))
             (testing "Pulse is now archived"
               (is (true? (:archived (models.pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
+
+(deftest notification-waits-for-commit-test
+  (testing "handle-broken-subscriptions! sends its notifications only once the surrounding transaction commits"
+    (let [param {:id "_SOURCE_PARAM_ID_" :name "Source" :slug "source" :type :string/=}]
+      (mt/test-helpers-set-global-values!
+        (mt/with-temp
+          [:model/Card          {card-id :id}          {}
+           :model/Dashboard     {dash-id :id}          {:parameters [param]}
+           :model/DashboardCard {dashcard-id :id}      {:dashboard_id dash-id :card_id card-id}
+           :model/Pulse         {pulse-id :id}         {:dashboard_id dash-id
+                                                        :creator_id   (mt/user->id :trashbird)
+                                                        :parameters   [(assoc param :value ["Twitter"])]}
+           :model/PulseCard     _                      {:pulse_id pulse-id :card_id card-id :dashboard_card_id dashcard-id}]
+          (let [sent   (atom [])
+                done   (promise)
+                break! (fn []
+                         (t2/update! :model/Dashboard :id dash-id {:parameters []})
+                         (pulse.broken-subscriptions/handle-broken-subscriptions! dash-id {(:id param) param}))]
+            (mt/with-dynamic-fn-redefs [messages/send-broken-subscription-notification!
+                                        (fn [{:keys [pulse-id]}]
+                                          (swap! sent conj pulse-id)
+                                          (deliver done true))]
+              (testing "rolled back: the subscription stays active and nobody is notified"
+                (is (thrown-with-msg? Exception #"later step failed"
+                                      (t2/with-transaction [_conn]
+                                        (break!)
+                                        (throw (ex-info "later step failed" {})))))
+                (is (false? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))
+                (is (= [] @sent)))
+              (testing "committed: the subscription is archived and its creators are notified"
+                (t2/with-transaction [_conn]
+                  (break!))
+                (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))
+                (is (true? (deref done 10000 false)))
+                (is (= [pulse-id] @sent))))))))))
+
+(deftest notification-failure-does-not-stop-the-rest-test
+  (testing "a notification that throws is logged, and the remaining ones still go out"
+    (let [param {:id "_SOURCE_PARAM_ID_" :name "Source" :slug "source" :type :string/=}]
+      (mt/test-helpers-set-global-values!
+        (mt/with-temp
+          [:model/Card          {card-id :id}     {}
+           :model/Dashboard     {dash-id :id}     {:parameters [param]}
+           :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id :card_id card-id}
+           :model/Pulse         {first-id :id}    {:dashboard_id dash-id
+                                                   :creator_id   (mt/user->id :trashbird)
+                                                   :parameters   [(assoc param :value ["Twitter"])]}
+           :model/PulseCard     _                 {:pulse_id first-id :card_id card-id :dashboard_card_id dashcard-id}
+           :model/Pulse         {second-id :id}   {:dashboard_id dash-id
+                                                   :creator_id   (mt/user->id :trashbird)
+                                                   :parameters   [(assoc param :value ["Facebook"])]}
+           :model/PulseCard     _                 {:pulse_id second-id :card_id card-id :dashboard_card_id dashcard-id}]
+          (let [sent (atom [])
+                done (promise)]
+            (mt/with-dynamic-fn-redefs [messages/send-broken-subscription-notification!
+                                        (fn [{:keys [pulse-id]}]
+                                          (if (= pulse-id first-id)
+                                            (throw (ex-info "template failed" {}))
+                                            (do (swap! sent conj pulse-id)
+                                                (deliver done true))))]
+              (t2/with-transaction [_conn]
+                (t2/update! :model/Dashboard :id dash-id {:parameters []})
+                (pulse.broken-subscriptions/handle-broken-subscriptions! dash-id {(:id param) param}))
+              (is (true? (deref done 10000 false)))
+              (is (= [second-id] @sent)))))))))
