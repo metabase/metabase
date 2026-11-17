@@ -461,7 +461,7 @@
 
 (methodical/defmethod events/publish-event! ::custom-viz-plugin-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (record-lifecycle! topic event true))
 
 (events/derive! ::remote-sync-event ::event)
 (events/derive! :event/remote-sync-import ::remote-sync-event)

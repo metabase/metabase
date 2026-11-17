@@ -43,8 +43,7 @@
                                                 [:archived      {:optional true} [:maybe :boolean]]]]
   (api/create-check :model/Timeline {:collection_id collection-id})
   (let [tl (assoc body :creator_id api/*current-user-id*)]
-    (u/prog1 (timeline.db/insert-timeline! tl)
-      (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*}))))
+    (u/prog1 (timeline.db/insert-timeline! tl))))
 
 (mu/defn list-timelines :- [:sequential (ms/InstanceOf :model/Timeline)]
   "List timelines visible to the current user with no hydration."
@@ -116,16 +115,14 @@
                                      :non-nil #{:name})]
     (api/update-check existing changes)
     (timeline.db/update-timeline! id changes)
-    (u/prog1 (t2/hydrate (timeline.db/timeline id) :creator [:collection :can_write] :is_remote_synced)
-      (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*}))))
+    (u/prog1 (t2/hydrate (timeline.db/timeline id) :creator [:collection :can_write] :is_remote_synced))))
 
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a [[Timeline]]. Will cascade delete its events as well."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [timeline (api/write-check :model/Timeline id)]
-    (timeline.db/delete-timeline! id)
-    (events/publish-event! :event/timeline-delete {:object timeline :user-id api/*current-user-id*}))
+  (api/write-check :model/Timeline id)
+  (timeline.db/delete-timeline! id)
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

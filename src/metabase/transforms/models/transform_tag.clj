@@ -18,6 +18,7 @@
 
 (doto :model/TransformTag
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 

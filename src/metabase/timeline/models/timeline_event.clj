@@ -19,6 +19,7 @@
 
 (doto :model/TimelineEvent
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 

@@ -48,6 +48,7 @@
 
 (doto :model/CustomVizPlugin
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/timestamped?))
 
 (def non-blob-columns

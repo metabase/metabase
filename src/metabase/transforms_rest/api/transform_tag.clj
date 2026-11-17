@@ -34,7 +34,6 @@
   (log/info "Creating transform tag")
   (api/create-check :model/TransformTag {:name name})
   (let [tag (transforms-rest.db/insert-tag! name)]
-    (events/publish-event! :event/transform-tag-create {:object tag})
     tag))
 
 (api.macros/defendpoint :put "/:tag-id" :- TransformTagResponse
@@ -48,7 +47,6 @@
   (api/update-check (api/check-404 (transforms-rest.db/tag tag-id)) {:name name})
   (transforms-rest.db/update-tag! tag-id name)
   (let [tag (transforms-rest.db/tag tag-id)]
-    (events/publish-event! :event/transform-tag-update {:object tag})
     tag))
 
 (api.macros/defendpoint :delete "/:tag-id" :- :nil
@@ -57,7 +55,6 @@
                         [:tag-id ms/PositiveInt]]]
   (log/info "Deleting transform tag" tag-id)
   (let [tag (api/write-check (transforms-rest.db/tag tag-id))]
-    (events/publish-event! :event/transform-tag-delete {:object tag})
     (transforms-rest.db/delete-tag! tag-id))
   nil)
 
