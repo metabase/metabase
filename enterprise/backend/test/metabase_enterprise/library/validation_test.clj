@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest allowed-content-doesnt-block-regular-collections
@@ -41,13 +42,17 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
                               (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id allow-tables)})))))
       (testing "Can add collections iff they have the same :type"
-        (let [new-coll (merge (mt/with-temp-defaults :model/Collection)
-                              {:location (str "/" (:id allow-tables) "/")})]
+        (let [new-coll #(merge (mt/with-temp-defaults :model/Collection)
+                               {:entity_id (u/generate-nano-id)
+                                :location  (str "/" (:id allow-tables) "/")})]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
-                                (t2/insert! :model/Collection new-coll))
-              "basic new collection is rejected")
-          (is (= 1 (t2/insert! :model/Collection (assoc new-coll :type collection/library-data-collection-type)))
-              "new collection with :type set is allowed"))))))
+                                (t2/insert! :model/Collection (assoc (new-coll) :type collection/library-metrics-collection-type)))
+              "new collection of another type is rejected")
+          (is (= 1 (t2/insert! :model/Collection (assoc (new-coll) :type collection/library-data-collection-type)))
+              "new collection with :type set is allowed")
+          (let [id (t2/insert-returning-pk! :model/Collection (new-coll))]
+            (is (= collection/library-data-collection-type (t2/select-one-fn :type :model/Collection :id id))
+                "new collection without :type takes the type of its parent")))))))
 
 (deftest check-allowed-content-metric
   (mt/with-premium-features #{:library}
@@ -61,13 +66,17 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics to the 'Metrics' collection"
                               (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id allow-metrics)})))))
       (testing "Can add collections iff they have the same :type"
-        (let [new-coll (merge (mt/with-temp-defaults :model/Collection)
-                              {:location (str "/" (:id allow-metrics) "/")})]
+        (let [new-coll #(merge (mt/with-temp-defaults :model/Collection)
+                               {:entity_id (u/generate-nano-id)
+                                :location  (str "/" (:id allow-metrics) "/")})]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics to the 'Metrics' collection"
-                                (t2/insert! :model/Collection new-coll))
-              "basic new collection is rejected")
-          (is (= 1 (t2/insert! :model/Collection (assoc new-coll :type collection/library-metrics-collection-type)))
-              "new collection with :type set is allowed"))))))
+                                (t2/insert! :model/Collection (assoc (new-coll) :type collection/library-data-collection-type)))
+              "new collection of another type is rejected")
+          (is (= 1 (t2/insert! :model/Collection (assoc (new-coll) :type collection/library-metrics-collection-type)))
+              "new collection with :type set is allowed")
+          (let [id (t2/insert-returning-pk! :model/Collection (new-coll))]
+            (is (= collection/library-metrics-collection-type (t2/select-one-fn :type :model/Collection :id id))
+                "new collection without :type takes the type of its parent")))))))
 
 (deftest library-dashboards-collections-hold-content-except-tables-and-regular-collections-test
   (mt/with-premium-features #{:library}
@@ -84,9 +93,11 @@
         (is (some? (t2/insert! :model/Collection (merge (mt/with-temp-defaults :model/Collection)
                                                         {:location (str "/" (:id dashboards) "/")
                                                          :type     collection/library-dashboards-collection-type})))))
-      (testing "Rejects regular collections, created or moved in"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add tables or regular collections to the 'Dashboards' collection"
-                              (t2/insert! :model/Collection (merge (mt/with-temp-defaults :model/Collection) {:location (str "/" (:id dashboards) "/")}))))
+      (testing "A collection created in without a type takes the type of the section"
+        (let [id (t2/insert-returning-pk! :model/Collection (merge (mt/with-temp-defaults :model/Collection)
+                                                                   {:location (str "/" (:id dashboards) "/")}))]
+          (is (= collection/library-dashboards-collection-type (t2/select-one-fn :type :model/Collection :id id)))))
+      (testing "Rejects regular collections moved in"
         (mt/with-temp [:model/Collection regular {:name "Regular Collection"}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add tables or regular collections to the 'Dashboards' collection"
                                 (t2/update! :model/Collection :id (:id regular) {:location (str "/" (:id library) "/" (:id dashboards) "/")})))))
@@ -134,7 +145,7 @@
                                                    :type   collection/library-data-collection-type}
                      :model/Table      table      {:collection_id (:id archive-me)
                                                    :is_published  true}]
-        (collection/archive-collection! archive-me)
+        (t2/update! :model/Collection :id (:id archive-me) {:archived true})
         (testing "archiving a Library/Data subcollection unpublishes all the tables it contains"
           (is (=? {:is_published  false
                    :collection_id nil
@@ -162,7 +173,7 @@
                      :model/Table      table3     {:collection_id (:id child)
                                                    :is_published  true
                                                    :name          "Child_Table"}]
-        (collection/archive-collection! archive-me)
+        (t2/update! :model/Collection :id (:id archive-me) {:archived true})
         (testing "archiving a Library/Data subcollection unpublishes all the tables it contains **recursively**"
           (is (t2/select-one-fn :archived :model/Collection :id (:id archive-me)))
           (doseq [table [table1 table2 table3]]
@@ -178,7 +189,7 @@
                                                    :type collection/library-metrics-collection-type}
                      :model/Card       metric     {:collection_id (:id archive-me)
                                                    :type          :metric}]
-        (collection/archive-collection! archive-me)
+        (t2/update! :model/Collection :id (:id archive-me) {:archived true})
         (testing "the collection is archived"
           (is (true? (t2/select-one-fn :archived :model/Collection :id (:id archive-me)))))
         (testing "the metric inside is archived"

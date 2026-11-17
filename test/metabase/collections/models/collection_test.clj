@@ -176,12 +176,10 @@
       (is (not= (:entity_id c1) (:entity_id c2))))))
 
 (defn- archive-collection! [col]
-  (mt/with-current-user (mt/user->id :crowberto)
-    (collection/archive-or-unarchive-collection! col {:archived true})))
+  (t2/update! :model/Collection :id (u/the-id col) {:archived true}))
 
 (defn- unarchive-collection! [col]
-  (mt/with-current-user (mt/user->id :crowberto)
-    (collection/archive-or-unarchive-collection! col {:archived false})))
+  (t2/update! :model/Collection :id (u/the-id col) {:archived false}))
 
 (deftest archive-cards-test
   (testing "check that archiving a Collection archives its Cards as well"
@@ -972,24 +970,11 @@
              (collection-ids->names collections (collection/collection-ids-for-moving c collection/root-collection)))))))
 
 (deftest perms-for-moving-exceptions-test
-  (with-collection-hierarchy! [{:keys [a b], :as _collections}]
+  (with-collection-hierarchy! [{:keys [a], :as _collections}]
     (testing "If you try to calculate permissions to move or archive the Root Collection, throw an Exception!"
       (is (thrown?
            Exception
-           (collection/collection-ids-for-moving collection/root-collection a))))
-    (testing "You should also see an Exception if you try to move a Collection into itself or into one its descendants..."
-      (testing "B -> B"
-        (is (thrown?
-             Exception
-             (collection/collection-ids-for-moving b b))))
-      (testing "A -> B"
-        (is (thrown?
-             Exception
-             (collection/collection-ids-for-moving a b)))))
-    (testing "Let's make sure we get an Exception when we try to *move* a Personal Collection"
-      (is (thrown?
-           Exception
-           (collection/collection-ids-for-moving (collection/user->personal-collection (mt/fetch-user :lucky)) a)))))
+           (collection/collection-ids-for-moving collection/root-collection a)))))
   (testing "invalid input"
     (doseq [[collection new-parent] [[{:location "/"} nil]
                                      [{:location "/"} {}]
@@ -1176,6 +1161,24 @@
                    "C" {"D" {"E" {}}
                         "F" {"G" {}}}}}
              (collection-locations (vals collections) :archived false))))))
+
+(deftest archiving-collection-with-descendant-of-lower-id-than-parent-test
+  (testing "a descendant moved under a Collection created after it is archived as part of the archive, not on its own"
+    (mt/with-temp [:model/Collection {root-id :id}  {:location "/"}
+                   :model/Collection {inner-id :id} {:location (str "/" root-id "/")}
+                   :model/Collection {outer-id :id} {:location (str "/" root-id "/")}]
+      (t2/update! :model/Collection :id inner-id {:location (str "/" root-id "/" outer-id "/")})
+      (is (< inner-id outer-id))
+      (let [flags (fn []
+                    (into {} (map (juxt :id (juxt :archived :archived_directly)))
+                          (t2/select [:model/Collection :id :archived :archived_directly]
+                                     :id [:in [root-id outer-id inner-id]])))]
+        (t2/update! :model/Collection :id root-id {:archived true})
+        (is (= {root-id [true true], outer-id [true false], inner-id [true false]}
+               (flags)))
+        (t2/update! :model/Collection :id root-id {:archived false})
+        (is (= {root-id [false false], outer-id [false false], inner-id [false false]}
+               (flags)))))))
 
 (deftest nested-collection-archiving-objects-test
   (doseq [model [:model/Card :model/Dashboard :model/NativeQuerySnippet :model/Pulse]]
@@ -1562,15 +1565,16 @@
                                               ["x" nil]
                                               ["x" "y"]]]
     (mt/with-temp [:model/Collection parent-collection {:namespace parent-namespace}]
-      (testing (format "You should not be able to create a Collection in namespace %s inside a Collection in namespace %s"
-                       (pr-str child-namespace) (pr-str parent-namespace))
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Collection must be in the same namespace as its parent"
-             (t2/insert! :model/Collection
-                         {:location  (format "/%d/" (:id parent-collection))
-                          :name      "Child Collection"
-                          :namespace child-namespace}))))
+      (when child-namespace
+        (testing (format "You should not be able to create a Collection in namespace %s inside a Collection in namespace %s"
+                         (pr-str child-namespace) (pr-str parent-namespace))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Collection must be in the same namespace as its parent"
+               (t2/insert! :model/Collection
+                           {:location  (format "/%d/" (:id parent-collection))
+                            :name      "Child Collection"
+                            :namespace child-namespace})))))
       (testing (format "You should not be able to move a Collection of namespace %s into a Collection of namespace %s"
                        (pr-str child-namespace) (pr-str parent-namespace))
         (mt/with-temp [:model/Collection collection-2 {:namespace child-namespace}]
@@ -1584,6 +1588,14 @@
              clojure.lang.ExceptionInfo
              #"You cannot move a Collection to a different namespace once it has been created"
              (t2/update! :model/Collection :id (:id parent-collection) {:namespace child-namespace})))))))
+
+(deftest collection-without-namespace-takes-namespace-of-parent-test
+  (mt/with-temp [:model/Collection parent {:namespace "x"}]
+    (testing "A Collection inserted without a namespace takes the namespace of its parent"
+      (let [child-id (t2/insert-returning-pk! :model/Collection
+                                              {:location (collection/children-location parent)
+                                               :name     "Child Collection"})]
+        (is (= :x (t2/select-one-fn :namespace :model/Collection :id child-id)))))))
 
 (deftest check-special-collection-namespace-cannot-be-personal-collection
   (testing "You should not be able to create a Personal Collection with a non-nil `:namespace`."
@@ -1839,7 +1851,13 @@
              #"A Collection placed in a remote-synced Collection must also be remote-synced"
              (t2/insert! :model/Collection
                          {:name "Remote Synced Collection"
-                          :location (format "/%d/" parent-id)})))))))
+                          :is_remote_synced false
+                          :location (format "/%d/" parent-id)})))
+        (testing "a collection that doesn't say takes the flag of its parent"
+          (let [child-id (t2/insert-returning-pk! :model/Collection
+                                                  {:name "Inheriting Collection"
+                                                   :location (format "/%d/" parent-id)})]
+            (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id child-id)))))))))
 
 (deftest remote-synced-parent-validation-creating-in-root-test
   (mt/with-model-cleanup [:model/Collection]
@@ -1875,14 +1893,18 @@
 (deftest remote-synced-parent-validation-moving-into-regular-collection-test
   (mt/with-model-cleanup [:model/Collection]
     (testing "A remote-synced collection can only be placed in another remote-synced collection or the root collection"
-      (testing "Moving a remote-synced collection into a regular collection should fail"
+      (testing "Moving a remote-synced collection into a regular collection makes it a regular collection"
         (mt/with-temp [:model/Collection regular-parent {}
                        :model/Collection remote-synced-collection {:is_remote_synced true}]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"A remote-synced Collection can only be placed in another remote-synced Collection or the root Collection"
-               (t2/update! :model/Collection :id (:id remote-synced-collection)
-                           {:location (format "/%d/" (:id regular-parent))}))))))))
+          (t2/update! :model/Collection :id (:id remote-synced-collection)
+                      {:location (format "/%d/" (:id regular-parent))})
+          (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id remote-synced-collection))))))
+      (testing "Moving a regular collection into a remote-synced collection makes it remote-synced"
+        (mt/with-temp [:model/Collection remote-synced-parent {:is_remote_synced true}
+                       :model/Collection regular-collection {}]
+          (t2/update! :model/Collection :id (:id regular-collection)
+                      {:location (format "/%d/" (:id remote-synced-parent))})
+          (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id regular-collection)))))))))
 
 (deftest exclude-internal-content-hsql-test
   (testing "The exclude-internal-content-hsql multimethod returns correct HoneySQL expressions"
@@ -2042,8 +2064,142 @@
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stays a top-level collection of data apps"
                                   (t2/update! :model/Collection :id collection-id changes)))))
         (testing "move-collection!"
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot move a data app's collection"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stays a top-level collection of data apps"
                                 (collection/move-collection! collection (collection/children-location other)))))
         (t2/update! :model/Collection :id collection-id {:archive_operation_id nil :is_remote_synced true :description "Birds"})
         (is (=? {:location "/" :is_remote_synced true :description "Birds"}
                 (t2/select-one :model/Collection :id collection-id)))))))
+
+(deftest collection-moves-are-checked-by-hooks-test
+  (with-collection-hierarchy! [{:keys [a b c]}]
+    (testing "A Collection can't be moved into itself"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"into itself or into one of its descendants"
+                            (t2/update! :model/Collection :id (u/the-id b)
+                                        {:location (collection/children-location b)}))))
+    (testing "A Collection can't be moved into one of its descendants"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"into itself or into one of its descendants"
+                            (t2/update! :model/Collection :id (u/the-id a)
+                                        {:location (collection/children-location b)})))
+      (is (= "/" (t2/select-one-fn :location :model/Collection :id (u/the-id a)))))
+    (testing "A Collection can't be moved into the Trash"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"into the Trash"
+                            (t2/update! :model/Collection :id (u/the-id c)
+                                        {:location (collection/trash-path)}))))
+    (testing "A Collection can be moved into a Collection that isn't one of its descendants"
+      (t2/update! :model/Collection :id (u/the-id c) {:location (collection/children-location b)})
+      (is (= (collection/children-location b)
+             (t2/select-one-fn :location :model/Collection :id (u/the-id c)))))))
+
+(deftest collection-without-type-takes-type-of-library-section-test
+  (mt/with-temp [:model/Collection section {:type collection/library-metrics-collection-type}]
+    (testing "A Collection inserted without a type takes the type of a library section parent"
+      (let [child-id (t2/insert-returning-pk! :model/Collection
+                                              {:location (collection/children-location section)
+                                               :name     "Child Collection"})]
+        (is (= collection/library-metrics-collection-type
+               (t2/select-one-fn :type :model/Collection :id child-id)))))
+    (testing "A type other than the one of the section is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics"
+                            (t2/insert! :model/Collection
+                                        {:location (collection/children-location section)
+                                         :name     "Child Collection"
+                                         :type     collection/library-data-collection-type}))))))
+
+(deftest collection-type-is-validated-test
+  (testing "An unknown type is refused on insert"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Collection type"
+                          (t2/insert! :model/Collection {:name "Typed Collection" :type "not-a-type"}))))
+  (testing "An unknown type is refused on update"
+    (mt/with-temp [:model/Collection collection {}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Collection type"
+                            (t2/update! :model/Collection :id (:id collection) {:type "not-a-type"}))))))
+
+(deftest tenant-collection-needs-tenants-test
+  (testing "A Collection of the tenant namespace can't be created while tenants are off"
+    (mt/with-temporary-setting-values [use-tenants false]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"without tenants enabled"
+                            (t2/insert! :model/Collection {:name      "Tenant Collection"
+                                                           :namespace collection/shared-tenant-ns})))))
+  (testing "A Collection without a namespace is not a tenant Collection"
+    (mt/with-temp [:model/Collection collection {:namespace nil}]
+      (is (some? collection)))))
+
+(deftest library-placement-holds-without-premium-features-test
+  (mt/with-premium-features #{}
+    (mt/with-temp [:model/Collection section {:type collection/library-data-collection-type}]
+      (testing "Content a library section doesn't hold is refused"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
+                              (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
+                                                             :type          :model
+                                                             :collection_id (:id section))))))
+      (testing "A Collection can't move into a section of another type"
+        (mt/with-temp [:model/Collection other {:type collection/library-metrics-collection-type}
+                       :model/Collection child {:type     collection/library-metrics-collection-type
+                                                :location (collection/children-location other)}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
+                                (t2/update! :model/Collection :id (:id child)
+                                            {:location (collection/children-location section)}))))))))
+
+(deftest library-section-is-locked-without-premium-features-test
+  (mt/with-premium-features #{}
+    (mt/with-temp [:model/Collection section {:type      collection/library-data-collection-type
+                                              :entity_id "librarylibrarydatadat"}]
+      (testing "A section of the library can't be changed"
+        (let [ex (try (t2/update! :model/Collection :id (:id section) {:name "Renamed"})
+                      nil
+                      (catch clojure.lang.ExceptionInfo e e))]
+          (is (= 400 (:status-code (ex-data ex))))
+          (is (= "Cannot update properties on a semantic layer collection." (ex-message ex))))))))
+
+(deftest only-one-library-test
+  (mt/with-premium-features #{}
+    (mt/with-temp [:model/Collection _library {:type collection/library-collection-type}]
+      (testing "A second Collection of the library type is refused on insert"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Semantic layer already exists"
+                              (t2/insert! :model/Collection {:name "Second Library"
+                                                             :type collection/library-collection-type}))))
+      (testing "A Collection can't become a second library"
+        (mt/with-temp [:model/Collection other {}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Semantic layer already exists"
+                                (t2/update! :model/Collection :id (:id other)
+                                            {:type collection/library-collection-type}))))))))
+
+(deftest can-create-collection-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection parent {}]
+      (mt/with-test-user :rasta
+        (testing "Creating a Collection takes write access to its parent"
+          (is (false? (boolean (mi/can-create? :model/Collection {:name "New" :parent_id (:id parent)}))))
+          (is (false? (boolean (mi/can-create? :model/Collection {:name "New" :location (collection/children-location parent)}))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"
+                                (api/create-check :model/Collection {:name "New" :parent_id (:id parent)}))))
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) parent)
+        (is (true? (mi/can-create? :model/Collection {:name "New" :parent_id (:id parent)})))
+        (is (true? (mi/can-create? :model/Collection {:name "New" :location (collection/children-location parent)})))))))
+
+(deftest can-update-collection-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection source     {}
+                   :model/Collection descendant {:location (collection/children-location source)}
+                   :model/Collection target     {}]
+      (letfn [(can-update? [changes]
+                (mt/with-test-user :rasta
+                  (mi/can-update? (t2/hydrate (t2/select-one :model/Collection :id (:id source)) :can_write) changes)))
+              (grant! [& collections]
+                (doseq [coll collections]
+                  (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll)))]
+        (testing "Without write access to the Collection nothing can change"
+          (is (false? (can-update? {:name "Renamed"})))
+          (is (false? (can-update? {:parent_id (:id target)}))))
+        (grant! source)
+        (testing "Write access to the Collection is enough for a change that doesn't move it"
+          (is (true? (can-update? {:name "Renamed"})))
+          (is (true? (can-update? {:parent_id nil}))))
+        (testing "A move takes write access to the descendants and the new parent too"
+          (is (false? (can-update? {:parent_id (:id target)})))
+          (grant! target)
+          (is (false? (can-update? {:parent_id (:id target)})))
+          (is (false? (can-update? {:location (collection/children-location target)})))
+          (grant! descendant)
+          (is (true? (can-update? {:parent_id (:id target)})))
+          (is (true? (can-update? {:location (collection/children-location target)}))))))))

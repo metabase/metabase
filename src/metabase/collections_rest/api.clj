@@ -330,6 +330,7 @@
                 (some? card-ids) (filter #(contains? card-ids (:id %))))]
     (t2/with-transaction [_conn]
       (mapv (fn [{:as card :keys [in_dashboards]}]
+              (api/update-check card {:dashboard_id (-> in_dashboards first :id)})
               (queries/update-card! {:card-before-update card
                                      :card-updates {:dashboard_id (-> in_dashboards first :id)}
                                      :actor @api/*current-user*
@@ -610,7 +611,7 @@
    collection-updates :- [:map {:closed true}
                           [:name             {:optional true} [:maybe ms/NonBlankString]]
                           [:description      {:optional true} [:maybe ms/NonBlankString]]
-                          [:archived         {:default false} [:maybe ms/BooleanValue]]
+                          [:archived         {:optional true} [:maybe ms/BooleanValue]]
                           [:parent_id        {:optional true} [:maybe ms/PositiveInt]]
                           [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
   (collection-detail (collections/update-collection! id collection-updates)))
