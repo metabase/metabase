@@ -7,7 +7,7 @@ import { screen, waitFor, within } from "__support__/ui";
 import { apiKeyApi } from "metabase/admin/settings/api/api-key";
 import { getSettingsRoutes } from "metabase/admin/settingsRoutes";
 import { type RouteObject, toRouteObjects } from "metabase/router";
-import { settingsApi } from "metabase/settings/api";
+import { settingsApi } from "metabase/settings";
 import type { ApiKey } from "metabase-types/api";
 
 import { setup, testApiKeys } from "./AuthenticationSettingsPage.setup";
