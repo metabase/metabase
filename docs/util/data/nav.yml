@@ -359,7 +359,7 @@ categories:
                 url: "embedding/sdk/api/"
           - name: "Guest embedding"
             url: "embedding/guest-embedding"
-          - name: "Translate your embeds"
+          - name: "Translate embeds"
             url: "embedding/translations"
       - name: "Full app embedding"
         pages:
