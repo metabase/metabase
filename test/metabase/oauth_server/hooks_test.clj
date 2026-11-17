@@ -1,8 +1,7 @@
-(ns metabase.oauth-server.events.revoke-on-deactivation-test
+(ns metabase.oauth-server.hooks-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.events.core :as events]
-   [metabase.oauth-server.events.revoke-on-deactivation] ; for side effects: registers the event subscriber
+   [metabase.oauth-server.hooks :as oauth-server.hooks]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -40,8 +39,8 @@
 (defn- revoked? [model token]
   (some? (t2/select-one-fn :revoked_at model :token token)))
 
-(deftest revoke-on-event-test
-  (testing ":event/user-credentials-revoked revokes the user's OAuth tokens, leaving other users' untouched"
+(deftest after-user-deactivated-test
+  (testing "the hook revokes the user's OAuth tokens, leaving other users' untouched"
     (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [victim           (mt/user->id :rasta)
             bystander        (mt/user->id :lucky)
@@ -50,7 +49,7 @@
             victim-code      (insert-auth-code! victim)
             bystander-access (insert-access-token! bystander)
             bystander-code   (insert-auth-code! bystander)]
-        (events/publish-event! :event/user-credentials-revoked {:user-id victim})
+        (oauth-server.hooks/after-user-deactivated victim)
         (is (revoked? :model/OAuthAccessToken victim-access)
             "victim's access token is revoked")
         (is (revoked? :model/OAuthRefreshToken victim-refresh)

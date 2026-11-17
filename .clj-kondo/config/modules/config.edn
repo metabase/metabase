@@ -1541,6 +1541,7 @@
    :api #{metabase.oauth-server.api
           metabase.oauth-server.api.admin
           metabase.oauth-server.core
+          metabase.oauth-server.hooks
           metabase.oauth-server.init}
    :uses #{api
            api-scope
@@ -2278,7 +2279,6 @@
            audit-app.view-log
            cache
            change-log
-           channel
            collections
            content-diagnostics
            content-verification
@@ -2813,6 +2813,7 @@
    :module-exports #{session.login-history}
    :api  #{metabase.session.api
            metabase.session.core
+           metabase.session.hooks
            metabase.session.init
            metabase.session.schema
            metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
@@ -3410,10 +3411,12 @@
            collections
            events
            lib.schema
+           mcp.oauth-server
            models
            notification
            permissions
            premium-features
+           session
            settings
            setup
            sso.auth-identity

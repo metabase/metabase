@@ -204,7 +204,7 @@
    been deactivated).
 
    The `is_active` gate here is defense in depth, not the primary control: deactivating a user through
-   the model fires `:event/user-credentials-revoked`, and `metabase.oauth-server.events.revoke-on-deactivation`
+   the model calls `metabase.oauth-server.hooks/after-user-deactivated`, which
    stamps `revoked_at` on every token, which the store lookup above already filters on. This gate covers
    the paths that don't go through the model hook — a direct SQL or migration update of `core_user`, a
    restored backup — and keeps the invariant local to the one resolver every bearer caller shares (the

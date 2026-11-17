@@ -102,8 +102,6 @@
 (mr/def :event/user-login  ::user)
 (mr/def :event/user-joined ::user)
 
-(mr/def :event/user-credentials-revoked ::user)
-
 (mr/def :event/user-invited
   [:map {:closed true}
    [:object [:map

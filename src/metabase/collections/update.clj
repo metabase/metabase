@@ -56,8 +56,7 @@
   "Tells the recipients of the alerts of `stopped`, which archiving a Collection deleted, as archiving their Card does."
   [stopped actor]
   (doseq [[card notifications] stopped]
-    (notification.card/notify-card-notifications-deleted!
-     :event/card-update.notification-deleted.card-archived actor card notifications)))
+    (notification.card/notify-card-notifications-deleted! :card-archived actor card notifications)))
 
 (defn- publish-document-updates!
   "Publishes `:event/document-update` for the Documents the archive state of the Collections with `collection-ids`

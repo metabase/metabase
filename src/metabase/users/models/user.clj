@@ -218,9 +218,6 @@
           (perms/add-user-to-groups! user-id (map u/the-id groups))))))
     ((requiring-resolve 'metabase.collections.hooks/after-user-created) <>)))
 
-;; Declare the topic a valid event here in case subscribers are not loaded yet. (SEC-863)
-(events/derive! :event/user-credentials-revoked :metabase/event)
-
 (t2/define-before-update :model/User
   [{:keys [id] :as user}]
   (when (and (= id config/internal-mb-user-id) (seq (t2/changes user)))
@@ -238,7 +235,10 @@
     (handle-superuser-toggle! id superuser? in-admin-group?)
     (handle-user-archival! id active?)
     (when (false? active?)
-      (events/publish-event! :event/user-credentials-revoked {:user-id id}))
+      #_{:clj-kondo/ignore [:metabase/modules]}
+      ((requiring-resolve 'metabase.session.hooks/after-user-deactivated) id)
+      #_{:clj-kondo/ignore [:metabase/modules]}
+      ((requiring-resolve 'metabase.oauth-server.hooks/after-user-deactivated) id))
     (-> user
         (merge (normalize-user-fields (t2/changes user))
                (prepare-archival-timestamp active?))

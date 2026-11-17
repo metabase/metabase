@@ -1,8 +1,8 @@
 (ns metabase.pulse.update-alerts
   ;; TODO this should be moved to notification
   (:require
-   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
+   [metabase.notification.card :as notification.card]
    [metabase.notification.models :as models.notification]
    [metabase.pulse.db :as pulse.db]
    [metabase.util.malli :as mu]))
@@ -80,12 +80,10 @@
   (when (seq notifications)
     (cond
       (card-archived? old-card new-card)
-      (events/publish-event! :event/card-update.notification-deleted.card-archived
-                             {:card new-card :actor actor :notifications notifications})
+      (notification.card/notify-card-notifications-deleted! :card-archived actor new-card notifications)
 
       (card-change-broke-alert? old-card new-card)
-      (events/publish-event! :event/card-update.notification-deleted.card-changed
-                             {:card new-card :actor actor :notifications notifications}))))
+      (notification.card/notify-card-notifications-deleted! :card-changed actor new-card notifications))))
 
 (defn delete-alerts-if-card-changed!
   "Deletes the alerts of `new-card` if the change from `old-card`, other than archiving it, invalidates them."
