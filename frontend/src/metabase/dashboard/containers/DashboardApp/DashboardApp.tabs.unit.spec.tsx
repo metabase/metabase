@@ -359,6 +359,97 @@ describe("DashboardApp > tabs", () => {
     expect(screen.getAllByTestId("dashcard")).toHaveLength(1);
   });
 
+  it("should move cards through the tab menu and restore the link through Undo", async () => {
+    setupRecentViewsAndSelectionsEndpoints([]);
+    await setup({
+      dashboard: {
+        tabs: [TAB_1, TAB_2],
+        dashcards: [
+          createMockDashboardCard({
+            id: 11,
+            dashboard_id: DASHBOARD_ID,
+            dashboard_tab_id: TAB_1.id,
+            card_id: ORDERS_CARD.id,
+            card: ORDERS_CARD,
+            size_x: 24,
+            size_y: 4,
+          }),
+        ],
+      },
+    });
+
+    await startEditing();
+    await userEvent.click(screen.getByLabelText("Add a link or iframe"));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Link" }),
+    );
+    await userEvent.type(
+      await screen.findByPlaceholderText("https://example.com"),
+      "https://metabase.com",
+    );
+    expect(screen.getByRole("tab", { name: TAB_1.name })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByText(ORDERS_CARD.name)).toBeInTheDocument();
+    expect(screen.getAllByTestId("dashcard")).toHaveLength(2);
+
+    const linkDashcard = checkNotNull(
+      screen
+        .getAllByTestId("dashcard")
+        .find((dashcard) =>
+          within(dashcard).queryByDisplayValue("https://metabase.com"),
+        ),
+    );
+    await userEvent.hover(
+      within(linkDashcard).getByLabelText("move_card icon"),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: TAB_2.name }),
+    );
+    expect(
+      screen.queryByDisplayValue("https://metabase.com"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(ORDERS_CARD.name)).toBeInTheDocument();
+    expect(screen.getAllByTestId("dashcard")).toHaveLength(1);
+
+    await userEvent.hover(screen.getByLabelText("move_card icon"));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: TAB_2.name }),
+    );
+    expect(screen.queryByText(ORDERS_CARD.name)).not.toBeInTheDocument();
+    expect(screen.queryAllByTestId("dashcard")).toHaveLength(0);
+
+    await userEvent.click(screen.getByRole("tab", { name: TAB_2.name }));
+    expect(await screen.findByText(ORDERS_CARD.name)).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("https://metabase.com"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByTestId("dashcard")).toHaveLength(2);
+
+    const toasts = await screen.findAllByTestId("toast-undo");
+    expect(toasts).toHaveLength(2);
+    const linkToast = checkNotNull(
+      toasts.find((toast) => within(toast).queryByText("Link card moved")),
+    );
+    expect(screen.getByText("Card moved: Orders")).toBeInTheDocument();
+    await userEvent.click(
+      within(linkToast).getByRole("button", { name: "Undo" }),
+    );
+    expect(
+      screen.queryByDisplayValue("https://metabase.com"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(ORDERS_CARD.name)).toBeInTheDocument();
+    expect(screen.getAllByTestId("dashcard")).toHaveLength(1);
+
+    await userEvent.click(screen.getByRole("tab", { name: TAB_1.name }));
+    expect(
+      await screen.findByDisplayValue("https://metabase.com"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(ORDERS_CARD.name)).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("dashcard")).toHaveLength(1);
+  });
+
   it("should keep showing the dashcards after canceling the creation of a new tab (#38055, #38278)", async () => {
     await setup({
       dashboard: {

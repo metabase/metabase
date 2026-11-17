@@ -1,4 +1,6 @@
 const { H } = cy;
+import type { CyHttpMessages } from "cypress/types/net-stubbing";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -8,12 +10,27 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { checkNotNull } from "metabase/utils/types";
+import type {
+  Card,
+  CardId,
+  DashCardId,
+  Dashboard,
+  SaveDashboardRequest,
+} from "metabase-types/api";
 import {
   createMockDashboardCard,
   createMockParameter,
 } from "metabase-types/api/mocks";
 
-const { ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+type QuerySpy = sinon.SinonSpy<
+  [CyHttpMessages.IncomingHttpRequest<unknown, unknown>],
+  void
+>;
+
+type SampleDatabase = Parameters<Parameters<typeof H.withSampleDatabase>[0]>[0];
+
+const { ORDERS_ID, PRODUCTS, PRODUCTS_ID }: SampleDatabase = SAMPLE_DATABASE;
 
 const ORDERS_QUESTION = {
   name: "Orders question",
@@ -146,14 +163,18 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findByText("Orders, Count").click();
     });
 
-    cy.wait("@cardQuery");
+    cy.wait<unknown, unknown>("@cardQuery");
 
     H.saveDashboard();
     cy.url().should("match", /\d+\-tab\-2/); // id is not stable
 
-    cy.wait("@saveDashboardCards").then(({ response }) => {
-      cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
-    });
+    cy.wait<SaveDashboardRequest, Dashboard>("@saveDashboardCards").then(
+      ({ response }) => {
+        cy.wrap(checkNotNull(response?.body.dashcards[1]).id).as(
+          "secondTabDashcardId",
+        );
+      },
+    );
 
     // it's possible to have two requests firing (but first one is canceled before running second)
     cy.intercept(
@@ -162,7 +183,7 @@ describe("scenarios > dashboard > tabs", () => {
       cy.spy().as("firstTabQuerySpy"),
     ).as("firstTabQuery");
 
-    cy.get("@secondTabDashcardId").then((secondTabDashcardId) => {
+    cy.get<DashCardId>("@secondTabDashcardId").then((secondTabDashcardId) => {
       cy.intercept(
         "POST",
         `/api/dashboard/${ORDERS_DASHBOARD_ID}/dashcard/${secondTabDashcardId}/card/${ORDERS_COUNT_QUESTION_ID}/query`,
@@ -171,11 +192,13 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     const firstQuestion = () => {
-      return cy.request("GET", `/api/card/${ORDERS_QUESTION_ID}`).its("body");
+      return cy
+        .request<Card>("GET", `/api/card/${ORDERS_QUESTION_ID}`)
+        .its("body");
     };
     const secondQuestion = () => {
       return cy
-        .request("GET", `/api/card/${ORDERS_COUNT_QUESTION_ID}`)
+        .request<Card>("GET", `/api/card/${ORDERS_COUNT_QUESTION_ID}`)
         .its("body");
     };
 
@@ -189,9 +212,9 @@ describe("scenarios > dashboard > tabs", () => {
     // Visit first tab and confirm only first card was queried
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@secondTabQuerySpy").should("not.have.been.called");
-    cy.wait("@firstTabQuery").then((r) => {
+    cy.get<QuerySpy>("@firstTabQuerySpy").should("have.been.calledOnce");
+    cy.get<QuerySpy>("@secondTabQuerySpy").should("not.have.been.called");
+    cy.wait<unknown, unknown>("@firstTabQuery").then(() => {
       firstQuestion().then((r) => {
         expect(r.view_count).to.equal(2); // 1 (previously) + 1 (firstQuestion)
       });
@@ -202,9 +225,9 @@ describe("scenarios > dashboard > tabs", () => {
 
     // Visit second tab and confirm only second card was queried
     H.goToTab("Tab 2");
-    cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@secondTabQuery").then((r) => {
+    cy.get<QuerySpy>("@secondTabQuerySpy").should("have.been.calledOnce");
+    cy.get<QuerySpy>("@firstTabQuerySpy").should("have.been.calledOnce");
+    cy.wait<unknown, unknown>("@secondTabQuery").then(() => {
       firstQuestion().then((r) => {
         expect(r.view_count).to.equal(2); // 2 (previously)
       });
@@ -220,8 +243,8 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findByText("Orders").should("be.visible");
       cy.findByText("Orders, Count").should("not.exist");
     });
-    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
+    cy.get<QuerySpy>("@firstTabQuerySpy").should("have.been.calledOnce");
+    cy.get<QuerySpy>("@secondTabQuerySpy").should("have.been.calledOnce");
 
     firstQuestion().then((r) => {
       expect(r.view_count).to.equal(2); // 2 (previously)
@@ -232,7 +255,7 @@ describe("scenarios > dashboard > tabs", () => {
 
     // Go to public dashboard
     H.updateSetting("enable-public-sharing", true);
-    cy.request(
+    cy.request<{ uuid: Dashboard["public_uuid"] }>(
       "POST",
       `/api/dashboard/${ORDERS_DASHBOARD_ID}/public_link`,
     ).then(({ body: { uuid } }) => {
@@ -241,7 +264,7 @@ describe("scenarios > dashboard > tabs", () => {
         `/api/public/dashboard/${uuid}/dashcard/${ORDERS_DASHBOARD_DASHCARD_ID}/card/${ORDERS_QUESTION_ID}?parameters=%5B%5D`,
         cy.spy().as("publicFirstTabQuerySpy"),
       ).as("publicFirstTabQuery");
-      cy.get("@secondTabDashcardId").then((secondTabDashcardId) => {
+      cy.get<DashCardId>("@secondTabDashcardId").then((secondTabDashcardId) => {
         cy.intercept(
           "GET",
           `/api/public/dashboard/${uuid}/dashcard/${secondTabDashcardId}/card/${ORDERS_COUNT_QUESTION_ID}?parameters=%5B%5D`,
@@ -253,9 +276,9 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Check first tab requests
-    cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@publicSecondTabQuerySpy").should("not.have.been.called");
-    cy.wait("@publicFirstTabQuery").then((r) => {
+    cy.get<QuerySpy>("@publicFirstTabQuerySpy").should("have.been.calledOnce");
+    cy.get<QuerySpy>("@publicSecondTabQuerySpy").should("not.have.been.called");
+    cy.wait<unknown, unknown>("@publicFirstTabQuery").then(() => {
       firstQuestion().then((r) => {
         expect(r.view_count).to.equal(3); // 2 (previously) + 1 (publicFirstTabQuery)
       });
@@ -266,9 +289,9 @@ describe("scenarios > dashboard > tabs", () => {
 
     // Visit second tab and confirm only second card was queried
     H.goToTab("Tab 2");
-    cy.get("@publicSecondTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@publicSecondTabQuery").then((r) => {
+    cy.get<QuerySpy>("@publicSecondTabQuerySpy").should("have.been.calledOnce");
+    cy.get<QuerySpy>("@publicFirstTabQuerySpy").should("have.been.calledOnce");
+    cy.wait<unknown, unknown>("@publicSecondTabQuery").then(() => {
       firstQuestion().then((r) => {
         expect(r.view_count).to.equal(3); // 3 (previously)
       });
@@ -278,8 +301,8 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     H.goToTab("Tab 1");
-    cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@publicSecondTabQuerySpy").should("have.been.calledOnce");
+    cy.get<QuerySpy>("@publicFirstTabQuerySpy").should("have.been.calledOnce");
+    cy.get<QuerySpy>("@publicSecondTabQuerySpy").should("have.been.calledOnce");
 
     cy.log("static embedding");
     H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -307,19 +330,19 @@ describe("scenarios > dashboard > tabs", () => {
     H.visitIframe();
     // wait for results
     cy.findAllByTestId("dashcard").contains("37.65");
-    cy.get("@embedFirstTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@embedSecondTabQuerySpy").should("not.have.been.called");
+    cy.get<QuerySpy>("@embedFirstTabQuerySpy").should("have.been.calledOnce");
+    cy.get<QuerySpy>("@embedSecondTabQuerySpy").should("not.have.been.called");
 
-    cy.wait("@embedFirstTabQuery");
+    cy.wait<unknown, unknown>("@embedFirstTabQuery");
 
     H.goToTab("Tab 2");
-    cy.get("@embedSecondTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@embedFirstTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@embedSecondTabQuery");
+    cy.get<QuerySpy>("@embedSecondTabQuerySpy").should("have.been.calledOnce");
+    cy.get<QuerySpy>("@embedFirstTabQuerySpy").should("have.been.calledOnce");
+    cy.wait<unknown, unknown>("@embedSecondTabQuery");
 
     H.goToTab("Tab 1");
-    cy.get("@embedFirstTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@embedSecondTabQuerySpy").should("have.been.calledOnce");
+    cy.get<QuerySpy>("@embedFirstTabQuerySpy").should("have.been.calledOnce");
+    cy.get<QuerySpy>("@embedSecondTabQuerySpy").should("have.been.calledOnce");
   });
 
   it("should apply filter and show loading spinner when changing tabs (#33767)", () => {
@@ -352,7 +375,7 @@ describe("scenarios > dashboard > tabs", () => {
     // Loader in the 2nd tab
     H.getDashboardCard(0).within(() => {
       cy.findByTestId("loading-indicator").should("exist");
-      cy.wait("@saveCard");
+      cy.wait<unknown, unknown>("@saveCard");
       cy.findAllByRole("row").should("exist");
     });
 
@@ -429,7 +452,7 @@ const PRODUCTS_QUESTION_DETAILS = {
   query: { "source-table": PRODUCTS_ID },
 };
 
-function createMappedDashcard(mappedQuestionId) {
+function createMappedDashcard(mappedQuestionId: CardId) {
   return createMockDashboardCard({
     id: 1,
     card_id: mappedQuestionId,
@@ -489,9 +512,9 @@ describe("scenarios > dashboard > tabs > snowplow", () => {
       ({ body: { id: mappedQuestionId } }) => {
         H.createDashboard({ parameters: [CATEGORY_PARAMETER] }).then(
           ({ body: { id: dashboardId } }) => {
-            cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+            cy.request<Dashboard>("PUT", `/api/dashboard/${dashboardId}`, {
               dashcards: [createMappedDashcard(mappedQuestionId)],
-            });
+            } satisfies SaveDashboardRequest);
             H.visitDashboard(dashboardId);
           },
         );
@@ -626,16 +649,8 @@ describe("scenarios > dashboard > tabs > add a question to an empty dashboard wi
   });
 });
 
-/**
- * When you need to postpone a response (to check for loading spinners or alike),
- * use this:
- *
- * `cy.intercept('POST', path, delayResponse(1000)).as('delayed')`
- *
- * `cy.wait('@delayed')` - you'll have 1000 ms until this resolves
- */
-function delayResponse(delayMs) {
-  return function (req) {
+function delayResponse(delayMs: number) {
+  return function (req: CyHttpMessages.IncomingHttpRequest<unknown, unknown>) {
     req.on("response", (res) => {
       res.setDelay(delayMs);
     });
@@ -643,7 +658,7 @@ function delayResponse(delayMs) {
 }
 
 function slowDownCardQuery() {
-  return cy.intercept("POST", "/api/card/*/query", (req) => {
+  return cy.intercept<unknown, unknown>("POST", "/api/card/*/query", (req) => {
     req.on("response", (res) => {
       res.setDelay(300000);
     });
