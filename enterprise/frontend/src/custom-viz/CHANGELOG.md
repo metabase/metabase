@@ -4,6 +4,12 @@ This changelog covers the `@metabase/custom-viz` npm package — the API and CLI
 
 ## Unreleased
 
+### Features
+
+- `FormatValueOptions` and `ColumnVisualizationSettings` include the duration options `duration_unit`, `duration_style` and `duration_precision`, used when `number_style` is `"duration"` ([#87151](https://github.com/metabase/metabase/pull/87151)).
+
+## 2.0.1
+
 ### Bug Fixes
 
 - **Security:** updated Vite in scaffolded projects from 8.0.16 to 8.1.6 to pick up upstream security fixes ([#85837](https://github.com/metabase/metabase/pull/85837)).

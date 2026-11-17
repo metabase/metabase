@@ -46,7 +46,6 @@ Sync (OSS, `src/metabase/sync/`, see its `README.md`):
 Models (OSS):
 - `metabase.warehouses.models.database`, `metabase.warehouses.db` - Database.
 - `metabase.warehouse-schema.models.{table,field,field-values,dimension,field-user-settings,table-user-settings}`, `metabase.warehouse-schema.field-values.distinct-batch`, `metabase.warehouse-schema.db`.
-- `metabase.warehouse-schema-overlay.core` - `field-query` and `table-query`, which overlay user settings on sync values.
 - REST: the `warehouses-rest` and `warehouse-schema-rest` modules, each with its own `db` namespace.
 
 ## Invariants and landmines
@@ -57,7 +56,7 @@ Models (OSS):
 - Call `driver.u/supports?`, not `driver/database-supports?` directly. It caches, logs, and survives a slow or throwing driver.
 - Read connection details through `metabase.driver.connection/effective-details`, not `(:details db)`. Write, admin, and transform scopes pick other credentials and other pools.
 - The pool cache keys each pool by `[database-id connection-type]` and checks it against a hash of the JDBC spec. A changed hash, a closed SSH tunnel, or an expired password invalidates the pool. Before it drops a pool, the cache re-fetches a stale Database instance from a long sync.
-- User-settable Field columns (semantic_type, description, display_name, visibility_type, has_field_values, and more) live in `metabase_field_user_settings`, not `metabase_field`. Read through `warehouse-schema-overlay/field-query`. Sync passes `{:user-settings? false}` to see its own values. Do not write user edits into the sync-owned row.
+- `metabase_field` and `metabase_table` hold what users see. `metabase_field_user_settings` and `metabase_table_user_settings` record which values users set; user edits go through the settings models' write functions, which write both rows. Sync reads the settings row before each update and leaves user-set columns alone.
 - Sync is destructive. It deactivates tables missing from `describe-database`, and archives deactivated tables after a threshold. A driver that returns too few tables hides content.
 - Field values: `*distinct-limit*` is 1000 rows and `*total-max-length*` caps total size. A field over the limit stops being `auto-list`. Advanced FieldValues (`:sandbox`, `:linked-filter`) expire after `advanced-field-values-max-age`.
 - Lazy loading: core code must not require an external driver namespace. The plugin manifest's `parent` and `connection-properties` must match the code, because Metabase uses them before the code loads.

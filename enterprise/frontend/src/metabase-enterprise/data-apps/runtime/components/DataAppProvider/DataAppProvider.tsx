@@ -19,7 +19,7 @@ import { DataAppErrorState } from "../DataAppErrorState/DataAppErrorState";
 // in the host document, not the iframe.
 
 interface DataAppProviderProps {
-  appName: string;
+  appSlug: string;
   isDevApp?: boolean;
   providerProps?: DataAppMetabaseProviderProps;
   children?: ReactNode;
@@ -37,11 +37,11 @@ interface DataAppProviderProps {
  * session cookie; auth is already established.
  */
 export const DataAppProvider = (props: DataAppProviderProps) => {
-  const { children, providerProps, appName, isDevApp } = props;
+  const { children, providerProps, appSlug, isDevApp } = props;
   const { theme } = providerProps ?? {};
 
   // Configure the data-app request headers before any child renders. This must happen during the first render
-  useState(() => setDataApp(appName, { isDev: isDevApp }));
+  useState(() => setDataApp(appSlug, { isDev: isDevApp }));
 
   // Swap the SDK's default red error alert for a calm, neutral empty state,
   // unless the app ships its own `errorComponent`.

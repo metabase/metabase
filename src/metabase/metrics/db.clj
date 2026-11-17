@@ -2,11 +2,11 @@
   "Application database queries for the metrics module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
-   [metabase.collections.models.collection :as collection]
+   [metabase.api.common :as api]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (defn- visible-metric-cards-where
@@ -17,9 +17,10 @@
   [:and
    [:= :type "metric"]
    [:= :archived false]
-   (collection/visible-collection-filter-clause :collection_id {:include-trash-collection? false
-                                                                :include-archived-items    :exclude
-                                                                :permission-level          :read})])
+   (perms/visible-collections-filter-clause :report_card.collection_id (api/current-user-info) {:include-trash-collection? false
+                                                                                                :include-archived-items    :exclude
+                                                                                                :permission-level          :read
+                                                                                                :root-namespace            nil})])
 
 (mu/defn visible-metric-card-count
   "The number of unarchived metric Cards the current user can read."
@@ -42,6 +43,20 @@
   [id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id id :type "metric"))
 
+(mu/defn metric-cards-by-ids
+  "The metric Cards with `ids`."
+  [ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq ids)
+    (t2/select :model/Card :id [:in ids] :type "metric")
+    []))
+
+(mu/defn measures-by-ids
+  "The Measures with `ids`."
+  [ids :- [:sequential ::lib.schema.id/measure]]
+  (if (seq ids)
+    (t2/select :model/Measure :id [:in ids])
+    []))
+
 (mu/defn measure
   "The Measure with `id`, or nil."
   [id :- ::lib.schema.id/measure]
@@ -60,9 +75,9 @@
   "The id and `columns` of the Fields with `field-ids`."
   [columns   :- [:sequential :keyword]
    field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select (into [:model/Field :id] columns) :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select (into [:model/Field :id] columns) :id [:in field-ids]))
 
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one :model/Field :id field-id))

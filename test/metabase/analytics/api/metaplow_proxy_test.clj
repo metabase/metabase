@@ -45,6 +45,14 @@
         ;; client/client with no user = anonymous. A 401 here would mean the route isn't public.
         (is (= {} (client/client :post 200 "metaplow-proxy/send" sample-payload)))))))
 
+(deftest data-app-telemetry-test
+  (testing "a data app's telemetry, which reaches the server with the data-app marker, is relayed"
+    (with-collector! {:status 200 :headers {} :body "{}"}
+      (fn [_captured]
+        (is (= {} (mt/user-http-request :rasta :post 200 "metaplow-proxy/send"
+                                        {:request-options {:headers {"x-metabase-client" "data-app"}}}
+                                        sample-payload)))))))
+
 (deftest forwards-payload-to-collector-test
   (testing "the handler forwards the body to the configured collector as JSON, semantically unchanged"
     (with-collector! {:status 200 :headers {} :body "{}"}

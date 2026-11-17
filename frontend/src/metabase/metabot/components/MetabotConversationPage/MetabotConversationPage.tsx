@@ -75,7 +75,7 @@ export const MetabotConversationPage = () => {
   }
 
   if (!canUseNlq || !urlConvoId) {
-    return <Navigate to={Urls.newQuestion({ mode: "ask" })} replace />;
+    return <Navigate to={Urls.askQuestion()} replace />;
   }
 
   if (isError) {

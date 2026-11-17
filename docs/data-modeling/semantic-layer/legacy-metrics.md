@@ -1,5 +1,6 @@
 ---
 title: Legacy metrics
+summary: What changed when Metabase upgraded metrics in version 51, and what happened to the metrics you already had.
 redirect_from:
   - /docs/latest/data-modeling/legacy-metrics
 ---

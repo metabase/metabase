@@ -1,6 +1,7 @@
 import * as formik from "formik";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { createMockMetadata } from "__support__/metadata";
 import {
   defaultAuditInfo,
   setupAuditInfoEndpoint,
@@ -67,6 +68,7 @@ const setup = ({
       collection: undefined,
       dashboard_id: undefined,
     }),
+    createMockMetadata(),
   ),
   originalQuestion = null,
   initialCollectionId,
@@ -134,10 +136,8 @@ describe("SaveQuestionContext", () => {
 
         setup();
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "10",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("10"),
         );
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });
@@ -147,8 +147,8 @@ describe("SaveQuestionContext", () => {
 
         setup();
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent(
             "1337", // Users personal collection id
           ),
         );
@@ -163,10 +163,8 @@ describe("SaveQuestionContext", () => {
 
         setup({ initialCollectionId: 42 });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "42",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("42"),
         );
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });
@@ -179,10 +177,8 @@ describe("SaveQuestionContext", () => {
 
         setup({ initialCollectionId: 42 });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "42",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("42"),
         );
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });
@@ -194,14 +190,17 @@ describe("SaveQuestionContext", () => {
         );
 
         setup({
-          question: new Question({
-            ...createMockCard({
-              collection_id: 7,
-              collection: undefined,
-              dashboard_id: undefined,
-            }),
-            creationType: "custom_question",
-          }),
+          question: new Question(
+            {
+              ...createMockCard({
+                collection_id: 7,
+                collection: undefined,
+                dashboard_id: undefined,
+              }),
+              creationType: "custom_question",
+            },
+            createMockMetadata(),
+          ),
         });
 
         await screen.findByTestId("recentsLoaded");
@@ -247,10 +246,8 @@ describe("SaveQuestionContext", () => {
           }),
         });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "99",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("99"),
         );
       });
 
@@ -261,14 +258,17 @@ describe("SaveQuestionContext", () => {
         );
 
         setup({
-          question: new Question({
-            ...createMockCard({
-              collection_id: 11,
-              collection: createMockCollection({ id: 11 }),
-              dashboard_id: 20,
-            }),
-            creationType: "custom_question",
-          }),
+          question: new Question(
+            {
+              ...createMockCard({
+                collection_id: 11,
+                collection: createMockCollection({ id: 11 }),
+                dashboard_id: 20,
+              }),
+              creationType: "custom_question",
+            },
+            createMockMetadata(),
+          ),
         });
 
         expect(screen.getByTestId("saveToDashboard")).toBeInTheDocument();
@@ -290,6 +290,7 @@ describe("SaveQuestionContext", () => {
               collection: createMockCollection({ id: 11 }),
               dashboard_id: 20,
             }),
+            createMockMetadata(),
           ),
         });
 
@@ -311,13 +312,12 @@ describe("SaveQuestionContext", () => {
               collection: createMockCollection({ id: 20 }),
               dashboard_id: undefined,
             }),
+            createMockMetadata(),
           ),
         });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "20",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("20"),
         );
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });
@@ -335,13 +335,12 @@ describe("SaveQuestionContext", () => {
               collection: createMockCollection({ id: 11 }),
               type: "model",
             }),
+            createMockMetadata(),
           ),
         });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "11",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("11"),
         );
 
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
@@ -377,6 +376,7 @@ describe("SaveQuestionContext", () => {
               collection: IACollection,
               dashboard_id: undefined,
             }),
+            createMockMetadata(),
           ),
           originalQuestion: new Question(
             createMockCard({
@@ -385,11 +385,12 @@ describe("SaveQuestionContext", () => {
               dashboard_id: undefined,
               can_write: false,
             }),
+            createMockMetadata(),
           ),
         });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent(
             defaultAuditInfo.custom_reports.toString(),
           ),
         );
@@ -402,6 +403,7 @@ describe("SaveQuestionContext", () => {
 
         const originalQuestion = new Question(
           createMockCard({ collection, collection_id: 11, dashboard_id: 20 }),
+          createMockMetadata(),
         );
         setup({
           originalQuestion,
@@ -420,9 +422,13 @@ describe("SaveQuestionContext", () => {
           ...opts,
         };
 
-        const question = new Question(createMockCard(card));
+        const question = new Question(
+          createMockCard(card),
+          createMockMetadata(),
+        );
         const originalQuestion = new Question(
           createMockCard({ ...card, can_write: false }),
+          createMockMetadata(),
         );
 
         return { question, originalQuestion };
@@ -455,10 +461,8 @@ describe("SaveQuestionContext", () => {
 
         setup({ ...getProps() });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "10",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("10"),
         );
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });

@@ -1,5 +1,6 @@
 ---
 title: In
+summary: Check whether a value matches any value in a list, without writing a chain of OR conditions.
 ---
 
 # In

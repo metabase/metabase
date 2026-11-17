@@ -41,6 +41,7 @@
     :presto-jdbc         "presto"
     :starburst           "trino"
     :clickhouse          "clickhouse"
+    :motherduck          "duckdb"
     :druid-jdbc          "druid"
     :vertica             nil
     :h2                  nil
@@ -167,6 +168,10 @@
 (defmethod sql-tools/add-into-clause-impl :sqlglot
   [_parser driver sql table-name]
   (sql-parsing/add-into-clause (driver->dialect driver) sql table-name))
+
+(defmethod sql-tools/add-insert-clause-impl :sqlglot
+  [_parser driver sql table-name]
+  (sql-parsing/add-insert-clause (driver->dialect driver) sql table-name))
 
 (defmethod sql-tools/replace-names-impl :sqlglot
   [_parser driver sql-string replacements _opts]

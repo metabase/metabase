@@ -1,0 +1,6 @@
+name: Synced Collection
+entity_id: AF_m-cEw4pFjXYd90_tnj
+slug: synced_collection
+serdes/meta:
+- model: Collection
+is_remote_synced: true

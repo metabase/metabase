@@ -9,6 +9,7 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-repair :as query-repair]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
@@ -143,14 +144,31 @@
                                                          :available-queries (keys queries-state)})
         nil))))
 
-(defn- resolve-entity-link
-  "Resolve a metabase://{type}/{id} link to a proper URL."
-  [entity-type entity-id]
-  (if-let [path (get link-type-paths entity-type)]
-    (str path "/" entity-id)
-    (do
-      (log/warn "Unknown entity type for link" {:type entity-type :id entity-id})
-      nil)))
+(def ^:private entity-id-pattern
+  "Matches the ID of a `metabase://{type}/{id}` link that names an entity, and captures the numeric ID. It takes a
+  bare numeric ID, a numeric ID with a frontend slug (lowercase, because that is the output of `slugg`), and a numeric
+  ID with a `read_resource` sub-path or query string."
+  #"(\d+)(?:-[a-z0-9-]+|[/?#].*)?")
+
+(defn- resolve-entity-or-conversation-link
+  "Resolve a metabase://{type}/{id} link to a proper URL. `entity-path` is the [[link-type-paths]] value of the type.
+  The frontend reads the ID with `parseInt`, so a leading digit selects an entity. Thus only a value that matches
+  [[entity-id-pattern]] goes to an entity page, and the page gets the numeric ID alone.
+  A canonical UUID never goes to an entity page: chart IDs are UUIDs, and a UUID can match the slug form of
+  [[entity-id-pattern]] when it starts with eight digits.
+  A bare numeric ID is an entity, also when a chart seeded from that entity has the same ID. The model can also put
+  the ID of a query or chart from this conversation in such a link, so any other ID that is in the conversation opens
+  the ad-hoc query. Any other ID resolves to nil."
+  [entity-path entity-id charts-state queries-state]
+  (let [numeric-id       (when-not (re-matches u/uuid-regex entity-id)
+                           (second (re-matches entity-id-pattern entity-id)))
+        in-conversation? (or (contains? charts-state entity-id)
+                             (contains? queries-state entity-id))]
+    (if (and numeric-id
+             (or (= numeric-id entity-id)
+                 (not in-conversation?)))
+      (str entity-path "/" numeric-id)
+      (resolve-chart-link entity-id charts-state queries-state))))
 
 (defn- resolve-measure-link
   "Resolve a metabase://measure/{id} link to the measure's Data Studio page, or nil when the measure is
@@ -181,7 +199,7 @@
   Supported URI formats:
   - metabase://query/{uuid} - Links to query results
   - metabase://chart/{uuid} - Links to chart visualizations
-  - metabase://question/{uuid} - Links to saved questions
+  - metabase://question/{id} - Links to saved questions
   - metabase://model/{id} - Links to models
   - metabase://metric/{id} - Links to metrics
   - metabase://dashboard/{id} - Links to dashboards
@@ -190,6 +208,9 @@
   - metabase://measure/{id} - Links to measures
   - metabase://segment/{id} - Links to segments (as questions)
   - metabase://transform/{id} - Links to transforms
+
+  Types that map to an entity path also open a query or chart from this conversation when `{id}` is its ID. See
+  [[resolve-entity-or-conversation-link]].
 
   Returns the resolved URL or nil if resolution fails."
   [uri queries-state charts-state]
@@ -200,11 +221,11 @@
         (case entity-type
           "query"    (resolve-query-link entity-id queries-state)
           "chart"    (resolve-chart-link entity-id charts-state queries-state)
-          "question" (resolve-entity-link "question" entity-id)
           "measure"  (resolve-measure-link entity-id)
           "segment"  (resolve-segment-link entity-id)
-          ;; For other types, use simple path mapping
-          (resolve-entity-link entity-type entity-id))))))
+          (if-let [entity-path (get link-type-paths entity-type)]
+            (resolve-entity-or-conversation-link entity-path entity-id charts-state queries-state)
+            (log/warn "Unknown entity type for link" {:type entity-type :id entity-id})))))))
 
 ;;; Markdown Link Processing
 

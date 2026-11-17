@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
@@ -62,7 +63,7 @@ import {
   isCartesianChart,
 } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
-import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/templates";
 import type {
   Card,
   CardId,

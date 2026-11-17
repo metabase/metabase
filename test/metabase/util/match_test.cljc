@@ -423,6 +423,29 @@
                     [a b c] (when (> a 1)
                               (+ a b c)))))))
 
+(t/deftest ^:parallel match-all-test
+  (t/testing "unlike `match-many`, keeps looking inside matched values, outer matches first"
+    (let [form {:filter [:= [:field 1 {:source-field [:field 2 nil]}] 3]}]
+      (t/is (= [1 2]
+               (match/match-all form
+                 [:field id & _] id)))))
+  (t/testing "collects from every level of a tree"
+    (t/is (= [1 3 4]
+             (match/match-all {:id 1 :children [{:children [{:id 3} {:id 4}]}]}
+               {:id id} id))))
+  (t/testing "a nil result isn't recorded, and doesn't stop the search"
+    (let [form [:x 1 [:x 2 [:x 3 [:x 4]]]]]
+      (t/is (= [2 4]
+               (match/match-all form
+                 [:x n & _] (when (even? n) n))))))
+  (t/testing "absent of matches returns nil"
+    (t/is (= nil (match/match-all [[1 2 3] [4 5 6]]
+                   #'keyword? &match))))
+  (t/testing "looks into map values and sequentials, but not map keys or sets"
+    (t/is (= [:v :w]
+             (match/match-all {:k [:v #{:s}] :l {:m :w}}
+               #'keyword? &match)))))
+
 (t/deftest ^:parallel parents-test
   (t/is (= [:foo :bar :baz :qux]
            (match/match-one [:foo [:bar [:baz {:qux 42}]]]
@@ -444,3 +467,18 @@
     (t/is (= [:field {"key1_updated" 1} [:field {"key2_updated" 2} nil]]
              (match/replace-all [:field {"key1" 1} [:field {"key2" 2} nil]]
                (_ :guard string?) (str &match "_updated"))))))
+
+(t/deftest ^:parallel replace-in-sequences-test
+  (t/testing "non-vector sequences are replaced in and come back as sequences"
+    (let [form' (match/replace '(:x 1 (1 2)) 1 2)]
+      (t/is (= '(:x 2 (2 2)) form'))
+      (t/is (seq? form'))
+      (t/is (seq? (last form'))))
+    (t/is (= '(0 9 2) (match/replace (range 3) 1 9))))
+  (t/testing "empty sequences"
+    (t/is (= () (match/replace () 1 2)))
+    (t/is (= [] (match/replace [] 1 2))))
+  (t/testing "&parents still sees the clause name"
+    (t/is (= [[:field] [:field]]
+             (match/match-many (match/replace '(:field 1 2) (n :guard number?) (inc n))
+               (n :guard number?) &parents)))))

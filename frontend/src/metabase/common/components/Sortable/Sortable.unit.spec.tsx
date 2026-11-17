@@ -1,0 +1,60 @@
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+} from "@dnd-kit/core";
+import { SortableContext } from "@dnd-kit/sortable";
+
+import { render, screen } from "__support__/ui";
+
+import { Sortable } from "./Sortable";
+
+describe("Sortable", () => {
+  it("is a tab stop when it can be dragged with the keyboard", () => {
+    render(<SortableInContext withKeyboard />);
+
+    expect(screen.getByRole("button")).toHaveAttribute("tabindex", "0");
+  });
+
+  it("is not a tab stop when it can't be dragged with the keyboard", () => {
+    render(<SortableInContext withKeyboard={false} />);
+
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByText("Item").parentElement).not.toHaveAttribute(
+      "tabindex",
+    );
+  });
+
+  it("is not a tab stop when it's disabled, even with a keyboard sensor", () => {
+    render(<SortableInContext withKeyboard disabled />);
+
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByText("Item").parentElement).not.toHaveAttribute(
+      "tabindex",
+    );
+  });
+});
+
+function SortableInContext({
+  withKeyboard,
+  disabled,
+}: {
+  withKeyboard: boolean;
+  disabled?: boolean;
+}) {
+  const pointerSensor = useSensor(PointerSensor);
+  const keyboardSensor = useSensor(KeyboardSensor);
+
+  return (
+    <DndContext
+      sensors={withKeyboard ? [pointerSensor, keyboardSensor] : [pointerSensor]}
+    >
+      <SortableContext items={["item"]}>
+        <Sortable id="item" disabled={disabled}>
+          <span>Item</span>
+        </Sortable>
+      </SortableContext>
+    </DndContext>
+  );
+}

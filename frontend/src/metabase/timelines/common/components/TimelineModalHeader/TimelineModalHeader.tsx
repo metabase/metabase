@@ -1,18 +1,8 @@
 import type { ReactNode } from "react";
-import { c, t } from "ttag";
+import { c } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import {
-  ActionIcon,
-  Group,
-  Icon,
-  Menu,
-  Modal,
-  Stack,
-  UnstyledButton,
-} from "metabase/ui";
-
-import S from "./TimelineModalHeader.module.css";
+import { ActionIcon, Group, Icon, Menu, Modal } from "metabase/ui";
 
 export interface TimelineModalMenuItem {
   label: string;
@@ -44,31 +34,21 @@ export const TimelineModalHeader = ({
   menu,
   onGoBack,
 }: TimelineModalHeaderProps) => (
-  <Modal.Header className={S.header}>
-    {onGoBack && (
-      <UnstyledButton
-        className={S.backButton}
-        aria-label={t`Back`}
-        onClick={onGoBack}
-      >
-        <Icon name="chevronleft" />
-      </UnstyledButton>
-    )}
-    <Stack gap="xs" flex="1 1 auto" miw={0}>
-      <Modal.Title
-        className={onGoBack ? S.clickableTitle : undefined}
-        onClick={onGoBack}
-      >
-        {title}
-      </Modal.Title>
-      {collectionName && (
-        <Group gap="xxs">
-          {c("Refers to: 'Events' in a collection").t`in`}
-          <Icon name="folder" c="text-secondary" />
-          {collectionName}
-        </Group>
-      )}
-    </Stack>
+  <Modal.Header>
+    <Modal.Heading
+      onBack={onGoBack}
+      subtitle={
+        collectionName && (
+          <Group gap="xxs">
+            {c("Refers to: 'Events' in a collection").t`in`}
+            <Icon name="folder" c="text-secondary" />
+            {collectionName}
+          </Group>
+        )
+      }
+    >
+      {title}
+    </Modal.Heading>
     <Group gap="sm" wrap="nowrap">
       {menu && menu.items.length > 0 && <TimelineModalMenuButton {...menu} />}
       <Modal.CloseButton />

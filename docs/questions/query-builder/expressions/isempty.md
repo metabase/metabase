@@ -1,5 +1,6 @@
 ---
 title: Isempty
+summary: Check whether a string column is empty or null, for filters, custom columns, or conditional counts.
 ---
 
 # Isempty
