@@ -56,6 +56,14 @@
       (is (thrown-with-msg? Exception #"metabase-plugin\.json"
                             (cache/validate-bundle! bytes))))))
 
+(deftest validate-bundle-rejects-entry-paths-an-export-cannot-unpack-test
+  (doseq [path ["dist//index.js" "dist/icons/../index.js"]]
+    (testing path
+      (let [bytes (cvp.tu/make-tgz-bytes [["metabase-plugin.json" (json/encode {:name "my-viz"})]
+                                          [path "console.log('hi')"]])]
+        (is (thrown-with-msg? Exception #"invalid path"
+                              (cache/validate-bundle! bytes)))))))
+
 (deftest validate-bundle-requires-index-js-test
   (testing "archive without dist/index.js is rejected"
     (let [bytes (cvp.tu/make-tgz-bytes
@@ -78,6 +86,38 @@
                   ["dist/index.js" "console.log('hi')"]])]
       (is (thrown-with-msg? Exception #"must not contain \":\""
                             (cache/validate-bundle! bytes))))))
+
+(deftest validate-bundle-accepts-a-non-svg-icon-test
+  (testing "a bitmap icon doesn't invalidate a bundle -- an imported plugin keeps working, the icon just isn't served"
+    (is (=? {:manifest {:icon "icon.png"}}
+            (cache/validate-bundle! (cvp.tu/valid-bundle-bytes "thumbs" {:icon "icon.png"}))))))
+
+(deftest validate-bundle-requires-the-declared-icon-test
+  (testing "an SVG icon the manifest declares must be in the archive"
+    (doseq [icon ["icon.svg" "./icon.svg"]]
+      (testing icon
+        (is (thrown-with-msg? Exception #"^dist/assets/icon\.svg not found in bundle$"
+                              (cache/validate-bundle!
+                               (cvp.tu/make-tgz-bytes
+                                [["metabase-plugin.json" (json/encode {:name "thumbs" :icon icon})]
+                                 ["dist/index.js" "console.log('hi')"]]))))))))
+
+(deftest check-bundle-icon-test
+  (testing "an SVG icon, or none, passes through"
+    (doseq [manifest [{:name "thumbs" :icon "icon.svg"} {:name "thumbs"}]]
+      (is (= {:manifest manifest} (cache/check-bundle-icon! {:manifest manifest})))))
+  (testing "any other icon is a 400"
+    (let [e (is (thrown-with-msg? Exception #"Plugin icon \"icon.png\" must be an SVG file"
+                                  (cache/check-bundle-icon! {:manifest {:name "thumbs" :icon "icon.png"}})))]
+      (is (= 400 (:status-code (ex-data e)))))))
+
+(deftest validate-bundle-accepts-name-that-cannot-name-a-directory-test
+  (testing "a name a repository can't use as a directory still validates: registration refuses it, a replacement of a
+            plugin registered before the rule does not"
+    (let [bytes (cvp.tu/make-tgz-bytes
+                 [["metabase-plugin.json" (json/encode {:name "a b"})]
+                  ["dist/index.js" "console.log('hi')"]])]
+      (is (= "a b" (get-in (cache/validate-bundle! bytes) [:manifest :name]))))))
 
 (deftest validate-bundle-rejects-invalid-json-manifest-test
   (testing "non-JSON manifest is rejected"
@@ -165,7 +205,13 @@
     (with-redefs [http/get (constantly {:headers {:content-type "application/json"}
                                         :body    (json/encode {:name 123})})]
       (is (thrown-with-msg? Exception #"is invalid"
-                            (cache/fetch-dev-manifest "http://localhost:5174"))))))
+                            (cache/fetch-dev-manifest "http://localhost:5174")))))
+  (testing "rejects a non-SVG icon while developing, same as the upload path"
+    (with-redefs [http/get (constantly {:headers {:content-type "application/json"}
+                                        :body    (json/encode {:name "dev-viz" :icon "icon.png"})})]
+      (let [e (is (thrown-with-msg? Exception #"Plugin icon \"icon.png\" must be an SVG file"
+                                    (cache/fetch-dev-manifest "http://localhost:5174")))]
+        (is (= 400 (:status-code (ex-data e))))))))
 
 (deftest dev-fetch-surfaces-validation-errors-test
   (testing "a URL that fails validation surfaces as a 400, not as a silently-down dev server --

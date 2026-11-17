@@ -6,6 +6,7 @@
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
+   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
@@ -45,6 +46,13 @@
       (throw (ex-info (format "Bundle must be less than %dMB." cache/max-bundle-mib)
                       {:status-code 413})))
     tempfile))
+
+(defn- check-identifier-free!
+  "Throw a 400 when a plugin already has `identifier`, or has it in another case: a repository names a plugin's
+   directory by its identifier, and case-insensitive filesystems would merge the two."
+  [identifier]
+  (custom-viz-plugin/check-identifier-free!
+   identifier nil (format "A custom visualization with identifier \"%s\" already exists." identifier)))
 
 ;;; ------------------------------------------------ Schemas ------------------------------------------------
 
@@ -95,21 +103,27 @@
   (nil? (:bundle_hash plugin)))
 
 (defn- plugin-warnings
-  "Warnings for a plugin. Dev-only plugins get no version warnings."
+  "Warnings for a plugin. Dev-only plugins get no version warnings, nor do error plugins: they have no manifest to
+   derive them from."
   [plugin]
-  (cond-> (if (dev-only-plugin? plugin)
+  (cond-> (if (or (dev-only-plugin? plugin) (= :error (:status plugin)))
             []
             (manifest/warnings plugin))
     ;; a legacy pre-validation identifier; /list skips such plugins entirely
     (manifest/identifier-error (:identifier plugin))
-    (conj {:type "invalid-identifier" :identifier (:identifier plugin)})))
+    (conj {:type "invalid-identifier" :identifier (:identifier plugin)})
+
+    ;; a legacy bitmap icon, kept by serdes imports; responses hide it so the frontend shows its default icon
+    (manifest/icon-error (:icon plugin))
+    (conj {:type "invalid-icon" :icon (:icon plugin)})))
 
 (defn- plugin->response
   "Convert a plugin record to API response format."
   [plugin]
   (-> plugin
       (assoc :dev_only (dev-only-plugin? plugin)
-             :warnings (plugin-warnings plugin))
+             :warnings (plugin-warnings plugin)
+             :icon     (manifest/servable-icon (:icon plugin)))
       ;; never expose the raw bundle bytes
       (dissoc :bundle)))
 
@@ -122,7 +136,7 @@
   (cond-> {:id           id
            :identifier   identifier
            :display_name display_name
-           :icon         icon
+           :icon         (manifest/servable-icon icon)
            :bundle_url   (cond-> (format "/api/ee/custom-viz-plugin/%d/bundle" id)
                            bundle_hash (str "?v=" bundle_hash))
            :bundle_hash  bundle_hash
@@ -144,15 +158,14 @@
   [_route-params
    _query-params
    {:keys [file]} :- BundleUploadParts]
-  (api/check-superuser)
+  ;; checked before the upload is read
+  (api/create-check :model/CustomVizPlugin {})
   (let [tempfile (check-upload! file)]
     (try
       (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
-            validated    (cache/validate-bundle! bundle-bytes)
+            validated    (cache/check-bundle-icon! (cache/validate-bundle! bundle-bytes))
             identifier   (get-in validated [:manifest :name])
-            _            (api/check-400
-                          (not (custom-viz-plugin.db/plugin-identifier-exists? identifier))
-                          (format "A custom visualization with identifier \"%s\" already exists." identifier))
+            _            (check-identifier-free! identifier)
             plugin       (cache/insert-bundle! identifier validated)]
         (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
                                                                 :user-id api/*current-user-id*})
@@ -169,7 +182,7 @@
    {:keys [identifier dev_bundle_url]} :- [:map {:closed true}
                                            [:identifier     {:optional true} [:maybe ms/NonBlankString]]
                                            [:dev_bundle_url ms/NonBlankString]]]
-  (api/check-superuser)
+  (api/create-check :model/CustomVizPlugin {})
   (check-dev-mode-enabled!)
   (let [manifest     (cache/fetch-dev-manifest dev_bundle_url)
         identifier   (or identifier
@@ -180,9 +193,7 @@
                                          {:status-code 400})))
         _            (when-let [error (manifest/identifier-error identifier)]
                        (throw (ex-info error {:status-code 400})))
-        _            (api/check-400
-                      (not (custom-viz-plugin.db/plugin-identifier-exists? identifier))
-                      (format "A custom visualization with identifier \"%s\" already exists." identifier))
+        _            (check-identifier-free! identifier)
         display-name (or (:name manifest) identifier)
         icon         (:icon manifest)
         version-str  (get-in manifest [:metabase :version])
@@ -227,7 +238,6 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [plugin (api/write-check (custom-viz-plugin.db/non-blob-plugin id))]
     (custom-viz-plugin.db/delete-plugin! id)
-    (cache/purge-plugin-cache! plugin)
     (events/publish-event! :event/custom-viz-plugin-delete {:object  plugin
                                                             :user-id api/*current-user-id*})
     nil))
@@ -238,8 +248,9 @@
    _query-params
    body :- [:map {:closed true}
             [:enabled {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
-        updates  (select-keys body [:enabled])]
+  (let [existing (api/check-404 (custom-viz-plugin.db/non-blob-plugin id))
+        updates  (select-keys body [:enabled])
+        _        (api/update-check existing updates)]
     (when (seq updates)
       (custom-viz-plugin.db/update-plugin! id updates))
     (let [result (custom-viz-plugin.db/non-blob-plugin id)]
@@ -266,7 +277,8 @@
     (try
       (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
             validated    (->> (cache/validate-bundle! bundle-bytes)
-                              (cache/check-bundle-identifier! (:identifier existing)))
+                              (cache/check-bundle-identifier! (:identifier existing))
+                              cache/check-bundle-icon!)
             result       (cache/save-bundle! existing validated)]
         (events/publish-event! :event/custom-viz-plugin-update
                                {:object          result
@@ -349,7 +361,7 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [dev_bundle_url]} :- [:map {:closed true} [:dev_bundle_url [:maybe :string]]]]
-  (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
+  (api/update-check (api/check-404 (custom-viz-plugin.db/non-blob-plugin id)) {:dev_bundle_url dev_bundle_url})
   (check-dev-mode-enabled!)
   (cache/set-or-clear-dev-bundle! id dev_bundle_url)
   {:dev_bundle_url (cache/resolve-dev-bundle id)})

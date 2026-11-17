@@ -10,6 +10,7 @@
 
 (def ^:private model-count-keys
   {:model/Action             :remote-sync-action-count
+   :model/CustomVizPlugin    :remote-sync-custom-viz-plugin-count
    :model/Dashboard          :remote-sync-dashboard-count
    :model/DataApp            :remote-sync-data-app-count
    :model/Document           :remote-sync-document-count

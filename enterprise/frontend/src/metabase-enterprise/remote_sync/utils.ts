@@ -35,6 +35,7 @@ const MODEL_ICONS: Record<RemoteSyncItemModel, IconName> = {
   card: "table2",
   cardtest: "list",
   collection: "folder",
+  customvizplugin: "lineandbar",
   dashboard: "dashboard",
   dataapp: "app",
   dimension: "field",
@@ -94,6 +95,7 @@ export function getItemCollections(
       return getCollectionPath(
         item.data?.model?.collection ?? item.data?.collection,
       );
+    case "customvizplugin":
     case "dataapp":
     case "glossary":
     case "pythonlibrary":
@@ -165,6 +167,12 @@ export function getItemSection(
       return { key: "actions", icon: "bolt", name: t`Actions` };
     case "dataapp":
       return { key: "data-apps", icon: "app", name: t`Data apps` };
+    case "customvizplugin":
+      return {
+        key: "custom-viz-plugins",
+        icon: "lineandbar",
+        name: t`Custom visualizations`,
+      };
     case "card":
     case "cardtest":
     case "collection":
@@ -200,6 +208,7 @@ function getItemModelAreas(
     case "card":
     case "cardtest":
     case "collection":
+    case "customvizplugin":
     case "dashboard":
     case "dataapp":
     case "document":
@@ -236,6 +245,8 @@ export function getItemName(item: RemoteSyncItem): string {
       return item.data.path;
     case "dataapp":
       return item.data.name ?? item.data.slug;
+    case "customvizplugin":
+      return item.data.display_name;
     case "tableusersettings":
       return (
         item.data.display_name ??
@@ -293,6 +304,8 @@ export function getItemUrl(item: RemoteSyncItemOrDirtyItem): string | null {
         : Urls.dataStudioAction(item.id);
     case "dataapp":
       return item.data ? Urls.dataStudioDataApp(item.data.slug) : null;
+    case "customvizplugin":
+      return Urls.customViz();
     case "nativequerysnippet":
       return Urls.dataStudioSnippet(item.id);
     case "glossary":

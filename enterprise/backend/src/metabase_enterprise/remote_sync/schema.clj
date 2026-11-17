@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.schema
   "Malli schemas for remote sync API request and response bodies."
   (:require
+   [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.actions.schema :as actions.schema]
@@ -57,6 +58,7 @@
    "card"               ::queries.schema/card
    "cardtest"           ::data-testing.schema/card-test
    "collection"         ::collections.schema/collection
+   "customvizplugin"    ::custom-viz-plugin.schema/custom-viz-plugin
    "dashboard"          ::dashboards.schema/dashboard
    "dataapp"            ::data-apps.schema/data-app
    "dimension"          ::warehouse-schema.schema/dimension
