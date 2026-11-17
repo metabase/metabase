@@ -258,23 +258,34 @@
                   (not= v (get old k)))
                 new)))
 
+(mu/defn update-dashboard-cards!
+  "Update existing DashboardCards, each given as a `[dashboard-card old-dashboard-card]` pair, with their
+   DashboardCardSeries rewritten in one statement for all of them; `old-dashboard-card` avoids a DB call when nothing
+   changed. Returns nil."
+  [pairs :- [:sequential [:tuple DashboardCardUpdates DashboardCardUpdates]]]
+  (t2/with-transaction [_conn]
+    (let [update-ks [:action_id :card_id :row :col :size_x :size_y
+                     :parameter_mappings :visualization_settings :dashboard_tab_id :inline_parameters]]
+      (doseq [[dashboard-card old-dashboard-card] pairs
+              :let [updates (shallow-updates (select-keys dashboard-card update-ks)
+                                             (select-keys old-dashboard-card update-ks))]
+              :when (seq updates)]
+        (dashboards.db/update-dashcard! (:id dashboard-card) updates))
+      (update-dashboard-cards-series!
+       (into {}
+             (keep (fn [[{dashcard-id :id :keys [series] :as dashboard-card} old-dashboard-card]]
+                     (when (not= (:series dashboard-card []) (:series old-dashboard-card []))
+                       [dashcard-id series])))
+             pairs))
+      nil)))
+
 (mu/defn update-dashboard-card!
   "Updates an existing DashboardCard including all DashboardCardSeries.
    `old-dashboard-card` is provided to avoid an extra DB call if there are no changes.
    Returns nil."
-  [{dashcard-id :id :keys [series] :as dashboard-card} :- DashboardCardUpdates
+  [dashboard-card     :- DashboardCardUpdates
    old-dashboard-card :- DashboardCardUpdates]
-  (t2/with-transaction [_conn]
-    (let [update-ks [:action_id :card_id :row :col :size_x :size_y
-                     :parameter_mappings :visualization_settings :dashboard_tab_id :inline_parameters]
-          updates   (shallow-updates (select-keys dashboard-card update-ks)
-                                     (select-keys old-dashboard-card update-ks))]
-      (when (seq updates)
-        (dashboards.db/update-dashcard! dashcard-id updates))
-      (when (not= (:series dashboard-card [])
-                  (:series old-dashboard-card []))
-        (update-dashboard-cards-series! {dashcard-id series}))
-      nil)))
+  (update-dashboard-cards! [[dashboard-card old-dashboard-card]]))
 
 (def ^:private NewDashboardCard
   [:merge

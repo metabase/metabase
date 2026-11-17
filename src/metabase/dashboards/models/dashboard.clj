@@ -382,12 +382,12 @@
                            (u/the-id dashboard) (first only-new))
                       {:status-code 404})))
     (events/with-batched-events
-      (doseq [dashcard new-dashcards]
-        (let [;; update-dashboard-card! requires series to be a sequence of card IDs
-              old-dashcard       (-> (get id->old-dashcard (:id dashcard))
-                                     (update :series #(map :id %)))
-              dashboard-card     (update dashcard :series #(map :id %))]
-          (dashboard-card/update-dashboard-card! dashboard-card old-dashcard))))
+      ;; update-dashboard-cards! requires series to be a sequence of card IDs
+      (dashboard-card/update-dashboard-cards!
+       (for [dashcard new-dashcards]
+         [(update dashcard :series #(map :id %))
+          (-> (get id->old-dashcard (:id dashcard))
+              (update :series #(map :id %)))])))
     ;; `t2/hydrate` is a no-op when `:card` is already present, so strip any
     ;; client-supplied value first: a JSON round-trip strings-ifies keyword
     ;; metadata (`type/Category`, `source/table-defaults`, ...) that
