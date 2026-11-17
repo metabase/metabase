@@ -410,6 +410,38 @@ describe("DataModelV1 > field section (advanced permissions)", () => {
     });
   });
 
+  describe("name", () => {
+    it("should rename a field in the field section and show the new name in the table section", async () => {
+      const { backend } = await setup({
+        table: ORDERS_TABLE,
+        fieldId: ORDERS.QUANTITY,
+      });
+
+      await userEvent.clear(getFieldNameInput());
+      await typeAndBlur(getFieldNameInput(), "New quantity");
+
+      await findToast("Name of Quantity updated");
+      expect(getRequestBodies(`stateful-field-${ORDERS.QUANTITY}-put`)).toEqual(
+        [{ display_name: "New quantity" }],
+      );
+      expect(getRequestBodies(`stateful-field-${ORDERS.DISCOUNT}-put`)).toEqual(
+        [],
+      );
+      expect(backend.getField(ORDERS.QUANTITY).display_name).toBe(
+        "New quantity",
+      );
+      expect(getFieldNameInput()).toHaveValue("New quantity");
+      expect(
+        await within(
+          await waitFor(() => getTableSectionField("New quantity")),
+        ).findByPlaceholderText("Give this field a name"),
+      ).toHaveValue("New quantity");
+      expect(
+        within(getTableSection()).queryByLabelText("Quantity"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("prefix of JSON-unfolded fields", () => {
     beforeEach(() => {
       // a single-line text is truncated when its text is wider than its box
