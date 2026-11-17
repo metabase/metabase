@@ -2,11 +2,8 @@
   "Gives `change_log` entries their monotonically increasing `position`.
 
   Each node numbers on a thread of its own. The first logged write starts it, and the global system stops it. A logged
-  write keeps it awake with [[stay-awake!]]: it numbers every 5 seconds until a minute passes with no logged write. A
-  node that logs nothing runs no query.
-
-  The write is still in its transaction when it wakes the numbering, and the minute gives it time to commit. An entry
-  that commits later than that gets its position after the next logged write, on any node."
+  write keeps it awake with [[stay-awake!]] when its transaction commits: it numbers every 5 seconds until a minute
+  passes with no logged write. A node that logs nothing runs no query."
   (:require
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.change-log.db :as change-log.db]
@@ -30,16 +27,19 @@
   (if (change-log.db/mariadb?) 1 1000))
 
 (defn- number-entries!
-  "Numbers the committed entries that have no position. The first gets the clock in microseconds, or the next free
-  position if that is higher, and the rest rise with their ids."
+  "Numbers up to 10,000 committed entries that have no position, and returns how many. The first gets the clock in
+  microseconds, or the next free position if that is higher, and the rest rise with their ids."
   []
-  (when (seq (change-log.db/unnumbered-ids 1))
+  (if (seq (change-log.db/unnumbered-ids 1))
     (cluster-lock/with-cluster-lock ::number-entries
-      (when-let [ids (seq (change-log.db/unnumbered-ids batch-size))]
-        (let [start (max (* 1000 (System/currentTimeMillis))
-                         (inc (or (change-log.db/highest-position) 0)))]
-          (doseq [statement-ids (partition-all (statement-size) ids)]
-            (change-log.db/set-positions! statement-ids start (first ids))))))))
+      (let [ids (change-log.db/unnumbered-ids batch-size)]
+        (when (seq ids)
+          (let [start (max (* 1000 (System/currentTimeMillis))
+                           (inc (or (change-log.db/highest-position) 0)))]
+            (doseq [statement-ids (partition-all (statement-size) ids)]
+              (change-log.db/set-positions! statement-ids start (first ids)))))
+        (count ids)))
+    0))
 
 ;; The numbering of this node: `{:executor ..., :awake-until ...}`. `:awake-until` is an atom that holds when the
 ;; numbering goes to sleep, in milliseconds since the epoch.
@@ -51,7 +51,8 @@
   [awake-until]
   (try
     (when (< (System/currentTimeMillis) @awake-until)
-      (number-entries!))
+      ;; A full batch means that more entries may wait, as after the delete of a large database.
+      (while (= batch-size (number-entries!))))
     (catch Throwable e
       (log/warn e "Could not number the change log entries."))))
 
@@ -73,7 +74,7 @@
 
 (defn stay-awake!
   "Keeps the numbering awake for the next minute, and starts it on the first call. It cannot start once the global
-  system has halted. Then the write goes ahead, and its entry gets a position after the next logged write."
+  system has halted. Then the entry gets a position after the next logged write."
   []
   (try
     (let [{:keys [awake-until]} (system/ensure-started! numbering-component start-numbering stop-numbering)]

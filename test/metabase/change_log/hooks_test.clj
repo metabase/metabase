@@ -108,14 +108,28 @@
                     (is (= 1 (count (messages))))))))))))))
 
 (deftest wake-numbering-test
-  (testing "a log wakes the numbering, but not in tests"
-    (let [woken (atom 0)]
-      (mt/with-dynamic-fn-redefs [change-log.numbering/stay-awake! #(swap! woken inc)]
-        (#'change-log.hooks/log! [])
-        (is (= 0 @woken))
+  (let [woken (atom 0)
+        log!  #(#'change-log.hooks/log! [["test_table" % "update"]])]
+    (mt/with-dynamic-fn-redefs [change-log.numbering/stay-awake! #(swap! woken inc)]
+      (try
+        (testing "a log does not wake the numbering in tests"
+          (log! [1])
+          (is (= 0 @woken)))
         (with-redefs [config/is-test? false]
-          (#'change-log.hooks/log! []))
-        (is (= 1 @woken))))))
+          (testing "a log wakes the numbering when its transaction commits"
+            (t2/with-transaction [_conn]
+              (log! [1])
+              (is (= 0 @woken)))
+            (is (= 1 @woken)))
+          (testing "a log that rolls back does not wake it"
+            (t2/with-transaction [_conn nil {:rollback-only true}]
+              (log! [1]))
+            (is (= 1 @woken)))
+          (testing "a log with no entries does not wake it"
+            (log! [])
+            (is (= 1 @woken))))
+        (finally
+          (t2/delete! :change_log :table_name "test_table"))))))
 
 (deftest unsupported-statement-test
   (when config/ee-available?

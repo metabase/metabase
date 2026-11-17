@@ -86,7 +86,12 @@
         (is (nil? (position a))))
       (testing "awake, it numbers the entries"
         (#'change-log.numbering/number-while-awake! (atom Long/MAX_VALUE))
-        (is (some? (position a)))))))
+        (is (some? (position a))))
+      (testing "it keeps numbering while its batches are full"
+        (let [ids (vec (repeatedly 5 entry!))]
+          (with-redefs [change-log.numbering/batch-size 2]
+            (#'change-log.numbering/number-while-awake! (atom Long/MAX_VALUE)))
+          (is (every? some? (map position ids))))))))
 
 (deftest stay-awake-test
   (with-redefs [change-log.numbering/interval-ms 20]

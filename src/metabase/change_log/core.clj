@@ -67,8 +67,7 @@
   - Read again the row each entry names. A missing row was deleted. One change can have more than one entry.
   - Keep the last position you read as your cursor. A new position is always above every position you can see.
   - An entry gets its position about 5 seconds after its change commits, from `metabase.change-log.numbering`.
-    Until then it has none. If the change commits more than a minute after it was logged, the entry gets its
-    position after the next logged change.
+    Until then it has none. If the node stops before then, the entry gets its position after the next logged change.
   - Entries are deleted after 30 days. To start, or if your last read was longer ago than that, note the highest
     position, snapshot the tables, and follow from there.
 

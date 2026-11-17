@@ -7,6 +7,7 @@
   per row). The insert and update hooks add `::logged` to the `parsed-args` of a call they log and skip a call that
   has it. `metabase.change-log.hooks-test` fails if a Toucan upgrade changes this."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.change-log.cascade :as change-log.cascade]
    [metabase.change-log.db :as change-log.db]
    [metabase.change-log.numbering :as change-log.numbering]
@@ -42,22 +43,22 @@
        (identical? t2.pipeline/*transduce-execute* #'t2.pipeline/transduce-execute)))
 
 (defn- log!
-  "Logs `changes`, a seq of `[table-name row-ids action]`, and wakes the numbering. A row key that is not an integer
-  goes to [[throw-or-log]], and gets no entry."
+  "Logs `changes`, a seq of `[table-name row-ids action]`, and wakes the numbering when the write commits. A row key
+  that is not an integer goes to [[throw-or-log]], and gets no entry."
   [changes]
   (doseq [[table-name row-ids action] changes
           :let  [n (count (remove integer? row-ids))]
           :when (pos? n)]
     (throw-or-log (format "Not logging %d %s on %s to the change log: row key missing or not an integer. See %s."
                           n action table-name "metabase.change-log.core")))
-  (run! change-log.db/insert-entries!
-        (partition-all 1000 (for [[table-name row-ids action] changes
-                                  id                          row-ids
-                                  :when                       (integer? id)]
-                              {:table_name table-name, :row_id id, :action action})))
-  ;; Tests number the entries themselves.
-  (when-not config/is-test?
-    (change-log.numbering/stay-awake!)))
+  (let [entries (for [[table-name row-ids action] changes
+                      id                          row-ids
+                      :when                       (integer? id)]
+                  {:table_name table-name, :row_id id, :action action})]
+    (run! change-log.db/insert-entries! (partition-all 1000 entries))
+    ;; Tests number the entries themselves.
+    (when (and (seq entries) (not config/is-test?))
+      (mdb/do-after-commit change-log.numbering/stay-awake!))))
 
 (mu/defn log-rows!
   "Logs `action` on the rows of `model` that match `conditions`, for a write that skips the model. `conditions` are
