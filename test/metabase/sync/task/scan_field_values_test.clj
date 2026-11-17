@@ -42,7 +42,7 @@
           (.execute ^Job (ScanFieldValues.)
                     (sync.task.util-test/job-context "scan-field" field-id))
           (is (= [[:database database-id] [:table table-id] [:field field-id]] @scanned)))
-        (testing "request without scheduler runs scan of its target and skips deleted targets"
+        (testing "request without scheduler runs scan of its target and skips targets that do not exist"
           (reset! scanned [])
           (task.scan-field-values/schedule-database-field-values-scan! database-id)
           (task.scan-field-values/schedule-table-field-values-scan! table-id)

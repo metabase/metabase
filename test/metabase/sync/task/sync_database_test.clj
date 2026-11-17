@@ -28,7 +28,9 @@
                                   analyze/analyze-db-explicit!             #(swap! calls conj [:analyze %])]
         (.execute ^Job (SyncDatabase.) (sync.task.util-test/job-context "sync-database" database-id))
         (task.sync-database/schedule-database-sync! database-id)
-        (testing "deleted Database is skipped"
-          (task.sync-database/schedule-database-sync! Integer/MAX_VALUE))
         (is (= [[:sync database-id] [:analyze database-id] [:sync database-id] [:analyze database-id]]
-               @calls))))))
+               @calls))
+        (testing "Database that does not exist is skipped"
+          (reset! calls [])
+          (task.sync-database/schedule-database-sync! Integer/MAX_VALUE)
+          (is (= [] @calls)))))))

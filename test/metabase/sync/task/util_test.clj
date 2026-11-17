@@ -46,6 +46,8 @@
   (let [^SimpleTrigger trigger (#'sync.task.util/trigger recording-job 7)]
     (testing "key is fixed per job and target"
       (is (= "metabase.task.util-test.trigger.7" (.getName (.getKey trigger)))))
+    (testing "job outlives its triggers"
+      (is (.isDurable recording-job)))
     (testing "fires once and keeps its fire time however long it waits"
       (is (= 0 (.getRepeatCount trigger)))
       (is (= Trigger/MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY (.getMisfireInstruction trigger))))))
@@ -72,3 +74,14 @@
                                                 (job-context "metabase.task.util-test.job" 7))))
       (is (= [{:level :warn, :e nil, :message "metabase.task.util-test.job failed for 7: no connection"}]
              (map #(select-keys % [:level :e :message]) (messages)))))))
+
+(deftest run-for-target-stops-at-timeout-test
+  (let [interrupted (promise)]
+    (mt/with-dynamic-fn-redefs [quick-task/task-timeout-ms (constantly 100)]
+      (is (nil? (sync.task.util/run-for-target! (fn [_]
+                                                  (try
+                                                    (Thread/sleep 60000)
+                                                    (catch InterruptedException _
+                                                      (deliver interrupted true))))
+                                                (job-context "metabase.task.util-test.job" 7)))))
+    (is (true? (deref interrupted 5000 :not-interrupted)))))

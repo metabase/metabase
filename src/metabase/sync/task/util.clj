@@ -39,16 +39,21 @@
        (simple/with-misfire-handling-instruction-ignore-misfires))))))
 
 (defn run-for-target!
-  "Call `f` with the target id that `job-context` carries, logging the message of what it throws."
+  "Call `f` with the target id that `job-context` carries, under the timeout of quick tasks, logging what it throws by
+  message without rethrowing it."
   [f ^JobExecutionContext job-context]
-  (let [id (get (qc/from-job-data job-context) "id")]
-    (try
-      (f id)
-      (catch Exception e
-        (log/warnf "%s failed for %d: %s" (.. job-context getJobDetail getKey getName) id (ex-message e))))))
+  (let [id       (get (qc/from-job-data job-context) "id")
+        job-name (.. job-context getJobDetail getKey getName)]
+    (quick-task/run-with-timeout!
+     (fn []
+       (try
+         (f id)
+         (catch Exception e
+           (log/warnf "%s failed for %d: %s" job-name id (ex-message e))))))))
 
 (defn schedule!
-  "Request a run of `f` for the target `id` as a run of `job`, or on this node when it has no running scheduler."
+  "Request a run of `job` for the target `id`, or call `f`, the body of that job, with `id` on this node when the run
+  cannot be scheduled."
   [job id f]
   (or (task/schedule-once! job (trigger job id))
       (quick-task/submit-task! #(f id))))

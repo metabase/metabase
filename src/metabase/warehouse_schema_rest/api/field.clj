@@ -340,14 +340,14 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/rescan_values" :- [:map {:closed true} [:status [:= :success]]]
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
-   FieldValues."
+   FieldValues. The update runs in the background."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (analytics/track-event! :snowplow/simple_event {:event "field_manual_scan" :target_id id})
   (let [field (api/write-check (warehouse-schema-rest.db/field id))]
-    ;; Grant full permissions so that permission checks pass when the scan runs on this node without a scheduler,
-    ;; where it keeps the bindings of this request; a scheduled run has no user to check. If a user has DB detail perms
-    ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
+    ;; Grant full permissions so that permission checks pass when the scan runs in-process with the bindings of this
+    ;; request; as a Quartz job it runs with no user to check. If a user has DB detail perms
+    ;; but no data perms, they should still be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
     (request/as-admin
       (sync/schedule-field-values-scan! (:id field))))

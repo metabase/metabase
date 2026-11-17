@@ -361,9 +361,9 @@
                     [:id ms/PositiveInt]]]
   (let [table (api/write-check (warehouse-schema-rest.db/table id))]
     (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
-    ;; Grant full permissions so that permission checks pass when the scan runs on this node without a scheduler,
-    ;; where it keeps the bindings of this request; a scheduled run has no user to check. If a user has DB detail perms
-    ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
+    ;; Grant full permissions so that permission checks pass when the scan runs in-process with the bindings of this
+    ;; request; as a Quartz job it runs with no user to check. If a user has DB detail perms
+    ;; but no data perms, they should still be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
     (request/as-admin
       ;; async so as not to block the UI

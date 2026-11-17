@@ -254,25 +254,13 @@
     (catch Throwable e
       (log/errorf "Failed to trigger immediate execution of task %s: %s" job-key (ex-message e)))))
 
-(defn- running?
-  "Whether `scheduler` is started, so that it fires triggers."
-  [^Scheduler scheduler]
-  (and (.isStarted scheduler)
-       (not (.isInStandbyMode scheduler))
-       (not (.isShutdown scheduler))))
-
-(defn scheduler-running?
-  "Whether this node has a scheduler that is started."
-  []
-  (boolean (some-> (scheduler) running?)))
-
 (mu/defn schedule-once! :- [:maybe :boolean]
-  "Schedule the one-shot `trigger` of `job`, replacing a trigger with its key that waits to fire or is firing now, so
-  that at most one run waits per trigger key; returns nil, scheduling nothing, when no scheduler is running."
+  "Store the one-shot `trigger` of `job` in place of a trigger with its key, so that it fires after a run of that key
+  that is in progress, and return true, or nil when this node cannot schedule it."
   [job     :- (ms/InstanceOfClass JobDetail)
    trigger :- (ms/InstanceOfClass Trigger)]
   (when-let [scheduler (scheduler)]
-    (when (running? scheduler)
+    (when-not (.isInStandbyMode scheduler)
       (try
         (.scheduleJob scheduler ^JobDetail job ^java.util.Set (hash-set trigger) true)
         true

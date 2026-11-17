@@ -22,7 +22,7 @@
    (java.time Duration Instant)
    (java.util Date)
    (java.util.concurrent LinkedBlockingQueue TimeUnit)
-   (org.quartz CronTrigger InterruptableJob Job JobDetail JobExecutionContext Scheduler)))
+   (org.quartz CronTrigger InterruptableJob Job JobDetail JobExecutionContext Scheduler SchedulerException)))
 
 (set! *warn-on-reflection* true)
 
@@ -481,7 +481,7 @@
 
 (deftest schedule-once-with-jdbc-job-store-test
   (with-jdbc-scheduler!
-    (let [standby? (not (task/scheduler-running?))]
+    (let [standby? (.isInStandbyMode (task/scheduler))]
       (try
         (task/add-job! (blocking-job))
         (qs/start (task/scheduler))
@@ -494,6 +494,14 @@
 (deftest schedule-once-without-running-scheduler-test
   (tu/do-with-unstarted-temp-scheduler!
    (fn []
-     (is (false? (task/scheduler-running?)))
      (is (nil? (task/schedule-once! (blocking-job) (one-shot-trigger "first"))))
      (is (not (task/job-exists? blocking-job-key))))))
+
+(deftest schedule-once-that-scheduler-refuses-test
+  (let [refusing-scheduler (reify Scheduler
+                             (isInStandbyMode [_] false)
+                             (^void scheduleJob [_ ^JobDetail _job ^java.util.Set _triggers ^boolean _replace]
+                               (throw (SchedulerException. "job store is down"))))]
+    (mc/binding (task.impl/scheduler-handle) refusing-scheduler
+                (fn []
+                  (is (nil? (task/schedule-once! (blocking-job) (one-shot-trigger "first"))))))))

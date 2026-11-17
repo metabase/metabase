@@ -28,8 +28,7 @@
 
 (p/import-vars
  [metabase.sync.analyze
-  analyze-db!
-  analyze-db-explicit!]
+  analyze-db!]
  [metabase.sync.analyze.data-sensitivity
   reset-data-sensitivity!
   scan-data-sensitivity!]
@@ -41,8 +40,7 @@
   sync-database!
   sync-table!]
  [metabase.sync.sync-metadata
-  sync-db-metadata!
-  sync-db-metadata-explicit!]
+  sync-db-metadata!]
  [metabase.sync.sync-metadata.fields
   sync-fields-for-table!]
  [metabase.sync.sync-metadata.tables

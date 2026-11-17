@@ -1,6 +1,6 @@
 (ns metabase.sync.task.scan-field-values
-  "Tasks that scan the FieldValues of one Database, Table or Field on request, each with one run at a time across the
-  cluster."
+  "Tasks that scan the FieldValues of one Database, Table or Field on request; as Quartz jobs each has one run at a time
+  across the cluster."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.db :as sync.db]
@@ -67,16 +67,19 @@
                       "Scan FieldValues of Field"))
 
 (mu/defn schedule-database-field-values-scan!
-  "Request a FieldValues scan of the Database with `database-id`, which joins a request for it that still waits."
+  "Request a FieldValues scan of the Database with `database-id`, replacing a request for it that still waits when this
+  node has a running scheduler."
   [database-id :- ::lib.schema.id/database]
   (sync.task.util/schedule! database-job database-id scan-database!))
 
 (mu/defn schedule-table-field-values-scan!
-  "Request a FieldValues scan of the Table with `table-id`, which joins a request for it that still waits."
+  "Request a FieldValues scan of the Table with `table-id`, replacing a request for it that still waits when this node
+  has a running scheduler."
   [table-id :- ::lib.schema.id/table]
   (sync.task.util/schedule! table-job table-id scan-table!))
 
 (mu/defn schedule-field-values-scan!
-  "Request a FieldValues scan of the Field with `field-id`, which joins a request for it that still waits."
+  "Request a FieldValues scan of the Field with `field-id`, replacing a request for it that still waits when this node
+  has a running scheduler."
   [field-id :- ::lib.schema.id/field]
   (sync.task.util/schedule! field-job field-id scan-field!))

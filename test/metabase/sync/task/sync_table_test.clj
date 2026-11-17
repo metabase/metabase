@@ -26,6 +26,8 @@
                                   sync/sync-table!        #(swap! synced conj (:id %))]
         (.execute ^Job (SyncTable.) (sync.task.util-test/job-context "sync-table" table-id))
         (task.sync-table/schedule-table-sync! table-id)
-        (testing "deleted Table is skipped"
-          (task.sync-table/schedule-table-sync! Integer/MAX_VALUE))
-        (is (= [table-id table-id] @synced))))))
+        (is (= [table-id table-id] @synced))
+        (testing "Table that does not exist is skipped"
+          (reset! synced [])
+          (task.sync-table/schedule-table-sync! Integer/MAX_VALUE)
+          (is (= [] @synced)))))))
