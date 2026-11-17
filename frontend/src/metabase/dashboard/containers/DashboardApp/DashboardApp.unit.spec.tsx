@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import { callMockEvent } from "__support__/events";
 import {
   setupActionsEndpoints,
+  setupAuditInfoEndpoint,
   setupBookmarksEndpoints,
   setupCardsEndpoints,
   setupCollectionItemsEndpoint,
@@ -15,6 +16,7 @@ import {
   setupSearchEndpoints,
   setupTableEndpoints,
   setupUserEndpoints,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
   setupNotificationChannelsEndpoints,
@@ -61,6 +63,7 @@ import {
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import { createMockRevision } from "metabase-types/api/mocks/revision";
+import { isObject } from "metabase-types/guards";
 
 const TEST_COLLECTION = createMockCollection();
 
@@ -78,6 +81,26 @@ const TEST_CARD = createMockCard();
 const TEST_TABLE = createMockTable();
 
 const TestHome = () => <div />;
+
+// Like the real API, a GET after a PUT returns the updated dashboard
+function setupPersistedDashboardEndpoints(dashboard: Dashboard) {
+  let persistedDashboard = dashboard;
+  fetchMock.get(
+    `path:/api/dashboard/${dashboard.id}`,
+    () => persistedDashboard,
+  );
+  fetchMock.put(`path:/api/dashboard/${dashboard.id}`, (call) => {
+    const body: unknown = JSON.parse(String(call.options.body));
+    if (!isObject(body) || Array.isArray(body)) {
+      throw new Error("Expected a dashboard update object");
+    }
+    persistedDashboard = {
+      ...persistedDashboard,
+      ...body,
+    };
+    return persistedDashboard;
+  });
+}
 
 interface Options {
   dashboard?: Partial<Dashboard>;
@@ -112,7 +135,7 @@ function renderDashboardApp({
       dashboardRequest.promise.then(() => mockDashboard),
     );
   } else {
-    setupDashboardEndpoints(mockDashboard);
+    setupPersistedDashboardEndpoints(mockDashboard);
   }
   if (deferQueryMetadata) {
     fetchMock.get(`path:/api/dashboard/${dashboardId}/query_metadata`, () =>
@@ -573,6 +596,199 @@ describe("DashboardApp", () => {
       expect(
         screen.queryByTestId("dashboard-skeleton-text"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("title and description", () => {
+    const ORIGINAL_NAME = "Amazing Dashboard";
+    const NEW_NAME = "Renamed";
+    const NEW_DESCRIPTION = "Foo Bar";
+
+    const getUpdateCalls = (dashboardId: DashboardId) =>
+      fetchMock.callHistory.calls(`path:/api/dashboard/${dashboardId}`, {
+        method: "PUT",
+      });
+
+    // Waits a while to make sure that no other update request is sent later
+    const expectNoMoreUpdates = async (
+      dashboardId: DashboardId,
+      count: number,
+    ) => {
+      await expect(
+        waitFor(
+          () =>
+            expect(getUpdateCalls(dashboardId).length).toBeGreaterThan(count),
+          { timeout: 1000 },
+        ),
+      ).rejects.toThrow();
+      expect(getUpdateCalls(dashboardId)).toHaveLength(count);
+    };
+
+    const getUpdateBody = async (
+      dashboardId: DashboardId,
+      index: number,
+    ): Promise<unknown> => {
+      const body: unknown = JSON.parse(
+        String(getUpdateCalls(dashboardId)[index].options.body),
+      );
+      return body;
+    };
+
+    const getTitleInput = () => screen.getByTestId("dashboard-name-heading");
+
+    async function renameTitle(name: string) {
+      await userEvent.clear(getTitleInput());
+      await userEvent.type(getTitleInput(), name);
+      await userEvent.tab();
+    }
+
+    async function typeDescription(text: string) {
+      const sidesheet = await screen.findByTestId("sidesheet");
+      await userEvent.click(within(sidesheet).getByTestId("editable-text"));
+      await userEvent.type(
+        within(sidesheet).getByPlaceholderText("Add description"),
+        text,
+      );
+    }
+
+    beforeEach(() => {
+      setupRevisionsEndpoints([]);
+      setupUsersEndpoints([createMockUser()]);
+      setupAuditInfoEndpoint();
+    });
+
+    it("should update the name and the description without entering the edit mode (metabase#31721)", async () => {
+      const { dashboardId } = await setup({
+        dashboard: { name: ORIGINAL_NAME },
+      });
+
+      await renameTitle(NEW_NAME);
+      await waitFor(() => expect(getUpdateCalls(dashboardId)).toHaveLength(1));
+      expect(await getUpdateBody(dashboardId, 0)).toEqual({ name: NEW_NAME });
+      expect(getTitleInput()).toHaveValue(NEW_NAME);
+      expect(screen.queryByTestId("edit-bar")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByLabelText("More info"));
+      await typeDescription(NEW_DESCRIPTION);
+      await userEvent.tab();
+      await waitFor(() => expect(getUpdateCalls(dashboardId)).toHaveLength(2));
+      expect(await getUpdateBody(dashboardId, 1)).toEqual({
+        description: NEW_DESCRIPTION,
+      });
+      expect(
+        within(screen.getByTestId("sidesheet")).getByText(NEW_DESCRIPTION),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        within(screen.getByTestId("sidesheet")).getByRole("button", {
+          name: "Close",
+        }),
+      );
+      await expectNoMoreUpdates(dashboardId, 2);
+    });
+
+    it("should revert the title and the description changes on Escape", async () => {
+      const { dashboardId } = await setup({
+        dashboard: { name: ORIGINAL_NAME, description: NEW_DESCRIPTION },
+      });
+
+      await userEvent.type(getTitleInput(), "Whatever{Escape}");
+      expect(getTitleInput()).toHaveValue(ORIGINAL_NAME);
+
+      await userEvent.click(screen.getByLabelText("More info"));
+      await typeDescription("Baz{Escape}");
+      expect(
+        within(screen.getByTestId("sidesheet")).getByText(NEW_DESCRIPTION),
+      ).toBeInTheDocument();
+
+      expect(getUpdateCalls(dashboardId)).toHaveLength(0);
+    });
+
+    it("should revert the title change when editing is cancelled", async () => {
+      const { dashboardId } = await setup({
+        dashboard: { name: ORIGINAL_NAME },
+      });
+
+      await userEvent.click(screen.getByLabelText("Edit dashboard"));
+      await renameTitle(NEW_NAME);
+      await userEvent.click(
+        within(screen.getByTestId("edit-bar")).getByRole("button", {
+          name: "Cancel",
+        }),
+      );
+      await userEvent.click(
+        within(await screen.findByTestId("leave-confirmation")).getByRole(
+          "button",
+          { name: "Discard changes" },
+        ),
+      );
+
+      await waitFor(() =>
+        expect(screen.queryByTestId("edit-bar")).not.toBeInTheDocument(),
+      );
+      // Cancel hides the edit bar before the refetch restores the title
+      await waitFor(() => expect(getTitleInput()).toHaveValue(ORIGINAL_NAME));
+      expect(getUpdateCalls(dashboardId)).toHaveLength(0);
+    });
+
+    it("should keep the edit mode when the title is changed and save it with the dashboard", async () => {
+      const { dashboardId } = await setup({
+        dashboard: { name: ORIGINAL_NAME },
+      });
+
+      await userEvent.click(screen.getByLabelText("Edit dashboard"));
+      await renameTitle(NEW_NAME);
+      expect(screen.getByTestId("edit-bar")).toBeInTheDocument();
+      expect(getUpdateCalls(dashboardId)).toHaveLength(0);
+
+      await userEvent.click(
+        within(screen.getByTestId("edit-bar")).getByRole("button", {
+          name: "Save",
+        }),
+      );
+      await waitFor(() => expect(getUpdateCalls(dashboardId)).toHaveLength(1));
+      expect(await getUpdateBody(dashboardId, 0)).toMatchObject({
+        name: NEW_NAME,
+      });
+    });
+
+    it("should save the description right away in the edit mode", async () => {
+      const { dashboardId } = await setup({
+        dashboard: {
+          "last-edit-info": {
+            id: 1,
+            email: "user@metabase.test",
+            first_name: "Testy",
+            last_name: "Tableton",
+            timestamp: "2024-01-01T00:00:00Z",
+          },
+        },
+      });
+
+      await userEvent.click(screen.getByLabelText("Edit dashboard"));
+      // The only way to open the info sidebar in the edit mode
+      await userEvent.click(
+        within(screen.getByTestId("dashboard-header")).getByText(/^Edited/),
+      );
+      await typeDescription(NEW_DESCRIPTION);
+      await userEvent.tab();
+      await waitFor(() => expect(getUpdateCalls(dashboardId)).toHaveLength(1));
+      expect(await getUpdateBody(dashboardId, 0)).toEqual({
+        description: NEW_DESCRIPTION,
+      });
+      expect(screen.getByTestId("edit-bar")).toBeInTheDocument();
+
+      await userEvent.click(
+        within(screen.getByTestId("sidesheet")).getByRole("button", {
+          name: "Close",
+        }),
+      );
+      await userEvent.click(
+        within(screen.getByTestId("edit-bar")).getByRole("button", {
+          name: "Save",
+        }),
+      );
+      await waitFor(() => expect(getUpdateCalls(dashboardId)).toHaveLength(2));
     });
   });
 

@@ -8,7 +8,7 @@ import {
   getDataAppEmbedUrl,
   normalizeDataAppPath,
   validateDataAppPath,
-} from "embedding-sdk-shared/lib/embedded-data-app-path";
+} from "embedding-sdk-shared/data-apps/embedded-data-app-path";
 import { getErrorMessage } from "metabase/api/utils/errors";
 
 import { DataAppFrame } from "./DataAppFrame";
