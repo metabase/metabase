@@ -16,10 +16,17 @@ import {
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { FieldReference, TemporalUnit } from "metabase-types/api";
+import type {
+  FieldReference,
+  TemporalUnit,
+  TestBreakoutSpec,
+} from "metabase-types/api";
 import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
 import {
+  ORDERS,
   ORDERS_ID,
+  PEOPLE,
+  PRODUCTS,
   createOrdersIdField,
   createOrdersTable,
   createSampleDatabase,
@@ -557,6 +564,110 @@ describe("BreakoutStep", () => {
       expect(breakouts).toHaveLength(1);
       expect(breakouts[0].displayName).toBe("Created At: Year");
     });
+  });
+
+  describe("custom columns", () => {
+    function createQueryWithCustomColumns(
+      breakouts: readonly TestBreakoutSpec[] = [],
+    ) {
+      return Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            expressions: [
+              {
+                name: "Half Price",
+                value: {
+                  type: "operator",
+                  operator: "/",
+                  args: [
+                    {
+                      type: "column",
+                      fieldId: PRODUCTS.PRICE,
+                      sourceFieldId: ORDERS.PRODUCT_ID,
+                    },
+                    { type: "literal", value: 2 },
+                  ],
+                },
+              },
+              {
+                name: "Product Date",
+                value: {
+                  type: "column",
+                  fieldId: PRODUCTS.CREATED_AT,
+                  sourceFieldId: ORDERS.PRODUCT_ID,
+                },
+              },
+              {
+                name: "UserLAT",
+                value: {
+                  type: "column",
+                  fieldId: PEOPLE.LATITUDE,
+                  sourceFieldId: ORDERS.USER_ID,
+                },
+              },
+            ],
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+            breakouts,
+          },
+        ],
+      });
+    }
+
+    it("should only show bucketing options that fit the type of a custom column", async () => {
+      const { getNextBreakouts } = setup({
+        step: createMockNotebookStep({ query: createQueryWithCustomColumns() }),
+      });
+
+      await userEvent.click(screen.getByText("Pick a column to group by"));
+
+      // a regular numeric column shows binning options
+      const totalOption = await screen.findByRole("option", { name: "Total" });
+      expect(
+        within(totalOption).getByLabelText("Binning strategy"),
+      ).toBeInTheDocument();
+
+      for (const name of ["Half Price", "UserLAT"]) {
+        const option = screen.getByRole("option", { name });
+        expect(
+          within(option).queryByLabelText("Binning strategy"),
+        ).not.toBeInTheDocument();
+        expect(
+          within(option).queryByLabelText("Temporal bucket"),
+        ).not.toBeInTheDocument();
+      }
+
+      const dateOption = screen.getByRole("option", { name: "Product Date" });
+      expect(
+        within(dateOption).queryByLabelText("Binning strategy"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(dateOption).getByLabelText("Temporal bucket"),
+      ).toBeInTheDocument();
+
+      await userEvent.click(within(dateOption).getByText("Product Date"));
+      expect(getNextBreakouts()).toMatchObject([
+        { displayName: "Product Date: Month" },
+      ]);
+    });
+
+    it.each(["Half Price", "UserLAT"])(
+      "should allow to pick the %s custom column as the breakout",
+      async (name) => {
+        const query = createQueryWithCustomColumns([
+          { type: "column", name: "Product Date", unit: "month" },
+        ]);
+        const { getNextBreakouts } = setup({
+          step: createMockNotebookStep({ query }),
+        });
+
+        await userEvent.click(screen.getByText("Product Date: Month"));
+        const option = await screen.findByRole("option", { name });
+        await userEvent.click(within(option).getByText(name));
+
+        expect(getNextBreakouts()).toMatchObject([{ displayName: name }]);
+      },
+    );
   });
 
   describe("saved native question source", () => {
