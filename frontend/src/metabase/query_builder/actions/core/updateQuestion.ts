@@ -27,7 +27,7 @@ import { setQueryBuilderMode } from "../ui";
 import { updateUrl } from "../url";
 
 import { setIsShowingTemplateTagsEditor } from "./native";
-import { computeQuestionPivotTable } from "./pivot-table";
+import { computeQuestionPivotTable, hasResultsOfQuestion } from "./pivot-table";
 
 function shouldTemplateTagEditorBeVisible({
   currentQuestion,
@@ -112,7 +112,8 @@ export const updateQuestion = (
     newQuestion = computedPivotQuestion.question;
 
     if (computedPivotQuestion.shouldRun !== null) {
-      run = computedPivotQuestion.shouldRun;
+      const hasStaleResults = !hasResultsOfQuestion(newQuestion, rawSeries);
+      run = computedPivotQuestion.shouldRun || (run && hasStaleResults);
     }
 
     const isNewQuestionNative = Lib.queryDisplayInfo(
