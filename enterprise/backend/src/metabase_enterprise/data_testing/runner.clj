@@ -316,7 +316,7 @@
   read them, and the labels a message renders them as.
 
   Throws the run's typed refusals — an untestable subject or driver, SQL that will not parse, a write that is not one
-  INSERT, UPDATE or DELETE, a test the validator rejects — so a caller that only wants the answer to \"could this
+  INSERT, UPDATE or DELETE or that cannot be checked, a test the validator rejects — so a caller that only wants the answer to \"could this
   run?\" gets it by asking for the plan and discarding it."
   [subject-type                           :- ::data-testing.subject/subject-type
    subject                                :- ::data-testing.subject/subject
