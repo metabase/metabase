@@ -218,13 +218,30 @@ function setupWithQueryUpdates({ query }: SetupWithQueryUpdatesOpts) {
     const aggregations = Lib.aggregations(recentQuery, 0);
     expect(aggregations).toHaveLength(1);
     const [aggregation] = aggregations;
+    const parts = Lib.expressionParts(recentQuery, 0, aggregation);
     return {
       displayName: Lib.displayInfo(recentQuery, 0, aggregation).displayName,
-      parts: Lib.expressionParts(recentQuery, 0, aggregation),
+      parts,
+      predicateColumnName: getPredicateColumnName(recentQuery, parts),
     };
   }
 
   return { getRecentAggregation };
+}
+
+/** The display name of the column that `countIf(in(column, …))` tests. */
+function getPredicateColumnName(
+  query: Lib.Query,
+  parts: Lib.ExpressionParts,
+): string | undefined {
+  const [predicate] = parts.args;
+  if (!Lib.isExpressionParts(predicate)) {
+    return undefined;
+  }
+  const [column] = predicate.args;
+  return Lib.isColumnMetadata(column)
+    ? Lib.displayInfo(query, 0, column).displayName
+    : undefined;
 }
 
 async function enterCustomExpression({
@@ -391,6 +408,7 @@ describe("AggregateStep", () => {
         operator: "count-where",
         args: [{ operator: "in", args: [expect.anything(), 1, 2] }],
       },
+      predicateColumnName: "ID",
     });
 
     await userEvent.click(screen.getByText("CountIfIn"));
@@ -407,6 +425,7 @@ describe("AggregateStep", () => {
         operator: "count-where",
         args: [{ operator: "not-in", args: [expect.anything(), 1, 2] }],
       },
+      predicateColumnName: "ID",
     });
   });
 
