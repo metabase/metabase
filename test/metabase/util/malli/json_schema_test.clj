@@ -71,7 +71,11 @@
     (is (= {:anyOf [{:required ["a"]} {:required ["b"]}], :allOf [{:unevaluatedProperties false}]}
            (mu.json-schema/transform
             [:any {:json-schema {:anyOf [{:required ["a"]} {:required ["b"]}]
-                                 :allOf [{:unevaluatedProperties false}]}}]))))
+                                 :allOf [{:unevaluatedProperties false}]}}])))
+    ;; and so would it with a `$dynamicRef`, which evaluates like a `$ref`
+    (is (= {:$dynamicRef "#node", :allOf [{:unevaluatedProperties false}]}
+           (mu.json-schema/transform
+            [:any {:json-schema {:$dynamicRef "#node", :allOf [{:unevaluatedProperties false}]}}]))))
   (testing "one branch left whose neighbor-reading keyword accepts anything merges, as nothing it reads changes"
     (is (= {:properties {"a" {}}, :additionalProperties {}}
            (mu.json-schema/transform

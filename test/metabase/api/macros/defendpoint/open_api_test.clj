@@ -50,7 +50,17 @@
             :allOf [{:anyOf [{:minLength 1} {:maxLength 0}]}]}
            (#'defendpoint.open-api/fix-json-schema
             {:anyOf [{:type :string} {:type :integer}]
-             :allOf [{:anyOf [{:minLength 1} {:maxLength 0}]}]})))))
+             :allOf [{:anyOf [{:minLength 1} {:maxLength 0}]}]}))))
+  (testing "beside a conjunct that stays, the schema's properties still lose their optional ones from `required`"
+    (is (= {:type       :object
+            :properties {"a" {:type :integer}, "b" {:type :integer}}
+            :required   ["b"]
+            :allOf      [{:type :object, :additionalProperties false}]}
+           (#'defendpoint.open-api/fix-json-schema
+            {:type       :object
+             :properties {"a" {:type :integer, :optional true}, "b" {:type :integer}}
+             :required   ["a" "b"]
+             :allOf      [{:type :object, :additionalProperties false}]})))))
 
 (deftest ^:parallel default-params-are-optional-test
   (testing "a param carrying a :default is advertised as optional, since omitting it is safe"

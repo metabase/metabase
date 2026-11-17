@@ -64,8 +64,8 @@
    :minContains           #{:contains}
    :then                  #{:if}
    ;; the `unevaluated` keywords see what every applicator beside them evaluated
-   :unevaluatedItems      #{:$ref :allOf :anyOf :contains :else :if :items :oneOf :prefixItems :then}
-   :unevaluatedProperties #{:$ref :additionalProperties :allOf :anyOf :dependentSchemas :else :if :oneOf
+   :unevaluatedItems      #{:$dynamicRef :$ref :allOf :anyOf :contains :else :if :items :oneOf :prefixItems :then}
+   :unevaluatedProperties #{:$dynamicRef :$ref :additionalProperties :allOf :anyOf :dependentSchemas :else :if :oneOf
                             :patternProperties :properties :then}})
 
 (defn- reads-neighbor?

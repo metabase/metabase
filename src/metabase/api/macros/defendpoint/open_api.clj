@@ -71,7 +71,9 @@
           (if (and (= (count (:allOf schema)) 1)
                    (mu.json-schema/merges-cleanly? siblings branch))
             (fix-json-schema (merge siblings branch))
-            schema))
+            ;; the rest of the schema still needs its clean-up, such as which properties are required
+            (cond-> (fix-json-schema siblings)
+              (seq (:allOf schema)) (assoc :allOf (vec (:allOf schema))))))
 
         (= (select-keys schema (keys file-schema)) file-schema)
         ;; I got this from StackOverflow and docs are not in agreement, but RapiDoc
