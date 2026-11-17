@@ -5,7 +5,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.serialization.mbql :as mbql]
    [metabase.serialization.resolve :as resolve]
    [metabase.util :as u]
@@ -105,18 +105,15 @@
       (m/update-existing-in [:target :dimension] #(mbql/walk-import-refs visit %))))
 
 (defn- walk-export-viz-click-behavior-mappings
-  "The `:parameterMapping` on a `:click_behavior` viz settings is a map of... IDs turned into JSON strings which have
-  been keywordized. Therefore the keys must be converted to strings, parsed, exported, and JSONified. The values are
-  ported by [[walk-export-viz-click-behavior-mapping]]."
+  "The `:parameterMapping` on a `:click_behavior` viz settings is a map of IDs turned into JSON strings, so its keys
+  must be parsed, exported, and JSONified again. The values are ported by [[walk-export-viz-click-behavior-mapping]]."
   [visit mappings]
   (into {}
-        (comp (map (fn [[k v]]
-                     [(u/qualified-name k) v]))
-              (map (fn [[k mapping]]
-                     (if (dimension-param-mapping? mapping)
-                       [(json-export-mbql visit k)
-                        (walk-export-viz-click-behavior-mapping visit mapping)]
-                       [k mapping]))))
+        (map (fn [[k mapping]]
+               (if (dimension-param-mapping? mapping)
+                 [(json-export-mbql visit k)
+                  (walk-export-viz-click-behavior-mapping visit mapping)]
+                 [k mapping])))
         mappings))
 
 (defn- walk-import-viz-click-behavior-mappings
@@ -321,7 +318,7 @@
       (walk-import-viz-column-settings visit $)
       (cond->> $
         (not (resolve/collecting? visit))
-        (lib/normalize ::lib.schema.visualization-settings/visualization-settings)))))
+        (lib/normalize ::lib.schema.visualization/visualization-settings)))))
 
 (defn export-visualization-settings
   "Each of the `:visualization_settings` of `xs` exported by [[walk-export-visualization-settings]], with the database

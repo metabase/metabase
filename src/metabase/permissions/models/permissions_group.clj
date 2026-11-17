@@ -11,8 +11,8 @@
    [clojure.set :as set]
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
-   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -31,7 +31,8 @@
 
 (doto :model/PermissionsGroup
   (derive :metabase/model)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/change-log))
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 

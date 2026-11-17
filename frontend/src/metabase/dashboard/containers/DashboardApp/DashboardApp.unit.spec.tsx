@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import { callMockEvent } from "__support__/events";
 import {
   setupActionsEndpoints,
+  setupAuditInfoEndpoint,
   setupBookmarksEndpoints,
   setupCardsEndpoints,
   setupCollectionItemsEndpoint,
@@ -15,6 +16,7 @@ import {
   setupSearchEndpoints,
   setupTableEndpoints,
   setupUserEndpoints,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
   setupNotificationChannelsEndpoints,
@@ -39,7 +41,12 @@ import { dashboardSaved } from "metabase/metabot/state";
 import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
-import type { Dashboard, DashboardId, User } from "metabase-types/api";
+import type {
+  Dashboard,
+  DashboardId,
+  Revision,
+  User,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -55,6 +62,8 @@ import {
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
+import { createMockRevision } from "metabase-types/api/mocks/revision";
+import { isObject } from "metabase-types/guards";
 
 const TEST_COLLECTION = createMockCollection();
 
@@ -72,6 +81,26 @@ const TEST_CARD = createMockCard();
 const TEST_TABLE = createMockTable();
 
 const TestHome = () => <div />;
+
+// Like the real API, a GET after a PUT returns the updated dashboard
+function setupPersistedDashboardEndpoints(dashboard: Dashboard) {
+  let persistedDashboard = dashboard;
+  fetchMock.get(
+    `path:/api/dashboard/${dashboard.id}`,
+    () => persistedDashboard,
+  );
+  fetchMock.put(`path:/api/dashboard/${dashboard.id}`, (call) => {
+    const body: unknown = JSON.parse(String(call.options.body));
+    if (!isObject(body) || Array.isArray(body)) {
+      throw new Error("Expected a dashboard update object");
+    }
+    persistedDashboard = {
+      ...persistedDashboard,
+      ...body,
+    };
+    return persistedDashboard;
+  });
+}
 
 interface Options {
   dashboard?: Partial<Dashboard>;
@@ -106,7 +135,7 @@ function renderDashboardApp({
       dashboardRequest.promise.then(() => mockDashboard),
     );
   } else {
-    setupDashboardEndpoints(mockDashboard);
+    setupPersistedDashboardEndpoints(mockDashboard);
   }
   if (deferQueryMetadata) {
     fetchMock.get(`path:/api/dashboard/${dashboardId}/query_metadata`, () =>
@@ -570,6 +599,199 @@ describe("DashboardApp", () => {
     });
   });
 
+  describe("title and description", () => {
+    const ORIGINAL_NAME = "Amazing Dashboard";
+    const NEW_NAME = "Renamed";
+    const NEW_DESCRIPTION = "Foo Bar";
+
+    const getUpdateCalls = (dashboardId: DashboardId) =>
+      fetchMock.callHistory.calls(`path:/api/dashboard/${dashboardId}`, {
+        method: "PUT",
+      });
+
+    // Waits a while to make sure that no other update request is sent later
+    const expectNoMoreUpdates = async (
+      dashboardId: DashboardId,
+      count: number,
+    ) => {
+      await expect(
+        waitFor(
+          () =>
+            expect(getUpdateCalls(dashboardId).length).toBeGreaterThan(count),
+          { timeout: 1000 },
+        ),
+      ).rejects.toThrow();
+      expect(getUpdateCalls(dashboardId)).toHaveLength(count);
+    };
+
+    const getUpdateBody = async (
+      dashboardId: DashboardId,
+      index: number,
+    ): Promise<unknown> => {
+      const body: unknown = JSON.parse(
+        String(getUpdateCalls(dashboardId)[index].options.body),
+      );
+      return body;
+    };
+
+    const getTitleInput = () => screen.getByTestId("dashboard-name-heading");
+
+    async function renameTitle(name: string) {
+      await userEvent.clear(getTitleInput());
+      await userEvent.type(getTitleInput(), name);
+      await userEvent.tab();
+    }
+
+    async function typeDescription(text: string) {
+      const sidesheet = await screen.findByTestId("sidesheet");
+      await userEvent.click(within(sidesheet).getByTestId("editable-text"));
+      await userEvent.type(
+        within(sidesheet).getByPlaceholderText("Add description"),
+        text,
+      );
+    }
+
+    beforeEach(() => {
+      setupRevisionsEndpoints([]);
+      setupUsersEndpoints([createMockUser()]);
+      setupAuditInfoEndpoint();
+    });
+
+    it("should update the name and the description without entering the edit mode (metabase#31721)", async () => {
+      const { dashboardId } = await setup({
+        dashboard: { name: ORIGINAL_NAME },
+      });
+
+      await renameTitle(NEW_NAME);
+      await waitFor(() => expect(getUpdateCalls(dashboardId)).toHaveLength(1));
+      expect(await getUpdateBody(dashboardId, 0)).toEqual({ name: NEW_NAME });
+      expect(getTitleInput()).toHaveValue(NEW_NAME);
+      expect(screen.queryByTestId("edit-bar")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByLabelText("More info"));
+      await typeDescription(NEW_DESCRIPTION);
+      await userEvent.tab();
+      await waitFor(() => expect(getUpdateCalls(dashboardId)).toHaveLength(2));
+      expect(await getUpdateBody(dashboardId, 1)).toEqual({
+        description: NEW_DESCRIPTION,
+      });
+      expect(
+        within(screen.getByTestId("sidesheet")).getByText(NEW_DESCRIPTION),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        within(screen.getByTestId("sidesheet")).getByRole("button", {
+          name: "Close",
+        }),
+      );
+      await expectNoMoreUpdates(dashboardId, 2);
+    });
+
+    it("should revert the title and the description changes on Escape", async () => {
+      const { dashboardId } = await setup({
+        dashboard: { name: ORIGINAL_NAME, description: NEW_DESCRIPTION },
+      });
+
+      await userEvent.type(getTitleInput(), "Whatever{Escape}");
+      expect(getTitleInput()).toHaveValue(ORIGINAL_NAME);
+
+      await userEvent.click(screen.getByLabelText("More info"));
+      await typeDescription("Baz{Escape}");
+      expect(
+        within(screen.getByTestId("sidesheet")).getByText(NEW_DESCRIPTION),
+      ).toBeInTheDocument();
+
+      expect(getUpdateCalls(dashboardId)).toHaveLength(0);
+    });
+
+    it("should revert the title change when editing is cancelled", async () => {
+      const { dashboardId } = await setup({
+        dashboard: { name: ORIGINAL_NAME },
+      });
+
+      await userEvent.click(screen.getByLabelText("Edit dashboard"));
+      await renameTitle(NEW_NAME);
+      await userEvent.click(
+        within(screen.getByTestId("edit-bar")).getByRole("button", {
+          name: "Cancel",
+        }),
+      );
+      await userEvent.click(
+        within(await screen.findByTestId("leave-confirmation")).getByRole(
+          "button",
+          { name: "Discard changes" },
+        ),
+      );
+
+      await waitFor(() =>
+        expect(screen.queryByTestId("edit-bar")).not.toBeInTheDocument(),
+      );
+      // Cancel hides the edit bar before the refetch restores the title
+      await waitFor(() => expect(getTitleInput()).toHaveValue(ORIGINAL_NAME));
+      expect(getUpdateCalls(dashboardId)).toHaveLength(0);
+    });
+
+    it("should keep the edit mode when the title is changed and save it with the dashboard", async () => {
+      const { dashboardId } = await setup({
+        dashboard: { name: ORIGINAL_NAME },
+      });
+
+      await userEvent.click(screen.getByLabelText("Edit dashboard"));
+      await renameTitle(NEW_NAME);
+      expect(screen.getByTestId("edit-bar")).toBeInTheDocument();
+      expect(getUpdateCalls(dashboardId)).toHaveLength(0);
+
+      await userEvent.click(
+        within(screen.getByTestId("edit-bar")).getByRole("button", {
+          name: "Save",
+        }),
+      );
+      await waitFor(() => expect(getUpdateCalls(dashboardId)).toHaveLength(1));
+      expect(await getUpdateBody(dashboardId, 0)).toMatchObject({
+        name: NEW_NAME,
+      });
+    });
+
+    it("should save the description right away in the edit mode", async () => {
+      const { dashboardId } = await setup({
+        dashboard: {
+          "last-edit-info": {
+            id: 1,
+            email: "user@metabase.test",
+            first_name: "Testy",
+            last_name: "Tableton",
+            timestamp: "2024-01-01T00:00:00Z",
+          },
+        },
+      });
+
+      await userEvent.click(screen.getByLabelText("Edit dashboard"));
+      // The only way to open the info sidebar in the edit mode
+      await userEvent.click(
+        within(screen.getByTestId("dashboard-header")).getByText(/^Edited/),
+      );
+      await typeDescription(NEW_DESCRIPTION);
+      await userEvent.tab();
+      await waitFor(() => expect(getUpdateCalls(dashboardId)).toHaveLength(1));
+      expect(await getUpdateBody(dashboardId, 0)).toEqual({
+        description: NEW_DESCRIPTION,
+      });
+      expect(screen.getByTestId("edit-bar")).toBeInTheDocument();
+
+      await userEvent.click(
+        within(screen.getByTestId("sidesheet")).getByRole("button", {
+          name: "Close",
+        }),
+      );
+      await userEvent.click(
+        within(screen.getByTestId("edit-bar")).getByRole("button", {
+          name: "Save",
+        }),
+      );
+      await waitFor(() => expect(getUpdateCalls(dashboardId)).toHaveLength(2));
+    });
+  });
+
   it("should not allow to enter a dashboard name longer than 254 characters", async () => {
     await setup();
 
@@ -632,6 +854,155 @@ describe("DashboardApp", () => {
       expect(dashboardFetches(dashboardId)).toBe(fetchesBefore);
       expect(
         screen.getByText(/You're editing this dashboard/),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("revision history", () => {
+    const DASHBOARD_ID = 10;
+    const CREATION_REVISION = createMockRevision({
+      id: 1,
+      description: "created this",
+      is_creation: true,
+    });
+    const RENAME_REVISION = createMockRevision({
+      id: 2,
+      description: "renamed this Dashboard",
+      is_creation: false,
+      timestamp: "2023-05-17T13:33:30.198622-07:00",
+      user: {
+        id: 2,
+        first_name: "Robert",
+        last_name: "Tableton",
+        common_name: "Robert Tableton",
+      },
+    });
+
+    interface RevisionHistorySetupOpts {
+      canWrite?: boolean;
+      revisions: Revision[];
+    }
+
+    // Mirrors the backend: only a PUT that reaches the server records a revision.
+    async function setupRevisionHistory({
+      canWrite = true,
+      revisions,
+    }: RevisionHistorySetupOpts) {
+      let currentRevisions = revisions;
+      fetchMock.get("path:/api/revision", () => currentRevisions, {
+        query: { entity: "dashboard", id: String(DASHBOARD_ID) },
+      });
+      fetchMock.put(`path:/api/dashboard/${DASHBOARD_ID}`, async (call) => {
+        const body: unknown = JSON.parse(String(call.options.body));
+        currentRevisions = [RENAME_REVISION, ...currentRevisions];
+        return createMockDashboard({
+          ...(typeof body === "object" ? body : {}),
+          id: DASHBOARD_ID,
+        });
+      });
+      setupUserEndpoints(createMockUser({ id: 1 }));
+
+      return setup({ dashboard: { id: DASHBOARD_ID, can_write: canWrite } });
+    }
+
+    const dashboardPutCalls = () =>
+      fetchMock.callHistory.calls(`path:/api/dashboard/${DASHBOARD_ID}`, {
+        method: "PUT",
+      });
+
+    const openRevisionHistory = async () => {
+      await userEvent.click(
+        within(screen.getByTestId("dashboard-header")).getByLabelText(
+          "More info",
+        ),
+      );
+      return screen.findByTestId("dashboard-history-list");
+    };
+
+    const saveWithoutChanges = async () => {
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(
+        await screen.findByLabelText("Edit dashboard"),
+      ).toBeInTheDocument();
+    };
+
+    it("should not save or add a revision when the dashboard is saved without changes (metabase#1926)", async () => {
+      await setupRevisionHistory({ revisions: [CREATION_REVISION] });
+
+      await saveWithoutChanges();
+      await saveWithoutChanges();
+
+      expect(dashboardPutCalls()).toHaveLength(0);
+      const history = await openRevisionHistory();
+      const events = await within(history).findAllByTestId(
+        "revision-history-event",
+      );
+      expect(events).toHaveLength(1);
+      expect(events[0]).toHaveTextContent("You created this");
+      expect(
+        within(history).queryByTestId("question-revert-button"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should save and add a revision when the dashboard has changes", async () => {
+      await setupRevisionHistory({ revisions: [CREATION_REVISION] });
+
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
+      const heading = screen.getByTestId("dashboard-name-heading");
+      await userEvent.clear(heading);
+      await userEvent.type(heading, "Renamed dashboard");
+      await userEvent.tab();
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await screen.findByLabelText("Edit dashboard");
+
+      expect(dashboardPutCalls()).toHaveLength(1);
+      const body: unknown = JSON.parse(
+        String(dashboardPutCalls()[0].options.body),
+      );
+      expect(body).toMatchObject({ name: "Renamed dashboard" });
+      const history = await openRevisionHistory();
+      expect(
+        await within(history).findAllByTestId("revision-history-event"),
+      ).toHaveLength(2);
+    });
+
+    it("should not show revert buttons to a user who cannot write to the dashboard (metabase#13229)", async () => {
+      await setupRevisionHistory({
+        canWrite: false,
+        revisions: [RENAME_REVISION, CREATION_REVISION],
+      });
+
+      const history = await openRevisionHistory();
+
+      expect(
+        await within(history).findAllByTestId("revision-history-event"),
+      ).toHaveLength(2);
+      expect(
+        within(history).getByText("Robert Tableton renamed this Dashboard"),
+      ).toBeInTheDocument();
+      expect(
+        within(history).queryByTestId("question-revert-button"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show revert buttons for earlier versions to a user who can write to the dashboard", async () => {
+      await setupRevisionHistory({
+        revisions: [RENAME_REVISION, CREATION_REVISION],
+      });
+
+      const history = await openRevisionHistory();
+
+      expect(
+        await within(history).findAllByTestId("revision-history-event"),
+      ).toHaveLength(2);
+      expect(
+        within(history).getAllByTestId("question-revert-button"),
+      ).toHaveLength(1);
+      expect(
+        within(history).getByRole("button", {
+          name: "revert to You created this",
+        }),
       ).toBeInTheDocument();
     });
   });
