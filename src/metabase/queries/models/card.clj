@@ -1395,11 +1395,13 @@
 (t2/define-before-insert :model/Card
   [card]
   (check-timeline-settings card)
-  ;; a public Document shows its cards' goals to anyone, so a copy into one doesn't inherit its source's references
-  (check-new-goal-references! (:visualization_settings card)
-                              (when (and *copy-source-card*
-                                         (not (some-> (:document_id card) queries.db/public-document?)))
-                                (:visualization_settings *copy-source-card*)))
+  ;; a public Document shows its cards' goals to anyone, so a copy into one doesn't inherit its source's references.
+  ;; Most cards carry no goals, so the Document lookup waits for one
+  (when (seq (resolvable-goal-references (:visualization_settings card)))
+    (check-new-goal-references! (:visualization_settings card)
+                                (when (and *copy-source-card*
+                                           (not (some-> (:document_id card) queries.db/public-document?)))
+                                  (:visualization_settings *copy-source-card*))))
   (let [card   (-> card
                    (assoc :metabase_version config/mb-version-string
                           :card_schema current-card-schema-version)
