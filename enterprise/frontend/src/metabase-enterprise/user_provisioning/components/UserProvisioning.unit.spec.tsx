@@ -18,6 +18,7 @@ import {
   within,
 } from "__support__/ui";
 import { AuthenticationSettingsPage } from "metabase/admin/settings/components/SettingsPages/AuthenticationSettingsPage";
+import { reinitialize } from "metabase/plugins";
 import type { EnterpriseSettings, SettingDefinition } from "metabase-types/api";
 import {
   createMockSettings,
@@ -112,6 +113,12 @@ const getScimSettingPuts = async () =>
   );
 
 describe("SCIM User Provisioning Settings", () => {
+  afterEach(() => {
+    // the settings page test registers EE plugins and sets global settings
+    reinitialize();
+    mockSettings();
+  });
+
   it("should show a not found error when the scim feature is not enabled", async () => {
     await setup({
       settings: {
