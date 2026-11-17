@@ -33,6 +33,11 @@ const LATIN_RANGES = [
   [0x2100, 0x214f],
   [0x2190, 0x21ff],
   [0x2200, 0x22ff],
+  // zrender sizes every chart's text by measuring this one character on a
+  // canvas, and a canvas measurement downloads the chunk that claims the
+  // character. No bundled font draws it, so the system font measures it either
+  // way. Claimed here, it costs a chart page no script chunk.
+  [0x56fd, 0x56fd],
   [0xfeff, 0xfeff],
   [0xfffd, 0xfffd],
 ];
