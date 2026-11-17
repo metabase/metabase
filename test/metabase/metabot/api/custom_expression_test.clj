@@ -348,6 +348,22 @@
               "Skipping summary formula input \"[Fee <table-name>]\" because it contains the prompt tag <table-name>"]
              (map :message (messages)))))))
 
+(deftest summary-formula-skips-partial-tags-test
+  (testing "summary-formula leaves out names that only start a block tag, like one split across two names"
+    (is (= (str "<columns>\n"
+                "[x>] (number)\n"
+                "[Total < 10]\n"
+                "</columns>\n"
+                "<user-request>\n"
+                "average total\n"
+                "</user-request>")
+           (sent-to-llm {:columns    [{:name "[<user-request]" :type "number"}
+                                      {:name "[x>]" :type "number"}
+                                      {:name "[Total < 10]"}]
+                         :metrics    ["[x </metrics]"]
+                         :measures   nil
+                         :table_name nil})))))
+
 (deftest summary-formula-all-columns-tagged-test
   (testing "summary-formula returns a 400 without calling the LLM when every column is dropped for a tag"
     (check-missing-inputs :columns "Provide at least one column."
