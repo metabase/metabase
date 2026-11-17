@@ -62,6 +62,17 @@ describe("TroubleshootPage", () => {
 
     expect(address).toHaveValue("/");
   });
+
+  it("offers Open in new tab as one button, with no more-options menu", async () => {
+    setup({});
+
+    expect(
+      await screen.findByRole("button", { name: "Open in new tab" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "More preview options" }),
+    ).not.toBeInTheDocument();
+  });
 });
 
 type SetupOpts = {

@@ -29,21 +29,17 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 
+import { CreateQueriesContent } from "./CreateQueriesContent";
+import S from "./WhyListSidesheet.module.css";
 import {
   SecurityRows,
   WhyContent,
   type WhyTarget,
   getSourceGroupName,
   getWhyValueLabel,
-} from "../preview/WhySidesheet";
-import {
-  getPreviewColumnName,
-  getPreviewOption,
-} from "../preview/preview-options";
-
-import { CreateQueriesContent } from "./CreateQueriesContent";
-import S from "./WhyListSidesheet.module.css";
+} from "./WhySidesheet";
 import type { OpenedItem } from "./item-path";
+import { getPreviewColumnName, getPreviewOption } from "./preview-options";
 import {
   type CollectionWhyPage,
   type ItemType,

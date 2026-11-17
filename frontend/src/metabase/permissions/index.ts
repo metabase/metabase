@@ -2,10 +2,6 @@ export { ApplicationPermissionsHelp } from "./components/ApplicationPermissionsH
 export { CollectionPermissionsHelp } from "./components/CollectionPermissionsHelp";
 export { CollectionPermissionsModal } from "./components/CollectionPermissionsModal/CollectionPermissionsModal";
 export { DataPermissionsHelp } from "./components/DataPermissionsHelp";
-export {
-  type EntityView,
-  EntityViewSwitch,
-} from "./components/EntityViewSwitch";
 export { LegacyPermissionsModal } from "./components/LegacyPermissionsModal/LegacyPermissionsModal";
 export { PermissionsConfirm } from "./components/PermissionsConfirm";
 export { PermissionsSidebar } from "./components/PermissionsSidebar";

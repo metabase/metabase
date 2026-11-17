@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
@@ -13,7 +13,6 @@ import {
   useStartPreviewMutation,
 } from "./api";
 import { getPreviewUrl } from "./preview-state";
-import { getLastPrincipal } from "./preview/urls";
 import {
   type PrincipalSection,
   usePrincipalSections,
@@ -51,12 +50,6 @@ export function ViewAsModal({
   const { sections } = usePrincipalSections(principal?.type ?? "user");
   const { edits, unsavedEditsId } = useUnsavedEdits();
   const hasEdits = edits.length > 0;
-  useStartOnPreviewedPrincipal({
-    opened,
-    hasEdits,
-    principal,
-    onPrincipalChange: setPrincipal,
-  });
   const isReady =
     pickedPrincipal != null &&
     !isLoadingAttributes &&
@@ -156,31 +149,6 @@ export function ViewAsModal({
       </Stack>
     </Modal>
   );
-}
-
-type UseStartOnPreviewedPrincipalOptions = {
-  opened: boolean;
-  hasEdits: boolean;
-  principal: Principal | null;
-  onPrincipalChange: (principal: Principal) => void;
-};
-
-/** Opened from a permissions preview with unsaved edits, the modal starts on whoever that preview shows. */
-function useStartOnPreviewedPrincipal({
-  opened,
-  hasEdits,
-  principal,
-  onPrincipalChange,
-}: UseStartOnPreviewedPrincipalOptions) {
-  const isOnPreviewPage = window.location.pathname.includes("/preview/");
-  const shouldStart =
-    opened && hasEdits && isOnPreviewPage && principal == null;
-  useEffect(() => {
-    const previewedPrincipal = getLastPrincipal();
-    if (shouldStart && previewedPrincipal != null) {
-      onPrincipalChange(previewedPrincipal);
-    }
-  }, [shouldStart, onPrincipalChange]);
 }
 
 function getTitle(entityName?: string) {

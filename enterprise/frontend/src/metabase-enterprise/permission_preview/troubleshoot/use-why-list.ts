@@ -18,10 +18,10 @@ import {
   useGetDataPreviewQuery,
   useGetItemDependenciesQuery,
 } from "../api";
-import { type WhyTarget, getSourceGroupName } from "../preview/WhySidesheet";
-import type { PreviewColumn } from "../preview/preview-options";
 
+import { type WhyTarget, getSourceGroupName } from "./WhySidesheet";
 import type { OpenedItem } from "./item-path";
+import type { PreviewColumn } from "./preview-options";
 
 /** The answer "Explain access" leads with; `partial` is an item that opens with some of its data blocked. */
 export type WhyVerdict = {

@@ -1,8 +1,8 @@
 import cx from "classnames";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useState } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { Badge, Box, Flex, Icon, Popover, Switch, Tooltip } from "metabase/ui";
+import { Box, Flex, Icon, Popover, Switch, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { DataPermissionValue, IconName } from "metabase-types/api";
 
@@ -41,22 +41,9 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   disabledTooltip,
   warning,
   isHighlighted,
-  onValueClick,
-  valueTooltip,
-  isValueSelected = false,
-  valueMarker,
 }: PermissionSelectProps) {
   const [toggleState, setToggleState] = useState(toggleDefaultValue ?? null);
   const [opened, setOpened] = useState(false);
-  const [valueTooltipOpened, valueTooltipHandlers, closeValueTooltip] =
-    useRestingHover();
-  const valueRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (isValueSelected) {
-      valueRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
-    }
-  }, [isValueSelected]);
   let selectedOption = options.find((option) => option.value === value);
   if (!selectedOption) {
     console.warn(`${value} is not a valid option`);
@@ -72,55 +59,6 @@ export const PermissionsSelect = memo(function PermissionsSelect({
 
   const actionsForCurrentValue = actions?.[selectedOption.value] || [];
   const hasActions = actionsForCurrentValue.length > 0;
-
-  if (onValueClick) {
-    return (
-      <Tooltip
-        label={valueTooltip}
-        disabled={valueTooltip == null || isValueSelected}
-        opened={valueTooltipOpened}
-        position="bottom-start"
-        transitionProps={{ duration: 0 }}
-      >
-        <Flex
-          ref={valueRef}
-          component="button"
-          className={cx(CS.cursorPointer, S.explainableValue)}
-          align="center"
-          gap="xs"
-          miw="11.25rem"
-          aria-pressed={isValueSelected}
-          data-testid="permissions-select"
-          onClick={() => {
-            closeValueTooltip();
-            onValueClick();
-          }}
-          {...valueTooltipHandlers}
-        >
-          <PermissionsSelectOption {...selectedOption} />
-          {valueMarker != null && (
-            <Badge variant="light" color="negative" style={{ flexShrink: 0 }}>
-              {valueMarker}
-            </Badge>
-          )}
-          {warning && (
-            <Tooltip label={warning}>
-              <Icon name="warning" size={18} mr="xxs" c="text-secondary" />
-            </Tooltip>
-          )}
-          {/* every value says it explains itself; the hovered one also points at where the click goes */}
-          <Icon name="info_outline" size={14} c="text-secondary" aria-hidden />
-          <Icon
-            aria-hidden
-            className={S.explainChevron}
-            name="chevronright"
-            size={12}
-            c="text-secondary"
-          />
-        </Flex>
-      </Tooltip>
-    );
-  }
 
   const triggerContent = (
     <Flex
@@ -236,50 +174,3 @@ export const PermissionsSelect = memo(function PermissionsSelect({
     </Popover>
   );
 });
-
-const RESTING_HOVER_DELAY_MS = 400;
-
-/** Opens once the mouse rests on the cell and stays until it leaves, so a sweep across the rows opens nothing. */
-function useRestingHover() {
-  const [opened, setOpened] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
-  );
-
-  useEffect(() => () => clearTimeout(timeoutRef.current), []);
-
-  useEffect(() => {
-    if (!opened) {
-      return;
-    }
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpened(false);
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [opened]);
-
-  function restart() {
-    if (opened) {
-      return;
-    }
-    clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(
-      () => setOpened(true),
-      RESTING_HOVER_DELAY_MS,
-    );
-  }
-
-  function stop() {
-    clearTimeout(timeoutRef.current);
-    setOpened(false);
-  }
-
-  return [
-    opened,
-    { onMouseEnter: restart, onMouseMove: restart, onMouseLeave: stop },
-    stop,
-  ] as const;
-}

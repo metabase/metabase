@@ -1,6 +1,6 @@
 import { renderWithProviders, screen } from "__support__/ui";
 
-import { WhyContent, type WhyTarget, getWhySection } from "./WhySidesheet";
+import { WhyContent, type WhyTarget } from "./WhySidesheet";
 
 const SANDBOXED_ORDERS: WhyTarget = {
   title: "Orders",
@@ -32,20 +32,6 @@ const SANDBOXED_ORDERS: WhyTarget = {
   },
 };
 
-describe("getWhySection", () => {
-  it("shows a grid value's row security as an attribute chip, not as text", () => {
-    setup({ target: SANDBOXED_ORDERS });
-
-    expect(screen.getByText("Rows filtered by")).toBeInTheDocument();
-    expect(screen.getByTitle("state TX → People.State")).toHaveTextContent(
-      "stateTX→ People.State",
-    );
-    expect(
-      screen.queryByText("Filters Orders → People.State"),
-    ).not.toBeInTheDocument();
-  });
-});
-
 describe("WhyContent", () => {
   it("names the person and the table a block applies to", () => {
     renderWithProviders(
@@ -65,11 +51,3 @@ describe("WhyContent", () => {
     ).toBeInTheDocument();
   });
 });
-
-type SetupOpts = { target: WhyTarget };
-
-function setup({ target }: SetupOpts) {
-  renderWithProviders(
-    <>{getWhySection(target, jest.fn(), null).valueTooltip}</>,
-  );
-}

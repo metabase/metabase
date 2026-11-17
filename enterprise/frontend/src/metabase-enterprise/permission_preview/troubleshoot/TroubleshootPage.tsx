@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { PermissionsEditorEmptyState } from "metabase/admin/permissions/components/PermissionsEditor";
@@ -8,16 +8,7 @@ import { getErrorMessage } from "metabase/api/utils";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import { DataPermissionsHelp } from "metabase/permissions";
 import { useNavigate, useParams } from "metabase/router";
-import {
-  Box,
-  Button,
-  Flex,
-  Icon,
-  Loader,
-  Menu,
-  Text,
-  Tooltip,
-} from "metabase/ui";
+import { Box, Button, Flex, Icon, Loader, Text, Tooltip } from "metabase/ui";
 
 import {
   GroupPreviewInfo,
@@ -31,7 +22,6 @@ import {
   useIsNarrowPreview,
 } from "../PreviewBand";
 import {
-  type PreviewCodeResponse,
   type PreviewSessionResponse,
   type Principal,
   type PrincipalType,
@@ -40,41 +30,28 @@ import {
   sendEndPreviewBeacon,
   useEndPreviewMutation,
   useGetAffectingAttributesQuery,
-  useStartPreviewCodeMutation,
   useStartPreviewMutation,
   useStartPreviewSessionMutation,
 } from "../api";
 import {
   CONTENT_PREVIEW_ALL_COLLECTIONS_PATH,
   getContentPreviewUrl,
-  getPreviewHostContentUrl,
-  getPreviewHostSignInUrl,
 } from "../content-preview";
 import { getPreviewUrl } from "../preview-state";
-import { PreviewSidebar } from "../preview/PreviewSidebar";
 import {
   type PreviewRouteParams,
   parsePrincipal,
   parsePrincipalType,
-} from "../preview/urls";
+} from "../urls";
 
 import { AttributeBar } from "./AttributeBar";
 import { ContentPreviewFrame } from "./ContentPreviewFrame";
 import { LinkBar } from "./LinkBar";
+import { PreviewSidebar } from "./PreviewSidebar";
 import { WhyListSidesheet } from "./WhyListSidesheet";
 import { parseOpenedItem } from "./item-path";
 
 const START_PATH = CONTENT_PREVIEW_ALL_COLLECTIONS_PATH;
-
-type FramePreview = PreviewSessionResponse | PreviewCodeResponse;
-
-/**
- * How the SDK frame signs in as the person: on this origin with a session token in its memory, or on the preview host
- * with the person's own cookie.
- */
-type FrameMode = "same-origin" | "subdomain";
-
-const FRAME_MODES: FrameMode[] = ["same-origin", "subdomain"];
 
 /**
  * Admin › Permissions › Troubleshoot: pick a user, group or tenant, and the app runs as them,
@@ -90,7 +67,6 @@ export function TroubleshootPage() {
   const [openCount, setOpenCount] = useState(0);
   const [framePath, setFramePath] = useState(START_PATH);
   const [isWhyOpen, setIsWhyOpen] = useState(false);
-  const [frameMode, setFrameMode] = useState<FrameMode>("same-origin");
   const [restartCount, setRestartCount] = useState(0);
   const standInGroupNames = useStandInGroupNames(principal);
   const groupMemberCount = useGroupMemberCount(principal);
@@ -98,11 +74,7 @@ export function TroubleshootPage() {
 
   const [startPreview] = useStartPreviewMutation();
   const request = usePreviewRequest(principal, pickedValues);
-  const { preview, error } = usePreviewSession(
-    request,
-    frameMode,
-    restartCount,
-  );
+  const { preview, error } = usePreviewSession(request, restartCount);
 
   const openedItem = parseOpenedItem(framePath);
   const { data: attributes = [], isFetching: isLoadingAttributes } =
@@ -122,14 +94,6 @@ export function TroubleshootPage() {
     setOpenedPath(path);
     setFramePath(path);
     setOpenCount((count) => count + 1);
-  };
-
-  const handleFrameModeChange = (mode: FrameMode) => {
-    if (mode === frameMode) {
-      return;
-    }
-    keepFramePath();
-    setFrameMode(mode);
   };
 
   // the frame's item in a "View app as…" tab of its own, as the same person with the same values
@@ -167,13 +131,8 @@ export function TroubleshootPage() {
     setRestartCount((count) => count + 1);
   };
 
-  // the preview host's code works once: later loads of the same preview go straight to the content, with the cookie
-  const signedInPreviewIdRef = useRef<string | null>(null);
   const frameSrc = useMemo(
-    () =>
-      preview != null
-        ? getFrameSrc(preview, openedPath, signedInPreviewIdRef.current)
-        : null,
+    () => (preview != null ? getContentPreviewUrl(openedPath) : null),
     // a new address only when the frame remounts
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [preview, openCount],
@@ -250,39 +209,16 @@ export function TroubleshootPage() {
               disabled={preview == null}
               onClick={() => setIsWhyOpen((isOpen) => !isOpen)}
             />
-            <Menu position="bottom-end">
-              <Menu.Target>
-                <Button
-                  size="sm"
-                  style={{ flexShrink: 0 }}
-                  aria-label={t`More preview options`}
-                  leftSection={<Icon name="ellipsis" />}
-                />
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item
-                  leftSection={<Icon name="external" />}
-                  onClick={handleOpenInNewTab}
-                >
-                  {t`Open in new tab`}
-                </Menu.Item>
-                <Menu.Divider />
-                <Menu.Label>{t`Frame mode (proof of concept only)`}</Menu.Label>
-                {FRAME_MODES.map((mode) => (
-                  <Menu.Item
-                    key={mode}
-                    role="menuitemradio"
-                    aria-checked={frameMode === mode}
-                    rightSection={
-                      frameMode === mode ? <Icon name="check" /> : null
-                    }
-                    onClick={() => handleFrameModeChange(mode)}
-                  >
-                    {getFrameModeName(mode)}
-                  </Menu.Item>
-                ))}
-              </Menu.Dropdown>
-            </Menu>
+            <Tooltip label={t`Open in new tab`}>
+              <Button
+                size="sm"
+                style={{ flexShrink: 0 }}
+                aria-label={t`Open in new tab`}
+                leftSection={<Icon name="external" />}
+                disabled={preview == null}
+                onClick={handleOpenInNewTab}
+              />
+            </Tooltip>
           </PreviewBand>
           <AttributeBar
             key={`${principal.type}-${principal.id}`}
@@ -337,20 +273,11 @@ export function TroubleshootPage() {
                 key={frameKey}
                 title={frameTitle}
                 src={frameSrc ?? "about:blank"}
-                frameOrigin={
-                  "preview_origin" in preview
-                    ? preview.preview_origin
-                    : window.location.origin
-                }
-                sessionToken={
-                  "session_token" in preview ? preview.session_token : undefined
-                }
+                frameOrigin={window.location.origin}
+                sessionToken={preview.session_token}
                 onPathChange={setFramePath}
                 onRestart={handleContentFrameRestart}
-                onLoad={() => {
-                  signedInPreviewIdRef.current = preview.preview_id;
-                  setLoadedFrameKey(frameKey);
-                }}
+                onLoad={() => setLoadedFrameKey(frameKey)}
               />
             )}
           </Box>
@@ -371,19 +298,6 @@ export function TroubleshootPage() {
   );
 }
 
-function getFrameSrc(
-  preview: FramePreview,
-  path: string,
-  signedInPreviewId: string | null,
-) {
-  if (!("code" in preview)) {
-    return getContentPreviewUrl(path);
-  }
-  return signedInPreviewId === preview.preview_id
-    ? getPreviewHostContentUrl(preview.preview_origin, path)
-    : getPreviewHostSignInUrl(preview.preview_origin, path, preview.code);
-}
-
 function getTroubleshootUrl(principal: Principal | { type: PrincipalType }) {
   const base = `${getPermissionsBasePath()}/troubleshoot`;
   return "id" in principal
@@ -402,15 +316,6 @@ function getWhoName(
         preview.principal_name,
       )
     : "";
-}
-
-function getFrameModeName(mode: FrameMode) {
-  switch (mode) {
-    case "same-origin":
-      return t`Same origin`;
-    case "subdomain":
-      return t`Subdomain`;
-  }
 }
 
 /** The preview to start: the same object while the person and the picked values stay the same. */
@@ -434,18 +339,16 @@ function usePreviewRequest(
 }
 
 /**
- * Starts the preview with a session of the person's own (a token on this origin, or a code for the preview host's
- * cookie), and ends it when the person, values or mode change, the frame restarts, or the page closes.
+ * Starts the preview with a session token of the person's own, and ends it when the person or values change, the
+ * frame restarts, or the page closes.
  */
 function usePreviewSession(
   request: StartPreviewRequest | null,
-  frameMode: FrameMode,
   restartCount: number,
 ) {
   const [startPreviewSession] = useStartPreviewSessionMutation();
-  const [startPreviewCode] = useStartPreviewCodeMutation();
   const [endPreview] = useEndPreviewMutation();
-  const [preview, setPreview] = useState<FramePreview | null>(null);
+  const [preview, setPreview] = useState<PreviewSessionResponse | null>(null);
   const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
@@ -455,10 +358,8 @@ function usePreviewSession(
       return;
     }
     let isCurrent = true;
-    let started: FramePreview | null = null;
-    const start =
-      frameMode === "subdomain" ? startPreviewCode : startPreviewSession;
-    start(request)
+    let started: PreviewSessionResponse | null = null;
+    startPreviewSession(request)
       .unwrap()
       .then((response) => {
         started = response;
@@ -484,14 +385,7 @@ function usePreviewSession(
         endPreview({ request, preview: started });
       }
     };
-  }, [
-    request,
-    frameMode,
-    restartCount,
-    startPreviewSession,
-    startPreviewCode,
-    endPreview,
-  ]);
+  }, [request, restartCount, startPreviewSession, endPreview]);
 
   return { preview, error };
 }

@@ -6,10 +6,6 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { Label } from "metabase/common/components/type/Label";
 import CS from "metabase/css/core/index.css";
-import {
-  type OutlinedGridCell,
-  PLUGIN_PERMISSION_PREVIEW,
-} from "metabase/plugins";
 import { Box, Ellipsified, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { DataPermissionValue } from "metabase-types/api";
 
@@ -225,7 +221,6 @@ const EntityRow = memo(function EntityRow({
   onAction,
 }: EntityRowProps) {
   const isEmbeddingHub = isEmbeddingHubPermissions();
-  const outlinedCell = PLUGIN_PERMISSION_PREVIEW.useOutlinedGridCell();
   const entityName = (
     <span className={cx(CS.flex, CS.alignCenter)}>
       <Ellipsified>{entity.name}</Ellipsified>
@@ -270,16 +265,7 @@ const EntityRow = memo(function EntityRow({
 
       {entity.permissions?.map((permission, index) => {
         return (
-          <td
-            key={permission.type ?? String(index)}
-            className={cx(S.cell, {
-              [S.outlinedCell]: isOutlinedCell(
-                outlinedCell,
-                entity,
-                permission,
-              ),
-            })}
-          >
+          <td key={permission.type ?? String(index)} className={S.cell}>
             <PermissionsSelect
               {...permission}
               onChange={(value, toggleState) =>
@@ -293,16 +279,3 @@ const EntityRow = memo(function EntityRow({
     </tr>
   );
 });
-
-function isOutlinedCell(
-  cell: OutlinedGridCell | null,
-  entity: PermissionEditorEntity,
-  permission: PermissionSectionConfig,
-) {
-  return (
-    cell != null &&
-    cell.permission === permission.permission &&
-    cell.entityId.databaseId === entity.entityId?.databaseId &&
-    cell.entityId.tableId === entity.entityId?.tableId
-  );
-}

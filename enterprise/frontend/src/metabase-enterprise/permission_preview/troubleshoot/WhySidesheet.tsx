@@ -1,18 +1,16 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
-import type { PermissionSectionConfig } from "metabase/permissions";
+import { SidesheetCard } from "metabase/common/components/Sidesheet";
 import { Badge, Box, Flex, Icon, Stack, Text } from "metabase/ui";
 
 import type { PreviewCell, PreviewSecurity } from "../api";
-import { AttributeTag } from "../troubleshoot/AttributeBar";
 
+import { AttributeTag } from "./AttributeBar";
 import {
   type PreviewColumn,
   getPreviewColumnName,
   getPreviewOption,
-  getPreviewSection,
 } from "./preview-options";
 
 /** The value a "why" sidesheet explains. */
@@ -25,105 +23,6 @@ export type WhyTarget = {
   cell: PreviewCell;
   security: PreviewSecurity | null;
 };
-
-type WhySidesheetProps = {
-  target: WhyTarget | null;
-  onClose: () => void;
-};
-
-/** Why a previewed value is what it is: the result, any row and column security, and each group's own value. */
-export function WhySidesheet({ target, onClose }: WhySidesheetProps) {
-  return (
-    <Sidesheet
-      title={target?.title}
-      isOpen={target != null}
-      onClose={onClose}
-      withOverlay={false}
-      isModal={false}
-    >
-      {target && <WhyContent target={target} />}
-    </Sidesheet>
-  );
-}
-
-/**
- * A grid cell whose hover shows a two-line summary of its "why", and whose click opens the full sidesheet; it shows
- * as selected while the sheet explains it (`explained`, matched by title and who, since the grid rebuilds its targets).
- */
-export function getWhySection(
-  target: WhyTarget,
-  onWhy: (target: WhyTarget) => void,
-  explained: WhyTarget | null,
-): PermissionSectionConfig {
-  return {
-    ...getPreviewSection(target.column, target.cell.value, () => onWhy(target)),
-    valueTooltip: <WhySummary target={target} />,
-    isValueSelected:
-      explained?.title === target.title && explained.who === target.who,
-  };
-}
-
-function WhySummary({ target }: { target: WhyTarget }) {
-  const { column, cell, security } = target;
-  const label = getPreviewOption(column, cell.value).label;
-  const source = cell.groups.find(({ group_id }) => group_id === cell.group_id);
-  const detail = getSummaryDetail(column, cell);
-  const hasSecurity = column === "view_data" && security != null;
-
-  return (
-    <Box maw="18rem">
-      <Text c="inherit" fz="sm">
-        <strong>{label}</strong>
-        {source != null ? ` · ${getSetByText(source.name)}` : null}
-      </Text>
-      {hasSecurity ? (
-        <SecuritySummary security={security} />
-      ) : (
-        detail && (
-          <Text c="inherit" fz="sm" opacity={0.75}>
-            {detail}
-          </Text>
-        )
-      )}
-      <Text c="inherit" fz="xs" opacity={0.6} mt="xs">
-        {t`Click to see why`}
-      </Text>
-    </Box>
-  );
-}
-
-/** The summary's second line without row and column security: what the other groups give, else the note. */
-function getSummaryDetail(
-  column: PreviewColumn,
-  cell: PreviewCell,
-): string | null {
-  const otherGroups = cell.groups
-    .filter(({ group_id }) => group_id !== cell.group_id)
-    .map(
-      ({ name, value }) => `${name}: ${getPreviewOption(column, value).label}`,
-    );
-  return otherGroups.length > 0 ? otherGroups.join(" · ") : cell.note;
-}
-
-/** "Rows filtered by" and the same attribute chips as the panel and the sheet, "state TX → People.State". */
-function SecuritySummary({ security }: { security: PreviewSecurity }) {
-  return (
-    <Stack gap={4} mt={4}>
-      <Text c="inherit" fz="sm" opacity={0.75}>
-        {security.kind === "impersonation"
-          ? t`Database role`
-          : t`Rows filtered by`}
-      </Text>
-      <Text component="div" c="inherit" fz="sm">
-        <SecurityRows security={security} />
-      </Text>
-    </Stack>
-  );
-}
-
-function getSetByText(groupName: string) {
-  return t`Set by ${groupName}`;
-}
 
 export function WhyContent({ target }: { target: WhyTarget }) {
   const { column, cell, security } = target;

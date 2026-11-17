@@ -186,9 +186,7 @@ export { PLUGIN_AI_CONTROLS, type AiControlsPlugin } from "./oss/ai-controls";
 export { PLUGIN_SUPPORT } from "./oss/support";
 export { PLUGIN_TENANTS } from "./oss/tenants";
 export {
-  type OutlinedGridCell,
   PLUGIN_PERMISSION_PREVIEW,
-  type TableUsersPreviewProps,
   type ViewAsButtonProps,
 } from "./oss/permission-preview";
 export { definePluginSlot } from "./slot";

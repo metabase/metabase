@@ -16,13 +16,13 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { StandInHint } from "./GroupPreviewInfo";
 import type { Principal, PrincipalType } from "./api";
-import { isPrincipalType } from "./preview/urls";
 import {
   type PrincipalRow,
   type PrincipalSection,
   matchesPrincipalSearch,
   usePreviewPrincipalSections,
 } from "./principal-sections";
+import { isPrincipalType } from "./urls";
 
 type PrincipalListProps = {
   principal: Principal;

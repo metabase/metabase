@@ -8,7 +8,6 @@ import { PermissionsToolbarButtons } from "./PermissionsToolbarButtons";
 import { PreviewBanner } from "./PreviewBanner";
 import { ReadOnlyToast, isReadOnlyRefusal } from "./ReadOnlyToast";
 import { ViewAsButton } from "./ViewAsButton";
-import { useOutlinedGridCell } from "./grid-outline";
 import {
   getActivePreviewUserId,
   getPreviewAsHeaderHandler,
@@ -16,8 +15,7 @@ import {
   readPreviewState,
   restartStoredPreview,
 } from "./preview-state";
-import { TableUsersPreview } from "./preview/TableUsersPreview";
-import { getDataRoutes, getTabRoutes } from "./preview/routes";
+import { getTabRoutes } from "./troubleshoot/routes";
 
 /**
  * The Permissions Preview views and view-as, on the same `advanced_permissions` feature the backend gates them on.
@@ -61,12 +59,8 @@ export function initializePlugin() {
   PLUGIN_PERMISSION_PREVIEW.tabs = [
     { name: t`Troubleshoot`, value: "troubleshoot" },
   ];
-  PLUGIN_PERMISSION_PREVIEW.isEnabled = true;
-  PLUGIN_PERMISSION_PREVIEW.getDataRoutes = getDataRoutes;
   PLUGIN_PERMISSION_PREVIEW.getTabRoutes = getTabRoutes;
-  PLUGIN_PERMISSION_PREVIEW.TableUsersPreview = TableUsersPreview;
   PLUGIN_PERMISSION_PREVIEW.PermissionsToolbarButtons =
     PermissionsToolbarButtons;
   PLUGIN_PERMISSION_PREVIEW.ViewAsButton = ViewAsButton;
-  PLUGIN_PERMISSION_PREVIEW.useOutlinedGridCell = useOutlinedGridCell;
 }

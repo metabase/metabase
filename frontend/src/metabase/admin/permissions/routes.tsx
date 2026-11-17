@@ -83,8 +83,6 @@ const getRoutes = () => (
           {PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES}
         </Route>
       ))}
-
-      {PLUGIN_PERMISSION_PREVIEW.getDataRoutes()}
     </Route>
 
     <Route path="collections" lazy={collectionPermissions}>

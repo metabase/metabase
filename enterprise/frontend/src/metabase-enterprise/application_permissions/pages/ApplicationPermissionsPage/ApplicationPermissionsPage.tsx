@@ -3,15 +3,8 @@ import { useCallback, useEffect } from "react";
 
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
-import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
-import {
-  ApplicationPermissionsHelp,
-  type EntityView,
-  EntityViewSwitch,
-} from "metabase/permissions";
+import { ApplicationPermissionsHelp } from "metabase/permissions";
 import { connect } from "metabase/redux";
-import { useNavigate } from "metabase/router";
-import { Box } from "metabase/ui";
 import {
   initializeApplicationPermissions,
   saveApplicationPermissions,
@@ -84,30 +77,11 @@ const ApplicationPermissionsPage = ({
         <PermissionsEditor
           {...permissionEditor}
           onChange={handlePermissionChange}
-          preHeaderContent={ApplicationViewSwitch}
         />
       )}
     </PermissionsPageLayout>
   );
 };
-
-const APPLICATION_VIEWS: EntityView[] = ["group"];
-
-function ApplicationViewSwitch() {
-  const navigate = useNavigate();
-  return (
-    <Box w="12rem">
-      <EntityViewSwitch
-        value="group"
-        views={APPLICATION_VIEWS}
-        onChange={(view) =>
-          view === "preview" &&
-          navigate(`${getPermissionsBasePath()}/application/preview`)
-        }
-      />
-    </Box>
-  );
-}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(

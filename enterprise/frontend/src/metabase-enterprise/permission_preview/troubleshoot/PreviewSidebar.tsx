@@ -2,24 +2,20 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { type EntityView, PermissionsSidebar } from "metabase/permissions";
+import { PermissionsSidebar } from "metabase/permissions";
 import { SegmentedControl, Stack, Text, Tooltip } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { StandInHint } from "../GroupPreviewInfo";
 import type { Principal, PrincipalType } from "../api";
 import { type PrincipalRow, usePrincipalSections } from "../principal-sections";
-
-import { isPrincipalType } from "./urls";
+import { isPrincipalType } from "../urls";
 
 type PreviewSidebarProps = {
   /** The tab's own sidebar title, kept above the switch so it doesn't move when switching to Preview. */
   title?: string;
   principalType: PrincipalType;
   principal: Principal | null;
-  /** The tab's other views, for the switch back out of Preview; none on a page of its own. */
-  entityViews?: EntityView[];
-  onEntityChange?: (view: EntityView) => void;
   /** Why Tenant can't be picked on this tab, shown on hovering it; Tenant is enabled when unset. */
   tenantDisabledReason?: string;
   onPrincipalTypeChange: (type: PrincipalType) => void;
@@ -31,8 +27,6 @@ export function PreviewSidebar({
   title,
   principalType,
   principal,
-  entityViews,
-  onEntityChange,
   tenantDisabledReason,
   onPrincipalTypeChange,
   onPrincipalChange,
@@ -66,9 +60,6 @@ export function PreviewSidebar({
       filterPlaceholder={getPlaceholder(principalType)}
       emptyState={{ text: t`No results found`, icon: "search" }}
       selectedId={principal?.type === principalType ? principal.id : undefined}
-      entityViewFocus={onEntityChange ? "preview" : undefined}
-      entityViews={entityViews}
-      onEntityChange={onEntityChange}
       headerContent={
         <Stack gap="sm" mt="md" ref={typeSwitchRef}>
           <SegmentedControl

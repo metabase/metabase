@@ -48,15 +48,6 @@
   }
 }
 
-/* Only during a permissions preview: the cell its "Show in grid" opened the grid at, outlined like a value whose
-   Why sheet is open (`PermissionsSelect.module.css`); on the value, since a collapsed table's cell can't be rounded */
-.outlinedCell > * {
-  margin: calc(-1 * var(--mantine-spacing-xs));
-  padding: var(--mantine-spacing-xs);
-  border-radius: var(--mantine-radius-sm);
-  outline: 2px solid var(--mb-color-core-brand);
-}
-
 .row {
   border-bottom: 1px solid var(--mb-color-border-neutral-subtle);
 }

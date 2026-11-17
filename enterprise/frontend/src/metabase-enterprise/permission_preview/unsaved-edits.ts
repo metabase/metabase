@@ -23,7 +23,7 @@ import {
   type PreviewColumn,
   getGraphValueLabel,
   getPreviewColumnName,
-} from "./preview/preview-options";
+} from "./troubleshoot/preview-options";
 
 export type UnsavedEditsState = {
   edits: UnsavedEdit[];

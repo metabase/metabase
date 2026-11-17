@@ -3,13 +3,8 @@ import { t } from "ttag";
 import {
   COLLECTION_OPTIONS,
   type PermissionOption,
-  type PermissionSectionConfig,
 } from "metabase/permissions";
-import {
-  DataPermission,
-  DataPermissionType,
-  DataPermissionValue,
-} from "metabase-types/api";
+import { DataPermissionValue } from "metabase-types/api";
 
 /** What a preview value means: a column of the preview grids, and the values the backend returns for it. */
 export type PreviewColumn =
@@ -175,62 +170,6 @@ export function getGraphValueLabel(
     default:
       return NO_OPTION.label;
   }
-}
-
-// The grid keys a row's cells by `type`, so each column needs its own.
-const PERMISSION_BY_COLUMN: Record<
-  PreviewColumn,
-  Pick<PermissionSectionConfig, "permission" | "type">
-> = {
-  view_data: {
-    permission: DataPermission.VIEW_DATA,
-    type: DataPermissionType.ACCESS,
-  },
-  create_queries: {
-    permission: DataPermission.CREATE_QUERIES,
-    type: DataPermissionType.NATIVE,
-  },
-  download_results: {
-    permission: DataPermission.DOWNLOAD,
-    type: DataPermissionType.DOWNLOAD,
-  },
-  manage_table_metadata: {
-    permission: DataPermission.DATA_MODEL,
-    type: DataPermissionType.DATA_MODEL,
-  },
-  manage_database: {
-    permission: DataPermission.DETAILS,
-    type: DataPermissionType.DETAILS,
-  },
-  transforms: {
-    permission: DataPermission.TRANSFORMS,
-    type: DataPermissionType.TRANSFORMS,
-  },
-  collection: {
-    permission: DataPermission.COLLECTIONS,
-    type: DataPermissionType.ACCESS,
-  },
-  application: {
-    permission: DataPermission.DETAILS,
-    type: DataPermissionType.ACCESS,
-  },
-};
-
-/** A read-only grid cell: clicking the value calls `onValueClick` instead of opening the options. */
-export function getPreviewSection(
-  column: PreviewColumn,
-  value: string | null,
-  onValueClick: () => void,
-): PermissionSectionConfig {
-  const option = getPreviewOption(column, value);
-  return {
-    ...PERMISSION_BY_COLUMN[column],
-    value: option.value,
-    options: [option],
-    isDisabled: false,
-    disabledTooltip: null,
-    onValueClick,
-  };
 }
 
 export function getPreviewColumnName(column: PreviewColumn): string {

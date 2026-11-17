@@ -4,12 +4,13 @@ import { SidesheetCard } from "metabase/common/components/Sidesheet";
 import { Badge, Flex, Icon, Stack, Text } from "metabase/ui";
 
 import { formatList } from "../format-list";
+
 import {
   type WhyTarget,
   getSourceGroupName,
   getWhyValueLabel,
-} from "../preview/WhySidesheet";
-import { getPreviewOption } from "../preview/preview-options";
+} from "./WhySidesheet";
+import { getPreviewOption } from "./preview-options";
 
 /**
  * Why the person can or can't explore an item: one sentence per Create queries value, each table's value, and each

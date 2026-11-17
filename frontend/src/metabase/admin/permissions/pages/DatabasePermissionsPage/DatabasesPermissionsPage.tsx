@@ -24,19 +24,11 @@ import {
   parseDataRouteParams,
   updateDataPermission,
 } from "metabase/permissions";
-import {
-  PLUGIN_ADVANCED_PERMISSIONS,
-  PLUGIN_PERMISSION_PREVIEW,
-} from "metabase/plugins";
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import {
-  Outlet,
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from "metabase/router";
+import { Outlet, useNavigate, useParams } from "metabase/router";
 import { getSetting } from "metabase/settings";
-import { Box, Center, Loader, SegmentedControl } from "metabase/ui";
+import { Center, Loader } from "metabase/ui";
 import type { DataPermissionValue } from "metabase-types/api";
 
 import {
@@ -131,30 +123,6 @@ export function DatabasesPermissionsPage() {
     }
   };
 
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { TableUsersPreview } = PLUGIN_PERMISSION_PREVIEW;
-  const tableId = dataRouteParams.tableId;
-  const canPreviewTable = tableId != null && TableUsersPreview != null;
-  const isTablePreview =
-    canPreviewTable && searchParams.get("view") === "preview";
-  const TableRowsSwitch = () =>
-    canPreviewTable ? (
-      <Box w="14rem" mb="md">
-        <SegmentedControl
-          fullWidth
-          aria-label={t`Rows to show`}
-          data={[
-            { value: "groups", label: t`Groups` },
-            { value: "preview", label: t`Preview` },
-          ]}
-          value={isTablePreview ? "preview" : "groups"}
-          onChange={(value) =>
-            setSearchParams(value === "preview" ? { view: "preview" } : {})
-          }
-        />
-      </Box>
-    ) : null;
-
   const showLegacyNoSelfServiceWarning =
     PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
     !!permissionEditor?.hasLegacyNoSelfServiceValueInPermissionGraph;
@@ -181,14 +149,7 @@ export function DatabasesPermissionsPage() {
         />
       )}
 
-      {isTablePreview && (
-        <TableUsersPreview
-          tableId={tableId}
-          preHeaderContent={TableRowsSwitch}
-        />
-      )}
-
-      {permissionEditor && !isLoading && !isTablePreview && (
+      {permissionEditor && !isLoading && (
         <PermissionsEditor
           {...permissionEditor}
           onBreadcrumbsItemSelect={handleBreadcrumbsItemSelect}
@@ -197,7 +158,6 @@ export function DatabasesPermissionsPage() {
           preHeaderContent={() => (
             <>
               {showSplitPermsMessage && <PermissionsEditorSplitPermsMessage />}
-              <TableRowsSwitch />
             </>
           )}
           postHeaderContent={() => (
