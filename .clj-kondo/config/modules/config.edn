@@ -2675,13 +2675,11 @@
    :module-exports #{segments.rest
                      segments.schema}
    :api  #{metabase.segments.init}
-   :uses #{api
-           collections
+   :uses #{collections
            lib
            lib.be
            lib.schema
            models
-           permissions
            premium-features
            remote-sync
            search
@@ -2696,7 +2694,6 @@
    :api  #{metabase.segments.rest.api}
    :uses #{api
            events
-           lib
            lib.be
            models
            segments

@@ -2350,3 +2350,26 @@
                       (t2/exists? :collection :location [:like (str location "%")]))
           (t2/query {:delete-from :permissions :where [:= :collection_id resource_collection_id]})
           (t2/query {:delete-from :collection :where [:= :id resource_collection_id]}))))))
+
+(defn- segment-definition-fragment
+  "The decoded `definition` of a segment when it is a bare MBQL 4 fragment, such as `{\"filter\" [...]}`, and nil when
+  it is empty or a full query already."
+  [definition]
+  (let [parsed (try (json/decode definition) (catch Exception _ nil))]
+    (when (and (map? parsed)
+               (seq parsed)
+               (not-any? #(contains? parsed %) ["lib/type" "type" "database"]))
+      parsed)))
+
+(define-migration UpgradeSegmentDefinitionFragments
+  (run! (fn [{:keys [id definition table_id db_id]}]
+          (when-let [fragment (segment-definition-fragment definition)]
+            (t2/query {:update :segment
+                       :set    {:definition (json/encode {"database" db_id
+                                                          "type"     "query"
+                                                          "query"    (merge {"source-table" table_id}
+                                                                            (dissoc fragment "aggregation"))})}
+                       :where  [:= :id id]})))
+        (t2/reducible-query {:select [:segment.id :segment.definition :segment.table_id :metabase_table.db_id]
+                             :from   [:segment]
+                             :join   [:metabase_table [:= :metabase_table.id :segment.table_id]]})))
