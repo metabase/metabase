@@ -577,12 +577,10 @@
 (deftest comment-events-test
   (mt/when-ee-evailable
    (mt/with-current-user (mt/user->id :rasta)
-     (mt/with-temp [:model/Document {doc-id :id}     {}
-                    :model/Comment  comment {:target_id doc-id
-                                             :content   {:type "doc", :content []}}]
+     (mt/with-temp [:model/Document {doc-id :id} {}
+                    :model/Comment  comment      {:target_id doc-id
+                                                  :content   {:type "doc", :content []}}]
        (testing :event/comment-create
-         (is (= {:object comment}
-                (events/publish-event! :event/comment-create {:object comment})))
          (is (= {:model_id (:id comment)
                  :user_id (mt/user->id :rasta)
                  :details {:target_id doc-id
@@ -593,20 +591,15 @@
                  :model "Comment"}
                 (mt/latest-audit-log-entry :comment-create (:id comment)))))
        (testing :event/comment-update
-         (let [updated-comment (assoc comment :content "Updated comment")]
-           (is (= {:object updated-comment
-                   :previous-object comment}
-                  (events/publish-event! :event/comment-update {:object updated-comment
-                                                                :previous-object comment})))
-           (is (=? {:model_id (:id comment)
-                    :user_id (mt/user->id :rasta)
-                    :details {}
-                    :topic :comment-update
-                    :model "Comment"}
-                   (mt/latest-audit-log-entry :comment-update (:id comment))))))
+         (t2/update! :model/Comment (:id comment) {:content {:type "doc", :content [{:type "paragraph"}]}})
+         (is (=? {:model_id (:id comment)
+                  :user_id (mt/user->id :rasta)
+                  :details {}
+                  :topic :comment-update
+                  :model "Comment"}
+                 (mt/latest-audit-log-entry :comment-update (:id comment)))))
        (testing :event/comment-delete
-         (is (= {:object comment}
-                (events/publish-event! :event/comment-delete {:object comment})))
+         (t2/delete! :model/Comment (:id comment))
          (is (= {:model_id (:id comment)
                  :user_id (mt/user->id :rasta)
                  :details {:target_type "document"
@@ -662,8 +655,6 @@
   (mt/with-current-user (mt/user->id :rasta)
     (mt/with-temp [:model/Glossary glossary {:term "Test Term" :definition "Definition"}]
       (testing :event/glossary-create
-        (is (= {:object glossary}
-               (events/publish-event! :event/glossary-create {:object glossary})))
         (is (= {:model_id (:id glossary)
                 :user_id (mt/user->id :rasta)
                 :details {:term "Test Term"}
@@ -671,24 +662,19 @@
                 :model "Glossary"}
                (mt/latest-audit-log-entry :glossary-create (:id glossary)))))
       (testing :event/glossary-update
-        (let [updated-glossary (assoc glossary :term "Updated Term")]
-          (is (= {:object updated-glossary
-                  :previous-object glossary}
-                 (events/publish-event! :event/glossary-update {:object updated-glossary
-                                                                :previous-object glossary})))
-          (is (= {:model_id (:id glossary)
-                  :user_id (mt/user->id :rasta)
-                  :details {:previous {:term "Test Term"}
-                            :new {:term "Updated Term"}}
-                  :topic :glossary-update
-                  :model "Glossary"}
-                 (mt/latest-audit-log-entry :glossary-update (:id glossary))))))
-      (testing :event/glossary-delete
-        (is (= {:object glossary}
-               (events/publish-event! :event/glossary-delete {:object glossary})))
+        (t2/update! :model/Glossary (:id glossary) {:term "Updated Term"})
         (is (= {:model_id (:id glossary)
                 :user_id (mt/user->id :rasta)
-                :details {:term "Test Term"}
+                :details {:previous {:term "Test Term"}
+                          :new {:term "Updated Term"}}
+                :topic :glossary-update
+                :model "Glossary"}
+               (mt/latest-audit-log-entry :glossary-update (:id glossary)))))
+      (testing :event/glossary-delete
+        (t2/delete! :model/Glossary (:id glossary))
+        (is (= {:model_id (:id glossary)
+                :user_id (mt/user->id :rasta)
+                :details {:term "Updated Term"}
                 :topic :glossary-delete
                 :model "Glossary"}
                (mt/latest-audit-log-entry :glossary-delete (:id glossary))))))))

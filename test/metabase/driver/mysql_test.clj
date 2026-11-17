@@ -47,6 +47,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2])
   (:import
    (java.io File)
@@ -127,7 +128,8 @@
                       ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
                       ;;    tests.
                       (binding [sync-util/*log-exceptions-and-continue?* false]
-                        (mt/with-test-user :rasta (thunk)))))
+                        (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [_task] nil)]
+                          (mt/with-test-user :rasta (thunk))))))
 
 (deftest ^:parallel inline-value-string-test
   (testing "inlined strings use a representation that is independent of the session's backslash-escaping mode"

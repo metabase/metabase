@@ -313,18 +313,24 @@
   [api-key]
   (some-> api-key (t2/hydrate :user :group :updated_by)))
 
+(defn- api-key-event-with-groups
+  "The lifecycle `event` of an ApiKey with the Permissions Group each side had, the previous one as the writer saw it
+  before the write, since the write moves the key's User out of it."
+  [{:keys [context] :as event}]
+  (let [previous-group (get-in context [:details :previous-group])]
+    (cond-> (-> event
+                (update :context dissoc :details)
+                (m/update-existing :object hydrate-api-key)
+                (m/update-existing :previous-object hydrate-api-key))
+      (and previous-group (:previous-object event)) (assoc-in [:previous-object :group] previous-group))))
+
 (methodical/defmethod events/publish-event! ::api-key-event
   [topic event]
-  (if (and (= :event/api-key-update topic) (u.events/changed? event :key_prefix))
-    (record-lifecycle! :event/api-key-regenerate
-                       (-> event
-                           (m/update-existing :object hydrate-api-key)
-                           (m/update-existing :previous-object hydrate-api-key))
-                       true)
-    (record-lifecycle! topic
-                       (-> event
-                           (m/update-existing :object hydrate-api-key)
-                           (m/update-existing :previous-object hydrate-api-key))
+  (let [event (api-key-event-with-groups event)]
+    (record-lifecycle! (if (and (= :event/api-key-update topic) (u.events/changed? event :key_prefix))
+                         :event/api-key-regenerate
+                         topic)
+                       event
                        true)))
 
 (events/derive! ::upload-event ::event)
