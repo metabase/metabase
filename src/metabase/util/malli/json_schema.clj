@@ -63,8 +63,10 @@
    :maxContains           #{:contains}
    :minContains           #{:contains}
    :then                  #{:if}
-   :unevaluatedItems      #{:contains :items :prefixItems}
-   :unevaluatedProperties #{:additionalProperties :patternProperties :properties}})
+   ;; the `unevaluated` keywords see what every applicator beside them evaluated
+   :unevaluatedItems      #{:$ref :allOf :anyOf :contains :else :if :items :oneOf :prefixItems :then}
+   :unevaluatedProperties #{:$ref :additionalProperties :allOf :anyOf :dependentSchemas :else :if :oneOf
+                            :patternProperties :properties :then}})
 
 (defn- reads-neighbor?
   "Whether a keyword of the JSON Schema `a` depends on a keyword of `b`, so that merging the two changes its meaning."
@@ -75,26 +77,23 @@
                   (mp/some #(contains? b %) (neighbor-keys k))))
            a))
 
-(defn- clashes?
-  "Whether merging the one branch left of the branching node `schema` under `k` into the node would change what it
-  accepts: the branch has a constraining key the node also has, with a different value, or a keyword on one side
+(defn merges-cleanly?
+  "Whether merging the JSON Schema `branch` into the JSON Schema `node` accepts what both accepted together.
+  False when the branch has a constraining key the node also has, with a different value, or when a keyword on one side
   depends on a keyword on the other."
-  [schema k]
-  (let [branch   (first (k schema))
-        siblings (dissoc schema k)]
-    ;; an equal value, such as `type: object` on both, merges without losing anything
-    (and (map? branch)
-         (boolean
-          (or (mp/some #(and (contains? siblings %)
-                             (not (annotation-keys %))
-                             (not= (get siblings %) (get branch %)))
-                       (keys branch))
-              (reads-neighbor? branch siblings)
-              (reads-neighbor? siblings branch))))))
+  [node branch]
+  ;; an equal value, such as `type: object` on both, merges without losing anything
+  (and (map? branch)
+       (not (mp/some #(and (contains? node %)
+                           (not (annotation-keys %))
+                           (not= (get node %) (get branch %)))
+                     (keys branch)))
+       (not (reads-neighbor? branch node))
+       (not (reads-neighbor? node branch))))
 
 (defn- collapse-branches
   "Drop the conjuncts that accept anything and the alternatives that accept nothing, and unwrap a branching node that
-  has one branch left, unless merging it would change what the node accepts (see [[clashes?]])."
+  has one branch left, if it [[merges-cleanly?]]."
   [schema k]
   (let [schema (cond-> schema
                  (= k :allOf)
@@ -109,7 +108,7 @@
       (and (seq (k schema)) (mp/every? empty-schema? (k schema)))
       (dissoc schema k)
 
-      (and (= 1 (count (k schema))) (not (clashes? schema k)))
+      (and (= 1 (count (k schema))) (merges-cleanly? (dissoc schema k) (first (k schema))))
       (unwrap-branch schema k)
 
       (empty? (k schema))

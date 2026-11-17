@@ -66,7 +66,12 @@
             [:any {:json-schema {:properties {:a {}}, :allOf [{:additionalProperties false}]}}])))
     (is (= {:additionalProperties false, :allOf [{:properties {"a" {}}}]}
            (mu.json-schema/transform
-            [:any {:json-schema {:additionalProperties false, :allOf [{:properties {:a {}}}]}}]))))
+            [:any {:json-schema {:additionalProperties false, :allOf [{:properties {:a {}}}]}}])))
+    ;; `unevaluatedProperties` would start seeing what the node's `anyOf` evaluated
+    (is (= {:anyOf [{:required ["a"]} {:required ["b"]}], :allOf [{:unevaluatedProperties false}]}
+           (mu.json-schema/transform
+            [:any {:json-schema {:anyOf [{:required ["a"]} {:required ["b"]}]
+                                 :allOf [{:unevaluatedProperties false}]}}]))))
   (testing "one branch left whose neighbor-reading keyword accepts anything merges, as nothing it reads changes"
     (is (= {:properties {"a" {}}, :additionalProperties {}}
            (mu.json-schema/transform

@@ -41,6 +41,17 @@
              (#'defendpoint.open-api/normalize-raw-json-schema
               (mjs/transform (ms/maps-with-unique-key [:sequential [:map [:id :int]]] :id))))))))
 
+(deftest ^:parallel fix-json-schema-all-of-test
+  (testing "one conjunct left merges into the schema"
+    (is (= {:type :string, :minLength 1}
+           (#'defendpoint.open-api/fix-json-schema {:type :string, :allOf [{:minLength 1}]}))))
+  (testing "one conjunct left whose `anyOf` would overwrite the schema's stays, as both must hold"
+    (is (= {:anyOf [{:type :string} {:type :integer}]
+            :allOf [{:anyOf [{:minLength 1} {:maxLength 0}]}]}
+           (#'defendpoint.open-api/fix-json-schema
+            {:anyOf [{:type :string} {:type :integer}]
+             :allOf [{:anyOf [{:minLength 1} {:maxLength 0}]}]})))))
+
 (deftest ^:parallel default-params-are-optional-test
   (testing "a param carrying a :default is advertised as optional, since omitting it is safe"
     (binding [defendpoint.open-api/*definitions* (atom (sorted-map))]
