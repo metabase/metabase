@@ -95,7 +95,7 @@
     ;; convert MBQL 5 to legacy
     ;;
     ;; legacy usage -- don't do things like this going forward
-    #_{:clj-kondo/ignore [:discouraged-var]}
+    #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
     (recur (lib/->legacy-MBQL query) parent-source-card-id in-sandbox?)
     ;; already legacy MBQL
     (apply merge-with merge-source-ids
@@ -358,7 +358,7 @@
     (-> query
         lib/normalize
         ;; allowing for now until we convert this namespace to be MBQL-5-only
-        #_{:clj-kondo/ignore [:discouraged-var]}
+        #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
         lib/->legacy-MBQL
         (as-> $query (legacy-mbql-required-perms mp $query perms-opts)))))
 

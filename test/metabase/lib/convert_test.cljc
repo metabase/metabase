@@ -140,6 +140,8 @@
                                            :type         :dimension
                                            :widget-type  :string/=}}}
           :type     :native}
+         ;; existing usage -- do not use going forward
+         #_{:clj-kondo/ignore [:deprecated-var]}
          (lib.convert/->legacy-MBQL
           {:database 76
            :stages   [{:native   "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
@@ -198,7 +200,8 @@
                                                     :source-table (meta/id :checkins)}]}]}]}
             (lib.convert/->mbql5 original)))
     (is (= original
-           (-> original lib.convert/->mbql5 lib.convert/->legacy-MBQL)))))
+           ;; existing usage -- do not use going forward
+           (-> original lib.convert/->mbql5 #_{:clj-kondo/ignore [:deprecated-var]} lib.convert/->legacy-MBQL)))))
 
 (deftest ^:parallel ->mbql5-join-fields-test
   (testing "#29898"
@@ -247,6 +250,8 @@
                      :aggregation  [[:sum [:field 1 nil]]]
                      :breakout     [[:aggregation 0 {:display-name "Revenue"}]]}}
             (let [ag-uuid (str (random-uuid))]
+              ;; existing usage -- do not use going forward
+              #_{:clj-kondo/ignore [:deprecated-var]}
               (lib.convert/->legacy-MBQL
                {:lib/type :mbql/query
                 :stages   [{:lib/type     :mbql.stage/mbql
@@ -270,8 +275,12 @@
                   (lib.convert/->mbql5 [tag [:field 12 nil] "ABC" {:case-sensitive false}]))))
         (testing "->legacy-MBQL"
           (is (=? [tag [:field 12 nil] "ABC"]
+                  ;; existing usage -- do not use going forward
+                  #_{:clj-kondo/ignore [:deprecated-var]}
                   (lib.convert/->legacy-MBQL [tag {} [:field {} 12] "ABC"])))
           (is (=? [tag [:field 12 nil] "ABC" {:case-sensitive false}]
+                  ;; existing usage -- do not use going forward
+                  #_{:clj-kondo/ignore [:deprecated-var]}
                   (lib.convert/->legacy-MBQL
                    (lib.options/ensure-uuid [tag {:case-sensitive false} [:field {} 12] "ABC"]))))))
       (testing "with multiple arguments (MBQL 5 style)"
@@ -284,8 +293,12 @@
                                         [:field 12 nil] "ABC" "HJK" "XYZ"]))))
         (testing "->legacy-MBQL"
           (is (=? [tag {} [:field 12 nil] "ABC" "HJK" "XYZ"]
+                  ;; existing usage -- do not use going forward
+                  #_{:clj-kondo/ignore [:deprecated-var]}
                   (lib.convert/->legacy-MBQL [tag {} [:field {} 12] "ABC" "HJK" "XYZ"])))
           (is (=? [tag {:case-sensitive false} [:field 12 nil] "ABC" "HJK" "XYZ"]
+                  ;; existing usage -- do not use going forward
+                  #_{:clj-kondo/ignore [:deprecated-var]}
                   (lib.convert/->legacy-MBQL
                    (lib.options/ensure-uuid [tag {:case-sensitive false} [:field {} 12] "ABC" "HJK" "XYZ"])))))))))
 
@@ -299,6 +312,8 @@
                          :source-card 100}]}
             (lib.convert/->mbql5 original)))
     (is (= original
+           ;; existing usage -- do not use going forward
+           #_{:clj-kondo/ignore [:deprecated-var]}
            (lib.convert/->legacy-MBQL (lib.convert/->mbql5 original))))))
 
 (defn- test-round-trip [x]
@@ -306,6 +321,8 @@
     (let [converted (lib.convert/->mbql5 x)]
       (testing (str "\nMBQL 5 =\n" (u/pprint-to-str converted))
         (is (= x
+               ;; existing usage -- do not use going forward
+               #_{:clj-kondo/ignore [:deprecated-var]}
                (lib.convert/->legacy-MBQL converted)))))))
 
 (deftest ^:parallel round-trip-test
@@ -539,7 +556,8 @@
                    (lib/filter (lib/between 5 1 10))
                    (lib/aggregate (lib/count-where (lib/= 2 2)))
                    (lib/aggregate (lib/sum 3)))
-        legacy (lib.convert/->legacy-MBQL query)]
+        ;; existing usage -- do not use going forward
+        legacy #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL query)]
     (testing "raw integer literals in comparisons and aggregation arguments stay literals in legacy MBQL"
       (is (=? {:filter      [:and [:= 1 1] [:< 4 5] [:between 5 1 10]]
                :aggregation [[:count-where [:= 2 2]]
@@ -802,11 +820,14 @@
                                       :case-sensitive false}
                    [:field {:lib/uuid "5d01e669-783f-40e0-9ae0-2b8098448390"} 23]
                    "invite"]
+                  ;; existing usage -- do not use going forward
+                  #_{:clj-kondo/ignore [:deprecated-var]}
                   lib.convert/->legacy-MBQL lib.convert/->mbql5))))
     (testing "starting with MBQL"
       (let [mbql-filter [:does-not-contain [:field 23 nil] "invite" {:case-sensitive false}]]
         (is (= mbql-filter
-               (-> mbql-filter lib.convert/->mbql5 lib.convert/->legacy-MBQL)))))))
+               ;; existing usage -- do not use going forward
+               (-> mbql-filter lib.convert/->mbql5 #_{:clj-kondo/ignore [:deprecated-var]} lib.convert/->legacy-MBQL)))))))
 
 (deftest ^:parallel case-expression-with-default-value-round-trip-test
   (testing "Round trip of case expression with default value (#30280)"
@@ -840,9 +861,12 @@
       (is (=? expected-mbql5-aggregation-options-clause
               mbql5-aggregation-options-clause))
       (is (=? aggregation-options-clause
+              ;; existing usage -- do not use going forward
+              #_{:clj-kondo/ignore [:deprecated-var]}
               (lib.convert/->legacy-MBQL mbql5-aggregation-options-clause)))
       (is (= (dissoc mbql-query :parameters)
-             (-> mbql-query lib.convert/->mbql5 lib.convert/->legacy-MBQL))))))
+             ;; existing usage -- do not use going forward
+             (-> mbql-query lib.convert/->mbql5 #_{:clj-kondo/ignore [:deprecated-var]} lib.convert/->legacy-MBQL))))))
 
 (deftest ^:parallel round-trip-preserve-metadata-test
   (testing "Round-tripping should not affect embedded metadata"
@@ -880,7 +904,8 @@
                                                                        :percent-state  0.0
                                                                        :average-length 6.375}}}}]}]
       (is (= query
-             (-> query lib.convert/->mbql5 lib.convert/->legacy-MBQL))))))
+             ;; existing usage -- do not use going forward
+             (-> query lib.convert/->mbql5 #_{:clj-kondo/ignore [:deprecated-var]} lib.convert/->legacy-MBQL))))))
 
 (deftest ^:parallel value-test
   (testing "For some crazy person reason legacy `:value` has `snake_case` options."
@@ -905,6 +930,8 @@
                 mbql5)))
       (testing "Round trip: make sure we convert back to `snake_case` when converting back."
         (is (= original
+               ;; existing usage -- do not use going forward
+               #_{:clj-kondo/ignore [:deprecated-var]}
                (lib.convert/->legacy-MBQL mbql5))))))
   (testing "Type is filled in properly when missing"
     (is (=? [:value {:effective-type :type/Text} "TX"]
@@ -913,7 +940,8 @@
 (deftest ^:parallel clean-test
   ;; These nearly-empty queries should be handled correctly - iframe-based embedding yields queries like
   ;; `{:type :native}` and nothing more.
-  (are [query] (= query (-> query lib.convert/->mbql5 lib.convert/->legacy-MBQL))
+  ;; existing usage -- do not use going forward
+  (are [query] (= query (-> query lib.convert/->mbql5 #_{:clj-kondo/ignore [:deprecated-var]} lib.convert/->legacy-MBQL))
     {:type :query
      :database 1}
     {:type :query
@@ -970,6 +998,8 @@
               {:join-alias                                 "O"
                :temporal-unit                              :year
                :lib/original-effective-type :type/DateTimeWithLocalTZ}))))
+    ;; existing usage -- do not use going forward
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (testing `lib.convert/->legacy-MBQL
       (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
                       (lib/join (-> (lib/join-clause (meta/table-metadata :orders))
@@ -1071,7 +1101,8 @@
                                                         :metabase.query-processor.util.add-alias-info/desired-alias "PRODUCT_ID"}]]]
                             :source-table 12}}]
       (is (= query
-             (-> query lib.convert/->mbql5 lib.convert/->legacy-MBQL))))))
+             ;; existing usage -- do not use going forward
+             (-> query lib.convert/->mbql5 #_{:clj-kondo/ignore [:deprecated-var]} lib.convert/->legacy-MBQL))))))
 
 (deftest ^:parallel parameters-dimension-clause-test
   (testing "Don't convert :template-tag clauses... YET"
@@ -1081,6 +1112,8 @@
       (is (=? {:stages [{:parameters [{:target [:dimension [:template-tag "x"]]}]}]}
               mbql5))
       (is (=? {:native {:parameters [{:target [:dimension [:template-tag "x"]]}]}}
+              ;; existing usage -- do not use going forward
+              #_{:clj-kondo/ignore [:deprecated-var]}
               (lib.convert/->legacy-MBQL mbql5))))))
 
 (deftest ^:parallel parameters-field-target-test
@@ -1091,6 +1124,8 @@
       (is (=? {:stages [{:parameters [{:target [:field 1 nil]}]}]}
               mbql5))
       (is (=? {:native {:parameters [{:target [:field 1 nil]}]}}
+              ;; existing usage -- do not use going forward
+              #_{:clj-kondo/ignore [:deprecated-var]}
               (lib.convert/->legacy-MBQL mbql5))))))
 
 (deftest ^:parallel time-interval-nil-options-test
@@ -1111,6 +1146,8 @@
                     (lib/expression "expr" (lib.options/update-options (lib/+ 1 2) assoc :name "my_expr", :base-type :type/Number)))]
       (is (=? {:type  :query
                :query {:expressions {"expr" [:+ 1 2]}}}
+              ;; existing usage -- do not use going forward
+              #_{:clj-kondo/ignore [:deprecated-var]}
               (lib.convert/->legacy-MBQL query))))))
 
 (deftest ^:parallel convert-with-broken-expression-types-test
@@ -1135,6 +1172,8 @@
                                            [:sum
                                             [:field 16890 {:base-type :type/Float}]]
                                            -1]]}
+                           ;; existing usage -- do not use going forward
+                           #_{:clj-kondo/ignore [:deprecated-var]}
                            (lib.convert/->legacy-MBQL
                             {:lib/type :mbql.stage/mbql
                              :aggregation [[:offset options-map
@@ -1155,6 +1194,8 @@
              :aggregation [[:aggregation-options
                             [:cum-count [:field %id {:base-type :type/BigInteger}]]
                             {:name "count"}]]})
+          ;; existing usage -- do not use going forward
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (lib.convert/->legacy-MBQL
            (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                (lib/aggregate (lib.options/update-options
@@ -1170,6 +1211,8 @@
                               [:aggregation-options [:cum-sum [:field %id {:base-type :type/BigInteger}]] {:name "a"}]
                               [:aggregation-options [:cum-count] {:name "b"}]]
                              {:name "xixix"}]]})
+           ;; existing usage -- do not use going forward
+           #_{:clj-kondo/ignore [:deprecated-var]}
            (lib.convert/->legacy-MBQL
             (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                 (lib/aggregate (lib.options/update-options
@@ -1227,7 +1270,8 @@
                                                      :name         "ID"
                                                      :display_name "ID"
                                                      :base_type    :type/Integer}]}]}}
-                (-> legacy lib.convert/->mbql5 lib.convert/->legacy-MBQL))))
+                ;; existing usage -- do not use going forward
+                (-> legacy lib.convert/->mbql5 #_{:clj-kondo/ignore [:deprecated-var]} lib.convert/->legacy-MBQL))))
       (testing "legacy => MBQL 5 => legacy => MBQL 5"
         (is (=? {:stages [{:joins [{:lib/type           :mbql/join
                                     :stages             [{:lib/stage-metadata {:lib/type :metadata/results
@@ -1236,7 +1280,8 @@
                                                                                            :display-name "ID"}]}}]
                                     :lib/stage-metadata (symbol "nil #_\"key is not present.\"")
                                     :source-metadata    (symbol "nil #_\"key is not present.\"")}]}]}
-                (-> legacy lib.convert/->mbql5 lib.convert/->legacy-MBQL lib.convert/->mbql5)))))))
+                ;; existing usage -- do not use going forward
+                (-> legacy lib.convert/->mbql5 #_{:clj-kondo/ignore [:deprecated-var]} lib.convert/->legacy-MBQL lib.convert/->mbql5)))))))
 
 (deftest ^:parallel ->mbql5-datetime-test
   (is (=? [:datetime {:mode :unix-seconds
@@ -1272,10 +1317,16 @@
 
 (deftest ^:parallel ->legacy-MBQL-test
   (is (= [:datetime 10 {:mode :unix-seconds}]
+         ;; existing usage -- do not use going forward
+         #_{:clj-kondo/ignore [:deprecated-var]}
          (lib.convert/->legacy-MBQL [:datetime {:mode :unix-seconds, :lib/uuid "5016882d-8dbf-4271-ab60-4dc96a595ca9"} 10])))
   (is (= [:datetime ""]
+         ;; existing usage -- do not use going forward
+         #_{:clj-kondo/ignore [:deprecated-var]}
          (lib.convert/->legacy-MBQL [:datetime {:lib/uuid "5016882d-8dbf-4271-ab60-4dc96a595ca9"} ""])))
   (is (= [:datetime "" {:mode :iso}]
+         ;; existing usage -- do not use going forward
+         #_{:clj-kondo/ignore [:deprecated-var]}
          (lib.convert/->legacy-MBQL [:datetime {:lib/uuid "5016882d-8dbf-4271-ab60-4dc96a595ca9" :mode :iso} ""]))))
 
 (deftest ^:parallel round-trip-aggregation-reference-test
@@ -1284,9 +1335,11 @@
         sum   (->> (lib/aggregable-columns query nil)
                    (m/find-first (comp #{"sum"} :name)))
         query (lib/aggregate query (lib/with-expression-name (lib/* 2 sum) "2*sum"))
-        legacy-query (lib.convert/->legacy-MBQL query)]
+        ;; existing usage -- do not use going forward
+        legacy-query #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL query)]
     (is (= legacy-query
-           (-> legacy-query lib.convert/->mbql5 lib.convert/->legacy-MBQL)))))
+           ;; existing usage -- do not use going forward
+           (-> legacy-query lib.convert/->mbql5 #_{:clj-kondo/ignore [:deprecated-var]} lib.convert/->legacy-MBQL)))))
 
 (deftest ^:parallel join-native-source-query->legacy-test
   (testing "join :source-query should rename :query to :native for native stages"
@@ -1311,6 +1364,8 @@
                                 :condition    [:= [:field 61325 nil] [:field "ID" {:base-type :type/BigInteger, :join-alias "c"}]]
                                 :source-query {:native "SELECT * FROM categories WHERE name = ?;"
                                                :params ["BBQ"]}}]}}
+              ;; existing usage -- do not use going forward
+              #_{:clj-kondo/ignore [:deprecated-var]}
               (lib.convert/->legacy-MBQL query))))))
 
 (deftest ^:parallel do-not-do-nasty-stuff-to-parameters-test
@@ -1340,7 +1395,8 @@
                         {:lib/type :mbql.stage/mbql}]}
             (lib/->mbql5 query)))
     (is (=? query
-            (-> query lib/->mbql5 lib/->legacy-MBQL)))))
+            ;; existing usage -- do not use going forward
+            (-> query lib/->mbql5 #_{:clj-kondo/ignore [:deprecated-var]} lib/->legacy-MBQL)))))
 
 ;;; TODO (Cam 8/8/25) -- mentioned in `->mbql5` for `:mbql/join` but we don't even actually ever attach `:parameters`
 ;;; to a join's top-level IRL, so this not something we ACTUALLY need to support.
@@ -1385,7 +1441,8 @@
                                           :condition    [:=
                                                          [:field 33402 nil]
                                                          [:field 33100 {:join-alias "c"}]]}]}}
-              (-> query lib/->mbql5 lib/->legacy-MBQL))))))
+              ;; existing usage -- do not use going forward
+              (-> query lib/->mbql5 #_{:clj-kondo/ignore [:deprecated-var]} lib/->legacy-MBQL))))))
 
 (deftest ^:parallel join-parameters-test-2
   (testing "If join has top-level :parameters and its source query has :parameters, splice them together"
@@ -1440,6 +1497,8 @@
                                           :source-table (symbol "nil #_\"key is not present.\"")
                                           :filter       (symbol "nil #_\"key is not present.\"")}]
                           :source-table 33040}}
+              ;; existing usage -- do not use going forward
+              #_{:clj-kondo/ignore [:deprecated-var]}
               (lib/->legacy-MBQL query))))))
 
 (deftest ^:parallel convert-join-with-fields-test
@@ -1472,6 +1531,8 @@
                                         :source-query {:source-table 33010
                                                        :fields       [[:field 33101 nil]]}}]
                         :source-table 33040}}
+            ;; existing usage -- do not use going forward
+            #_{:clj-kondo/ignore [:deprecated-var]}
             (lib/->legacy-MBQL query)))))
 
 (deftest ^:parallel join-native-source-query->legacy-test-2
@@ -1496,6 +1557,8 @@
                                 :condition    [:= [:field 61325 nil] [:field "ID" {:base-type :type/BigInteger, :join-alias "c"}]]
                                 :source-query {:native "SELECT * FROM categories WHERE name = ?;"
                                                :params ["BBQ"]}}]}}
+              ;; existing usage -- do not use going forward
+              #_{:clj-kondo/ignore [:deprecated-var]}
               (lib.convert/->legacy-MBQL query))))))
 
 (deftest ^:parallel metadata-roundtrip-test
@@ -1533,6 +1596,8 @@
           (testing (pr-str mbql-5-path)
             (let [query (assoc-in query mbql-5-path columns)]
               (is (=? (assoc-in {} mbql-4-path (expected-shapes mbql-4-shape))
+                      ;; existing usage -- do not use going forward
+                      #_{:clj-kondo/ignore [:deprecated-var]}
                       (lib.convert/->legacy-MBQL query)))))))
       (testing "4 => 5"
         (doseq [{:keys [mbql-5-path mbql-4-path mbql-4-shape]} test-cases]
@@ -1565,11 +1630,17 @@
                                                                     [:field 2 nil]]}
                                       :fields       [[:field 1 {:join-alias "J"}]]
                                       :condition    [:= "a" "b"]}]}}
+             ;; existing usage -- do not use going forward
+             #_{:clj-kondo/ignore [:deprecated-var]}
              (lib.convert/->legacy-MBQL query)
              ;; make sure roundtripping doesn't introduce extra stages.
              (-> query
+                 ;; existing usage -- do not use going forward
+                 #_{:clj-kondo/ignore [:deprecated-var]}
                  lib.convert/->legacy-MBQL
                  lib.convert/->mbql5
+                 ;; existing usage -- do not use going forward
+                 #_{:clj-kondo/ignore [:deprecated-var]}
                  lib.convert/->legacy-MBQL))))))
 
 (deftest ^:parallel join-with-fields-in-last-stage-to-legacy-test-2
@@ -1591,11 +1662,17 @@
                                                      :fields       [[:field 1 nil]
                                                                     [:field 2 nil]]}
                                       :condition    [:= "a" "b"]}]}}
+             ;; existing usage -- do not use going forward
+             #_{:clj-kondo/ignore [:deprecated-var]}
              (lib.convert/->legacy-MBQL query)
              ;; make sure roundtripping doesn't introduce extra stages.
              (-> query
+                 ;; existing usage -- do not use going forward
+                 #_{:clj-kondo/ignore [:deprecated-var]}
                  lib.convert/->legacy-MBQL
                  lib.convert/->mbql5
+                 ;; existing usage -- do not use going forward
+                 #_{:clj-kondo/ignore [:deprecated-var]}
                  lib.convert/->legacy-MBQL))))))
 
 (deftest ^:parallel do-not-add-extra-stages-to-join-test
@@ -1631,6 +1708,8 @@
                  :database     (meta/id)
                  :lib/metadata meta/metadata-provider}]
       (is (=? {:native {:projections [:count]}}
+              ;; existing usage -- do not use going forward
+              #_{:clj-kondo/ignore [:deprecated-var]}
               (lib.convert/->legacy-MBQL query))))))
 
 (deftest ^:parallel between-with-options->legacy-test
@@ -1638,6 +1717,8 @@
           [:field 72922 {:base-type :type/Text}]
           [:relative-datetime -15 :day]
           [:relative-datetime 0 :day]]
+         ;; existing usage -- do not use going forward
+         #_{:clj-kondo/ignore [:deprecated-var]}
          (lib.convert/->legacy-MBQL [:between
                                      {:include-current true
                                       :lib/uuid        "b8991b40-d452-4922-8768-b07f6f2b1918"}
@@ -1659,6 +1740,8 @@
     (is (= [tag
             [:starts-with [:field 243 {:base-type :type/Text}] "B" {:case-sensitive false}]
             [:starts-with [:field 243 {:base-type :type/Text}] "C" {:case-sensitive false}]]
+           ;; existing usage -- do not use going forward
+           #_{:clj-kondo/ignore [:deprecated-var]}
            (lib.convert/->legacy-MBQL
             [tag
              {:lib/uuid "fd823910-ffc9-4508-a6af-fa37fe29514d", :case-sensitive false}
@@ -1674,6 +1757,8 @@
 (deftest ^:parallel field-name-ref-to-legacy-never-remove-base-type-test
   (testing "never remove :base-type from a :field name ref regardless of :lib/transformation-added-base-type"
     (is (= [:field "USER_ID" {:base-type :type/Integer, :join-alias "ord1"}]
+           ;; existing usage -- do not use going forward
+           #_{:clj-kondo/ignore [:deprecated-var]}
            (lib.convert/->legacy-MBQL [:field {:lib/uuid                                          "47afe974-396c-4213-8736-859399ba5e7e"
                                                :base-type                                         :type/Integer
                                                :join-alias                                        "ord1"
@@ -1694,6 +1779,8 @@
                           :source-table 11759
                           :expressions  {"TestColumn" [:+ 1 1]}}}]
     (is (= query
+           ;; existing usage -- do not use going forward
+           #_{:clj-kondo/ignore [:deprecated-var]}
            (lib.convert/->legacy-MBQL query)))))
 
 (deftest ^:parallel case-schema-aggregation-test
@@ -1738,5 +1825,7 @@
                                          [[[:> {} [:field {} 139657] 0]
                                            [:offset {:lib/uuid string?} [:field {} 139657] -1]]]]]]}]}
               mbql5))
-      (is (=? legacy (lib.convert/->legacy-MBQL mbql5)))
-      (is (some? (-> mbql5 lib.convert/->legacy-MBQL lib.convert/->mbql5))))))
+      ;; existing usage -- do not use going forward
+      (is (=? legacy #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL mbql5)))
+      ;; existing usage -- do not use going forward
+      (is (some? (-> mbql5 #_{:clj-kondo/ignore [:deprecated-var]} lib.convert/->legacy-MBQL lib.convert/->mbql5))))))

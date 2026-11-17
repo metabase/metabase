@@ -1578,7 +1578,7 @@
   "The viewing context of an ad-hoc query on the card `card-id`, rendered for `metabot` under `profile-id`."
   [metabot profile-id card-id]
   (let [mp    (mt/metadata-provider)
-        query (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp card-id)))]
+        query (lib/query mp (lib.metadata/card mp card-id))]
     (as-metabot metabot profile-id
                 #(user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]}))))
 

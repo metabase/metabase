@@ -42,24 +42,27 @@
                          :aggregation [[:count]]
                          :breakout    [[:field 31 {:temporal-unit :day
                                                    :base-type     :type/DateTime}]]}}
+             ;; existing usage -- do not use going forward
+             #_{:clj-kondo/ignore [:deprecated-var]}
              (links/->legacy-mbql rehydrated))))))
 
 (def ^:private strip-lib-keys query-repair-test/strip-lib-keys)
 (def ^:private stripped-aggregated-query query-repair-test/stripped-aggregated-query)
 
-(deftest ^:parallel ->legacy-mbql-lib-type-less-pmbql-test
-  (testing "converts pMBQL stripped of :lib/* keys (frontend viewing-context round-trip) to legacy MBQL"
+(deftest ^:parallel ->legacy-mbql-lib-type-less-legacy-mbql-test
+  (testing "converts MBQL 5 stripped of :lib/* keys (frontend viewing-context round-trip) to legacy MBQL"
     ;; Regression for the BOT-1604 follow-up: a query that round-trips through the
-    ;; frontend's `user_is_viewing` / `chart_configs` context comes back as pMBQL
+    ;; frontend's `user_is_viewing` / `chart_configs` context comes back as MBQL 5
     ;; without `:lib/type`. The old guard keyed only on `:lib/type`, so such a query
-    ;; fell through unchanged and the raw pMBQL (`:stages`, pMBQL-order field clauses)
+    ;; fell through unchanged and the raw MBQL 5 (`:stages`, MBQL 5-order field clauses)
     ;; leaked into the `/question#<base64>` hash — the frontend then crashed with
     ;; "Error calculating display info for query: Stage 0 does not exist".
     (let [fe-query (strip-lib-keys (lib.tu/venues-query))
-          legacy   (links/->legacy-mbql fe-query)]
+          ;; existing usage -- do not use going forward
+          legacy   #_{:clj-kondo/ignore [:deprecated-var]} (links/->legacy-mbql fe-query)]
       (is (not (contains? fe-query :lib/type)))
       (is (contains? fe-query :stages))
-      (testing "is normalized + converted to legacy MBQL, not passed through as raw pMBQL"
+      (testing "is normalized + converted to legacy MBQL, not passed through as raw MBQL 5"
         (is (= :query (:type legacy)))
         (is (not (contains? legacy :stages)))
         (is (map? (:query legacy)))
@@ -70,7 +73,8 @@
     ;; `normalize` mints a fresh `:lib/uuid` for the aggregation, so the ref in the order-by names a uuid that no
     ;; aggregation carries. With one aggregation the ref can only mean that one.
     (let [stripped (stripped-aggregated-query (lib/count))
-          legacy   (links/->legacy-mbql stripped)]
+          ;; existing usage -- do not use going forward
+          legacy     #_{:clj-kondo/ignore [:deprecated-var]} (links/->legacy-mbql stripped)]
       (is (not (contains? stripped :lib/type)))
       (is (= :query (:type legacy)))
       (is (= [[:desc [:aggregation 0]]] (-> legacy :query :order-by)))))
@@ -78,7 +82,9 @@
     ;; Conversion throws on the dangling ref. This used to take down the whole agent turn instead of just
     ;; producing a broken link.
     (let [stripped (stripped-aggregated-query (lib/count) (lib/sum (meta/field-metadata :venues :price)))]
-      (is (= stripped (links/->legacy-mbql stripped))))))
+      (is (= stripped
+             ;; existing usage -- do not use going forward
+             #_{:clj-kondo/ignore [:deprecated-var]} (links/->legacy-mbql stripped))))))
 
 (deftest ^:parallel pseudo-card->link-keeps-mbql5-temporal-filters-test
   (testing "temporal filters survive JSON serialization in the /question# hash (BOT-1972)"
@@ -140,7 +146,8 @@
                            "MBQL 5 stripped of its :lib/* keys" (strip-lib-keys native)
                            "MBQL 5 after a JSON round trip"     (-> native lib/prepare-for-serialization json/encode json/decode+kw)}]
         (testing desc
-          (is (= (lib/->legacy-MBQL native)
+          ;; existing usage -- do not use going forward
+          (is (= #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL native)
                  (links/->frontend-query sent))))))
     (testing "a structured query with a date filter stays MBQL 5"
       (let [sent (links/->frontend-query structured)]

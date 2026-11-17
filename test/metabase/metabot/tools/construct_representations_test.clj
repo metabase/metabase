@@ -608,7 +608,7 @@
             (when-not (instance? clojure.lang.ExceptionInfo result)
               (let [q          (get-in result [:structured-output :query])
                     ;; Round-trip through legacy is the gate the production failure hit.
-                    legacy     (lib/->legacy-MBQL q)
+                    legacy     #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL q)
                     rebuilt    (try (lib/query mp legacy)
                                     (catch clojure.lang.ExceptionInfo e e))]
                 (testing "order-by uses an aggregation reference, not an inline aggregation"
@@ -1917,13 +1917,12 @@
                {:id 301 :name "NAME"        :table-id 30 :base-type :type/Text}]}))
 
 (def ^:private metric-definition
-  "Count of ORDERS with an EXPLICIT (no-FK) join to CAMPAIGNS, as legacy MBQL for storage."
+  "Count of ORDERS with an EXPLICIT (no-FK) join to CAMPAIGNS, for storage."
   (-> (lib/query mp-metric-base (lib.metadata/table mp-metric-base 10))
       (lib/join (lib/join-clause (lib.metadata/table mp-metric-base 30)
                                  [(lib/= (lib.metadata/field mp-metric-base 102)
                                          (lib.metadata/field mp-metric-base 300))]))
-      (lib/aggregate (lib/count))
-      lib.convert/->legacy-MBQL))
+      (lib/aggregate (lib/count))))
 
 (def ^:private mp-metric
   (lib.tu/mock-metadata-provider
@@ -2088,7 +2087,8 @@
                                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]}
                                                 stage-kvs)]}))
         before (get-in result [:structured-output :query])]
-    [before (-> before links/->legacy-mbql json/encode (json/decode true))]))
+    ;; existing usage -- do not use going forward
+    [before (-> before #_{:clj-kondo/ignore [:deprecated-var]} links/->legacy-mbql json/encode (json/decode true))]))
 
 (defn- stage-clause-counts
   "Per-stage counts of the clause vectors on a query, for comparing a query with its round-trip."

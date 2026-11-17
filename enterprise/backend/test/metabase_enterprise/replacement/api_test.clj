@@ -503,7 +503,7 @@
                             :parameter_mappings [{:parameter_id "model-id-param"
                                                   :card_id      model-id
                                                   :target       [:dimension
-                                                                 (lib/->legacy-MBQL
+                                                                 (lib/->legacy-MBQL-ref
                                                                   (lib/ref (lib.metadata/field mp (mt/id :orders :id))))
                                                                  {:stage-number 0}]}]}]
               (mt/with-model-cleanup [:model/ReplacementRun]

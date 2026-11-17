@@ -98,7 +98,7 @@
          (is (mt/user-http-request :crowberto :post 200 "dataset/csv"
                                    (assoc-in as-data-app [:request-options :content-type]
                                              "application/x-www-form-urlencoded")
-                                   {:query (json/encode (lib/->legacy-MBQL query))})))
+                                   {:query (json/encode query)})))
        (testing "a custom column on it runs"
          (is (= "completed" (:status (run-query 202 (lib/expression query "Double price"
                                                                     (lib/* (lib.metadata/field (mt/metadata-provider)

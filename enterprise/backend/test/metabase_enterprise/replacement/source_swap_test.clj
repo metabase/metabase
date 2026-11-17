@@ -324,7 +324,7 @@
         (let [mp           (mt/metadata-provider)
               query        (lib/query mp (lib.metadata/table mp (mt/id :orders)))
               category-col (m/find-first #(= "CATEGORY" (:name %)) (lib/filterable-columns query))
-              target       [:dimension (lib/->legacy-MBQL (lib/ref category-col))]]
+              target       [:dimension (lib/->legacy-MBQL-ref (lib/ref category-col))]]
           (mt/with-temp [:model/Card          {card-id :id}      {:dataset_query query}
                          :model/Dashboard     {dashboard-id :id} {}
                          :model/DashboardCard {dashcard-id :id}
@@ -367,7 +367,7 @@
                                 (lib/breakout (lib.metadata/field mp (mt/id :orders :id))))
               source-query  (lib/query mp (lib.metadata/table mp (mt/id :products)))
               category-col  (m/find-first #(= "CATEGORY" (:name %)) (lib/filterable-columns target-query))
-              target        [:dimension (lib/->legacy-MBQL (lib/ref category-col))]]
+              target        [:dimension (lib/->legacy-MBQL-ref (lib/ref category-col))]]
           (mt/with-temp [:model/Card          {target-card-id :id} {:dataset_query target-query}
                          :model/Card          {source-card-id :id} {:dataset_query source-query}
                          :model/Dashboard     {dashboard-id :id}   {}

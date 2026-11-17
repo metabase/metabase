@@ -541,6 +541,8 @@
      (:type query)
      (-> (lib/query (qp.store/metadata-provider) query)
          (add-alias-info* options)
+         ;; existing usage -- do not use going forward
+         #_{:clj-kondo/ignore [:deprecated-var]}
          lib/->legacy-MBQL)
 
      ;; MBQL 4 inner MBQL query
@@ -550,6 +552,8 @@
          #_{:clj-kondo/ignore [:deprecated-var]}
          annotate.legacy-helper-fns/legacy-inner-query->mbql5-query
          (add-alias-info options)
+         ;; existing usage -- do not use going forward
+         #_{:clj-kondo/ignore [:deprecated-var]}
          lib/->legacy-MBQL
          :query)
 

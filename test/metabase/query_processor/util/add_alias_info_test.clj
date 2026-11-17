@@ -40,6 +40,8 @@
            meta/metadata-provider)
          query)
         add-alias-info
+        ;; existing usage -- do not use going forward
+        #_{:clj-kondo/ignore [:deprecated-var]}
         lib/->legacy-MBQL)
     (driver/with-driver (or driver/*driver* :h2)
       (->> query
@@ -692,6 +694,8 @@
                   (-> query
                       qp.preprocess/preprocess
                       add/add-alias-info
+                      ;; existing usage -- do not use going forward
+                      #_{:clj-kondo/ignore [:deprecated-var]}
                       lib/->legacy-MBQL))))))))
 
 ;;; see also [[metabase.lib.join.util-test/desired-alias-should-respect-ref-name-test]]
@@ -740,6 +744,8 @@
                                 $total]})
                     qp.preprocess/preprocess
                     add/add-alias-info
+                    ;; existing usage -- do not use going forward
+                    #_{:clj-kondo/ignore [:deprecated-var]}
                     lib/->legacy-MBQL
                     :query)))))))
 
@@ -776,6 +782,8 @@
                                      [:field "CREATED_AT_2" {:base-type :type/Date, :temporal-unit :default}]]})
                     qp.preprocess/preprocess
                     add/add-alias-info
+                    ;; existing usage -- do not use going forward
+                    #_{:clj-kondo/ignore [:deprecated-var]}
                     lib/->legacy-MBQL
                     :query)))))))
 
@@ -811,6 +819,8 @@
                   (-> query
                       qp.preprocess/preprocess
                       (add/add-alias-info {:globally-unique-join-aliases? true})
+                      ;; existing usage -- do not use going forward
+                      #_{:clj-kondo/ignore [:deprecated-var]}
                       lib/->legacy-MBQL
                       :query))))))))
 
@@ -827,8 +837,7 @@
                                                               [(lib/=
                                                                 (lib.metadata/field mp (meta/id :products :id))
                                                                 (lib.metadata/field mp (meta/id :reviews :product-id)))])
-                                             (lib/with-join-fields :all)))
-                               lib/->legacy-MBQL)
+                                             (lib/with-join-fields :all))))
                            :database-id (meta/id)
                            :name        "Products+Reviews"
                            :type        :model}]})
@@ -845,8 +854,7 @@
                                                                (m/find-first (comp #{"Price"} :display-name)))))
                                (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
                                                                   (lib/breakoutable-columns $q))
-                                                    (lib/with-temporal-bucket :month)))
-                               (lib/->legacy-MBQL $q)))
+                                                    (lib/with-temporal-bucket :month)))))
                            :database-id (meta/id)
                            :name        "Products+Reviews Summary"
                            :type        :model}]})
@@ -881,6 +889,8 @@
           (let [preprocessed (-> query qp.preprocess/preprocess)
                 expected     (-> preprocessed
                                  add/add-alias-info
+                                 ;; existing usage -- do not use going forward
+                                 #_{:clj-kondo/ignore [:deprecated-var]}
                                  lib/->legacy-MBQL)]
             (testing ":source-query -> :source-query -> :joins"
               (is (=? [{:alias     "Reviews"
@@ -965,6 +975,8 @@
                   (-> query
                       qp.preprocess/preprocess
                       add/add-alias-info
+                      ;; existing usage -- do not use going forward
+                      #_{:clj-kondo/ignore [:deprecated-var]}
                       lib/->legacy-MBQL
                       :query))))))))
 
@@ -1374,8 +1386,7 @@
                                            (lib/join (lib/join-clause
                                                       (lib.metadata/table meta/metadata-provider (meta/id :products))
                                                       [(lib/= (lib.metadata/field meta/metadata-provider (meta/id :orders :product-id))
-                                                              (lib.metadata/field meta/metadata-provider (meta/id :products :id)))]))
-                                           lib/->legacy-MBQL)
+                                                              (lib.metadata/field meta/metadata-provider (meta/id :products :id)))])))
                         :database-id   (meta/id)
                         :name          "Orders+Products"
                         :type          :model}]})

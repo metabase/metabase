@@ -152,7 +152,7 @@
   [mp from-table-key target-field-id]
   (let [query (lib/query mp (lib.metadata/table mp (mt/id from-table-key)))
         col   (m/find-first #(= (:id %) target-field-id) (lib/filterable-columns query))]
-    (lib.convert/->legacy-MBQL (lib/ref col))))
+    (lib.convert/->legacy-MBQL-ref (lib/ref col))))
 
 (defn do-with-simple-dashboard-with-tabs
   [f]
@@ -3444,8 +3444,7 @@
                                    :dataset_query (mt/mbql-query products)}
        :model/Card          card2 {:database_id   (mt/id)
                                    :table_id      (mt/id :venues)
-                                   :dataset_query (-> (lib/query mp (lib.metadata/card mp (:id model)))
-                                                      lib.convert/->legacy-MBQL)}
+                                   :dataset_query (lib/query mp (lib.metadata/card mp (:id model)))}
        :model/DashboardCard dashcard {:card_id            (:id card)
                                       :dashboard_id       (:id dashboard)
                                       :parameter_mappings [{:parameter_id "_CATEGORY_"
@@ -3993,8 +3992,7 @@
         uuid-dogs
         (mt/with-temp
           [:model/Card          card      {:dataset_query (let [mp (mt/metadata-provider)]
-                                                            (-> (lib/query mp (lib.metadata/table mp (mt/id :dogs)))
-                                                                (lib.convert/->legacy-MBQL)))}
+                                                            (lib/query mp (lib.metadata/table mp (mt/id :dogs))))}
            :model/Dashboard     dashboard {:parameters [{:name      "Text"
                                                          :slug      "text"
                                                          :id        "_text_"
@@ -5834,7 +5832,7 @@
                      (lib/filter (lib/>= quantity 100))
                      (lib/aggregate (lib/avg subtotal))
                      (lib/breakout category))]
-      (mt/with-temp [:model/Card          card      {:dataset_query (lib/->legacy-MBQL query)}
+      (mt/with-temp [:model/Card          card      {:dataset_query query}
                      :model/Dashboard     dashboard {:parameters [{:name      "Category"
                                                                    :slug      "category"
                                                                    :id        "_CATEGORY_"
@@ -6107,8 +6105,8 @@
 (deftest remove-one-parameter-mapping-across-multiple-dashcards-test
   (testing "PUT /api/dashboard/:id selectively removes one parameter_id's mappings from multiple dashcards while preserving another"
     (let [mp         (mt/metadata-provider)
-          p1-target  [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :venues :name))))]
-          p2-target  [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :venues :price))))]]
+          p1-target  [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :venues :name))))]
+          p2-target  [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :venues :price))))]]
       (mt/with-temp [:model/Dashboard {dash-id :id} {:parameters [{:id "p1" :type :string/= :name "P1" :slug "p1"}
                                                                   {:id "p2" :type :string/= :name "P2" :slug "p2"}]}
                      :model/Card c1 {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
@@ -6209,7 +6207,7 @@
                                     :values_source_type "card"
                                     :values_source_config
                                     {:card_id     source-id
-                                     :value_field (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :orders :id))))}}]}]
+                                     :value_field (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :orders :id))))}}]}]
         (let [values (:values (mt/user-http-request :rasta :get 200 (format "dashboard/%d/params/_NUM_/values" id)))]
           (is (seq values))
           (is (every? #(= 1 (count %)) values)))
@@ -6257,13 +6255,13 @@
           orig-category-field-id (mt/id :products :category)
           mp-orig                (lib.metadata.jvm/application-database-metadata-provider orig-db-id)
           card-a-query           (lib/query mp-orig (lib.metadata/table mp-orig (mt/id :products)))
-          card-a-target          [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp-orig orig-category-field-id)))]]
+          card-a-target          [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp-orig orig-category-field-id)))]]
       (mt/with-temp-copy-of-db
         (let [other-db-id              (mt/id)
               other-category-field-id  (mt/id :products :category)
               mp-other                 (lib.metadata.jvm/application-database-metadata-provider other-db-id)
               card-b-query             (lib/query mp-other (lib.metadata/table mp-other (mt/id :products)))
-              card-b-target            [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp-other other-category-field-id)))]]
+              card-b-target            [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp-other other-category-field-id)))]]
           (mt/with-temp
             [:model/Dashboard dashboard {:parameters [{:name "Category" :slug "category" :id "_CAT_" :type "category"}]}
              :model/Card card-a {:database_id orig-db-id :dataset_query card-a-query}
@@ -6283,15 +6281,15 @@
                      :model/Card {card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :people)))}
                      :model/DashboardCard {} {:dashboard_id dashboard-id :card_id card-id
                                               :parameter_mappings [{:parameter_id "_CITY_" :card_id card-id
-                                                                    :target [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :people :city))))]}]}]
+                                                                    :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :people :city))))]}]}]
         (is (=? {:values [["Flagstaff"]]}
                 (mt/user-http-request :rasta :get 200 (chain-filter-search-url dashboard-id "_CITY_" "Flag"))))))))
 
 (deftest chain-filter-search-unions-values-across-multiple-mapped-fields-test
   (testing "GET /api/dashboard/:id/params/:param-key/search/:query unions results across every mapped field, even with disjoint value domains"
     (let [mp             (mt/metadata-provider)
-          people-target  [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :people :name))))]
-          products-target [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :products :category))))]]
+          people-target  [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :people :name))))]
+          products-target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :products :category))))]]
       (mt/with-temp [:model/Dashboard dashboard {:parameters [{:id "abc" :type :string/= :name "abc" :slug "abc"}]}
                      :model/Card people-card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :people)))}
                      :model/Card products-card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
@@ -6316,7 +6314,7 @@
                                                     :parameter_mappings [{:parameter_id "p" :card_id (:id card)
                                                                           :target [:dimension [:template-tag "cat"]]}]}]
         (mt/user-http-request :rasta :put 200 (str "card/" (:id card))
-                              {:dataset_query (lib/->legacy-MBQL (lib/native-query mp "select 1"))})
+                              {:dataset_query (lib/native-query mp "select 1")})
         (is (= [[1]] (mt/rows (mt/user-http-request :rasta :post 202
                                                     (format "dashboard/%d/dashcard/%d/card/%d/query" (:id dashboard) (:id dashcard) (:id card))
                                                     {:parameters [{:id "p" :type :string/= :value ["Gadget"]}]}))))))))
@@ -6328,7 +6326,7 @@
                      :model/Card card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
                      :model/DashboardCard dashcard {:dashboard_id (:id dashboard) :card_id (:id card)
                                                     :parameter_mappings [{:parameter_id "p" :card_id (:id card)
-                                                                          :target [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :orders :total))))]}]}]
+                                                                          :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :orders :total))))]}]}]
         (mt/user-http-request :crowberto :put 200 (str "dashboard/" (:id dashboard)) {:parameters []})
         (is (seq (t2/select-one-fn :parameter_mappings :model/DashboardCard :id (:id dashcard)))
             "backend does not clean up dashcard parameter_mappings that reference a removed parameter_id")))))
@@ -6559,9 +6557,9 @@
                      :model/DashboardCard {dc-id :id}
                      {:dashboard_id dash-id :card_id c1-id
                       :parameter_mappings [{:parameter_id "abc"
-                                            :target [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :venues :category_id))))]}]}]
+                                            :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :venues :category_id))))]}]}]
         (let [stale [{:parameter_id "abc"
-                      :target [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :venues :category_id))))]}]]
+                      :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :venues :category_id))))]}]]
           (mt/user-http-request :crowberto :put 200 (format "dashboard/%d" dash-id)
                                 {:dashcards [{:id dc-id :card_id c2-id :parameter_mappings stale :row 0 :col 0 :size_x 4 :size_y 4}] :tabs []})
           (is (= stale (t2/select-one-fn :parameter_mappings :model/DashboardCard :id dc-id))))))))
@@ -6574,7 +6572,7 @@
                      :model/DashboardCard {dc-id :id}
                      {:dashboard_id dash-id :card_id card-id
                       :parameter_mappings [{:parameter_id "cat" :card_id card-id
-                                            :target [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :venues :category_id))))]}]}]
+                                            :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :venues :category_id))))]}]}]
         (let [orig (select-keys (t2/select-one :model/DashboardCard :id dc-id) [:id :card_id :row :col :size_x :size_y :parameter_mappings])
               resp (mt/user-http-request :crowberto :put 200 (format "dashboard/%d" dash-id)
                                          {:dashcards [orig (-> orig (dissoc :id) (assoc :id -1 :row 10))] :tabs []})]
@@ -6590,7 +6588,7 @@
                                          {:tabs [{:id tab-id :name "Tab 1"} {:id -1 :name "Tab 1 - Duplicate"}]
                                           :dashcards [{:id -1 :dashboard_tab_id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4
                                                        :parameter_mappings [{:parameter_id "cat" :card_id card-id
-                                                                             :target [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :venues :category_id))))]}]}]})]
+                                                                             :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :venues :category_id))))]}]}]})]
           (is (seq (-> resp :dashcards first :parameter_mappings))))))))
 
 (deftest visualizer-dashcard-series-and-settings-round-trip-test
@@ -6661,8 +6659,8 @@
   (testing "dashboard/public/embed persistence for two parameter_mappings on the same field, disambiguated by :temporal-unit (#46536, #46776)"
     (let [mp         (mt/metadata-provider)
           created-at (lib.metadata/field mp (mt/id :orders :created_at))
-          year-ref   (lib.convert/->legacy-MBQL (lib/ref (lib/with-temporal-bucket created-at :year)))
-          month-ref  (lib.convert/->legacy-MBQL (lib/ref (lib/with-temporal-bucket created-at :month)))
+          year-ref   (lib.convert/->legacy-MBQL-ref (lib/ref (lib/with-temporal-bucket created-at :year)))
+          month-ref  (lib.convert/->legacy-MBQL-ref (lib/ref (lib/with-temporal-bucket created-at :month)))
           query      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                          (lib/aggregate (lib/count))
                          (lib/breakout (lib/with-temporal-bucket created-at :year))

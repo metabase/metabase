@@ -513,8 +513,12 @@
 
 (defmethod options-style-method :aggregation [_tag] ::options-style.last-unless-empty)
 
+;; TODO (Cam 2026-11-16) give this a name to make it clear that it's not ANY ref (Metrics/Segments/Measures aren't
+;; allowed by this schema) -- just the subset that refers to specific columns. See my note on
+;; `:metabase.lib.schema.ref/ref`.
 (mr/def ::Reference
-  "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause."
+  "Schema for any type of valid Field clause, expression reference, or for an indexed reference to an aggregation
+  clause."
   (one-of aggregation expression field))
 
 (defclause ^{:added "0.50.0"} offset

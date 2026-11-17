@@ -35,6 +35,8 @@ summary: Changes to the Metabase driver interface, listed by release.
   `aggregation-at-index`, `assoc-field-options`, `expression-with-name`, `field-options`, `normalize-token`,
   `query->source-table-id`, and `update-field-options`.
 
+- `->legacy-MBQL` has been removed from the `driver-api`. Converting queries to Legacy MBQL is no longer supported.
+
 ## Metabase 0.65.3
 
 - `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while

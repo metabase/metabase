@@ -521,7 +521,7 @@
               (cards-have-filters? (:dashcards dash) pk-filters))))))))
 
 (defn- linked-pk-filter-values
-  "For every query card in `dashcards` (pMBQL over the wire), the value its `=` filter on one of `fk-field-ids`
+  "For every query card in `dashcards` (MBQL 5 over the wire), the value its `=` filter on one of `fk-field-ids`
   compares against, or nil when it has no such filter."
   [dashcards fk-field-ids]
   (for [{:keys [card]} dashcards

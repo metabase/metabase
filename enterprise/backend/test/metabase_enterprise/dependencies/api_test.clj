@@ -237,9 +237,7 @@
             (mt/with-temp [:model/Segment {:as segment} {:name "Segment on products"
                                                          :table_id products-id
                                                          :definition (-> (lib/query mp products)
-                                                                         (lib/filter (lib/> price 50))
-                                                                         lib/->legacy-MBQL
-                                                                         :query)}
+                                                                         (lib/filter (lib/> price 50)))}
                            :model/Measure {:as measure} {:name "Measure on products"
                                                          :table_id products-id
                                                          :definition (-> (lib/query mp products)

@@ -15,7 +15,6 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metrics.api-dataset-test]}}}}}}
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -1298,9 +1297,8 @@
                                               :dataset_query (-> (lib/query mp orders)
                                                                  (lib/aggregate (lib/count)))}
                        :model/Segment {sid :id} {:table_id   (mt/id :orders)
-                                                 :definition {:source-table (mt/id :orders)
-                                                              :filter       (lib.convert/->legacy-MBQL
-                                                                             (lib/> total 100))}}]
+                                                 :definition (-> (lib/query mp orders)
+                                                                 (lib/filter (lib/> total 100)))}]
           (let [hydrated    (hydrate-metric (:id metric))
                 total-dim   (find-dimension-by-name hydrated "TOTAL")]
             (is (some? total-dim))

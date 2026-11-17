@@ -75,7 +75,7 @@
                  (catch clojure.lang.ExceptionInfo e (ex-message e)))))))))
 
 (defn- tag-by-name
-  "Template tags are stored on the pMBQL stage as a vector (not a map keyed by name — see
+  "Template tags are stored on the MBQL 5 stage as a vector (not a map keyed by name — see
    `metabase.lib.schema.template-tag/template-tags`), so tests look up by `:name`."
   [q tag-name]
   (some #(when (= tag-name (:name %)) %) (get-in q [:stages 0 :template-tags])))
@@ -265,7 +265,7 @@
 
 (defn- mint-handle-via-execute!
   "Mint a query_handle for `query` the way `execute_query` does — straight into the handle store,
-   reproducing the exact round-trip (pMBQL → JSON → string-valued map) the save path must survive.
+   reproducing the exact round-trip (MBQL 5 → JSON → string-valued map) the save path must survive.
    Deferred-tests ledger: `execute_query` itself lands in the query PR (GHY-4363); when it does,
    route this through `registry/call-tool` with `:validate_only true` so the whole tool path is
    exercised, not just the store."

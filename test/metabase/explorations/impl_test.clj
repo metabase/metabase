@@ -15,11 +15,11 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn- count-metric-query
-  "Legacy MBQL for a `count` aggregation over the given table — a minimal valid metric query."
+  "A `count` aggregation query over the given table — a minimal valid metric query."
   [table-kw]
   (let [mp (mt/metadata-provider)]
-    (lib/->legacy-MBQL (-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
-                           (lib/aggregate (lib/count))))))
+    (-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
+        (lib/aggregate (lib/count)))))
 
 (defn- do-with-sample-metrics-archived [thunk]
   (let [sample-db-id (t2/select-one-pk :model/Database :is_sample true)

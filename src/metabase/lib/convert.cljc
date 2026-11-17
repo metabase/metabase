@@ -470,13 +470,28 @@
            {:query inner-query
             :type  :query})))
 
-;; TODO (Cam 2026-07-17) Deprecate this in 64
 (defmulti ->legacy-MBQL
   "Coerce something to legacy MBQL (the version of MBQL understood by the query processor and Metabase Lib v1) if it's
-  not already legacy MBQL."
-  {:arglists '([x])}
+  not already legacy MBQL.
+
+  DEPRECATED: conversion of entire queries to legacy MBQL is no longer supported and will be removed in the immediate
+  future. Update your code to use only MBQL 5.
+
+  If you are instead converting a column ref (which we will begrudgingly support for the foreseeable future) update
+  your code to use [[->legacy-MBQL-ref]] instead."
+  {:arglists '([x]), :deprecated "0.64.0"}
   lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
+
+(mu/defn ->legacy-MBQL-ref :- ::mbql.s/Reference
+  "Convert an MBQL `:field`/`:expression`/`:aggregation` ref to Legacy MBQL. Note that `:aggregation` refs need to
+  UUID => index mapping and thus cannot be converted outside of a [[with-aggregation-list]] context."
+  ;; TODO (Cam 2026-11-16) we should add a schema for this trio of ref types, see my note on
+  ;; `:metabase.lib.schema.ref/ref`.
+  [a-ref :- [:or :mbql.clause/field :mbql.clause/expression :mbql.clause/aggregation]]
+  ;; ref conversion is still supported, and still implemented by the deprecated multimethod
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (->legacy-MBQL a-ref))
 
 (defn- metabase-lib-keyword?
   "Does keyword `k` have a`:lib/`, `:lib.columns/` or a `:metabase.lib.*/` namespace?"
@@ -521,6 +536,8 @@
   lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
 
+;; part of the implementation of the deprecated [[->legacy-MBQL]]
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod aggregation->legacy-MBQL :default
   [[tag options & args]]
   (let [inner (into [tag] (map ->legacy-MBQL) args)
@@ -533,14 +550,20 @@
       [:aggregation-options inner aggregation-opts]
       inner)))
 
+;; part of the implementation of the deprecated [[->legacy-MBQL]]
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod aggregation->legacy-MBQL :aggregation
   [clause]
   (->legacy-MBQL clause))
 
+;; part of the implementation of the deprecated [[->legacy-MBQL]]
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod aggregation->legacy-MBQL :offset
   [clause]
   (->legacy-MBQL clause))
 
+;; part of the implementation of the deprecated [[->legacy-MBQL]]
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defn- clause-with-options->legacy-MBQL
   [[tag & args :as clause]]
   (if-not ((some-fn nil? map?) (first args))
@@ -569,6 +592,8 @@
                                                               (recur ::mbql.s/options-style.mbql5 (options->legacy-MBQL options))
                                                               (recur ::mbql.s/options-style.last-unless-empty options)))))))
 
+;; part of the implementation of the deprecated [[->legacy-MBQL]]
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod ->legacy-MBQL :default
   [x]
   (cond
@@ -601,6 +626,8 @@
 
 ;; TODO: aggregation->legacy-MBQL can wrap things in :aggregation-options which only makes sense for aggregations, so
 ;; why should expression go through that as well?
+;; part of the implementation of the deprecated [[->legacy-MBQL]]
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod ->legacy-MBQL ::aggregation-or-expression
   [input]
   (aggregation->legacy-MBQL input))
@@ -610,6 +637,8 @@
   (mapv lib.convert.metadata-to-legacy/lib-metadata-column->legacy-metadata-column
         (:columns stage-metadata)))
 
+;; part of the implementation of the deprecated [[->legacy-MBQL]]
+#_{:clj-kondo/ignore [:deprecated-var]}
 (mu/defn- chain-stages
   ([stages :- [:sequential ::lib.util/query-like]]
    (chain-stages stages nil))
@@ -640,6 +669,8 @@
        ;; only applies to the top level!
        (and top-level? (:native inner-query)) (set/rename-keys {:native :query})))))
 
+;; part of the implementation of the deprecated [[->legacy-MBQL]]
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod ->legacy-MBQL :dispatch-type/map [m]
   (if (and (:database m)
            (#{:query :native} (:type m)))
@@ -651,6 +682,8 @@
                        [k (->legacy-MBQL v)])))
           m)))
 
+;; part of the implementation of the deprecated [[->legacy-MBQL]]
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod ->legacy-MBQL :aggregation [[_ opts agg-uuid :as ag]]
   (if (map? opts)
     (try
@@ -667,9 +700,13 @@
     ;; source_metadata that are only used for legacy and thus can be ignored
     ag))
 
+;; part of the implementation of the deprecated [[->legacy-MBQL]]
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod ->legacy-MBQL :dispatch-type/sequential [xs]
   (mapv ->legacy-MBQL xs))
 
+;; part of the implementation of the deprecated [[->legacy-MBQL]]
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod ->legacy-MBQL :field [[_ opts id]]
   ;; Fields are not like the normal clauses - they need that options field even if it's null.
   ;; TODO: Sometimes the given field is in the legacy order - that seems wrong.
@@ -682,6 +719,8 @@
     (cond-> legacy-ref
       (string? id) ensure-base-type)))
 
+;; part of the implementation of the deprecated [[->legacy-MBQL]]
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defn- update-list->legacy-boolean-expression
   [m mbql5-key legacy-key]
   (cond-> m
@@ -689,6 +728,8 @@
     (> (count (get m mbql5-key)) 1) (m/update-existing mbql5-key #(into [:and] (map ->legacy-MBQL) %))
     :always (set/rename-keys {mbql5-key legacy-key})))
 
+;; part of the implementation of the deprecated [[->legacy-MBQL]]
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod ->legacy-MBQL :mbql/join [join]
   (let [base     (cond-> (disqualify join)
                    (and *clean-query*
@@ -724,6 +765,8 @@
         (assoc :source-table (str "card__" source-card-id)))
     stage))
 
+;; part of the implementation of the deprecated [[->legacy-MBQL]]
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defn- stage-expressions->legacy-MBQL [expressions]
   (into {}
         (for [expression expressions
@@ -736,6 +779,8 @@
              (second legacy-clause)
              legacy-clause)])))
 
+;; part of the implementation of the deprecated [[->legacy-MBQL]]
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod ->legacy-MBQL :mbql.stage/mbql
   [stage]
   (metabase.lib.convert/with-aggregation-list (:aggregation stage)
@@ -749,6 +794,8 @@
                 (update-list->legacy-boolean-expression :filters :filter))
             (disj stage-keys :aggregation :breakout :filters :expressions))))
 
+;; part of the implementation of the deprecated [[->legacy-MBQL]]
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage
       disqualify
@@ -762,6 +809,8 @@
       ;;    {:database 1, :type :native, :native {:query "SELECT ..."}}
       (set/rename-keys {:query :native})))
 
+;; part of the implementation of the deprecated [[->legacy-MBQL]]
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod ->legacy-MBQL :mbql/query [query]
   (try
     (let [base        (merge (disqualify (dissoc query :info))

@@ -21,8 +21,9 @@
   [database-id sql-content]
   (let [mp (lib-be/application-database-metadata-provider database-id)]
     (-> (lib/native-query mp sql-content)
-        ;; Going forward we should ensure consumers are fine processing MBQL 5.
-        ^{:clj-kondo/ignore [:discouraged-var]}
+        ;; ⚠⚠⚠ Going forward we NEED TO ensure consumers are fine processing MBQL 5, since `->legacy-MBQL` is getting
+        ;; removed very soon. ⚠⚠⚠
+        ^{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
         lib/->legacy-MBQL)))
 
 (defn- validate-database-access

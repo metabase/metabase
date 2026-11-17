@@ -21,7 +21,6 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -206,8 +205,8 @@
   tests in favour of generating MBQL through Lib."
   []
   (let [mp (mt/metadata-provider)]
-    (lib/->legacy-MBQL (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                           (lib/aggregate (lib/count))))))
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count)))))
 
 (deftest ^:parallel card-query-cached-stored-result-pairing-test
   (testing "POST /api/card/:card-id/query with `stored_result_id`"
@@ -5339,7 +5338,7 @@
                     (as-> $q (lib/breakout $q (m/find-first (comp #{"Created At"} :display-name)
                                                             (lib/breakoutable-columns $q)))))]
       (doseq [card-type-a [:question :metric :model]]
-        (mt/with-temp [:model/Card {:keys [id]} {:dataset_query (lib/->legacy-MBQL query) :type card-type-a}]
+        (mt/with-temp [:model/Card {:keys [id]} {:dataset_query query :type card-type-a}]
           (let [card (lib.metadata/card mp id)
                 query-with-self-join (lib/join query
                                                (lib/join-clause card
@@ -5349,7 +5348,7 @@
             (doseq [card-type-b [:question :metric :model]]
               (is (= "Cannot save card with cycles."
                      (mt/user-http-request :crowberto :put 400 (str "card/" id)
-                                           {:dataset_query (lib/->legacy-MBQL query-with-self-join)
+                                           {:dataset_query query-with-self-join
                                             :type          card-type-b}))))))))))
 
 (deftest ^:parallel cannot-use-self-as-source
@@ -5357,12 +5356,12 @@
     (let [mp (mt/metadata-provider)
           query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
       (doseq [card-type-a [:question :model]]
-        (mt/with-temp [:model/Card {:keys [id]} {:dataset_query (lib/->legacy-MBQL query) :type card-type-a}]
+        (mt/with-temp [:model/Card {:keys [id]} {:dataset_query query :type card-type-a}]
           (let [query-with-self-source (lib/with-different-table query (str "card__" id))]
             (doseq [card-type-b [:question :model]]
               (is (= "Cannot save card with cycles."
                      (mt/user-http-request :crowberto :put 400 (str "card/" id)
-                                           {:dataset_query (lib/->legacy-MBQL query-with-self-source)
+                                           {:dataset_query query-with-self-source
                                             :type          card-type-b}))))))))))
 
 (deftest ^:parallel cannot-save-metric-with-formula-cycle
@@ -5372,13 +5371,13 @@
                       (lib/aggregate (lib/count))
                       (as-> $q (lib/breakout $q (m/find-first (comp #{"Created At"} :display-name)
                                                               (lib/breakoutable-columns $q)))))]
-      (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type :metric}]
+      (mt/with-temp [:model/Card {id-a :id} {:dataset_query query-a :type :metric}]
         (let [query-b (lib/aggregate query-a (lib.metadata/metric mp id-a))]
-          (mt/with-temp [:model/Card {id-b :id} {:dataset_query (lib/->legacy-MBQL query-b) :type :metric}]
+          (mt/with-temp [:model/Card {id-b :id} {:dataset_query query-b :type :metric}]
             (let [query-with-cycle (lib/aggregate query-a (lib.metadata/metric mp id-b))]
               (is (= "Card of type metric is invalid, cannot be saved."
                      (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
-                                           {:dataset_query (lib/->legacy-MBQL query-with-cycle)
+                                           {:dataset_query query-with-cycle
                                             :type          :metric}))))))))))
 
 (deftest ^:parallel cannot-join-question-with-other-question-joining-original
@@ -5389,7 +5388,7 @@
                       (as-> $q (lib/breakout $q (m/find-first (comp #{"Created At"} :display-name)
                                                               (lib/breakoutable-columns $q)))))]
       (doseq [card-type-a [:question :metric :model]]
-        (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type card-type-a}]
+        (mt/with-temp [:model/Card {id-a :id} {:dataset_query query-a :type card-type-a}]
           (let [card-a  (lib.metadata/card mp id-a)
                 query-b (lib/join query-a
                                   (lib/join-clause card-a
@@ -5397,21 +5396,21 @@
                                                      (lib.metadata/field mp (mt/id :orders :id))
                                                      1)]))]
             (doseq [card-type-b [:question :metric :model]]
-              (mt/with-temp [:model/Card {id-b :id} {:dataset_query (lib/->legacy-MBQL query-b) :type card-type-b}]
+              (mt/with-temp [:model/Card {id-b :id} {:dataset_query query-b :type card-type-b}]
                 (let [card-b      (lib.metadata/card mp id-b)
                       query-cycle (lib/join query-a
                                             (lib/join-clause card-b [(lib/= "A" "B")]))]
                   (doseq [card-type-c [:question :metric :model]]
                     (is (= "Cannot save card with cycles."
                            (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
-                                                 {:dataset_query (lib/->legacy-MBQL query-cycle)
+                                                 {:dataset_query query-cycle
                                                   :type          card-type-c})))))))))))))
 
 (deftest ^:parallel cannot-make-query-cycles-with-native-queries-test
   (testing "Cannot make query cycles that include native queries"
     (let [mp (mt/metadata-provider)
           query-a (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-      (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type :question}]
+      (mt/with-temp [:model/Card {id-a :id} {:dataset_query query-a :type :question}]
         (let [query-b (mt/native-query {:query "select * from {{#100-base-query}}"
                                         :template-tags
                                         {"#100-base-query"
@@ -5424,7 +5423,7 @@
             (let [query-cycle (lib/query mp (lib.metadata/card mp id-b))]
               (is (= "Cannot save card with cycles."
                      (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
-                                           {:dataset_query (lib/->legacy-MBQL query-cycle)
+                                           {:dataset_query query-cycle
                                             :type          :question}))))))))))
 
 (deftest cannot-create-card-snippet-cycle-test
@@ -5570,8 +5569,7 @@
            {:type :model
             :dataset_query (let [mp (mt/metadata-provider)]
                              (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                 (lib/limit 10)
-                                 lib.convert/->legacy-MBQL))}]
+                                 (lib/limit 10)))}]
           (letfn [;; Query results should get cached on following request.
                   (card-query-post-request
                     []

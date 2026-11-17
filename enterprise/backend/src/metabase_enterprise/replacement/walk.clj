@@ -34,8 +34,7 @@
   (letfn [(update-legacy-ref [legacy-ref card-id]
             (try
               ;; `value_field` and `label_field` are legacy refs
-              #_{:clj-kondo/ignore [:discouraged-var]}
-              (-> legacy-ref lib/->mbql5 (ref-fn card-id) lib/->legacy-MBQL)
+              (-> legacy-ref lib/->mbql5 (ref-fn card-id) lib/->legacy-MBQL-ref)
               (catch Exception _
                 legacy-ref)))]
     (mapv (fn [parameter]

@@ -306,6 +306,11 @@
 
 (lib.hierarchy/derive :metric ::ref)
 
+;; note that only `:field`, `:expression`, and `:aggregation` refs refer to specific columns in the data; the other
+;; types of references are not to columns. So `(lib/ref column)` can only return that subset of refs.
+;;
+;; TODO (Cam 2026-11-16) we should consider adding an extra schema for just this subset of refs. See also my note on
+;; `:metabase.legacy-mbql.schema/Reference`.
 (mr/def ::ref
   [:and
    ::mbql-clause/clause
