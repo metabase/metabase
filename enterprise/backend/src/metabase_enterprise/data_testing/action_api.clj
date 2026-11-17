@@ -93,7 +93,8 @@
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result
-  "Run an action test. Needs read access to the test and native query access to the database of the action's query.
+  "Run an action test. Needs read access to the test, permission to run the action's query with the test's parameter
+  values, and native query access to the database of that query.
   The action's SQL runs on the test's temp tables, in a transaction that is rolled back: no real table changes, and no
   audit row records an action run.
 

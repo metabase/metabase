@@ -4,11 +4,13 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase.actions.core :as actions]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
@@ -81,12 +83,13 @@
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
 (defn- action-allows?
-  "Whether `action-check` holds for the Action `action-id`, hydrated with `k`, and the current user may write the
-  native SQL of a test against the Database of the action's query."
-  [action-check k action-id]
+  "Whether `action-check` holds for the Action `action-id`, hydrated with `k`, `query-check` holds for the action, and
+  the current user may write the native SQL of a test against the Database of the action's query."
+  [action-check k action-id query-check]
   (boolean
    (when-let [action (some-> (data-testing.db/action action-id) (t2/hydrate k))]
      (and (action-check action)
+          (query-check action)
           (or (mi/superuser?)
               (some-> (:database_id action) data-testing.models/can-run-native-query?))))))
 
@@ -94,14 +97,32 @@
   "Whether the current user may save or delete a test of the Action `action-id`: they may edit the action, and write
   the native SQL of a test against the Database of its query."
   [action-id :- ::lib.schema.id/action]
-  (action-allows? mi/can-write? :can_write action-id))
+  (action-allows? mi/can-write? :can_write action-id (constantly true)))
+
+(defn- can-run-query-with-values?
+  "Whether the current user may run the query of `action` with the test's `parameters`. A non-query action, or
+  `parameters` that do not fit the action, have no query to check: a run refuses them before the query compiles."
+  [action parameters]
+  (or (not= :query (keyword (:type action)))
+      (let [values (try
+                     (actions/parameter-values action (or parameters {}))
+                     (catch clojure.lang.ExceptionInfo e
+                       (if (= 400 (:status-code (ex-data e)))
+                         ::unfit
+                         (throw e))))]
+        (or (= ::unfit values)
+            (query-perms/can-run-query? (actions/query-with-parameter-values action values))))))
 
 (mu/defn can-run? :- :boolean
-  "Whether the current user may run the saved `action-test`: they may read its action, and write the native SQL of a
-  test against the Database of the action's query."
+  "Whether the current user may run the saved `action-test`: they may read its action, run the action's query with the
+  test's parameter values, and write the native SQL of a test against the Database of the action's query."
   [action-test :- ::data-testing.schema/action-test]
   ;; Input SQL can read any table of the Database, and the guards do not check it, so reading the action is not enough.
-  (action-allows? mi/can-read? :can_read (:action_id action-test)))
+  ;; A run compiles the action's query with the cards and snippets it includes, and a refusal can quote their SQL, so
+  ;; the user must be allowed to run that query. It is checked with the test's values: a query missing a required value
+  ;; cannot be preprocessed, and its required permissions would fall back to access to the Database.
+  (action-allows? mi/can-read? :can_read (:action_id action-test)
+                  #(can-run-query-with-values? % (:parameters action-test))))
 
 (methodical/defmethod t2/simple-hydrate [:model/ActionTest :can_read]
   [_model k instance]
