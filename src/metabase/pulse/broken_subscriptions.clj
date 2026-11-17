@@ -83,22 +83,35 @@
          ;; We will not include links to Metabase for subscriptions created in modular embeddings
          :disable_links (:disable_links broken-pulse))))))
 
+(defn- delivery
+  "The `:channels` that deliver the pulse with `pulse-id`, as channel types, and its `:recipient-count`: user
+   recipients and email addresses on an email channel, and one destination for each other channel."
+  [pulse-id]
+  (let [channels (pulse.db/pulse-channel-kinds-for-pulse pulse-id)]
+    {:channels        (vec (distinct (map :channel_type channels)))
+     :recipient-count (transduce (map (fn [{:keys [id channel_type details]}]
+                                        (if (= :email channel_type)
+                                          (+ (count (pulse.db/pulse-channel-recipient-rows id))
+                                             (count (:emails details)))
+                                          1)))
+                                 +
+                                 channels)}))
+
 (defn- archived-subscription
   "What a caller may report about `broken-subscription`, from [[broken-subscription-data]], once it is archived:
    `{:id :creator-name :parameters :channels :recipient-count :already-broken?}`.
    The `:parameters` are the missing filters' ids and names.
-   The `:channels` are the channel types that deliver it, and `:recipient-count` counts its users and Slack channels.
+   The `:channels` and `:recipient-count` are what [[delivery]] describes.
    The `:already-broken?` flag is true when none of the missing filters was on the dashboard before the update.
    It leaves out the recipients' names and emails and the filter values."
-  [original-dashboard-params {:keys [pulse-id bad-parameters pulse-creator affected-users]}]
-  {:id              pulse-id
-   :creator-name    (:common_name pulse-creator)
-   ;; Without the values, which a caller could show to someone the subscription doesn't belong to.
-   :parameters      (mapv #(select-keys % [:id :name]) bad-parameters)
-   :channels        (vec (distinct (map :notification-type affected-users)))
-   :recipient-count (count affected-users)
-   ;; A filter missing before this update, for example after a revision revert, which doesn't run this handler.
-   :already-broken? (not-any? #(contains? original-dashboard-params (:id %)) bad-parameters)})
+  [original-dashboard-params {:keys [pulse-id bad-parameters pulse-creator]}]
+  (merge {:id              pulse-id
+          :creator-name    (:common_name pulse-creator)
+          ;; Without the values, which a caller could show to someone the subscription doesn't belong to.
+          :parameters      (mapv #(select-keys % [:id :name]) bad-parameters)
+          ;; A filter missing before this update, for example after a revision revert, which doesn't run this handler.
+          :already-broken? (not-any? #(contains? original-dashboard-params (:id %)) bad-parameters)}
+         (delivery pulse-id)))
 
 (defn handle-broken-subscriptions!
   "Archive every subscription on `dashboard-id` whose parameters no longer exist on the dashboard

@@ -790,7 +790,7 @@
   (let [describe          (fn [{:keys [creator-name channels recipient-count parameters]}]
                             (str "  - " creator-name "'s subscription"
                                  (if (seq channels)
-                                   (str " by " (str/join " and " (map name channels)) " to " recipient-count
+                                   (str " by " (str/join " and " (map #(get {:http "webhook"} % (name %)) channels)) " to " recipient-count
                                         (if (= 1 recipient-count) " recipient" " recipients"))
                                    " with no recipients")
                                  ", which used " (str/join ", " (map (comp pr-str :name) parameters))))
