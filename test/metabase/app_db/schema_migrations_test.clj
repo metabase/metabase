@@ -5204,6 +5204,64 @@
           (is (= "no" (transforms granular-id)))
           (is (= "no" (transforms builder-id))))))))
 
+(deftest dashboardcard-series-position-unique-test
+  (testing "dcs8w3 renumbers the series of a dashcard that share a position and dcs5n7 makes the positions unique"
+    (impl/test-migrations ["dcs8w3" "dcs5n7"] [migrate!]
+      (let [user-id     (t2/insert-returning-pk! :core_user {:first_name  "Test"
+                                                             :last_name   "User"
+                                                             :email       "user@example.com"
+                                                             :password    "superstrong"
+                                                             :entity_id   (u/generate-nano-id)
+                                                             :date_joined :%now})
+            db-id       (t2/insert-returning-pk! :metabase_database {:name       "db"
+                                                                     :engine     "postgres"
+                                                                     :created_at :%now
+                                                                     :updated_at :%now
+                                                                     :details    "{}"})
+            dash-id     (t2/insert-returning-pk! :report_dashboard {:name       "Series"
+                                                                    :creator_id user-id
+                                                                    :parameters "[]"
+                                                                    :entity_id  (u/generate-nano-id)
+                                                                    :created_at :%now
+                                                                    :updated_at :%now})
+            insert-card!    (fn []
+                              (t2/insert-returning-pk! :report_card {:name                   "Card"
+                                                                     :entity_id              (u/generate-nano-id)
+                                                                     :display                "table"
+                                                                     :dataset_query          "{}"
+                                                                     :visualization_settings "{}"
+                                                                     :creator_id             user-id
+                                                                     :database_id            db-id
+                                                                     :created_at             :%now
+                                                                     :updated_at             :%now}))
+            insert-dashcard! (fn []
+                               (t2/insert-returning-pk! :report_dashboardcard {:dashboard_id           dash-id
+                                                                               :parameter_mappings     "[]"
+                                                                               :visualization_settings "{}"
+                                                                               :entity_id              (u/generate-nano-id)
+                                                                               :size_x                 4
+                                                                               :size_y                 4
+                                                                               :row                    0
+                                                                               :col                    0
+                                                                               :created_at             :%now
+                                                                               :updated_at             :%now}))
+            insert-series!  (fn [dashcard-id position]
+                              (t2/insert-returning-pk! :dashboardcard_series {:dashboardcard_id dashcard-id
+                                                                              :card_id          (insert-card!)
+                                                                              :position         position}))
+            dashcard-id     (insert-dashcard!)
+            other-dashcard  (insert-dashcard!)
+            first-id        (insert-series! dashcard-id 0)
+            second-id       (insert-series! dashcard-id 0)
+            third-id        (insert-series! dashcard-id 1)
+            other-id        (insert-series! other-dashcard 0)]
+        (migrate!)
+        (is (= [first-id second-id third-id]
+               (t2/select-pks-vec :dashboardcard_series :dashboardcard_id dashcard-id {:order-by [[:position :asc]]})))
+        (is (= [0 1 2] (t2/select-fn-vec :position :dashboardcard_series :dashboardcard_id dashcard-id {:order-by [[:position :asc]]})))
+        (is (= 0 (t2/select-one-fn :position :dashboardcard_series :id other-id)))
+        (is (thrown? Exception (insert-series! dashcard-id 2)))))))
+
 (deftest archived-directly-columns-test
   (testing "pu1a7q, nq3c9x and tl5e3m add archived_directly, and pu2b8r, nq4d1y and tl6f4n mark archived rows whose collection is live"
     (impl/test-migrations ["pu1a7q" "tl6f4n"] [migrate!]

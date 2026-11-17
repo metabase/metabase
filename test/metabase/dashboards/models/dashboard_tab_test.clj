@@ -4,6 +4,7 @@
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures
@@ -99,3 +100,18 @@
              {:id    empty-tab-id
               :cards []}]
             (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)))))
+
+(deftest check-dashtab-columns-test
+  (testing "A DashboardTab has a name and a position that is not negative, and stays in its Dashboard"
+    (mt/with-temp [:model/Dashboard dash  {}
+                   :model/Dashboard other {}
+                   :model/DashboardTab tab {:dashboard_id (u/the-id dash)}]
+      (doseq [bad [{:name " "} {:position -1}]]
+        (testing (pr-str bad)
+          (is (thrown? clojure.lang.ExceptionInfo
+                       (t2/insert! :model/DashboardTab (merge {:dashboard_id (u/the-id dash) :name "Tab" :position 0} bad))))
+          (is (thrown? clojure.lang.ExceptionInfo
+                       (t2/update! :model/DashboardTab :id (u/the-id tab) bad)))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot move"
+                            (t2/update! :model/DashboardTab :id (u/the-id tab) {:dashboard_id (u/the-id other)})))
+      (is (= (u/the-id dash) (t2/select-one-fn :dashboard_id :model/DashboardTab :id (u/the-id tab)))))))

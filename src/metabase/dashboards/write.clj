@@ -1,6 +1,6 @@
 (ns metabase.dashboards.write
-  "Permission-checked create/update operations for Dashboards, used by MCP's tools and the Metabot toolkit.
-  The REST API keeps its own copies in `metabase.dashboards-rest.api`, so a change here may need making there too.
+  "Permission-checked create/update operations for Dashboards, used by the REST API, MCP's tools, the Metabot toolkit
+  and the Agent API.
 
   These functions return the saved Dashboard row; response-shaping concerns such as hydration and
   `:last-edit-info` belong to the callers."
@@ -9,7 +9,6 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.collections.models.collection :as collection]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
@@ -57,7 +56,7 @@
 
 (def ^:private no-references {:cards #{} :actions #{}})
 
-(defn- read-check-all
+(defn read-check-all
   "Throws unless the current user can read every row of `rows`, in the order of `ids`, with a 404 for an id without a row."
   [rows ids]
   (let [id->row (into {} (map (juxt :id identity)) (t2/hydrate rows :can_read))]
@@ -65,15 +64,16 @@
       (api/read-check (get id->row id)))))
 
 (defn- check-new-references
-  "Read-check every card and action the incoming `dashboard` newly references, relative to `stored`.
-  Lives here rather than at the REST boundary so every writer — MCP's dashboard_write included —
-  gets the check."
-  [stored dashboard]
-  (let [new-references (references dashboard)
-        card-ids       (vec (set/difference (:cards new-references) (:cards stored)))
-        action-ids     (vec (set/difference (:actions new-references) (:actions stored)))]
-    (read-check-all (dashboards.db/cards-by-ids card-ids) card-ids)
-    (read-check-all (dashboards.db/actions-by-ids action-ids) action-ids)))
+  "Throws unless the current user can read every card and action `dashboard` references beyond those `stored-fn`
+  returns."
+  [stored-fn dashboard]
+  (let [new-references (references dashboard)]
+    (when (some seq (vals new-references))
+      (let [stored     (stored-fn)
+            card-ids   (vec (set/difference (:cards new-references) (:cards stored)))
+            action-ids (vec (set/difference (:actions new-references) (:actions stored)))]
+        (read-check-all (dashboards.db/cards-by-ids card-ids) card-ids)
+        (read-check-all (dashboards.db/actions-by-ids action-ids) action-ids)))))
 
 (def NewDashboard
   "Schema for the argument to [[create-dashboard!]]: the attributes of a new dashboard."
@@ -88,45 +88,45 @@
    [:auto_apply_filters  {:optional true} [:maybe :boolean]]])
 
 (mu/defn create-dashboard! :- :map
-  "Create a Dashboard owned by the current user and return the saved row. `:width` and
-  `:auto_apply_filters` fall back to the column defaults when omitted or nil.
-  Requires create permission on `:collection_id` (nil = root). Publishes `:event/dashboard-create`."
-  [{:keys [name description parameters cache_ttl collection_id collection_position
-           width auto_apply_filters]} :- NewDashboard]
-  ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
-  (api/create-check :model/Dashboard {:collection_id collection_id})
-  (check-new-references no-references {:parameters parameters})
-  (let [dashboard-data (cond-> {:name                name
-                                :description         description
-                                :parameters          (or parameters [])
-                                :creator_id          api/*current-user-id*
-                                :cache_ttl           cache_ttl
-                                :collection_id       collection_id
-                                :collection_position collection_position}
-                         ;; both columns are NOT NULL with defaults, so only set them when asked
-                         (some? width)              (assoc :width width)
-                         (some? auto_apply_filters) (assoc :auto_apply_filters auto_apply_filters))
-        dash           (t2/with-transaction [_conn]
-                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
-                         ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
-                         ;; Ok, now save the Dashboard
-                         (dashboards.db/insert-dashboard! dashboard-data))]
-    (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
-    (analytics/track-event! :snowplow/dashboard
-                            {:event        :dashboard-created
-                             :dashboard-id (u/the-id dash)})
-    dash))
+  "Creates a Dashboard owned by the current user after its create check, calls `:in-transaction`, when given, with the
+  inserted row inside the creating transaction, publishes `:event/dashboard-create` and returns the row."
+  ([attrs :- NewDashboard]
+   (create-dashboard! attrs nil))
+  ([{:keys [name description parameters cache_ttl collection_id collection_position
+            width auto_apply_filters]} :- NewDashboard
+    {:keys [in-transaction]}           :- [:maybe [:map {:closed true} [:in-transaction {:optional true} ifn?]]]]
+   (let [dashboard-data (cond-> {:name                name
+                                 :description         description
+                                 :parameters          (or parameters [])
+                                 :creator_id          api/*current-user-id*
+                                 :cache_ttl           cache_ttl
+                                 :collection_id       collection_id
+                                 :collection_position collection_position}
+                          ;; both columns are NOT NULL with defaults, so only set them when asked
+                          (some? width)              (assoc :width width)
+                          (some? auto_apply_filters) (assoc :auto_apply_filters auto_apply_filters))
+         _              (api/create-check :model/Dashboard dashboard-data)
+         _              (check-new-references (constantly no-references) {:parameters parameters})
+         dash           (t2/with-transaction [_conn]
+                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                          ;; collection to change position, check that and fix up if needed
+                          (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
+                          ;; Ok, now save the Dashboard
+                          (let [dash (dashboards.db/insert-dashboard! dashboard-data)]
+                            (when in-transaction
+                              (in-transaction dash))
+                            dash))]
+     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
+     (analytics/track-event! :snowplow/dashboard
+                             {:event        :dashboard-created
+                              :dashboard-id (u/the-id dash)})
+     dash)))
 
-(defn- check-allowed-to-change-embedding
-  "You must be a superuser to change the value of `enable_embedding`, `embedding_type` or `embedding_params`. Embedding must be
-  enabled."
+(defn- check-embedding-enabled
+  "Throws a 400 unless embedding is enabled, when `dash-updates` change the embedding of `dash-before-update`."
   [dash-before-update dash-updates]
-  (when (or (api/column-will-change? (:enable_embedding dash-before-update) (get dash-updates :enable_embedding ::api/not-provided))
-            (api/column-will-change? (:embedding_type dash-before-update) (get dash-updates :embedding_type ::api/not-provided))
-            (api/column-will-change? (:embedding_params dash-before-update) (get dash-updates :embedding_params ::api/not-provided)))
-    (embedding.validation/check-embedding-enabled)
-    (api/check-superuser)))
+  (when (dashboard/changes-embedding? dash-before-update dash-updates)
+    (embedding.validation/check-embedding-enabled)))
 
 (mu/defn- param-target->field-id :- [:maybe ::lib.schema.id/field]
   [target :- ::lib.schema.common/possibly-unnormalized-clause
@@ -138,8 +138,7 @@
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
   ;; `:dashcard-id`/`:card-id` are stamped on by the callers below before the check runs, and #82196 closed
-  ;; `::parameter-mapping`, so they have to be declared or every mapping write is refused. Kept identical to
-  ;; the REST copy in `metabase.dashboards-rest.api`, which this function is a fork of.
+  ;; `::parameter-mapping`, so they have to be declared or every mapping write is refused.
   [parameter-mappings :- [:sequential [:merge
                                        ::parameters.schema/parameter-mapping
                                        [:map {:closed true}
@@ -313,8 +312,8 @@
   (span/with-span!
     {:name       "update-dashboard"
      :attributes {:dashboard/id id}}
-    (check-new-references (stored-references id) dash-updates)
-    (let [current-dash                       (api/write-check :model/Dashboard id)
+    (check-new-references #(stored-references id) dash-updates)
+    (let [current-dash                       (api/check-404 (dashboards.db/dashboard id))
           ;; If there are parameters in the update, we want the old params so that we can do a check to see if any of
           ;; the notifications were broken by the update.
           {original-params :resolved-params} (when parameters
@@ -326,9 +325,9 @@
           ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
           ;; tests that exclude it. so this only checks for dashcards
           update-dashcards-and-tabs?         (contains? dash-updates :dashcards)
-          dash-updates                       (api/updates-with-archived-directly current-dash dash-updates)]
-      (collection/check-allowed-to-change-collection current-dash dash-updates)
-      (check-allowed-to-change-embedding current-dash dash-updates)
+          dash-updates                       (api/updates-without-collection-when-archiving current-dash dash-updates)]
+      (api/update-check current-dash dash-updates)
+      (check-embedding-enabled current-dash dash-updates)
       (api/check-500
        (do
          (t2/with-transaction [_conn]
@@ -338,10 +337,9 @@
            (when-let [updates (not-empty
                                (u/select-keys-when
                                 dash-updates
-                                :present #{:description :position :width :collection_id :collection_position :cache_ttl :archived_directly :embedding_type}
+                                :present #{:description :position :width :collection_id :collection_position :cache_ttl :embedding_type}
                                 :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                            :embedding_params :archived :auto_apply_filters}))]
-             (dashboard/cascade-card-state-from-dashboard-update! current-dash dash-updates)
              (dashboards.db/update-dashboard! id updates)
              (when (contains? updates :collection_id)
                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
@@ -434,9 +432,7 @@
   [deep-copy? :- ms/MaybeBooleanValue
    dashcards :- [:sequential :metabase.dashboards.schema/dashboard-card]]
   (let [card->cards (fn [{:keys [card series]}] (into [card] series))
-        readable-ids (into #{}
-                           (comp (filter mi/can-read?) (map :id))
-                           (t2/hydrate (into [] (comp (mapcat card->cards) (filter mi/model)) dashcards) :can_read))
+        readable-ids (into #{} (map :id) (mi/readable (into [] (comp (mapcat card->cards) (filter mi/model)) dashcards)))
         readable? (fn [card] (and (mi/model card) (contains? readable-ids (:id card))))
         card->decision (fn [parent-card card]
                          (cond
@@ -592,7 +588,8 @@
   `:event/dashboard-create` and `:event/card-create` for each duplicated card."
   [from-dashboard-id {:keys [name description collection_id collection_position is_deep_copy]}]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
-  (api/create-check :model/Dashboard {:collection_id collection_id})
+  (api/create-check :model/Dashboard {:name name, :description description, :collection_id collection_id
+                                      :collection_position collection_position})
   (api/check-400 (not (and (not is_deep_copy)
                            (contains-dashboard-questions? from-dashboard-id)))
                  (tru "You cannot do a shallow copy of this dashboard because it contains Dashboard Questions."))

@@ -2373,3 +2373,17 @@
         (t2/reducible-query {:select [:segment.id :segment.definition :segment.table_id :metabase_table.db_id]
                              :from   [:segment]
                              :join   [:metabase_table [:= :metabase_table.id :segment.table_id]]})))
+
+(define-migration RenumberDuplicateDashboardCardSeriesPositions
+  (doseq [dashcard-id (into #{}
+                            (map :dashboardcard_id)
+                            (t2/query {:select   [:dashboardcard_id]
+                                       :from     [:dashboardcard_series]
+                                       :group-by [:dashboardcard_id :position]
+                                       :having   [:> :%count.* 1]}))
+          [position id] (map-indexed vector (t2/select-pks-vec :dashboardcard_series
+                                                               :dashboardcard_id dashcard-id
+                                                               {:order-by [[:position :asc] [:id :asc]]}))]
+    (t2/query {:update :dashboardcard_series
+               :set    {:position position}
+               :where  [:= :id id]})))
