@@ -68,7 +68,7 @@ export function SnippetRow({
             name="snippet"
             className={cx(
               CS.hoverChildHidden,
-              CS.textLight,
+              CS.textSecondary,
               SnippetRowS.SnippetIcon,
             )}
           />

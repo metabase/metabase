@@ -1,5 +1,6 @@
 ---
 title: Time grouping parameter
+summary: Add a parameter to a SQL question that lets people switch between grouping results by day, week, month, and more.
 ---
 
 # Time grouping parameter

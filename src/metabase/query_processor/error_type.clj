@@ -3,7 +3,10 @@
   is one of the types here. If you see an Exception in QP code that doesn't return an `:type`, add it!
 
     (throw (ex-info (tru \"Don''t know how to parse {0} {1}\" (class x) x)
-                    {:type qp.error-type/invalid-parameter}))")
+                    {:type qp.error-type/invalid-parameter}))"
+  (:require
+   [metabase.util :as u]
+   [metabase.util.performance :as perf]))
 
 (def ^:private hierarchy
   (make-hierarchy))
@@ -62,6 +65,13 @@
   "The query is parameterized, and a required parameter was not supplied."
   :parent invalid-query
   :show-in-embeds? true)
+
+(defn missing-required-parameter?
+  "Does `e`, or any exception in its cause chain, have `:type` [[missing-required-parameter]]? Middleware wraps the
+  original exception, so the type is usually not on the outermost one."
+  [e]
+  (boolean (perf/some #(= (:type (ex-data %)) missing-required-parameter)
+                      (u/full-exception-chain e))))
 
 (deferror multiple-conflicting-parameter-values
   "The query is parameterized, and multiple filters provided conflicting values."

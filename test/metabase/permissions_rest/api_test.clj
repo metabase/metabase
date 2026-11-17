@@ -9,7 +9,7 @@
    [metabase.permissions-rest.api-test-util :as perm-test-util]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -120,10 +120,10 @@
        (mt/with-premium-features #{}
          (is (data-analyst-group-listed?))
          (testing "deactivating the only member hides the group"
-           (t2/update! :model/User user-id {:is_active false})
+           (t2/update! :model/User :id user-id {:is_active false})
            (is (not (data-analyst-group-listed?))))
          (testing "reactivating them brings it back, the membership having survived"
-           (t2/update! :model/User user-id {:is_active true})
+           (t2/update! :model/User :id user-id {:is_active true})
            (is (data-analyst-group-listed?))
            (is (t2/exists? :model/PermissionsGroupMembership
                            :user_id user-id :group_id (data-analyst-group-id)))))))))
@@ -609,7 +609,7 @@
         (mt/user-http-request
          :crowberto :put 200 "permissions/graph"
          (assoc-in (data-perms.graph/api-graph) [:groups gid db-id :create-queries] :query-builder-and-native))
-        (is (= :unrestricted (data-perms/table-permission-for-groups #{gid} :perms/view-data db-id nil)))))))
+        (is (= :unrestricted (get (data-perms/table-permissions-for-groups #{gid} :perms/view-data {0 db-id}) 0)))))))
 
 (deftest update-graph-response-echoes-only-modified-groups-test
   (testing "PUT /api/permissions/graph response :groups map contains only the request's modified group ids"
@@ -685,15 +685,9 @@
                          {"PUBLIC" {table-id :full}})))
           ;; Verify initial state
           (is (= :unrestricted
-                 (data-perms/table-permission-for-user (mt/user->id :rasta)
-                                                       :perms/view-data
-                                                       db-id
-                                                       table-id)))
+                 (get (data-perms/table-permissions-for-user (data-perms/user-info (mt/user->id :rasta)) :perms/view-data {table-id db-id}) table-id)))
           (is (= :one-million-rows
-                 (data-perms/table-permission-for-user (mt/user->id :rasta)
-                                                       :perms/download-results
-                                                       db-id
-                                                       table-id)))
+                 (get (data-perms/table-permissions-for-user (data-perms/user-info (mt/user->id :rasta)) :perms/download-results {table-id db-id}) table-id)))
           ;; Now try to set view-data to blocked while keeping download-results as full
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
@@ -704,15 +698,9 @@
                          {"PUBLIC" {table-id :full}})))
           ;; Verify that download-results was automatically set to no
           (is (= :blocked
-                 (data-perms/table-permission-for-user (mt/user->id :rasta)
-                                                       :perms/view-data
-                                                       db-id
-                                                       table-id)))
+                 (get (data-perms/table-permissions-for-user (data-perms/user-info (mt/user->id :rasta)) :perms/view-data {table-id db-id}) table-id)))
           (is (= :no
-                 (data-perms/table-permission-for-user (mt/user->id :rasta)
-                                                       :perms/download-results
-                                                       db-id
-                                                       table-id))))))))
+                 (get (data-perms/table-permissions-for-user (data-perms/user-info (mt/user->id :rasta)) :perms/download-results {table-id db-id}) table-id))))))))
 
 (deftest get-group-membership-test
   (testing "GET /api/permissions/membership"

@@ -27,6 +27,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]))
 
+(set! *warn-on-reflection* true)
+
 ;;; TODO (Cam 7/18/25) -- update the tests in this namespace to use mock metadata providers instead of with-temp
 
 (use-fixtures :once (fixtures/initialize :db))

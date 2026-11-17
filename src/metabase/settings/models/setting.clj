@@ -14,10 +14,11 @@
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
-   [metabase.models.serialization :as serdes]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
+   [metabase.serialization.core :as serialization]
    [metabase.settings.db :as settings.db]
    [metabase.settings.models.setting.cache :as setting.cache]
+   [metabase.settings.schema :as settings.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -97,19 +98,22 @@
 
 (declare export?)
 
-(defmethod serdes/extract-all "Setting" [_model _opts]
-  (for [{:keys [key value]} (admin-writable-site-wide-settings
-                             :getter (partial get-value-of-type :string))
-        :when (export? key)]
-    {:serdes/meta [{:model "Setting" :id (name key)}]
-     :key key
-     :value value}))
+(defn exportable-settings
+  "The site-wide settings an admin can write, that serialization exports, as `{:key :value}` maps with string values:
+  the ones whose value isn't set by an environment variable."
+  []
+  (for [{:keys [key value is_env_setting]} (admin-writable-site-wide-settings
+                                            :getter (partial get-value-of-type :string))
+        :when (and (export? key) (not is_env_setting))]
+    {:key key :value value}))
 
-(defmethod serdes/load-find-local "Setting" [[{:keys [id]}]]
-  (get-value-of-type :string (keyword id)))
-
-(defmethod serdes/load-one! "Setting" [{:keys [key value]} _]
-  (set-value-of-type! :string key (some-> value str)))
+(defmethod serialization/spec :model/Setting [_]
+  {:schema    ::settings.schema/external-setting
+   :identity  [:key]
+   :copy      [:value]
+   :skip      [:value_with_aad]
+   :transform {:key {:export (fn [_ _ ks _] (mapv name ks))
+                     :import (fn [_ _ ks _] (mapv keyword ks))}}})
 
 (def ^:private Type
   [:fn
@@ -305,8 +309,8 @@
   [setting-keyword-or-name]
   (contains? @registered-settings (keyword setting-keyword-or-name)))
 
-;; The actual watch that triggers this happens in [[metabase.settings.models.setting.cache/cache*]] because the cache might be
-;; swapped out depending on which app DB we have in play
+;; The actual watch that triggers this is added in [[metabase.settings.models.setting.cache/new-state]], because each app
+;; DB has its own cache
 ;;
 ;; this isn't really something that needs to be a multimethod, but I'm using it because the logic can't really live in
 ;; [[metabase.settings.models.setting.cache]] but the cache has to live here; this is a good enough way to prevent circular
@@ -558,10 +562,10 @@
   ^String [setting-name-str]
   (if config/*disable-setting-cache*
     (settings.db/setting-value setting-name-str)
-    (do
+    (let [cache-state (setting.cache/current-state)]
       ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
-      (setting.cache/restore-cache-if-needed!)
-      (let [cache (setting.cache/cache)]
+      (setting.cache/restore-cache-if-needed! :state cache-state)
+      (let [cache (setting.cache/cache cache-state)]
         (if (nil? cache)
           ;; nil if we returned early above, and the cache is still being restored - in that case hit the db
           (settings.db/setting-value setting-name-str)
@@ -604,7 +608,7 @@
     (when init
       (when (not (app-db/db-is-set-up?))
         (throw (ex-info "Cannot initialize setting before the db is set up" {:setting setting})))
-      ;; We do not need to interact with the restore-cache-lock as it is OK to race with it.
+      ;; We do not need to interact with the settings cache state's `:restore-lock`, as it is OK to race with it.
       (if-not (.tryLock init-lock 30 TimeUnit/SECONDS)
         (throw (ex-info "Unable to get initialization lock" {:setting setting-definition-or-name}))
         (try
@@ -1064,11 +1068,18 @@
          (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." s-name))))))))
 
 (defn validate-settable-for-db!
-  "Check whether the given setting can be set for the given database."
+  "Check whether the given setting can be set for the given database. `database` is the database as it would be after
+  the write, so its `:settings` hold the new value; a `:string` setting refuses a non-string one."
   [setting-definition-or-name database driver-supports?]
   (let [{:keys [driver-feature] :as setting} (resolve-setting setting-definition-or-name)
-        s-name (setting-name setting)]
+        s-name (setting-name setting)
+        value  (get-in database [:settings (keyword s-name)])]
     (validate-settable! setting)
+    ;; Database-local values skip the setter, so nothing else checks their type.
+    (when (and (= :string (:type setting)) (some? value) (not (string? value)))
+      (throw (ex-info (tru "Setting {0} must be a string." s-name)
+                      {:setting     s-name
+                       :database-id (:id database)})))
     (when (and driver-feature (not (driver-supports? database driver-feature)))
       (throw (ex-info (tru "Setting {0} requires driver feature {1}, but the database does not support it" s-name driver-feature)
                       {:setting s-name
@@ -1499,9 +1510,9 @@
         setting-definition-symbol (gensym "setting-")]
     `(let [setting-options#          (merge (merge-base ~options) ~setting-metadata)
            ~setting-definition-symbol (register-setting! setting-options#)]
-       ~(when maybe-i18n-exception
-          `(when (#'requires-i18n? ~setting-definition-symbol)
-             (throw ~maybe-i18n-exception)))
+       ~@(when maybe-i18n-exception
+           [`(when (#'requires-i18n? ~setting-definition-symbol)
+               (throw ~maybe-i18n-exception))])
        (-> (def ~setting-getter-fn-symbol (setting-fn :getter ~setting-definition-symbol))
            (alter-meta! merge (setting-fn-metadata :getter ~setting-definition-symbol)))
        ;; unfortunately we can't evaluate this condition at compile time, as the options might contain runtime forms.

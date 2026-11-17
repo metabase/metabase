@@ -15,9 +15,8 @@
                           u/lower-case-en)))
 
 (defsetting not-behind-proxy
-  (deferred-tru
-   (str "Indicates whether Metabase is running behind a proxy that sets the source-address-header for incoming "
-        "requests."))
+  (str "Indicates whether Metabase is running behind a proxy that sets the source-address-header for incoming "
+       "requests.")
   :type       :boolean
   :visibility :internal
   :default    false

@@ -7,7 +7,9 @@ summary: Metabot is Metabase's AI assistant that helps you analyze data, create 
 
 ![Meet Metabot](./images/metabot.png)
 
-Metabot helps you analyze your data by creating charts from natural language, generating SQL queries, fixing query errors, and analyzing existing visualizations.
+Metabot helps you analyze your data by creating charts from natural language, generating SQL queries, fixing query errors, and analyzing existing visualizations. 
+
+Metabot is available on every Metabase plan.
 
 ## Set up Metabot
 
@@ -18,6 +20,7 @@ To set up Metabot, see [Metabot settings](./settings.md).
 Here's a non-exhaustive list of things Metabot can help with:
 
 - [Answer data questions asked with natural language](#ai-exploration).
+- [Generate and rank many charts from a prompt](./research.md).
 - [Create a chart using the query builder](#how-metabot-uses-the-query-builder) from a natural language query.
 - [Generate SQL in the native editor](../questions/native-editor/writing-sql.md) from natural language. (Currently, only SQL is supported.)
 - [Edit SQL directly in the native editor](#inline-sql-editing).
@@ -124,6 +127,8 @@ Use **AI exploration** to start a new conversation with Metabot when you don’t
 Open it from **+ New → AI exploration**, then ask a question or pick one of the suggested prompts.
 
 When answering questions in AI exploration, Metabot searches a limited set of content instead of your entire Metabase. Admins can set a **Collection for natural language querying** to scope AI exploration to a specific collection and its subcollections. You can still refer to content outside that scope by explicitly @-mentioning it in your prompt. See [Metabot AI settings](../ai/settings.md) for more details.
+
+To ask a broad question and have Metabase generate and rank many charts at once, click **Research** in the top right of the AI exploration page. See [Research](./research.md) for more details.
 
 ## Current limitations
 

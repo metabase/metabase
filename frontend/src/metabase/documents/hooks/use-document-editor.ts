@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
 import {
@@ -67,7 +68,7 @@ interface UseDocumentEditorResult {
   setEditorInstance: Dispatch<SetStateAction<TiptapEditor | null>>;
   collectionPickerMode: "save" | "move" | null;
   setCollectionPickerMode: Dispatch<SetStateAction<"save" | "move" | null>>;
-  editorContainerRef: RefObject<HTMLDivElement>;
+  editorContainerRef: RefObject<HTMLDivElement | null>;
   isNavigationScheduled: boolean;
   scheduleNavigation: ScheduleCallback;
   isNewDocument: boolean;

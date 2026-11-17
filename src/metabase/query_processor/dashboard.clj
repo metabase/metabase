@@ -195,8 +195,10 @@
         merged-parameters         (vals (merge (dashboard-param-defaults dashboard-param-id->param card-id)
                                                request-param-id->param))]
     (when-let [user-id api/*current-user-id*]
-      (when (seq request-params)
-        (user-parameter-value/store! user-id dashboard-id request-params)))
+      ;; only ids the dashboard has: the rest are rejected below, and their ids are unbounded while the
+      ;; `user_parameter_value.parameter_id` column is not
+      (when-let [known-params (not-empty (filter #(contains? dashboard-param-id->param (:id %)) request-params))]
+        (user-parameter-value/store! user-id dashboard-id known-params)))
     (log/tracef "Merged %d dashboard parameter(s) and %d request parameter(s) into %d parameter(s)"
                 (count dashboard-param-id->param)
                 (count request-param-id->param)
@@ -238,9 +240,7 @@
       ;; database_id since we don't have the resolved query yet.
       (api/check-403
        (not= :blocked
-             (perms/most-permissive-database-permission-for-user
-              api/*current-user-id* :perms/view-data
-              (:database_id card))))
+             (get (perms/some-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*) :perms/view-data [(:database_id card)]) (:database_id card))))
       (let [resolved-params (resolve-params-for-query dashboard dashcard card-id
                                                       (some->> parameters not-empty (lib/normalize ::dashboards.schema/parameters)))
             options         (merge

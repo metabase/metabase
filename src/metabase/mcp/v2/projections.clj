@@ -86,7 +86,7 @@
   (let [detailed-keys (or detailed-keys concise-keys)
         project-fn    (fn [ks]
                         (if compact?
-                          #(m/remove-vals nil? (select-keys % ks))
+                          #(u/select-non-nil-keys % ks)
                           #(select-keys % ks)))]
     (register-projection!
      type
@@ -150,7 +150,7 @@
 ;; The one canonical card projection. Shared by browse_collection's model list and get_content's
 ;; question/model reads — registered here (the namespace both load) so it has a single definition
 ;; rather than one tool silently overwriting another's at load time. `query_summary`/`template_tags`
-;; are enrichments get_content computes; browse rows lack them and `compact` drops them.
+;; are enrichments get_content computes; browse rows lack them and `:compact?` drops them.
 (def ^:private question-concise-keys
   [:id :name :type :description :display :collection_id :collection_path :database_id :database_name
    :table_id :source_card_id :archived :query_summary :template_tags :parameters])
@@ -246,27 +246,44 @@
     :size_x            (:size_x dc)
     :size_y            (:size_y dc)
     :series            (not-empty
-                        (mapv #(m/remove-vals nil? (select-keys % [:id :name])) (:series dc)))
+                        (mapv #(u/select-non-nil-keys % [:id :name]) (:series dc)))
     :inline_parameters (not-empty (:inline_parameters dc))}))
 
-(defn- dashboard-parameters-summary
-  "One row per dashboard parameter: id, name, type, and the ids of the dashcards it is wired
-   to through their `:parameter_mappings`, including the negative ids of a dry run's unsaved dashcards."
+(defn parameter-dashcard-ids
+  "A map from each wired parameter's id, as a string, to the sorted ids of `dash`'s dashcards wired to it.
+   A dry run's unsaved dashcards appear under their negative ids."
   [dash]
-  (let [param-id->dashcard-ids (reduce (fn [acc {dashcard-id :id :keys [parameter_mappings]}]
-                                         (reduce #(update %1 (u/qualified-name (:parameter_id %2)) (fnil conj #{}) dashcard-id)
-                                                 acc
-                                                 parameter_mappings))
-                                       {}
-                                       (:dashcards dash))]
+  (update-vals (reduce (fn [acc {dashcard-id :id :keys [parameter_mappings]}]
+                         (reduce #(update %1 (u/qualified-name (:parameter_id %2)) (fnil conj #{}) dashcard-id)
+                                 acc
+                                 parameter_mappings))
+                       {}
+                       (:dashcards dash))
+               (comp vec sort)))
+
+(defn- dashboard-parameters-summary
+  "One row per dashboard parameter, with a subset of its stored properties and the ids of the dashcards wired to it."
+  [dash]
+  (let [param-id->dashcard-ids (parameter-dashcard-ids dash)]
     (mapv (fn [{param-id :id :as param}]
             (m/remove-vals
              nil?
-             {:id           param-id
-              :name         (:name param)
-              :type         (:type param)
-              :dashcard_ids (not-empty
-                             (vec (sort (remove nil? (get param-id->dashcard-ids (u/qualified-name param-id))))))}))
+             ;; TODO (Chris 2026-10-30) -- decide with evals which parameter properties concise reads show.
+             ;; A static list's `values_source_config` holds every value, so a long list fills the agent's
+             ;; context in every concise read and every `dashboard_write` response.
+             ;; The row leaves out `values_query_type` and `isMultiSelect`, though a `"none"` query type means
+             ;; the widget is a text box that never offers the static list shown here.
+             {:id                   param-id
+              :name                 (:name param)
+              :type                 (:type param)
+              :default              (:default param)
+              :required             (:required param)
+              :values_source_type   (:values_source_type param)
+              ;; A card source shows the card id and its value and label fields even to users who can't read the card.
+              ;; The REST endpoint `GET /api/dashboard/:id` returns stored parameters the same way, so
+              ;; redacting them only here would not keep them from those users.
+              :values_source_config (:values_source_config param)
+              :dashcard_ids         (get param-id->dashcard-ids (u/qualified-name param-id))}))
           (:parameters dash))))
 
 (defn dashboard-row
@@ -292,7 +309,17 @@
 (def ^:private dashboard-sample
   (-> (zipmap dashboard-detailed-keys (repeat "x"))
       (assoc :tabs [{:id 1 :name "x"}]
-             :parameters [{:id "x" :name "x" :type "x" :dashcard_ids [1]}]
+             :parameters [{:id                   "x"
+                           :name                 "x"
+                           :type                 "x"
+                           :default              "x"
+                           :required             true
+                           :values_source_type   "x"
+                           :values_source_config {:values      ["x"]
+                                                  :card_id     1
+                                                  :value_field ["x"]
+                                                  :label_field ["x"]}
+                           :dashcard_ids         [1]}]
              :dashcards [{:id 1 :kind "x" :card {:id 1 :name "x"} :text "x" :dashboard_tab_id 1
                           :row 0 :col 0 :size_x 1 :size_y 1 :series [{:id 1 :name "x"}]
                           :inline_parameters ["x"]}])))
@@ -306,12 +333,12 @@
 
 (defn- notification-recipient-row
   [recipient]
-  (m/remove-vals nil?
-                 {:type                 (some-> (:type recipient) u/qualified-name)
-                  :user_id              (:user_id recipient)
-                  :email                (or (get-in recipient [:user :email])
-                                            (get-in recipient [:details :value]))
-                  :permissions_group_id (:permissions_group_id recipient)}))
+  (u/remove-nils
+   {:type                 (some-> (:type recipient) u/qualified-name)
+    :user_id              (:user_id recipient)
+    :email                (or (get-in recipient [:user :email])
+                              (get-in recipient [:details :value]))
+    :permissions_group_id (:permissions_group_id recipient)}))
 
 (defn- notification-handler-rows
   "Projected handler rows. Recipients are projected as given: redaction happens before the
@@ -339,12 +366,11 @@
     :created_at    (:created_at notification)
     :updated_at    (:updated_at notification)
     :payload       (not-empty
-                    (m/remove-vals nil? (select-keys (:payload notification)
-                                                     [:card_id :send_condition :send_once])))
-    :subscriptions (mapv #(m/remove-vals nil?
-                                         {:type            (some-> (:type %) u/qualified-name)
-                                          :cron_schedule   (:cron_schedule %)
-                                          :ui_display_type (some-> (:ui_display_type %) u/qualified-name)})
+                    (u/select-non-nil-keys (:payload notification) [:card_id :send_condition :send_once]))
+    :subscriptions (mapv #(u/remove-nils
+                           {:type            (some-> (:type %) u/qualified-name)
+                            :cron_schedule   (:cron_schedule %)
+                            :ui_display_type (some-> (:ui_display_type %) u/qualified-name)})
                          (:subscriptions notification))
     :handlers      (notification-handler-rows (:handlers notification))}))
 
@@ -371,19 +397,15 @@
 
 ;;; ------------------------------------------------ subscription --------------------------------------------------
 
-(defn- compact
-  [m]
-  (m/remove-vals nil? m))
-
 (defn subscription-row
   "The projection row for `pulse-row`, a Pulse already hydrated and redacted. Both `get_content`
    and `subscription_write` return this shape."
   [pulse-row]
-  (compact
+  (u/remove-nils
    (-> (select-keys pulse-row [:id :name :dashboard_id :skip_if_empty :parameters :collection_id
                                :entity_id :creator_id :archived :created_at :updated_at])
        (assoc :channels (mapv (fn [channel]
-                                (compact
+                                (u/remove-nils
                                  (-> (select-keys channel [:id :channel_type :schedule_type
                                                            :schedule_hour :schedule_day
                                                            :schedule_frame :enabled :details])
@@ -395,11 +417,11 @@
                                      (m/dissoc-in [:details :emails])
                                      (assoc :recipients
                                             (some->> (:recipients channel)
-                                                     (mapv #(compact (select-keys % [:id :email]))))))))
+                                                     (mapv #(u/select-non-nil-keys % [:id :email])))))))
                               (:channels pulse-row))
               :cards (some->> (:cards pulse-row)
-                              (mapv #(compact (select-keys % [:id :name :include_csv :include_xls
-                                                              :format_rows]))))))))
+                              (mapv #(u/select-non-nil-keys % [:id :name :include_csv :include_xls
+                                                               :format_rows])))))))
 
 (def ^:private subscription-pulse-concise-keys
   [:id :name :dashboard_id :channels :cards :skip_if_empty :archived :creator_id])
@@ -421,12 +443,12 @@
  :subscription
  {:concise  (fn [row]
               (if (:handlers row)
-                (compact (select-keys row alert-concise-keys))
-                (compact (select-keys row subscription-pulse-concise-keys))))
+                (u/select-non-nil-keys row alert-concise-keys)
+                (u/select-non-nil-keys row subscription-pulse-concise-keys)))
   :detailed (fn [row]
               (if (:handlers row)
-                (compact (select-keys row alert-detailed-keys))
-                (compact (select-keys row subscription-pulse-detailed-keys))))
+                (u/select-non-nil-keys row alert-detailed-keys)
+                (u/select-non-nil-keys row subscription-pulse-detailed-keys)))
   :sample   subscription-sample
   ;; The projection dispatches on row shape (pulse-backed vs. notification-backed), so no single
   ;; sample captures it — the `fields` catalog is the union of both shapes' detailed paths.

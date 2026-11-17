@@ -11,6 +11,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
+import { Route } from "metabase/router";
 import {
   createMockDatabase,
   createMockEngines,
@@ -20,24 +21,30 @@ import {
 
 import { DatabaseListApp } from "./DatabaseListApp";
 
+const LIST_ERROR_MESSAGE = "Lorem ipsum dolor sit amet, consectetur adip";
+
 interface SetupOpts {
+  hasListError?: boolean;
   listErrorMessage?: string;
   hasAdvancedPermissions?: boolean;
 }
 
 const setup = ({
+  hasListError = false,
   listErrorMessage,
   hasAdvancedPermissions = false,
 }: SetupOpts = {}) => {
-  setupEnginesEndpoint({});
-  if (listErrorMessage) {
-    setupDatabaseListEndpointError({ message: listErrorMessage });
+  setupEnginesEndpoint(createMockEngines());
+  if (hasListError || listErrorMessage) {
+    setupDatabaseListEndpointError({
+      status: 500,
+      body: { message: listErrorMessage ?? LIST_ERROR_MESSAGE },
+    });
   } else {
     setupDatabaseListEndpoint([
       createMockDatabase({ id: 1, name: "Stubbed DB", is_stub: true }),
     ]);
   }
-  setupEnginesEndpoint(createMockEngines());
 
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
@@ -48,7 +55,9 @@ const setup = ({
     setupEnterpriseOnlyPlugin("feature_level_permissions");
   }
 
-  renderWithProviders(<DatabaseListApp />, {
+  renderWithProviders(<Route path="*" element={<DatabaseListApp />} />, {
+    withRouter: true,
+    initialRoute: "/admin/databases",
     storeInitialState: createMockState({
       currentUser: createMockUser({ is_superuser: true }),
       settings,
@@ -106,4 +115,36 @@ describe("DatabaseListApp", () => {
       expect(screen.getByText(errorMessage)).toBeVisible();
     });
   });
+
+  it("excludes databases with uneditable details when advanced permissions are enabled", async () => {
+    setup({ hasAdvancedPermissions: true });
+
+    expect(await screen.findByText("Stubbed DB")).toBeInTheDocument();
+    expect(getListRequestParams().get("exclude_uneditable_details")).toBe(
+      "true",
+    );
+  });
+
+  it.each([
+    { hasAdvancedPermissions: false },
+    { hasAdvancedPermissions: true },
+  ])(
+    "shows a generic error with hidden details when the databases fail to load (metabase#20471) (advanced permissions: $hasAdvancedPermissions)",
+    async ({ hasAdvancedPermissions }) => {
+      setup({ hasListError: true, hasAdvancedPermissions });
+
+      expect(
+        await screen.findByText(/Something.s gone wrong/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /We.ve run into an error\. You can try refreshing the page, or just go back\./,
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByText(LIST_ERROR_MESSAGE)).not.toBeVisible();
+
+      await userEvent.click(screen.getByText("Show error details"));
+      expect(screen.getByText(LIST_ERROR_MESSAGE)).toBeVisible();
+    },
+  );
 });

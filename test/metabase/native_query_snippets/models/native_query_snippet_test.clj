@@ -1,7 +1,7 @@
 (ns metabase.native-query-snippets.models.native-query-snippet-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -13,7 +13,7 @@
       (is (thrown-with-msg?
            Exception
            #"You cannot update the creator_id of a NativeQuerySnippet\."
-           (t2/update! :model/NativeQuerySnippet snippet-id {:creator_id (mt/user->id :rasta)})))
+           (t2/update! :model/NativeQuerySnippet :id snippet-id {:creator_id (mt/user->id :rasta)})))
       (is (= (mt/user->id :lucky)
              (t2/select-one-fn :creator_id :model/NativeQuerySnippet :id snippet-id))))))
 
@@ -33,7 +33,7 @@
                      :model/Collection         {dest-collection-id :id}   {:namespace dest}
                      :model/NativeQuerySnippet {snippet-id :id} (when source
                                                                   {:collection_id source-collection-id})]
-        (t2/update! :model/NativeQuerySnippet snippet-id {:collection_id (when dest dest-collection-id)})
+        (t2/update! :model/NativeQuerySnippet :id snippet-id {:collection_id (when dest dest-collection-id)})
         (is (= (when dest dest-collection-id)
                (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id))))))
   (doseq [collection-namespace [nil "x"]]
@@ -55,7 +55,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
-             (t2/update! :model/NativeQuerySnippet snippet-id {:collection_id dest-collection-id})))))))
+             (t2/update! :model/NativeQuerySnippet :id snippet-id {:collection_id dest-collection-id})))))))
 
 (deftest basic-param-finding-test
   (testing "Can find params in a snippet"
@@ -99,6 +99,9 @@
                 :snippet-id inner-id}}
               (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id))))))
 
+(defn- export-one [snippet]
+  (first (serialization/export-batch :model/NativeQuerySnippet [snippet])))
+
 (deftest template-tags-serialization-test
   (testing "Template tags serialization preserves nil, empty, and populated states"
     (mt/with-temp [:model/User {user-id :id} {:email "test@example.com"}]
@@ -108,7 +111,7 @@
                                                       :content "SELECT 1"
                                                       :creator_id user-id
                                                       :template_tags nil})
-              extracted (serdes/extract-one "NativeQuerySnippet" {} snippet)]
+              extracted (export-one snippet)]
           ;; toucan hooks populate it:
           (is (= {} (:template_tags extracted)))
           (t2/delete! :model/NativeQuerySnippet :id (:id snippet))))
@@ -118,14 +121,14 @@
                         :content "SELECT 1"
                         :creator_id user-id
                         :template_tags {}}]
-          (let [extracted (serdes/extract-one "NativeQuerySnippet" {} snippet)]
+          (let [extracted (export-one snippet)]
             (is (= {} (:template_tags extracted))))))
       (testing "tags in -> tags out"
         (mt/with-temp [:model/NativeQuerySnippet snippet
                        {:name "with-tags"
                         :content "WHERE id = {{id}}"
                         :creator_id user-id}]
-          (let [extracted (serdes/extract-one "NativeQuerySnippet" {} snippet)]
+          (let [extracted (export-one snippet)]
             (is (=? {"id" {:type :text
                            :name "id"
                            :display-name "ID"}}

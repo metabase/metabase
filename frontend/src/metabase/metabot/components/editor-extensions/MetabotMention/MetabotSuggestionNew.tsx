@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useClickOutside } from "@mantine/hooks";
 import {
   forwardRef,
@@ -98,7 +99,8 @@ const MetabotMentionSuggestionComponent = forwardRef<
       model !== "action" &&
       model !== "segment" &&
       model !== "user" &&
-      model !== "measure",
+      model !== "measure" &&
+      model !== "data-app",
   );
 
   const shouldHide = useMemo(() => {

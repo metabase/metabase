@@ -10,10 +10,11 @@
   | `:unrecoverable` | everything else                  | the user   | `:user-message`? |
 
   Recoverable is opt-in and unrecoverable is the default, so the safe path is the one you get by
-  doing nothing: an exception nobody declared recoverable ends the turn rather than handing the
-  model text that nobody wrote for it. An unrecoverable error has no `:message` key at all, which
-  makes forwarding a foreign exception message to the agent impossible rather than merely
-  discouraged.
+  doing nothing: an exception nobody declared is unrecoverable, with a code from [[classify]], and
+  the model never reads text that nobody wrote for it. An unrecoverable error has no `:message` key
+  at all, which makes forwarding a foreign exception message to the agent impossible rather than
+  merely discouraged. The agent still reads a fixed sentence for an `:internal` failure, so that it
+  can try another way when the agent loop lets the turn go on.
 
   Each recoverable error is declared once with [[defrecoverable]], which records it in the catalog
   here. The catalog is what lets one test cover every declared error, and what lets a converter
@@ -123,11 +124,12 @@
              cause)))
 
 (defn unrecoverable!
-  "Throw an unrecoverable ToolError with `code`, ending the turn.
+  "Throw an unrecoverable ToolError with `code`, ending the turn for any code a tool passes.
 
   Always throws; never returns. Tool code passes a qualified keyword, so the log and the
   model-facing template both say which namespace gave up; the runtime's own codes are an
-  unqualified closed set (`metabase.metabot.tools.runtime/runtime-codes`).
+  unqualified closed set (`metabase.metabot.tools.runtime/runtime-codes`). Among those, the agent
+  loop can let a turn go on after `:internal`, the code of an ordinary exception no tool declared.
 
     (unrecoverable! ::no-sql-permission)
     (unrecoverable! ::no-sql-permission
@@ -148,10 +150,10 @@
   (atom {}))
 
 (defn recoverables
-  "The declared recoverable errors, as a map of code to catalog entry.
+  "Return the declared recoverable errors as a map from codes to catalog entries.
 
-  An entry has `:code`, `:var`, `:doc`, `:payload-schema`, `:status-code` and `:build-fn`. Tests
-  walk this to cover every declared error at once, and converters look an error up by code."
+  An entry has `:code`, `:var`, `:doc`, `:payload-schema`, `:status-code`, `:quoted` and `:build-fn`.
+  Tests use this map to cover every declared error, and converters use it to look up errors by code."
   []
   @recoverables*)
 
@@ -260,6 +262,10 @@
     call, in every environment.
   - `:status-code` - *optional*, default 400 - the `:status-code` on the thrown `ex-info`, for the
     non-agent callers of shared tool helpers.
+  - `:quoted` - *optional* - a map from payload keys to functions that quote their values, for text
+    from outside Metabase such as database error messages. Bound each value at the call site and
+    quote it with the declared function. The dev and test check for unauthored text excludes those
+    quoted strings; see [[authored-text]].
 
   The body receives the validated payload and returns `{:message ... :recovery [...]}`. Write both
   in English: they are model-facing, not user-facing. Only recovery steps name tools, and each step
@@ -288,6 +294,7 @@
                               :doc            ~docstring
                               :payload-schema ~(:payload opts)
                               :status-code    ~(:status-code opts 400)
+                              :quoted         ~(:quoted opts {})
                               :build-fn       (fn ~argv ~@body)}))))
 
 ;;; ------------------------------------------ Reading a recoverable error -----------------------------------------
@@ -317,8 +324,8 @@
 
   A third audience, decided the way the other two are — by the class. The model's `:output` is not
   it: that text is written to be acted on (\"`uris` must be an array of 1 to 5 URI strings\", \"the
-  user was shown the error (:internal)\"), and someone reading their own conversation is not the one
-  acting on it.
+  user was shown the error (:scope-denied)\"), and someone reading their own conversation is not the
+  one acting on it.
 
   - `:unrecoverable` gets the `:user-message` the tool chose, because this is the failure the user
     has to act on, and the generic sentence when the tool chose none.
@@ -341,15 +348,54 @@
        (cons message)
        (str/join "\n")))
 
+(def max-output-length
+  "Maximum number of characters in a rendered failure, including recovery steps.
+
+  Leave room for recovery steps when including excerpts."
+  4000)
+
+(defn output-budget
+  "Return the character budget for an excerpt after `prefix` and every recovery step."
+  [prefix recovery]
+  (let [tool-names (into #{} (mapcat :uses) recovery)]
+    (- max-output-length
+       (count (recoverable-text {:message prefix :recovery recovery} tool-names)))))
+
+(defn authored-text
+  "Return `text` with the quoted payload values from `error`'s declaration removed.
+
+  The declaration's `:quoted` map supplies the payload keys and their quoting functions. Remove every
+  occurrence of each quoted value and leave the rest for the runtime's dev and test check for unauthored
+  text. Values written without their declared quoting function stay in the result. The error body is
+  not run again."
+  [{:keys [code data]} text]
+  (reduce-kv (fn [text k quote-fn]
+               (if-some [value (get data k)]
+                 (str/replace text (quote-fn value) "")
+                 text))
+             text
+             (:quoted (get (recoverables) code))))
+
 ;;; ------------------------------------------ Classification ------------------------------------------------------
+
+(defn declared?
+  "Whether `e` already carries a ToolError under [[error-key]], so a converter should rethrow it as it is."
+  [e]
+  (contains? (ex-data e) error-key))
 
 (defn classify
   "The ToolError for `e`.
 
   An exception carrying [[error-key]] in its ex-data keeps the class its producer chose; everything
-  else is unrecoverable `:internal`. Reads the top-level exception only and does not walk the cause
-  chain, so wrapping a declared error in an undeclared one demotes it — which is the safe
-  direction."
+  else is unrecoverable, with the code `:jvm-error` for a JVM error such as running out of memory or
+  stack, `:interrupted` for an interrupted thread, and `:internal` for an ordinary exception. The
+  model can't work around either of the first two. Reads the top-level exception only and does not
+  walk the cause chain, so wrapping a declared error in an undeclared one demotes it, which is the
+  safe direction."
   [e]
   (or (get (ex-data e) error-key)
-      {:class :unrecoverable :code :internal}))
+      {:class :unrecoverable
+       :code  (condp instance? e
+                VirtualMachineError  :jvm-error
+                InterruptedException :interrupted
+                :internal)}))

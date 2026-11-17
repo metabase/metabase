@@ -2,9 +2,9 @@ import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { shouldSchemaBePassedAsQueryParam } from "metabase/api";
-import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
 import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type {
+  AutocompleteSuggestion,
   Database,
   DatabaseId,
   DatabaseUsageInfo,
@@ -49,20 +49,29 @@ export function setupDatabaseWithNullDetailsEndpoint(db: Database) {
   );
 }
 
-export function setupCreateDatabaseEndpointError(body: unknown) {
-  fetchMock.post(
-    "path:/api/database",
-    { status: 400, body },
-    { name: "database-post-error" },
+export function setupDatabaseAutocompleteSuggestionsEndpoint({
+  databaseId,
+  suggestions,
+}: {
+  databaseId: DatabaseId;
+  suggestions: AutocompleteSuggestion[];
+}) {
+  fetchMock.get(
+    `path:/api/database/${databaseId}/autocomplete_suggestions`,
+    suggestions,
   );
 }
 
-export function setupDatabaseListEndpointError(body: unknown) {
-  fetchMock.get(
-    "path:/api/database",
-    { status: 500, body },
-    { name: "database-list-error" },
-  );
+export function setupDatabaseMetadataEndpoint(db: Database) {
+  fetchMock.get(`path:/api/database/${db.id}/metadata`, db, {
+    name: `database-${db.id}-metadata`,
+  });
+}
+
+export function setupDatabaseMetadataErrorEndpoint(databaseId: DatabaseId) {
+  fetchMock.get(`path:/api/database/${databaseId}/metadata`, 500, {
+    name: `database-${databaseId}-metadata`,
+  });
 }
 
 export function setupUpdateDatabaseEndpoint(db: Database) {
@@ -74,6 +83,27 @@ export function setupUpdateDatabaseEndpoint(db: Database) {
 
 export function setupUpdateDatabaseEndpointError(databaseId: Database["id"]) {
   fetchMock.put(`path:/api/database/${databaseId}`, { status: 500 });
+}
+
+export function setupDatabaseNotFoundEndpoint(databaseId: DatabaseId) {
+  fetchMock.get(`path:/api/database/${databaseId}`, {
+    status: 404,
+    body: "Not found.",
+  });
+}
+
+export function setupCreateDatabaseEndpointError({
+  status,
+  body,
+}: {
+  status: number;
+  body: string | Record<string, unknown>;
+}) {
+  fetchMock.post(
+    "path:/api/database",
+    { status, body },
+    { name: "create-database" },
+  );
 }
 
 export function setupDatabaseHealthcheckEndpoint(databaseId: Database["id"]) {
@@ -101,23 +131,29 @@ export function setupDatabaseListEndpoint(databases: Database[]) {
   );
 }
 
-export function setupDatabasesEndpoints(
-  databases: Database[],
-  { hasSavedQuestions = true } = {},
-  query: object = { saved: true },
-) {
-  const databasesWithSavedQuestions = hasSavedQuestions
-    ? [...databases, SAVED_QUESTIONS_DATABASE]
-    : databases;
-  fetchMock.get({
-    url: "path:/api/database",
-    query,
-    response: {
-      data: databasesWithSavedQuestions,
-      total: databasesWithSavedQuestions.length,
-    },
-    name: "database-list-with-query",
-  });
+export function setupDatabaseListEndpointError({
+  status,
+  body,
+}: {
+  status: number;
+  body: Record<string, unknown>;
+}) {
+  fetchMock.get(
+    "path:/api/database",
+    { status, body },
+    { name: "database-list" },
+  );
+}
+
+export function setupDatabasesEndpoints(databases: Database[], query?: object) {
+  if (query) {
+    fetchMock.get({
+      url: "path:/api/database",
+      query,
+      response: { data: databases, total: databases.length },
+      name: "database-list-with-query",
+    });
+  }
   setupDatabaseListEndpoint(databases);
   fetchMock.post(
     "path:/api/database",

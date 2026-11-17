@@ -18,13 +18,24 @@ import { TEST_SCHEMA } from "./fixtures";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 
-const queryWithInvalidSavedQuestionEntityId = {
-  savedQuestionEntityId: 54,
-  source: TEST_SCHEMA.tables.orders,
+const queryWithInvalidQuestionEntityId = {
+  source: { type: "card", entityId: 54 },
 } as const;
 
 // @ts-expect-error saved-question entity IDs are strings
-defineQuery(queryWithInvalidSavedQuestionEntityId);
+defineQuery(queryWithInvalidQuestionEntityId);
+
+const questionQueryWithStaticLimit = {
+  source: {
+    type: "card",
+    entityId: "ordersQuestionEntity1",
+    columns: TEST_SCHEMA.questions.ordersQuestion.columns,
+  },
+  limit: 10,
+} as const;
+
+// @ts-expect-error a card query's static clauses are the question's own
+defineQuery(questionQueryWithStaticLimit);
 
 // @ts-expect-error query definitions with breakouts require aggregations
 defineQuery({
@@ -32,23 +43,53 @@ defineQuery({
   breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.createdAt)],
 });
 
-const actionWithInvalidCopiedActionEntityId = {
-  copiedActionEntityId: 91,
-  action: TEST_SCHEMA.actions.createOrder,
+const actionWithInvalidEntityId = {
+  entityId: true,
+  kind: "row/create",
+  table: TEST_SCHEMA.tables.orders,
 } as const;
 
-// @ts-expect-error copied action entity IDs are strings
-defineAction(actionWithInvalidCopiedActionEntityId);
+// @ts-expect-error an action's entity ID is a string
+defineAction(actionWithInvalidEntityId);
 
-// @ts-expect-error action definitions must reference a generated action
-defineAction({ action: TEST_SCHEMA.tables.orders });
+// @ts-expect-error action definitions name a table from the app's schema
+defineAction({ entityId: "ordersEntity", kind: "row/create", table: 1 });
 
-const CreateOrder = defineAction({
-  action: TEST_SCHEMA.actions.createOrder,
+// @ts-expect-error action definitions need the entity ID of the action a production build runs
+defineAction({ kind: "row/create", table: TEST_SCHEMA.tables.orders });
+
+defineAction({
+  entityId: "ordersEntity",
+  // @ts-expect-error an implicit action creates, updates or deletes a row
+  kind: "row/upsert",
+  table: TEST_SCHEMA.tables.orders,
 });
 
-const UpdateOrder = defineAction({
-  action: TEST_SCHEMA.actions.updateOrder,
+const CreateOrder = defineAction({
+  entityId: "createOrderEntity",
+  kind: "row/create",
+  table: TEST_SCHEMA.tables.orders,
+});
+
+const REVIEWS_TABLE = {
+  type: "table",
+  id: 3,
+  fields: {
+    reviewId: {
+      type: "column",
+      fieldId: 300,
+      tableId: 3,
+      name: "Review ID",
+      slug: "review_id",
+      jsType: "number",
+    },
+  },
+} as const;
+
+const CreateReview = defineAction({
+  entityId: "createReviewEntity",
+  kind: "row/create",
+  table: REVIEWS_TABLE,
 });
 
 // --------
@@ -190,13 +231,24 @@ const aggregatedOrdersQuery = defineQuery({
 function InvalidTypeFixtures() {
   const staticQuery = defineQuery({
     source: TEST_SCHEMA.tables.orders,
-    savedQuestionEntityId: "ordersQuestionEntity1",
   });
 
-  // @ts-expect-error a query is a `defineQuery` export from `queries/`, never an inline object
+  const questionQuery = defineQuery({
+    source: {
+      type: "card",
+      entityId: "ordersQuestionEntity1",
+      columns: TEST_SCHEMA.questions.ordersQuestion.columns,
+    },
+  });
+
+  const questionResult = useMetabaseQuery(questionQuery);
+  // @ts-expect-error a card query's rows hold only the card's result columns
+  const _missing = questionResult.data?.rows[0]?.MISSING;
+
+  // @ts-expect-error a query is a `defineQuery` definition, never an inline object
   useMetabaseQuery({ source: TEST_SCHEMA.tables.orders });
 
-  // @ts-expect-error a query is a `defineQuery` export from `queries/`, never an inline object
+  // @ts-expect-error a query is a `defineQuery` definition, never an inline object
   useMetabaseQueryObject({ source: TEST_SCHEMA.tables.orders });
 
   const plainQuery = {
@@ -209,17 +261,18 @@ function InvalidTypeFixtures() {
   // @ts-expect-error a typed query object is still not a `defineQuery` export
   useMetabaseQueryObject(plainQuery);
 
-  // @ts-expect-error saved-question metadata cannot be passed to querying hooks
-  defineQuery({ source: TEST_SCHEMA.questions.ordersQuestion });
-
   // @ts-expect-error a copy of a definition is not the definition
   useMetabaseQuery({ ...staticQuery, limit: 10 });
 
   // @ts-expect-error a copy of a definition is not the definition
   useMetabaseQueryObject({ ...staticQuery, limit: 10 });
 
-  // @ts-expect-error a data app's action is a `defineAction` export from `actions/`, never an inline object
-  useDataAppAction({ action: TEST_SCHEMA.actions.createOrder });
+  // @ts-expect-error a data app's action is a `defineAction` definition, never an inline object
+  useDataAppAction({
+    entityId: "createOrderEntity",
+    kind: "row/create",
+    table: TEST_SCHEMA.tables.orders,
+  });
 
   // @ts-expect-error a copy of a definition is not the definition
   useDataAppAction({ ...CreateOrder });
@@ -227,11 +280,11 @@ function InvalidTypeFixtures() {
   // @ts-expect-error a data app never names an action by id
   useDataAppAction(51);
 
-  // @ts-expect-error pass the `defineAction` export, not the schema entry
-  useDataAppAction(TEST_SCHEMA.actions.createOrder);
+  // @ts-expect-error pass the `defineAction` export, not a table
+  useDataAppAction(TEST_SCHEMA.tables.orders);
 
-  // @ts-expect-error the SDK hook takes a definition object or an id, not the schema entry
-  useAction(TEST_SCHEMA.actions.createOrder);
+  // @ts-expect-error the SDK hook takes a definition object or an id, not a table
+  useAction(TEST_SCHEMA.tables.orders);
 
   // @ts-expect-error the definition's parameter slugs are the only keys
   useAction(CreateOrder).execute({ stauts: "shipped" });
@@ -239,8 +292,8 @@ function InvalidTypeFixtures() {
   // @ts-expect-error a parameter value is typed by its `jsType`
   useAction(CreateOrder).execute({ status: 1 });
 
-  // @ts-expect-error required parameters cannot be omitted
-  useAction(UpdateOrder).execute({});
+  // @ts-expect-error a parameter is keyed by its column's slug, not its lowercased name
+  useAction(CreateReview).execute({ "review id": 1 });
 
   // @ts-expect-error `result` is discriminated by the action's kind
   void useAction(CreateOrder).result?.["rows-updated"];
@@ -394,3 +447,15 @@ function InvalidTypeFixtures() {
 }
 
 void InvalidTypeFixtures;
+
+breakout(TEST_SCHEMA.tables.orders.fields.amount, {
+  // @ts-expect-error Bin counts must be 10, 50, or 100.
+  binning: { strategy: "num-bins", numBins: 20 },
+});
+
+const customBinCount: number = 20;
+
+breakout(TEST_SCHEMA.tables.orders.fields.amount, {
+  // @ts-expect-error An arbitrary number is not a preset bin count.
+  binning: { strategy: "num-bins", numBins: customBinCount },
+});

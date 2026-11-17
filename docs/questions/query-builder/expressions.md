@@ -1,5 +1,6 @@
 ---
 title: Custom expressions
+summary: Write spreadsheet-like formulas in the query builder to create custom columns, filters, and metrics.
 redirect_from:
   - /docs/latest/users-guide/expressions
 ---

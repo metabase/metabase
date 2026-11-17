@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { JSX } from "react";
 import { c, t } from "ttag";
 
 import { EmbeddingLegaleseModal } from "metabase/embedding/settings/EmbeddingLegaleseModal";
@@ -32,7 +33,7 @@ export function EnableEmbeddingPrompt({
   const usageConditionsLink = (
     <Anchor
       key="usage-conditions"
-      href="https://metabase.com/license/embedding"
+      href="https://www.metabase.com/license/embedding"
       target="_blank"
     >
       {t`usage conditions`}

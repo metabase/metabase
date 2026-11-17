@@ -24,7 +24,6 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
     it("should show an error when initial-collection points to a collection the user has no access to", () => {
       H.prepareSdkIframeEmbedTest({
         withToken: "bleeding-edge",
-        signOut: false,
       });
 
       H.createCollection({
@@ -37,7 +36,8 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
           },
         });
 
-        cy.signIn("nocollection");
+        cy.signOut();
+        mockAuthProviderAndJwtSignIn(USERS.nocollection);
 
         setupEmbed(`
           <metabase-browser
@@ -58,7 +58,6 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
     it("should not show Save button when opening an existing question from a read-only collection", () => {
       H.prepareSdkIframeEmbedTest({
         withToken: "bleeding-edge",
-        signOut: false,
       });
 
       H.createCollection({
@@ -77,7 +76,8 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
           collection_id: collection.id,
         });
 
-        cy.signIn("nocollection");
+        cy.signOut();
+        mockAuthProviderAndJwtSignIn(USERS.nocollection);
 
         setupEmbed(`
           <metabase-browser
@@ -132,7 +132,7 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
       });
 
     const setUpTenantsInstance = () => {
-      H.prepareSdkIframeEmbedTest({ signOut: false });
+      H.prepareSdkIframeEmbedTest();
       H.updateSetting("use-tenants", true);
 
       createSharedCollection("Shared Reports").then(({ body: collection }) => {
@@ -150,7 +150,7 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
 
     describe("for a normal user", () => {
       beforeEach(() => {
-        H.prepareSdkIframeEmbedTest({ signOut: false });
+        H.prepareSdkIframeEmbedTest();
 
         cy.signOut();
         mockAuthProviderAndJwtSignIn(USERS.normal);
@@ -249,7 +249,7 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
 
     describe("for a user with no access to the root", () => {
       it("should promote the collections below the root, drill into one and come back", () => {
-        H.prepareSdkIframeEmbedTest({ signOut: false });
+        H.prepareSdkIframeEmbedTest();
 
         H.createCollection({ name: "Accessible Collection" }).then(
           ({ body: collection }) => {
@@ -312,7 +312,6 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
   it("should reset `New question` editor state when clicking 'New question' breadcrumb after selecting a filter", () => {
     H.prepareSdkIframeEmbedTest({
       withToken: "bleeding-edge",
-      signOut: false,
     });
 
     setupEmbed(`
@@ -347,7 +346,6 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
   it("should reset `New question` editor state when clicking 'New question' breadcrumb after Visualize", () => {
     H.prepareSdkIframeEmbedTest({
       withToken: "bleeding-edge",
-      signOut: false,
     });
 
     setupEmbed(`

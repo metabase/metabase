@@ -33,6 +33,14 @@
   [identifier :- :string]
   (t2/select-one :model/CustomVizPlugin :identifier identifier))
 
+(mu/defn plugins-by-identifiers :- [:sequential :map]
+  "The CustomVizPlugins, with only `columns` unless nil, whose identifier is one of `identifiers`, oldest first."
+  [identifiers :- [:sequential {:min 1} :string]
+   columns     :- [:maybe [:sequential :keyword]]]
+  (t2/select (if columns (into [:model/CustomVizPlugin] columns) :model/CustomVizPlugin)
+             :identifier [:in [:auto/param (vec identifiers)]]
+             {:order-by [[:id :asc]]}))
+
 (mu/defn plugin-identifier-exists?
   "Whether a CustomVizPlugin with `identifier` exists."
   [identifier :- :string]
@@ -57,7 +65,7 @@
   "Apply `changes` to the CustomVizPlugin with `plugin-id`, returning the number updated."
   [plugin-id :- ms/PositiveInt
    changes   :- ::custom-viz-plugin.schema/custom-viz-plugin.update]
-  (t2/update! :model/CustomVizPlugin plugin-id changes))
+  (t2/update! :model/CustomVizPlugin :id plugin-id changes))
 
 (mu/defn delete-plugin!
   "Delete the CustomVizPlugin with `plugin-id`, returning the number deleted."

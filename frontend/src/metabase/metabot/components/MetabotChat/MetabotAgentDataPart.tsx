@@ -97,7 +97,7 @@ export const AgentDataPart = ({
     .with(
       { part: { type: "data-generated_entity", data: { type: "card" } } },
       ({ part }) => (
-        <Stack gap="lg">
+        <Stack gap="sm" mb="lg">
           {debug && <DataPartJsonCard type={part.type} value={part.data} />}
           <MetabotInlineChart
             value={part.data}
@@ -125,6 +125,18 @@ export const AgentDataPart = ({
       <Stack gap="lg">
         {debug && <DataPartJsonCard type={part.type} value={part.data} />}
         <EntitySavedMessage value={part.data} />
+      </Stack>
+    ))
+    .with({ part: { type: "data-dashboard_saved" } }, ({ part }) => (
+      <Stack gap="lg">
+        {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+        <MetabotInlineDashboardLink
+          value={{
+            type: "dashboard",
+            title: part.data.name,
+            url: part.data.url,
+          }}
+        />
       </Stack>
     ))
     .with({ part: { type: "data-adhoc_viz" } }, ({ part }) =>

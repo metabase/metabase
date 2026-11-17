@@ -13,7 +13,6 @@
    5. Metabase exchanges code for tokens and creates session"
   (:require
    [java-time.api :as t]
-   [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.auth-identity.core :as auth-identity]
@@ -47,9 +46,12 @@
       (throw (ex-info (tru "OIDC provider ''{0}'' is not enabled" provider-key)
                       {:status-code 400}))))
 
+  ;; Validate the redirect here with the same predicate `create-oidc-state` uses when it builds the state cookie, so
+  ;; an unacceptable value is rejected before we contact the identity provider.
   (let [redirect-url (let [redirect (get-in request [:params :redirect])]
                        (if redirect
-                         (sso-utils/check-sso-redirect redirect)
+                         (do (sso/validate-redirect-url! redirect)
+                             redirect)
                          "/"))
         auth-result  (auth-identity/authenticate
                       :provider/custom-oidc
@@ -63,7 +65,7 @@
                               (keyword (str "oidc-" provider-key))
                               redirect-url
                               {:browser-id (:browser-id request)})
-      (throw (ex-info (or (:message auth-result) (tru "Failed to initiate OIDC authentication"))
+      (throw (ex-info (str (or (:message auth-result) (tru "Failed to initiate OIDC authentication")))
                       {:status-code 500})))))
 
 (defn sso-callback
@@ -92,6 +94,6 @@
                                        session
                                        (t/zoned-date-time (t/zone-id "GMT")))
           base-response))
-      (let [error-msg (or (:message login-result) (tru "OIDC authentication failed"))]
+      (let [error-msg (str (or (:message login-result) (tru "OIDC authentication failed")))]
         (log/errorf "OIDC authentication failed for provider %s: %s" provider-key error-msg)
         (throw (ex-info error-msg {:status-code 401}))))))

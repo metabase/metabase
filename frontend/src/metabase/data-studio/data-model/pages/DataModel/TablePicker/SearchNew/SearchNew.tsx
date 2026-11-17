@@ -180,7 +180,7 @@ export function SearchNew({
   if (filteredTables.length === 0) {
     return (
       <Box p="xxl">
-        <Text c="text-disabled">{t`No tables found`}</Text>
+        <Text c="text-secondary">{t`No tables found`}</Text>
       </Box>
     );
   }

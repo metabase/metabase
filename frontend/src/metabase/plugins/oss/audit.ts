@@ -1,6 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
 
-import type { LinkProps } from "metabase/common/components/Link";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -12,7 +11,7 @@ import type {
 
 import { definePluginSlot } from "../slot";
 
-export type InsightsLinkProps = (
+export type InsightsLinkProps =
   | {
       question: Pick<Question, "id" | "collection">;
       dashboard?: never;
@@ -20,9 +19,7 @@ export type InsightsLinkProps = (
   | {
       question?: never;
       dashboard: Pick<Dashboard, "id" | "collection">;
-    }
-) &
-  Omit<LinkProps, "to">;
+    };
 
 export interface InsightsMenuItemProps {
   card: Pick<Card, "id" | "collection">;

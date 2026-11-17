@@ -21,7 +21,8 @@
    [metabase.metabot.tools.search :as metabot.search]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -68,11 +69,13 @@
 (projections/register-projection!
  :search-result
  {:concise  (fn [row]
-              (m/remove-vals nil? (select-keys row concise-row-keys)))
+              (u/select-non-nil-keys row concise-row-keys))
   ;; The v1 engine enriches some rows (metrics) with its own field vocabulary; the v2 surface
   ;; names entity ids `entity_id` and never emits portable FK arrays, so translate/strip here.
+  ;; A metric's source card is referenced by its numeric `source_card_id` here, so its portable
+  ;; entity id goes too.
   :detailed (fn [row]
-              (cond-> (dissoc row :portable_entity_id :base_table_portable_fk)
+              (cond-> (dissoc row :portable_entity_id :base_table_portable_fk :source_card_portable_entity_id)
                 (and (:portable_entity_id row) (nil? (:entity_id row)))
                 (assoc :entity_id (:portable_entity_id row))))
   :sample   {:id                     1
@@ -101,7 +104,10 @@
              :entity_id              "x"
              :base_table_id          1
              :base_table_name        "x"
-             :base_table_schema      "x"}})
+             :base_table_schema      "x"
+             :source_card_id         1
+             :source_card_name       "x"
+             :source_unavailable     true}})
 
 ;;; --------------------------------------------- Collection paths -------------------------------------------------
 
@@ -116,9 +122,8 @@
   [ids]
   (when (seq ids)
     (into {}
-          (comp (filter mi/can-read?)
-                (map (juxt :id :name)))
-          (mcp.db/collections-for-read-check ids))))
+          (map (juxt :id :name))
+          (filterv mi/can-read? (t2/hydrate (mcp.db/collections-for-read-check ids) :can_read)))))
 
 (defn- add-collection-paths
   "Attach `:collection_path` — ancestor collection names joined with `/`, ending in the
@@ -413,7 +418,7 @@
    sandboxed-user exclusion apply — optionally narrowed to names containing any query as a
    case-insensitive substring."
   [queries archived]
-  (let [readable (filter mi/can-read? (mcp.db/snippets-by-archived-state archived))
+  (let [readable (filter mi/can-read? (t2/hydrate (mcp.db/snippets-by-archived-state archived) :can_read))
         matches  (if (seq queries)
                    (let [needles (mapv u/lower-case-en queries)]
                      (filter (fn [{:keys [name]}]

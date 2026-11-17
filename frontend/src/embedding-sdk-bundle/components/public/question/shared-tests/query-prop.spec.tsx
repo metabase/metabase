@@ -26,7 +26,7 @@ import { TEST_COLUMN, TEST_DB, TEST_TABLE } from "./constants.spec";
 export function addQueryPropTests({
   Component,
 }: {
-  Component: (props: { query: string }) => React.ReactNode;
+  Component: React.ComponentType<{ query: string }>;
 }) {
   describe("query prop", () => {
     const QUERY_PROP = utf8_to_b64url(

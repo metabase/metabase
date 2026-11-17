@@ -12,6 +12,11 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(defn- diff-strings
+  "The `revision/diff-strings` of `o1` and `o2`, naming the Collections and Dashboards they reference."
+  [model o1 o2]
+  (revision/diff-strings model o1 o2 (revision/readable-names (filterv some? [o1 o2]))))
+
 (def ^:private reverted-to
   (atom nil))
 
@@ -42,7 +47,7 @@
   {:o1 (when o1 (into {} o1)), :o2 (when o2 (into {} o2))})
 
 (defmethod revision/diff-strings ::FakedCard
-  [_model o1 o2]
+  [_model o1 o2 _names]
   (when o1
     [(str "BEFORE=" (into {} o1) ",AFTER=" (into {} o2))]))
 
@@ -75,13 +80,13 @@
                 "changed")
     (is (= "renamed this Card from \"Tips by State\" to \"Spots by State\"."
            (u/build-sentence
-            ((get-method revision/diff-strings :default)
+            (diff-strings
              :model/Card
              {:name "Tips by State", :private false}
              {:name "Spots by State", :private false}))))
     (is (= "made this Card private."
            (u/build-sentence
-            ((get-method revision/diff-strings :default)
+            (diff-strings
              :model/Card
              {:name "Spots by State", :private false}
              {:name "Spots by State", :private true}))))))
@@ -90,14 +95,14 @@
   (testing "Check that 2 changes are handled nicely"
     (is (= "made this Card private and renamed it from \"Tips by State\" to \"Spots by State\"."
            (u/build-sentence
-            ((get-method revision/diff-strings :default)
+            (diff-strings
              :model/Card
              {:name "Tips by State", :private false}
              {:name "Spots by State", :private true})))))
   (testing "Check that several changes are handled nicely"
     (is (= "turned this to a model, made it private and renamed it from \"Tips by State\" to \"Spots by State\"."
            (u/build-sentence
-            ((get-method revision/diff-strings :default)
+            (diff-strings
              :model/Card
              {:name "Tips by State", :private false, :type "question"}
              {:name "Spots by State", :private true, :type "model"}))))))
@@ -110,7 +115,7 @@
     ;; card public"
     (is (= "made this Card public."
            (u/build-sentence
-            ((get-method revision/diff-strings :default)
+            (diff-strings
              :model/Card
              {:private true :collection_unknown_field nil}
              {:private false :collection_unknown_field 1}))))))
@@ -124,7 +129,8 @@
                                        :model/Measure     "Measure"
                                        :model/Segment     "Segment"
                                        :model/Transform   "Transform"}
-                                config/ee-available? (assoc :model/TransformTest "Transform test"))]
+                                config/ee-available? (assoc :model/TransformTest "Transform test"
+                                                            :model/CardTest      "Card test"))]
       ;; `push-revision!` calls `serialize-instance`, which has no default: a model with revisions has a method.
       (is (= (set (filter #(= "model" (namespace %)) (keys (methods revision/serialize-instance))))
              (set (keys model->display-name))))
@@ -132,7 +138,7 @@
         (testing model
           (mt/with-log-messages-for-level [messages [metabase.revisions.models.revision.diff :warn]]
             (is (= (str "renamed this " display-name " from \"A\" to \"B\".")
-                   (u/build-sentence (revision/diff-strings model {:name "A"} {:name "B"}))))
+                   (u/build-sentence (diff-strings model {:name "A"} {:name "B"}))))
             ;; A missing display name falls back to the model string, which equals the display name for most models.
             (testing "with no warning of a missing display name"
               (is (= [] (messages))))))))))
@@ -141,7 +147,7 @@
   (testing "A model with no display name gets a description with the model string, and a warning that names the model"
     (mt/with-log-messages-for-level [messages [metabase.revisions.models.revision.diff :warn]]
       (is (= "renamed this NoSuchModel from \"A\" to \"B\"."
-             (u/build-sentence (revision.diff/diff-strings* "NoSuchModel" {:name "A"} {:name "B"}))))
+             (u/build-sentence (revision.diff/diff-strings* "NoSuchModel" {:name "A"} {:name "B"} {:collection-names {} :dashboard-names {}}))))
       (is (=? [{:level :warn, :message #".*NoSuchModel.*"}]
               (messages))))))
 
@@ -192,9 +198,9 @@
                                                                            :model_id    card-id
                                                                            :object      {}
                                                                            :most_recent false}))]
-      (t2/update! (t2/table-name :model/Revision) (:id revision) {:most_recent true})
+      (t2/update! (t2/table-name :model/Revision) :id (:id revision) {:most_recent true})
       (is (= (:timestamp revision)
-             (t2/select-one-fn :timestamp :model/Revision (:id revision)))))))
+             (t2/select-one-fn :timestamp :model/Revision :id (:id revision)))))))
 
 (deftest sorting-test
   (testing "Test that revisions are sorted in reverse chronological order"
@@ -264,7 +270,7 @@
                                     {:entity :model/Dashboard
                                      :id     dash-id
                                      :user-id (mt/user->id :rasta)
-                                     :object (t2/select-one :model/Dashboard dash-id)}))]
+                                     :object (t2/select-one :model/Dashboard :id dash-id)}))]
           (testing "first revision should be recorded"
             (push-revision)
             (is (= 1 (count (revision/revisions :model/Dashboard dash-id)))))
@@ -289,7 +295,7 @@
                                     {:entity  :model/Card
                                      :id      card-id
                                      :user-id (mt/user->id :rasta)
-                                     :object  (t2/select-one :model/Card card-id)}))]
+                                     :object  (t2/select-one :model/Card :id card-id)}))]
           (testing "first revision should be recorded"
             (push-revision)
             (is (= 1 (count (revision/revisions :model/Card card-id)))))
@@ -304,7 +310,7 @@
             ;; Excluding it from `serialize-instance` would also equalize the comparison, but then
             ;; `revert-to-revision! :model/Card` would fall back to `starting-card-schema-version` and
             ;; silently downgrade the card on every revert.
-            (let [card (t2/select-one :model/Card card-id)]
+            (let [card (t2/select-one :model/Card :id card-id)]
               (is (= (:card_schema card)
                      (:card_schema (revision/serialize-instance :model/Card card-id card))))
               (is (> (:card_schema card) queries/starting-card-schema-version)
@@ -494,7 +500,8 @@
                                                         nil
                                                         {:object       {:name "New Object"}
                                                          :is_reversion false
-                                                         :is_creation  true}))))
+                                                         :is_creation  true}
+                                                        {:collection-names {} :dashboard-names {}}))))
          (testing "reversion"
            (is (= {:has_multiple_changes false
                    :description          "reverted to an earlier version."}
@@ -504,19 +511,21 @@
                                                          :is_creation  false}
                                                         {:object       {:name "New Object"}
                                                          :is_reversion true
-                                                         :is_creation  false}))))
+                                                         :is_creation  false}
+                                                        {:collection-names {} :dashboard-names {}}))))
          (testing "multiple changes"
-           {:description          "changed the display from table to bar and turned this into a model."
-            :has_multiple_changes true}
-           (#'revision/revision-description-info model
-                                                 {:object       {:type "question"
-                                                                 :display :table}
-                                                  :is_reversion false
-                                                  :is_creation  false}
-                                                 {:object       {:type "model"
-                                                                 :display :bar}
-                                                  :is_reversion false
-                                                  :is_creation  false}))
+           (is (= {:description          "changed the display from table to bar and turned this to a model."
+                   :has_multiple_changes true}
+                  (#'revision/revision-description-info model
+                                                        {:object       {:type "question"
+                                                                        :display :table}
+                                                         :is_reversion false
+                                                         :is_creation  false}
+                                                        {:object       {:type "model"
+                                                                        :display :bar}
+                                                         :is_reversion false
+                                                         :is_creation  false}
+                                                        {:collection-names {} :dashboard-names {}}))))
          (testing "changes contains unspecified keys will not be mentioned"
            (is (= {:description          "turned this to a model."
                    :has_multiple_changes false}
@@ -528,7 +537,8 @@
                                                         {:object       {:type        "model"
                                                                         :unknown_key false}
                                                          :is_reversion false
-                                                         :is_creation  false})))))))))
+                                                         :is_creation  false}
+                                                        {:collection-names {} :dashboard-names {}})))))))))
 
 (deftest revision-tracks-metabase-version
   (testing "creating a new revision uses current metabase version"
@@ -540,3 +550,35 @@
         (is (=? [{:metabase_version new-version}
                  {:metabase_version config/mb-version-string}]
                 (revision/revisions ::FakedCard card-id)))))))
+
+(deftest revisions+details-names-collections-together-test
+  (mt/with-temp [:model/Collection {coll-a :id} {:name "Shelf A"}
+                 :model/Collection {coll-b :id} {:name "Shelf B"}
+                 :model/Collection {coll-c :id} {:name "Shelf C"}
+                 :model/Card       {card-id :id} {:collection_id coll-a}]
+    (mt/with-test-user :crowberto
+      (let [move!      (fn [collection-id]
+                         (t2/update! :model/Card :id card-id {:collection_id collection-id})
+                         (revision/push-revision! {:entity  :model/Card
+                                                   :id      card-id
+                                                   :user-id (mt/user->id :crowberto)
+                                                   :object  (t2/select-one :model/Card :id card-id)}))
+            details    #(revision/revisions+details :model/Card card-id)
+            call-count (fn [thunk]
+                         (t2/with-call-count [call-count]
+                           (doall (thunk))
+                           (call-count)))
+            extra      #(- (call-count details)
+                           (call-count (fn [] (revision/revisions :model/Card card-id))))]
+        (move! coll-a)
+        (move! coll-b)
+        (let [one-move (extra)]
+          (move! coll-c)
+          (move! coll-a)
+          (testing "moves are described with names of readable Collections"
+            (is (= ["moved this Card from Shelf C to Shelf A."
+                    "moved this Card from Shelf B to Shelf C."
+                    "moved this Card from Shelf A to Shelf B."]
+                   (map (comp str :description) (take 3 (details))))))
+          (testing "further moves cost no further queries past loading their revisions"
+            (is (= one-move (extra)))))))))

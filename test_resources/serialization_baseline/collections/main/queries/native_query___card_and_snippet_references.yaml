@@ -10,7 +10,7 @@ dataset_query:
   stages:
   - native: |-
       SELECT *
-      FROM {{#1-basic_aggregations}}
+      FROM {{#h5F2EjHsRd73Dqqh8sAtd-basic_aggregations}}
       WHERE {{snippet: Active Product Filter}}
       ORDER BY "count" DESC
       LIMIT 10
@@ -18,7 +18,7 @@ dataset_query:
       - card-id: h5F2EjHsRd73Dqqh8sAtd
         display-name: Basic Aggregations
         id: cc000001-0000-0000-0000-000000000001
-        name: '#1-basic_aggregations'
+        name: '#h5F2EjHsRd73Dqqh8sAtd-basic_aggregations'
         type: card
       - display-name: 'Snippet: Active Product Filter'
         id: cc000002-0000-0000-0000-000000000002

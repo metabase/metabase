@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import { getCollection } from "metabase/common/collections/utils";
@@ -24,6 +25,8 @@ export const getInfoText = (result: SearchResult): InfoTextData => {
       return getCollectionInfoText(result);
     case "database":
       return getDatabaseInfoText();
+    case "data-app":
+      return { label: t`Data app` };
     case "action":
     case "indexed-entity":
       return getActionInfoText(result);

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, useCallback, useState } from "react";
+import { type JSX, type ReactNode, useCallback, useState } from "react";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
@@ -133,10 +133,7 @@ export const AppBarSmall = ({
           pl="1.25rem"
         >
           {detailView ? (
-            <DetailViewNav
-              rowName={detailView.rowName}
-              table={detailView.table}
-            />
+            <DetailViewNav detailView={detailView} />
           ) : isQuestionLineageVisible ? (
             questionLineage
           ) : isCollectionPathVisible ? (

@@ -121,9 +121,9 @@
   ;; here's a hard-coded value. This can be any month, provided it is in the range of the Sample Database, which is
   ;; roughly +/- 2 years. I've picked June 2026 in October 2025, so this value should be good for a few years.
   #?(:cljs "2026-06-01"
-     :clj  (let [last-month (-> (t/zoned-date-time (t/year) (t/month))
-                                (t/minus (t/months 1)))]
-             (t/format :iso-offset-date-time last-month))))
+     :clj  (let [month-start (-> (t/zoned-date-time (t/year) (t/month))
+                                 (t/minus (t/months 1)))]
+             (t/format :iso-offset-date-time month-start))))
 
 ;; See the note above under [[last-month]] about the hard-coded values in CLJS.
 (let [[start end] #?(:cljs ["2026-06-01" "2026-06-30"]

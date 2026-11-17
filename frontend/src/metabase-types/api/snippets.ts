@@ -20,6 +20,7 @@ export interface NativeQuerySnippet {
 
   creator?: UserInfo;
   collection?: Collection;
+  can_write?: boolean;
 }
 
 export type ListSnippetsParams = {

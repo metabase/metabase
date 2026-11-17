@@ -1,7 +1,7 @@
 import { useMountedState } from "react-use";
 import { t } from "ttag";
 
-import { getIsSsoUser } from "metabase/account/selectors";
+import { getIsPasswordUser } from "metabase/account/selectors";
 import { hasAuthenticationSettings } from "metabase/account/utils";
 import { Api, useDisconnectSlackMutation } from "metabase/api";
 import { getErrorStatus } from "metabase/api/client/errors";
@@ -16,7 +16,7 @@ import { PLUGIN_MULTI_FACTOR_AUTH } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
-import { Stack } from "metabase/ui";
+import { Stack, rem } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
 
 import { SlackAccount } from "../../components/SlackAccount/SlackAccount";
@@ -25,7 +25,7 @@ import { UserPasswordForm } from "../../components/UserPasswordForm";
 const UserPasswordApp = () => {
   const { data, isFetching } = useGetCurrentUserQuery();
   const user = checkNotNull(data);
-  const isSsoUser = useSelector(getIsSsoUser);
+  const isPasswordUser = useSelector(getIsPasswordUser);
   const validatePassword = useValidatePassword();
   const [disconnectSlack, { isLoading }] = useDisconnectSlackMutation();
   const [sendToast] = useToast();
@@ -72,8 +72,10 @@ const UserPasswordApp = () => {
   };
 
   return (
-    <Stack gap="xxl">
-      {!isSsoUser && (
+    // Form labels have a tighter line-height than the body text the other account tabs
+    // start with, so nudge the content down to line their first lines up.
+    <Stack gap="xxl" pt={rem(3)}>
+      {isPasswordUser && (
         <Stack gap="lg">
           <UserPasswordForm user={user} onValidatePassword={validatePassword} />
         </Stack>

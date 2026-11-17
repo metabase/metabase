@@ -3,6 +3,7 @@
   (:require
    [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -141,12 +142,10 @@
 (mr/def ::no-kebab-case-keys (ms/MapWithNoKebabKeys))
 
 (mr/def ::DatabaseInstance
-  [:and
-   (ms/InstanceOf :model/Database)
-   ::no-kebab-case-keys])
+  [:ref ::lib.schema.metadata/database])
 
 (def DatabaseInstance
-  "Schema for a valid instance of a Metabase Database."
+  "Schema for the Lib metadata of a Database, the only form of a Database inside sync."
   [:ref ::DatabaseInstance])
 
 (mr/def ::TableInstance

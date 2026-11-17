@@ -38,6 +38,9 @@
   TokenStatus
   clear-cache!
   clear-local-cache!
+  refresh-at-startup!
+  start-refresher!
+  stop-refresher!
   token-check-url
   transform-metered-as
   transform-stats]
@@ -53,6 +56,7 @@
   enable-any-sso?
   enable-audit-app?
   enable-cache-granular-controls?
+  enable-change-log?
   enable-collection-cleanup?
   enable-config-text-file?
   enable-content-translation?
@@ -95,6 +99,7 @@
   enable-python-transforms?
   enable-transform-testing?
   enable-upload-management?
+  enable-workspaces?
   enable-whitelabeling?
   enable-writable-connection?
   has-attached-dwh?

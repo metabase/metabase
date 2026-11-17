@@ -92,12 +92,7 @@ const ObjectDetailPreviewBase = ({
 
       {columns.length > 0 && (
         <Box pt="xxl">
-          <DetailsGroup
-            columns={columns}
-            row={row}
-            table={field.table}
-            responsive
-          />
+          <DetailsGroup columns={columns} row={row} responsive />
         </Box>
       )}
     </Stack>

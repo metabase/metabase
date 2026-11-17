@@ -50,7 +50,7 @@ When configured, writable connection will be used for:
 - [Transforms](../data-modeling/transforms/transforms-overview.md)
 - [CSV uploads](../databases/uploads.md)
 - [Editable tables](../data-modeling/editable-tables.md)
-- [Actions](../data-modeling/models/actions/introduction.md)
+- [Actions](../data-modeling/data-actions.md)
 - [Model persistence](../data-modeling/models/model-persistence.md)
 
 Your writable connection will need to have the privileges required for these operations. See [Users, roles, and privileges](./users-roles-privileges.md).

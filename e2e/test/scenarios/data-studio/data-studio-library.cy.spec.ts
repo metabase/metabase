@@ -1,6 +1,7 @@
 const { H } = cy;
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { LibraryCollectionIds } from "e2e/support/helpers/api";
 import {
   TRUSTED_ORDERS_METRIC,
   createLibraryWithTable,
@@ -8,15 +9,6 @@ import {
 import type { Collection } from "metabase-types/api";
 
 const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID } = SAMPLE_DATABASE;
-
-type LibraryResponse = Collection & {
-  effective_children?: Collection[];
-};
-
-type LibraryRootCollections = {
-  dataCollection: Collection;
-  metricCollection: Collection;
-};
 
 describe("scenarios > data studio > library", () => {
   beforeEach(() => {
@@ -92,7 +84,7 @@ describe("scenarios > data studio > library", () => {
   });
 
   it("should show the library in the data picker and build the path from a value", () => {
-    createLibraryWithTable();
+    createLibraryWithTable().as("library");
 
     cy.log("Library is visible when only the Data collection has items");
     H.startNewQuestion();
@@ -103,10 +95,10 @@ describe("scenarios > data studio > library", () => {
     H.entityPickerModalItem(2, "Orders").should("exist");
 
     cy.log("Add a metric to the Metrics collection");
-    getLibraryRootCollections().then(({ metricCollection }) => {
+    cy.get<LibraryCollectionIds>("@library").then(({ metricsCollectionId }) => {
       H.createQuestion({ ...TRUSTED_ORDERS_METRIC }).then(({ body: card }) => {
         cy.request("PUT", `/api/card/${card.id}`, {
-          collection_id: metricCollection.id,
+          collection_id: metricsCollectionId,
         });
       });
     });
@@ -145,30 +137,29 @@ describe("scenarios > data studio > library", () => {
 
   describe("Library collection management", () => {
     it("should create, edit, move, and archive library collections and move a published table", () => {
-      H.createLibrary();
       H.createCollection({ name: "Outside Library" });
-      getLibraryRootCollections().then(({ dataCollection }) => {
+      H.createLibrary().then(({ dataCollectionId }) => {
         createLibraryCollection({
           name: "Collection Before Edit",
           description: "Original description",
-          parent_id: dataCollection.id,
+          parent_id: dataCollectionId,
         });
         createLibraryCollection({
           name: "Destination Collection",
-          parent_id: dataCollection.id,
+          parent_id: dataCollectionId,
         });
         createLibraryCollection({
           name: "Collection To Move",
-          parent_id: dataCollection.id,
+          parent_id: dataCollectionId,
         });
         H.publishTables({ table_ids: [ORDERS_ID] });
         createLibraryCollection({
           name: "Table Destination Collection",
-          parent_id: dataCollection.id,
+          parent_id: dataCollectionId,
         });
         createLibraryCollection({
           name: "Collection To Archive",
-          parent_id: dataCollection.id,
+          parent_id: dataCollectionId,
         });
       });
 
@@ -467,37 +458,34 @@ describe("scenarios > data studio > library", () => {
 
   describe("bulk actions", () => {
     it("selects, moves, and unpublishes library items in bulk", () => {
-      H.createLibrary();
-      getLibraryRootCollections().then(
-        ({ dataCollection, metricCollection }) => {
-          H.publishTables({
-            table_ids: [ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID],
-          });
-          H.createQuestion({ ...TRUSTED_ORDERS_METRIC }).then(
-            ({ body: card }) => {
-              cy.request("PUT", `/api/card/${card.id}`, {
-                collection_id: metricCollection.id,
-              });
-            },
-          );
-          createLibraryCollection({
-            name: "Folder A",
-            parent_id: dataCollection.id,
-          });
-          createLibraryCollection({
-            name: "Folder B",
-            parent_id: dataCollection.id,
-          });
-          createLibraryCollection({
-            name: "Folder C",
-            parent_id: dataCollection.id,
-          });
-          createLibraryCollection({
-            name: "Folder D",
-            parent_id: dataCollection.id,
-          });
-        },
-      );
+      H.createLibrary().then(({ dataCollectionId, metricsCollectionId }) => {
+        H.publishTables({
+          table_ids: [ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID],
+        });
+        H.createQuestion({ ...TRUSTED_ORDERS_METRIC }).then(
+          ({ body: card }) => {
+            cy.request("PUT", `/api/card/${card.id}`, {
+              collection_id: metricsCollectionId,
+            });
+          },
+        );
+        createLibraryCollection({
+          name: "Folder A",
+          parent_id: dataCollectionId,
+        });
+        createLibraryCollection({
+          name: "Folder B",
+          parent_id: dataCollectionId,
+        });
+        createLibraryCollection({
+          name: "Folder C",
+          parent_id: dataCollectionId,
+        });
+        createLibraryCollection({
+          name: "Folder D",
+          parent_id: dataCollectionId,
+        });
+      });
       H.DataStudio.Library.visit();
 
       cy.log("Section-root checkbox selects every item in the section");
@@ -608,11 +596,10 @@ describe("scenarios > data studio > library", () => {
     });
 
     it("subsumes a collection's descendants so moving the parent preserves nesting", () => {
-      H.createLibrary();
-      getLibraryRootCollections().then(({ dataCollection }) => {
+      H.createLibrary().then(({ dataCollectionId }) => {
         createLibraryCollection({
           name: "Parent Folder",
-          parent_id: dataCollection.id,
+          parent_id: dataCollectionId,
         }).then((parent) => {
           H.publishTables({ table_ids: [ORDERS_ID], collection_id: parent.id });
           createLibraryCollection({
@@ -622,7 +609,7 @@ describe("scenarios > data studio > library", () => {
         });
         createLibraryCollection({
           name: "Target Folder",
-          parent_id: dataCollection.id,
+          parent_id: dataCollectionId,
         });
       });
       H.DataStudio.Library.visit();
@@ -701,29 +688,6 @@ describe("scenarios > data studio > library", () => {
     });
   });
 });
-
-function getLibraryRootCollections(): Cypress.Chainable<LibraryRootCollections> {
-  return cy
-    .request<LibraryResponse>("GET", "/api/ee/library")
-    .then(({ body }) => {
-      const dataCollection = body.effective_children?.find(
-        (collection) => collection.type === "library-data",
-      );
-      const metricCollection = body.effective_children?.find(
-        (collection) => collection.type === "library-metrics",
-      );
-
-      expect(dataCollection, "Data collection").to.exist;
-      expect(metricCollection, "Metrics collection").to.exist;
-
-      return {
-        // Unjustified type cast. FIXME
-        dataCollection: dataCollection as Collection,
-        // Unjustified type cast. FIXME
-        metricCollection: metricCollection as Collection,
-      };
-    });
-}
 
 function createLibraryCollection({
   name,

@@ -152,6 +152,8 @@
   ["docker" "run" "-d"
    "-p" (str "127.0.0.1:" port ":1521")
    "-e" "ORACLE_PASSWORD=password"
+   ;; second PDB for the database routing tests (MB_ORACLE_TEST_SERVICE_NAME_ROUTING)
+   "-e" "ORACLE_DATABASE=MBROUTE"
    "--name" container-name
    (if (= resolved-version "latest")
      "gvenzl/oracle-free:latest"

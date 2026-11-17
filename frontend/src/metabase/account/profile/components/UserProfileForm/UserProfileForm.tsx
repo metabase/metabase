@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { type JSX, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
@@ -139,9 +139,7 @@ const getLocaleOptions = (locales: LocaleData[] | null) => {
 const ColorSchemeSwitcher = () => {
   return (
     <Box mb="lg">
-      <Text mt="xxs" fw="bold">
-        {t`Theme`}
-      </Text>
+      <Text fw="bold">{t`Theme`}</Text>
 
       <ColorSchemeSelect />
     </Box>

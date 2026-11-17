@@ -482,6 +482,10 @@ describe("issue 29304", () => {
         // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
         // by removing the property the app would work in embedding mode
         window.Cypress = undefined;
+        // Load charts up front so the lazy Suspense boundary never suspends.
+        // Nulling Cypress above also nulls isCypressActive, which keeps the
+        // frozen clock from advancing React 19's lazy retry (metabase#29304).
+        window.METABASE_LOAD_ALL_VISUALIZATIONS = true;
       },
     });
     H.closeNavigationSidebar();
@@ -869,6 +873,34 @@ describe("issue 31628", () => {
       cy.findByText("36.65%").should("be.visible");
       cy.findByText("98.88%").should("be.visible");
     });
+  });
+});
+
+describe("issue 85061", () => {
+  const LONG_STRING = "This is a long string returned by a SQL query";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should shrink a long string value to fit the scalar card (metabase#85061)", () => {
+    cy.viewport(1440, 800);
+    H.createNativeQuestionAndDashboard({
+      questionDetails: {
+        name: "Long string",
+        display: "scalar",
+        native: { query: `SELECT '${LONG_STRING}' AS long_string` },
+      },
+      cardDetails: { size_x: 12, size_y: 4 },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    H.getDashboardCard(0)
+      .findByTestId("scalar-value")
+      .should("have.text", LONG_STRING)
+      .and(($element) => H.assertIsNotEllipsified($element[0]));
   });
 });
 

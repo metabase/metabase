@@ -1,0 +1,31 @@
+# SQL Server workspace - 3-slot identifiers.
+#
+# SQL Server emits `database.schema.table` when crossing databases
+# (qualified-name-components is [:db :schema]). Same wire shape as
+# BigQuery; vocabulary differs (SQL Server calls them
+# "database" and "schema" - matches our slot names directly).
+version: 1
+config:
+  databases:
+  - name: test-data (sqlserver)
+    engine: sqlserver
+    details:
+      host: localhost
+      port: 1433
+      db: AnalyticsDB
+      user: mb__isolation_44490_1933
+      password: not-a-real-password
+  users:
+  - first_name: Workspace
+    last_name: Admin
+    email: workspace@workspace.local
+    password: password1
+  workspace:
+    name: New workspace
+    databases:
+      test-data (sqlserver):
+        input_schemas:
+        - dbo
+        output:
+          db: AnalyticsDB
+          schema: ws_alice

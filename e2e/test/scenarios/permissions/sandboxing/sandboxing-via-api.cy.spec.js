@@ -114,7 +114,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
               name: TTAG_NAME,
               "display-name": "CID",
               type: "dimension",
-              dimension: ["field", PEOPLE.ID, null],
+              "field-id": PEOPLE.ID,
               "widget-type": "id",
             },
           },
@@ -298,7 +298,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
               name: TTAG_NAME,
               "display-name": "CID",
               type: "dimension",
-              dimension: ["field", PEOPLE.ID, null],
+              "field-id": PEOPLE.ID,
               "widget-type": "id",
             },
           },
@@ -941,7 +941,6 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         expect(response.statusCode).to.eq(400);
         expect(response.body.message).to.eq(ERROR_MESSAGE);
       });
-      H.modal().scrollTo("bottom");
       H.modal().findByText(ERROR_MESSAGE);
     });
 
@@ -1067,7 +1066,16 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           database: SAMPLE_DB_ID,
         },
         display: "pivot",
-        visualization_settings: {},
+        // The split the query builder persists on save. A sandboxed run's cols
+        // carry no fingerprint (BOT-2115), so without a stored split the
+        // default layout for the sandboxed user differs from the admin's.
+        visualization_settings: {
+          "pivot_table.column_split": {
+            rows: ["SOURCE"],
+            columns: ["CATEGORY"],
+            values: ["sum"],
+          },
+        },
       }).then(({ body: { id: QUESTION_ID } }) => {
         cy.signOut();
         cy.signInAsSandboxedUser();

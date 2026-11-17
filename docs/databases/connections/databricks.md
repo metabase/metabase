@@ -1,5 +1,6 @@
 ---
 title: Databricks
+summary: Connect Metabase to Databricks, including authentication, catalogs, and every connection setting.
 ---
 
 # Databricks
@@ -104,10 +105,6 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 ## Writable connection
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
-
-## Model features
-
-There aren't (yet) any model features available for Databricks.
 
 ## Database routing
 

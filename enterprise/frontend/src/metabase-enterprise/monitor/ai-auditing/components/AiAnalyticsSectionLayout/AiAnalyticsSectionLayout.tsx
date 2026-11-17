@@ -11,13 +11,13 @@ import { Flex, Loader, Stack } from "metabase/ui";
 
 type AiAnalyticsSectionLayoutProps = {
   children: ReactNode;
-  emptyState: ReactNode;
+  emptyState?: ReactNode;
   error: unknown;
   filters: ReactNode;
   isInitialLoading: boolean;
   isTableRoute: boolean;
-  showEmpty: boolean;
-  tabs: PillTab[];
+  showEmpty?: boolean;
+  tabs?: PillTab[];
   filtersAction?: ReactNode;
   title: string;
 };
@@ -36,7 +36,7 @@ export function AiAnalyticsSectionLayout({
 }: AiAnalyticsSectionLayoutProps) {
   const sectionContent = (
     <>
-      <PillTabNavigation tabs={tabs} />
+      {tabs && <PillTabNavigation tabs={tabs} />}
       <Flex justify="space-between" align="center" gap="md">
         {filters}
         {filtersAction}
@@ -85,10 +85,10 @@ export function AiAnalyticsSectionLayout({
 
 type RouteContentProps = {
   children: ReactNode;
-  emptyState: ReactNode;
+  emptyState?: ReactNode;
   error: unknown;
   isInitialLoading: boolean;
-  showEmpty: boolean;
+  showEmpty?: boolean;
 };
 
 export function RouteContent({

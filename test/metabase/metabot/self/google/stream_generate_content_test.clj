@@ -106,12 +106,14 @@
             [{:type :tool-output :id "call-1" :function "search" :result {:output "Found 42 results"}}])))))
 
 (deftest ^:parallel parts->contents-tool-error-test
-  (testing "a failed tool output surfaces the error message in the functionResponse"
+  (testing "a failed call's text goes under `error`, so Gemini reads it as a failure rather than a result"
     (is (= [{:role  "user"
              :parts [{:functionResponse {:name     "search"
-                                         :response {:output "Error: boom"}}}]}]
+                                         :response {:error "Card 7 was not found."}}}]}]
            (sgc/parts->contents
-            [{:type :tool-output :id "call-1" :function "search" :error {:message "boom"}}])))))
+            [{:type   :tool-output :id "call-1" :function "search"
+              :result {:output "Card 7 was not found."
+                       :error  {:class :recoverable :code :x}}}])))))
 
 (deftest ^:parallel parts->contents-tool-result-without-output-key-test
   (testing "a result map that carries no :output is printed rather than sent as an empty response"
@@ -318,7 +320,9 @@
       (is (=? {:toolConfig {:functionCallingConfig {:mode "AUTO"}}}
               (body-for "auto")))
       (is (=? {:toolConfig {:functionCallingConfig {:mode "ANY"}}}
-              (body-for "required"))))))
+              (body-for "required")))
+      (is (=? {:toolConfig {:functionCallingConfig {:mode "NONE"}}}
+              (body-for "none"))))))
 
 (deftest ^:parallel request-body-structured-output-test
   (testing "a :schema forces a structured_output function call via mode ANY + allowedFunctionNames"

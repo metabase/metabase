@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
@@ -49,11 +50,11 @@
         (try
           (let [db                               (mt/db)
                 tz-on-load                       (db-timezone db)
-                _                                (t2/update! :model/Database (:id db) {:timezone nil})
+                _                                (t2/update! :model/Database :id (:id db) {:timezone nil})
                 tz-after-update                  (db-timezone db)
                 ;; It looks like we can get some stale timezone information depending on which thread is used for querying the
                 ;; database in sync. Clearing the connection pool to ensure we get the most updated TZ data
-                _                                (driver/notify-database-updated driver/*driver* db)
+                _                                (driver/notify-database-updated driver/*driver* (driver.u/lib-database (:id db)))
                 {:keys [step-info task-history]} (sync.util-test/sync-database! "sync-timezone" (assoc db :timezone nil))]
             (testing "only step keys"
               (is (= {:timezone-id "UTC"}
@@ -71,7 +72,7 @@
               (is (java.time.ZoneId/of (db-timezone db)))))
           (finally
             ;; Make sure to reset the timezone to UTC in case the test failed
-            (t2/update! :model/Database (:id (mt/db)) {:timezone "UTC"})))))))
+            (t2/update! :model/Database :id (:id (mt/db)) {:timezone "UTC"})))))))
 
 (deftest sync-timezone-mysql-test
   (mt/test-driver :mysql
@@ -89,6 +90,6 @@
                 (is (= {:timezone-id "+08:00"}
                        (sync.util-test/only-step-keys step-info)))
                 (is (= "+08:00"
-                       (t2/select-one-fn :timezone :model/Database (:id database)))))
+                       (t2/select-one-fn :timezone :model/Database :id (:id database)))))
               (finally
                 (jdbc/execute! spec [(str "SET GLOBAL time_zone = '" global-time-zone "';")])))))))))

@@ -39,6 +39,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Pulse [_model] :pulse)
@@ -48,7 +50,7 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive ::mi/read-policy.full-perms-for-perms-set))
+  (derive :hook/change-log))
 
 (def ^:private transform-pulse-parameters
   "Toucan 2 transform for a Pulse's `:parameters`, normalized like a Dashboard's but with each `:type` optional."
@@ -143,11 +145,26 @@
 ;;; non-admin can write a Dashboard Subscription only if they are its creator. (Admins have full read and write
 ;;; permissions for all objects.) These checks are handled by the `can-read?` and `can-write?` methods below.
 
-(defmethod mi/perms-objects-set :model/Pulse
-  [notification read-or-write]
-  (if (is-alert? notification)
-    (mi/perms-objects-set (alert->card notification) read-or-write)
-    (perms/perms-objects-set-for-parent-collection (:collection_id notification) read-or-write)))
+(defn- collection-permits?
+  "Whether the current user has `permission` on the Collection of `notification`: its Card's for an Alert, its own
+  otherwise."
+  [notification permission]
+  (let [owner (if (is-alert? notification) (alert->card notification) notification)]
+    (api/check-500 (contains? owner :collection_id) "No :collection_id is set for the Collection check of a Pulse.")
+    (perms/collection-permission-at-least?
+     (get (perms/collection-permissions-for-user (api/current-user-info) [(:collection_id owner)] {:root-namespace nil})
+          (:collection_id owner))
+     permission)))
+
+(defn- alert-card-writable?
+  "Whether the current user writes the content of the Collection of the Card of `alert`, which takes write permission
+  on it and a Collection remote sync leaves writable."
+  [alert]
+  (let [card (alert->card alert)]
+    (api/check-500 (contains? card :collection_id) "No :collection_id is set for the Collection check of a Pulse.")
+    (contains? (collection/content-writable-collection-ids [(:collection_id card)]
+                                                           {:root-namespace nil, :audit-rules? false})
+               (:collection_id card))))
 
 (defn- current-user-is-creator?
   [notification]
@@ -162,23 +179,27 @@
     (boolean
      (some #{api/*current-user-id*} recipient-ids))))
 
-(defmethod mi/can-read? :model/Pulse
-  [notification]
-  (if (is-alert? notification)
-    (mi/current-user-has-full-permissions? :read notification)
-    (or api/*is-superuser?*
-        (current-user-is-creator? notification)
-        (current-user-is-recipient? notification))))
+(methodical/defmethod t2/simple-hydrate [:model/Pulse :can_read]
+  [_model k notification]
+  (vary-meta notification assoc k
+             (boolean
+              (if (is-alert? notification)
+                (collection-permits? notification :read)
+                (or api/*is-superuser?*
+                    (current-user-is-creator? notification)
+                    (current-user-is-recipient? notification))))))
 
 ;; Non-admins should be able to create subscriptions, and update subscriptions that they created, but not edit anyone
 ;; else's subscriptions (except for unsubscribing themselves, which uses a custom API).
-(defmethod mi/can-write? :model/Pulse
-  [notification]
-  (if (is-alert? notification)
-    (mi/current-user-has-full-permissions? :write notification)
-    (or api/*is-superuser?*
-        (and (mi/current-user-has-full-permissions? :read notification)
-             (current-user-is-creator? notification)))))
+(methodical/defmethod t2/simple-hydrate [:model/Pulse :can_write]
+  [_model k notification]
+  (assoc notification k
+         (boolean
+          (if (is-alert? notification)
+            (alert-card-writable? notification)
+            (or api/*is-superuser?*
+                (and (collection-permits? notification :read)
+                     (current-user-is-creator? notification)))))))
 
 (defn- can-read-attachments?
   "Return true if the card has attachments and those can be read. If it has no attachments, return true"
@@ -192,14 +213,18 @@
   [_m {cards :cards dashboard-id :dashboard_id collection-id :collection_id}]
   (and
    ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
-   (every? #(and
-             (mi/can-read? :model/Card (u/the-id %))
-             (can-read-attachments? %)) cards)
-   ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
-   ;; make sure we have write permissions for that collection
-   (or (nil? collection-id) (mi/can-write? :model/Collection collection-id))
+   (let [card-ids (into [] (comp (map u/the-id) (distinct)) cards)
+         readable (t2/hydrate (pulse.db/cards card-ids) :can_read)]
+     (and (= (count readable) (count card-ids))
+          (every? mi/can-read? readable)
+          (every? can-read-attachments? cards)))
+   ;; nil is root, except for a dashboard subscription, which the before-insert hook files with its dashboard
+   (cond
+     (some? collection-id) (some-> (pulse.db/collection collection-id) (t2/hydrate :can_write) mi/can-write?)
+     (some? dashboard-id)  true
+     :else                 (mi/can-write? (t2/hydrate collection/root-collection :can_write)))
    ;; prohibit creating dashboard subs if the the user doesn't have at least read access for the dashboard
-   (or (nil? dashboard-id) (mi/can-read? :model/Dashboard dashboard-id))))
+   (or (nil? dashboard-id) (some-> (pulse.db/dashboard dashboard-id) (t2/hydrate :can_read) mi/can-read?))))
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
@@ -306,15 +331,10 @@
    :id
    {:default []}))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *allow-hydrate-archived-cards*
-  "By default the :cards hydration method only return active cards,
-  but in cases we need to send email after a card is archived, we need to be able to hydrate archived card as well."
-  false)
-
 (mu/defn- cards* :- [:sequential HybridPulseCard]
+  "The non-archived Cards of the Pulses with `pulse-ids`."
   [pulse-ids :- [:sequential ms/PositiveInt]]
-  (pulse.db/pulse-cards-for-pulses pulse-ids *allow-hydrate-archived-cards*))
+  (pulse.db/pulse-cards-for-pulses pulse-ids))
 
 (methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
   [_model k pulses]
@@ -513,7 +533,7 @@
   "If the current user does not have collection read permissions for the pulse, but can still read the pulse due to
   being the creator or a recipient, we return it with some metadata removed."
   [pulse]
-  (if (mi/current-user-has-full-permissions? :read pulse)
+  (if (collection-permits? pulse :read)
     pulse
     (-> (dissoc pulse :cards)
         (update :channels

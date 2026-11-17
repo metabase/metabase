@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -108,11 +109,11 @@
             legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id (str table-id))
                                 :legacy_input
                                 json/decode+kw)
-            db-id          (t2/select-one-fn :db_id :model/Table table-id)
+            db-id          (t2/select-one-fn :db_id :model/Table :id table-id)
             db-name-fn     (comp :database_name legacy-input)
             alternate-name (str (random-uuid))]
         (is (= "Indexed Database" (db-name-fn)))
-        (t2/update! :model/Database db-id {:name alternate-name})
+        (t2/update! :model/Database :id db-id {:name alternate-name})
         (is (= alternate-name (db-name-fn)))))))
 
 (deftest partial-word-test
@@ -486,10 +487,10 @@
                        :collection_id coll-id})]
                     (fetch "indexed-entity" :name (:name miv)))))
           (testing "Changing values syncs the index"
-            (t2/update! :model/Card (:id model) (update model :dataset_query (fn [query]
-                                                                               (let [products-id (lib.metadata/field query (mt/id :products :id))]
-                                                                                 (-> query
-                                                                                     (lib/filter (lib/!= products-id (:model_pk miv))))))))
+            (t2/update! :model/Card :id (:id model) (update model :dataset_query (fn [query]
+                                                                                   (let [products-id (lib.metadata/field query (mt/id :products :id))]
+                                                                                     (-> query
+                                                                                         (lib/filter (lib/!= products-id (:model_pk miv))))))))
             (model-index/add-values! model-index)
             (let [miv2 (t2/select-one :model/ModelIndexValue :model_index_id (:id model-index))]
               (is (=? [(index-entity
@@ -552,7 +553,7 @@
   ;; Note that these refer to the table names, not the search-model names.
   {"core_user"          #{"action" "collection" "document" "exploration" "measure" "model_index_value" "report_card" "report_dashboard" "segment" "transform"}
    "model_index"        #{"model_index_value"}
-   "metabase_database"  #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment"}
+   "metabase_database"  #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment" "transform"}
    "metabase_table"     #{"action" "measure" "model_index_value" "report_card" "segment"}
    "document"           #{"action" "model_index_value" "report_card"}
    "exploration"        #{"action" "document" "model_index_value" "report_card"}
@@ -579,7 +580,7 @@
 (deftest auto-refresh-test
   (when (search/supports-index?)
     (with-temp-index-version "auto-refresh-test"
-      (reset! @#'search.index/next-sync-at nil)
+      (mc/swap! (search.index/indexes-handle) assoc :next-sync-at nil)
       (search.index/reset-index!)
       (let [active-before (search.index/active-table)
             active-after  (search.index/gen-table-name)
@@ -600,7 +601,7 @@
 (deftest pending-table-expiry-test
   (when (search/supports-index?)
     (with-temp-index-version "pending-timeout-test"
-      (reset! @#'search.index/next-sync-at nil)
+      (mc/swap! (search.index/indexes-handle) assoc :next-sync-at nil)
       (search.index/reset-index!)
       (let [active-table (search.index/active-table)
             pending-old  (search.index/gen-table-name)
@@ -628,7 +629,7 @@
 (deftest failed-reindex-drops-orphaned-tables-test
   (when (search/supports-index?)
     (with-temp-index-version "orphan-cleanup-test"
-      (reset! @#'search.index/next-sync-at nil)
+      (mc/swap! (search.index/indexes-handle) assoc :next-sync-at nil)
       (search.index/reset-index!)
       (let [orphan (search.index/gen-table-name)]
         (search.index/create-table! orphan)

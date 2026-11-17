@@ -22,6 +22,7 @@ const nodeProject = {
   testEnvironment: "node",
   transform: baseConfig.transform,
   transformIgnorePatterns: baseConfig.transformIgnorePatterns,
+  watchPathIgnorePatterns: baseConfig.watchPathIgnorePatterns,
 };
 
 /** @type {import('jest').Config} */
@@ -97,6 +98,27 @@ const config = {
       displayName: "ci-scripts",
       testMatch: ["<rootDir>/.github/**/*.unit.spec.{js,jsx,ts,tsx}"],
     },
+    // Specs that fail on purpose, for the test of the node:test runner, which
+    // runs them under both runners and compares the results.
+    ...(process.env.HARNESS_COMPAT
+      ? [
+          {
+            ...nodeProject,
+            displayName: "harness-compat",
+            testMatch: [
+              "<rootDir>/frontend/test/harness-compat/fixtures/**/*.fixture.js",
+            ],
+          },
+          {
+            ...nodeProject,
+            displayName: "harness-compat-dom",
+            testEnvironment: baseConfig.testEnvironment,
+            testMatch: [
+              "<rootDir>/frontend/test/harness-compat/dom-fixtures/**/*.fixture.js",
+            ],
+          },
+        ]
+      : []),
   ],
 };
 

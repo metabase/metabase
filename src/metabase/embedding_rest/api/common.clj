@@ -374,7 +374,7 @@
     :embedded-question))
 
 ;;; Embedded viewers have no Metabase account, so there are no user attributes to route by: embedded query execution
-;;; always uses the router (primary) database. The `with-database-routing-off` wraps live here, in the shared
+;;; always uses the router (primary) database. The `with-anonymous-router-access` wraps live here, in the shared
 ;;; execution helpers that every /api/embed and /api/preview_embed endpoint funnels through, so that individual
 ;;; endpoints cannot forget them. (For preview_embed this also means the preview shows what the published embed will
 ;;; show, rather than routing via the previewing admin's own user attribute.)
@@ -389,7 +389,7 @@
   {:pre [(map? card) (pos-int? (:id card)) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
   (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters         (apply-slug->value (resolve-card-parameters card) merged-slug->value)]
-    (database-routing/with-database-routing-off
+    (database-routing/with-anonymous-router-access
       (m/mapply api.public/process-query-for-card-with-id
                 card export-format parameters
                 :context     (get-embed-card-context export-format)
@@ -430,7 +430,7 @@
   "Like [[metabase.tiles.api/process-tiles-query-for-card]], but takes a pre-loaded Card entity and runs with database
   routing off (see above). Used by the embed tiles endpoints. Returns a Ring response."
   [card parameters zoom x y lat-field lon-field]
-  (database-routing/with-database-routing-off
+  (database-routing/with-anonymous-router-access
     (api.tiles/process-tiles-query-for-card card parameters zoom x y lat-field lon-field)))
 
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
@@ -499,7 +499,7 @@
          (map? token-params) (map? query-params)]}
   (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters  (resolve-dashboard-parameters dashboard slug->value)]
-    (database-routing/with-database-routing-off
+    (database-routing/with-anonymous-router-access
       (api.public/process-query-for-dashcard
        :dashboard     dashboard
        :card          card
@@ -516,7 +516,7 @@
   entities and runs with database routing off (see the comment above [[process-query-for-card-with-params]]). Used by
   the embed tiles endpoints. Callers select each entity exactly once and thread it here. Returns a Ring response."
   [dashboard dashcard card parameters zoom x y lat-field lon-field]
-  (database-routing/with-database-routing-off
+  (database-routing/with-anonymous-router-access
     (api.public/process-tiles-query-for-dashcard dashboard dashcard card
                                                  parameters zoom x y lat-field lon-field)))
 
@@ -541,7 +541,7 @@
                         {:status-code 400})))
       (try
         ;; guest embeds always use the router (primary) database, never a routed destination
-        (database-routing/with-database-routing-off
+        (database-routing/with-anonymous-router-access
           (request/as-admin
             (queries/card-param-values card param-key search-prefix
                                        (queries/card-param-constraints
@@ -588,7 +588,7 @@
                              (pr-str searched-param-slug))
                         {:status-code 400})))
       (try
-        (database-routing/with-database-routing-off
+        (database-routing/with-anonymous-router-access
           (request/as-admin
             (queries/card-param-remapped-value card param-key value
                                                (queries/card-param-constraints
@@ -650,7 +650,7 @@
       ;; ok, at this point we can run the query
       (let [merged-id-params (param-values-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
         (try
-          (database-routing/with-database-routing-off
+          (database-routing/with-anonymous-router-access
             (request/as-admin
               (parameters.dashboard/param-values dashboard searched-param-id merged-id-params prefix)))
           (catch Throwable e
@@ -707,6 +707,6 @@
                        {:status-code 400})))
      (let [constraints (-> (param-values-merged-params id->slug slug->id embedding-params slug-token-params {})
                            (select-keys locked-param-ids))]
-       (database-routing/with-database-routing-off
+       (database-routing/with-anonymous-router-access
          (request/as-admin
            (parameters.dashboard/dashboard-param-remapped-value dashboard param-key value constraints)))))))

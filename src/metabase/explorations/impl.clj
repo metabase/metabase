@@ -488,14 +488,39 @@
       (seq missing)
       (assoc :missing_metric_ids missing))))
 
+(defn- invalid-dimensions
+  "Return invalid dimension IDs from `groups`, grouped by metric.
+   `metric-by-id` must include each metric referenced by `groups`. Each result includes that
+   metric's candidate dimensions. Metrics appear in the order of their first invalid dimension in `groups`."
+  [groups metric-by-id]
+  (let [bad (for [{metric-id :metric_id dimension-ids :dimension_ids} groups
+                  :let [valid (into #{} (map :id) (:dimensions (metric-by-id metric-id)))]
+                  d     dimension-ids
+                  :when (not (contains? valid d))]
+              [metric-id d])
+        bad-by-metric (group-by first bad)]
+    (vec (for [metric-id (distinct (map first bad))
+               :let [{metric-name :name :keys [dimensions]} (metric-by-id metric-id)]]
+           {:metric-id     metric-id
+            :metric-name   metric-name
+            :dimension-ids (into [] (comp (map second) (distinct)) (bad-by-metric metric-id))
+            :candidates    (mapv (fn [d] {:id (:id d) :name (or (block/dimension-label d) "")})
+                                 dimensions)}))))
+
 (defn research-groups
   "Validate Metabot's chosen research groups and return the FE picker payload for them.
 
    `:groups` is a sequence of `{:metric_id <int> :dimension_ids [<str> ...]}` maps
    (`:dimension_ids` optional).
 
-   Hard-errors (throws) on any unknown/inaccessible metric id or a dimension id that isn't a
-   candidate of its metric — one bad id fails the whole batch.
+   Throws when any group is invalid, so one bad ID fails the whole batch. The `ex-data` lists every
+   problem under the applicable keys:
+   - `:unknown-metric-ids`: the metric IDs that are unknown or inaccessible;
+   - `:replace-without-dimensions`: the metric IDs of groups that set
+     `:replace_default_dimensions` with no `:dimension_ids`;
+   - `:invalid-dimensions`: the invalid dimension IDs and candidate dimensions for each metric
+     (see [[invalid-dimensions]]).
+   A group whose metric is unknown gets no further checks.
 
    On success returns `{:metrics [...] :dimension_groups [...] :groups [...]}`, where
    `:metrics`/`:dimension_groups` are the [[exploration-data]] hydration restricted to the
@@ -503,35 +528,33 @@
    blocks."
   [{:keys [groups]}]
   (lib-be/with-metadata-provider-cache
-    (let [all          (mapv with-candidate-dimensions (catalog-metrics {}))
-          metric-by-id (u/index-by :id all)]
-      ;; Metric-level checks run against the cheap catalog — they need no query build.
-      (doseq [g groups]
-        (let [metric-id (:metric_id g)]
-          (when-not (contains? metric-by-id metric-id)
-            (throw (ex-info (format "Unknown or inaccessible metric id %s" metric-id)
-                            {:metric_id metric-id})))
-          (when (and (:replace_default_dimensions g) (empty? (:dimension_ids g)))
-            (throw (ex-info "replace_default_dimensions requires at least one dimension_id"
-                            {:metric_id metric-id})))))
-      (let [relevant         (into #{} (map :metric_id) groups)
-            ;; Only the referenced metrics pay [[resolve-metric-queries]]. `all` is already
-            ;; candidate-filtered and resolution only drops dimensions further, so no second
-            ;; [[with-candidate-dimensions]] pass is needed.
-            relevant-metrics (->> all
-                                  (filterv #(contains? relevant (:id %)))
-                                  resolve-metric-queries)
-            resolved-by-id   (u/index-by :id relevant-metrics)]
-        ;; Dimension ids are checked against the *resolved* metrics: a saved dimension whose
-        ;; target no longer resolves is dropped by [[resolve-metric-queries]], and accepting it
-        ;; would hand the FE a picker block for a dimension that isn't in the payload.
-        (doseq [g groups
-                :let [metric-id (:metric_id g)
-                      valid     (set (map :id (:dimensions (get resolved-by-id metric-id))))]
-                d (:dimension_ids g)]
-          (when-not (contains? valid d)
-            (throw (ex-info (format "Dimension %s is not a candidate of metric %s" d metric-id)
-                            {:metric_id metric-id :dimension_id d}))))
-        {:metrics          (mapv slim-metric relevant-metrics)
-         :dimension_groups (group-dimensions relevant-metrics)
-         :groups           (vec groups)}))))
+    (let [all              (mapv with-candidate-dimensions (catalog-metrics {}))
+          metric-by-id     (u/index-by :id all)
+          known?           #(contains? metric-by-id (:metric_id %))
+          known-groups     (filterv known? groups)
+          ;; Metric checks use the catalog and do not build queries.
+          unknown          (into [] (comp (remove known?) (map :metric_id) (distinct)) groups)
+          no-dims          (into [] (comp (filter #(and (:replace_default_dimensions %)
+                                                        (empty? (:dimension_ids %))))
+                                          (map :metric_id)
+                                          (distinct))
+                                 known-groups)
+          relevant         (into #{} (map :metric_id) groups)
+          ;; Only resolve queries for referenced metrics. `all` already has its candidate
+          ;; dimensions filtered, and resolution can only remove dimensions.
+          relevant-metrics (->> all
+                                (filterv #(contains? relevant (:id %)))
+                                resolve-metric-queries)
+          resolved-by-id   (u/index-by :id relevant-metrics)
+          ;; Dimension IDs must match the resolved metrics because query resolution removes
+          ;; dimensions whose targets no longer resolve.
+          invalid          (invalid-dimensions known-groups resolved-by-id)
+          problems         (cond-> {}
+                             (seq unknown) (assoc :unknown-metric-ids unknown)
+                             (seq no-dims) (assoc :replace-without-dimensions no-dims)
+                             (seq invalid) (assoc :invalid-dimensions invalid))]
+      (when (seq problems)
+        (throw (ex-info "Invalid research groups" problems)))
+      {:metrics          (mapv slim-metric relevant-metrics)
+       :dimension_groups (group-dimensions relevant-metrics)
+       :groups           (vec groups)})))

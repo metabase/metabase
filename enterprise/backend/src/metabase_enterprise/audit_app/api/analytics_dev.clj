@@ -27,7 +27,7 @@
   []
   (let [collection (analytics-dev/find-analytics-collection)]
     (when-not collection
-      (throw (ex-info "Analytics collection not found" {:status 404})))
+      (throw (ex-info "Analytics collection not found" {:status-code 404})))
     (let [temp-dir   (Files/createTempDirectory "analytics-export" (make-array FileAttribute 0))
           parent-dir (doto (.toFile temp-dir) .mkdirs)
           export-dir (doto (io/file parent-dir "instance_analytics") .mkdirs)

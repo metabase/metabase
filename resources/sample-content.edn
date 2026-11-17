@@ -692,7 +692,7 @@
    :card_id nil,
    :entity_id "OlrrrzZShIqvGE6RAjqbr",
    :visualization_settings
-   "{\"column_settings\":null,\"dashcard.background\":false,\"text\":\"Find more guides and tutorials on Metabase, analytics, data modeling, and more at [Metabase Learn](https://www.metabase.com/learn/)\\n\\n\",\"virtual_card\":{\"archived\":false,\"dataset_query\":{},\"display\":\"text\",\"name\":null,\"visualization_settings\":{}}}",
+   "{\"column_settings\":null,\"dashcard.background\":false,\"text\":\"Find more guides and tutorials on Metabase, analytics, data modeling, and more at [Metabase Learn](https://www.metabase.com/learn)\\n\\n\",\"virtual_card\":{\"archived\":false,\"dataset_query\":{},\"display\":\"text\",\"name\":null,\"visualization_settings\":{}}}",
    :size_y 1,
    :dashboard_id 1,
    :created_at #t "2026-02-23T11:14:53.782096Z",

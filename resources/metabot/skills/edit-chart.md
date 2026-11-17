@@ -18,7 +18,7 @@ It will return a new chart with the updated settings.
 - `chart_id` — the id of the chart in the conversation context you are editing
 - `new_viz_settings.chart_type` — the chart type to switch to
 - `title` — a short, human-friendly title, written like a saved-question name; it becomes the title shown above the returned chart
-- `description` — a concise one- or two-sentence description of what the chart shows; it becomes the saved question's description
+- `description` — a concise one- or two-sentence description of what the chart shows; if the chart is saved, it becomes the description of the saved question
 
 Because `title` and `description` are re-sent on every edit, carry the existing chart's wording over unless the user asked to change it — don't drop back to a placeholder.
 

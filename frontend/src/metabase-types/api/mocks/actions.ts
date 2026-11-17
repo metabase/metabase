@@ -10,7 +10,7 @@ import type {
 
 import { createMockEntityId } from "./entity-id";
 import { createMockParameter } from "./parameters";
-import { createMockNativeDatasetQuery } from "./query";
+import { EMPTY_NATIVE_QUERY } from "./query";
 import { createMockUserInfo } from "./user";
 
 export const createMockActionParameter = ({
@@ -29,7 +29,7 @@ export const createMockActionParameter = ({
 };
 
 export const createMockQueryAction = ({
-  dataset_query = createMockNativeDatasetQuery(),
+  dataset_query = EMPTY_NATIVE_QUERY,
   creator = createMockUserInfo(),
   ...opts
 }: Partial<WritebackQueryAction> = {}): WritebackQueryAction => {
@@ -63,6 +63,7 @@ export const createMockImplicitQueryAction = ({
   id: 1,
   entity_id: createMockEntityId(),
   kind: "row/create",
+  table_id: null,
   name: "Create",
   description: "",
   model_id: 1,

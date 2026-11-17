@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { memo } from "react";
+import { type JSX, memo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { ForwardRefLink, Link } from "metabase/common/components/Link";

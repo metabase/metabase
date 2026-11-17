@@ -58,6 +58,7 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .with({ type: "data-code_edit" }, () => true)
     .with({ type: "data-generated_entity" }, () => true)
     .with({ type: "data-entity_saved" }, () => true)
+    .with({ type: "data-dashboard_saved" }, () => true)
     .with({ type: "data-adhoc_viz" }, () => false)
     .with({ type: "data-static_viz" }, () => false)
     .with({ type: "data-research_plan_update" }, () => false)
@@ -255,7 +256,11 @@ const AgentPart = ({
       <AgentToolCallPart part={p} onSelect={onToolCallSelect} />
     ))
     .with({ type: "chain_of_thought" }, (p) => (
-      <MetabotChainOfThought part={p} supportsReasoning={supportsReasoning} />
+      <MetabotChainOfThought
+        conversationId={conversationId}
+        part={p}
+        supportsReasoning={supportsReasoning}
+      />
     ))
     .exhaustive();
 

@@ -9,7 +9,7 @@ import type { CollectionId, SearchResult } from "metabase-types/api";
 const SEARCH_DEBOUNCE_MS = 300;
 const NO_ITEMS: TreeItem[] = [];
 
-export type LibrarySearchModel = "table" | "metric" | "dashboard";
+export type LibrarySearchModel = "table" | "metric";
 
 type LibrarySearchResults = {
   items: TreeItem[];
@@ -86,6 +86,7 @@ function createSearchResultItem(
       archived: result.archived ?? false,
       collection_position: result.collection_position,
       "last-edit-info": result["last-edit-info"],
+      can_write: result.can_write ?? false,
     },
   };
 }

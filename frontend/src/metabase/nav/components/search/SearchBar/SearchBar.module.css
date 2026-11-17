@@ -38,13 +38,9 @@
 }
 
 .closeButton {
+  composes: textSecondaryHoverPrimary from "style";
   align-items: center;
   justify-content: center;
-  color: var(--mb-color-text-disabled);
-
-  &:hover {
-    color: var(--mb-color-text-secondary);
-  }
 }
 
 @media (prefers-reduced-motion) {

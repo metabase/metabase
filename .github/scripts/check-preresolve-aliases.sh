@@ -44,12 +44,6 @@ if [ -z "$declared" ]; then
   exit 1
 fi
 
-# Expressions we know how to expand. An unrecognised one has to stop the check rather than be skipped:
-# silently ignoring it is how a whole matrix of combinations would go unchecked.
-unknown="$(grep -rhoE '\$\{\{[^}]*\}\}' --include='*' \
-             --exclude='*.png' --exclude='*.jpg' .github/ 2>/dev/null \
-           | sort -u | grep -v 'edition' || true)"
-
 scan() { # scan <edition>: dependency root and aliases used by .github Clojure invocations
   grep -rhE 'clojure[[:space:]]+(-P[[:space:]]+)?-[XMATP]?:' \
        --include='*' --exclude='*.png' --exclude='*.jpg' .github/ 2>/dev/null \
@@ -81,11 +75,11 @@ require_scan() { # require_scan <what> <result>
 workflow_checks=$( { scan ee; scan oss; } || true)
 clojure_checks=$(scan_project_tests run-clojure-checks! . || true)
 migration_checks=$(scan_project_tests run-migration-checks! bin/lint-migrations-file || true)
-docs_checks=$(mage_aliases . < mage/src/mage/generate_docs.clj || true)
+docs_checks=$(mage_aliases . < mage/src/mage/docs_generate.clj || true)
 require_scan ".github/" "$workflow_checks"
 require_scan "run-clojure-checks! (mage/src/mage/project_tests.clj)" "$clojure_checks"
 require_scan "run-migration-checks! (mage/src/mage/project_tests.clj)" "$migration_checks"
-require_scan "mage/src/mage/generate_docs.clj" "$docs_checks"
+require_scan "mage/src/mage/docs_generate.clj" "$docs_checks"
 
 scanned="$(printf '%s\n' "$workflow_checks" "$clojure_checks" "$migration_checks" "$docs_checks" | sort -u)"
 

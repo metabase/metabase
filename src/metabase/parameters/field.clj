@@ -71,7 +71,10 @@
            limit        (or maybe-limit default-max-field-search-limit)]
        (search-values-query/search-values-query field search-field value limit))
      (catch Throwable e
-       (log/errorf "Error searching field values: %s" (ex-message e))
+       ;; search-as-you-type on a big unindexed column can hit a statement timeout; that's expected
+       (if (some (comp :query/query-canceled? ex-data) (u/full-exception-chain e))
+         (log/warnf "Field values search was canceled: %s" (ex-message e))
+         (log/errorf "Error searching field values: %s" (ex-message e)))
        []))))
 
 (mu/defn field->values :- ms/FieldValuesResult

@@ -5,11 +5,9 @@ type ActionResultForKind<TKind> = TKind extends "create"
     ? ActionResultForUpdate
     : TKind extends "delete"
       ? ActionResultForDelete
-      : TKind extends "bulk"
-        ? ActionResultForBulk
-        : TKind extends "sql"
-          ? ActionResultForSql
-          : AnyActionResult;
+      : TKind extends "sql"
+        ? ActionResultForSql
+        : AnyActionResult;
 ```
 
 Maps an `ActionKind` literal to the discriminated `result` shape. Omit
@@ -19,8 +17,8 @@ Maps an `ActionKind` literal to the discriminated `result` shape. Omit
 
 <!-- [<snippet type-parameters>] -->
 
-| Type Parameter                                                       |
-| :------------------------------------------------------------------- |
-| `TKind` _extends_ [`ActionKind`](./api/ActionKind.md) \| `undefined` |
+| Type Parameter                                                                                |
+| :-------------------------------------------------------------------------------------------- |
+| `TKind` _extends_ [`ActionKind`](/docs/latest/embedding/sdk/api/ActionKind.md) \| `undefined` |
 
 <!-- [<endsnippet type-parameters>] -->

@@ -14,6 +14,7 @@ export type MonitorSection =
   | "ai-auditing-conversations"
   | "ai-auditing-mcp"
   | "ai-auditing-cli"
+  | "ai-auditing-data-apps"
   | "api-key-usage";
 
 export const trackMonitorOpened = () => {

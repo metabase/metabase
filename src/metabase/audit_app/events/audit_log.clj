@@ -182,10 +182,12 @@
 (events/derive! :event/user-reactivated ::user-event)
 (events/derive! :event/password-reset-initiated ::user-event)
 (events/derive! :event/password-reset-successful ::user-event)
+(events/derive! :event/password-changed ::user-event)
 (events/derive! :event/mfa-verification-failed ::user-event)
 (events/derive! :event/mfa-required-enrollment-failed ::user-event)
 (events/derive! :event/mfa-enrolled ::user-event)
 (events/derive! :event/mfa-disabled ::user-event)
+(events/derive! :event/mcp-jwt-token-issued ::user-event)
 
 (methodical/defmethod events/publish-event! ::user-event
   [topic event]
@@ -353,6 +355,17 @@
 (events/derive! :event/transform-inspect-lens ::transform-event)
 
 (methodical/defmethod events/publish-event! ::transform-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(events/derive! ::card-test-event ::event)
+(events/derive! :event/card-test-create ::card-test-event)
+(events/derive! :event/card-test-update ::card-test-event)
+(events/derive! :event/card-test-delete ::card-test-event)
+(events/derive! :event/card-test-run-start ::card-test-event)
+(events/derive! :event/card-test-run-timeout ::card-test-event)
+
+(methodical/defmethod events/publish-event! ::card-test-event
   [topic event]
   (audit-log/record-event! topic event))
 

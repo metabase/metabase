@@ -1,5 +1,6 @@
 ---
 title: The query builder
+summary: Build a query step by step without writing SQL, picking data, joining tables, filtering, summarizing, and sorting.
 redirect_from:
   - /docs/latest/questions/query-builder/introduction
   - /docs/latest/questions/query-builder

@@ -19,10 +19,7 @@ import type {
   UpdateTransformRequest,
 } from "metabase-types/api";
 
-import {
-  createMockNativeDatasetQuery,
-  createMockStructuredDatasetQuery,
-} from "./query";
+import { EMPTY_NATIVE_QUERY, EMPTY_STRUCTURED_QUERY } from "./query";
 
 export function createMockTransformOwner(
   opts?: Partial<TransformOwner>,
@@ -39,7 +36,7 @@ export function createMockTransformOwner(
 export function createMockTransformSource(): TransformSource {
   return {
     type: "query",
-    query: createMockStructuredDatasetQuery(),
+    query: EMPTY_STRUCTURED_QUERY,
   };
 }
 
@@ -276,7 +273,7 @@ export function createMockInspectorCard(
     id: "card-1",
     title: "Card",
     display: "scalar",
-    dataset_query: createMockNativeDatasetQuery(),
+    dataset_query: EMPTY_NATIVE_QUERY,
     metadata: {
       card_type: "table_count",
       dedup_key: ["table-1"],

@@ -17,7 +17,7 @@
 }
 
 .schemaSeparator {
-  composes: textLight my2 from "style";
+  composes: textSecondary my2 from "style";
   margin-left: 0;
   font-size: 18px;
 }

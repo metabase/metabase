@@ -13,7 +13,8 @@
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
    [metabase.mcp.v2.test-util :as v2.tu]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.http-client :as client]))
 
 (set! *warn-on-reflection* true)
 
@@ -127,19 +128,25 @@
       (is (= common/error-code-invalid-request
              (get-in (registry/call-tool v2.tu/all-scopes nil "test_echo" {}) [:error :code]))))))
 
-(deftest ^:parallel initialize-is-refused-when-mcp-is-disabled-test
+(deftest initialize-is-refused-when-mcp-is-disabled-test
   (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly no-access-policy)]
-    (let [initialize {:jsonrpc "2.0" :method "initialize" :params {} :id 1}]
+    (let [initialize (fn [user expected-status]
+                       (v2.tu/do-with-bearer-token!
+                        user v2.tu/all-scopes
+                        (fn [headers]
+                          (:body (client/client-full-response :post expected-status "metabase-mcp"
+                                                              {:request-options {:headers headers}}
+                                                              {:jsonrpc "2.0" :method "initialize" :params {} :id 1})))))]
       (testing "the handshake names the fix instead of handing out an empty tool list"
         (is (= {:jsonrpc "2.0"
                 :id      1
                 :error   {:code    common/error-code-invalid-request
                           :message (str "MCP access is not enabled for your account. "
                                         "Ask an administrator to enable it under Admin > AI > Usage controls > MCP tools access.")}}
-               (mt/user-http-request :rasta :post 403 "metabase-mcp" initialize))))
+               (initialize :rasta 403))))
       (testing "a superuser still connects"
         (is (=? {:result {:protocolVersion string?}}
-                (mt/user-http-request :crowberto :post 200 "metabase-mcp" initialize)))))))
+                (initialize :crowberto 200)))))))
 
 (deftest ^:parallel app-only-tool-follows-the-ui-tools-test
   (mt/with-current-user (mt/user->id :rasta)

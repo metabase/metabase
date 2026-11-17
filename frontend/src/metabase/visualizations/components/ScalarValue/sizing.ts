@@ -1,3 +1,7 @@
+import type { ReactNode } from "react";
+
+import { estimateScalarValueWidth } from "metabase/visualizations/lib/scalar_utils";
+
 export interface ScalarSizeTier {
   size: 100 | 150 | 200 | 300 | 400 | 500 | 600;
   minWidth: number;
@@ -129,4 +133,21 @@ export const getScalarSizeTier = (
     (tier) => width >= tier.minWidth && height >= tier.minHeight,
   );
   return tier ?? SCALAR_SIZE_TIERS[SCALAR_SIZE_TIERS.length - 1];
+};
+
+export const getScalarValueFontSize = (
+  displayValue: ReactNode,
+  width: number,
+  fontSize: number,
+) => {
+  if (typeof displayValue !== "string") {
+    return fontSize;
+  }
+  const valueWidth = estimateScalarValueWidth(displayValue, fontSize);
+  if (valueWidth <= width) {
+    return fontSize;
+  }
+  const fittedFontSize = Math.floor((fontSize * width) / valueWidth);
+  const minTier = getScalarSizeTier(0, 0);
+  return Math.max(minTier.valueFontSize, fittedFontSize);
 };

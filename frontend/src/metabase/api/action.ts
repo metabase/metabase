@@ -5,6 +5,7 @@ import type {
   CreateActionRequest,
   ExecuteActionRequest,
   ExecuteDashcardActionRequest,
+  ExecuteUnsavedActionRequest,
   GetActionRequest,
   ListActionsRequest,
   ParametersForActionExecution,
@@ -59,7 +60,6 @@ export const actionApi = Api.injectEndpoints({
           "id",
           "archived",
           "collection_id",
-          "database_id",
           "dataset_query",
           "description",
           "kind",
@@ -67,6 +67,7 @@ export const actionApi = Api.injectEndpoints({
           "name",
           "parameter_mappings",
           "parameters",
+          "table_id",
           "visualization_settings",
         ]),
       }),
@@ -149,6 +150,16 @@ export const actionApi = Api.injectEndpoints({
         body: { parameters },
       }),
     }),
+    executeUnsavedAction: builder.mutation<
+      ActionExecutionResult,
+      ExecuteUnsavedActionRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/action/execute",
+        body,
+      }),
+    }),
     prefetchActionValues: builder.query<
       ParametersForActionExecution,
       PrefetchActionValuesRequest
@@ -203,6 +214,7 @@ export const {
     deleteActionPublicLink,
     createActionPublicLink,
     executeAction,
+    executeUnsavedAction,
     prefetchActionValues,
     executeDashcardAction,
     prefetchDashcardValues,
