@@ -1126,6 +1126,8 @@
                     :model/Field
                     :model/Measure
                     :model/NativeQuerySnippet
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
                     :model/Pulse
                     :model/SecurityAdvisory
                     :model/Segment

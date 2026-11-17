@@ -8,11 +8,16 @@
 
 ;;; TODO -- move these into appropriate modules.
 
+(defonce ^:private lifecycle-topics
+  (atom #{}))
+
 (mu/defn event-schema
   "Get the Malli schema we should use for events of `topic`. By default, this looks in our registry for a schema
   matching the event topic name; if it fails to find one, it falls back to `:map`."
   [topic :- keyword?]
   (or (mr/registered-schema topic)
+      (when (contains? @lifecycle-topics topic)
+        ::lifecycle)
       :map))
 
 (defn- with-hydrate
@@ -300,3 +305,21 @@
 (mr/def :event/security-advisory-match
   [:map {:closed true}
    [:object [:fn #(t2/instance-of? :model/SecurityAdvisory %)]]])
+
+;; lifecycle events
+
+(defn register-lifecycle-topic!
+  "Have the events of `topic`, one made by the write of a row, checked against the lifecycle schema."
+  [topic]
+  (swap! lifecycle-topics conj topic)
+  nil)
+
+(mr/def ::lifecycle
+  [:map {:closed true}
+   [:object [:fn map?]]
+   [:previous-object {:optional true} [:fn map?]]
+   [:changes {:optional true} [:fn map?]]
+   [:user-id [:maybe pos-int?]]
+   [:context {:optional true}
+    [:map {:closed true}
+     [:revision-message {:optional true} [:maybe :string]]]]])
