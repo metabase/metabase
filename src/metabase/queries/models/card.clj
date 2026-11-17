@@ -140,6 +140,7 @@
   (derive :hook/dependencies)
   (derive :hook/content-diagnostics)
   (derive :hook/persisted-info)
+  (derive :hook/revisions)
   (derive :hook/change-log))
 
 (methodical/defmethod change-log/ignored-columns :model/Card [_model]
@@ -1425,20 +1426,13 @@
         (queries.db/insert-dashcard! (assoc new-spot
                                             :dashboard_tab_id (some-> first-tab :id)
                                             :card_id (:id card)
-                                            :dashboard_id dashboard-id))
-        ;; the handler for `:event/dashboard-update` will hydrate `:dashcards` iff it's missing - make sure it is, so
-        ;; we don't store a revision for the *unmodified* dashcards.
-        (events/publish-event! :event/dashboard-update
-                               {:object (dissoc dashboard :dashcards :tabs)
-                                :user-id api/*current-user-id*})))))
+                                            :dashboard_id dashboard-id))))))
 
 (defn- autoremove-dashcard-for-card!
   [card-id dashboard-id]
   (queries.db/delete-dashcards-for-card-on-dashboard! card-id dashboard-id)
   (when-let [dashcard-ids (seq (map :id (queries.db/dashcard-series-for-card-on-dashboard card-id dashboard-id)))]
-    (queries.db/delete-dashcard-series! (set dashcard-ids)))
-  (events/publish-event! :event/dashboard-update {:object (queries.db/dashboard dashboard-id)
-                                                  :user-id api/*current-user-id*}))
+    (queries.db/delete-dashcard-series! (set dashcard-ids))))
 
 (defn- autoplace-or-remove-dashcards-for-card!
   "When moving around dashboard questions (cards that are internal to a dashboard), we need to remove or autoplace new

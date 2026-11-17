@@ -9,6 +9,7 @@
    [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
+   [metabase.revisions.hooks :as revisions.hooks]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -101,7 +102,7 @@
                      new-body)]
     (api/update-check existing new-body)
     (when changes
-      (measures.db/update-measure! id changes))
+      (revisions.hooks/with-revision-message revision_message (measures.db/update-measure! id changes)))
     (u/prog1 (hydrated-measure id false)
       (events/publish-event! :event/measure-update
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))

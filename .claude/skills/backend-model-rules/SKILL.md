@@ -1,6 +1,6 @@
 ---
 name: backend-model-rules
-description: Where a rule about a Toucan 2 model lives and how to write it. Hooks hold invariants that do not depend on the user, `mi/can-*?` methods hold per-user rules, write paths call `api/*-check` and publish events. Use when adding or changing a model, a hook, a permission check, an endpoint or tool that writes a model, a cascade, or archiving. Preloaded by every `*-backend-expert` agent.
+description: Where a rule about a Toucan 2 model lives and how to write it. Hooks hold invariants that do not depend on the user, `mi/can-*?` methods hold per-user rules, write paths call `api/*-check` and open a batch of writes. Use when adding or changing a model, a hook, a permission check, an endpoint or tool that writes a model, a cascade, or archiving. Preloaded by every `*-backend-expert` agent.
 ---
 
 # Model rules
@@ -60,15 +60,15 @@ that needs the row as stored.
 - `before-update` receives the stored row with the changes merged in. `(t2/changes row)` holds only columns whose
   value differs from the stored one, and `(t2/original row)` the stored row as `after-select` returned it. Run a
   check only when a column it guards is in the changes; never validate a stored combination the write does not touch.
-- Never read the current user: no `api/*current-user-id*`, `api/*is-superuser?*`, `mi/superuser?`, or permission
-  call. Never branch on which writer is calling (SerDes import, sync, an endpoint).
+- Never read the current user (`api/*current-user-id*`, `mi/superuser?`, a permission call) or branch on which writer
+  is calling (SerDes import, sync, an endpoint).
 - Hold an invariant whatever the premium token says. A `defenterprise` function a hook calls is declared
   `:feature :none`, so the rule holds with or without a token.
 - A hook may read another row through a `<module>.db` function. It sees stored rows, not the other rows of its own
-  statement, so a writer whose rows depend on each other writes them in separate statements, dependency first.
-- A check that needs the row's id (cycle detection) runs in `before-update` only.
-- Publish no event and record no revision in a hook. The one exception is Transform's `before-delete`, which deletes
-  its tests through `delete-transform-tests!`, and that publishes a delete event for each.
+  statement, so a writer whose rows depend on each other writes them in separate statements, dependency first. A
+  check that needs the row's id (cycle detection) runs in `before-update` only.
+- Publish no event and record nothing in a model's own hook: a consumer's trait (`:hook/revisions`, `:hook/pulse`)
+  reacts to the write.
 - **Derived column.** Never trusted from the caller: compute and overwrite on insert; recompute when its source
   changes; a change to it alone is a 400; leave it out of the request schema. A column derived only in some states
   (a model's `display` is `:table`) is overwritten in those states and keeps the caller's value in the others.
@@ -121,8 +121,17 @@ endpoint's own helper.
 - Every user-facing writer of a model calls the check: REST, MCP and Metabot tools, Agent API, bulk endpoints,
   revision revert, copy. Grep for the model's `update-...!` and `t2/update! :model/X` callers when adding a rule.
 - A bulk endpoint hydrates `:can_write` on all rows once, then checks each.
-- The write function publishes the events (`events/publish-event!`); the audit log and revisions are written from
-  them. SerDes and remote sync call no write function and publish nothing.
+- Nothing publishes a model-level event. A module that reacts to a model's writes exposes `<module>/hooks.clj` (EE
+  consumer: `defenterprise` there, implementation in the EE module, as `dependencies.hooks`) and a `:hook/...` trait
+  from `mi/define-hook-trait`, derived in the model's setup. Upkeep (pulse sync, persisted models, personal
+  collection, finding invalidation, driver pools) runs for every writer; a record of a user action (a revision) only
+  when `api/*current-user-id*` is bound, read in the consumer's hooks, never in a model's rule hooks.
+- Hooks mark the owner they change with `write-batch/mark!`; its work runs once per owner when the batch ends. A write
+  function that writes several rows of one aggregate opens it with `dependencies.hooks/with-batched-writes`, which
+  also batches the dependency marks; a single write is its own batch. A record's message goes in through the
+  consumer's macro (`revisions.hooks/with-revision-message`).
+- A moment that is no row write (a user deactivated, a Database saved) is a direct call into the consumer's hooks
+  namespace. `requiring-resolve` is only for a module cycle.
 - The request schema is closed and lists only what a caller may set: no derived columns, no `archived_directly`.
 - App-DB queries live in `<module>.db`, with caller-supplied values bound: `(t2/select-one :model/X :id [:auto/param id])`.
 
@@ -161,8 +170,8 @@ Banners of the form `;;; ---- Hooks ----`, padded with dashes to 120 columns, in
   hooks. A fixture overrides a column only when the test depends on it. Build queries with `metabase.lib`.
 - Test a hook through `t2/insert!` / `t2/update!`: the rejection, the derivation, the cascade. Test a permission
   rule through `api/create-check` / `api/update-check` as each kind of user, and once through the endpoint.
-- Assert a list endpoint stays batched with `t2/with-call-count` at two sizes.
-- A new model or column breaks the enumeration tests (entity ids, SerDes specs, stats): run them.
+- Assert a list endpoint stays batched with `t2/with-call-count` at two sizes. A new model or column breaks the
+  enumeration tests (entity ids, SerDes specs, stats): run them.
 
 ## Before handing off
 

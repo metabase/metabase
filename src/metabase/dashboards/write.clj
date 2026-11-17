@@ -14,6 +14,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -108,7 +109,7 @@
                           (some? auto_apply_filters) (assoc :auto_apply_filters auto_apply_filters))
          _              (api/create-check :model/Dashboard dashboard-data)
          _              (check-new-references (constantly no-references) {:parameters parameters})
-         dash           (t2/with-transaction [_conn]
+         dash           (dependencies.hooks/with-batched-writes (t2/with-transaction [_conn]
                           ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                           ;; collection to change position, check that and fix up if needed
                           (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
@@ -116,7 +117,7 @@
                           (let [dash (dashboards.db/insert-dashboard! dashboard-data)]
                             (when in-transaction
                               (in-transaction dash))
-                            dash))]
+                            dash)))]
      (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
      (analytics/track-event! :snowplow/dashboard
                              {:event        :dashboard-created
@@ -331,7 +332,7 @@
       (check-embedding-enabled current-dash dash-updates)
       (api/check-500
        (do
-         (t2/with-transaction [_conn]
+         (dependencies.hooks/with-batched-writes (t2/with-transaction [_conn]
            ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
            ;; adjust the collection position of other dashboards in the collection
            (api/maybe-reconcile-collection-position! (select-keys current-dash [:collection_id :collection_position]) (select-keys dash-updates [:collection_id :collection_position]))
@@ -383,13 +384,9 @@
                (reset! changes-stats
                        (merge
                         (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
-                        (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards]))))))
+                        (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))))
          true))
       (let [dashboard (dashboards.db/dashboard id)]
-        ;; skip publishing the event if it's just a change in its collection position
-        (when-not (= #{:collection_position}
-                     (set (keys dash-updates)))
-          (events/publish-event! :event/dashboard-update {:object dashboard :user-id api/*current-user-id*}))
         (track-dashcard-and-tab-events! dashboard @changes-stats)
         dashboard))))
 
@@ -604,7 +601,7 @@
                         :collection_position collection_position
                         :width               (:width existing-dashboard)}
         new-cards      (atom nil)
-        dashboard      (t2/with-transaction [_conn]
+        dashboard      (dependencies.hooks/with-batched-writes (t2/with-transaction [_conn]
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
                          (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
@@ -625,7 +622,7 @@
                              (api/check-500 (dashboard/add-dashcards! dash dashcards)))
                            (cond-> dash
                              (seq uncopied)
-                             (assoc :uncopied uncopied))))]
+                             (assoc :uncopied uncopied)))))]
     (analytics/track-event! :snowplow/dashboard
                             {:event        :dashboard-created
                              :dashboard-id (u/the-id dashboard)})

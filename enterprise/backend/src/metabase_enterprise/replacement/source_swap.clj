@@ -34,8 +34,6 @@
         (models.dependency/swap-dependency! :transform (:id transform) old-source new-source)
         (when (seq changes)
           (replacement.db/update-transform! (:id transform) changes)
-          (events/publish-event! :event/transform-update
-                                 {:object (merge transform changes) :user-id api/*current-user-id*})
           (events/publish-event! :event/update-transform {:object (merge transform changes)}))))))
 
 (defn- swap-parameter-source-card-id
@@ -160,21 +158,13 @@
         card-id->card (if (seq all-card-ids)
                         (replacement.db/cards-by-id all-card-ids)
                         {})
-        any-dashcard-changed? (reduce (fn [changed? dashcard]
-                                        (or
-                                         (dashcard-swap-source! dashcard card-id->card old-source new-source)
-                                         changed?))
-                                      false
-                                      dashcards)
+        _             (run! #(dashcard-swap-source! % card-id->card old-source new-source) dashcards)
         parameters    (or (:parameters dashboard) [])
         parameters'   (swap-parameter-source-card-id parameters old-source new-source)
         params-changed? (not= parameters parameters')]
     (when params-changed?
       (replacement.db/update-dashboard! (:id dashboard) {:parameters parameters'}))
-    (when (or any-dashcard-changed? params-changed?)
-      (events/publish-event!
-       :event/dashboard-update {:object  (replacement.db/dashboard (:id dashboard))
-                                :user-id api/*current-user-id*}))))
+    nil))
 
 (defn swap-source!
   "Swap old-source to new-source in an entity.

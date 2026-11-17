@@ -224,7 +224,6 @@
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))
                     (t2/hydrate (transforms.db/transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
-    (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (events/publish-event! :event/update-transform {:object transform})
     (-> transform
         transforms.u/add-source-readable)))

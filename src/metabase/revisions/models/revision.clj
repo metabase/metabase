@@ -293,6 +293,11 @@
                                       :message      message})
       object)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *reverting?*
+  "Whether [[revert!]] is writing, which records its own Revision, so the hooks of the writes record none."
+  false)
+
 (mu/defn revert!
   "Revert `entity` with `id` to a given Revision."
   [info :- [:map {:closed true}
@@ -307,7 +312,8 @@
       (let [already-in-target-state? (= serialized-instance
                                         (revisions.db/latest-revision-object model-name id))]
         ;; Do the reversion of the object
-        (revert-to-revision! entity id user-id serialized-instance)
+        (binding [*reverting?* true]
+          (revert-to-revision! entity id user-id serialized-instance))
         ;; Push a new revision to record this change
         (let [last-revision (revisions.db/latest-revision model-name id)]
           (if already-in-target-state?

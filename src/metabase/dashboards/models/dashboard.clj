@@ -58,6 +58,7 @@
   (derive :hook/dependencies)
   (derive :hook/content-diagnostics)
   (derive :hook/pulse)
+  (derive :hook/revisions)
   (derive :hook/change-log))
 
 (methodical/defmethod change-log/ignored-columns :model/Dashboard [_model]

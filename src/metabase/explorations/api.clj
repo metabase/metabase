@@ -654,8 +654,6 @@
             (explorations.db/exploration (:id exploration))))]
     ;; Published after the transaction commits (matching PUT) so listeners can never observe an
     ;; exploration that isn't visible to other connections yet.
-    (events/publish-event! :event/exploration-create
-                           {:object persisted :user-id api/*current-user-id*})
     (hydrate-exploration persisted)))
 
 (defn- drill-thread-stamp
@@ -746,8 +744,6 @@
           (explorations.db/update-thread! tid {:started_at (t/offset-date-time)})
           (explorations.queues/start-thread! tid)
           (let [persisted (explorations.db/exploration id)]
-            (events/publish-event! :event/exploration-update
-                                   {:object persisted :user-id api/*current-user-id*})
             (hydrate-exploration persisted)))))))
 
 (api.macros/defendpoint :get "/dimensions" :- ::DimensionsResponse
@@ -814,9 +810,6 @@
       (when (seq archived-document-ids)
         (publish-document-updates! (explorations.db/documents-by-ids archived-document-ids))))
     (let [updated (explorations.db/exploration id)]
-      (when (seq updates')
-        (events/publish-event! :event/exploration-update
-                               {:object updated :user-id api/*current-user-id*}))
       (hydrate-exploration updated))))
 
 (api.macros/defendpoint :delete "/:id" :- :nil

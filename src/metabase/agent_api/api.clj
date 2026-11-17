@@ -1618,8 +1618,6 @@
                               :user-id api/*current-user-id*
                               :dashcards (:removed result)}))
     (let [updated (agent-api.db/dashboard id)]
-      (events/publish-event! :event/dashboard-update
-                             {:object updated :user-id api/*current-user-id*})
       {:id              (:id updated)
        :name            (:name updated)
        :collection_id   (:collection_id updated)

@@ -6,6 +6,7 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
+   [metabase.revisions.hooks :as revisions.hooks]
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
@@ -76,8 +77,8 @@
                      new-body)]
     (api/update-check existing new-body)
     (when changes
-      (segments.db/update-segment! id (cond-> changes
-                                        (:definition changes) (update :definition lib-be/normalize-query))))
+      (revisions.hooks/with-revision-message revision_message (segments.db/update-segment! id (cond-> changes
+                                        (:definition changes) (update :definition lib-be/normalize-query)))))
     (u/prog1 (hydrated-segment id)
       (events/publish-event! :event/segment-update
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))

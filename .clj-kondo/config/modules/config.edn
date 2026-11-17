@@ -1581,6 +1581,7 @@
            models
            premium-features
            remote-sync
+           revisions
            search
            serialization
            util}
@@ -1888,6 +1889,7 @@
            lib.legacy-mbql
            lib.schema
            model-persistence
+           revisions
            util
            util.classloader}
    :model-imports #{:model/Action
@@ -2554,6 +2556,7 @@
    :module-exports #{revisions.schema}
    :api  #{metabase.revisions.api
            metabase.revisions.core
+           metabase.revisions.hooks
            metabase.revisions.init
            metabase.revisions.models.revision}
    :uses #{api
@@ -2714,6 +2717,7 @@
            events
            lib.be
            models
+           revisions
            segments
            segments.schema
            util

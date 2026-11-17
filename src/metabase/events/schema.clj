@@ -61,7 +61,6 @@
    [:object [:fn #(t2/instance-of? :model/Dashboard %)]]])
 
 (mr/def :event/dashboard-create ::dashboard)
-(mr/def :event/dashboard-update ::dashboard)
 (mr/def :event/dashboard-delete ::dashboard)
 
 (mr/def ::dashboard-with-dashcards

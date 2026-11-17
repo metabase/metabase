@@ -28,6 +28,7 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
+  (derive :hook/revisions)
   (derive ::saved-test))
 
 (mu/defn json-column :- [:map {:closed true} [:in fn?] [:out fn?]]

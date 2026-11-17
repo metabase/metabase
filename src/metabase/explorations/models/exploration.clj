@@ -45,7 +45,8 @@
 (doto :model/Exploration
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/revisions))
 
 (defmethod mi/after-archived-change :model/Exploration
   [_model rows changes]

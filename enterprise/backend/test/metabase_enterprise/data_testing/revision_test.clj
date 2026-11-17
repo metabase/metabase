@@ -10,7 +10,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.revisions.core :as revisions]
-   [metabase.revisions.events]
+   [metabase.revisions.hooks]
    [metabase.revisions.models.revision.diff :as revision.diff]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -235,7 +235,7 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Card {card-id :id} {}]
       (let [{card-test-id :id} (card-test! {:card_id card-id})]
-        (mt/with-log-messages-for-level [messages [metabase.revisions.events :warn]]
+        (mt/with-log-messages-for-level [messages [metabase.revisions.hooks :warn]]
           (let [revision-count #(t2/count :model/Revision :model "CardTest" :model_id card-test-id)
                 before         (revision-count)
                 {run-id :id}   (data-testing.run-tracking/start-run! :card card-test-id (mt/user->id :crowberto))]

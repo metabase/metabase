@@ -31,6 +31,7 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies)
   (derive :hook/pulse)
+  (derive :hook/revisions)
   ;; Disabled for performance reasons, see update-dashboard-card!-call-count-test
   #_(derive :hook/search-index))
 

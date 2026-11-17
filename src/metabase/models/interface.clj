@@ -647,6 +647,30 @@
   {:after-insert  persisted-info-after-insert
    :before-update persisted-info-before-update})
 
+(defn- revisions-after-insert
+  "Call the revisions hook, in a namespace that the modules of the models cannot require without a cycle."
+  [model row]
+  ;; revisions uses queries and dashboards, which derive this trait, so a require would be a cycle
+  #_{:clj-kondo/ignore [:metabase/modules]}
+  ((requiring-resolve 'metabase.revisions.hooks/after-insert) model row))
+
+(defn- revisions-before-update
+  "Call the revisions hook, in a namespace that the modules of the models cannot require without a cycle."
+  [model row]
+  #_{:clj-kondo/ignore [:metabase/modules]}
+  ((requiring-resolve 'metabase.revisions.hooks/before-update) model row))
+
+(defn- revisions-before-delete
+  "Call the revisions hook, in a namespace that the modules of the models cannot require without a cycle."
+  [model row]
+  #_{:clj-kondo/ignore [:metabase/modules]}
+  ((requiring-resolve 'metabase.revisions.hooks/before-delete) model row))
+
+(define-hook-trait :hook/revisions
+  {:after-insert  revisions-after-insert
+   :before-update revisions-before-update
+   :before-delete revisions-before-delete})
+
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.

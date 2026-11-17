@@ -24,7 +24,8 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies))
+  (derive :hook/dependencies)
+  (derive :hook/revisions))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

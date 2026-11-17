@@ -26,6 +26,7 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
+  (derive :hook/revisions)
   (derive ::data-testing.models/saved-test))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/CardTest :card]

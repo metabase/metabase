@@ -33,7 +33,7 @@
     (finish! (update-data nil))))
 
 (defn- finish-all!
-  "Run the work of every marked owner in the order of its first mark, including the owners marked meanwhile."
+  "Run the work of every marked owner in the order of its first mark, including the owners they mark meanwhile."
   [batch]
   (loop [done 0]
     (let [{:keys [order entries]} @batch]
@@ -50,6 +50,6 @@
   (if *batch*
     (thunk)
     (let [batch (atom {:order [] :entries {}})]
-      (u/prog1 (binding [*batch* batch] (thunk))
-        (binding [*batch* nil]
+      (binding [*batch* batch]
+        (u/prog1 (thunk)
           (finish-all! batch))))))

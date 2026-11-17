@@ -17,8 +17,8 @@
   "What of `database` the resources of its driver depend on, which leaves out the settings that do not change what
   they serve (metabase#27877)."
   [database]
-  (-> (perf/select-keys database [:engine :details :settings])
-      (m/dissoc-in [:settings :database-enable-actions])))
+  (cond-> (perf/select-keys database [:engine :details :settings])
+    (map? (:settings database)) (m/dissoc-in [:settings :database-enable-actions])))
 
 (defn- notify-later!
   "Have the driver of the Database `engine` `id` notified once the batch of writes ends, with the Database

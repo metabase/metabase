@@ -33,7 +33,8 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies))
+  (derive :hook/dependencies)
+  (derive :hook/revisions))
 
 (defn- definition-table-id
   "The id of the Table `definition`, a full query, is built on."

@@ -49,7 +49,8 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/dependencies)
-  (derive :hook/content-diagnostics))
+  (derive :hook/content-diagnostics)
+  (derive :hook/revisions))
 
 ;;; ---------- Hooks ---------------------------------------------------------------------------------------------
 
