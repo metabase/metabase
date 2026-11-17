@@ -17,6 +17,7 @@ import {
 } from "@codemirror/autocomplete";
 import { EditorView } from "@codemirror/view";
 import { act, fireEvent } from "@testing-library/react";
+import fetchMock from "fetch-mock";
 
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -114,6 +115,14 @@ export async function setup({
     />,
   );
 
+  // The database features decide which functions the editor offers, so wait
+  // for the database as the app does before anyone types.
+  await waitFor(() =>
+    expect(
+      fetchMock.callHistory.called(`path:/api/database/${database.id}`),
+    ).toBe(true),
+  );
+  await act(() => fetchMock.callHistory.flush(true));
   await waitFor(() =>
     expect(getEditorContent()).toHaveAttribute("contenteditable", "true"),
   );
