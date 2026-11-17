@@ -20,6 +20,7 @@
 
 (t2/deftransforms :model/TableUserSettings
   {:entity_type     mi/transform-keyword
+   :event_settings  mi/transform-json
    :visibility_type mi/transform-keyword
    :field_order     mi/transform-keyword
    :data_layer      (mi/transform-validator-with-fixes
@@ -180,6 +181,7 @@
    :identity  [:table_id]
    :copy      [:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
                :show_in_getting_started :data_authority :data_source :data_layer :owner_email :is_published
+               :event_settings
                :description_set :visibility_type_set :data_layer_set :data_source_set]
    :skip      [:caveats_set :points_of_interest_set]
    :defaults  {:description_set     false
