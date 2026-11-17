@@ -83,19 +83,28 @@
          ;; We will not include links to Metabase for subscriptions created in modular embeddings
          :disable_links (:disable_links broken-pulse))))))
 
+(defn- channel-recipient-count
+  "How many destinations the PulseChannel `channel` reaches: its user recipients and email addresses for email, and
+   one for a Slack channel or webhook with its destination set."
+  [{:keys [id channel_type details channel_id]}]
+  ;; The same destinations the send task checks before deleting a channel as having no recipients.
+  (case channel_type
+    :email (+ (count (pulse.db/pulse-channel-recipient-rows id)) (count (:emails details)))
+    :slack (if (seq (:channel details)) 1 0)
+    :http  (if channel_id 1 0)
+    0))
+
 (defn- delivery
-  "The `:channels` that deliver the pulse with `pulse-id`, as channel types, and its `:recipient-count`: user
-   recipients and email addresses on an email channel, and one destination for each other channel."
+  "The `:channels` that deliver the pulse with `pulse-id`, as channel types, and its `:recipient-count`, the
+   destinations [[channel-recipient-count]] counts.
+   Only enabled channels with a destination count."
   [pulse-id]
-  (let [channels (pulse.db/pulse-channel-kinds-for-pulse pulse-id)]
-    {:channels        (vec (distinct (map :channel_type channels)))
-     :recipient-count (transduce (map (fn [{:keys [id channel_type details]}]
-                                        (if (= :email channel_type)
-                                          (+ (count (pulse.db/pulse-channel-recipient-rows id))
-                                             (count (:emails details)))
-                                          1)))
-                                 +
-                                 channels)}))
+  (let [counts (for [channel (pulse.db/enabled-pulse-channels pulse-id)
+                     :let    [n (channel-recipient-count channel)]
+                     :when   (pos? n)]
+                 [(:channel_type channel) n])]
+    {:channels        (vec (distinct (map first counts)))
+     :recipient-count (transduce (map second) + counts)}))
 
 (defn- archived-subscription
   "What a caller may report about `broken-subscription`, from [[broken-subscription-data]], once it is archived:
@@ -121,9 +130,11 @@
   `original-dashboard-params` is the dashboard's `:resolved-params` from before the update."
   [dashboard-id original-dashboard-params]
   (mapv (fn [{:keys [pulse-id] :as broken-subscription}]
-          ;; Archive the pulse
-          (pulse/update-pulse! {:id pulse-id :archived true})
-          ;; Let the pulse and subscription creator know about the broken pulse
-          (messages/send-broken-subscription-notification! broken-subscription)
-          (archived-subscription original-dashboard-params broken-subscription))
+          ;; Described before archiving, so the description doesn't depend on what archiving leaves behind.
+          (let [archived (archived-subscription original-dashboard-params broken-subscription)]
+            ;; Archive the pulse
+            (pulse/update-pulse! {:id pulse-id :archived true})
+            ;; Let the pulse and subscription creator know about the broken pulse
+            (messages/send-broken-subscription-notification! broken-subscription)
+            archived))
         (broken-subscription-data dashboard-id original-dashboard-params)))

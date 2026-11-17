@@ -126,9 +126,12 @@
 
 (deftest handle-broken-subscriptions-returns-what-it-archived-test
   (testing "the handler archives each broken subscription and returns what a caller may report about it, counting
-            email addresses and webhooks as recipients"
+            the destinations of enabled channels"
     (mt/with-fake-inbox
-      (mt/with-temp [:model/Dashboard           {dash-id :id}      {:name       "Sales"
+      (mt/with-temp [:model/Channel             {webhook-id :id}   {:type    :channel/http
+                                                                    :details {:url         "https://example.com/hook"
+                                                                              :auth-method "none"}}
+                     :model/Dashboard           {dash-id :id}      {:name       "Sales"
                                                                     :parameters [{:id "kept", :name "Kept", :slug "kept"
                                                                                   :type "category"}]}
                      :model/Pulse               {removed-id :id}   {:name         "Removed filter"
@@ -149,6 +152,15 @@
                                                                                     :value ["x"]}]}
                      :model/PulseChannel        _                  {:channel_type :http
                                                                     :pulse_id     stale-id
+                                                                    :channel_id   webhook-id
+                                                                    :enabled      true}
+                     ;; Neither of these delivers: one is disabled, and the webhook has no channel.
+                     :model/PulseChannel        _                  {:channel_type :slack
+                                                                    :pulse_id     stale-id
+                                                                    :details      {:channel "#sales"}
+                                                                    :enabled      false}
+                     :model/PulseChannel        _                  {:channel_type :http
+                                                                    :pulse_id     removed-id
                                                                     :enabled      true}]
         (is (= [{:id              removed-id
                  :creator-name    "Rasta Toucan"
