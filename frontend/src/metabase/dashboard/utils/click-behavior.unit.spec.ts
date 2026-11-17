@@ -2,6 +2,8 @@ import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import { getDataFromClicked } from "metabase/value-formatting";
 import * as dateFormatUtils from "metabase/value-formatting";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
@@ -75,6 +77,8 @@ const metadata = createMockMetadata({
     }),
   ],
 });
+
+const provider = createMetadataProvider({ metadata });
 
 const productId = checkNotNull(metadata.field(PRODUCTS.ID));
 const productTitle = checkNotNull(metadata.field(PRODUCTS.TITLE));
