@@ -660,7 +660,7 @@ function getDragSourceWellId(drag: SummaryDragItem): SummaryWellId | null {
     case "value":
       return "values";
     case "dimension":
-      return "columns";
+      return drag.wellId;
   }
 }
 
@@ -685,7 +685,13 @@ export function dropOnWell(
   wellId: SummaryWellId,
 ): Lib.Query {
   const field = getDragField(query, stageIndex, drag);
-  if (field == null || !canDropOnWell(query, stageIndex, drag, wellId)) {
+  const isMoveBetweenGroupingWells =
+    drag.kind === "dimension" && wellId !== "values";
+  if (
+    field == null ||
+    isMoveBetweenGroupingWells ||
+    !canDropOnWell(query, stageIndex, drag, wellId)
+  ) {
     return query;
   }
   const withoutSource =

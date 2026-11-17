@@ -2,8 +2,12 @@ import _ from "underscore";
 
 import * as Lib from "metabase-lib";
 
-import type { SummaryWellId } from "./types";
-import { getDimensionItems, getResultColumnNames } from "./utils";
+import type { SummaryDragItem, SummaryWellId } from "./types";
+import {
+  canDropOnWell,
+  getDimensionItems,
+  getResultColumnNames,
+} from "./utils";
 
 export function getRowAndColumnItems(
   query: Lib.Query,
@@ -75,4 +79,28 @@ export function getNextRowKeys({
       return addedWellId === "rows";
     })
     .map(({ key }) => key);
+}
+
+/**
+ * The Rows keys after a drop. A grouping chip that moves between the Columns and Rows wells
+ * changes only these keys, not the query. Returns `rowKeys` itself for any other drop.
+ */
+export function getRowKeysAfterDrop(
+  query: Lib.Query,
+  stageIndex: number,
+  drag: SummaryDragItem,
+  wellId: SummaryWellId,
+  rowKeys: string[],
+): string[] {
+  if (
+    drag.kind !== "dimension" ||
+    wellId === "values" ||
+    !canDropOnWell(query, stageIndex, drag, wellId)
+  ) {
+    return rowKeys;
+  }
+  const { key } = drag.item;
+  return wellId === "rows"
+    ? [...rowKeys, key]
+    : rowKeys.filter((rowKey) => rowKey !== key);
 }

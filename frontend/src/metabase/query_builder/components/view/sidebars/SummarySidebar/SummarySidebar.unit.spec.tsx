@@ -482,7 +482,7 @@ describe("SummarySidebar", () => {
       const { getLastQuery } = setup({ query: SUMMARIZED_QUERY });
       const [item] = getDimensionItems(SUMMARIZED_QUERY, STAGE_INDEX);
 
-      drop({ kind: "dimension", item }, "values");
+      drop({ kind: "dimension", item, wellId: "columns" }, "values");
 
       expect(getLastQuery()).toEqual({
         values: ["Count", "Sum of Total", "Distinct values of Created At"],
@@ -535,7 +535,7 @@ describe("SummarySidebar", () => {
       const { onQueryChange } = setup({ query });
       const [item] = getDimensionItems(query, STAGE_INDEX);
 
-      drop({ kind: "dimension", item }, "columns");
+      drop({ kind: "dimension", item, wellId: "columns" }, "columns");
 
       expect(onQueryChange).not.toHaveBeenCalled();
     });
@@ -673,6 +673,120 @@ describe("SummarySidebar", () => {
       expect(getChipLabels("columns")).toEqual([]);
       expect(getChipLabels("rows")).toEqual([]);
       expect(screen.getByRole("button", { name: "Clear all" })).toBeDisabled();
+    });
+
+    describe("drag and drop", () => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count" }],
+            breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+          },
+        ],
+      });
+      const [createdAt] = getDimensionItems(query, STAGE_INDEX);
+
+      it("adds a field that is dropped on Rows to the Rows well", async () => {
+        const { getLastQuery } = setup({ query });
+        await userEvent.click(
+          screen.getByRole("button", { name: "Pivot into rows and columns" }),
+        );
+
+        drop(getFieldDrag(query, "Product", "Category"), "rows");
+
+        expect(getLastQuery().dimensions).toEqual([
+          "Created At: Month",
+          "Product → Category",
+        ]);
+        expect(getChipLabels("columns")).toEqual(["Created At: Month"]);
+        expect(getChipLabels("rows")).toEqual(["Product → Category"]);
+      });
+
+      it("moves a grouping chip between Columns and Rows without a change of the query", async () => {
+        const { onQueryChange } = setup({ query });
+        await userEvent.click(
+          screen.getByRole("button", { name: "Pivot into rows and columns" }),
+        );
+
+        drop({ kind: "dimension", item: createdAt, wellId: "columns" }, "rows");
+        expect(getChipLabels("columns")).toEqual([]);
+        expect(getChipLabels("rows")).toEqual(["Created At: Month"]);
+
+        drop({ kind: "dimension", item: createdAt, wellId: "rows" }, "columns");
+        expect(getChipLabels("columns")).toEqual(["Created At: Month"]);
+        expect(getChipLabels("rows")).toEqual([]);
+        expect(onQueryChange).not.toHaveBeenCalled();
+      });
+
+      it("shows which wells take the dragged item, Rows included", async () => {
+        const metricQuery = createQueryWithMetric();
+        setup({ query: metricQuery });
+        await userEvent.click(
+          screen.getByRole("button", { name: "Pivot into rows and columns" }),
+        );
+        const rowsWell = screen.getByTestId("summary-well-rows");
+
+        startDrag(getFieldDrag(metricQuery, "Metrics", "Revenue"));
+        expect(rowsWell).toHaveAttribute("data-drop", "rejects");
+        endDrag(null);
+
+        startDrag(getFieldDrag(metricQuery, "Product", "Category"));
+        expect(rowsWell).toHaveAttribute("data-drop", "accepts");
+        endDrag(null);
+        expect(rowsWell).not.toHaveAttribute("data-drop");
+      });
+
+      it("offers to create a pivot while a column is dragged outside the pivot mode", () => {
+        const metricQuery = createQueryWithMetric();
+        setup({ query: metricQuery });
+        expect(screen.queryByText("Create pivot")).not.toBeInTheDocument();
+
+        startDrag(getFieldDrag(metricQuery, "Metrics", "Revenue"));
+        expect(screen.queryByText("Create pivot")).not.toBeInTheDocument();
+        endDrag(null);
+
+        startDrag(getFieldDrag(metricQuery, "Product", "Category"));
+        expect(screen.getByText("Create pivot")).toBeInTheDocument();
+        endDrag(null);
+        expect(screen.queryByText("Create pivot")).not.toBeInTheDocument();
+      });
+
+      it("starts the pivot mode on a drop below the wells and ends it when Rows is empty", async () => {
+        setup({ query });
+
+        drop({ kind: "dimension", item: createdAt, wellId: "columns" }, "rows");
+
+        expect(getWell("columns").getByText("Columns")).toBeInTheDocument();
+        expect(getChipLabels("rows")).toEqual(["Created At: Month"]);
+        expect(
+          screen.getByRole("button", { name: "Back to breakouts" }),
+        ).toBeInTheDocument();
+
+        await userEvent.click(
+          screen.getByRole("button", { name: "Remove Created At: Month" }),
+        );
+
+        expect(
+          screen.queryByTestId("summary-well-rows"),
+        ).not.toBeInTheDocument();
+        expect(getWell("columns").getByText("Group by")).toBeInTheDocument();
+      });
+
+      it("keeps the pivot mode that the toggle started when Rows is empty", async () => {
+        setup({ query });
+        await userEvent.click(
+          screen.getByRole("button", { name: "Pivot into rows and columns" }),
+        );
+        drop({ kind: "dimension", item: createdAt, wellId: "columns" }, "rows");
+
+        await userEvent.click(
+          screen.getByRole("button", { name: "Remove Created At: Month" }),
+        );
+
+        expect(getChipLabels("rows")).toEqual([]);
+        expect(getWell("columns").getByText("Columns")).toBeInTheDocument();
+      });
     });
 
     it("moves the Rows groupings to Group by when the pivot mode ends", async () => {

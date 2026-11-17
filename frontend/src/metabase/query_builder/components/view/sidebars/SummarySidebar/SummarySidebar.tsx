@@ -23,7 +23,11 @@ import { SummaryFieldList } from "./SummaryFieldList";
 import { useSummaryFormulaBar } from "./SummaryFormulaBar";
 import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
-import { getNextRowKeys, getRowAndColumnItems } from "./pivot-layout";
+import {
+  getNextRowKeys,
+  getRowAndColumnItems,
+  getRowKeysAfterDrop,
+} from "./pivot-layout";
 import type {
   SummaryDragItem,
   SummaryField,
@@ -63,7 +67,9 @@ function getDropWellId(data: unknown): SummaryWellId | null {
   if (typeof data !== "object" || data == null || !("wellId" in data)) {
     return null;
   }
-  return data.wellId === "values" || data.wellId === "columns"
+  return data.wellId === "values" ||
+    data.wellId === "columns" ||
+    data.wellId === "rows"
     ? data.wellId
     : null;
 }
@@ -75,8 +81,9 @@ export function SummarySidebar({
 }: UpdateQueryHookProps) {
   const dispatch = useDispatch();
   const generatedExpressions = useSelector(getSummaryGeneratedExpressions);
-  const [isPivotMode, setIsPivotMode] = useState(false);
+  const [isPivotToggled, setIsPivotToggled] = useState(false);
   const [rowKeys, setRowKeys] = useState<string[]>([]);
+  const isPivotMode = isPivotToggled || rowKeys.length > 0;
   const { rowItems, columnItems } = useMemo(
     () => getRowAndColumnItems(query, stageIndex, rowKeys),
     [query, stageIndex, rowKeys],
@@ -159,7 +166,7 @@ export function SummarySidebar({
   };
 
   const handlePivotToggle = () => {
-    setIsPivotMode(!isPivotMode);
+    setIsPivotToggled(!isPivotMode);
     setRowKeys([]);
   };
 
@@ -181,6 +188,7 @@ export function SummarySidebar({
     if (drag == null || wellId == null) {
       return;
     }
+    setRowKeys(getRowKeysAfterDrop(query, stageIndex, drag, wellId, rowKeys));
     const nextQuery = dropOnWell(query, stageIndex, drag, wellId);
     if (nextQuery !== query) {
       handleWellAdd(nextQuery, wellId);

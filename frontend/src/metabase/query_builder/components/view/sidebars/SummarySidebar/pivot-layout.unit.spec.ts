@@ -3,7 +3,8 @@ import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { TestBreakoutSpec } from "metabase-types/api";
 import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
 
-import { getNextRowKeys } from "./pivot-layout";
+import { getNextRowKeys, getRowKeysAfterDrop } from "./pivot-layout";
+import type { SummaryDimensionWellId, SummaryDragItem } from "./types";
 import {
   addField,
   changeDimensionBucket,
@@ -156,5 +157,61 @@ describe("getNextRowKeys", () => {
         rowKeys: ["CREATED_AT"],
       }),
     ).toEqual([]);
+  });
+});
+
+describe("getRowKeysAfterDrop", () => {
+  const query = createQuery([CATEGORY, CREATED_AT_MONTH]);
+  const [category, createdAt] = getDimensionItems(query, STAGE_INDEX);
+  const ROW_KEYS = ["CREATED_AT"];
+  const chipDrag = (
+    item: typeof category,
+    wellId: SummaryDimensionWellId,
+  ): SummaryDragItem => ({ kind: "dimension", item, wellId });
+
+  it("adds a Columns chip that is dropped on Rows", () => {
+    expect(
+      getRowKeysAfterDrop(
+        query,
+        STAGE_INDEX,
+        chipDrag(category, "columns"),
+        "rows",
+        ROW_KEYS,
+      ),
+    ).toEqual(["CREATED_AT", "CATEGORY"]);
+  });
+
+  it("removes a Rows chip that is dropped on Columns", () => {
+    expect(
+      getRowKeysAfterDrop(
+        query,
+        STAGE_INDEX,
+        chipDrag(createdAt, "rows"),
+        "columns",
+        ROW_KEYS,
+      ),
+    ).toEqual([]);
+  });
+
+  it("returns the same keys for a drop that is not a move between Columns and Rows", () => {
+    const rowsChip = chipDrag(createdAt, "rows");
+    const [vendor] = getFieldSections(query, STAGE_INDEX)
+      .flatMap((section) => section.items)
+      .filter((item) => item.name === "Vendor");
+    const fieldDrag: SummaryDragItem = {
+      kind: "field",
+      field: vendor.field,
+      label: vendor.name,
+    };
+
+    expect(
+      getRowKeysAfterDrop(query, STAGE_INDEX, rowsChip, "rows", ROW_KEYS),
+    ).toBe(ROW_KEYS);
+    expect(
+      getRowKeysAfterDrop(query, STAGE_INDEX, rowsChip, "values", ROW_KEYS),
+    ).toBe(ROW_KEYS);
+    expect(
+      getRowKeysAfterDrop(query, STAGE_INDEX, fieldDrag, "rows", ROW_KEYS),
+    ).toBe(ROW_KEYS);
   });
 });
