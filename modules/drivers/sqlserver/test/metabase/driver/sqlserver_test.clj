@@ -1639,6 +1639,21 @@
       (is (=? {:status-code 409} (ex-data error)))
       (is (= [15434] (map #(.getErrorCode ^java.sql.SQLException %) (.getSuppressed ^Throwable error)))))))
 
+(deftest destroy-workspace-isolation-lock-timeout-reset-fails-test
+  (testing "a failed reset of the lock timeout is attached to the teardown error as suppressed, and the connection is discarded"
+    (let [{:keys [statements error discarded?]} (run-teardown-statements! {"DROP SCHEMA"         (sql-error 3729)
+                                                                           "SET LOCK_TIMEOUT -1" (sql-error 50000)})]
+      (is (= 3729 (.getErrorCode ^java.sql.SQLException error)))
+      (is (= [50000] (map #(.getErrorCode ^java.sql.SQLException %) (.getSuppressed ^Throwable error))))
+      (is (= all-teardown-statement-kinds (statement-kinds statements)))
+      (is (true? discarded?))))
+  (testing "a failed reset after every statement succeeded is thrown, and the connection is discarded"
+    (let [{:keys [error discarded?]} (run-teardown-statements! {"SET LOCK_TIMEOUT -1" (sql-error 50000)})]
+      (is (= 50000 (.getErrorCode ^java.sql.SQLException error)))
+      (is (true? discarded?))))
+  (testing "a teardown that succeeds keeps the connection"
+    (is (false? (:discarded? (run-teardown-statements! {}))))))
+
 (deftest workspace-init-sqls-test
   (testing "init creates the login, user and schema outright: it neither adopts an existing one nor resets a login's password"
     (is (= ["CREATE LOGIN \"ws_user\" WITH PASSWORD = N'pa''ss'"

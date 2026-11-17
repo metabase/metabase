@@ -1574,29 +1574,43 @@
          ;; session, and the connection returns to the pool, so it is reset to -1 afterwards: the value every connection
          ;; starts with, which waits without a bound.
          (.execute stmt (format "SET LOCK_TIMEOUT %d" workspace-lock-timeout-ms))
-         (try
-           ;; One statement at a time, not a batch, so that each error is that of the statement that failed. A failed
-           ;; statement does not stop the ones after it: the user and the login are dropped whenever SQL Server allows
-           ;; it. A user that owns no securable can be dropped while its schema stays, and a login can be dropped while
-           ;; a user is mapped to it. DROP SCHEMA is skipped after DROP TABLE fails, such as on a lock timeout (1222):
-           ;; a schema that holds a table cannot be dropped. The schema stays when it holds an object that no statement
-           ;; drops, such as a sequence.
-           (let [{:keys [errors]} (reduce (fn [{:keys [failed] :as result} [step ^String sql]]
-                                            (if (and (= :drop-schema step) (contains? failed :drop-tables))
-                                              result
-                                              (try
-                                                (.execute stmt sql)
-                                                result
-                                                (catch java.sql.SQLException e
-                                                  (-> result
-                                                      (update :failed conj step)
-                                                      (update :errors conj e))))))
-                                          {:failed #{}, :errors []}
-                                          steps)]
-             (when (seq errors)
-               (throw (teardown-error errors))))
-           (finally
-             (.execute stmt "SET LOCK_TIMEOUT -1"))))))))
+         (let [^Throwable error
+               (try
+                 ;; One statement at a time, not a batch, so that each error is that of the statement that failed. A
+                 ;; failed statement does not stop the ones after it: the user and the login are dropped whenever SQL
+                 ;; Server allows it. A user that owns no securable can be dropped while its schema stays, and a login
+                 ;; can be dropped while a user is mapped to it. DROP SCHEMA is skipped after DROP TABLE fails, such as
+                 ;; on a lock timeout (1222): a schema that holds a table cannot be dropped. The schema stays when it
+                 ;; holds an object that no statement drops, such as a sequence.
+                 (let [{:keys [errors]} (reduce (fn [{:keys [failed] :as result} [step ^String sql]]
+                                                  (if (and (= :drop-schema step) (contains? failed :drop-tables))
+                                                    result
+                                                    (try
+                                                      (.execute stmt sql)
+                                                      result
+                                                      (catch java.sql.SQLException e
+                                                        (-> result
+                                                            (update :failed conj step)
+                                                            (update :errors conj e))))))
+                                                {:failed #{}, :errors []}
+                                                steps)]
+                   (when (seq errors)
+                     (teardown-error errors)))
+                 (catch Throwable t
+                   t))
+               ;; A failed reset must not replace the teardown error, and leaves a connection whose lock timeout the
+               ;; pool cannot be trusted to reset, so the connection is discarded.
+               reset-error
+               (try
+                 (.execute stmt "SET LOCK_TIMEOUT -1")
+                 nil
+                 (catch Throwable reset-error
+                   (sql-jdbc.conn/discard-pooled-connection! conn)
+                   reset-error))]
+           (when (and error reset-error)
+             (.addSuppressed error reset-error))
+           (when-let [^Throwable e (or error reset-error)]
+             (throw e))))))))
 
 (defmethod driver/grant-workspace-read-access! :sqlserver
   [driver database workspace schemas]
