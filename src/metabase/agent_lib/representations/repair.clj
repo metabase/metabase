@@ -3515,13 +3515,17 @@
   (str/replace (name (symbol pass-var)) #"\*$" ""))
 
 (def ^:private structural-passes
-  "Names of the passes that change a query that follows the prompt contract. [[repairs]] never reports them: such a
-  pass says nothing about what the model got wrong.
+  "Names of the passes that [[repairs]] never reports. Each one changes a query that follows the prompt contract in
+  its basic form, so it says nothing about what the model wrote.
 
   - `stamp-top-level-database`: the contract has no top-level `database`.
   - `infer-field-types`: the contract tells the model not to write `base-type` on a reference by column name.
   - `normalize-expressions-shape`: the contract prefers the map form of `expressions`.
-  - `ensure-lib-types`: the contract's join has no `lib/type`."
+  - `ensure-lib-types`: the contract's join has no `lib/type`.
+
+  The set is not all the passes that fire on a contract form. Some reported passes also change a form that the
+  contract documents, for example `resolve-implicit-joins` and `rewrite-temporal-extract`. A reported pass shows
+  that its form occurred in the query, not that the model made a fault."
   #{"stamp-top-level-database"
     "infer-field-types"
     "normalize-expressions-shape"
@@ -3685,7 +3689,10 @@
 (defn repairs
   "The names of the passes that changed the query `repaired`, a return value of [[repair]]: a sorted vector of
   strings, `[]` when no reported pass changed it. A name is the name of the pass function without the `*`. The
-  passes in [[structural-passes]] are never in it. Nil when `repaired` did not come from [[repair]].
+  passes in [[structural-passes]] are never in it. Nil when `repaired` has no such metadata.
+
+  The list is metadata, so a value derived from a return value of [[repair]] keeps the list of that run. Read it
+  from the direct return value.
 
   The names are reported in the `agent_used_tool` event, so a rename of a pass changes the reported value."
   [repaired]
