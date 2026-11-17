@@ -7,6 +7,11 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- Added new driver feature flag `:jdbc/set-max-rows`, which says whether `metabase.driver/query-on-connection` may cap
+  a query's rows with `Statement.setMaxRows`. It is true for every `:sql-jdbc` driver except Redshift, where a capped
+  query in a data-test run left the transaction aborted. Without it, the query streams and the reader stops at the cap.
+  Return false for a driver where a capped query breaks the transaction it runs in.
+
 - `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
   values the driver splices into its connection URL. Metabase refuses a value of one of these that contains `?`, `&`,
   `;` or `#`, even percent-encoded. Defaults to `[:host :port :db :dbname :catalog :account]`; override it if one of
