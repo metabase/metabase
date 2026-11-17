@@ -612,9 +612,9 @@ describe("EntryPickerModal entity search", () => {
 
       expect(onChange).toHaveBeenCalledTimes(1);
       expect(onChange).toHaveBeenCalledWith(target.entry);
-      const searchParams = new URL(
-        fetchMock.callHistory.lastCall("path:/api/search")!.url,
-      ).searchParams;
+      const searchCall = fetchMock.callHistory.lastCall("path:/api/search");
+      expect(searchCall).toBeDefined();
+      const searchParams = new URL(searchCall?.url ?? "").searchParams;
       expect(searchParams.get("q")).toBe(target.name);
       expect(searchParams.getAll("models")).toContain(model);
     },

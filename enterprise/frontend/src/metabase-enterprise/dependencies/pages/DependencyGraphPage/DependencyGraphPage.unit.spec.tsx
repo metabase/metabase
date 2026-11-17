@@ -582,7 +582,10 @@ function setup({ entry }: { entry?: DependencyNode } = {}) {
     { withRouter: true, initialRoute },
   );
 
-  return { router: router! };
+  if (router == null) {
+    throw new Error("renderWithProviders did not return a router");
+  }
+  return { router };
 }
 
 function getGraph() {
@@ -598,8 +601,10 @@ async function findGraphNode(label: string) {
     const node = getGraphNodes().find(
       (node) => node.getAttribute("aria-label") === label,
     );
-    expect(node).toBeDefined();
-    return node!;
+    if (node == null) {
+      throw new Error(`No graph node labelled "${label}"`);
+    }
+    return node;
   });
 }
 
@@ -643,14 +648,20 @@ function getLastGraphRequestParams() {
   const call = fetchMock.callHistory.lastCall(
     "path:/api/ee/dependencies/graph",
   );
-  return Object.fromEntries(new URL(call!.url).searchParams.entries());
+  if (call == null) {
+    throw new Error("No request to /api/ee/dependencies/graph");
+  }
+  return Object.fromEntries(new URL(call.url).searchParams.entries());
 }
 
 function getLastDependentsRequestParams() {
   const call = fetchMock.callHistory.lastCall(
     "path:/api/ee/dependencies/graph/dependents",
   );
-  const params = new URL(call!.url).searchParams;
+  if (call == null) {
+    throw new Error("No request to /api/ee/dependencies/graph/dependents");
+  }
+  const params = new URL(call.url).searchParams;
   return {
     id: params.get("id"),
     type: params.get("type"),
@@ -704,9 +715,21 @@ async function findOption(label: string) {
     const option = screen
       .getAllByRole("option")
       .find((option) => option.textContent?.trim() === label);
-    expect(option).toBeDefined();
-    return option!;
+    if (option == null) {
+      throw new Error(`No option labelled "${label}"`);
+    }
+    return option;
   });
+}
+
+function getDependent(item: DependencyNode, label: string) {
+  const dependent = DEPENDENTS.get(item)?.find(
+    (node) => getLabel(node) === label,
+  );
+  if (dependent == null) {
+    throw new Error(`No dependent labelled "${label}" in the fixtures`);
+  }
+  return dependent;
 }
 
 function getLabel(node: DependencyNode) {
@@ -763,7 +786,7 @@ describe("DependencyGraphPage", () => {
   });
 
   describe("entity search", () => {
-    async function selectViaInlineSearch({
+    async function expectEntrySelectedViaInlineSearch({
       node,
       icon,
       eventDetail,
@@ -798,19 +821,40 @@ describe("DependencyGraphPage", () => {
     }
 
     it.each<{
+      name: string;
       node: DependencyNode;
       icon: string;
       eventDetail: DependencyType;
     }>([
-      { node: PRODUCTS_TABLE, icon: "table", eventDetail: "table" },
-      { node: ORDERS_COUNT_QUESTION, icon: "line", eventDetail: "card" },
-      { node: ORDERS_MODEL, icon: "model", eventDetail: "card" },
-      { node: TABLE_BASED_METRIC, icon: "metric", eventDetail: "card" },
+      {
+        name: "a table",
+        node: PRODUCTS_TABLE,
+        icon: "table",
+        eventDetail: "table",
+      },
+      {
+        name: "a question",
+        node: ORDERS_COUNT_QUESTION,
+        icon: "line",
+        eventDetail: "card",
+      },
+      {
+        name: "a model",
+        node: ORDERS_MODEL,
+        icon: "model",
+        eventDetail: "card",
+      },
+      {
+        name: "a metric",
+        node: TABLE_BASED_METRIC,
+        icon: "metric",
+        eventDetail: "card",
+      },
     ])(
-      "should find $node.type $node.id via inline search, open its graph, and show it in recent items",
+      "should find $name via inline search, open its graph, and show it in recent items",
       async ({ node, icon, eventDetail }) => {
         setup();
-        const entryButton = await selectViaInlineSearch({
+        const entryButton = await expectEntrySelectedViaInlineSearch({
           node,
           icon,
           eventDetail,
@@ -828,12 +872,11 @@ describe("DependencyGraphPage", () => {
 
     it("should find a transform via inline search and open its graph", async () => {
       setup();
-      const entryButton = await selectViaInlineSearch({
+      await expectEntrySelectedViaInlineSearch({
         node: TABLE_BASED_TRANSFORM,
         icon: "transform",
         eventDetail: "transform",
       });
-      expect(entryButton).toHaveTextContent("Table-based transform");
     });
   });
 
@@ -1167,9 +1210,7 @@ describe("DependencyGraphPage", () => {
         const { router } = setup({ entry: item });
 
         for (const { groupLabel, dependentLabel } of groups) {
-          const dependent = DEPENDENTS.get(item)!.find(
-            (node) => getLabel(node) === dependentLabel,
-          )!;
+          const dependent = getDependent(item, dependentLabel);
           await verifyPanelNavigation({
             router,
             item,
@@ -1197,9 +1238,10 @@ describe("DependencyGraphPage", () => {
         ["1 transform", "transform"],
         ["1 SQL snippet", "snippet"],
       ]) {
-        const dependent = DEPENDENTS.get(TABLE_BASED_QUESTION)!.find(
-          (node) => getLabel(node) === `Question-based ${suffix}`,
-        )!;
+        const dependent = getDependent(
+          TABLE_BASED_QUESTION,
+          `Question-based ${suffix}`,
+        );
         await verifyPanelNavigation({
           router,
           item: TABLE_BASED_QUESTION,
@@ -1225,9 +1267,10 @@ describe("DependencyGraphPage", () => {
         ["1 transform", "transform"],
         ["1 SQL snippet", "snippet"],
       ]) {
-        const dependent = DEPENDENTS.get(TABLE_BASED_MODEL)!.find(
-          (node) => getLabel(node) === `Model-based ${suffix}`,
-        )!;
+        const dependent = getDependent(
+          TABLE_BASED_MODEL,
+          `Model-based ${suffix}`,
+        );
         await verifyPanelNavigation({
           router,
           item: TABLE_BASED_MODEL,
