@@ -8,7 +8,6 @@
 (methodical/defmethod t2/table-name :model/EventsTestTimeline [_model] :timeline)
 
 (doto :model/EventsTestTimeline
-  (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
@@ -22,7 +21,6 @@
 (methodical/defmethod t2/table-name :model/EventsTestTimelineUpdateOnly [_model] :timeline)
 
 (doto :model/EventsTestTimelineUpdateOnly
-  (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
