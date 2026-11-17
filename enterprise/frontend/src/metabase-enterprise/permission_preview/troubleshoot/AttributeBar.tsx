@@ -57,7 +57,10 @@ export function AttributeBar({
   }
   // nothing beside the label until they load
   const label = !isLoading && (
-    <Text fz="sm" c="text-secondary">{t`User attributes used by rules:`}</Text>
+    <Text
+      size="sm"
+      c="text-secondary"
+    >{t`User attributes used by rules:`}</Text>
   );
 
   return (
@@ -127,7 +130,7 @@ function AttributeChip({
         {/* a chip, not a link: bordered, the same on every page */}
         <UnstyledButton
           px="sm"
-          py={2}
+          py="xxs"
           maw="100%"
           bg={
             isOverridden
@@ -138,15 +141,19 @@ function AttributeChip({
           style={CHIP_BORDER}
           onClick={() => setIsOpened((opened) => !opened)}
         >
-          <Group gap={4} wrap="nowrap">
-            <Text fw="bold" fz="sm" c="inherit">
+          <Group gap="xxs" wrap="nowrap">
+            <Text fw="bold" size="sm" c="inherit">
               {attribute.attribute}
             </Text>
-            <Text fz="sm" c="inherit" truncate>
+            <Text size="sm" c="inherit" truncate>
               {value === "" ? t`No value` : value}
             </Text>
             {principalType === "group" && groupMemberCount != null && (
-              <Text fz="sm" c="text-secondary" style={{ whiteSpace: "nowrap" }}>
+              <Text
+                size="sm"
+                c="text-secondary"
+                style={{ whiteSpace: "nowrap" }}
+              >
                 {`· ${getMemberShare(attribute, value, groupMemberCount)}`}
               </Text>
             )}
@@ -156,22 +163,20 @@ function AttributeChip({
       </Popover.Target>
       <Popover.Dropdown p="md" w="22rem">
         <Stack gap="sm">
-          <Text fw="bold" fz="sm">
-            {attribute.attribute}
-          </Text>
+          <Text fw="bold">{attribute.attribute}</Text>
           <AttributePicker
             attribute={attribute}
             value={value}
             onPick={handlePick}
           />
           {getUseLines(attribute.uses).map((line) => (
-            <Text key={line} fz="xs" c="text-secondary">
+            <Text key={line} c="text-secondary">
               {line}
             </Text>
           ))}
           {principalType === "user" && (
             <Group gap="xs" justify="space-between" wrap="nowrap">
-              <Text fz="xs" c="text-secondary">
+              <Text c="text-secondary">
                 {getOwnValueLabel(whoName, attribute)}
               </Text>
               {isOverridden && (
@@ -218,20 +223,20 @@ type AttributeTagProps = {
 export function AttributeTag({ attribute, value }: AttributeTagProps) {
   return (
     <Group
-      gap={4}
+      gap="xxs"
       wrap="nowrap"
       px="sm"
-      py={2}
+      py="xxs"
       maw="100%"
       miw={0}
       bg="background_page-primary"
       c="text-primary"
       style={CHIP_BORDER}
     >
-      <Text fw="bold" fz="sm" c="inherit" style={{ whiteSpace: "nowrap" }}>
+      <Text fw="bold" size="sm" c="inherit" style={{ whiteSpace: "nowrap" }}>
         {attribute}
       </Text>
-      <Text fz="sm" c="inherit" truncate>
+      <Text size="sm" c="inherit" truncate>
         {value}
       </Text>
     </Group>
@@ -392,7 +397,7 @@ function ValueList({
 
 function ValueListHeading({ children }: { children: string }) {
   return (
-    <Text fz="xs" c="text-secondary" px="sm" pt="sm" pb="xs">
+    <Text size="sm" c="text-secondary" px="sm" pt="sm" pb="xs">
       {children}
     </Text>
   );
@@ -426,7 +431,7 @@ function ValueListRow({
         </Text>
         {detail != null && (
           <Text
-            fz="sm"
+            size="sm"
             c={isSelected ? "text-primary-inverse" : "text-secondary"}
           >
             {detail}

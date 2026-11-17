@@ -178,9 +178,7 @@ describe("PrincipalList", () => {
     });
 
     expect(
-      screen.getByText(
-        "Group previews use a stand-in member, not a real user.",
-      ),
+      screen.getByText("Previews a stand-in member, not a real user."),
     ).toBeInTheDocument();
   });
 
@@ -188,9 +186,7 @@ describe("PrincipalList", () => {
     await setup({ principal: { type: "user", id: 2 } });
 
     expect(
-      screen.queryByText(
-        "Group previews use a stand-in member, not a real user.",
-      ),
+      screen.queryByText("Previews a stand-in member, not a real user."),
     ).not.toBeInTheDocument();
   });
 

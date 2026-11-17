@@ -39,7 +39,7 @@ export function CreateQueriesContent({ targets }: { targets: WhyTarget[] }) {
               <Icon
                 name={option.icon}
                 c={option.iconColor}
-                mt={2}
+                mt="xxs"
                 style={{ flexShrink: 0 }}
               />
               <Text>{getResultSentence(valueTargets)}</Text>

@@ -420,11 +420,11 @@ function ItemCards({
       )}
       {page.blockedCards.length > 0 && (
         <SidesheetCard title={t`Cards that can't load`}>
-          <Stack gap={0}>
+          <Box>
             {page.blockedCards.map((card, index) => (
               <BlockedCardRow key={index} card={card} onOpen={onOpen} />
             ))}
-          </Stack>
+          </Box>
         </SidesheetCard>
       )}
       {page.collection != null && (
@@ -467,7 +467,7 @@ function ItemCards({
       {hasMorePermissions && (
         <SidesheetCard>
           <Disclosure rowKey="all-permissions" label={copy.allPermissions}>
-            <Stack gap={0}>
+            <Box>
               {page.permissions.map((target, index) => (
                 <PermissionRow
                   key={index}
@@ -479,7 +479,7 @@ function ItemCards({
                   }
                 />
               ))}
-            </Stack>
+            </Box>
           </Disclosure>
         </SidesheetCard>
       )}
@@ -611,7 +611,7 @@ function DataRows({
   const fullAccess = targets.filter(isFullAccess);
   const tableCount = fullAccess.length;
   return (
-    <Stack gap={0}>
+    <Box>
       {targets
         .filter((target) => !isFullAccess(target))
         .map((target, index) =>
@@ -626,10 +626,10 @@ function DataRows({
               }
             >
               <Stack gap="xs">
-                <Text component="div" fz="sm" c="text-secondary">
+                <Text component="div" c="text-secondary">
                   <SecurityRows security={target.security} />
                 </Text>
-                <Text fz="sm" c="text-secondary">
+                <Text size="sm" c="text-secondary">
                   {t`Rules set by ${target.security.group_name}`}
                 </Text>
               </Stack>
@@ -654,7 +654,7 @@ function DataRows({
           initiallyOpen={false}
           status={<Text c="text-secondary">{t`Full access`}</Text>}
         >
-          <Stack gap={0}>
+          <Box>
             {fullAccess.map((target, index) => (
               <AccessRow
                 key={index}
@@ -663,10 +663,10 @@ function DataRows({
                 onOpen={() => onOpen(target)}
               />
             ))}
-          </Stack>
+          </Box>
         </ToggleRow>
       )}
-    </Stack>
+    </Box>
   );
 }
 
@@ -956,11 +956,11 @@ function Verdict({
         <Icon
           name={icon.icon}
           c={icon.iconColor}
-          mt={2}
+          mt="xxs"
           style={{ flexShrink: 0 }}
         />
       )}
-      <Stack gap={0} flex={1} miw={0}>
+      <Box flex={1} miw={0}>
         <Flex align="center" gap="xs">
           <Text fw="bold">{verdict.text}</Text>
           {info}
@@ -968,7 +968,7 @@ function Verdict({
         {verdict.group != null && (
           <Text c="text-secondary">{t`from ${verdict.group}`}</Text>
         )}
-      </Stack>
+      </Box>
       {status}
     </Flex>
   );
@@ -999,7 +999,7 @@ function FilteredSection({
   }
   return (
     <SidesheetCardSection title={t`Filtered rows`}>
-      <Stack gap={0}>
+      <Box>
         {targets.map((target, index) => (
           <UnstyledButton
             key={index}
@@ -1012,17 +1012,17 @@ function FilteredSection({
             </Flex>
             {target.security != null && (
               <Stack gap="xs" mt="xs">
-                <Text component="div" fz="sm" c="text-secondary">
+                <Text component="div" c="text-secondary">
                   <SecurityRows security={target.security} />
                 </Text>
-                <Text fz="sm" c="text-secondary">
+                <Text size="sm" c="text-secondary">
                   {t`Rules set by ${target.security.group_name}`}
                 </Text>
               </Stack>
             )}
           </UnstyledButton>
         ))}
-      </Stack>
+      </Box>
     </SidesheetCardSection>
   );
 }
@@ -1036,11 +1036,11 @@ function AccessRows({
   onOpen: (target: WhyTarget) => void;
 }) {
   return (
-    <Stack gap={0}>
+    <Box>
       {targets.map((target, index) => (
         <AccessRow key={index} target={target} onOpen={() => onOpen(target)} />
       ))}
-    </Stack>
+    </Box>
   );
 }
 
@@ -1124,7 +1124,7 @@ function Row({
       role="group"
       aria-labelledby={detail != null ? `${nameId} ${detailId}` : nameId}
     >
-      <Stack gap={0} flex={1} miw={0}>
+      <Box flex={1} miw={0}>
         <Box id={nameId} miw={0}>
           {name}
         </Box>
@@ -1133,7 +1133,7 @@ function Row({
             {detail}
           </Text>
         )}
-      </Stack>
+      </Box>
       {status}
     </div>
   );

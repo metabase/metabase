@@ -39,7 +39,7 @@ export function WhyContent({ target }: { target: WhyTarget }) {
           <Icon
             name={option.icon}
             c={option.iconColor}
-            mt={2}
+            mt="xxs"
             style={{ flexShrink: 0 }}
           />
           <Text>{getResultSentence(target)}</Text>
@@ -197,7 +197,7 @@ export function SecurityRows({ security }: { security: PreviewSecurity }) {
             key={filter.attribute}
             align="center"
             columnGap="xs"
-            rowGap={2}
+            rowGap="xxs"
             // where it's narrow, the column goes under its chip rather than cutting both short
             wrap="wrap"
             maw="100%"
@@ -209,7 +209,7 @@ export function SecurityRows({ security }: { security: PreviewSecurity }) {
           >
             <AttributeTag attribute={filter.attribute} value={value} />
             {filter.column != null && (
-              <Text fz="sm" c="text-secondary">
+              <Text size="sm" c="text-secondary">
                 {`→ ${filter.column}`}
               </Text>
             )}

@@ -140,13 +140,13 @@ function PrincipalOption({ row }: { row: PrincipalRow }) {
       <Box flex={1} miw={0}>
         <Text truncate>{row.name}</Text>
         {row.secondary && (
-          <Text fz="xs" c="text-secondary" truncate>
+          <Text size="sm" c="text-secondary" truncate>
             {row.secondary}
           </Text>
         )}
       </Box>
       {row.detail && (
-        <Text fz="sm" c="text-secondary">
+        <Text size="sm" c="text-secondary">
           {row.detail}
         </Text>
       )}

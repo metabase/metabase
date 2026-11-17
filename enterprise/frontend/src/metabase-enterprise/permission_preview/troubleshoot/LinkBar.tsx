@@ -108,7 +108,7 @@ export function LinkBar({ framePath, onOpen }: LinkBarProps) {
         />
       </Menu.Target>
       <Menu.Dropdown>
-        <Text px="sm" py="xs" c="text-secondary" fz="sm">
+        <Text px="sm" py="xs" c="text-secondary" size="sm">
           {t`Which item has ID ${numericId}?`}
         </Text>
         {NUMERIC_ID_TYPES.map((type) => (

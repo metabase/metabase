@@ -134,7 +134,7 @@ export function PrincipalList({
         tabIndex={0}
         flex={1}
         mih={0}
-        p={4}
+        p="xxs"
         style={{ overflowY: "auto", outline: "none" }}
         onKeyDown={handleListKeyDown}
         onFocus={() => setIsListFocused(true)}
@@ -151,11 +151,11 @@ export function PrincipalList({
               {section.title != null && (
                 <Text
                   id={titleId}
-                  fz="xs"
+                  size="sm"
                   c="text-secondary"
                   px="xs"
                   pt="sm"
-                  pb={4}
+                  pb="xxs"
                 >
                   {section.title}
                 </Text>
@@ -206,7 +206,7 @@ function PrincipalListRow({
       aria-selected={isSelected}
       w="100%"
       px="xs"
-      py={6}
+      py="xs"
       bg={isSelected ? "core-brand" : undefined}
       style={{
         borderRadius: "var(--mantine-radius-sm)",
@@ -224,13 +224,17 @@ function PrincipalListRow({
             {row.name}
           </Text>
           {row.secondary != null && (
-            <Text fz="xs" c={color ?? "text-secondary"} truncate>
+            <Text size="sm" c={color ?? "text-secondary"} truncate>
               {row.secondary}
             </Text>
           )}
         </Box>
         {row.detail != null && (
-          <Text fz="sm" c={color ?? "text-secondary"} style={{ flexShrink: 0 }}>
+          <Text
+            size="sm"
+            c={color ?? "text-secondary"}
+            style={{ flexShrink: 0 }}
+          >
             {row.detail}
           </Text>
         )}

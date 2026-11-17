@@ -132,7 +132,7 @@ function getSearchText(item: ITreeNodeItem) {
 function RowDetail({ item }: { item: ITreeNodeItem }) {
   const detail = getRow(item)?.detail;
   return detail ? (
-    <Text fz="sm" fw="normal" c="inherit" opacity={0.7} pl="sm">
+    <Text size="sm" fw="normal" c="inherit" opacity={0.7} pl="sm">
       {detail}
     </Text>
   ) : null;

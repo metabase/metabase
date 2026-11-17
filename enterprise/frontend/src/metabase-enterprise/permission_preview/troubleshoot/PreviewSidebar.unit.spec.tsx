@@ -48,9 +48,7 @@ describe("PreviewSidebar", () => {
     setup({ principalType: "group" });
 
     expect(
-      await screen.findByText(
-        "Group previews use a stand-in member, not a real user.",
-      ),
+      await screen.findByText("Previews a stand-in member, not a real user."),
     ).toBeInTheDocument();
   });
 

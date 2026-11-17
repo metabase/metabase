@@ -48,15 +48,12 @@ export function GroupPreviewInfo({
       label={
         <Stack gap="xs" py="xs">
           <Text fw="bold" c="inherit">{t`A stand-in, not a real user`}</Text>
-          <Text fz="sm" c="inherit">
+          <Text c="inherit">
             {[getGroupsSentence(groupNames), getValuesSentence(attributeValues)]
               .filter((sentence) => sentence != null)
               .join(" ")}
           </Text>
-          <Text
-            fz="sm"
-            c="inherit"
-          >{t`Real members may see more through their other groups.`}</Text>
+          <Text c="inherit">{t`Real members may see more through their other groups.`}</Text>
         </Stack>
       }
     >
@@ -67,9 +64,9 @@ export function GroupPreviewInfo({
         mih="1.5rem"
         style={{ flexShrink: 0 }}
       >
-        <Group gap={4} wrap="nowrap">
+        <Group gap="xs" wrap="nowrap">
           <Icon name="info" />
-          <Text fz="sm" c="inherit" style={{ whiteSpace: "nowrap" }}>
+          <Text size="sm" c="inherit" style={{ whiteSpace: "nowrap" }}>
             {isCompact ? t`How it works` : label}
           </Text>
         </Group>
@@ -99,13 +96,13 @@ function getValuesSentence(attributeValues: "picked" | "each-member") {
 /** Under a who-picker's search while Group or Tenant is chosen. */
 export function getStandInHint(type: StandInType) {
   return type === "group"
-    ? t`Group previews use a stand-in member, not a real user.`
+    ? t`Previews a stand-in member, not a real user.`
     : t`Previews a stand-in user, not a real user.`;
 }
 
 export function StandInHint({ type }: { type: StandInType }) {
   return (
-    <Text fz="xs" c="text-secondary">
+    <Text size="sm" c="text-secondary">
       {getStandInHint(type)}
     </Text>
   );

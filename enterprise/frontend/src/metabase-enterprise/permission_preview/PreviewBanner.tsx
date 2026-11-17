@@ -6,9 +6,9 @@ import { useLocation } from "metabase/router";
 import {
   Box,
   Button,
+  Flex,
   Group,
   Icon,
-  Stack,
   Text,
   useElementSize,
 } from "metabase/ui";
@@ -222,8 +222,8 @@ export function PreviewBanner({ state }: { state: PreviewState }) {
       </Box>
       {/* after the frame, so Tab reaches the band before the panel, as they read on screen */}
       {isPanelOpen && (
-        <Stack
-          gap={0}
+        <Flex
+          direction="column"
           pos="fixed"
           top={frameHeight}
           bottom={0}
@@ -274,7 +274,7 @@ export function PreviewBanner({ state }: { state: PreviewState }) {
             principal={principal}
             onPrincipalChange={(newPrincipal) => switchTo(newPrincipal, {})}
           />
-        </Stack>
+        </Flex>
       )}
       <WhyListSidesheet
         isOpen={isWhyOpen}
