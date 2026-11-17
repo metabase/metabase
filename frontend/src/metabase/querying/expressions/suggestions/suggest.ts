@@ -26,7 +26,7 @@ export type SuggestOptions = {
   popularFunctions?: string[];
   /** Gives the values of a column, for a value that is compared to it. */
   getColumnValues?: GetColumnValues;
-  /** Sends a request in words to the AI, from a new column. */
+  /** Whether the text can be a request in words to the AI, from a new column. */
   textRequest?: TextRequestOption;
 };
 
@@ -48,11 +48,7 @@ import { openWhenEmpty, suggestPopular } from "./popular";
 import { preselectWhenPicking } from "./preselect";
 import { suggestSegments } from "./segments";
 import { suggestRelatedColumns, suggestRelatedFunctions } from "./semantic";
-import {
-  type TextRequestOption,
-  quietOnTextRequest,
-  suggestTextRequest,
-} from "./text-request";
+import { type TextRequestOption, quietOnTextRequest } from "./text-request";
 import {
   type GetColumnValues,
   isOnColumnValue,
@@ -69,7 +65,6 @@ export function suggestions(options: SuggestOptions) {
     activateOnTyping: true,
     activateOnTypingDelay: 0,
     override: [
-      suggestTextRequest(options.textRequest),
       ...[
         quietOnTemplateBlanks(suggestColumnValues(options)),
         ...[

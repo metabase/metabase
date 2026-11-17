@@ -33,7 +33,7 @@ export function suggestPopular({
   if (options.length === 0) {
     return null;
   }
-  options[0] = { ...options[0], heading: t`Popular` };
+  options[0] = { ...options[0], heading: t`Suggested` };
 
   return function (context: CompletionContext): CompletionResult | null {
     if (context.state.doc.toString().trim() !== "") {

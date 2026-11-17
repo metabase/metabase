@@ -35,6 +35,7 @@ import {
   type Transaction,
 } from "@uiw/react-codemirror";
 import { useMemo } from "react";
+import { useLatest } from "react-use";
 
 import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 import { isMac } from "metabase/utils/browser";
@@ -93,6 +94,9 @@ function useBaseExtensions({
   matchBrackets = "()",
   tabIndents = true,
 }: Omit<ExtensionOptions, "extensions">) {
+  // Read when a key is pressed: a change of onFormat must not reconfigure the
+  // editor, which would end an active snippet.
+  const onFormatRef = useLatest(onFormat);
   return useMemo(
     () => [
       nonce(),
@@ -105,8 +109,8 @@ function useBaseExtensions({
         brackets: matchBrackets,
       }),
       search(),
-      keyboardShortcuts({ onFormat, tabIndents }),
-      formatWithAltShiftF({ onFormat }),
+      keyboardShortcuts({ onFormatRef, tabIndents }),
+      formatWithAltShiftF({ onFormatRef }),
       closeSearchPanelAfterLastReplace(),
       EditorView.lineWrapping,
       highlighting(),
@@ -118,7 +122,7 @@ function useBaseExtensions({
         tabIndex,
       }),
     ],
-    [onFormat, tabIndex, autoFocus, autoCorrect, matchBrackets, tabIndents],
+    [onFormatRef, tabIndex, autoFocus, autoCorrect, matchBrackets, tabIndents],
   );
 }
 
@@ -178,10 +182,11 @@ function closeSearchPanelAfterLastReplace() {
  * Alt+Shift+F formats, like in VS Code. It is not in the keymap: on macOS,
  * Option changes the character of the key, so the key code is checked.
  */
-function formatWithAltShiftF({ onFormat }: { onFormat?: () => void }) {
+function formatWithAltShiftF({ onFormatRef }: { onFormatRef: OnFormatRef }) {
   return Prec.highest(
     EditorView.domEventHandlers({
       keydown(event) {
+        const onFormat = onFormatRef.current;
         if (
           onFormat == null ||
           event.code !== "KeyF" ||
@@ -200,11 +205,13 @@ function formatWithAltShiftF({ onFormat }: { onFormat?: () => void }) {
   );
 }
 
+type OnFormatRef = { readonly current: (() => void) | undefined };
+
 function keyboardShortcuts({
-  onFormat,
+  onFormatRef,
   tabIndents,
 }: {
-  onFormat?: () => void;
+  onFormatRef: OnFormatRef;
   tabIndents: boolean;
 }) {
   // Stop Cmd+Enter in CodeMirror from inserting a newline
@@ -235,7 +242,7 @@ function keyboardShortcuts({
       {
         key: "Shift-Mod-f",
         run: () => {
-          onFormat?.();
+          onFormatRef.current?.();
           return true;
         },
       },

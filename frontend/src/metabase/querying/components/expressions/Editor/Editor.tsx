@@ -335,14 +335,11 @@ export function Editor(props: EditorProps) {
     ),
   });
 
-  // "Generate with AI" in autocomplete, for a request in a new column. The
-  // extensions don't change for it, so it reads the latest values from a ref.
-  const textRequestRef = useRef({ isEnabled: false, run: () => {} });
+  // Autocomplete stays quiet on a request in a new column. The extensions
+  // don't change for it, so it reads the latest value from a ref.
+  const textRequestRef = useRef({ isEnabled: false });
   const textRequestOption = useMemo(
-    () => ({
-      isEnabled: () => textRequestRef.current.isEnabled,
-      run: () => textRequestRef.current.run(),
-    }),
+    () => ({ isEnabled: () => textRequestRef.current.isEnabled }),
     [],
   );
   const baseExtensions = useExtensions({
@@ -1240,7 +1237,7 @@ function useTextRequest({
   onAcceptBreakouts?: (breakouts: GeneratedBreakout[]) => void;
   generateRef?: MutableRefObject<GenerateNow | null>;
   /** Set to the request for autocomplete, with whether it is possible. */
-  requestRef: MutableRefObject<{ isEnabled: boolean; run: () => void }>;
+  requestRef: MutableRefObject<{ isEnabled: boolean }>;
   isEnabled: boolean;
 }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -1279,7 +1276,7 @@ function useTextRequest({
   if (generateRef) {
     generateRef.current = run;
   }
-  requestRef.current = { isEnabled, run: () => void run() };
+  requestRef.current = { isEnabled };
 
   return {
     isLoading,
