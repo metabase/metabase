@@ -2,8 +2,10 @@
   "Runs of a subject that modifies existing tables instead of returning rows. Each test gives a card a write plan in
   place of its own, so the runner's write step is tested apart from any subject type."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.executor :as data-testing.executor]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
@@ -174,3 +176,39 @@
                      :expectations [(reading refunded-only-1)]
                      :parameters   {"id" 1 "status" "refunded"}})))
          (is (= [{"id" 1 "status" "refunded"}] (asked))))))))
+
+(defn- fail-to-write!
+  "Run a saved test of a write that the warehouse rejects: it sets a column the people table does not have."
+  []
+  (run-write! (str "UPDATE " (qualified :people) " SET no_such_column = ? WHERE id = ?") ["x" 1]
+              [(people-rows)] [(reading refunded-only-1)]))
+
+(deftest failed-write-is-refused-naming-the-input-test
+  (mt/test-drivers (drivers-that-write)
+    (testing "a write the warehouse rejects is refused as a failed query, naming the input, not its temp table"
+      (let [e (try (fail-to-write!)
+                   nil
+                   (catch ExceptionInfo e e))]
+        (is (= ::data-testing.errors/query-failed (:error-type (ex-data e))))
+        (is (str/includes? (str (ex-message e)) (qualified :people)))))))
+
+(deftest temp-tables-are-dropped-after-a-failed-write-test
+  (mt/test-drivers (drivers-that-write)
+    (let [created     (atom [])
+          dropped     (atom [])
+          orig-create data-testing.executor/create-temp-table!
+          orig-drop   data-testing.executor/drop-temp-table!]
+      (with-redefs [data-testing.executor/create-temp-table! (fn [driver conn table query]
+                                                               (swap! created conj table)
+                                                               (orig-create driver conn table query))
+                    data-testing.executor/drop-temp-table!   (fn [driver conn table]
+                                                               (swap! dropped conj table)
+                                                               (orig-drop driver conn table))]
+        (testing "premise: the write is refused as a failed query"
+          (is (= ::data-testing.errors/query-failed
+                 (try (fail-to-write!)
+                      nil
+                      (catch ExceptionInfo e (:error-type (ex-data e)))))))
+        (testing "the run drops the temp table of its one input, and nothing else"
+          (is (= 1 (count @created)))
+          (is (= (set @created) (set @dropped))))))))
