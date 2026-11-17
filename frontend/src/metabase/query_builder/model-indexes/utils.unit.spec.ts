@@ -1,17 +1,18 @@
+import { createMockMetadata } from "__support__/metadata";
 import Question from "metabase-lib/v1/Question";
-import Field from "metabase-lib/v1/metadata/Field";
-import type { Field as FieldAPI } from "metabase-types/api";
+import type { DatasetColumn } from "metabase-types/api";
 import {
   createMockCard,
-  createMockField,
+  createMockColumn,
   createMockNormalizedField,
 } from "metabase-types/api/mocks";
 
 import { canIndexField } from "./utils";
 
-const createModelWithResultMetadata = (fields: FieldAPI[]) => {
+const createModelWithResultMetadata = (fields: DatasetColumn[]) => {
   return new Question(
     createMockCard({ result_metadata: fields, type: "model" }),
+    createMockMetadata(),
   );
 };
 
@@ -24,15 +25,15 @@ describe("Entities > model-indexes > utils", () => {
       });
 
       const model = createModelWithResultMetadata([
-        createMockField({ name: "foo", base_type: "type/Text" }),
-        createMockField({
+        createMockColumn({ name: "foo", base_type: "type/Text" }),
+        createMockColumn({
           name: "id",
           base_type: "type/Integer",
           semantic_type: "type/PK",
         }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(true);
+      expect(canIndexField(field, model)).toBe(true);
     });
 
     it("should return false for boolean field in a model with single integer pk", () => {
@@ -42,15 +43,15 @@ describe("Entities > model-indexes > utils", () => {
       });
 
       const model = createModelWithResultMetadata([
-        createMockField({ name: "foo", base_type: "type/Boolean" }),
-        createMockField({
+        createMockColumn({ name: "foo", base_type: "type/Boolean" }),
+        createMockColumn({
           name: "id",
           base_type: "type/Integer",
           semantic_type: "type/PK",
         }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(false);
+      expect(canIndexField(field, model)).toBe(false);
     });
 
     it("should return false for string field in a model without any pk", () => {
@@ -60,11 +61,11 @@ describe("Entities > model-indexes > utils", () => {
       });
 
       const model = createModelWithResultMetadata([
-        createMockField({ name: "foo", base_type: "type/Text" }),
-        createMockField({ name: "bar", base_type: "type/Integer" }),
+        createMockColumn({ name: "foo", base_type: "type/Text" }),
+        createMockColumn({ name: "bar", base_type: "type/Integer" }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(false);
+      expect(canIndexField(field, model)).toBe(false);
     });
 
     it("should return false for string field in a model with multiple pks", () => {
@@ -74,20 +75,20 @@ describe("Entities > model-indexes > utils", () => {
       });
 
       const model = createModelWithResultMetadata([
-        createMockField({ name: "foo", base_type: "type/Boolean" }),
-        createMockField({
+        createMockColumn({ name: "foo", base_type: "type/Boolean" }),
+        createMockColumn({
           name: "id",
           base_type: "type/String",
           semantic_type: "type/PK",
         }),
-        createMockField({
+        createMockColumn({
           name: "id2",
           base_type: "type/Integer",
           semantic_type: "type/PK",
         }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(false);
+      expect(canIndexField(field, model)).toBe(false);
     });
 
     it("should return false for string field in a model with multiple integer pks", () => {
@@ -97,20 +98,20 @@ describe("Entities > model-indexes > utils", () => {
       });
 
       const model = createModelWithResultMetadata([
-        createMockField({ name: "foo", base_type: "type/Boolean" }),
-        createMockField({
+        createMockColumn({ name: "foo", base_type: "type/Boolean" }),
+        createMockColumn({
           name: "id",
           base_type: "type/Integer",
           semantic_type: "type/PK",
         }),
-        createMockField({
+        createMockColumn({
           name: "id2",
           base_type: "type/Integer",
           semantic_type: "type/PK",
         }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(false);
+      expect(canIndexField(field, model)).toBe(false);
     });
 
     it("should return false for a model with a string pk", () => {
@@ -120,15 +121,15 @@ describe("Entities > model-indexes > utils", () => {
       });
 
       const model = createModelWithResultMetadata([
-        createMockField({ name: "foo", base_type: "type/Boolean" }),
-        createMockField({
+        createMockColumn({ name: "foo", base_type: "type/Boolean" }),
+        createMockColumn({
           name: "id",
           base_type: "type/String",
           semantic_type: "type/PK",
         }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(false);
+      expect(canIndexField(field, model)).toBe(false);
     });
   });
 });

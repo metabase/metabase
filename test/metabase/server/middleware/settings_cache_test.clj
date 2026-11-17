@@ -32,6 +32,6 @@
         (let [check   #'mw.settings-cache/check-and-update-settings-cache
               request {:cookies {cookie-name {:value "2999-01-01 00:00:00.0+00"}}}
               calls   (atom 0)]
-          (mt/with-dynamic-fn-redefs [setting.cache/restore-cache! (fn [] (swap! calls inc))]
+          (mt/with-dynamic-fn-redefs [setting.cache/restore-cache! (fn [_state] (swap! calls inc))]
             (check request))
           (is (zero? @calls) "an ahead-of-DB cookie does not reload the cache when the DB is unchanged"))))))

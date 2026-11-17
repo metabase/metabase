@@ -129,6 +129,7 @@
     (is (false? (streaming/persistable-data-part? (streaming/tool-title-part "[Orders](metabase://table/1)")))))
   (testing "other parts are persisted"
     (is (true? (streaming/persistable-data-part? {:type :data :data-type "todo_list" :data []})))
+    (is (true? (streaming/persistable-data-part? (streaming/dashboard-saved-part {:dashboard_id 1}))))
     (is (true? (streaming/persistable-data-part? {:type :text :text "hi"})))))
 
 ;;; Transducer Tests

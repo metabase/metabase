@@ -5,7 +5,6 @@ import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
 import {
   PLUGIN_AUDIT,
-  PLUGIN_REMOTE_SYNC,
   PLUGIN_REPLACEMENT,
   PLUGIN_UPLOAD_MANAGEMENT,
 } from "metabase/plugins";
@@ -20,7 +19,6 @@ import { FileUploadStatus } from "../FileUploadStatus";
 
 export const StatusListing = () => {
   const isAdmin = useSelector(getUserIsAdmin);
-  const { progressModal } = PLUGIN_REMOTE_SYNC.useSyncStatus();
 
   const uploadInProgress = useSelector(hasActiveUploads);
 
@@ -47,7 +45,6 @@ export const StatusListing = () => {
         <DownloadsStatus />
         {isAdmin && <PLUGIN_UPLOAD_MANAGEMENT.GdriveSyncStatus />}
       </Box>
-      {progressModal}
     </>
   );
 };

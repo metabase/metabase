@@ -1,0 +1,157 @@
+## metabase_table and metabase_field hold what users see again, with metabase_table_user_settings and
+## metabase_field_user_settings recording which of those values users set. Since v64 user edits went only to the
+## settings tables and were applied on read; these changesets copy every user-set value into its Table or Field
+## row, and clear the caveats and points_of_interest no user set. The settings columns that no longer carry
+## information (caveats_set, points_of_interest_set and nfc_path) stay for releases that still read them, unused.
+
+databaseChangeLog:
+  - changeSet:
+      id: ceygl0
+      author: ranquild
+      comment: Copy the user-set Table values in metabase_table_user_settings into metabase_table
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_table AS t
+              SET display_name = CASE WHEN s.display_name IS NOT NULL THEN s.display_name ELSE t.display_name END,
+                  description = CASE WHEN s.description_set = TRUE THEN s.description ELSE t.description END,
+                  entity_type = CASE WHEN s.entity_type IS NOT NULL THEN s.entity_type ELSE t.entity_type END,
+                  visibility_type = CASE WHEN s.visibility_type_set = TRUE THEN s.visibility_type ELSE t.visibility_type END,
+                  caveats = CASE WHEN s.caveats_set = TRUE THEN s.caveats ELSE t.caveats END,
+                  points_of_interest = CASE WHEN s.points_of_interest_set = TRUE THEN s.points_of_interest ELSE t.points_of_interest END,
+                  data_layer = CASE WHEN s.data_layer_set = TRUE THEN s.data_layer ELSE t.data_layer END,
+                  data_source = CASE WHEN s.data_source_set = TRUE THEN s.data_source ELSE t.data_source END,
+                  owner_email = CASE WHEN s.owner_email IS NOT NULL THEN s.owner_email ELSE t.owner_email END,
+                  owner_user_id = CASE WHEN s.owner_user_id IS NOT NULL THEN s.owner_user_id ELSE t.owner_user_id END,
+                  field_order = CASE WHEN s.field_order IS NOT NULL THEN s.field_order ELSE t.field_order END,
+                  show_in_getting_started = CASE WHEN s.show_in_getting_started IS NOT NULL THEN s.show_in_getting_started ELSE t.show_in_getting_started END,
+                  data_authority = CASE WHEN s.data_authority IS NOT NULL THEN s.data_authority ELSE t.data_authority END,
+                  is_published = CASE WHEN s.is_published IS NOT NULL THEN s.is_published ELSE t.is_published END,
+                  collection_id = CASE WHEN s.is_published IS NOT NULL THEN s.collection_id ELSE t.collection_id END
+              FROM metabase_table_user_settings AS s
+              WHERE s.table_id = t.id
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_table t
+              JOIN metabase_table_user_settings s ON s.table_id = t.id
+              SET t.display_name = CASE WHEN s.display_name IS NOT NULL THEN s.display_name ELSE t.display_name END,
+                  t.description = CASE WHEN s.description_set = TRUE THEN s.description ELSE t.description END,
+                  t.entity_type = CASE WHEN s.entity_type IS NOT NULL THEN s.entity_type ELSE t.entity_type END,
+                  t.visibility_type = CASE WHEN s.visibility_type_set = TRUE THEN s.visibility_type ELSE t.visibility_type END,
+                  t.caveats = CASE WHEN s.caveats_set = TRUE THEN s.caveats ELSE t.caveats END,
+                  t.points_of_interest = CASE WHEN s.points_of_interest_set = TRUE THEN s.points_of_interest ELSE t.points_of_interest END,
+                  t.data_layer = CASE WHEN s.data_layer_set = TRUE THEN s.data_layer ELSE t.data_layer END,
+                  t.data_source = CASE WHEN s.data_source_set = TRUE THEN s.data_source ELSE t.data_source END,
+                  t.owner_email = CASE WHEN s.owner_email IS NOT NULL THEN s.owner_email ELSE t.owner_email END,
+                  t.owner_user_id = CASE WHEN s.owner_user_id IS NOT NULL THEN s.owner_user_id ELSE t.owner_user_id END,
+                  t.field_order = CASE WHEN s.field_order IS NOT NULL THEN s.field_order ELSE t.field_order END,
+                  t.show_in_getting_started = CASE WHEN s.show_in_getting_started IS NOT NULL THEN s.show_in_getting_started ELSE t.show_in_getting_started END,
+                  t.data_authority = CASE WHEN s.data_authority IS NOT NULL THEN s.data_authority ELSE t.data_authority END,
+                  t.is_published = CASE WHEN s.is_published IS NOT NULL THEN s.is_published ELSE t.is_published END,
+                  t.collection_id = CASE WHEN s.is_published IS NOT NULL THEN s.collection_id ELSE t.collection_id END
+        - sql:
+            dbms: h2
+            sql: >-
+              MERGE INTO metabase_table t
+              USING metabase_table_user_settings s ON s.table_id = t.id
+              WHEN MATCHED THEN UPDATE
+              SET display_name = CASE WHEN s.display_name IS NOT NULL THEN s.display_name ELSE t.display_name END,
+                  description = CASE WHEN s.description_set = TRUE THEN s.description ELSE t.description END,
+                  entity_type = CASE WHEN s.entity_type IS NOT NULL THEN s.entity_type ELSE t.entity_type END,
+                  visibility_type = CASE WHEN s.visibility_type_set = TRUE THEN s.visibility_type ELSE t.visibility_type END,
+                  caveats = CASE WHEN s.caveats_set = TRUE THEN s.caveats ELSE t.caveats END,
+                  points_of_interest = CASE WHEN s.points_of_interest_set = TRUE THEN s.points_of_interest ELSE t.points_of_interest END,
+                  data_layer = CASE WHEN s.data_layer_set = TRUE THEN s.data_layer ELSE t.data_layer END,
+                  data_source = CASE WHEN s.data_source_set = TRUE THEN s.data_source ELSE t.data_source END,
+                  owner_email = CASE WHEN s.owner_email IS NOT NULL THEN s.owner_email ELSE t.owner_email END,
+                  owner_user_id = CASE WHEN s.owner_user_id IS NOT NULL THEN s.owner_user_id ELSE t.owner_user_id END,
+                  field_order = CASE WHEN s.field_order IS NOT NULL THEN s.field_order ELSE t.field_order END,
+                  show_in_getting_started = CASE WHEN s.show_in_getting_started IS NOT NULL THEN s.show_in_getting_started ELSE t.show_in_getting_started END,
+                  data_authority = CASE WHEN s.data_authority IS NOT NULL THEN s.data_authority ELSE t.data_authority END,
+                  is_published = CASE WHEN s.is_published IS NOT NULL THEN s.is_published ELSE t.is_published END,
+                  collection_id = CASE WHEN s.is_published IS NOT NULL THEN s.collection_id ELSE t.collection_id END
+      rollback: # not necessary; the user values stay in metabase_table_user_settings
+
+  - changeSet:
+      id: ziqcir
+      author: ranquild
+      comment: Copy the user-set Field values in metabase_field_user_settings into metabase_field
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_field AS t
+              SET semantic_type = CASE WHEN s.semantic_type_set = TRUE THEN s.semantic_type ELSE t.semantic_type END,
+                  description = CASE WHEN s.description_set = TRUE THEN s.description ELSE t.description END,
+                  display_name = CASE WHEN s.display_name IS NOT NULL THEN s.display_name ELSE t.display_name END,
+                  visibility_type = CASE WHEN s.visibility_type IS NOT NULL THEN s.visibility_type ELSE t.visibility_type END,
+                  has_field_values = CASE WHEN s.has_field_values IS NOT NULL THEN s.has_field_values ELSE t.has_field_values END,
+                  effective_type = CASE WHEN s.effective_type IS NOT NULL THEN s.effective_type ELSE t.effective_type END,
+                  coercion_strategy = CASE WHEN s.effective_type IS NOT NULL THEN s.coercion_strategy ELSE t.coercion_strategy END,
+                  fk_target_field_id = CASE WHEN s.fk_target_field_id_set = TRUE THEN s.fk_target_field_id ELSE t.fk_target_field_id END,
+                  caveats = CASE WHEN s.caveats IS NOT NULL THEN s.caveats ELSE t.caveats END,
+                  points_of_interest = CASE WHEN s.points_of_interest IS NOT NULL THEN s.points_of_interest ELSE t.points_of_interest END,
+                  nfc_path = CASE WHEN s.nfc_path IS NOT NULL THEN s.nfc_path ELSE t.nfc_path END,
+                  json_unfolding = CASE WHEN s.json_unfolding IS NOT NULL THEN s.json_unfolding ELSE t.json_unfolding END,
+                  settings = CASE WHEN s.settings IS NOT NULL THEN s.settings ELSE t.settings END,
+                  data_sensitivity = CASE WHEN s.data_sensitivity IS NOT NULL THEN s.data_sensitivity ELSE t.data_sensitivity END,
+                  custom_position = CASE WHEN s.custom_position IS NOT NULL THEN s.custom_position ELSE t.custom_position END
+              FROM metabase_field_user_settings AS s
+              WHERE s.field_id = t.id
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_field t
+              JOIN metabase_field_user_settings s ON s.field_id = t.id
+              SET t.semantic_type = CASE WHEN s.semantic_type_set = TRUE THEN s.semantic_type ELSE t.semantic_type END,
+                  t.description = CASE WHEN s.description_set = TRUE THEN s.description ELSE t.description END,
+                  t.display_name = CASE WHEN s.display_name IS NOT NULL THEN s.display_name ELSE t.display_name END,
+                  t.visibility_type = CASE WHEN s.visibility_type IS NOT NULL THEN s.visibility_type ELSE t.visibility_type END,
+                  t.has_field_values = CASE WHEN s.has_field_values IS NOT NULL THEN s.has_field_values ELSE t.has_field_values END,
+                  t.effective_type = CASE WHEN s.effective_type IS NOT NULL THEN s.effective_type ELSE t.effective_type END,
+                  t.coercion_strategy = CASE WHEN s.effective_type IS NOT NULL THEN s.coercion_strategy ELSE t.coercion_strategy END,
+                  t.fk_target_field_id = CASE WHEN s.fk_target_field_id_set = TRUE THEN s.fk_target_field_id ELSE t.fk_target_field_id END,
+                  t.caveats = CASE WHEN s.caveats IS NOT NULL THEN s.caveats ELSE t.caveats END,
+                  t.points_of_interest = CASE WHEN s.points_of_interest IS NOT NULL THEN s.points_of_interest ELSE t.points_of_interest END,
+                  t.nfc_path = CASE WHEN s.nfc_path IS NOT NULL THEN s.nfc_path ELSE t.nfc_path END,
+                  t.json_unfolding = CASE WHEN s.json_unfolding IS NOT NULL THEN s.json_unfolding ELSE t.json_unfolding END,
+                  t.settings = CASE WHEN s.settings IS NOT NULL THEN s.settings ELSE t.settings END,
+                  t.data_sensitivity = CASE WHEN s.data_sensitivity IS NOT NULL THEN s.data_sensitivity ELSE t.data_sensitivity END,
+                  t.custom_position = CASE WHEN s.custom_position IS NOT NULL THEN s.custom_position ELSE t.custom_position END
+        - sql:
+            dbms: h2
+            sql: >-
+              MERGE INTO metabase_field t
+              USING metabase_field_user_settings s ON s.field_id = t.id
+              WHEN MATCHED THEN UPDATE
+              SET semantic_type = CASE WHEN s.semantic_type_set = TRUE THEN s.semantic_type ELSE t.semantic_type END,
+                  description = CASE WHEN s.description_set = TRUE THEN s.description ELSE t.description END,
+                  display_name = CASE WHEN s.display_name IS NOT NULL THEN s.display_name ELSE t.display_name END,
+                  visibility_type = CASE WHEN s.visibility_type IS NOT NULL THEN s.visibility_type ELSE t.visibility_type END,
+                  has_field_values = CASE WHEN s.has_field_values IS NOT NULL THEN s.has_field_values ELSE t.has_field_values END,
+                  effective_type = CASE WHEN s.effective_type IS NOT NULL THEN s.effective_type ELSE t.effective_type END,
+                  coercion_strategy = CASE WHEN s.effective_type IS NOT NULL THEN s.coercion_strategy ELSE t.coercion_strategy END,
+                  fk_target_field_id = CASE WHEN s.fk_target_field_id_set = TRUE THEN s.fk_target_field_id ELSE t.fk_target_field_id END,
+                  caveats = CASE WHEN s.caveats IS NOT NULL THEN s.caveats ELSE t.caveats END,
+                  points_of_interest = CASE WHEN s.points_of_interest IS NOT NULL THEN s.points_of_interest ELSE t.points_of_interest END,
+                  nfc_path = CASE WHEN s.nfc_path IS NOT NULL THEN s.nfc_path ELSE t.nfc_path END,
+                  json_unfolding = CASE WHEN s.json_unfolding IS NOT NULL THEN s.json_unfolding ELSE t.json_unfolding END,
+                  settings = CASE WHEN s.settings IS NOT NULL THEN s.settings ELSE t.settings END,
+                  data_sensitivity = CASE WHEN s.data_sensitivity IS NOT NULL THEN s.data_sensitivity ELSE t.data_sensitivity END,
+                  custom_position = CASE WHEN s.custom_position IS NOT NULL THEN s.custom_position ELSE t.custom_position END
+      rollback: # not necessary; the user values stay in metabase_field_user_settings
+
+  - changeSet:
+      id: 1h91ve
+      author: ranquild
+      comment: Clear the caveats and points_of_interest that their unset flags said no user set, since a value now means a user set it
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_table_user_settings
+              SET caveats = CASE WHEN caveats_set = TRUE THEN caveats ELSE NULL END,
+                  points_of_interest = CASE WHEN points_of_interest_set = TRUE THEN points_of_interest ELSE NULL END
+              WHERE caveats_set = FALSE OR points_of_interest_set = FALSE
+      rollback: # not necessary; the cleared values were not shown to users

@@ -21,7 +21,8 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -138,7 +139,7 @@
   dependency. Recognizes the Metabot recent-view models: card/dataset/metric, dashboard, table."
   [model+ids]
   (into #{}
-        (for [[model ids]  (update-vals (group-by first model+ids) #(into [] (comp (map second) (distinct)) %))
+        (for [[model ids]  (u/group-by first second conj #{} model+ids)
               batch        (partition-all curation-batch-size ids)
               [id signals] (curation-signals model (vec batch))
               :when        (curation/curated? signals)]
@@ -229,9 +230,13 @@
   uncurated metric is judged by its definition only when they may: otherwise the verdict would tell them whether a
   Table they cannot see is curated, so the metric fails closed instead."
   [definition]
-  (let [{:keys [table card]} (lib/all-referenced-entity-ids [definition])]
-    (and (every? #(mi/can-query? :model/Table %) table)
-         (every? #(mi/can-read? :model/Card %) card))))
+  (let [{:keys [table card]} (lib/all-referenced-entity-ids [definition])
+        tables               (t2/hydrate (metabot.db/tables-with-ids (vec table)) :can_query)
+        cards                (t2/hydrate (metabot.db/cards-with-ids (vec card)) :can_read)]
+    (and (= (count tables) (count table))
+         (every? mi/can-query? tables)
+         (= (count cards) (count card))
+         (every? mi/can-read? cards))))
 
 (defn- metric-ok?
   "Whether the metric `id`, whose definition query is `definition` (nil when unusable), may be used: it's curated,
@@ -433,18 +438,16 @@
   (when (and subject (not (subject-curated? subject)))
     (recoverable.common/not-curated! {:label label})))
 
-(defn check-curated-readable-subject!
-  "[[check-curated-subject!]] for a tool that takes a bare id and has no pre-checks of its own: the judgement runs
-  only when the entity exists and the current user can read it, so a missing or unreadable id gets the handler's
-  own answer rather than a curation verdict, and an unreadable entity doesn't reveal whether it's curated."
-  [label [model id :as subject]]
-  (let [row (case model
-              "table"           (metabot.db/table id)
-              ("card" "metric") (metabot.db/card id)
-              "dashboard"       (metabot.db/dashboard id)
-              nil)]
-    (when (some-> row mi/can-read?)
-      (check-curated-subject! label subject))))
+(defn check-curated-readable-metrics!
+  "[[check-curated-subject!]] in order for each of `metric-ids` naming a Card the current user can read, so a missing
+  or unreadable id gets the handler's own answer and an unreadable Card doesn't reveal whether it's curated."
+  [metric-ids]
+  (let [readable (into #{}
+                       (comp (filter mi/can-read?) (map :id))
+                       (t2/hydrate (metabot.db/cards-with-ids (into [] (distinct) metric-ids)) :can_read))]
+    (doseq [id metric-ids
+            :when (contains? readable id)]
+      (check-curated-subject! (str "metric " id) ["metric" id]))))
 
 (defn- without-native-refs
   "`query` with the template tags of its native stages removed, in joins too, so that the entity walk sees only what

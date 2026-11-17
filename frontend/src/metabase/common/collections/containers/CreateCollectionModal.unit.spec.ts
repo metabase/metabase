@@ -37,30 +37,6 @@ describe("getCreatedCollectionUrl", () => {
     );
   });
 
-  it.each([
-    {
-      name: "a top-level folder",
-      location: "/7/10/",
-      expectedUrl: "/data-studio/dashboards?expandedId=12",
-    },
-    {
-      name: "a nested folder",
-      location: "/7/10/11/",
-      expectedUrl: "/data-studio/dashboards?expandedId=11&expandedId=12",
-    },
-  ])(
-    "opens $name on the Dashboards tab with only its folders expanded",
-    ({ location, expectedUrl }) => {
-      const collection = createMockCollection({
-        id: 12,
-        type: "library-dashboards",
-        location,
-      });
-
-      expect(getCreatedCollectionUrl(collection)).toBe(expectedUrl);
-    },
-  );
-
   it("opens a new Semantic layer folder with its whole path expanded", () => {
     mockSettings({
       "token-features": createMockTokenFeatures({ library: true }),
@@ -75,6 +51,21 @@ describe("getCreatedCollectionUrl", () => {
     expect(getCreatedCollectionUrl(collection)).toBe(
       "/data-studio/library?expandedId=7&expandedId=9&expandedId=12",
     );
+  });
+
+  it("opens a new Library Dashboards folder in the main app", () => {
+    mockSettings({
+      "token-features": createMockTokenFeatures({ library: true }),
+    });
+    setupEnterpriseOnlyPlugin("library");
+    const collection = createMockCollection({
+      id: 12,
+      name: "Sales",
+      type: "library-dashboards",
+      location: "/7/10/",
+    });
+
+    expect(getCreatedCollectionUrl(collection)).toBe("/collection/12-sales");
   });
 
   it("opens a new regular collection in the main app", () => {

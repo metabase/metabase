@@ -1,24 +1,29 @@
 /* istanbul ignore file */
 
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
+import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   PEOPLE_ID,
   createSampleDatabase,
-  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
 import type { NotebookStep } from "./types";
 
-export const metadata = createMockMetadata({
-  databases: [createSampleDatabase()],
-  questions: [createSavedStructuredCard({ id: 1 })],
+const DEFAULT_CARD = createMockCard({
+  id: 1,
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
 });
 
-export const DEFAULT_QUESTION = checkNotNull(metadata.question(1));
+export const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+  questions: [DEFAULT_CARD],
+});
+
+export const DEFAULT_QUESTION = new Question(DEFAULT_CARD, metadata);
 export const DEFAULT_QUERY = DEFAULT_QUESTION.query();
 
 export function createMockNotebookStep({

@@ -36,19 +36,6 @@ const PRO_STEP_ORDER = [
   "Configure AI",
 ];
 
-// Without modular embedding every Fine-tune step is locked, so AI -- the one
-// advanced step still reachable -- is promoted into the first section.
-const UNLICENSED_STEP_ORDER = [
-  "Connect a database",
-  "Create a dashboard",
-  "Get embed snippet",
-  "Configure AI",
-  "Configure data permissions and tenants",
-  "Set up SSO",
-  "Embed in production with SSO",
-  "Create a custom theme",
-];
-
 // Every plan sees every tab; the gem marks the ones its token can't unlock.
 // OSS and Starter lack all four gated features, so they expect the same.
 const TAB_GEMS_WITHOUT_PAID_FEATURES = [
@@ -123,6 +110,10 @@ describe("scenarios > embedding > embedding hub > get started", () => {
         "eq",
         "/embedding/get-started/permissions",
       );
+      H.main()
+        .findByText("Configure data permissions and enable tenants")
+        .scrollIntoView()
+        .should("be.visible");
 
       cy.log(
         "the wizard's back link is relative, so it lands on the host that mounted it rather than admin",
@@ -189,30 +180,6 @@ describe("scenarios > embedding > embedding hub > get started", () => {
       cy.signInAsAdmin();
     });
 
-    it("promotes AI into the first section and locks the Fine-tune steps", () => {
-      cy.visit("/embedding/get-started");
-
-      cy.findByTestId("embedding-hub-main").within(() => {
-        assertStepOrder(UNLICENSED_STEP_ORDER);
-
-        cy.log(
-          "the upsell banner is what stands in for the Fine-tune subtitle",
-        );
-        cy.findByText(
-          "Upgrade to Metabase Pro to configure advanced options.",
-        ).should("be.visible");
-
-        cy.log("a feature-locked step is inert, with no link to follow");
-        cy.findByRole("link", { name: "Set up SSO" }).should("not.exist");
-        cy.findByText("Set up SSO")
-          .closest(`[data-testid=${CARD}]`)
-          .should("have.attr", "aria-disabled", "true");
-
-        cy.log("AI is never locked -- the admin AI page needs no token");
-        cy.findByRole("button", { name: "Configure AI" }).should("be.visible");
-      });
-    });
-
     it("marks the embed step complete once a guest embed is published", () => {
       cy.visit("/embedding/get-started");
 
@@ -221,6 +188,12 @@ describe("scenarios > embedding > embedding hub > get started", () => {
           .closest(`[data-testid=${CARD}]`)
           .findByLabelText("Step 3 complete")
           .should("not.exist");
+
+        cy.log("the upsell banner and the AI step render in a real browser");
+        cy.findByText(
+          "Upgrade to Metabase Pro to configure advanced options.",
+        ).should("be.visible");
+        cy.findByRole("button", { name: "Configure AI" }).should("be.visible");
       });
 
       cy.log("publish a dashboard as a guest embed");
@@ -381,12 +354,6 @@ describe("scenarios > embedding > embedding hub > security", () => {
 
         cy.findByText("Cross-Origin Resource Sharing (CORS)").should("exist");
       });
-    });
-
-    it("shows every hub tab, gemming the ones this plan lacks", () => {
-      cy.visit("/embedding/security");
-
-      assertHubTabs(TAB_GEMS_WITHOUT_PAID_FEATURES);
     });
   });
 
@@ -728,14 +695,6 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-    });
-
-    it("upsells rather than hiding the tab", () => {
-      cy.visit("/embedding/appearance");
-
-      cy.findByTestId("embedding-hub-main")
-        .findByText("Create custom themes")
-        .should("be.visible");
     });
 
     it("sends a theme editor deep link back to the upsell", () => {

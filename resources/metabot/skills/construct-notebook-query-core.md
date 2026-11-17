@@ -16,6 +16,7 @@ Return:
 - `title`: required — a short, human-friendly name for the query, written like a saved-question name.
 - `description`: required — a short description of what the query returns.
 - `visualization`: optional `{"chart_type": "bar"}` (sibling of `query`, never embedded inside it).
+- `show_chart`: optional, and offered only when you can read the results with `run_query`. Pass `false` when you build the query only to read its values: the user is then shown nothing, so give them the values in your answer.
 
 > The Slackbot variant of this tool has a different contract: `reasoning` is **required**, `title` is optional and there's no `description`; it uses `display` (a Slack-specific visualization-type enum) instead of `visualization`. See the Slackbot system prompt for its exact argument set.
 
@@ -58,7 +59,7 @@ There is no top-level `database:` field in the LLM contract — the database is 
 ## Field references
 
 ```json
-["field", {}, ["<db-name>", "<schema-or-null>", "<table-name>", "<field-name>"]]
+["field", {}, ["<db-name>", "<schema>", "<table-name>", "<field-name>"]]
 ```
 
 The third slot is the **portable field FK** — a 4+ element string array. Schemaless databases (the Sample Database, MongoDB, etc.) use `null` in the schema slot: `["Mongo", null, "orders", "created_at"]`. JSON-unfolded fields append extra segments: `["DB", "SCH", "TBL", "PARENT", "CHILD"]`.

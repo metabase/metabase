@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useField, useFormikContext } from "formik";
 import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { forwardRef, useCallback } from "react";

@@ -215,9 +215,9 @@ function ValidTypeFixtures() {
   void sdkCreateOrder.execute({ status: "shipped" });
   void useAction(CreateOrder).execute({ status: "shipped" });
 
-  const updatedRows = updateOrder.result?.["rows-updated"];
+  const updatedCount: number | undefined = updateOrder.result?.["rows-updated"];
 
-  void updatedRows;
+  void updatedCount;
 
   // A raw id types nothing, so the generics still stand in for a definition.
   const rawAction = useAction<{ status: string }, "create">(51);
@@ -262,6 +262,20 @@ function ValidTypeFixtures() {
     scalarAggregationResult.data?.rows[0]?.sum;
 
   void scalarAggregationValue;
+
+  const latestOrderResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [
+        aggregations.max(TEST_SCHEMA.tables.orders.fields.createdAt),
+      ],
+    }),
+  );
+
+  const latestOrderCreatedAt: string | null | undefined =
+    latestOrderResult.data?.rows[0]?.max;
+
+  void latestOrderCreatedAt;
 
   const namedAggregationResult = useMetabaseQuery(
     defineQuery({

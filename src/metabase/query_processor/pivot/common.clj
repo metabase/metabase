@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.lib.options :as lib.options]
    [metabase.query-processor.error-type :as qp.error-type]
-   ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.query-processor.middleware.add-remaps :as-alias add-remaps]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]

@@ -9,7 +9,7 @@
     and vice versa.
 
   This lets callers build intent-lock patterns (shared on a root + exclusive on
-  a leaf) — see [[metabase.permissions.models.data-permissions/with-db-scoped-permissions-lock]]
+  a leaf) — see [[metabase.permissions.data-permissions/with-db-scoped-permissions-lock]]
   for an example.
 
   Lock ordering rule: if you acquire multiple cluster locks, always acquire them
@@ -175,7 +175,7 @@
   failure so [[fall-back-in-band?]] can retry on the caller's connection."
   ^Connection []
   (try
-    (.getConnection ^javax.sql.DataSource mdb.connection/*application-db*)
+    (.getConnection ^javax.sql.DataSource (mdb.connection/current-application-db))
     (catch Exception e
       (throw (ex-info "Could not check out a connection to insert the cluster lock row"
                       {::checkout-failed true}

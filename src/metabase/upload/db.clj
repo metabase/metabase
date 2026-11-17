@@ -7,7 +7,6 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.core :as warehouse-schema]
    [metabase.warehouse-schema.humanization :as humanization]
    [toucan2.core :as t2]))
@@ -46,7 +45,7 @@
 (mu/defn active-fields-for-table
   "The active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :table_id table-id :active true))
 
 (mu/defn user-edited-field-names
   "The lower-cased `names`, among the Fields of the Table with `table-id`, that have a user-set display name."
@@ -65,9 +64,7 @@
         name->display-name (apply dissoc name->display-name user-edited)]
     (doseq [{:keys [id name display_name]} (when (seq name->display-name)
                                              (t2/select [:model/Field :id :name :display_name]
-                                                        {:from  [(warehouse-schema-overlay/field-query
-                                                                  {:user-settings? false})]
-                                                         :where [:and
+                                                        {:where [:and
                                                                  [:= :table_id table-id]
                                                                  [:in [:lower :name] (keys name->display-name)]]}))
             :let  [lower-name (u/lower-case-en name)]
@@ -123,9 +120,9 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id table-id))
 
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in table-ids]))

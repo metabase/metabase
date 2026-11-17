@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { isNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
 import type { TransformSeries } from "metabase/visualizations/components/TransformedVisualization";

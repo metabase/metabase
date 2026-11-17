@@ -1,21 +1,18 @@
 import { createMockMetadata } from "__support__/metadata";
-import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
   SAMPLE_METADATA,
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { ParameterTarget } from "metabase-types/api";
+import type { Card, Parameter, ParameterTarget } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboardCard,
   createMockField,
-  createMockNativeDatasetQuery,
   createMockParameter,
-  createMockStructuredDatasetQuery,
-  createMockTable,
   createMockVirtualCard,
 } from "metabase-types/api/mocks";
 import {
@@ -26,6 +23,8 @@ import {
   PRODUCTS_ID,
   REVIEWS,
   REVIEWS_ID,
+  createOrdersCreatedAtDatasetColumn,
+  createOrdersIdDatasetColumn,
   createOrdersTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -45,8 +44,6 @@ const metadata = createMockMetadata({
 });
 const provider = createMetadataProvider({ metadata });
 
-const ordersTable = metadata.table(ORDERS_ID)!;
-
 function structured(spec: TestQuerySpec) {
   return createMockCard({
     dataset_query: Lib.toJsQuery(Lib.createTestQuery(provider, spec)),
@@ -62,37 +59,31 @@ function native(spec: TestNativeQuerySpec) {
 describe("parameters/utils/mapping-options", () => {
   describe("getParameterMappingOptions", () => {
     describe("structured model", () => {
-      const question = ordersTable.question();
-      const dataset = question.setCard({
-        ...question.card(),
+      const modelCard = createMockCard({
         id: 123,
+        name: "Orders Model",
         type: "model",
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestQuery(provider, {
+            stages: [{ source: { type: "table", id: ORDERS_ID } }],
+          }),
+        ),
+        result_metadata: [
+          createOrdersCreatedAtDatasetColumn({
+            display_name: "~*~Created At~*~",
+          }),
+        ],
+      });
+      const modelMetadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        questions: [modelCard],
       });
 
-      // create a virtual table for the card
-      // that contains fields with custom, model-specific metadata
-      const virtualCardTable = ordersTable?.clone();
-      virtualCardTable.id = `card__123`;
-      virtualCardTable.fields = [
-        metadata.field(ORDERS.CREATED_AT)?.clone({
-          table_id: `card__123`,
-          uniqueId: `card__123:${ORDERS.CREATED_AT}`,
-          display_name: "~*~Created At~*~",
-        }),
-      ].filter(isNotNull);
-
-      // add instances to the `metadata` instance
-      metadata.questions[dataset.id()] = dataset;
-      metadata.tables[virtualCardTable.id] = virtualCardTable;
-      virtualCardTable.fields.forEach((f) => {
-        metadata.fields[f.getUniqueId()] = f;
-      });
-
-      it("should return fields from the model question's virtual card table, as though it is already nested", () => {
+      it("should return fields from the model's result metadata, as though it is already nested", () => {
         const options = getParameterMappingOptions(
-          new Question(dataset.card(), metadata),
+          new Question(modelCard, modelMetadata),
           createMockParameter({ type: "date/single" }),
-          dataset.card(),
+          modelCard,
         );
 
         expect(options).toEqual([
@@ -100,7 +91,7 @@ describe("parameters/utils/mapping-options", () => {
             icon: "calendar",
             isForeign: false,
             name: "~*~Created At~*~",
-            sectionName: "Orders",
+            sectionName: "Orders Model",
             target: [
               "dimension",
               ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
@@ -114,26 +105,20 @@ describe("parameters/utils/mapping-options", () => {
     describe("native model", () => {
       it("should not return mapping options for native models", () => {
         const card = createMockCard({
+          ...native({ query: "SELECT * FROM ORDERS" }),
           type: "model",
-          dataset_query: createMockNativeDatasetQuery({
-            native: {
-              query: "SELECT * FROM ORDERS",
-            },
-          }),
         });
-        const table = createOrdersTable();
         const metadata = createMockMetadata({
           databases: [createSampleDatabase()],
-          tables: [
-            createMockTable({
-              id: `card__${card.id}`,
-              fields: (table.fields ?? []).map((field) => ({
-                ...field,
-                table_id: `card__${card.id}`,
-              })),
-            }),
+          questions: [
+            {
+              ...card,
+              result_metadata: [
+                createOrdersIdDatasetColumn(),
+                createOrdersCreatedAtDatasetColumn(),
+              ],
+            },
           ],
-          questions: [card],
         });
         const question = new Question(card, metadata);
         const parameter = createMockParameter({ type: "number/=" });
@@ -326,6 +311,97 @@ describe("parameters/utils/mapping-options", () => {
       });
     });
 
+    describe("structured query with custom columns", () => {
+      function getOptionNames(card: Card, parameter: Parameter) {
+        return getParameterMappingOptions(
+          new Question(card, metadata),
+          parameter,
+          card,
+        ).map((option) => option.name);
+      }
+
+      const aggregatedStage: TestQuerySpec["stages"][0] = {
+        source: { type: "table", id: PRODUCTS_ID },
+        aggregations: [
+          { type: "operator", operator: "count", args: [] },
+          {
+            type: "operator",
+            operator: "sum",
+            args: [{ type: "column", name: "PRICE" }],
+          },
+        ],
+        breakouts: [{ type: "column", name: "CATEGORY" }],
+      };
+
+      const mathExpression = {
+        type: "operator",
+        operator: "+",
+        args: [
+          { type: "literal", value: 1 },
+          { type: "literal", value: 1 },
+        ],
+      } as const;
+
+      it("should offer a custom column for a number parameter (metabase#18747)", () => {
+        const card = structured({
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              expressions: [
+                {
+                  name: "Quantity_2",
+                  value: { type: "column", name: "QUANTITY" },
+                },
+              ],
+            },
+          ],
+        });
+        const parameter = createMockParameter({ type: "number/=" });
+
+        expect(getOptionNames(card, parameter)).toContain("Quantity_2");
+      });
+
+      it("should offer the source table's date columns when a custom column follows an aggregation (metabase#19744)", () => {
+        const card = structured({
+          stages: [
+            aggregatedStage,
+            { expressions: [{ name: "Math", value: mathExpression }] },
+          ],
+        });
+        const parameter = createMockParameter({ type: "date/all-options" });
+
+        expect(getOptionNames(card, parameter)).toContain("Created At");
+      });
+
+      it("should offer the source table's date columns once the custom columns after an aggregation are removed (metabase#19745)", () => {
+        const query = Lib.createTestQuery(provider, {
+          stages: [
+            aggregatedStage,
+            {
+              expressions: [{ name: "Custom Column", value: mathExpression }],
+              fields: [
+                { type: "column", name: "CATEGORY" },
+                { type: "column", name: "sum" },
+                { type: "column", name: "Custom Column" },
+              ],
+            },
+          ],
+        });
+        const queryWithoutExpressions = Lib.expressions(query, 1).reduce(
+          (query, expression) => Lib.removeClause(query, 1, expression),
+          query,
+        );
+        expect(Lib.expressions(queryWithoutExpressions, 1)).toHaveLength(0);
+
+        const card = createMockCard({
+          dataset_query: Lib.toJsQuery(queryWithoutExpressions),
+        });
+        const parameter = createMockParameter({ type: "date/month-year" });
+
+        expect(getOptionNames(card, parameter)).toContain("Created At");
+      });
+    });
+
     describe("native query", () => {
       it("should return variables for non-dimension template-tags", () => {
         const card = native({
@@ -360,7 +436,7 @@ describe("parameters/utils/mapping-options", () => {
           created: {
             type: "dimension",
             name: "created",
-            dimension: ORDERS.CREATED_AT,
+            "field-id": ORDERS.CREATED_AT,
           },
         },
       });
@@ -487,6 +563,36 @@ describe("parameters/utils/mapping-options", () => {
     it("should return empty array if link URL is undefined", () => {
       const options = getLinkOptions(undefined);
       expect(options).toEqual([]);
+    });
+  });
+
+  describe.each(["text", "heading"] as const)("%s dashcard", (display) => {
+    const getTextOptions = (text: string) =>
+      getParameterMappingOptions(
+        undefined,
+        null,
+        createMockVirtualCard({ display }),
+        createMockDashboardCard({
+          visualization_settings: {
+            virtual_card: createMockVirtualCard({ display }),
+            text,
+          },
+        }),
+      );
+
+    it("should return tag options from the card text", () => {
+      expect(getTextOptions("Variable: {{foo}}")).toEqual([
+        {
+          name: "foo",
+          icon: "string",
+          isForeign: false,
+          target: ["text-tag", "foo"],
+        },
+      ]);
+    });
+
+    it("should return empty array for text without template tags", () => {
+      expect(getTextOptions("Variable: foo")).toEqual([]);
     });
   });
 
@@ -748,13 +854,7 @@ describe("getMappingOptionByTarget", () => {
   });
 
   describe("structured dashcard", () => {
-    const card = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({
-        query: {
-          "source-table": 2,
-        },
-      }),
-    });
+    const card = structured(DEFAULT_TEST_QUERY);
     const database = createSampleDatabase();
     const metadata = createMockMetadata({
       questions: [card],
@@ -877,13 +977,7 @@ describe("getMappingOptionByTarget", () => {
     });
 
     it("should return undefined if option is not found", () => {
-      const card = createMockCard({
-        dataset_query: createMockStructuredDatasetQuery({
-          query: {
-            "source-table": 2,
-          },
-        }),
-      });
+      const card = structured(DEFAULT_TEST_QUERY);
       const database = createSampleDatabase();
       const metadata = createMockMetadata({
         questions: [card],

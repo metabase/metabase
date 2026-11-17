@@ -126,13 +126,11 @@
        (if (t2/exists? :model/User user-id#)
          (request/with-current-user user-id# ~@body)
          (binding [*user-ctx* (merge {:current-user-id       user-id#
-                                      :current-user-perms    #{"/"}
                                       :is-superuser?         true
                                       :is-sandboxed-user?    false
                                       :is-impersonated-user? false
                                       :is-routed-user?       false}
-                                     (select-keys raw-ctx# [:current-user-perms
-                                                            :is-superuser?
+                                     (select-keys raw-ctx# [:is-superuser?
                                                             :is-sandboxed-user?
                                                             :is-impersonated-user?
                                                             :is-routed-user?]))]
@@ -149,7 +147,6 @@
                        (merge
                         (or *user-ctx*
                             {:current-user-id       api/*current-user-id*
-                             :current-user-perms    @api/*current-user-permissions-set*
                              :is-superuser?         api/*is-superuser?*
                              :is-impersonated-user? (perms-util/impersonated-user?)
                              :is-sandboxed-user?    (perms-util/sandboxed-user?)

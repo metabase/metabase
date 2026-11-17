@@ -1,10 +1,13 @@
-import { type Rollup, build } from "vite";
+import { type ResolvedConfig, type Rollup, build } from "vite";
 
 import { dataAppBuildPlugins, dataAppLibBuild } from "../config/build-config";
 import { getDataAppDefine } from "../config/define";
+import { DATA_APP_PUBLIC_ENV_PREFIX } from "../config/env-prefix";
 
 export interface AppBundleOptions {
   root: string;
+  /** Where the dev server reads `.env` files: the repo root, not the app's folder. */
+  envDir: ResolvedConfig["envDir"];
   mode: string;
   onError: (message: string) => void;
 }
@@ -19,6 +22,7 @@ export interface AppBundle {
 
 export function createAppBundle({
   root,
+  envDir,
   mode,
   onError,
 }: AppBundleOptions): AppBundle {
@@ -34,6 +38,9 @@ export function createAppBundle({
         root,
         mode,
         configFile: false,
+        // The app's code gets the env the preview page and a production build get.
+        envDir,
+        envPrefix: DATA_APP_PUBLIC_ENV_PREFIX,
         define: getDataAppDefine(mode),
         logLevel: "warn",
         plugins: dataAppBuildPlugins(),

@@ -137,8 +137,8 @@ export function VisualizationError({
   if (isNative) {
     // always show errors for native queries
     const processedError = stripRemarks(errorMessage);
-    const database = question.database();
-    const isSql = database && getEngineNativeType(database.engine) === "sql";
+    const engine = Lib.databaseDisplayInfo(question.query())?.engine;
+    const isSql = engine != null && getEngineNativeType(engine) === "sql";
 
     return (
       <Box className={cx(className, CS.overflowAuto)}>

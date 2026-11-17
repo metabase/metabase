@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { AdHocQuestionDescription } from "./AdHocQuestionDescription";
@@ -25,7 +26,7 @@ export const QuestionDescription = ({
     return <AdHocQuestionDescription question={question} onClick={onClick} />;
   }
 
-  if (question.database()) {
+  if (Lib.databaseMetadata(question.query()) != null) {
     return (
       <QuestionDataSource
         question={question}

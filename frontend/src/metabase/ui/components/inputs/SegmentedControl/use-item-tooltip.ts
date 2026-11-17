@@ -4,27 +4,23 @@ import { isFocusVisible } from "metabase/utils/dom";
 
 import type { SegmentedControlItem } from "./index";
 
-type TooltipItem<Value extends string> = Pick<
-  SegmentedControlItem<Value>,
-  "value" | "withTooltip"
->;
-
+/**
+ * Tracks which item is hovered or keyboard-focused. `getTargetProps(value).opened`
+ * is true for that item, so it should only open a tooltip the item actually has.
+ */
 export function useItemTooltip<Value extends string>(
-  data: readonly TooltipItem<Value>[],
+  data: readonly Pick<SegmentedControlItem<Value>, "value">[],
 ) {
   const [hoveredValue, setHoveredValue] = useState<Value | null>(null);
   const [focusedValue, setFocusedValue] = useState<Value | null>(null);
   const activeTooltipValue = hoveredValue ?? focusedValue;
-  const hasTooltipItems = data.some((item) => item.withTooltip);
 
-  const getTooltipItemValue = (target: EventTarget) => {
+  const getItemValue = (target: EventTarget) => {
     if (!(target instanceof HTMLInputElement)) {
       return null;
     }
 
-    const item = data.find(
-      (item) => item.withTooltip && item.value === target.value,
-    );
+    const item = data.find((item) => item.value === target.value);
     return item?.value ?? null;
   };
 
@@ -35,7 +31,7 @@ export function useItemTooltip<Value extends string>(
     }
 
     setHoveredValue(null);
-    setFocusedValue(getTooltipItemValue(event.target));
+    setFocusedValue(getItemValue(event.target));
   };
 
   const handleBlur = () => {
@@ -56,7 +52,6 @@ export function useItemTooltip<Value extends string>(
   });
 
   return {
-    hasTooltipItems,
     getTargetProps,
     handleFocus,
     handleBlur,

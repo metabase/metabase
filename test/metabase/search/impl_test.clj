@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.queries-rest.api.card :as api.card]
    [metabase.search.appdb.index :as search.index]
@@ -43,7 +42,6 @@
   ;; back to its setting-backed defaults, and the schema's default-value transformer makes that easy to
   ;; break by adding an innocent-looking :default
   (let [ctx (search.impl/search-context {:current-user-id       1
-                                         :current-user-perms    #{"/"}
                                          :is-superuser?         true
                                          :is-impersonated-user? false
                                          :is-sandboxed-user?    false
@@ -71,6 +69,7 @@
              [:like [:lower :database_name] (h2x/like-substring "foo")] [:inline 0]
              [:like [:lower :model_name] (h2x/like-substring "foo")] [:inline 0]
              [:like [:lower :dataset_query] (h2x/like-substring "foo")] [:inline 0]
+             [:like [:lower :slug] (h2x/like-substring "foo")] [:inline 0]
              :else [:inline 1]]]
            (search.legacy/order-clause "Foo")))))
 
@@ -109,7 +108,6 @@
                                                  :is-sandboxed-user?          false
                                                  :is-routed-user?             false
                                                  :is-data-analyst?            false
-                                                 :current-user-perms          #{"/"}
                                                  :model-ancestors?            false
                                                  :limit-int                   100
                                                  :calculate-available-models? false
@@ -190,8 +188,7 @@
                                                                   :is-superuser?      true
                                                                   :is-impersonated-user? false
                                                                   :is-sandboxed-user? false
-                                                                  :is-routed-user?    false
-                                                                  :current-user-perms @api/*current-user-permissions-set*}))
+                                                                  :is-routed-user?    false}))
                                             :data
                                             (map (juxt :model :id))
                                             set))))))
@@ -279,8 +276,7 @@
                                                                   :is-superuser?      true
                                                                   :is-impersonated-user? false
                                                                   :is-sandboxed-user? false
-                                                                  :is-routed-user?    false
-                                                                  :current-user-perms @api/*current-user-permissions-set*}))
+                                                                  :is-routed-user?    false}))
                                             :data
                                             (map (juxt :model :id))
                                             set))))))
@@ -327,8 +323,7 @@
                                                 :is-superuser?      true
                                                 :is-impersonated-user? false
                                                 :is-sandboxed-user? false
-                                                :is-routed-user?    false
-                                                :current-user-perms @api/*current-user-permissions-set*}))
+                                                :is-routed-user?    false}))
                           :data
                           (map (juxt :model :id))
                           set))))
@@ -344,8 +339,7 @@
                                                 :is-superuser?      true
                                                 :is-impersonated-user? false
                                                 :is-sandboxed-user? false
-                                                :is-routed-user?    false
-                                                :current-user-perms @api/*current-user-permissions-set*}))
+                                                :is-routed-user?    false}))
                           :data
                           (map (juxt :model :id))
                           set))))))))))
@@ -383,8 +377,7 @@
                                                     :is-superuser?      true
                                                     :is-impersonated-user? false
                                                     :is-sandboxed-user? false
-                                                    :is-routed-user?    false
-                                                    :current-user-perms @api/*current-user-permissions-set*}))
+                                                    :is-routed-user?    false}))
                               :data
                               (map (juxt :model :id))
                               set)]
