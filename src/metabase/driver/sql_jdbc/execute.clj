@@ -540,7 +540,12 @@
   [driver stmt params]
   ;; `getParameterMetaData` costs a server round trip on some drivers -- Snowflake describes the statement -- so only
   ;; ask when there are parameters that could outnumber the placeholders.
+  ;; PROVISIONAL (Redshift): not inside an explicit transaction either. On pgjdbc and Redshift the describe runs on the
+  ;; server, and when it fails it aborts the transaction, so the execution reports "current transaction is aborted"
+  ;; instead of its own error.
   (when (and (seq params)
+             (try (.getAutoCommit (.getConnection ^PreparedStatement stmt))
+                  (catch Throwable _ true))
              (< (try (.. ^PreparedStatement stmt getParameterMetaData getParameterCount)
                      (catch Throwable _ (count params)))
                 (count params)))

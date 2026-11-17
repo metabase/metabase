@@ -86,16 +86,30 @@
 (deftest segment-output-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (let [run! (fn [input]
-                 (data-testing.test-util/refusal #(run-segment-test! (data-testing.test-util/from-google-segment)
-                                                                     [input]
-                                                                     [{:type :empty :name "none" :sql "SELECT * FROM {{output}} WHERE 1 = 0"}])))]
+                 ;; TEMPORARY DIAGNOSTIC (Redshift): a refusal carries the messages of its whole cause chain, so a
+                 ;; failure report shows the statement that first failed. Remove once the Redshift failure is understood.
+                 (try
+                   (run-segment-test! (data-testing.test-util/from-google-segment)
+                                      [input]
+                                      [{:type :empty :name "none" :sql "SELECT * FROM {{output}} WHERE 1 = 0"}])
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     {:error-type (:error-type (ex-data e))
+                      :message    (ex-message e)
+                      :causes     (loop [c (ex-cause e) acc []]
+                                    (if c
+                                      (recur (or (ex-cause c)
+                                                 (when (instance? java.sql.SQLException c)
+                                                   (.getNextException ^java.sql.SQLException c)))
+                                             (conj acc (str (.getName (class c)) ": " (ex-message c))))
+                                      acc))})))]
       (testing "an input given as rows needs to declare only the columns the query reads"
         (is (nil? (run! (people-rows three-people)))))
       (testing "an input given as SQL declares no columns, so the output has every column of the table, and its SQL must give them all"
-        (let [{:keys [error-type message]} (run! {:table  (table-ref :people)
-                                                  :format :sql
-                                                  :sql    (str "SELECT 1 AS " (field-name :id) ", 'Google' AS "
-                                                               (field-name :source))})]
+        (let [{:keys [error-type message] :as refusal} (run! {:table  (table-ref :people)
+                                                              :format :sql
+                                                              :sql    (str "SELECT 1 AS " (field-name :id) ", 'Google' AS "
+                                                                           (field-name :source))})]
           (is (= ::data-testing.errors/query-failed error-type))
           ;; The message can also quote the compiled SQL, which names every column, so match only the warehouse's
           ;; naming of the missing column: `column "ADDRESS"` (H2), `column people.address` (Postgres), `column
@@ -103,7 +117,7 @@
           ;; (SQL Server, whose "column name" would otherwise match the NAME column).
           (is (re-find #"(?i)(?:column|identifier)\s+['\"`\[]?(?:\w+\.)*(?:name|email|address|city)\b"
                        (str/replace message #"(?i)column name" "column"))
-              message))))))
+              (pr-str message (:causes refusal))))))))
 
 (defn- validated-outcome!
   "What becomes of a test of a Segment with the attributes `segment`, `inputs` and `expectations`, started by crowberto:
