@@ -33,6 +33,8 @@ type Options = {
   availableMetrics?: Lib.MetricMetadata[];
   database: Pick<Database, "features"> | undefined;
   textRequest?: TextRequestOption;
+  /** See `SuggestOptions`. */
+  highlightFirstSuggestion?: boolean;
   extensions?: Extension[];
 };
 
@@ -58,6 +60,7 @@ export function useExtensions(options: Options): Extension[] {
     availableMetrics,
     database,
     textRequest,
+    highlightFirstSuggestion,
     extensions: extra = [],
   } = options;
   const getColumnValues = useGetColumnValues(query);
@@ -90,6 +93,7 @@ export function useExtensions(options: Options): Extension[] {
         popularFunctions: POPULAR_FUNCTIONS[expressionMode],
         getColumnValues,
         textRequest,
+        highlightFirstSuggestion,
       }),
       tooltips({
         position: "fixed",
@@ -109,6 +113,7 @@ export function useExtensions(options: Options): Extension[] {
     hasColumnsOutsideBrackets,
     getColumnValues,
     textRequest,
+    highlightFirstSuggestion,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...extra,
   ]);

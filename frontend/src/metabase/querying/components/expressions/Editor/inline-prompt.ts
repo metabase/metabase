@@ -19,13 +19,20 @@ function isInCode(prefix: string) {
   return close == null;
 }
 
-const openPrompt = StateEffect.define<number>();
+type OpenPrompt = {
+  /** Where the prompt is in the document. */
+  pos: number;
+  /** On its own line under the code, rather than inline at `pos`. */
+  isOnNewLine: boolean;
+};
+
+const openPrompt = StateEffect.define<OpenPrompt>();
 const closePrompt = StateEffect.define<null>();
 
-/** The position of the open prompt in the document, or null. */
-const promptField = StateField.define<number | null>({
+/** The open prompt, or null. */
+const promptField = StateField.define<OpenPrompt | null>({
   create: () => null,
-  update(pos, tr) {
+  update(prompt, tr) {
     for (const effect of tr.effects) {
       if (effect.is(openPrompt)) {
         return effect.value;
@@ -34,28 +41,41 @@ const promptField = StateField.define<number | null>({
         return null;
       }
     }
-    if (pos == null) {
+    if (prompt == null) {
       return null;
     }
     // An edit or a click in the code closes the prompt.
     if (tr.docChanged || tr.selection != null) {
       return null;
     }
-    return pos;
+    return prompt;
   },
 });
 
 class PromptWidget extends WidgetType {
-  constructor(private readonly container: HTMLElement) {
+  constructor(
+    private readonly container: HTMLElement,
+    private readonly isOnNewLine: boolean,
+  ) {
     super();
   }
 
   toDOM() {
-    return this.container;
+    if (!this.isOnNewLine) {
+      return this.container;
+    }
+    // A line of its own under the code.
+    const line = document.createElement("div");
+    line.className = "cm-line";
+    line.append(this.container);
+    return line;
   }
 
   eq(other: PromptWidget) {
-    return other.container === this.container;
+    return (
+      other.container === this.container &&
+      other.isOnNewLine === this.isOnNewLine
+    );
   }
 
   // The input in the widget handles its own keys and clicks.
@@ -64,20 +84,26 @@ class PromptWidget extends WidgetType {
   }
 }
 
-/** Opens the prompt at the end of the code, the same as typing "?" there. */
+/**
+ * Opens the prompt after the code, like typing "?" there. It goes on a line
+ * of its own under the code, without changing the code itself.
+ */
 export function openInlinePromptAtEnd(view: EditorView) {
   const pos = view.state.doc.length;
-  view.dispatch({ selection: { anchor: pos }, effects: openPrompt.of(pos) });
+  view.dispatch({
+    selection: { anchor: pos },
+    effects: openPrompt.of({ pos, isOnNewLine: pos > 0 }),
+  });
 }
 
 export function closeInlinePrompt(view: EditorView) {
-  const pos = view.state.field(promptField, false);
-  if (pos == null) {
+  const prompt = view.state.field(promptField, false);
+  if (prompt == null) {
     return;
   }
   view.dispatch({ effects: closePrompt.of(null) });
   view.focus();
-  view.dispatch({ selection: { anchor: pos } });
+  view.dispatch({ selection: { anchor: prompt.pos } });
 }
 
 /**
@@ -95,14 +121,15 @@ export function inlinePrompt({
   return [
     promptField,
     EditorView.decorations.compute([promptField], (state) => {
-      const pos = state.field(promptField);
-      return pos == null
+      const prompt = state.field(promptField);
+      return prompt == null
         ? Decoration.none
         : Decoration.set(
             Decoration.widget({
-              widget: new PromptWidget(container),
+              widget: new PromptWidget(container, prompt.isOnNewLine),
               side: 1,
-            }).range(pos),
+              block: prompt.isOnNewLine,
+            }).range(prompt.pos),
           );
     }),
     EditorView.inputHandler.of((view, from, to, text) => {
@@ -113,13 +140,16 @@ export function inlinePrompt({
       ) {
         return false;
       }
-      view.dispatch({ effects: openPrompt.of(to) });
+      view.dispatch({
+        effects: openPrompt.of({ pos: to, isOnNewLine: false }),
+      });
       return true;
     }),
     EditorView.updateListener.of((update) => {
       // The field is missing from a state before a reconfiguration.
-      const pos = update.state.field(promptField, false) ?? null;
-      if (pos !== (update.startState.field(promptField, false) ?? null)) {
+      const pos = update.state.field(promptField, false)?.pos ?? null;
+      const prevPos = update.startState.field(promptField, false)?.pos ?? null;
+      if (pos !== prevPos) {
         onChange(pos);
       }
     }),

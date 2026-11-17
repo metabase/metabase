@@ -88,4 +88,55 @@ describe("CodeMirror", () => {
     });
     expect(editorView!.state.doc.toString()).toBe("X, test2, X, test3");
   });
+
+  describe("Tab", () => {
+    async function setup({ tabIndents }: { tabIndents?: boolean }) {
+      let view: EditorView | undefined;
+      render(
+        <CodeMirror
+          value="value"
+          // Like the expression editor, without CodeMirror's own Tab indent.
+          indentWithTab={false}
+          tabIndents={tabIndents}
+          onCreateEditor={(editorView) => {
+            view = editorView;
+          }}
+        />,
+      );
+      await waitFor(() => expect(view).toBeDefined());
+      if (view == null) {
+        throw new Error("The editor wasn't created");
+      }
+      const editorView = view;
+
+      // False when the editor cancelled the browser's own action for Tab.
+      const pressTab = () =>
+        editorView.contentDOM.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: "Tab",
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      return { view: editorView, pressTab };
+    }
+
+    it("indents by default", async () => {
+      const { view, pressTab } = await setup({});
+      act(() => {
+        pressTab();
+      });
+      expect(view.state.doc.toString()).not.toBe("value");
+    });
+
+    it("leaves the focus to the browser without indenting when tabIndents is false", async () => {
+      const { view, pressTab } = await setup({ tabIndents: false });
+      let isDefaultAllowed = false;
+      act(() => {
+        isDefaultAllowed = pressTab();
+      });
+      expect(isDefaultAllowed).toBe(true);
+      expect(view.state.doc.toString()).toBe("value");
+    });
+  });
 });

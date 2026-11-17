@@ -1,4 +1,3 @@
-import { selectedCompletion } from "@codemirror/autocomplete";
 import { EditorView } from "@codemirror/view";
 import { type KeyboardEvent, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
@@ -9,6 +8,7 @@ import {
 } from "metabase/prototype";
 import {
   type ExpressionError,
+  isEnterForTheEditor,
   isRequestText,
 } from "metabase/querying/expressions";
 import { useSetting } from "metabase/settings";
@@ -19,6 +19,7 @@ import type * as Lib from "metabase-lib";
 import { Editor } from "../../../components/expressions/Editor";
 import type {
   EditorChangeMeta,
+  FormatNow,
   GenerateNow,
   ValidateNow,
 } from "../../../components/expressions/Editor/Editor";
@@ -78,15 +79,16 @@ function useIsAiAvailable() {
 const PREVIEW_SHORTCUT = isMac() ? "⌘ Enter" : "Ctrl Enter";
 
 /**
- * True when the key goes to the code itself, with no autocomplete open. The
- * AI prompt and the autocomplete use Enter for themselves.
+ * True when Enter in the code may save: not when it picks a suggestion or
+ * moves to the next placeholder of a function or template. The AI prompt and
+ * other fields use Enter for themselves.
  */
 function isOnPlainCode(target: EventTarget) {
   if (!(target instanceof HTMLElement) || !target.matches(".cm-content")) {
     return false;
   }
   const view = EditorView.findFromDOM(target);
-  return view != null && selectedCompletion(view.state) == null;
+  return view != null && !view.composing && !isEnterForTheEditor(view.state);
 }
 
 export function InlineExpressionEditor({
@@ -128,6 +130,7 @@ export function InlineExpressionEditor({
   // save. The next edit hides them.
   const [isErrorShown, setIsErrorShown] = useState(false);
   const validateRef = useRef<ValidateNow | null>(null);
+  const formatRef = useRef<FormatNow | null>(null);
   const generateRef = useRef<GenerateNow | null>(null);
   const askAiRef = useRef<(() => void) | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -151,6 +154,17 @@ export function InlineExpressionEditor({
       showPreview(run);
     }
   };
+  // The Preview button and Cmd/Ctrl+Enter show the preview, or hide it when
+  // it shows.
+  const isPreviewShown = previewRun != null;
+  const togglePreview = () => {
+    if (isPreviewShown) {
+      setPreviewRun(undefined);
+    } else {
+      runPreview();
+    }
+  };
+
   const shownSource = proposal?.source ?? editedSource;
   const isPreviewOutdated =
     previewRun != null &&
@@ -228,10 +242,10 @@ export function InlineExpressionEditor({
     setIsGenerating(false);
   };
 
-  // Cmd/Ctrl+Enter opens the preview, runs it again, or sends a request to
-  // the AI. Enter in the code saves, or sends the request, and Shift+Enter
-  // starts a new line. The capture phase comes before the keymap of the code
-  // editor.
+  // Cmd/Ctrl+Enter shows or hides the preview, or sends a request to the AI.
+  // Enter in the code saves and keeps the editor open (see saveAndShow), or
+  // sends the request, and Shift+Enter starts a new line. The capture phase
+  // comes before the keymap of the code editor.
   const handleKeyDownCapture = (event: KeyboardEvent) => {
     if (event.key !== "Enter") {
       return;
@@ -242,11 +256,19 @@ export function InlineExpressionEditor({
       if (canGenerate) {
         runGenerate();
       } else {
-        runPreview();
+        togglePreview();
       }
       return;
     }
-    if (event.shiftKey || event.altKey || !isOnPlainCode(event.target)) {
+    // Enter also confirms the characters of an input method (Japanese,
+    // Chinese, Korean…) while they're composed.
+    const isComposing = event.nativeEvent.isComposing;
+    if (
+      event.shiftKey ||
+      event.altKey ||
+      isComposing ||
+      !isOnPlainCode(event.target)
+    ) {
       return;
     }
     if (readOnly || proposal != null) {
@@ -261,7 +283,7 @@ export function InlineExpressionEditor({
     if (canGenerate) {
       runGenerate();
     } else {
-      handleSave();
+      saveAndShow();
     }
   };
 
@@ -297,6 +319,18 @@ export function InlineExpressionEditor({
     }
   };
 
+  // Enter saves, and keeps the editor open to show what was saved: the text
+  // tidied, like `subtotal + total` to `[Subtotal] + [Total]`, and the
+  // preview of the result. A text that isn't valid shows its errors.
+  const saveAndShow = async () => {
+    const run = proposal == null ? checkNow() : null;
+    if (run == null) {
+      return;
+    }
+    const formatted = await formatRef.current?.();
+    showPreview(formatted ?? run);
+  };
+
   return (
     <Layout
       inline
@@ -325,6 +359,7 @@ export function InlineExpressionEditor({
         error={error}
         showErrors={isErrorShown}
         validateRef={validateRef}
+        formatRef={formatRef}
         generateRef={generateRef}
         canGenerateFromText={isAiAvailable && isNewExpression && !readOnly}
         isAiAvailable={isAiAvailable}
@@ -351,9 +386,14 @@ export function InlineExpressionEditor({
               )}
               <ToolbarSegment
                 icon={<PlayIcon />}
-                label={t`Preview column (${PREVIEW_SHORTCUT})`}
-                disabled={isEmpty}
-                onClick={runPreview}
+                label={
+                  isPreviewShown
+                    ? t`Hide preview (${PREVIEW_SHORTCUT})`
+                    : t`Preview column (${PREVIEW_SHORTCUT})`
+                }
+                isPressed={isPreviewShown}
+                disabled={isEmpty && !isPreviewShown}
+                onClick={togglePreview}
               />
             </>
           )

@@ -38,7 +38,8 @@ export function InlinePrompt({
     }
   };
 
-  const placeholder = t`Ask AI, or press Enter to finish`;
+  // An empty prompt still works: Enter asks the AI to finish the expression.
+  const placeholder = t`add prompt`;
 
   return (
     <span

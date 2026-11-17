@@ -1,6 +1,7 @@
 import {
   type Completion,
   acceptCompletion,
+  clearSnippet,
   closeCompletion,
   completionStatus,
   hasNextSnippetField,
@@ -161,8 +162,33 @@ export const openOnPlaceholders = /* #__PURE__ */ EditorView.updateListener.of(
   },
 );
 
-function isSnippetActive(state: EditorState) {
+/** True while a function's placeholders or a template's blanks are filled in. */
+export function isSnippetActive(state: EditorState) {
   return hasNextSnippetField(state) || hasPrevSnippetField(state);
+}
+
+/**
+ * True when Enter belongs to the code: it picks the highlighted suggestion,
+ * or moves to the next placeholder. Anything else may use Enter, like saving.
+ */
+export function isEnterForTheEditor(state: EditorState) {
+  return selectedCompletion(state) != null || isSnippetActive(state);
+}
+
+/**
+ * What Escape does in the code, one step at a time: close the suggestions,
+ * then leave the placeholders. False when there was nothing to close, so
+ * that Escape can do something else, like closing a popover.
+ */
+export function dismissSuggestionsOrPlaceholders(view: EditorView) {
+  if (completionStatus(view.state) != null) {
+    closeCompletion(view);
+    return true;
+  }
+  if (isSnippetActive(view.state)) {
+    return clearSnippet(view);
+  }
+  return false;
 }
 
 /**
@@ -182,14 +208,14 @@ function canTakeMoreValues(state: EditorState, pos: number) {
   );
 }
 
-/** Picks the highlighted option, or moves on when the list is closed. */
+/** Picks the highlighted option, or moves on when nothing is highlighted. */
 function pickOrMoveOn(view: EditorView) {
   // "No columns fit here" is a message, not an option: skip past it.
   if (selectedCompletion(view.state)?.type === "empty") {
     closeCompletion(view);
     return nextSnippetField(view);
   }
-  if (completionStatus(view.state) === "active") {
+  if (selectedCompletion(view.state) != null) {
     // CodeMirror ignores a pick right after the list changes. Don't move on
     // then, which would skip the value without picking it.
     acceptCompletion(view);
@@ -251,7 +277,13 @@ const tabAndEnterMoveOn = /* #__PURE__ */ Prec.highest(
       const isMoveKey = event.key === "Enter" || event.key === "Tab";
       const hasModifier =
         event.shiftKey || event.metaKey || event.ctrlKey || event.altKey;
-      if (!isMoveKey || hasModifier || !isSnippetActive(view.state)) {
+      // Enter also confirms the characters of an input method (Japanese,
+      // Chinese, Korean…) while they're composed.
+      const isComposing = event.isComposing || view.composing;
+      if (!isMoveKey || hasModifier || isComposing) {
+        return false;
+      }
+      if (!isSnippetActive(view.state)) {
         return false;
       }
       event.preventDefault();

@@ -4,6 +4,7 @@ import {
   currentCompletions,
   hasNextSnippetField,
   hasPrevSnippetField,
+  selectedCompletionIndex,
 } from "@codemirror/autocomplete";
 import { history, undo } from "@codemirror/commands";
 import { EditorSelection, EditorState } from "@codemirror/state";
@@ -17,6 +18,10 @@ import { expressionEditing, straightenQuotes } from "./editing";
 import { functionArgumentPlaceholders } from "./function-arguments";
 import { columnsForExpressionMode } from "./mode";
 import { suggestions } from "./suggestions";
+import {
+  dismissSuggestionsOrPlaceholders,
+  isEnterForTheEditor,
+} from "./suggestions/placeholders";
 import type { ExpressionSuggestion } from "./suggestions/types";
 
 type SetupOpts = {
@@ -38,6 +43,8 @@ function setup({ doc = "", cursor = doc.length }: SetupOpts = {}) {
         functionArgumentPlaceholders(),
         closeBrackets(),
         suggestions({
+          // Like the custom column editor on the page.
+          highlightFirstSuggestion: false,
           query,
           stageIndex,
           expressionMode: "expression",
@@ -71,9 +78,15 @@ function setup({ doc = "", cursor = doc.length }: SetupOpts = {}) {
     }
   };
 
-  const press = (key: string) =>
+  // False when a handler cancelled the browser's own action for the key.
+  const press = (key: string, options: KeyboardEventInit = {}) =>
     view.contentDOM.dispatchEvent(
-      new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }),
+      new KeyboardEvent("keydown", {
+        key,
+        bubbles: true,
+        cancelable: true,
+        ...options,
+      }),
     );
 
   const selectedText = () => {
@@ -255,5 +268,69 @@ describe("quotes", () => {
     ["“Don’t”", '"Don’t"'],
   ])("straightens pasted %s", (pasted, expected) => {
     expect(straightenQuotes(pasted)).toBe(expected);
+  });
+});
+
+describe("keys around saving on Enter", () => {
+  it("keeps Enter for the code while placeholders are filled in, and gives it back past the last one", () => {
+    const { view, type, press } = setup({ doc: "length" });
+    type("(");
+    expect(isEnterForTheEditor(view.state)).toBe(true);
+
+    press("Tab");
+    expect(view.state.selection.main.head).toBe("length(value)".length);
+    expect(isEnterForTheEditor(view.state)).toBe(false);
+  });
+
+  it("doesn't move on with Enter while an input method composes characters", () => {
+    const { type, press, selectedText } = setup({ doc: "datetimeDiff" });
+    type("(");
+    press("Enter", { isComposing: true });
+    expect(selectedText()).toBe("datetime1");
+  });
+
+  it("closes the suggestions, then leaves the placeholders, then lets Escape through", async () => {
+    const { view, type, waitForSuggestions, isSnippetActive } = setup({
+      doc: "datetimeDiff",
+    });
+    type("(");
+    await waitForSuggestions();
+    expect(completionStatus(view.state)).toBe("active");
+
+    expect(dismissSuggestionsOrPlaceholders(view)).toBe(true);
+    expect(completionStatus(view.state)).toBeNull();
+    expect(isSnippetActive()).toBe(true);
+
+    expect(dismissSuggestionsOrPlaceholders(view)).toBe(true);
+    expect(isSnippetActive()).toBe(false);
+
+    expect(dismissSuggestionsOrPlaceholders(view)).toBe(false);
+  });
+});
+
+describe("highlighting a suggestion", () => {
+  it("highlights nothing for a plain word, until Down is pressed", async () => {
+    const { view, type, press, waitForSuggestions } = setup();
+    type("subtotal + tot");
+    await waitForSuggestions();
+    expect(completionStatus(view.state)).toBe("active");
+    expect(selectedCompletionIndex(view.state)).toBeNull();
+
+    press("ArrowDown");
+    expect(selectedCompletionIndex(view.state)).toBe(0);
+  });
+
+  it("highlights the first column after [", async () => {
+    const { view, type, waitForSuggestions } = setup();
+    type("[tot");
+    await waitForSuggestions();
+    expect(selectedCompletionIndex(view.state)).toBe(0);
+  });
+
+  it("leaves Enter to the save when nothing is highlighted", async () => {
+    const { view, type, waitForSuggestions } = setup();
+    type("subtotal + tot");
+    await waitForSuggestions();
+    expect(isEnterForTheEditor(view.state)).toBe(false);
   });
 });

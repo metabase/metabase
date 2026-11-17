@@ -50,6 +50,11 @@ export type ExtensionOptions = {
   tabIndex?: number;
   /** The brackets whose match is outlined next to the cursor. */
   matchBrackets?: string;
+  /**
+   * False: Tab types no spaces when it has nothing else to do, so the browser
+   * moves the focus out of the editor.
+   */
+  tabIndents?: boolean;
   extensions?: (Extension | null)[];
 };
 
@@ -86,6 +91,7 @@ function useBaseExtensions({
   autoCorrect,
   tabIndex,
   matchBrackets = "()",
+  tabIndents = true,
 }: Omit<ExtensionOptions, "extensions">) {
   return useMemo(
     () => [
@@ -99,7 +105,7 @@ function useBaseExtensions({
         brackets: matchBrackets,
       }),
       search(),
-      keyboardShortcuts({ onFormat }),
+      keyboardShortcuts({ onFormat, tabIndents }),
       formatWithAltShiftF({ onFormat }),
       closeSearchPanelAfterLastReplace(),
       EditorView.lineWrapping,
@@ -112,7 +118,7 @@ function useBaseExtensions({
         tabIndex,
       }),
     ],
-    [onFormat, tabIndex, autoFocus, autoCorrect, matchBrackets],
+    [onFormat, tabIndex, autoFocus, autoCorrect, matchBrackets, tabIndents],
   );
 }
 
@@ -194,7 +200,13 @@ function formatWithAltShiftF({ onFormat }: { onFormat?: () => void }) {
   );
 }
 
-function keyboardShortcuts({ onFormat }: { onFormat?: () => void }) {
+function keyboardShortcuts({
+  onFormat,
+  tabIndents,
+}: {
+  onFormat?: () => void;
+  tabIndents: boolean;
+}) {
   // Stop Cmd+Enter in CodeMirror from inserting a newline
   // Has to be Prec.highest so that it overwrites after the default Cmd+Enter handler
   return Prec.highest(
@@ -211,10 +223,7 @@ function keyboardShortcuts({ onFormat }: { onFormat?: () => void }) {
         key: "Tab",
         run: acceptCompletion,
       },
-      {
-        key: "Tab",
-        run: insertIndent,
-      },
+      ...(tabIndents ? [{ key: "Tab", run: insertIndent }] : []),
       {
         key: "Mod-j",
         run: moveCompletionSelection(true),

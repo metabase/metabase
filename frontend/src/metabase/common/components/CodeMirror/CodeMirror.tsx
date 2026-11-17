@@ -28,6 +28,7 @@ export const CodeMirror = forwardRef(function CodeMirrorInner(
     autoCorrect,
     tabIndex,
     matchBrackets,
+    tabIndents,
     extensions,
     ...rest
   } = props;
@@ -39,6 +40,7 @@ export const CodeMirror = forwardRef(function CodeMirrorInner(
     autoCorrect,
     tabIndex,
     matchBrackets,
+    tabIndents,
   });
 
   const localRef = useRef<ReactCodeMirrorRef>(null);

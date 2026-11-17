@@ -8,6 +8,12 @@ import type * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
 export type SuggestOptions = {
+  /**
+   * False: the list opens with nothing highlighted, so that Enter on a plain
+   * word does something else, like saving or sending a request to the AI.
+   * Down highlights the first option. True by default.
+   */
+  highlightFirstSuggestion?: boolean;
   query: Lib.Query;
   stageIndex: number;
   database: Pick<Database, "features"> | undefined;
@@ -39,6 +45,7 @@ import {
   placeholders,
 } from "./placeholders";
 import { openWhenEmpty, suggestPopular } from "./popular";
+import { preselectWhenPicking } from "./preselect";
 import { suggestSegments } from "./segments";
 import { suggestRelatedColumns, suggestRelatedFunctions } from "./semantic";
 import {
@@ -56,6 +63,9 @@ export function suggestions(options: SuggestOptions) {
   const popular = suggestPopular(options);
   const completion = autocompletion({
     closeOnBlur: false,
+    // Where the user is clearly picking, preselectWhenPicking highlights the
+    // first option anyway.
+    selectOnOpen: options.highlightFirstSuggestion ?? true,
     activateOnTyping: true,
     activateOnTypingDelay: 0,
     override: [
@@ -86,6 +96,7 @@ export function suggestions(options: SuggestOptions) {
     placeholders,
     openOnPlaceholders,
     placeholderNavigation(),
+    preselectWhenPicking,
     popular != null ? openWhenEmpty() : [],
   ];
 }

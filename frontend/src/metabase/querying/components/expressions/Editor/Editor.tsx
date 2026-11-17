@@ -26,6 +26,7 @@ import {
 import {
   type ExpressionError,
   diagnoseAndCompile,
+  dismissSuggestionsOrPlaceholders,
   expressionClauseSnippet,
   format,
   formatIdentifier,
@@ -141,6 +142,11 @@ export type EditorProps = {
   showErrors?: boolean;
   /** Set to a function that checks the current text at once, without the delay. */
   validateRef?: MutableRefObject<ValidateNow | null>;
+  /**
+   * Set to a function that tidies a valid text, the same way Shift-Cmd-F
+   * does, like `subtotal + total` to `[Subtotal] + [Total]`.
+   */
+  formatRef?: MutableRefObject<FormatNow | null>;
   /** Set to a function that sends the whole text to the AI as a request. */
   generateRef?: MutableRefObject<GenerateNow | null>;
   /** False or missing hides the AI: no prompt on "?", and a placeholder with no AI. */
@@ -155,6 +161,12 @@ export type EditorProps = {
 };
 
 export type GenerateNow = () => Promise<void>;
+
+/** Resolves to the tidied text and its clause, or null when it isn't valid. */
+export type FormatNow = () => Promise<{
+  source: string;
+  clause: Lib.ExpressionClause;
+} | null>;
 
 export type ValidateNow = () => {
   source: string;
@@ -228,6 +240,7 @@ export function Editor(props: EditorProps) {
     onGenerated,
     showErrors = true,
     validateRef,
+    formatRef,
     generateRef,
     askAiRef,
     isAiAvailable,
@@ -240,6 +253,31 @@ export function Editor(props: EditorProps) {
     databaseId != null ? { id: databaseId } : skipToken,
   );
   const { host, openSidebar, setOpenSidebar } = useEditorSidebar({ inline });
+
+  // A filter or summary popover closes on Escape before the code gets the
+  // key. Escape first closes the suggestions, then leaves the placeholders,
+  // and only then reaches the popover. The window's capture phase comes
+  // before the popover's handler.
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const view = ref.current?.view;
+      const isInCode =
+        view != null &&
+        event.target instanceof Node &&
+        view.contentDOM.contains(event.target);
+      if (
+        event.key === "Escape" &&
+        isInCode &&
+        dismissSuggestionsOrPlaceholders(view)
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
+  }, []);
 
   const toggleSidebar = useCallback(
     (name: ExpressionSidebarName) =>
@@ -304,6 +342,9 @@ export function Editor(props: EditorProps) {
     availableMetrics,
     database,
     textRequest: textRequestOption,
+    // In the custom column editor, Enter saves or sends a request to the AI,
+    // so a suggestion for a plain word isn't highlighted until Down.
+    highlightFirstSuggestion: !inline,
     extensions: [customTooltip, columnHover],
   });
 
@@ -462,6 +503,22 @@ export function Editor(props: EditorProps) {
     },
     [acceptSource, formatProposedSource, focusEnd, reportGenerated],
   );
+
+  if (formatRef) {
+    formatRef.current = async () => {
+      const source = sourceRef.current;
+      const formatted = await formatProposedSource(source);
+      const clause = compileSource(formatted);
+      if (clause == null) {
+        return null;
+      }
+      if (formatted !== source) {
+        acceptSource(formatted);
+        focusEnd(formatted);
+      }
+      return { source: formatted, clause };
+    };
+  }
 
   useReportProposal(proposal, compileSource, onProposalChange);
 
@@ -774,6 +831,9 @@ export function Editor(props: EditorProps) {
       height={inline ? undefined : "100%"}
       width="100%"
       indentWithTab={false}
+      // In the one-line editor on the page, Tab with nothing to pick or fill
+      // in moves on to the toolbar, instead of typing spaces.
+      tabIndents={!inline}
       // Also the brackets around column names.
       matchBrackets="()[]"
       autoFocus
