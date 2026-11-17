@@ -3920,6 +3920,7 @@
            lib.schema
            models
            premium-features
+           remote-sync
            serialization
            server
            settings
@@ -4452,6 +4453,7 @@
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
+                    :model/CustomVizPlugin
                     :model/Dashboard
                     :model/DataApp
                     :model/Document

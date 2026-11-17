@@ -57,6 +57,11 @@ const MODEL_GROUPS: Partial<Record<RemoteSyncEntityModel, ModelGroup>> = {
   glossary: { key: "glossary", icon: "glossary", getName: () => t`Glossary` },
   action: { key: "actions", icon: "bolt", getName: () => t`Actions` },
   dataapp: { key: "data-apps", icon: "app", getName: () => t`Data apps` },
+  customvizplugin: {
+    key: "custom-viz-plugins",
+    icon: "lineandbar",
+    getName: () => t`Custom visualizations`,
+  },
 };
 
 const OTHER_GROUP: ModelGroup = {

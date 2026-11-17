@@ -1,0 +1,8 @@
+entity_id: tEstPluGinEntityId0x1
+files:
+- dist/assets/icon.svg
+- dist/index.js
+- metabase-plugin.json
+identifier: test-plugin
+serdes/meta:
+- model: CustomVizPlugin
