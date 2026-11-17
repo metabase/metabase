@@ -6,7 +6,6 @@ import { PermissionsPageLayout } from "metabase/admin/permissions/components/Per
 import { skipToken } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
-import { DataPermissionsHelp } from "metabase/permissions";
 import { useNavigate, useParams } from "metabase/router";
 import { Box, Button, Flex, Icon, Loader, Text, Tooltip } from "metabase/ui";
 
@@ -146,10 +145,7 @@ export function TroubleshootPage() {
   const frameTitle = t`What ${whoName} sees`;
 
   return (
-    <PermissionsPageLayout
-      tab="troubleshoot"
-      helpContent={<DataPermissionsHelp />}
-    >
+    <PermissionsPageLayout tab="troubleshoot">
       <Flex
         direction="column"
         w="18.75rem"
@@ -293,6 +289,8 @@ export function TroubleshootPage() {
         whoName={whoName}
         openedItem={openedItem}
         isAllCollections={framePath === START_PATH}
+        // next to the person list, a panel in the page would leave the frame too little room below 1280px
+        isInPage={!isNarrow}
         onClose={() => setIsWhyOpen(false)}
       />
     </PermissionsPageLayout>

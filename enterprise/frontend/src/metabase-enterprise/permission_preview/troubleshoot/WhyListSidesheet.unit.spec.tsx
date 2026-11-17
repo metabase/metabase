@@ -624,6 +624,31 @@ describe("WhyListSidesheet", () => {
     expect(screen.getByText("Explain access")).toBeInTheDocument();
   });
 
+  it("shows in the page as a panel named Explain access, not a sheet over it, with Back and Close", async () => {
+    const onClose = jest.fn();
+    setup({
+      openedItem: { type: "collection", id: SALES_REPORTS_ID },
+      isInPage: true,
+      onClose,
+    });
+    const panel = await screen.findByRole("complementary", {
+      name: "Explain access",
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await userEvent.click(
+      within(await within(panel).findByTestId("why-verdict")).getByRole(
+        "button",
+        { name: /Curate/ },
+      ),
+    );
+    await userEvent.click(within(panel).getByRole("button", { name: "Back" }));
+    expect(await within(panel).findByTestId("why-verdict")).toBeInTheDocument();
+
+    await userEvent.click(within(panel).getByRole("button", { name: "Close" }));
+    expect(onClose).toHaveBeenCalled();
+  });
+
   it("lists on All collections only the collections the page lists, with the person's whole access behind See everything", async () => {
     setup({
       openedItem: null,
@@ -701,6 +726,8 @@ type SetupOpts = {
   /** Null on a page with no item: "All collections" with `isAllCollections`. */
   openedItem: OpenedItem | null;
   isAllCollections?: boolean;
+  isInPage?: boolean;
+  onClose?: () => void;
   /** Sales reports' collection access, "write" (Curate) unless given. */
   salesReportsAccess?: string;
   /** Each tab's collections: the main tab's Sales reports and Q4 pipeline, and no shared or tenant tab, unless given. */
@@ -717,6 +744,8 @@ type SetupOpts = {
 function setup({
   openedItem,
   isAllCollections,
+  isInPage,
+  onClose = jest.fn(),
   salesReportsAccess = "write",
   mainCollections = {
     ...COLLECTIONS,
@@ -771,6 +800,8 @@ function setup({
     <WhyListSidesheet
       {...getProps(openedItem)}
       isAllCollections={isAllCollections}
+      isInPage={isInPage}
+      onClose={onClose}
     />,
   );
 }

@@ -25,6 +25,7 @@ import {
   Loader,
   Stack,
   Text,
+  Title,
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
@@ -62,6 +63,8 @@ type WhyListSidesheetProps = {
   openedItem: OpenedItem | null;
   /** Whether the page shows its collection browser's top, "All collections", rather than a page with no item. */
   isAllCollections?: boolean;
+  /** A panel in the page's own row, beside the frame, instead of a sheet over it. */
+  isInPage?: boolean;
   onClose: () => void;
 };
 
@@ -99,6 +102,7 @@ export function WhyListSidesheet({
   whoName,
   openedItem,
   isAllCollections = false,
+  isInPage = false,
   onClose,
 }: WhyListSidesheetProps) {
   const list = useWhyList(
@@ -174,60 +178,110 @@ export function WhyListSidesheet({
     />
   );
 
+  const title = <SheetTitle hasBack={view != null} onBack={handleBack} />;
+  const content = (
+    // the sheet's own gap, so the scroll container stays this box's parent
+    <Stack gap="xl" ref={contentRef}>
+      <OpenRowsContext.Provider value={{ openRows, onToggle: handleToggleRow }}>
+        {heading != null && <ItemLine {...heading} />}
+        {view?.kind === "detail" ? (
+          <WhyContent target={view.target} />
+        ) : view?.kind === "explore" ? (
+          <CreateQueriesContent targets={view.targets} />
+        ) : list == null ? (
+          <Loader />
+        ) : isSummary ? (
+          <SummaryCard summary={list.summary} onOpen={handleOpenTarget} />
+        ) : page?.kind === "item" ? (
+          <>
+            <ItemCards
+              page={page}
+              onOpen={handleOpenTarget}
+              onOpenExplore={(targets) =>
+                openView({ kind: "explore", targets })
+              }
+            />
+            {summaryLink}
+          </>
+        ) : page?.kind === "collection" ? (
+          <>
+            <CollectionVerdict page={page} onOpen={handleOpenTarget} />
+            <CollectionList
+              targets={page.collections}
+              onOpen={handleOpenTarget}
+            />
+            {summaryLink}
+          </>
+        ) : page?.kind === "all-collections" ? (
+          <>
+            <CollectionList
+              targets={page.collections}
+              onOpen={handleOpenTarget}
+            />
+            {summaryLink}
+          </>
+        ) : null}
+      </OpenRowsContext.Provider>
+    </Stack>
+  );
+
+  if (isInPage) {
+    return isOpen ? (
+      <InPagePanel title={title} onClose={handleClose}>
+        {content}
+      </InPagePanel>
+    ) : null;
+  }
   return (
     <Sidesheet
-      title={<SheetTitle hasBack={view != null} onBack={handleBack} />}
+      title={title}
       isOpen={isOpen}
       onClose={handleClose}
       withOverlay={false}
       isModal={false}
     >
-      {/* the sheet's own gap, so the scroll container stays this box's parent */}
-      <Stack gap="xl" ref={contentRef}>
-        <OpenRowsContext.Provider
-          value={{ openRows, onToggle: handleToggleRow }}
-        >
-          {heading != null && <ItemLine {...heading} />}
-          {view?.kind === "detail" ? (
-            <WhyContent target={view.target} />
-          ) : view?.kind === "explore" ? (
-            <CreateQueriesContent targets={view.targets} />
-          ) : list == null ? (
-            <Loader />
-          ) : isSummary ? (
-            <SummaryCard summary={list.summary} onOpen={handleOpenTarget} />
-          ) : page?.kind === "item" ? (
-            <>
-              <ItemCards
-                page={page}
-                onOpen={handleOpenTarget}
-                onOpenExplore={(targets) =>
-                  openView({ kind: "explore", targets })
-                }
-              />
-              {summaryLink}
-            </>
-          ) : page?.kind === "collection" ? (
-            <>
-              <CollectionVerdict page={page} onOpen={handleOpenTarget} />
-              <CollectionList
-                targets={page.collections}
-                onOpen={handleOpenTarget}
-              />
-              {summaryLink}
-            </>
-          ) : page?.kind === "all-collections" ? (
-            <>
-              <CollectionList
-                targets={page.collections}
-                onOpen={handleOpenTarget}
-              />
-              {summaryLink}
-            </>
-          ) : null}
-        </OpenRowsContext.Provider>
-      </Stack>
+      {content}
     </Sidesheet>
+  );
+}
+
+/** The sheet as a column at the right of the page's row, at Permissions help's width, pushing the frame aside. */
+function InPagePanel({
+  title,
+  onClose,
+  children,
+}: {
+  title: ReactNode;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const titleId = useUniqueId();
+  return (
+    <Flex
+      component="aside"
+      className={S.panel}
+      direction="column"
+      w="20rem"
+      aria-labelledby={titleId}
+    >
+      <Flex align="center" justify="space-between" px="lg" pt="lg" pb="md">
+        <Title id={titleId} order={4}>
+          {title}
+        </Title>
+        <Button
+          variant="subtle"
+          size="compact-sm"
+          c="text-primary"
+          aria-label={t`Close`}
+          leftSection={<Icon name="close" />}
+          onClick={onClose}
+        />
+      </Flex>
+      {/* the scroll container is the content's parent, as in the sheet */}
+      <Box flex={1} mih={0} px="lg" pb="lg" className={S.panelBody}>
+        {children}
+      </Box>
+    </Flex>
   );
 }
 
