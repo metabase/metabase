@@ -69,8 +69,10 @@
     (when-let [user-id (or creator-id user-id)]
       (try
         (when (some #(changes-entity? entity %) events)
-          (when-let [object (or (some #(when (= model (:model %)) (:object %)) events)
-                                (revisions.db/entity model id))]
+          (when-let [object (some-> (or (some #(when (= model (:model %)) (:object %)) events)
+                                        (revisions.db/entity model id))
+                                    (cond-> (and own (= :model/Dashboard model) (every? #(= model (:model %)) events))
+                                      (assoc :dashcards [] :tabs [])))]
             (revision/revision-row {:entity       model
                                     :id           id
                                     :object       object
