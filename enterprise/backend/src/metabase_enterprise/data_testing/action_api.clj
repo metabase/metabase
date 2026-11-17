@@ -56,9 +56,11 @@
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :post "/" :- ::data-testing.schema/action-test
-  "Create an action test. A run gives the action's parameters the test's `parameters`, by parameter id or slug, as a run
-  of the action does: a parameter left out takes its default, and a value for a hidden parameter is refused. The
-  action's SQL then runs against the test's inputs, and the expectations read the tables after it, by their real names.
+  "Create an action test. A run gives the action's parameters the test's `parameters`, by parameter id or slug, as
+  `POST /api/action/:id/execute` does: a parameter left out takes its default, and a value for a hidden parameter or
+  for no parameter of the action is refused. A test that leaves a required parameter with no value and no default is
+  refused. The action's SQL then runs against the test's inputs, and the expectations read the tables after it, by
+  their real names.
 
   Only query actions can be tested, on a database with actions enabled. The action's SQL must be one INSERT, UPDATE or
   DELETE statement, and an `equals` expectation is refused: an action has no output to compare."
