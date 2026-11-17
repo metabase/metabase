@@ -10,7 +10,6 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as channel.slack]
    [metabase.embedding.util :as embed.util]
-   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.parameters.schema :as parameters.schema]

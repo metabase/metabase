@@ -437,7 +437,6 @@
                     :model/RemoteSyncTask
                     :model/Segment
                     :model/Table
-                    :model/TableUserSettings
                     :model/Transform
                     :model/TransformRun
                     :model/User}}
@@ -1248,7 +1247,6 @@
            metabase.glossary.init
            metabase.glossary.schema}
    :uses #{api
-           events
            lib.schema
            models
            remote-sync
