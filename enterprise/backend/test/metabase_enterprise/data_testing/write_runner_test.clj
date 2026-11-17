@@ -11,7 +11,8 @@
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.util :as u])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -112,12 +113,18 @@
     (testing "the run reports the temp table of each input and no output table"
       (is (= [(qualified :people)]
              (vals (:tables (run-write! (refund-1) ["refunded" 1] [(people-rows)] [(reading refunded-only-1)]))))))
-    (testing "the real table is not written"
-      (is (= 0 (-> (mt/native-query {:query (str "SELECT count(*) FROM " (qualified :people) " WHERE name = 'refunded'")})
-                   mt/process-query
-                   mt/rows
-                   ffirst
-                   long))))))
+    (testing "the write statement names the input's temp table, not the real table"
+      (let [executed (atom [])
+            execute! data-testing.executor/execute!]
+        (with-redefs [data-testing.executor/execute! (fn [driver conn query]
+                                                       (swap! executed conj (:query query))
+                                                       (execute! driver conn query))]
+          (let [[temp-table] (keys (:tables (run-write! (refund-1) ["refunded" 1] [(people-rows)]
+                                                        [(reading refunded-only-1)])))
+                [statement :as statements] @executed]
+            (is (= 1 (count statements)))
+            (is (str/includes? statement temp-table))
+            (is (not (str/includes? (u/lower-case-en statement) (u/lower-case-en (qualified :people)))))))))))
 
 (deftest write-to-an-undeclared-table-is-refused-test
   (mt/test-drivers (drivers-that-write)
