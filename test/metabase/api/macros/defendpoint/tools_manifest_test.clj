@@ -192,10 +192,12 @@
     ;; an enum, which would apply to every type in the array
     (is (= {:anyOf [{:anyOf [{:type "integer"} {:type "string", :enum ["root"]}]} {:type "null"}]}
            (published {:oneOf [{:anyOf [{:type "integer"} {:type "string", :enum ["root"]}]} {:type "null"}]})))
-    ;; two branches with the same assertion keyword
-    (is (= {:anyOf [{:anyOf [{:type "integer", :minimum 1} {:type "number", :minimum 0}]} {:type "null"}]}
-           (published {:oneOf [{:anyOf [{:type "integer", :minimum 1} {:type "number", :minimum 0}]}
-                               {:type "null"}]})))))
+    ;; overlapping types, since every integer is a number, so the `minimum` would reach the number branch
+    (is (= {:anyOf [{:anyOf [{:type "integer", :minimum 1} {:type "number"}]} {:type "null"}]}
+           (published {:oneOf [{:anyOf [{:type "integer", :minimum 1} {:type "number"}]} {:type "null"}]})))
+    ;; a keyword for another type, which does nothing in its branch but would constrain the other branch's values
+    (is (= {:anyOf [{:anyOf [{:type "integer", :minLength 3} {:type "string"}]} {:type "null"}]}
+           (published {:oneOf [{:anyOf [{:type "integer", :minLength 3} {:type "string"}]} {:type "null"}]})))))
 
 (deftest ^:parallel one-of-siblings-test
   (testing "keywords beside a rewritten `oneOf` accept what they accepted beside the `oneOf`"
