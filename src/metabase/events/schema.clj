@@ -104,11 +104,6 @@
 
 (mr/def :event/user-credentials-revoked ::user)
 
-(mr/def :event/user-create
-  [:map {:closed true}
-   [:object [:map
-             [:id ms/PositiveInt]]]])
-
 (mr/def :event/user-invited
   [:map {:closed true}
    [:object [:map

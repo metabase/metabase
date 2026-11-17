@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.pulse.hooks]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -29,6 +30,7 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/dependencies)
+  (derive :hook/pulse)
   ;; Disabled for performance reasons, see update-dashboard-card!-call-count-test
   #_(derive :hook/search-index))
 

@@ -181,7 +181,7 @@
                 (reset! marks [])
                 (reset! submitted [])
                 (deps.test/do-with-immediate-hook-writes
-                 #(dependencies.hooks/with-batched-marks
+                 #(dependencies.hooks/with-batched-writes
                     (t2/update! :model/Field :id (mt/id :venues :price) {:position 0})
                     (t2/update! :model/Field :id (mt/id :venues :name) {:position 1})))
                 (is (= [[:table #{(mt/id :venues)}]] @marks))

@@ -7,10 +7,12 @@
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.content-diagnostics.hooks]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -20,6 +22,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.pulse.hooks]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
@@ -53,6 +56,8 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/dependencies)
+  (derive :hook/content-diagnostics)
+  (derive :hook/pulse)
   (derive :hook/change-log))
 
 (methodical/defmethod change-log/ignored-columns :model/Dashboard [_model]
@@ -354,7 +359,7 @@
         dashboard-cards     (map (fn [dashcard]
                                    (-> (assoc dashcard :dashboard_id (u/the-id dashboard-or-id))
                                        (update :series #(filter identity (map u/the-id %))))) dashcards)]
-    (u/prog1 (dashboard-card/create-dashboard-cards! dashboard-cards)
+    (u/prog1 (dependencies.hooks/with-batched-writes (dashboard-card/create-dashboard-cards! dashboard-cards))
       (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
         (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
 
@@ -381,12 +386,13 @@
       (throw (ex-info (tru "Dashboard {0} does not have a DashboardCard with ID {1}"
                            (u/the-id dashboard) (first only-new))
                       {:status-code 404})))
-    (doseq [dashcard new-dashcards]
-      (let [;; update-dashboard-card! requires series to be a sequence of card IDs
-            old-dashcard       (-> (get id->old-dashcard (:id dashcard))
-                                   (update :series #(map :id %)))
-            dashboard-card     (update dashcard :series #(map :id %))]
-        (dashboard-card/update-dashboard-card! dashboard-card old-dashcard)))
+    (dependencies.hooks/with-batched-writes
+      (doseq [dashcard new-dashcards]
+        (let [;; update-dashboard-card! requires series to be a sequence of card IDs
+              old-dashcard       (-> (get id->old-dashcard (:id dashcard))
+                                     (update :series #(map :id %)))
+              dashboard-card     (update dashcard :series #(map :id %))]
+          (dashboard-card/update-dashboard-card! dashboard-card old-dashcard))))
     ;; `t2/hydrate` is a no-op when `:card` is already present, so strip any
     ;; client-supplied value first: a JSON round-trip strings-ifies keyword
     ;; metadata (`type/Category`, `source/table-defaults`, ...) that

@@ -1,12 +1,11 @@
-(ns metabase-enterprise.content-diagnostics.events-test
-  "Archiving/deleting a flagged entity invalidates its active findings via event subscriptions, so it drops
-  out of the served set without waiting for a rescan. Collection archival cascades to the subtree with no
-  per-descendant events, so its handler invalidates the subtree's collections and whatever currently lives in
-  them; transforms are not archived with their collection and are left alone."
+(ns metabase-enterprise.content-diagnostics.hooks-test
+  "Archiving or deleting a flagged entity invalidates its active findings through the hooks of its model, so it
+  drops out of the served set without waiting for a rescan. Archiving a collection invalidates its subtree's
+  collections and whatever currently lives in them; transforms are not archived with their collection and are left
+  alone."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
-   [metabase.events.core :as events]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -59,36 +58,33 @@
           (is (invalidated? coll-self) "the archived collection's own finding")
           (is (not (invalidated? xform)) "the transform inside it is untouched"))))))
 
-(deftest archive-events-invalidate-findings-test
+(deftest archive-invalidates-findings-test
   (mt/with-premium-features #{:content-diagnostics}
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-      (let [actor (mt/user->id :crowberto)]
-        (testing "card archive invalidates; a non-archive update does not"
-          (mt/with-temp [:model/Card card {}]
-            (let [f (mk-finding! :card (:id card))]
-              (events/publish-event! :event/card-update
-                                     {:object (assoc card :archived false) :previous-object card :user-id actor})
-              (is (not (invalidated? f)) "still active after a non-archive update")
-              (events/publish-event! :event/card-update
-                                     {:object (assoc card :archived true) :previous-object card :user-id actor})
-              (is (invalidated? f) "invalidated once archived"))))
-        (testing "dashboard archive invalidates"
-          (let [f (mk-finding! :dashboard 810001)]
-            (events/publish-event! :event/dashboard-update
-                                   {:object (t2/instance :model/Dashboard {:id 810001 :archived true}) :user-id actor})
-            (is (invalidated? f))))
-        (testing "document delete (archive publishes :event/document-delete) invalidates"
-          (let [f (mk-finding! :document 820001)]
-            (events/publish-event! :event/document-delete
-                                   {:object (t2/instance :model/Document {:id 820001}) :user-id actor})
-            (is (invalidated? f))))
-        (testing "transform hard delete invalidates"
-          (let [f (mk-finding! :transform 830001)]
-            (events/publish-event! :event/transform-delete
-                                   {:object (t2/instance :model/Transform {:id 830001}) :user-id actor})
+      (testing "card archive invalidates; a non-archive update does not"
+        (mt/with-temp [:model/Card card {}]
+          (let [f (mk-finding! :card (:id card))]
+            (t2/update! :model/Card :id (:id card) {:name "renamed"})
+            (is (not (invalidated? f)) "still active after a non-archive update")
+            (t2/update! :model/Card :id (:id card) {:archived true})
+            (is (invalidated? f) "invalidated once archived"))))
+      (testing "dashboard archive invalidates"
+        (mt/with-temp [:model/Dashboard {id :id} {}]
+          (let [f (mk-finding! :dashboard id)]
+            (t2/update! :model/Dashboard :id id {:archived true})
+            (is (invalidated? f)))))
+      (testing "document archive invalidates"
+        (mt/with-temp [:model/Document {id :id} {}]
+          (let [f (mk-finding! :document id)]
+            (t2/update! :model/Document :id id {:archived true})
+            (is (invalidated? f)))))
+      (testing "transform hard delete invalidates"
+        (mt/with-temp [:model/Transform {id :id} {}]
+          (let [f (mk-finding! :transform id)]
+            (t2/delete! :model/Transform :id id)
             (is (invalidated? f))))))))
 
-(deftest collection-archive-event-invalidates-subtree-test
+(deftest collection-archive-invalidates-subtree-test
   (mt/with-premium-features #{:content-diagnostics}
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
       (mt/with-temp [:model/Collection parent {}
@@ -99,17 +95,15 @@
         (let [self-finding  (mk-finding! :collection (:id parent))
               child-finding (mk-finding! :card child-card-id (:id child))
               outside       (mk-finding! :card other-card-id)]
-          (events/publish-event! :event/collection-update
-                                 {:object (assoc parent :archived true) :user-id (mt/user->id :crowberto)})
+          (t2/update! :model/Collection :id (:id parent) {:archived true})
           (is (invalidated? self-finding) "the archived collection's own finding")
           (is (invalidated? child-finding) "a finding for a card in a descendant collection")
           (is (not (invalidated? outside)) "an unrelated finding is untouched"))))))
 
-(deftest archive-event-is-a-noop-without-the-feature-test
+(deftest archive-is-a-noop-without-the-feature-test
   (mt/with-premium-features #{}
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-      (let [f (mk-finding! :dashboard 850001)]
-        (events/publish-event! :event/dashboard-update
-                               {:object (t2/instance :model/Dashboard {:id 850001 :archived true})
-                                :user-id (mt/user->id :crowberto)})
-        (is (not (invalidated? f)) "no invalidation when :content-diagnostics is not enabled")))))
+      (mt/with-temp [:model/Dashboard {id :id} {}]
+        (let [f (mk-finding! :dashboard id)]
+          (t2/update! :model/Dashboard :id id {:archived true})
+          (is (not (invalidated? f)) "no invalidation when :content-diagnostics is not enabled"))))))

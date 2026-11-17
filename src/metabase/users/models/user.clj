@@ -40,8 +40,6 @@
   (derive :hook/change-log)
   (derive ::mi/create-policy.superuser))
 
-(events/derive! :event/user-create :metabase/event)
-
 (defn- stringify-keys-and-values
   "Given a map, convert all the keys and values to strings."
   [m]
@@ -218,9 +216,7 @@
         (perms/allow-changing-all-external-users-group-members
          (perms/without-is-superuser-sync-on-add-to-admin-group
           (perms/add-user-to-groups! user-id (map u/the-id groups))))))
-    ;; Published last, once the group memberships above exist, since creating the User's Personal Collection touches
-    ;; permissions.
-    (events/publish-event! :event/user-create {:object <>})))
+    ((requiring-resolve 'metabase.collections.hooks/after-user-created) <>)))
 
 ;; Declare the topic a valid event here in case subscribers are not loaded yet. (SEC-863)
 (events/derive! :event/user-credentials-revoked :metabase/event)

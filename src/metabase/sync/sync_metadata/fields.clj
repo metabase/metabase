@@ -94,7 +94,7 @@
    table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
   (let [db-metadata (limit-fields-to-sync table db-metadata)]
-    (dependencies.hooks/with-batched-marks
+    (dependencies.hooks/with-batched-writes
       (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
          ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
          ;; Re-fetch our metadata because there might be some things that have changed after calling

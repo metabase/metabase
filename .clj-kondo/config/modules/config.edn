@@ -656,6 +656,7 @@
    :api  #{metabase.collections.children
            metabase.collections.core
            metabase.collections.curation
+           metabase.collections.hooks
            metabase.collections.init
            metabase.collections.models.collection
            metabase.collections.models.collection.root
@@ -664,6 +665,7 @@
            api-keys
            app-db
            audit-app
+           content-diagnostics
            events
            lib
            lib.be
@@ -742,6 +744,12 @@
   {:team "UX West"
    :api  #{metabase.connection-pool}
    :uses #{}}
+
+  content-diagnostics
+  {:team "Gadget"
+   :api  #{metabase.content-diagnostics.hooks}
+   :uses #{models
+           premium-features}}
 
   content-translation
   {:team "UX West"
@@ -824,7 +832,9 @@
            cache
            change-log
            collections
+           content-diagnostics
            content-verification
+           dependencies
            embedding
            events
            lib
@@ -938,7 +948,7 @@
   {:team       "Data Apps"
    :codeowners true
    :api  #{metabase.dependencies.hooks}
-   :uses #{premium-features}}
+   :uses #{premium-features util}}
 
   documents
   {:team "UX West"
@@ -953,6 +963,7 @@
            audit-app.view-log
            batch-processing
            collections
+           content-diagnostics
            events
            lib
            lib.be
@@ -1837,6 +1848,7 @@
   {:team "Graphy"
    :api  #{metabase.model-persistence.api
            metabase.model-persistence.core
+           metabase.model-persistence.hooks
            metabase.model-persistence.init}
    :uses #{api
            app-db
@@ -1874,6 +1886,7 @@
            lib
            lib.legacy-mbql
            lib.schema
+           model-persistence
            util
            util.classloader}
    :model-imports #{:model/Action
@@ -2214,6 +2227,7 @@
    :api  #{metabase.pulse.api
            metabase.pulse.broken-subscriptions
            metabase.pulse.core
+           metabase.pulse.hooks
            metabase.pulse.init}
    :uses #{api
            app-db
@@ -2266,6 +2280,7 @@
            change-log
            channel
            collections
+           content-diagnostics
            content-verification
            dashboards
            documents
@@ -3175,6 +3190,7 @@
            app-db
            channel
            collections
+           content-diagnostics
            database-routing
            driver
            events
@@ -3390,6 +3406,7 @@
    :uses #{analytics
            api
            batch-processing
+           collections
            events
            lib.schema
            models
@@ -3939,7 +3956,6 @@
            app-db
            collections
            documents
-           events
            lib.schema
            models
            permissions

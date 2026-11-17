@@ -34,6 +34,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [metabase.util.string :as string]
+   [metabase.util.write-batch :as write-batch]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.connection :as t2.conn]
@@ -42,6 +43,7 @@
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.protocols :as t2.protocols]
    [toucan2.realize :as t2.realize]
+   [toucan2.tools.after :as t2.after]
    [toucan2.tools.before-delete :as t2.before-delete]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.before-update :as t2.before-update]
@@ -577,6 +579,74 @@
 
 (doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
   (methodical/prefer-method! #'t2.before-update/before-update hook :hook/dependencies))
+
+(defonce ^:private hook-traits
+  (atom [:hook/dependencies :hook/search-index]))
+
+(defn prefer-hook-trait!
+  "Order the hooks of `trait` after the timestamp and entity id traits, so they see the row those complete, and a
+  `trait` defined later before the traits defined earlier, which Toucan needs to run the hooks of a model that
+  derives several of them."
+  [trait]
+  (doseq [hook [:hook/timestamped? :hook/created-at-timestamped? :hook/updated-at-timestamped? :hook/entity-id]]
+    (methodical/prefer-method! #'t2.before-insert/before-insert hook trait))
+  (doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
+    (methodical/prefer-method! #'t2.before-update/before-update hook trait))
+  (doseq [other @hook-traits
+          :when (not= other trait)]
+    (methodical/prefer-method! #'t2.before-update/before-update trait other)
+    (methodical/prefer-method! #'t2.after/each-row-fn [:toucan.query-type/insert.* trait] [:toucan.query-type/insert.* other]))
+  (swap! hook-traits conj trait))
+
+(defmacro define-hook-trait
+  "Define the trait `trait`, a model deriving it has `after-insert`, `before-update` and `before-delete`, functions of
+  the model and the row, called for every write of it, each with its UPDATE or DELETE in one transaction and in one
+  batch of writes (see `dependencies.hooks/with-batched-writes`), so what a hook marks is done once the write is."
+  [trait {:keys [after-insert before-update before-delete]}]
+  `(do
+     ~@(when after-insert
+         [`(t2/define-after-insert ~trait [instance#] (~after-insert ~'&model instance#) instance#)])
+     ~@(when before-update
+         [`(t2/define-before-update ~trait [instance#] (~before-update ~'&model instance#) instance#)])
+     ~@(when before-delete
+         [`(methodical/defmethod t2.before-delete/before-delete :before ~trait
+             [model# instance#]
+             (~before-delete model# instance#)
+             instance#)])
+     (methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/insert.* ~trait :default]
+       [rf# query-type# model# parsed-args# resolved-query#]
+       (write-batch/do-with-write-batch
+        #(~'next-method rf# query-type# model# parsed-args# resolved-query#)))
+     (methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* ~trait :default]
+       [rf# query-type# model# parsed-args# resolved-query#]
+       (t2.conn/with-transaction [_conn# nil {:nested-transaction-rule :ignore}]
+         (write-batch/do-with-write-batch
+          #(~'next-method rf# query-type# model# parsed-args# resolved-query#))))
+     (methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/delete.* ~trait :default]
+       [rf# query-type# model# parsed-args# resolved-query#]
+       (t2.conn/with-transaction [_conn# nil {:nested-transaction-rule :ignore}]
+         (write-batch/do-with-write-batch
+          #(~'next-method rf# query-type# model# parsed-args# resolved-query#))))
+     (prefer-hook-trait! ~trait)))
+
+(defn- persisted-info-after-insert
+  "Call the persisted-info hook, in a namespace that a module of the model cannot require without a cycle."
+  [model row]
+  ;; model-persistence uses queries, which derive this trait, so a require would be a cycle
+  #_{:clj-kondo/ignore [:metabase/modules]}
+  ((requiring-resolve 'metabase.model-persistence.hooks/after-insert) model row))
+
+(defn- persisted-info-before-update
+  "Call the persisted-info hook, in a namespace that a module of the model cannot require without a cycle."
+  [model row]
+  ;; model-persistence uses queries, which derive this trait, so a require would be a cycle
+  #_{:clj-kondo/ignore [:metabase/modules]}
+  ((requiring-resolve 'metabase.model-persistence.hooks/before-update) model row))
+
+(define-hook-trait :hook/persisted-info
+  {:after-insert  persisted-info-after-insert
+   :before-update persisted-info-before-update})
+
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.
@@ -629,7 +699,7 @@
                                  (contains? (methods after-archived-change) model#))
                         (rows-changing-archived model# parsed-args# resolved-query# changes#))]
          (if (seq rows#)
-           (dependencies.hooks/with-batched-marks
+           (dependencies.hooks/with-batched-writes
              (u/prog1 (~'next-method rf# query-type# model# parsed-args# resolved-query#)
                (after-archived-change model# rows# changes#)))
            (~'next-method rf# query-type# model# parsed-args# resolved-query#))))))

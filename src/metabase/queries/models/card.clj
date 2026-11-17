@@ -13,6 +13,7 @@
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.content-diagnostics.hooks]
    [metabase.content-verification.core :as moderation]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.embedding.settings :as embed.settings]
@@ -137,6 +138,8 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/dependencies)
+  (derive :hook/content-diagnostics)
+  (derive :hook/persisted-info)
   (derive :hook/change-log))
 
 (methodical/defmethod change-log/ignored-columns :model/Card [_model]

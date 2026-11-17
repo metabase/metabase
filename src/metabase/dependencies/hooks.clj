@@ -1,7 +1,8 @@
 (ns metabase.dependencies.hooks
   "Hooks that have the dependency jobs triggered as content is written, implemented by the enterprise module."
   (:require
-   [metabase.premium-features.defenterprise :refer [defenterprise]]))
+   [metabase.premium-features.defenterprise :refer [defenterprise]]
+   [metabase.util.write-batch :as write-batch]))
 
 (defenterprise before-insert
   "Hook for `row` of `model` before it is inserted, which does nothing without the dependencies feature."
@@ -41,8 +42,8 @@
   [thunk]
   (thunk))
 
-(defmacro with-batched-marks
-  "Run `body`, with the dependents of what its writes change marked once each when it ends, for a batch of writes
-  such as a sync's."
+(defmacro with-batched-writes
+  "Run `body`, with the dependents of what its writes change marked once each, and the work every other hook marked for
+  its owners done once each, when it ends, for a batch of writes such as a sync's or an aggregate's."
   [& body]
-  `(do-with-batched-marks (fn [] ~@body)))
+  `(write-batch/do-with-write-batch (fn [] (do-with-batched-marks (fn [] ~@body)))))

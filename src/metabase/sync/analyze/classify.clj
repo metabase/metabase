@@ -121,7 +121,7 @@
       (when-let [fields (fields-to-classify table)]
         (let [existing-name-field (sync.db/name-field-count-for-table table-id)
               {:keys [fields-failed]}
-              (dependencies.hooks/with-batched-marks
+              (dependencies.hooks/with-batched-writes
                 (reduce (fn [state field]
                           (let [result (classify! field state)]
                             (cond-> state

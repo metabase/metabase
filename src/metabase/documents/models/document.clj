@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.content-diagnostics.hooks]
    [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
@@ -47,7 +48,8 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies))
+  (derive :hook/dependencies)
+  (derive :hook/content-diagnostics))
 
 ;;; ---------- Hooks ---------------------------------------------------------------------------------------------
 

@@ -259,7 +259,7 @@
     (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance :model/Table table-metadata))))
   (let [field-order (some-> (:engine database) driver/default-field-order)]
-    (dependencies.hooks/with-batched-marks
+    (dependencies.hooks/with-batched-writes
       (mapv (fn [table-metadata]
               (insert-table! database (m/assoc-some table-metadata :field_order field-order) options))
             (sort-by (juxt :schema :name) new-table-metadatas)))))
