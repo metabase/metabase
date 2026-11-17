@@ -43,11 +43,6 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one-fn :db_id :model/Table, :id table-id))
 
-(mu/defn table
-  "The Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table :id [:auto/param table-id]))
-
 (mu/defn insert-audit-log!
   "Insert an AuditLog entry."
   [topic      :- :keyword

@@ -533,18 +533,11 @@
                                "-public-link-" (if (some? (:public_uuid object)) "created" "deleted")))
          {:user-id user-id :model model :model-id (:id row)}])
 
-      :model/User
-      (when (and previous-object (u.events/changed? event :is_active))
-        [(if (:is_active object) :event/user-reactivated :event/user-deactivated)
-         {:user-id user-id :object object}])
-
-      :model/TableUserSettings
+      :model/Table
       (when (u.events/changed? event :is_published)
         (cond
-          (true? (:is_published object)) [:event/table-publish
-                                          {:user-id user-id :object (audit-app.db/table (:table_id row))}]
-          previous-object                [:event/table-unpublish
-                                          {:user-id user-id :object (audit-app.db/table (:table_id row))}]))
+          (true? (:is_published object)) [:event/table-publish {:user-id user-id :object object}]
+          previous-object                [:event/table-unpublish {:user-id user-id :object object}]))
       nil)))
 
 (defn- record-column-changes!
@@ -558,6 +551,6 @@
 (events/register-owned-consumer! ::column-changes
                                  (fn [{:keys [model operation]}]
                                    (when (and (#{:create :update} operation)
-                                              (#{:model/Card :model/Dashboard :model/User :model/TableUserSettings} model))
+                                              (#{:model/Card :model/Dashboard :model/Table} model))
                                      ::column-changes))
                                  record-column-changes!)
