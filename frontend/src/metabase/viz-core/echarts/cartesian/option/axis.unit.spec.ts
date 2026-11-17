@@ -14,7 +14,7 @@ import { X_AXIS_DATA_KEY } from "../constants/dataset";
 import type { YAxisModel } from "../model/types";
 
 import { buildAxes, createAxisVisibilityOption } from "./axis";
-import { applyResponsiveYAxisTicks } from "./responsive-axis";
+import { applyYAxisTicks } from "./y-axis";
 
 const renderingContext: RenderingContext = {
   getColor: (name) => name,
@@ -70,12 +70,7 @@ function setup({
   );
   return {
     ...axes,
-    yAxis: applyResponsiveYAxisTicks(
-      axes.yAxis,
-      chartModel,
-      chartLayout,
-      settings,
-    ),
+    yAxis: applyYAxisTicks(axes.yAxis, chartModel, chartLayout, settings),
   };
 }
 
@@ -187,6 +182,90 @@ describe("responsive Y-axis ticks", () => {
       chartModelOptions: { splitPanelYAxisModels: [axisModel] },
     });
     expect(yAxis[0].axisLabel?.customValues).toEqual([0, 100]);
+  });
+});
+
+describe("duration Y-axis ticks", () => {
+  const durationAxisModel: YAxisModel = { ...axisModel, extent: [0, 3723] };
+  const getDurationSettings = (
+    settings: Parameters<typeof createMockVisualizationSettings>[0] = {},
+  ) =>
+    createMockVisualizationSettings({
+      "graph.y_axis.scale": "linear",
+      column: () => ({ number_style: "duration" }),
+      ...settings,
+    });
+
+  it("steps by round duration and ends axis on one", () => {
+    const { yAxis } = setup({
+      height: 300,
+      model: durationAxisModel,
+      settings: getDurationSettings(),
+    });
+    expect(yAxis[0]).toMatchObject({ interval: 1200, min: 0, max: 4800 });
+    expect(yAxis[0].axisTick?.customValues).toBeUndefined();
+  });
+
+  it("uses fewer steps on small cards", () => {
+    const { yAxis } = setup({
+      height: 95,
+      model: durationAxisModel,
+      settings: getDurationSettings(),
+    });
+    expect(yAxis[0]).toMatchObject({ interval: 3600, min: 0, max: 7200 });
+  });
+
+  it("uses tick count on large charts", () => {
+    const { yAxis } = setup({
+      model: { ...durationAxisModel, hasResponsiveTicks: false },
+      settings: getDurationSettings(),
+    });
+    expect(yAxis[0]).toMatchObject({ interval: 900, min: 0, max: 4500 });
+  });
+
+  it("reads duration unit and precision from column settings", () => {
+    const { yAxis } = setup({
+      height: 300,
+      model: { ...durationAxisModel, extent: [0, 240_000] },
+      settings: getDurationSettings({
+        column: () => ({
+          number_style: "duration",
+          duration_unit: "millisecond",
+          duration_precision: "minute",
+        }),
+      }),
+    });
+    expect(yAxis[0]).toMatchObject({ interval: 60_000, min: 0, max: 240_000 });
+  });
+
+  it("keeps manual axis bounds", () => {
+    const { yAxis } = setup({
+      height: 300,
+      model: durationAxisModel,
+      settings: getDurationSettings({
+        "graph.y_axis.auto_range": false,
+        "graph.y_axis.min": 100,
+        "graph.y_axis.max": 4000,
+      }),
+    });
+    expect(yAxis[0]).toMatchObject({ interval: 1200, min: 100, max: 4000 });
+  });
+
+  it("leaves non-linear and normalized axes to default ticks", () => {
+    const { yAxis: logAxis } = setup({
+      model: { ...durationAxisModel, hasResponsiveTicks: false },
+      settings: getDurationSettings({ "graph.y_axis.scale": "log" }),
+    });
+    const { yAxis: normalizedAxis } = setup({
+      model: {
+        ...durationAxisModel,
+        hasResponsiveTicks: false,
+        isNormalized: true,
+      },
+      settings: getDurationSettings(),
+    });
+    expect(logAxis[0]).not.toHaveProperty("interval");
+    expect(normalizedAxis[0]).not.toHaveProperty("interval");
   });
 });
 

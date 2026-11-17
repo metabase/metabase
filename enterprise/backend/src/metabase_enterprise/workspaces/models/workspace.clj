@@ -74,10 +74,12 @@
     (t2/hydrate workspace :creator :databases)))
 
 (defn- with-workspace-database-defaults
-  "Fill server-managed columns that are NOT NULL in the DB with their defaults when callers omit them."
+  "Fill server-managed columns that are NOT NULL in the DB with their defaults when callers omit them. `updated_at` is
+  this instance's current time, the clock the busy window of a delete uses."
   [wsd workspace-id]
   (merge {:database_details {}
-          :output_namespace ""}
+          :output_namespace ""
+          :updated_at       (mi/current-timestamp)}
          wsd
          {:workspace_id workspace-id}))
 
@@ -97,7 +99,7 @@
   "Throw a 409 if any row in `existing-active` (everything other than `:unprovisioned`)
   is missing from the incoming `:databases` list or would have its `:input_schemas` changed.
   Only `:unprovisioned` rows are freely mutable; `:provisioning`, `:provisioned`,
-  and `:deprovisioning` rows must be preserved verbatim."
+  `:deprovisioning`, `:teardown_failed` and `:never_started` rows must be preserved verbatim."
   [existing-active incoming-by-db-id]
   (doseq [{:keys [database_id input_schemas]} existing-active]
     (let [incoming (get incoming-by-db-id database_id)]
@@ -109,12 +111,14 @@
 
 (defn delete-workspace!
   "Delete a Workspace. Refuses with a 409 if any of its WorkspaceDatabase rows is in
-  a non-`:unprovisioned` state (`:provisioning`, `:provisioned`, or `:deprovisioning`)
-  — those point at live warehouse resources and must be unprovisioned explicitly
-  first. Cascade-deletes `:unprovisioned` children via the FK."
+  a non-`:unprovisioned` state (`:provisioning`, `:provisioned`, `:deprovisioning`,
+  `:teardown_failed`, or `:never_started`).
+  Those rows point at live warehouse resources and must be torn down first, except a
+  `:never_started` row, which has none and must be deleted first.
+  Cascade-deletes `:unprovisioned` children via the FK."
   [id]
   (when (ws.db/workspace-has-active-databases? id)
-    (throw (ex-info "Cannot delete a workspace with databases that are not :unprovisioned; deprovision them first"
+    (throw (ex-info "Cannot delete a workspace with databases that are not :unprovisioned; they must be torn down first"
                     {:status-code 409
                      :workspace_id id})))
   (ws.db/delete-workspace! id))
@@ -122,7 +126,7 @@
 (defn update-workspace!
   "Update a Workspace and reconcile its `WorkspaceDatabase` rows with the provided
   list. Only `:unprovisioned` rows are freely mutable. Rows in any other state
-  (`:provisioning`, `:provisioned`, `:deprovisioning`) must be preserved by
+  (`:provisioning`, `:provisioned`, `:deprovisioning`, `:teardown_failed`, `:never_started`) must be preserved by
   `database_id` with matching `:input`, or a 409 is raised. Fields not
   present in `params` are left untouched."
   [id params]

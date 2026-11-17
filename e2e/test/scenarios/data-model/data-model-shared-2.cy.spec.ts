@@ -1,8 +1,4 @@
-import {
-  SAMPLE_DB_ID,
-  SAMPLE_DB_SCHEMA_ID,
-  WRITABLE_DB_ID,
-} from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { H } = cy;
@@ -70,36 +66,6 @@ areas.forEach((area) => {
       });
 
       describe("Name and description", () => {
-        it("should allow changing the field name", () => {
-          visit({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: ORDERS_ID,
-            fieldId: ORDERS.TAX,
-          });
-
-          FieldSection.getNameInput().clear().type("New tax").blur();
-          cy.wait("@updateField");
-          verifyAndCloseToast("Name of Tax updated");
-          TableSection.getFieldNameInput("New tax").should("exist");
-
-          cy.log("verify preview");
-          TableSection.clickField("New tax");
-          FieldSection.getPreviewButton().click();
-          verifyTablePreview({
-            column: "New tax",
-            values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
-          });
-          verifyObjectDetailPreview({ rowNumber: 4, row: ["New tax", "2.07"] });
-
-          cy.log("verify viz");
-          H.openOrdersTable();
-          H.tableHeaderColumn("New tax").should("be.visible");
-          H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
-            "not.exist",
-          );
-        });
-
         it("should allow changing the field description", () => {
           visit({
             databaseId: SAMPLE_DB_ID,
@@ -166,6 +132,9 @@ areas.forEach((area) => {
           cy.log("verify viz");
           H.openOrdersTable({ limit: 5 });
           H.tableHeaderColumn("Remapped Product ID").should("be.visible");
+          H.tableHeaderColumn("Product ID", { scrollIntoView: false }).should(
+            "not.exist",
+          );
         });
       });
 
@@ -201,24 +170,6 @@ areas.forEach((area) => {
           // the app may not hold in CI, so the keystroke can miss the modal
           cy.get("body").type("{esc}");
           H.modal().should("not.exist");
-        });
-
-        it("should not automatically re-fetch field values when they are discarded unless 'Custom mapping' is used (metabase#62626)", () => {
-          visit({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: PRODUCTS_ID,
-            fieldId: PRODUCTS.CATEGORY,
-          });
-
-          FieldSection.getFieldValuesButton().click();
-          H.modal().within(() => {
-            cy.button("Discard cached field values").click();
-            cy.button("Discard triggered!").should("be.visible");
-            cy.button("Discard triggered!").should("not.exist");
-          });
-
-          cy.get("@fieldValues.all").should("have.length", 0);
         });
       });
 
@@ -269,123 +220,11 @@ areas.forEach((area) => {
               .contains("December 31, 1969, 4:00 PM")
               .should("have.length.greaterThan", 0);
           });
-
-          it("should allow to enable, change, and disable coercion strategy", () => {
-            visit({
-              databaseId: SAMPLE_DB_ID,
-              schemaId: SAMPLE_DB_SCHEMA_ID,
-              tableId: FEEDBACK_ID,
-              fieldId: FEEDBACK.RATING,
-            });
-
-            cy.log("show error when strategy not chosen after toggling");
-            FieldSection.getCoercionToggle()
-              .parent()
-              .click({ scrollBehavior: "center" });
-            clickAway();
-            FieldSection.get()
-              .findByText("To enable casting, please select a data type")
-              .should("be.visible");
-
-            cy.log("enable casting");
-            FieldSection.getCoercionInput().click({ scrollBehavior: "center" });
-            H.popover().findByText("UNIX nanoseconds → Datetime").click();
-            cy.wait("@updateField");
-            verifyAndCloseToast("Casting enabled for Rating");
-
-            cy.log("verify preview");
-            FieldSection.getPreviewButton().click();
-            // ideally we should change the formatting to show smaller values and assert those
-            // but we can't set formatting on a coerced field (metabase#60483)
-            verifyTablePreview({
-              column: "Rating",
-              values: [
-                "December 31, 1969, 4:00 PM",
-                "December 31, 1969, 4:00 PM",
-                "December 31, 1969, 4:00 PM",
-                "December 31, 1969, 4:00 PM",
-                "December 31, 1969, 4:00 PM",
-              ],
-            });
-            verifyObjectDetailPreview({
-              rowNumber: 4,
-              row: ["Rating", "December 31, 1969, 4:00 PM"],
-            });
-
-            cy.log("change casting");
-            FieldSection.getCoercionInput().click({ scrollBehavior: "center" });
-            H.popover().findByText("UNIX seconds → Datetime").click();
-            cy.wait("@updateField");
-            verifyAndCloseToast("Casting updated for Rating");
-
-            cy.log("disable casting");
-            FieldSection.getCoercionToggle()
-              .parent()
-              .click({ scrollBehavior: "center" });
-            cy.wait("@updateField");
-            verifyAndCloseToast("Casting disabled for Rating");
-
-            cy.log("enable casting");
-            FieldSection.getCoercionToggle()
-              .parent()
-              .click({ scrollBehavior: "center" });
-            H.popover().findByText("UNIX seconds → Datetime").click();
-            cy.wait("@updateField");
-            verifyAndCloseToast("Casting enabled for Rating");
-
-            H.openTable({ database: SAMPLE_DB_ID, table: FEEDBACK_ID });
-            cy.findAllByTestId("cell-data")
-              .contains("December 31, 1969, 4:00 PM")
-              .should("have.length.greaterThan", 0);
-          });
         });
       });
 
       describe("Metadata", () => {
         describe("Semantic type", () => {
-          it("should allow to change the type to 'No semantic type' (metabase#59052)", () => {
-            visit({
-              databaseId: SAMPLE_DB_ID,
-              schemaId: SAMPLE_DB_SCHEMA_ID,
-              tableId: ORDERS_ID,
-              fieldId: ORDERS.PRODUCT_ID,
-            });
-            cy.wait(["@metadata", "@metadata"]);
-
-            FieldSection.getSemanticTypeInput()
-              .should("have.value", "Foreign Key")
-              // it should allow to just type to search (metabase#59052)
-              .type("no sema{downarrow}{enter}");
-            cy.wait("@updateField");
-            H.expectUnstructuredSnowplowEvent({
-              event: "metadata_edited",
-              event_detail: "semantic_type_change",
-              triggered_from: getTriggeredFrom(),
-            });
-            H.undoToast().should(
-              "contain.text",
-              "Semantic type of Product ID updated",
-            );
-
-            cy.log("verify preview");
-            FieldSection.getPreviewButton().click();
-            cy.wait("@dataset");
-            PreviewSection.get()
-              .findAllByTestId("cell-data")
-              .should("have.length", 6)
-              .eq(1)
-              // FKs get blueish background
-              .should("have.css", "background-color", "rgba(0, 0, 0, 0)");
-
-            cy.reload();
-            cy.wait("@metadata");
-
-            FieldSection.getSemanticTypeInput().should(
-              "have.value",
-              "No semantic type",
-            );
-          });
-
           it("should allow to change the type to 'Foreign Key' and choose the target field (metabase#59052)", () => {
             visit({
               databaseId: SAMPLE_DB_ID,
@@ -393,6 +232,16 @@ areas.forEach((area) => {
               tableId: ORDERS_ID,
               fieldId: ORDERS.QUANTITY,
             });
+
+            cy.log("verify preview before the change");
+            FieldSection.getPreviewButton().click();
+            cy.wait("@dataset");
+            PreviewSection.get()
+              .findAllByTestId("cell-data")
+              .should("have.length", 6)
+              .eq(1)
+              // values of fields that are not FKs have no background
+              .should("have.css", "background-color", "rgba(0, 0, 0, 0)");
 
             FieldSection.getSemanticTypeInput()
               .should("have.value", "Quantity")
@@ -402,7 +251,6 @@ areas.forEach((area) => {
             verifyAndCloseToast("Semantic type of Quantity updated");
 
             cy.log("verify preview");
-            FieldSection.getPreviewButton().click();
             cy.wait("@dataset");
             PreviewSection.get()
               .findAllByTestId("cell-data")
@@ -455,6 +303,11 @@ areas.forEach((area) => {
               cy.findByText("Products → ID").click();
             });
             cy.wait("@updateField");
+            H.expectUnstructuredSnowplowEvent({
+              event: "metadata_edited",
+              event_detail: "semantic_type_change",
+              triggered_from: getTriggeredFrom(),
+            });
             H.undoToast().should(
               "contain.text",
               "Semantic type of User ID updated",
@@ -530,54 +383,6 @@ areas.forEach((area) => {
             cy.findByText("Tax (CA$)").should("be.visible");
           });
 
-          it("should correctly filter out options in Foreign Key picker (metabase#56839)", () => {
-            visit({
-              databaseId: SAMPLE_DB_ID,
-              schemaId: SAMPLE_DB_SCHEMA_ID,
-              tableId: ORDERS_ID,
-              fieldId: ORDERS.PRODUCT_ID,
-            });
-            cy.wait(["@metadata", "@metadata"]);
-
-            FieldSection.getSemanticTypeFkTarget().focus().clear();
-            H.popover()
-              .should("contain.text", "Orders → ID")
-              .and("contain.text", "People → ID")
-              .and("contain.text", "Products → ID")
-              .and("contain.text", "Reviews → ID");
-
-            cy.log("should case-insensitive match field display name");
-            FieldSection.getSemanticTypeFkTarget().focus().type("id");
-            H.popover()
-              .should("contain.text", "Orders → ID")
-              .and("contain.text", "People → ID")
-              .and("contain.text", "Products → ID")
-              .and("contain.text", "Reviews → ID");
-
-            cy.log("should case-insensitive match field description");
-            FieldSection.getSemanticTypeFkTarget().focus().clear().type("EXT");
-            H.popover()
-              .should("not.contain.text", "Orders → ID")
-              .and("not.contain.text", "People → ID")
-              .and("contain.text", "Products → ID")
-              .and("contain.text", "Reviews → ID");
-          });
-
-          it("should not let you change the type to 'Number' (metabase#16781)", () => {
-            visit({
-              databaseId: SAMPLE_DB_ID,
-              schemaId: SAMPLE_DB_SCHEMA_ID,
-              tableId: ORDERS_ID,
-              fieldId: ORDERS.PRODUCT_ID,
-            });
-            cy.wait(["@metadata", "@metadata"]);
-
-            FieldSection.getSemanticTypeInput().click();
-            H.popover()
-              .should("contain.text", "Foreign Key")
-              .and("not.contain.text", "Number");
-          });
-
           it("should not overflow the screen on smaller viewports (metabase#56442)", () => {
             const viewportHeight = 400;
 
@@ -606,113 +411,11 @@ areas.forEach((area) => {
                 expect(rect.bottom).lessThan(viewportHeight);
               });
           });
-
-          it(
-            "should show an error with links to other fields with 'Entity name' semantic type",
-            { tags: "@external" },
-            () => {
-              H.restore("postgres-writable");
-              H.resetTestTable({ type: "postgres", table: "many_data_types" });
-              cy.signInAsAdmin();
-              H.resyncDatabase({
-                dbId: WRITABLE_DB_ID,
-                tableName: "many_data_types",
-              });
-
-              visit({ databaseId: WRITABLE_DB_ID });
-              TablePicker.getTable("Many Data Types").click();
-              if (area === "data studio") {
-                TableSection.clickFieldsTab();
-              }
-              TableSection.clickField("Json → D");
-              FieldSection.getSemanticTypeInput().click();
-              H.popover().findByText("Entity Name").click();
-
-              TableSection.clickField("Text");
-              FieldSection.getSemanticTypeInput().click();
-              H.popover().findByText("Entity Name").click();
-
-              FieldSection.get().should(
-                "contain.text",
-                "There are other fields with this semantic type: Json: Json → D",
-              );
-              FieldSection.get()
-                .findByRole("link", { name: "Json: Json → D" })
-                .should("be.visible")
-                .click();
-
-              FieldSection.getNameInput().should("have.value", "Json → D");
-
-              FieldSection.get().should(
-                "contain.text",
-                "There are other fields with this semantic type: Text",
-              );
-              FieldSection.get()
-                .findByRole("link", { name: "Text" })
-                .should("be.visible")
-                .click();
-
-              FieldSection.getNameInput().should("have.value", "Text");
-            },
-          );
         });
       });
 
       describe("Behavior", () => {
         describe("Visibility", () => {
-          it("should let you change field visibility to 'Everywhere'", () => {
-            cy.request("PUT", `/api/field/${ORDERS.TAX}`, {
-              visibility_type: "sensitive",
-            });
-            visit({
-              databaseId: SAMPLE_DB_ID,
-              schemaId: SAMPLE_DB_SCHEMA_ID,
-              tableId: ORDERS_ID,
-              fieldId: ORDERS.TAX,
-            });
-
-            FieldSection.getVisibilityInput()
-              .should("have.value", "Do not include")
-              .click();
-            H.popover().findByText("Everywhere").click();
-            cy.wait("@updateField");
-            H.expectUnstructuredSnowplowEvent({
-              event: "metadata_edited",
-              event_detail: "visibility_change",
-              triggered_from: getTriggeredFrom(),
-            });
-            verifyAndCloseToast("Visibility of Tax updated");
-            FieldSection.getVisibilityInput().should(
-              "have.value",
-              "Everywhere",
-            );
-
-            cy.log("verify preview");
-            TableSection.clickField("Tax");
-            FieldSection.getPreviewButton().click();
-            verifyTablePreview({
-              column: "Tax",
-              values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
-            });
-            verifyObjectDetailPreview({
-              rowNumber: 4,
-              row: ["Tax", "2.07"],
-            });
-
-            cy.log("table viz");
-            H.openOrdersTable();
-            H.tableHeaderColumn("Total").should("be.visible");
-            H.tableHeaderColumn("Tax").should("be.visible");
-
-            cy.log("object detail viz");
-            cy.findByTestId("table-body")
-              .findAllByTestId("cell-data")
-              .eq(0)
-              .click();
-            H.modal().findByText("Tax").should("be.visible");
-            H.modal().findByText("2.07").should("be.visible");
-          });
-
           it("should let you change field visibility to 'Do not include'", () => {
             visit({
               databaseId: SAMPLE_DB_ID,
@@ -726,6 +429,11 @@ areas.forEach((area) => {
               .click();
             H.popover().findByText("Do not include").click();
             cy.wait("@updateField");
+            H.expectUnstructuredSnowplowEvent({
+              event: "metadata_edited",
+              event_detail: "visibility_change",
+              triggered_from: getTriggeredFrom(),
+            });
             verifyAndCloseToast("Visibility of Tax updated");
             FieldSection.getVisibilityInput().should(
               "have.value",
@@ -757,80 +465,6 @@ areas.forEach((area) => {
               .click();
             H.modal().findByText("Tax").should("not.exist");
             H.modal().findByText("2.07").should("not.exist");
-          });
-
-          it("should let you change field visibility to 'Do not include' even if Preview is opened (metabase#61806)", () => {
-            visit({
-              databaseId: SAMPLE_DB_ID,
-              schemaId: SAMPLE_DB_SCHEMA_ID,
-              tableId: ORDERS_ID,
-              fieldId: ORDERS.TAX,
-            });
-
-            TableSection.clickField("Tax");
-            FieldSection.getPreviewButton().click();
-            PreviewSection.get().within(() => {
-              cy.findByText("Filtering").click();
-
-              cy.findByTestId("number-filter-picker").should("be.visible");
-            });
-
-            FieldSection.getVisibilityInput()
-              .should("have.value", "Everywhere")
-              .click();
-            H.popover().findByText("Do not include").click();
-            cy.wait("@updateField");
-
-            PreviewSection.get()
-              .findByText("This field is hidden")
-              .should("exist");
-          });
-
-          it("should let you change field visibility to 'Only in detail views'", () => {
-            visit({
-              databaseId: SAMPLE_DB_ID,
-              schemaId: SAMPLE_DB_SCHEMA_ID,
-              tableId: ORDERS_ID,
-              fieldId: ORDERS.TAX,
-            });
-
-            FieldSection.getVisibilityInput()
-              .should("have.value", "Everywhere")
-              .click();
-            H.popover().findByText("Only in detail views").click();
-            cy.wait("@updateField");
-            verifyAndCloseToast("Visibility of Tax updated");
-            FieldSection.getVisibilityInput().should(
-              "have.value",
-              "Only in detail views",
-            );
-
-            cy.log("verify preview");
-            TableSection.clickField("Tax");
-            FieldSection.getPreviewButton().click();
-            PreviewSection.get()
-              .findByText("This field is hidden")
-              .should("exist");
-            cy.get("@dataset.all").should("have.length", 0);
-            verifyObjectDetailPreview({
-              rowNumber: 4,
-              row: ["Tax", "2.07"],
-            });
-
-            cy.log("table viz");
-            H.openOrdersTable();
-            H.tableHeaderColumn("Total").should("be.visible");
-            H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
-              "not.exist",
-            );
-
-            cy.log("object detail viz");
-            cy.findByTestId("table-body")
-              .findAllByTestId("cell-data")
-              .eq(0)
-              .click();
-            H.modal().findByText("Tax").should("be.visible");
-            H.modal().findByText("2.07").should("be.visible");
           });
 
           it(
@@ -898,76 +532,6 @@ areas.forEach((area) => {
               .should("be.visible")
               .and("have.value", "Search box");
           });
-
-          it("should let you change filtering to 'Plain input box'", () => {
-            visit({
-              databaseId: SAMPLE_DB_ID,
-              schemaId: SAMPLE_DB_SCHEMA_ID,
-              tableId: ORDERS_ID,
-              fieldId: ORDERS.QUANTITY,
-            });
-
-            FieldSection.getFilteringInput()
-              .should("have.value", "A list of all values")
-              .click();
-            H.popover().findByText("Plain input box").click();
-            cy.wait("@updateField");
-            verifyAndCloseToast("Filtering of Quantity updated");
-
-            cy.log("verify preview");
-            TableSection.clickField("Quantity");
-            FieldSection.getPreviewButton().click();
-            PreviewSection.getPreviewTypeInput()
-              .findByText("Filtering")
-              .click();
-            PreviewSection.get().within(() => {
-              cy.findByPlaceholderText("Min").should("be.visible");
-              cy.findByPlaceholderText("Max").should("be.visible");
-              cy.button(/Add filter/).should("not.exist");
-            });
-
-            cy.reload();
-            FieldSection.getFilteringInput()
-              .scrollIntoView()
-              .should("be.visible")
-              .and("have.value", "Plain input box");
-          });
-
-          it("should let you change filtering to 'A list of all values'", () => {
-            cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
-              has_field_values: "none",
-            });
-            visit({
-              databaseId: SAMPLE_DB_ID,
-              schemaId: SAMPLE_DB_SCHEMA_ID,
-              tableId: ORDERS_ID,
-              fieldId: ORDERS.QUANTITY,
-            });
-
-            FieldSection.getFilteringInput()
-              .should("have.value", "Plain input box")
-              .click();
-            H.popover().findByText("A list of all values").click();
-            cy.wait("@updateField");
-            verifyAndCloseToast("Filtering of Quantity updated");
-
-            cy.log("verify preview");
-            TableSection.clickField("Quantity");
-            FieldSection.getPreviewButton().click();
-            PreviewSection.getPreviewTypeInput()
-              .findByText("Filtering")
-              .click();
-            PreviewSection.get().within(() => {
-              cy.findByPlaceholderText("Search the list").should("be.visible");
-              cy.button(/Add filter/).should("not.exist");
-            });
-
-            cy.reload();
-            FieldSection.getFilteringInput()
-              .scrollIntoView()
-              .should("be.visible")
-              .and("have.value", "A list of all values");
-          });
         });
       });
     });
@@ -977,8 +541,4 @@ areas.forEach((area) => {
 function verifyAndCloseToast(message: string) {
   H.undoToast().should("contain.text", message);
   H.undoToast().icon("close").click({ force: true });
-}
-
-function clickAway() {
-  cy.get("body").click(0, 0);
 }

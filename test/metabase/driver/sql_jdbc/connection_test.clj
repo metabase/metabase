@@ -49,8 +49,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :once ssh-test/do-with-mock-servers)
+(use-fixtures :once (fixtures/initialize :db) ssh-test/do-with-mock-servers)
 
 (defn- cached-hash
   "The details hash recorded for the open pool under `cache-key`."
