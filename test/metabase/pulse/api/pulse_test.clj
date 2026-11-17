@@ -1940,3 +1940,26 @@
                      (pulse.api/update-pulse-with-perm-checks! pulse-id (select-keys read-back [:channels]))
                      (is (= #{same-id other-id internal-id} (recipient-ids))
                          "hidden recipients must survive; if they are gone the read filter silently deleted them"))))))))))))
+
+(deftest send-test-pulse-unfinished-schedule-test
+  (testing "POST /api/pulse/test sends for a channel whose schedule is not filled in yet (#17657)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Dashboard  {dashboard-id :id} {:name "Daily Sad Toucans"}
+                     :model/Card       card {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+        (api.card-test/with-cards-in-readable-collection! [card]
+          (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
+                                   (mt/user-http-request :rasta :post 200 "pulse/test"
+                                                         {:name         "Test pulse"
+                                                          :dashboard_id dashboard-id
+                                                          :cards        [{:id                (:id card)
+                                                                          :include_csv       false
+                                                                          :include_xls       false
+                                                                          :dashboard_card_id nil}]
+                                                          :channels     [(assoc daily-email-channel
+                                                                                :schedule_type "weekly"
+                                                                                :schedule_hour nil
+                                                                                :schedule_day  "mon"
+                                                                                :recipients    [(mt/fetch-user :rasta)])]}))]
+            (is (= 1 (count (:channel/email channel-messages))))))))))

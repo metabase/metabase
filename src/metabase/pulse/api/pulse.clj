@@ -150,9 +150,9 @@
    [:channel_id      {:optional true} [:maybe :string]]
    [:emails          {:optional true} [:maybe [:sequential ms/Email]]]])
 
-(def ^:private PulseChannel
-  "The fields [[metabase.pulse.models.pulse-channel/create-pulse-channel!]] reads off a channel."
-  [:map {:closed true :decode/normalize {:leave pulse.schema/check-schedule}}
+(def ^:private TestPulseChannel
+  "The fields a test send reads off a channel, whose schedule it never runs on."
+  [:map {:closed true}
    [:id             {:optional true}   [:maybe ms/PositiveInt]]
    [:channel_type                      ::pulse.schema/pulse-channel.channel-type]
    [:enabled        {:optional true}   [:maybe :boolean]]
@@ -164,6 +164,11 @@
    [:schedule_day   {:optional true}   [:maybe ::pulse.schema/pulse-channel.schedule-day]]
    [:schedule_hour  {:optional true}   [:maybe ::pulse.schema/pulse-channel.schedule-hour]]
    [:schedule_frame {:optional true}   [:maybe ::pulse.schema/pulse-channel.schedule-frame]]])
+
+(def ^:private PulseChannel
+  "The fields [[metabase.pulse.models.pulse-channel/create-pulse-channel!]] reads off a channel."
+  (into [:map {:closed true :decode/normalize {:leave pulse.schema/check-schedule}}]
+        (drop 2 TestPulseChannel)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -383,7 +388,7 @@
                                          [:id                  {:optional true} [:maybe ms/PositiveInt]]
                                          [:name                ms/NonBlankString]
                                          [:cards               [:+ models.pulse/CoercibleToCardRef]]
-                                         [:channels            [:+ PulseChannel]]
+                                         [:channels            [:+ TestPulseChannel]]
                                          [:skip_if_empty       {:default false} [:maybe :boolean]]
                                          [:disable_links       {:default false} [:maybe :boolean]]
                                          [:collection_id       {:optional true} [:maybe ms/PositiveInt]]

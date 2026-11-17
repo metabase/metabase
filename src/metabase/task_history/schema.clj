@@ -175,7 +175,7 @@
    [:trunc        {:optional true} ::task-history.log.trunc]])
 
 (mr/def ::task-history.status
-  [:enum {:decode/normalize keyword} :started :success :failed :unknown])
+  [:enum {:decode/normalize keyword} :started :unknown :success :failed])
 
 (mr/def ::task-run.status
   [:enum {:decode/normalize keyword} :started :success :failed :abandoned])
