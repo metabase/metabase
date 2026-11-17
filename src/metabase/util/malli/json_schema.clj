@@ -49,8 +49,13 @@
 
 (def ^:private neighbor-keys
   "JSON Schema keywords whose meaning depends on other keywords of the same schema, mapped to those keywords."
-  {:additionalItems       #{:items :prefixItems}
+  {;; a reference resolves against the `$id` of the schema it sits in
+   :$dynamicRef           #{:$id}
+   :$ref                  #{:$id}
+   :additionalItems       #{:items :prefixItems}
    :additionalProperties  #{:patternProperties :properties}
+   ;; OpenAPI's `discriminator` maps values to the branches beside it
+   :discriminator         #{:allOf :anyOf :oneOf}
    :else                  #{:if}
    :items                 #{:prefixItems}
    :maxContains           #{:contains}
@@ -70,7 +75,7 @@
                   (mp/some #(contains? b %) (neighbor-keys k))))
            a))
 
-(defn merges-cleanly?
+(defn- merges-cleanly?
   "Whether merging the JSON Schema `branch` into the JSON Schema `node` accepts what both accepted together.
   False when the branch has a constraining key the node also has, with a different value, or when a keyword on one side
   depends on a keyword on the other."
@@ -87,21 +92,34 @@
 (defn merge-one-branch
   "The JSON Schema `schema` with the one branch under its branching keyword `k` merged into it, keeping whether either
   was declared.
-  Returns nil when `k` holds more or fewer than one branch, or when the branch does not [[merges-cleanly?]]."
+  Returns nil when `k` holds more or fewer than one branch, when a keyword beside `k` reads it, or when the branch
+  does not [[merges-cleanly?]]."
   [schema k]
   (let [[branch & more] (k schema)
         siblings        (dissoc schema k)]
-    (when (and branch (not more) (merges-cleanly? siblings branch))
+    ;; a keyword that reads the branching keyword itself, such as a `discriminator` beside an `anyOf`, would lose it
+    (when (and branch
+               (not more)
+               (not (reads-neighbor? siblings (select-keys schema [k])))
+               (merges-cleanly? siblings branch))
       (with-meta (merge siblings branch)
                  (merge (meta schema) (select-keys (meta branch) [::declared]))))))
 
+(defn- lift-annotations
+  "The JSON Schema `schema` with the annotations of its `k` branches that constrain nothing merged in, its own winning."
+  [schema k]
+  ;; a conjunct such as `{deprecated: true}` constrains nothing, but its annotation still describes the node
+  (with-meta (merge (apply merge {} (filter empty-schema? (k schema))) schema)
+             (meta schema)))
+
 (defn- collapse-branches
-  "Drop the conjuncts that accept anything and the alternatives that accept nothing, and unwrap a branching node that
-  has one branch left, if it [[merges-cleanly?]] (see [[merge-one-branch]])."
+  "Drop the conjuncts that accept anything, keeping their annotations on the node, and the alternatives that accept
+  nothing, and unwrap a branching node that has one branch left, if it [[merges-cleanly?]] (see [[merge-one-branch]])."
   [schema k]
   (let [schema (cond-> schema
                  (= k :allOf)
-                 (update k (partial remove empty-schema?))
+                 (-> (lift-annotations k)
+                     (update k (partial remove empty-schema?)))
 
                  (and (= k :anyOf) (mp/some (complement never-schema?) (k schema)))
                  (update k (partial remove never-schema?)))]

@@ -39,6 +39,51 @@
 (def ^:private file-schema
   (dissoc (mu.json-schema/transform ms/File {:definitions-path "#/components/schemas/"}) :definitions))
 
+(declare fix-json-schema)
+
+(defn- finish-json-schema
+  "Clean up the JSON schema `schema`, whose nested branches [[fix-json-schema]] has already fixed: merge or keep its
+  `allOf`, recognise a file input, and fix its properties and items."
+  [schema]
+  (cond
+    ;; this happens when we use `[:and ... [:fn ...]]`, the `:fn` schema gets converted into an empty object
+    (:allOf schema)
+    (let [schema (update schema :allOf (partial remove (partial = {})))]
+      (if-let [merged (mu.json-schema/merge-one-branch schema :allOf)]
+        (finish-json-schema merged)
+        ;; the rest of the schema still needs its clean-up, such as which properties are required
+        (cond-> (finish-json-schema (dissoc schema :allOf))
+          (seq (:allOf schema)) (assoc :allOf (vec (:allOf schema))))))
+
+    (= (select-keys schema (keys file-schema)) file-schema)
+    ;; I got this from StackOverflow and docs are not in agreement, but RapiDoc
+    ;; shows file input, so... :)
+    (merge {:type :string, :format :binary}
+           (select-keys schema [:description :default]))
+
+    (:properties schema)
+    (merge-required
+     (update schema :properties (fn [properties]
+                                  (into (sorted-map)
+                                        (map (fn [[k v]]
+                                               [(u/qualified-name k) (fix-json-schema v)]))
+                                        properties))))
+
+    (and (= (:type schema) :array) (:items schema))
+    (update schema :items (fn [items]
+                            ;; apparently `:tuple` creates multiple `:items` entries... I don't think this is
+                            ;; correct. I think we're supposed to use `:prefixItems` instead. See
+                            ;; https://stackoverflow.com/questions/57464633/how-to-define-a-json-array-with-concrete-item-definition-for-every-index-i-e-a
+                            (if (sequential? items)
+                              (mapv fix-json-schema items)
+                              (fix-json-schema items))))
+
+    (and (= (:type schema) :array) (false? (:items schema)))
+    (dissoc schema :items)
+
+    :else
+    schema))
+
 (mu/defn- fix-json-schema :- :metabase.api.open-api/parameter.schema
   "Clean-up JSON schema to make it more understandable for OpenAPI tools.
 
@@ -50,56 +95,19 @@
   (try
     ;; Helper to recursively fix nested schemas and strip :optional (which is only
     ;; meaningful at the top level for parameter detection, not inside oneOf/anyOf/allOf)
-    (let [fix-nested #(dissoc (fix-json-schema %) :optional)
-          schema (-> schema
-                     (m/update-existing :description str)
-                     (m/update-existing :type keyword)
-                     (m/update-existing :definitions #(update-vals % fix-nested))
-                     (m/update-existing :oneOf #(mapv fix-nested %))
-                     (m/update-existing :anyOf #(mapv fix-nested %))
-                     (m/update-existing :allOf #(mapv fix-nested %))
-                     (m/update-existing :not fix-nested)
-                     (m/update-existing :additionalProperties (fn [additional-properties]
-                                                                (cond-> additional-properties
-                                                                  (map? additional-properties) fix-nested))))]
-      (cond
-        ;; this happens when we use `[:and ... [:fn ...]]`, the `:fn` schema gets converted into an empty object
-        (:allOf schema)
-        (let [schema (update schema :allOf (partial remove (partial = {})))]
-          (if-let [merged (mu.json-schema/merge-one-branch schema :allOf)]
-            (fix-json-schema merged)
-            ;; the rest of the schema still needs its clean-up, such as which properties are required
-            (cond-> (fix-json-schema (dissoc schema :allOf))
-              (seq (:allOf schema)) (assoc :allOf (vec (:allOf schema))))))
-
-        (= (select-keys schema (keys file-schema)) file-schema)
-        ;; I got this from StackOverflow and docs are not in agreement, but RapiDoc
-        ;; shows file input, so... :)
-        (merge {:type :string, :format :binary}
-               (select-keys schema [:description :default]))
-
-        (:properties schema)
-        (merge-required
-         (update schema :properties (fn [properties]
-                                      (into (sorted-map)
-                                            (map (fn [[k v]]
-                                                   [(u/qualified-name k) (fix-json-schema v)]))
-                                            properties))))
-
-        (and (= (:type schema) :array) (:items schema))
-        (update schema :items (fn [items]
-                                ;; apparently `:tuple` creates multiple `:items` entries... I don't think this is
-                                ;; correct. I think we're supposed to use `:prefixItems` instead. See
-                                ;; https://stackoverflow.com/questions/57464633/how-to-define-a-json-array-with-concrete-item-definition-for-every-index-i-e-a
-                                (if (sequential? items)
-                                  (mapv fix-json-schema items)
-                                  (fix-json-schema items))))
-
-        (and (= (:type schema) :array) (false? (:items schema)))
-        (dissoc schema :items)
-
-        :else
-        schema))
+    (let [fix-nested #(dissoc (fix-json-schema %) :optional)]
+      (-> schema
+          (m/update-existing :description str)
+          (m/update-existing :type keyword)
+          (m/update-existing :definitions #(update-vals % fix-nested))
+          (m/update-existing :oneOf #(mapv fix-nested %))
+          (m/update-existing :anyOf #(mapv fix-nested %))
+          (m/update-existing :allOf #(mapv fix-nested %))
+          (m/update-existing :not fix-nested)
+          (m/update-existing :additionalProperties (fn [additional-properties]
+                                                     (cond-> additional-properties
+                                                       (map? additional-properties) fix-nested)))
+          finish-json-schema))
     (catch Throwable e
       (throw (ex-info (format "Error fixing schema: %s" (ex-message e))
                       {:schema schema}

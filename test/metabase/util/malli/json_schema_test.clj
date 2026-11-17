@@ -82,7 +82,18 @@
   (testing "one branch left whose neighbor-reading keyword accepts anything merges, as nothing it reads changes"
     (is (= {:properties {"a" {}}, :additionalProperties {}}
            (mu.json-schema/transform
-            [:any {:json-schema {:properties {:a {}}, :allOf [{:additionalProperties {}}]}}])))))
+            [:any {:json-schema {:properties {:a {}}, :allOf [{:additionalProperties {}}]}}]))))
+  (testing "one branch left beside an `$id` or a `discriminator` stays, as both read what sits next to them"
+    ;; the `$id` would change what the node's relative `$ref` resolves to
+    (is (= {:$ref "kind", :allOf [{:$id "nested/base", :type "string"}]}
+           (mu.json-schema/transform
+            [:any {:json-schema {:$ref "kind", :allOf [{:$id "nested/base", :type "string"}]}}])))
+    (is (= {:discriminator {:propertyName "op"}, :anyOf [{:type "object"}]}
+           (mu.json-schema/transform
+            [:any {:json-schema {:discriminator {:propertyName "op"}, :anyOf [{:type "object"}]}}]))))
+  (testing "a conjunct that constrains nothing goes, but its annotation stays on the node"
+    (is (= {:type "integer", :deprecated true}
+           (mu.json-schema/transform [:and :int [:any {:json-schema {:deprecated true}}]])))))
 
 (deftest ^:parallel tuple-test
   (testing "every tuple item is required"
