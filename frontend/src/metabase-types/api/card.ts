@@ -379,6 +379,34 @@ export type VisualizationSettings = {
    */
   "table.row_index"?: boolean;
 
+  /** Whether a table shades every other row. Defaults to `false`. */
+  "table.striped"?: boolean;
+
+  /**
+   * Whether a table shows its rows in pages of as many as fit its height, with
+   * "Rows 1-N of M" and page buttons, instead of one scrolling list. Defaults to
+   * `false`.
+   */
+  "table.pagination"?: boolean;
+
+  /**
+   * Whether the first `table.freeze_columns_count` columns stay in place while
+   * the table scrolls sideways. A pivoted table ignores it. Defaults to `false`.
+   */
+  "table.freeze_columns"?: boolean;
+
+  /** How many columns `table.freeze_columns` keeps in place: at least 1, the default. */
+  "table.freeze_columns_count"?: number;
+
+  /**
+   * Whether the first `table.freeze_rows_count` rows stay at the top while the
+   * table scrolls down. A pivoted table ignores it. Defaults to `false`.
+   */
+  "table.freeze_rows"?: boolean;
+
+  /** How many rows `table.freeze_rows` keeps at the top: at least 1, the default. */
+  "table.freeze_rows_count"?: number;
+
   /**
    * Per-column titles, number or currency formatting, and click behavior.
    * Keys can be modern (`getColumnKey`) or legacy (`getLegacyColumnKey`).

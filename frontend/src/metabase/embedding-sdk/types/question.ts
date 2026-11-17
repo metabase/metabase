@@ -93,7 +93,8 @@ export type WaterfallVisualizationSettings = Pick<
 /**
  * Settings for table, pivot, object detail, and list displays. Use these for
  * visible column order, conditional formatting, pivot state, a row-index
- * column, and per-column titles or number/currency formatting.
+ * column, striped rows, pagination, frozen columns or rows, and per-column
+ * titles or number/currency formatting.
  */
 export type TableVisualizationSettings = Pick<
   VisualizationSettings,
@@ -104,6 +105,12 @@ export type TableVisualizationSettings = Pick<
   | "column_settings"
   | "table.pivot"
   | "table.row_index"
+  | "table.striped"
+  | "table.pagination"
+  | "table.freeze_columns"
+  | "table.freeze_columns_count"
+  | "table.freeze_rows"
+  | "table.freeze_rows_count"
 >;
 
 /**
