@@ -131,6 +131,11 @@
     ;; tenant-specific-root-collection collections cannot be updated
     (api/check-400
      (not= (:type collection-before-update) collection/tenant-specific-root-collection-type))
+    ;; A transforms folder is deleted, never archived: an archived folder hides transforms that keep running. Check
+    ;; before any write, so a refused request changes nothing.
+    (api/check-400 (not (and (:archived collection-updates)
+                             (= (:namespace collection-before-update) collection/transforms-ns)))
+                   (tru "A transforms folder cannot be archived. Delete it instead."))
     ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword (:authority_level collection-updates))

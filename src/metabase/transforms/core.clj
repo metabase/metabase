@@ -47,7 +47,8 @@
   create-transform!
   publish-update-event!
   update-transform!
-  delete-transform!]
+  delete-transform!
+  delete-transforms-folder!]
  [metabase.transforms.canceling
   cancel-run!]
  [metabase.transforms.execute
