@@ -774,12 +774,6 @@
    [[curation/usable-metric-ids]]). Only metrics the current user can read are judged, so the listing reveals nothing
    about the curation of one they cannot. Reads the batch in a number of queries that does not grow with its size."
   [metrics]
-<<<<<<< HEAD
-  (let [readable-ids (into #{} (map :id) (mi/readable (metabot.db/cards-with-ids (into [] (keep :id) metrics))))
-        readable     (filterv #(contains? readable-ids (:id %)) metrics)
-        usable   (curation/usable-metric-ids (map :id readable))]
-    (filterv (fn [{:keys [id]}] (contains? usable id)) readable)))
-=======
   (let [ids      (into [] (comp (keep :id) (distinct)) metrics)
         readable (if (seq ids)
                    (into #{}
@@ -788,7 +782,6 @@
                    #{})
         usable   (curation/usable-metric-ids readable)]
     (filterv (fn [{:keys [id]}] (contains? usable id)) metrics)))
->>>>>>> origin/master
 
 (defn- curated-only-details
   "Under [[shared/curated-only?]], trim a table's or card's details `result` to what this Metabot may use: the
