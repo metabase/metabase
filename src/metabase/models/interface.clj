@@ -618,7 +618,8 @@
 (defmacro define-update-in-transaction
   "Runs every UPDATE of `model`, with its before-update hooks, in one transaction, which Toucan otherwise opens only
   after them, so a hook that writes other rows commits or rolls back with the UPDATE, and then calls
-  [[after-archived-change]] for the rows whose `:archived` it changed."
+  [[after-archived-change]] for the rows whose `:archived` it changed, marking the dependents of everything that
+  cascade writes once."
   [model]
   `(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* ~model :default]
      [rf# query-type# model# parsed-args# resolved-query#]
@@ -627,9 +628,11 @@
              rows#    (when (and (contains? changes# :archived)
                                  (contains? (methods after-archived-change) model#))
                         (rows-changing-archived model# parsed-args# resolved-query# changes#))]
-         (u/prog1 (~'next-method rf# query-type# model# parsed-args# resolved-query#)
-           (when (seq rows#)
-             (after-archived-change model# rows# changes#)))))))
+         (if (seq rows#)
+           (dependencies.hooks/with-batched-marks
+             (u/prog1 (~'next-method rf# query-type# model# parsed-args# resolved-query#)
+               (after-archived-change model# rows# changes#)))
+           (~'next-method rf# query-type# model# parsed-args# resolved-query#))))))
 
 (defn archived-directly
   "The `archived_directly` of `row`, an update that changes `:archived`: the one the write gives, else true when `row` is
