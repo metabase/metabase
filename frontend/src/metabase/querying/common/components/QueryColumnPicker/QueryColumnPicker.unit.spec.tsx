@@ -1,13 +1,31 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadata } from "__support__/metadata";
 import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
   SAMPLE_PROVIDER,
   columnFinder,
+  createMetadataProvider,
 } from "metabase-lib/test-helpers";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+import type { Field } from "metabase-types/api";
+import {
+  createMockFingerprint,
+  createMockNumberFieldFingerprint,
+} from "metabase-types/api/mocks";
+import {
+  ORDERS_ID,
+  REVIEWS_ID,
+  createReviewsBodyField,
+  createReviewsCreatedAtField,
+  createReviewsIdField,
+  createReviewsProductIdField,
+  createReviewsRatingField,
+  createReviewsReviewerField,
+  createReviewsTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import type { QueryColumnPickerProps } from "./QueryColumnPicker";
 import { QueryColumnPicker } from "./QueryColumnPicker";
@@ -74,6 +92,58 @@ function setup({
   );
 
   return { sampleColumn, sampleColumnInfo, onSelect, onClose };
+}
+
+// Mirrors a synced REVIEWS.ID: unlike the stock mock, it has a numeric
+// fingerprint with min/max, so only its semantic type decides binning.
+function createReviewsQuery(idSemanticType: Field["semantic_type"]) {
+  const database = createSampleDatabase({
+    tables: [
+      createReviewsTable({
+        fields: [
+          createReviewsIdField({
+            effective_type: "type/BigInteger",
+            semantic_type: idSemanticType,
+            fingerprint: createMockFingerprint({
+              type: {
+                "type/Number": createMockNumberFieldFingerprint({
+                  min: 1,
+                  max: 1112,
+                }),
+              },
+            }),
+          }),
+          createReviewsProductIdField(),
+          createReviewsReviewerField(),
+          createReviewsRatingField(),
+          createReviewsBodyField(),
+          createReviewsCreatedAtField(),
+        ],
+      }),
+    ],
+  });
+  const provider = createMetadataProvider({
+    metadata: createMockMetadata({ databases: [database] }),
+  });
+  return Lib.createTestQuery(provider, {
+    stages: [{ source: { type: "table", id: REVIEWS_ID } }],
+  });
+}
+
+function setupReviews(idSemanticType: Field["semantic_type"]) {
+  const query = createReviewsQuery(idSemanticType);
+  renderWithProviders(
+    <QueryColumnPicker
+      query={query}
+      stageIndex={0}
+      columnGroups={Lib.groupColumns(Lib.breakoutableColumns(query, 0))}
+      hasBinning
+      hasTemporalBucketing
+      checkIsColumnSelected={() => false}
+      onSelect={jest.fn()}
+      onClose={jest.fn()}
+    />,
+  );
 }
 
 describe("QueryColumnPicker", () => {
@@ -158,6 +228,30 @@ describe("QueryColumnPicker", () => {
       expect(
         within(id).queryByLabelText("Temporal bucket"),
       ).not.toBeInTheDocument();
+    });
+
+    it("shouldn't show a binning picker for a PK column with a numeric fingerprint (metabase#17768)", () => {
+      setupReviews("type/PK");
+
+      const id = screen.getByRole("option", { name: "ID" });
+      expect(
+        within(id).queryByLabelText("Binning strategy"),
+      ).not.toBeInTheDocument();
+      expect(within(id).queryByText("Auto bin")).not.toBeInTheDocument();
+
+      const rating = screen.getByRole("option", { name: "Rating" });
+      expect(
+        within(rating).getByLabelText("Binning strategy"),
+      ).toHaveTextContent("Auto bin");
+    });
+
+    it("should show a binning picker for the same column when it is not a PK", () => {
+      setupReviews("type/Category");
+
+      const id = screen.getByRole("option", { name: "ID" });
+      expect(within(id).getByLabelText("Binning strategy")).toHaveTextContent(
+        "Auto bin",
+      );
     });
 
     it("shouldn't show bucketing options if bucketing is disabled", () => {
