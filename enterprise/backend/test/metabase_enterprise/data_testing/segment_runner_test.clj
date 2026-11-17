@@ -8,6 +8,7 @@
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.api.common :as api]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -101,10 +102,15 @@
                                    (let [result (thunk)] (swap! trace conj [tag :ok]) result)
                                    (catch Throwable e (swap! trace conj [tag :failed (ex-message e)]) (throw e))))
                        probe!  (fn [driver conn]
+                                 ;; Without a row cap twice, then with one, then without: tells a transaction aborted
+                                 ;; by the second statement after a borrow from one aborted by a row cap.
                                  (when (compare-and-set! first? true false)
-                                   (try (record! :select-1-before-first-statement
-                                                 #(query! driver conn ["SELECT 1 AS x" []] 1))
-                                        (catch Throwable _))))]
+                                   (doseq [[tag sql cap] [[:select-1-no-cap "SELECT 1 AS x" nil]
+                                                          [:select-2-no-cap "SELECT 2 AS x" nil]
+                                                          [:select-3-cap-1  "SELECT 3 AS x" 1]
+                                                          [:select-4-no-cap "SELECT 4 AS x" nil]]]
+                                     (try (record! tag #(driver/query-on-connection driver conn [sql []] {:max-rows cap}))
+                                          (catch Throwable _)))))]
                    (mt/with-dynamic-fn-redefs [data-testing.executor/create-temp-table!
                                                (fn [driver conn table query]
                                                  (probe! driver conn)
