@@ -17,6 +17,7 @@ export const ExperienceCard = () => {
     isSsoEnabledAndConfigured,
     experience,
     settings,
+    initialState,
   } = useSdkIframeEmbedSetupContext();
 
   const isGuestEmbed = !!settings.isGuest;
@@ -32,46 +33,59 @@ export const ExperienceCard = () => {
     isDataAppsAvailable,
   });
 
+  // The wizard opened from a data app in Data Studio embeds only that app,
+  // so we do not let the user switch to other embed experiences.
+  const showExperienceSelector = initialState?.resourceType !== "data-app";
+
   const showSsoNotConfiguredWarning =
     !isSsoEnabledAndConfigured && !hasAuthToSelect(experience);
+
+  if (!showExperienceSelector && !showSsoNotConfiguredWarning) {
+    return null;
+  }
 
   return (
     <Card p="lg">
       <Stack gap="lg">
-        <Text size="lg" fw="bold">
-          {t`Select your embed experience`}
-        </Text>
+        {showExperienceSelector && (
+          <>
+            <Text size="lg" fw="bold">
+              {t`Select your embed experience`}
+            </Text>
 
-        <Radio.Group
-          value={experience}
-          onChange={(experience) =>
-            handleEmbedExperienceChange(
-              // Unjustified type cast. FIXME
-              experience as SdkIframeEmbedSetupExperience,
-            )
-          }
-        >
-          <Stack gap="lg">
-            {experiences.map((experience) => (
-              <Radio
-                key={experience.value}
-                value={experience.value}
-                label={
-                  <Flex gap="xxs" align="center">
-                    {experience.title}
-                  </Flex>
-                }
-                description={experience.description}
-                disabled={
-                  (!experience.supportsOss && !isSimpleEmbedFeatureAvailable) ||
-                  (!experience.supportsGuestEmbed &&
-                    isGuestEmbed &&
-                    experience.value !== "data-app")
-                }
-              />
-            ))}
-          </Stack>
-        </Radio.Group>
+            <Radio.Group
+              value={experience}
+              onChange={(experience) =>
+                handleEmbedExperienceChange(
+                  // Unjustified type cast. FIXME
+                  experience as SdkIframeEmbedSetupExperience,
+                )
+              }
+            >
+              <Stack gap="lg">
+                {experiences.map((experience) => (
+                  <Radio
+                    key={experience.value}
+                    value={experience.value}
+                    label={
+                      <Flex gap="xxs" align="center">
+                        {experience.title}
+                      </Flex>
+                    }
+                    description={experience.description}
+                    disabled={
+                      (!experience.supportsOss &&
+                        !isSimpleEmbedFeatureAvailable) ||
+                      (!experience.supportsGuestEmbed &&
+                        isGuestEmbed &&
+                        experience.value !== "data-app")
+                    }
+                  />
+                ))}
+              </Stack>
+            </Radio.Group>
+          </>
+        )}
 
         {showSsoNotConfiguredWarning && (
           <SetupSsoAlert
