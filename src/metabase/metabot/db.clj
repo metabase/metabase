@@ -14,6 +14,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
    [metabase.util :as u]
@@ -430,6 +431,11 @@
    database-id :- ::lib.schema.id/database]
   (t2/select-one columns :id database-id))
 
+(mu/defn database
+  "The Database with `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/Database :id database-id))
+
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."
   [database-id :- ::lib.schema.id/database]
@@ -504,7 +510,7 @@
   user whose access comes through that path."
   [table-id]
   (when-let [table (t2/select-one :model/Table :id table-id :active true)]
-    (when (mi/can-read? table)
+    (when (mi/can-read? (t2/hydrate table :can_read))
       (:db_id table))))
 
 (mu/defn tables-by-id
@@ -544,18 +550,13 @@
              :visibility_type nil))
 
 (defn- current-user-visible-table-clause
-  "Honey SQL `{:where …}` (plus `:with` when the filter needs a CTE) restricting Tables to those visible to the
-  current user for querying."
+  "Honey SQL `{:where …}` restricting Tables to those visible to the current user for querying."
   []
-  (let [{table-where-clause :clause table-cte :with}
-        (mi/visible-filter-clause :model/Table
-                                  :id
-                                  {:user-id       api/*current-user-id*
-                                   :is-superuser? api/*is-superuser?*}
-                                  {:perms/view-data      :unrestricted
-                                   :perms/create-queries :query-builder-and-native})]
-    (cond-> {:where table-where-clause}
-      table-cte (assoc :with table-cte))))
+  {:where (perms/visible-tables-filter-clause :id
+                                              (api/current-user-info)
+                                              {:perms/view-data      :unrestricted
+                                               :perms/create-queries :query-builder-and-native}
+                                              {:active-only? false, :include-published-via-collection? false})})
 
 (mu/defn visible-table-summaries-for-current-user
   "The ID, name, schema, and description of the active, unhidden Tables among `table-ids` in the Database with
@@ -786,7 +787,7 @@
                                              [:in :report_card.type ["metric" "model"]]
                                              [:= :report_card.archived false]
                                              (when api/*current-user-id*
-                                               (collection.model/visible-collection-filter-clause :report_card.collection_id))]}]
+                                               (perms/visible-collections-filter-clause :report_card.collection_id (api/current-user-info) {:root-namespace nil}))]}]
     (cond-> base-query
       verified?
       (update :left-join (fnil into []) [[:moderation_review :mr] [:and
@@ -852,6 +853,27 @@
   "The searchable columns of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :name :description :database_id :collection_id :type] :id [:in card-ids]))
+
+(mu/defn cards-with-ids
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
+
+(mu/defn cards-with-entity-ids
+  "The Cards with `entity-ids`."
+  [entity-ids :- [:sequential :string]]
+  (if (seq entity-ids)
+    (t2/select :model/Card :entity_id [:in entity-ids])
+    []))
+
+(mu/defn tables-with-ids
+  "The Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (if (seq table-ids)
+    (t2/select :model/Table :id [:in table-ids])
+    []))
 
 (mu/defn cards-for-read-check
   "The unarchived Cards with `card-ids`, with only the columns `mi/can-read?` needs to check a Card without another
@@ -964,7 +986,8 @@
   "The presentable columns of the non-trash Collections in the default namespace, ordered by location and name.
   Restricted to top-level Collections unless `include-nested?`."
   [include-nested? :- :boolean]
-  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id]
+  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id :type :namespace
+              :is_remote_synced]
              {:where    (cond-> [:and
                                  [:= :archived false]
                                  [:= :namespace nil]
@@ -975,7 +998,8 @@
 (mu/defn unarchived-collections-at-location
   "The presentable columns of the unarchived Collections directly at `location`, ordered by name."
   [location :- :string]
-  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id]
+  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id :type :namespace
+              :is_remote_synced]
              :location location
              :archived false
              {:order-by [[:%lower.name :asc]]}))

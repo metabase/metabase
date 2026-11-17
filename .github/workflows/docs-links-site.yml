@@ -23,7 +23,6 @@ jobs:
         uses: actions/checkout@v7
         with:
           sparse-checkout: |
-            .lychee
             .github/ISSUE_TEMPLATE
             .github/scripts
             docs
@@ -48,14 +47,7 @@ jobs:
       - name: Check links
         id: check
         continue-on-error: true
-        env:
-          # lychee uses it for github.com, which rate-limits anonymous requests.
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          status=0
-          docs/util/check-links.sh site || status=1
-          docs/util/check-links.sh --external || status=1
-          exit "$status"
+        run: docs/util/check-links.sh site
 
       - name: Build the broken links report
         if: steps.check.outcome == 'failure'
@@ -70,7 +62,7 @@ jobs:
               failures=$(sort -u "$LINKS_REPORT")
               count=$(grep -c '' <<<"$failures")
               echo "The weekly link check found **$count broken links** on $(date -u +%Y-%m-%d) ([run]($RUN_URL))."
-              echo "A redirect counts as broken for metabase.com and our GitHub wikis: see \`docs/util/README.md\`."
+              echo "A redirect counts as broken: see \`docs/util/README.md\`."
               echo
               echo "| Where | Link | Status |"
               echo "| --- | --- | --- |"

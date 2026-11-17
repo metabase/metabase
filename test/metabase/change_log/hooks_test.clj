@@ -105,12 +105,7 @@
                   (mt/with-log-messages-for-level [messages [metabase.change-log :warn]]
                     (is (= [] (logged-by insert!)))
                     (is (t2/exists? :model/PulseCard :pulse_id (:id pulse)))
-                    (is (= 1 (count (messages))))))))))
-        (testing "a model keyed by a column other than `id` logs that key"
-          (mt/with-temp [:model/Field f {:table_id (:id t)}]
-            (is (= [["metabase_field_user_settings" (:id f) "insert"]]
-                   (logged-by #(t2/insert! :model/FieldUserSettings {:field_id (:id f), :semantic_type :type/Email
-                                                                     :semantic_type_set true}))))))))))
+                    (is (= 1 (count (messages))))))))))))))
 
 (deftest wake-numbering-test
   (testing "a log wakes the numbering, but not in tests"
@@ -492,7 +487,7 @@
       (mt/with-temp [:model/Database          db      {}
                      :model/Table             t       {:db_id (:id db)}
                      :model/Field             f       {:table_id (:id t)}
-                     :model/FieldUserSettings _       {:field_id (:id f), :semantic_type :type/Email
+                     :model/FieldUserSettings fus     {:field_id (:id f), :semantic_type :type/Email
                                                        :semantic_type_set true}
                      :model/Card              card    {:database_id (:id db)}
                      :model/Database          other   {}
@@ -503,7 +498,7 @@
             (is (contains? logged ["metabase_database" (:id db) "delete"]))
             (is (contains? logged ["metabase_table" (:id t) "delete"]))
             (is (contains? logged ["metabase_field" (:id f) "delete"]))
-            (is (contains? logged ["metabase_field_user_settings" (:id f) "delete"]))
+            (is (contains? logged ["metabase_field_user_settings" (:id fus) "delete"]))
             (is (contains? logged ["report_card" (:id card) "delete"]))
             (is (contains? logged ["metabase_field" (:id fk) "update"]))
             (is (not-any? #(= (:id other-t) (second %)) (filter #(= "metabase_table" (first %)) logged)))
