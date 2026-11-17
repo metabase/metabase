@@ -8,6 +8,7 @@ import type {
   PreviewCollectionsResponse,
   PreviewDataResponse,
   PreviewPrincipalsResponse,
+  UnsavedEdit,
 } from "metabase-enterprise/permission_preview/api";
 
 export function setupPermissionPreviewPrincipalsEndpoint(
@@ -42,6 +43,16 @@ export function setupPermissionDebugEndpoint(
     query: { user_id: userId, model_id: modelId, action_type: actionType },
     response,
   });
+}
+
+export function setupPermissionPreviewUnsavedEditsEndpoint(
+  unsavedEditsId: string,
+  edits: UnsavedEdit[],
+) {
+  fetchMock.get(
+    `path:/api/ee/permission_debug/preview/unsaved-edits/${unsavedEditsId}`,
+    { edits },
+  );
 }
 
 export function setupPermissionPreviewAttributesEndpoint(

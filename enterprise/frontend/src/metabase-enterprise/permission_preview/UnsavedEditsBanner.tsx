@@ -7,7 +7,6 @@ import {
   Badge,
   Button,
   Flex,
-  Icon,
   SegmentedControl,
   Stack,
   Text,
@@ -16,80 +15,47 @@ import type { GroupId } from "metabase-types/api";
 
 import type { UnsavedEdit } from "./api";
 
-type UnsavedEditsBannerProps = {
+type UnsavedEditsBandSectionProps = {
   count: number;
   isWithEdits: boolean;
-  onIsWithEditsChange: (isWithEdits: boolean) => void;
-  /** The switch can't apply the edits here (the collection tabs, whose edits the preview leaves out). */
-  isSwitchDisabled?: boolean;
   isSheetOpen: boolean;
   onSheetToggle: () => void;
 };
 
 /**
- * Says the preview includes the admin's unsaved permission edits, or leaves them out, with a switch between the two
- * and "See changes", which toggles an `UnsavedEditsSheet`. It has no close button: it goes away when the edits are
- * saved or cancelled.
+ * In the band, after who is previewed: whether the preview includes the admin's unsaved permission edits, and "See
+ * changes", which toggles an `UnsavedEditsSheet`. It goes away when the edits are saved or cancelled.
  */
-export function UnsavedEditsBanner({
+export function UnsavedEditsBandSection({
   count,
   isWithEdits,
-  onIsWithEditsChange,
-  isSwitchDisabled = false,
   isSheetOpen,
   onSheetToggle,
-}: UnsavedEditsBannerProps) {
+}: UnsavedEditsBandSectionProps) {
   return (
-    <Flex
-      role="status"
-      aria-label={t`Unsaved changes`}
-      align="center"
-      columnGap="sm"
-      rowGap="xs"
-      // the switch and "See changes" move to a second line before the sentence would truncate
-      wrap="wrap"
-      px="md"
-      py="xs"
-      bg={
-        isWithEdits
-          ? "background_surface-error"
-          : "background_surface-error-subtle"
-      }
-      style={{
-        border: `1px solid var(--mb-color-${isWithEdits ? "feedback-negative" : "border-neutral"})`,
-      }}
-    >
-      <Flex align="center" gap="sm" flex="1 0 auto" miw={0} maw="100%">
-        <Icon name="warning" c="feedback-negative" style={{ flexShrink: 0 }} />
-        <Text fw="bold" c="text-primary" miw={0}>
-          {isWithEdits
-            ? ngettext(
-                msgid`Previewing ${count} unsaved change`,
-                `Previewing ${count} unsaved changes`,
-                count,
-              )
-            : ngettext(
-                msgid`Showing saved permissions, ${count} unsaved change left out`,
-                `Showing saved permissions, ${count} unsaved changes left out`,
-                count,
-              )}
-        </Text>
-      </Flex>
-      <Flex align="center" gap="sm" wrap="nowrap" ml="auto">
-        <SegmentedControl
-          aria-label={t`Unsaved changes in the preview`}
-          disabled={isSwitchDisabled}
-          data={[
-            { value: "with", label: t`With my changes` },
-            { value: "without", label: t`Without` },
-          ]}
-          value={isWithEdits ? "with" : "without"}
-          onChange={(value) => onIsWithEditsChange(value === "with")}
-        />
-        <Button size="sm" aria-pressed={isSheetOpen} onClick={onSheetToggle}>
-          {t`See changes`}
-        </Button>
-      </Flex>
+    <Flex align="center" gap="sm" wrap="nowrap" style={{ flexShrink: 0 }}>
+      <Text c="text-primary" style={{ whiteSpace: "nowrap" }}>
+        {isWithEdits
+          ? ngettext(
+              msgid`· ${count} unsaved change included`,
+              `· ${count} unsaved changes included`,
+              count,
+            )
+          : ngettext(
+              msgid`· ${count} unsaved change left out`,
+              `· ${count} unsaved changes left out`,
+              count,
+            )}
+      </Text>
+      <Button
+        size="compact-sm"
+        variant="subtle"
+        c="text-primary"
+        aria-pressed={isSheetOpen}
+        onClick={onSheetToggle}
+      >
+        {t`See changes`}
+      </Button>
     </Flex>
   );
 }
@@ -97,6 +63,10 @@ export function UnsavedEditsBanner({
 type UnsavedEditsSheetProps = {
   isOpen: boolean;
   edits: UnsavedEdit[];
+  isWithEdits: boolean;
+  onIsWithEditsChange: (isWithEdits: boolean) => void;
+  /** While the preview restarts with or without the edits. */
+  isSwitchDisabled?: boolean;
   /** "Sandy Sales"; null while the preview loads, and on a table's preview, which lists every user. */
   whoName: string | null;
   /** The previewed person's groups, for each edit's "Affects …" badge. */
@@ -106,10 +76,16 @@ type UnsavedEditsSheetProps = {
   onClose: () => void;
 };
 
-/** "See changes": the unsaved edits by group, each saying whether it changes what the previewed person gets. */
+/**
+ * "See changes": a switch between the preview with and without the edits, then the unsaved edits by group, each saying
+ * whether it changes what the previewed person gets.
+ */
 export function UnsavedEditsSheet({
   isOpen,
   edits,
+  isWithEdits,
+  onIsWithEditsChange,
+  isSwitchDisabled = false,
   whoName,
   principalGroupIds,
   onShowInGrid,
@@ -135,6 +111,16 @@ export function UnsavedEditsSheet({
       withOverlay={false}
       isModal={false}
     >
+      <SegmentedControl
+        aria-label={t`Unsaved changes in the preview`}
+        disabled={isSwitchDisabled}
+        data={[
+          { value: "with", label: t`With my changes` },
+          { value: "without", label: t`Without` },
+        ]}
+        value={isWithEdits ? "with" : "without"}
+        onChange={(value) => onIsWithEditsChange(value === "with")}
+      />
       {whoName != null && principalGroupIds != null && (
         <Text c="text-secondary">
           {ngettext(
@@ -192,7 +178,7 @@ function EditRow({ edit, whoName, isAffecting, onShowInGrid }: EditRowProps) {
       </Text>
       <Flex align="center" justify="space-between" gap="sm">
         {whoName != null && isAffecting != null && (
-          <Badge variant="light" color={isAffecting ? "negative" : "neutral"}>
+          <Badge variant="light" color={isAffecting ? "brand" : "neutral"}>
             {isAffecting
               ? t`Affects ${whoName}`
               : t`${whoName} isn't in this group`}

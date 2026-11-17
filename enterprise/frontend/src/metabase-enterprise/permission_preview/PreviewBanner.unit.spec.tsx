@@ -3,11 +3,14 @@ import userEvent from "@testing-library/user-event";
 import {
   setupPermissionPreviewAttributesEndpoint,
   setupPermissionPreviewCollectionsEndpoint,
+  setupPermissionPreviewDataEndpoint,
   setupPermissionPreviewPrincipalsEndpoint,
+  setupPermissionPreviewUnsavedEditsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 
 import { PreviewBanner } from "./PreviewBanner";
+import type { PreviewPrincipal } from "./api";
 import type { PreviewState } from "./preview-state";
 
 const STATE: PreviewState = {
@@ -20,6 +23,18 @@ const STATE: PreviewState = {
   returnPath: "/admin/permissions/data",
 };
 
+const SANDY: PreviewPrincipal = {
+  type: "user",
+  id: 2,
+  name: "Sandy Sales",
+  detail: null,
+  member_count: null,
+  superuser: false,
+  tenant_side: false,
+  attributes: null,
+  groups: [{ id: 1, name: "All internal users" }],
+};
+
 describe("PreviewBanner", () => {
   beforeEach(() => {
     window.sessionStorage.clear();
@@ -27,6 +42,41 @@ describe("PreviewBanner", () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  describe("with unsaved changes", () => {
+    it("says in the band that the preview includes them, with no separate bar, and puts the With my changes switch in See changes", async () => {
+      await setup({
+        widthPx: 1440,
+        unsavedEdits: { id: "edits-1", isApplied: true },
+      });
+
+      expect(
+        await screen.findByText("· 1 unsaved change included"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("status", { name: "Unsaved changes" }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "See changes" }),
+      );
+
+      expect(
+        await screen.findByRole("radio", { name: "With my changes" }),
+      ).toBeChecked();
+    });
+
+    it("says in the band when the preview leaves them out", async () => {
+      await setup({
+        widthPx: 1440,
+        unsavedEdits: { id: "edits-1", isApplied: false },
+      });
+
+      expect(
+        await screen.findByText("· 1 unsaved change left out"),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("on a tablet (768px)", () => {
@@ -123,9 +173,10 @@ describe("PreviewBanner", () => {
 
 type SetupOpts = {
   widthPx: number;
+  unsavedEdits?: PreviewState["unsavedEdits"];
 };
 
-async function setup({ widthPx }: SetupOpts) {
+async function setup({ widthPx, unsavedEdits }: SetupOpts) {
   mockWindowWidth(widthPx);
   setupPermissionPreviewAttributesEndpoint([]);
   setupPermissionPreviewPrincipalsEndpoint({
@@ -145,23 +196,30 @@ async function setup({ widthPx }: SetupOpts) {
   });
   // the name's card, open while the name has focus
   setupPermissionPreviewCollectionsEndpoint("default", {
-    principal: {
-      type: "user",
-      id: 2,
-      name: "Sandy Sales",
-      detail: null,
-      member_count: null,
-      superuser: false,
-      tenant_side: false,
-      attributes: null,
-      groups: [{ id: 1, name: "All internal users" }],
-    },
+    principal: SANDY,
     applies: true,
     reason: null,
     collections: [],
   });
+  if (unsavedEdits != null) {
+    setupPermissionPreviewUnsavedEditsEndpoint(unsavedEdits.id, [
+      {
+        group_id: 1,
+        group_name: "All internal users",
+        database_id: 1,
+        label: "Sample Database",
+        permission: "View data",
+        before: "Blocked",
+        after: "Can view",
+      },
+    ]);
+    // See changes reads the person's groups from it
+    setupPermissionPreviewDataEndpoint({ principal: SANDY, databases: [] });
+  }
 
-  renderWithProviders(<PreviewBanner state={STATE} />, { withRouter: true });
+  renderWithProviders(<PreviewBanner state={{ ...STATE, unsavedEdits }} />, {
+    withRouter: true,
+  });
   await screen.findByRole("status", { name: "Previewing as" });
 }
 

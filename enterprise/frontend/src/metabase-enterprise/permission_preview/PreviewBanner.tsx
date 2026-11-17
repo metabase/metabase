@@ -26,7 +26,10 @@ import {
   useIsNarrowPreview,
 } from "./PreviewBand";
 import { PrincipalList } from "./PrincipalList";
-import { UnsavedEditsBanner, UnsavedEditsSheet } from "./UnsavedEditsBanner";
+import {
+  UnsavedEditsBandSection,
+  UnsavedEditsSheet,
+} from "./UnsavedEditsBanner";
 import {
   type Principal,
   sendEndPreviewBeacon,
@@ -163,14 +166,27 @@ export function PreviewBanner({ state }: { state: PreviewState }) {
             state.principalType === "user" ? state.principalId : undefined
           }
           sentenceSection={
-            state.principalType !== "user" && (
-              <GroupPreviewInfo
-                type={state.principalType}
-                groupNames={standInGroupNames}
-                attributeValues="picked"
-                isCompact={isNarrow}
-              />
-            )
+            <>
+              {state.principalType !== "user" && (
+                <GroupPreviewInfo
+                  type={state.principalType}
+                  groupNames={standInGroupNames}
+                  attributeValues="picked"
+                  isCompact={isNarrow}
+                />
+              )}
+              {state.unsavedEdits != null && (
+                <FullScreenEditsSection
+                  unsavedEdits={state.unsavedEdits}
+                  principal={principal}
+                  whoName={whoName}
+                  isSwitching={isSwitching}
+                  onUnsavedEditsChange={(unsavedEdits) =>
+                    switchTo(principal, state.attributes, unsavedEdits)
+                  }
+                />
+              )}
+            </>
           }
           leftSection={
             <Button
@@ -202,17 +218,6 @@ export function PreviewBanner({ state }: { state: PreviewState }) {
             {isNarrow ? t`Exit` : t`Exit preview`}
           </Button>
         </PreviewBand>
-        {state.unsavedEdits != null && (
-          <FullScreenEditsBanner
-            unsavedEdits={state.unsavedEdits}
-            principal={principal}
-            whoName={whoName}
-            isSwitching={isSwitching}
-            onUnsavedEditsChange={(unsavedEdits) =>
-              switchTo(principal, state.attributes, unsavedEdits)
-            }
-          />
-        )}
       </Box>
       {/* after the frame, so Tab reaches the band before the panel, as they read on screen */}
       {isPanelOpen && (
@@ -287,7 +292,7 @@ export function PreviewBanner({ state }: { state: PreviewState }) {
   );
 }
 
-type FullScreenEditsBannerProps = {
+type FullScreenEditsSectionProps = {
   unsavedEdits: NonNullable<PreviewState["unsavedEdits"]>;
   principal: Principal;
   whoName: string;
@@ -298,16 +303,16 @@ type FullScreenEditsBannerProps = {
 };
 
 /**
- * The unsaved-edits row under the band: the switch restarts the preview with or without the edits, and "See changes"
- * lists them read-only, since this tab can't edit.
+ * The band's unsaved-edits section: "See changes" lists the edits read-only, since this tab can't edit, under a switch
+ * that restarts the preview with or without them.
  */
-function FullScreenEditsBanner({
+function FullScreenEditsSection({
   unsavedEdits,
   principal,
   whoName,
   isSwitching,
   onUnsavedEditsChange,
-}: FullScreenEditsBannerProps) {
+}: FullScreenEditsSectionProps) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { data: editsResponse } = useGetUnsavedEditsQuery(unsavedEdits.id);
   // the admin's own call (`/api/ee/permission_debug/`), for the person's groups
@@ -318,19 +323,20 @@ function FullScreenEditsBanner({
 
   return (
     <>
-      <UnsavedEditsBanner
+      <UnsavedEditsBandSection
         count={edits.length}
         isWithEdits={unsavedEdits.isApplied}
-        isSwitchDisabled={isSwitching}
-        onIsWithEditsChange={(isApplied) =>
-          onUnsavedEditsChange({ id: unsavedEdits.id, isApplied })
-        }
         isSheetOpen={isSheetOpen}
         onSheetToggle={() => setIsSheetOpen((isOpen) => !isOpen)}
       />
       <UnsavedEditsSheet
         isOpen={isSheetOpen}
         edits={edits}
+        isWithEdits={unsavedEdits.isApplied}
+        isSwitchDisabled={isSwitching}
+        onIsWithEditsChange={(isApplied) =>
+          onUnsavedEditsChange({ id: unsavedEdits.id, isApplied })
+        }
         whoName={whoName}
         principalGroupIds={
           dataPreview?.principal.groups.map((group) => group.id) ?? null
@@ -368,8 +374,8 @@ function useEndPreviewOnPageHide(state: PreviewState) {
 }
 
 /**
- * The band and the unsaved-edits row span the top of the tab, and the app sits below them, right of the open panel.
- * Side sheets start below them too, so the band's controls stay reachable while a sheet is open.
+ * The band spans the top of the tab, and the app sits below it, right of the open panel. Side sheets start below it
+ * too, so the band's controls stay reachable while a sheet is open.
  */
 function useFrameAroundApp({
   frameHeight,
