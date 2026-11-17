@@ -26,8 +26,8 @@ info:
 
     Tagging:
     - Every operation carries `x-status`: `master`, `hardening` or `proposed`.
-    - `master`: on the master branch of metabase/metabase at commit c3530341174.
-    - `hardening`: added by a PR that has not merged, named in `x-pr`. Two PRs are open: #86825 and #86790.
+    - `master`: on the master branch of metabase/metabase at commit 1c5733ade15.
+    - `hardening`: added by a PR that has not merged, named in `x-pr`. One PR is open: #86790.
     - `proposed`: needed by MB Code, not built; a sketch, not a commitment.
     - A response, parameter or field that an open PR adds carries `x-status: hardening` and `x-pr`.
     - A response or field that is on master but that an open PR changes carries `x-pr`; its description says what
@@ -51,9 +51,9 @@ info:
     version: the 402 for a missing `:workspaces` feature, the 404 of a path or method no route matches, and the 400
     for a body that is not valid JSON.
     Version 2 is what a server that sends the header implements: the items of this contract tagged `master` or
-    `hardening`, and none tagged `proposed`. #86790 sets the header, so it merges after #86825.
+    `hardening`, and none tagged `proposed`. #86790 sets the header.
     Any other response without the header comes from a server that predates the header. Read that as version 1.
-    A version 1 server can be older than commit c3530341174 and lack some of the behavior tagged `master`. So do
+    A version 1 server can be older than commit 1c5733ade15 and lack some of the behavior tagged `master`. So do
     not assume that behavior from a missing header: read each response by its shape.
 
     Request bodies are marked `additionalProperties: false`, but the server does not reject unknown keys: it strips
@@ -132,7 +132,8 @@ paths:
         cluster (#86798).
 
         Read boundary: the input schemas, plus what the engine grants every login (catalogs, objects granted to
-        PUBLIC, other databases on a Postgres cluster). On MySQL the workspace user reads the database that the
+        PUBLIC). On Postgres the workspace user can read the catalogs and the objects readable by PUBLIC in every
+        database it can connect to. On MySQL the workspace user reads the database that the
         parent's connection is bound to. Tables created in an input schema after the create:
         - Postgres: readable if the admin login created them, or if they were created by a role that owned a
           relation in that input schema when read access was granted (#87047). Not readable: tables created by a
@@ -160,7 +161,7 @@ paths:
           needed.
         - After a lost response: choose a name that no other workspace in the parent has, and look it up with
           `GET /`.
-        - hardening (#86825): send an `Idempotency-Key` and retry with the same key.
+        - Send an `Idempotency-Key` and retry with the same key (#86825).
 
         `input_schemas` is fixed at create. A schema added to the warehouse later is not readable until the
         workspace is recreated. `POST /{id}/schemas` would add it, but that operation is proposed and not built.
@@ -175,7 +176,6 @@ paths:
         - name: Idempotency-Key
           in: header
           required: false
-          x-status: hardening
           x-pr: 86825
           description: |
             1 to 255 characters, not blank, with no leading or trailing whitespace (400 otherwise). Keys are
@@ -210,13 +210,13 @@ paths:
           x-pr: [86612, 86825, 87214]
           description: |
             Invalid body; or a database is not eligible (driver lacks `:workspace`, the database-local setting
-            `database-enable-workspaces` is off, or it is a router database).
+            `database-enable-workspaces` is off, or it is a router database or a routing destination database).
 
             Also a database whose driver has schemas but which has no synced input schemas ("sync it first")
             (#86612).
 
-            hardening (#86825): also an `Idempotency-Key` that is blank, longer than 255 characters, or has leading
-            or trailing whitespace.
+            Also an `Idempotency-Key` that is blank, longer than 255 characters, or has leading or trailing
+            whitespace (#86825).
 
             Also a `name` longer than 254 UTF-16 code units (#87214, decision 0022).
           headers:
@@ -232,7 +232,7 @@ paths:
           description: |
             Two cases. Only the first has `error-code` in its body.
 
-            `"error-code": "workspace_busy"` (hardening, #86825, decisions 0020 and 0033): the request carries an
+            `"error-code": "workspace_busy"` (#86825, decisions 0020 and 0033): the request carries an
             `Idempotency-Key`, and a create or delete of the workspace with that key is still running. `message` is
             "A create or delete of the workspace with this idempotency key is still running. Retry once it
             finishes." The retry changed nothing. Send the same request again later. The body has no
@@ -289,14 +289,18 @@ paths:
             - ClickHouse (#87217, decisions 0002 and 0040): the admin login lacks `SELECT ON system.processes`; or
               every login can read `system.*`.
             - MySQL and MariaDB (#86797, decisions 0023, 0030, 0038): the admin login lacks PROCESS, or lacks the
-              privilege to end other users' sessions (SUPER, or CONNECTION_ADMIN on MySQL, or CONNECTION ADMIN on
-              MariaDB 10.5 and later); `mandatory_roles` is set; on MariaDB 10.11 and later, PUBLIC holds a grant;
+              privilege to end other users' sessions: CONNECTION_ADMIN or SUPER on MySQL; SUPER on MariaDB before
+              10.5; CONNECTION ADMIN or SUPER on MariaDB 10.5 to 10.11; only CONNECTION ADMIN on MariaDB 11.0 and
+              later. ALL PRIVILEGES ON `*.*` also passes. Or `mandatory_roles` is set; on MariaDB 10.11 and later, PUBLIC holds a grant;
               or the server is MariaDB older than 10.4.
             - SQL Server (#86801): the admin login lacks VIEW SERVER STATE (on SQL Server 2022 and later, VIEW
               SERVER PERFORMANCE STATE is enough) or ALTER ANY CONNECTION.
-            Two checks run after the parent created the workspace user: the Redshift check of the input schemas,
-            and the ClickHouse check that every login can read `system.*`. The parent tears down what it created
-            before it answers.
+            Some checks run after the parent created the workspace user: the Postgres checks of the input schemas
+            (PUBLIC can create objects in one or write to its tables, the admin login lacks a grant option, a role
+            the admin login cannot act for owns a relation), the Redshift check of the input schemas, and the
+            ClickHouse check that every login can read `system.*`. The parent tears down what it created before it
+            answers. When that teardown fails, the answer is the 500 with `cleanup_required: true` and
+            `workspace_id`, not the 412.
           x-pr: [86588, 86601, 86797, 86798, 86801, 87047, 87217]
           headers:
             X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
@@ -306,15 +310,15 @@ paths:
           x-pr: [86601, 86788, 86825, 87214]
           description: |
             Provisioning failed. When the cleanup succeeded, nothing is left in the warehouse, and
-            `cleanup_required` is false. Also a repeated database id (the raw app-DB error, even when stack traces
-            are hidden).
+            `cleanup_required` is false. Also a repeated database id: its body has no `cleanup_required`, and its
+            `message` is "Something went wrong" when stack traces are hidden.
 
             When the cleanup failed, or the workspace row delete failed, `cleanup_required` is true, `workspace_id`
             names the kept workspace, and the caller must `DELETE` it (#86601). A kept database is
             `teardown_failed`, or `never_started` when its provisioning never started (#86788).
 
-            hardening (#86825, decisions 0007 and 0020): a retry with the `Idempotency-Key` of a workspace that has
-            no databases, or a database that is not `provisioned`, answers 500 with that `workspace_id` and
+            A retry with the `Idempotency-Key` of a workspace that has no databases, or a database that is not
+            `provisioned` (#86825, decisions 0007 and 0020), answers 500 with that `workspace_id` and
             `cleanup_required: true`. Its `message` is fixed and is not the first create's error: "The workspace
             created with this idempotency key is not fully provisioned: its create failed or stopped, or a later
             delete failed. Delete the workspace (`workspace_id`), then create again with a new key."
@@ -389,8 +393,8 @@ paths:
         (#86789, #86788; decisions 0008, 0017, 0018, 0019, 0033). Then it answers 409 `workspace_busy` and
         changes nothing (see the 409). Otherwise:
         - Before its first warehouse call, DELETE sets every database `deprovisioning`, except a `never_started`
-          one. While the DELETE runs, a second DELETE and `GET /{id}/config` answer 409. With #86825, so does a
-          create retry with the workspace's `Idempotency-Key`.
+          one. While the DELETE runs, a second DELETE and `GET /{id}/config` answer 409. So does a create
+          retry with the workspace's `Idempotency-Key` (#86825).
         - A `never_started` database is deleted without a warehouse teardown. Its provisioning never started, so
           the warehouse has nothing of it.
         - A database whose warehouse teardown succeeds is deleted.
@@ -418,9 +422,11 @@ paths:
         - MySQL and MariaDB (#86797): DELETE locks the account, then ends the sessions. Each drop waits at most
           30 s for a lock; after that DELETE answers 409.
         - Redshift (#86798): DELETE sets the workspace user's connection limit to 0 and commits that. Then it ends
-          the sessions, revokes the grants and runs the drops in one transaction.
+          the sessions, revokes the grants and runs the drops in one transaction. When setting the limit fails,
+          the drops still run.
         - ClickHouse (#87217): DELETE refuses new logins of the workspace user (`HOST NONE`), then ends its running
-          queries. A native-protocol session that is already open can start queries until the user is dropped.
+          queries. A native-protocol session that is already open can start queries until the user is dropped. When
+          `HOST NONE` fails, the drops still run.
         - SQL Server (#86801): DELETE disables the login, then ends the sessions. It drops the tables, the schema,
           the database user and the login. Each statement waits at most 30 s for a lock; after that DELETE
           answers 409.
@@ -466,12 +472,15 @@ paths:
             - the workspace user still owns objects or holds privileges, often in another database (SQLSTATE
               2BP01). It can no longer log in. `message` names the databases; run `DROP OWNED BY` there as a
               superuser, then retry.
+            - the admin login may not drop the workspace user (SQLSTATE 42501). `message` gives the `GRANT` to
+              run as a superuser; then retry.
             - a warehouse lock timed out: retry.
-            Of these three, only the lock timeout clears by retrying.
+            Of these four, only the lock timeout clears by retrying.
 
             No `error-code`, MySQL, MariaDB (#86797) and SQL Server (#86801), when one database's teardown is the
             only failure: another session held a lock that a drop needs for more than 30 s. Retry once that session
-            ends.
+            ends. On SQL Server the 409 comes only when the lock timeout (error 1222) is the first statement error
+            of the teardown; otherwise the answer is that first error.
           x-pr: [86789, 86587, 86797, 86801]
           headers:
             X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
@@ -519,9 +528,14 @@ paths:
         (#86791, decision 0024). Download that config with an unscoped admin credential.
 
         The parent refuses (422) a database whose `additional-options` set a login or carry a credential (#86584).
-        The options are split on `&` and `;`; a name matches, case-insensitively, when it is
-        `user`, `username`, `uid`, `sslkey`, `accesskeyid` or `aadsecureprincipalid`, or ends in `password`, `pwd`,
-        `secret` or `token`. A legitimate option with such a name (a trust-store password) is refused too.
+        The options are split on `&` and `;`; a name matches when it is `user`, `username`,
+        `uid`, `sslkey`, `accesskeyid` or `aadsecureprincipalid`, or contains `password`, `pwd`, `secret` or
+        `token`. So `SecretAccessKey` and `sslpasswordcallback` are refused. `passwordCharacterEncoding` and
+        `TokenType` are allowed. Before the match, the parent percent-decodes the options until they stop changing
+        (it refuses options still encoded after 5 rounds), folds letter case, and removes `_`, `.`, `-`, `+` and
+        whitespace from each name. One of the six exact names followed by `=` is also refused anywhere after a
+        non-word character, whatever the separator. A legitimate option with such a name (a trust-store password)
+        is refused too.
       x-status: master
       x-pr: [86584, 86791]
       x-source: EE/api/workspace_manager.clj:176, EE/config.clj:387
@@ -864,8 +878,8 @@ components:
               x-pr: [86601, 86825]
               description: |
                 The kept workspace, when `cleanup_required` is true, so the caller can DELETE it without a name
-                lookup. hardening (#86825): a retry with the same `Idempotency-Key` answers 500 with the same
-                `workspace_id` and `cleanup_required: true`. Its `message` is fixed text, not the first create's
+                lookup. A retry with the same `Idempotency-Key` answers 500 with the same `workspace_id` and
+                `cleanup_required: true` (#86825). Its `message` is fixed text, not the first create's
                 error.
 
     WorkspaceBusy:
