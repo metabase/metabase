@@ -30,7 +30,7 @@ import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor } from "metabase/redux/store";
-import { Outlet, useLocation } from "metabase/router";
+import { Outlet, RESET_SCROLL_ON_NAVIGATE, useLocation } from "metabase/router";
 import { getErrorPage } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useGetSettingsQuery, useTokenRefresh } from "metabase/settings";
@@ -40,7 +40,6 @@ import { initializeIframeResizer } from "metabase/utils/dom";
 
 import S from "./AppComponent.module.css";
 import { AppKBarProvider } from "./AppKBarProvider";
-import ScrollToTop from "./ScrollToTop";
 import { trackPageView } from "./analytics";
 import { Metabot } from "./metabot/components/Metabot";
 import { NewModals } from "./new/components/NewModals/NewModals";
@@ -115,56 +114,53 @@ export function App() {
 
   return (
     <ErrorBoundary onError={onError}>
-      <ScrollToTop>
-        <AppKBarProvider>
-          <KeyboardTriggeredErrorModal />
-          <Flex className={CS.spread} direction="column">
-            <AppBanner />
-            {isAppBarVisible && <AppBarContainer />}
-            <Flex
-              className={cx(
-                CS.overflowHidden,
-                S.printFullHeight,
-                S.printOverflowVisible,
-              )}
-              flex="1 1 auto"
-              direction={isAdminApp ? "column" : "row"}
-              pos="relative"
-              bg="background_page-primary"
+      <AppKBarProvider>
+        <KeyboardTriggeredErrorModal />
+        <Flex className={CS.spread} direction="column">
+          <AppBanner />
+          {isAppBarVisible && <AppBarContainer />}
+          <Flex
+            className={cx(
+              CS.overflowHidden,
+              S.printFullHeight,
+              S.printOverflowVisible,
+            )}
+            flex="1 1 auto"
+            direction={isAdminApp ? "column" : "row"}
+            pos="relative"
+            bg="background_page-primary"
+          >
+            {isNavBarEnabled && <Navbar />}
+            <Box
+              component="main"
+              ref={setViewportElement}
+              className={cx(CS.overflowAuto, S.printOverflowVisible)}
+              w="100%"
+              h="100%"
+              style={{ scrollMarginTop: APP_BAR_HEIGHT }}
+              {...RESET_SCROLL_ON_NAVIGATE}
             >
-              {isNavBarEnabled && <Navbar />}
-              <Box
-                component="main"
-                ref={setViewportElement}
-                className={cx(CS.overflowAuto, S.printOverflowVisible)}
-                w="100%"
-                h="100%"
-                style={{ scrollMarginTop: APP_BAR_HEIGHT }}
-              >
-                <ContentViewportContext.Provider
-                  value={viewportElement ?? null}
-                >
-                  {errorPage ? getErrorComponent(errorPage) : <Outlet />}
-                </ContentViewportContext.Provider>
-              </Box>
-              <UndoListing />
-              <StatusListing />
-              <NewModals />
-              <EmbedSetupModals />
-              <Metabot
-                hide={
-                  isAdminApp ||
-                  isDataStudioApp ||
-                  isMonitorApp ||
-                  isEmbeddingHubApp ||
-                  isDataApp
-                }
-              />
-            </Flex>
+              <ContentViewportContext.Provider value={viewportElement ?? null}>
+                {errorPage ? getErrorComponent(errorPage) : <Outlet />}
+              </ContentViewportContext.Provider>
+            </Box>
+            <UndoListing />
+            <StatusListing />
+            <NewModals />
+            <EmbedSetupModals />
+            <Metabot
+              hide={
+                isAdminApp ||
+                isDataStudioApp ||
+                isMonitorApp ||
+                isEmbeddingHubApp ||
+                isDataApp
+              }
+            />
           </Flex>
-          <Palette />
-        </AppKBarProvider>
-      </ScrollToTop>
+        </Flex>
+        <Palette />
+      </AppKBarProvider>
     </ErrorBoundary>
   );
 }

@@ -39,7 +39,7 @@ import {
   MAX_UPLOAD_STRING,
   uploadFile as uploadFileAction,
 } from "metabase/redux/uploads";
-import { useNavigate } from "metabase/router";
+import { RESET_SCROLL_ON_NAVIGATE, useNavigate } from "metabase/router";
 import { Box } from "metabase/ui";
 import type {
   Bookmark,
@@ -302,7 +302,14 @@ export const CollectionContentView = ({
         />
       )}
 
-      <Box className={S.main} mx="auto" mah="100%" px="5%" py="lg">
+      <Box
+        className={S.main}
+        mx="auto"
+        mah="100%"
+        px="5%"
+        py="lg"
+        {...RESET_SCROLL_ON_NAVIGATE}
+      >
         <ErrorBoundary>
           <CollectionHeader
             collection={collection}
