@@ -274,3 +274,19 @@
 
 (deftest missing-table-statistics-test
   (is (nil? (specialization/index-size-estimate :search_index_missing_statistics_probe))))
+
+(deftest boolean-columns-use-bit-test
+  (search.index/with-temp-index-table
+    (let [columns ["archived" "curated" "is_published" "official_collection" "pinned" "verified"]
+          rows    (t2/query {:select [:column_name :data_type]
+                             :from   [:information_schema.columns]
+                             :where  [:and
+                                      [:= :table_schema :%database]
+                                      [:= :table_name (name (search.index/active-table))]
+                                      [:in :column_name columns]]})]
+      (is (= (zipmap columns (repeat "bit")) (into {} (map (juxt :column_name :data_type)) rows))))))
+
+(deftest default-collation-matches-app-db-test
+  (search.index/with-temp-index-table
+    (is (= "utf8mb4_unicode_ci"
+           (:table_collation (search.db/mysql-table-statistics (name (search.index/active-table))))))))

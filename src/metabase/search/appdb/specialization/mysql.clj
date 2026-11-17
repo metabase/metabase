@@ -18,6 +18,7 @@
   (into [column (cond
                   (= column :model_id)                    [:varchar 64]
                   (= data-type :text)                     :longtext
+                  (= data-type :boolean)                  :bit
                   (= data-type :timestamp-with-time-zone) [:timestamp 6]
                   :else                                   data-type)]
         (if (= column :created_at)

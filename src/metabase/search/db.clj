@@ -162,7 +162,9 @@
   [table-name :- [:or :keyword :string]]
   (t2/query (cond-> (-> (sql.helpers/create-table table-name)
                         (sql.helpers/with-columns (specialization/table-schema index-schema/base-schema)))
-              (= :mysql (mdb/db-type)) (assoc :engine :innodb)))
+              (= :mysql (mdb/db-type)) (assoc :engine        :innodb
+                                              :character-set :utf8mb4
+                                              :collate       :utf8mb4_unicode_ci)))
   (let [table-name (name table-name)]
     (doseq [statement (specialization/post-create-statements table-name table-name)]
       (t2/query statement))))
@@ -178,9 +180,9 @@
   (t2/query {:analyze-table (keyword (name table-name))}))
 
 (mu/defn mysql-table-statistics
-  "The storage engine and estimated row count for a table in the current MySQL database, or nil."
+  "The engine, default collation, and estimated row count for a table in the current MySQL database, or nil."
   [table-name :- :string]
-  (t2/query-one {:select [:engine :table_rows]
+  (t2/query-one {:select [:engine :table_collation :table_rows]
                  :from   [:information_schema.tables]
                  :where  [:and
                           [:= :table_schema :%database]
