@@ -11,6 +11,7 @@ import { registerVisualizations } from "metabase/visualizations/register";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
+  createMockUser,
   createMockUserListResult,
 } from "metabase-types/api/mocks";
 import { createMockRevision } from "metabase-types/api/mocks/revision";
@@ -150,5 +151,88 @@ describe("QueryBuilder > revision history", () => {
     expect(
       within(history).queryByTestId("question-revert-button"),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("QueryBuilder > last edit info", () => {
+  const CURRENT_USER = createMockUser();
+  const OTHER_EDITOR = createMockUser({
+    id: CURRENT_USER.id + 1,
+    first_name: "Robert",
+    last_name: "Tableton",
+    email: "robert@metabase.test",
+  });
+
+  // Mirrors the backend: the last editor and edit time change only when the
+  // PUT for this card renames it.
+  async function setupLastEditInfo() {
+    const card = createMockCard({
+      ...TEST_STRUCTURED_CARD,
+      name: "Orders",
+      can_write: true,
+      "last-edit-info": {
+        id: OTHER_EDITOR.id,
+        email: OTHER_EDITOR.email,
+        first_name: OTHER_EDITOR.first_name,
+        last_name: OTHER_EDITOR.last_name,
+        timestamp: "2023-05-18T13:33:30.198622-07:00",
+      },
+    });
+    let currentCard: Card = card;
+
+    // Registered before `setup` so these routes win over its static card mocks.
+    fetchMock.get(`path:/api/card/${card.id}`, () => currentCard);
+    fetchMock.put(`path:/api/card/${card.id}`, (call) => {
+      const body: unknown = JSON.parse(String(call.options.body));
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        !("name" in body) ||
+        typeof body.name !== "string"
+      ) {
+        return { status: 400, body: {} };
+      }
+      currentCard = {
+        ...currentCard,
+        name: body.name,
+        "last-edit-info": {
+          id: CURRENT_USER.id,
+          email: CURRENT_USER.email,
+          first_name: CURRENT_USER.first_name,
+          last_name: CURRENT_USER.last_name,
+          timestamp: new Date().toISOString(),
+        },
+      };
+      return currentCard;
+    });
+    setupListNotificationEndpoints({ card_id: card.id }, []);
+
+    await setup({ card });
+
+    return { card };
+  }
+
+  it("shows the last editor's name, and the edit moment and 'you' after the current user renames the question", async () => {
+    const { card } = await setupLastEditInfo();
+
+    expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
+      /^Edited \d+ years ago by Robert Tableton$/,
+    );
+
+    await userEvent.type(getHeaderTitle(), "!");
+    await userEvent.tab();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
+        "Edited a few seconds ago by you",
+      ),
+    );
+    expect(getHeaderTitle()).toHaveValue("Orders!");
+    const putCalls = fetchMock.callHistory.calls(`path:/api/card/${card.id}`, {
+      method: "PUT",
+    });
+    expect(putCalls).toHaveLength(1);
+    const body: unknown = JSON.parse(String(putCalls[0].options.body));
+    expect(body).toMatchObject({ name: "Orders!" });
   });
 });
