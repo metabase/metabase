@@ -13,7 +13,6 @@
    ;; back into this module. `notification.card` requires only events, the notification models,
    ;; and toucan.
    [metabase.notification.card :as notification.card]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -22,6 +21,9 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(events/derive! ::collection-event :metabase/event)
+(events/derive! :event/collection-update ::collection-event)
 
 (def UpdateCollectionArguments
   "The arguments to an update-collection call — what the public API surface accepts. Absent keys
@@ -54,22 +56,17 @@
           new-parent-id (:parent_id collection-updates)
           new-parent    (if new-parent-id
                           (collections.db/collection-location-columns new-parent-id)
-                          collection/root-collection)
+                          (assoc collection/root-collection :namespace (:namespace collection-before-update)))
           new-location  (collection/children-location new-parent)]
       ;; check and make sure we're actually supposed to be moving something
       (when (not= orig-location new-location)
         ;; Check that we have write perms on the new parent collection
         (api/write-check new-parent)
         ;; ok, make sure we have perms to do this operation
-        (api/check-403
-         (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-                                                  (collection/perms-for-moving collection-before-update new-parent)))
-        (api/check
-         (not (collection/shared-tenant-collection? new-parent)))
+        (api/check-403 (collection/can-write-collection-ids?
+                        (vec (collection/collection-ids-for-moving collection-before-update new-parent))))
         ;; ok, we're good to move!
-        (collection/move-collection! collection-before-update new-location
-                                     (collection/moving-into-remote-synced? (collection/location-path->parent-id orig-location)
-                                                                            new-parent-id))))))
+        (collection/move-collection! collection-before-update new-location)))))
 
 (defn- archive-collection!
   "If `collection-updates` specifies that we should archive a collection, do the appropriate permissions checks and

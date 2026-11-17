@@ -576,7 +576,7 @@ describe("issue 17160", () => {
             name: "CATEGORY",
             "display-name": "CATEGORY",
             type: "dimension",
-            dimension: ["field", PRODUCTS.CATEGORY, null],
+            "field-id": PRODUCTS.CATEGORY,
             "widget-type": "category",
             default: null,
           },
@@ -1663,6 +1663,59 @@ describe("issue 13785", () => {
         });
       });
     });
+  });
+});
+
+describe("issue 86994", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should keep column click behavior after navigating back from drill-through (metabase#86994)", () => {
+    H.createQuestion({
+      name: "Linked products",
+      query: { "source-table": PRODUCTS_ID },
+    }).then(({ body: targetCard }) => {
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "Linked orders",
+          query: { "source-table": ORDERS_ID, limit: 5 },
+        },
+        dashboardDetails: { name: "Click behavior dashboard" },
+      }).then(({ body: dashcard }) => {
+        H.addOrUpdateDashboardCard({
+          dashboard_id: dashcard.dashboard_id,
+          card_id: dashcard.card_id,
+          card: {
+            visualization_settings: {
+              column_settings: {
+                '["name","TAX"]': {
+                  click_behavior: {
+                    type: "link",
+                    linkType: "question",
+                    targetId: targetCard.id,
+                    parameterMapping: {},
+                  },
+                },
+              },
+            },
+          },
+        });
+        H.visitDashboard(dashcard.dashboard_id);
+      });
+    });
+
+    H.getDashboardCard().findByText("39.72").click();
+    H.popover().findByText("=").click();
+    H.queryBuilderHeader()
+      .findByLabelText("Back to Click behavior dashboard")
+      .click();
+
+    H.getDashboardCard().findByText("2.07").click();
+    H.queryBuilderHeader()
+      .findByDisplayValue("Linked products")
+      .should("be.visible");
   });
 });
 

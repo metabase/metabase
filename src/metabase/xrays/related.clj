@@ -13,7 +13,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.xrays.automagic-dashboards.schema :as ads]
-   [metabase.xrays.db :as xrays.db]))
+   [metabase.xrays.db :as xrays.db]
+   [toucan2.core :as t2]))
 
 (def ^:private ^Long max-best-matches        3)
 (def ^:private ^Long max-serendipity-matches 2)
@@ -100,14 +101,17 @@
   (let [[best rest] (split-at max-best-matches matches)]
     (concat best (->> rest shuffle (take max-serendipity-matches)))))
 
-(def ^:private ^{:arglists '([instances])} filter-visible
-  (partial filter (fn [{:keys [archived visibility_type active] :as instance}]
-                    (and (some? instance)
-                         (or (nil? visibility_type)
-                             (= (qp.util/normalize-token visibility_type) :normal))
-                         (not archived)
-                         (not= active false)
-                         (mi/can-read? instance)))))
+(defn- filter-visible
+  "The `instances`, all of one model, that are present, visible, unarchived, active, and readable by the current user."
+  [instances]
+  (let [visible (filter (fn [{:keys [archived visibility_type active] :as instance}]
+                          (and (some? instance)
+                               (or (nil? visibility_type)
+                                   (= (qp.util/normalize-token visibility_type) :normal))
+                               (not archived)
+                               (not= active false)))
+                        instances)]
+    (filter mi/can-read? (t2/hydrate visible :can_read))))
 
 (defn- metrics-for-table
   [table]
@@ -175,8 +179,7 @@
                                       (group-by :card_id))
         dashboard-ids (->> (map :id cards)
                            (mapcat card-id->dashboard-cards)
-                           (map :dashboard_id)
-                           distinct)
+                           (into #{} (map :dashboard_id)))
         best          (when (seq dashboard-ids)
                         (->> (xrays.db/dashboards dashboard-ids)
                              filter-visible

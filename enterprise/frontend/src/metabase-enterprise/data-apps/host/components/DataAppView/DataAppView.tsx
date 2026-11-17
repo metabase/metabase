@@ -17,20 +17,30 @@ import { GenericError, NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { getUserIsAdmin } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
-import { Box, Flex, Icon } from "metabase/ui";
+import { useSetting } from "metabase/settings";
+import { Box, Button, Flex, Icon } from "metabase/ui";
+import { replaceLocation } from "metabase/utils/dom";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 
+import { installHostBroker } from "../../../broker/host-broker";
 import {
   DATA_APP_ERROR_MESSAGE_TYPE,
   DATA_APP_LOAD_TIMEOUT_MS,
   DATA_APP_OUTDATED_ERROR_CODE,
   DATA_APP_READY_MESSAGE_TYPE,
+  DATA_APP_ROUTE_MESSAGE_TYPE,
   type DataAppBundleErrorMessage,
   getOutdatedDataAppMessage,
 } from "../../../constants";
-import { attachIframeUrlMirror } from "../../lib/attach-iframe-url-mirror";
+import {
+  attachIframeUrlMirror,
+  mirrorIframePath,
+} from "../../lib/attach-iframe-url-mirror";
 import { deriveIframeSrc } from "../../lib/derive-iframe-src";
+import { getOriginMismatch } from "../../lib/get-origin-mismatch";
 import { isCrossOriginError } from "../../lib/is-cross-origin-error";
 import { isDataAppMessage } from "../../lib/is-data-app-message";
 
@@ -52,7 +62,34 @@ const CenteredEmptyState = ({
 );
 
 /**
- * /apps/:name(/*) — renders the requested data-app inside an isolated
+ * Where the app's iframe is served from: the isolated origin when `MB_ISOLATED_ORIGIN`
+ * is set, and this page then makes the app's instance requests (see
+ * `broker/host-broker`). Only the site URL's origin may frame the app there, so a page
+ * on another origin gets an `originMismatch`, and a loopback one is moved at once.
+ */
+function useDataAppFrameOrigin() {
+  const isolatedOrigin = useSetting("isolated-origin");
+  const siteUrl = useSetting("site-url");
+  const originMismatch = useMemo(
+    () => (isolatedOrigin ? getOriginMismatch(siteUrl, window.location) : null),
+    [isolatedOrigin, siteUrl],
+  );
+
+  useEffect(() => {
+    if (originMismatch?.kind === "redirect") {
+      replaceLocation(originMismatch.url);
+    }
+  }, [originMismatch]);
+
+  return {
+    isolatedOrigin,
+    frameOrigin: isolatedOrigin ?? window.location.origin,
+    originMismatch,
+  };
+}
+
+/**
+ * /apps/:slug(/*) — renders the requested data-app inside an isolated
  * iframe, mirroring the iframe's internal route into the parent's URL.
  *
  * Sync semantics:
@@ -68,19 +105,27 @@ const CenteredEmptyState = ({
  * it just uses React Router as if it were the top-level app.
  */
 type DataAppViewProps = {
-  name?: string;
+  slug?: string;
   enableUrlMirroring?: boolean;
   enableDrafts?: boolean;
 };
 
 export function DataAppView({
-  name: nameProp,
+  slug: slugProp,
   enableUrlMirroring = false,
   enableDrafts = false,
 }: DataAppViewProps = {}) {
-  const { name: nameParam = "" } = useParams<{ name: string }>();
-  const name = nameProp ?? nameParam;
-  const validName = name.length > 0;
+  const { slug: slugParam = "" } = useParams<{ slug: string }>();
+  const slug = slugProp ?? slugParam;
+  const validSlug = slug.length > 0;
+
+  const { isolatedOrigin, frameOrigin, originMismatch } =
+    useDataAppFrameOrigin();
+  const isCrossOrigin = isolatedOrigin !== null;
+  const isIsolatedOriginMisconfigured = useSetting(
+    "isolated-origin-misconfigured?",
+  );
+  const isAdmin = useSelector(getUserIsAdmin);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeEl, setIframeElState] = useState<HTMLIFrameElement | null>(null);
@@ -103,23 +148,30 @@ export function DataAppView({
     setBundleError(null);
     setAppReady(false);
     setLoadError(null);
-  }, [name]);
+  }, [slug]);
 
   // Read parent path → iframe src ONCE; never re-derive on later renders.
-  const src = useMemo(
-    () => (validName ? deriveIframeSrc(name) : ""),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+  const [src] = useState(() =>
+    validSlug ? deriveIframeSrc(slug, isolatedOrigin) : "",
   );
 
   const {
     data: meta,
     isLoading: metaLoading,
     error: metaError,
-  } = useGetDataAppQuery(name, { skip: !validName });
+  } = useGetDataAppQuery(slug, { skip: !validSlug });
 
   useEffect(() => {
-    if (!iframeEl || !validName || !enableUrlMirroring) {
+    if (!iframeEl || !isCrossOrigin) {
+      return undefined;
+    }
+    return installHostBroker(iframeEl, frameOrigin);
+  }, [iframeEl, isCrossOrigin, frameOrigin]);
+
+  useEffect(() => {
+    // This mirror reaches into the iframe's `history`, which works only same-origin.
+    // A cross-origin iframe reports its route with a message instead (below).
+    if (!iframeEl || !validSlug || !enableUrlMirroring || isCrossOrigin) {
       return undefined;
     }
 
@@ -137,7 +189,7 @@ export function DataAppView({
         const win = iframeEl.contentWindow;
 
         if (win) {
-          detach = attachIframeUrlMirror(win, name);
+          detach = attachIframeUrlMirror(win, slug);
         }
       } catch (error) {
         detach = null;
@@ -160,11 +212,11 @@ export function DataAppView({
       iframeEl.removeEventListener("load", onLoad);
       detach?.();
     };
-  }, [iframeEl, name, validName, enableUrlMirroring]);
+  }, [iframeEl, slug, validSlug, enableUrlMirroring, isCrossOrigin]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) {
+      if (event.origin !== frameOrigin) {
         return;
       }
 
@@ -189,13 +241,23 @@ export function DataAppView({
 
       if (isDataAppMessage(data, DATA_APP_READY_MESSAGE_TYPE)) {
         setAppReady(true);
+        return;
+      }
+
+      if (
+        isCrossOrigin &&
+        enableUrlMirroring &&
+        isDataAppMessage(data, DATA_APP_ROUTE_MESSAGE_TYPE) &&
+        typeof data.path === "string"
+      ) {
+        mirrorIframePath(data.path, slug);
       }
     };
 
     window.addEventListener("message", onMessage);
 
     return () => window.removeEventListener("message", onMessage);
-  }, []);
+  }, [frameOrigin, isCrossOrigin, enableUrlMirroring, slug]);
 
   // The iframe can fail to load without ever posting back — blocked by a CSP
   // `frame-src` violation, unreachable, or hung — which would otherwise leave the
@@ -204,14 +266,14 @@ export function DataAppView({
   useEffect(() => {
     // Stop once anything resolves the wait — including a `loadError` already set
     // by the CSP signal — so the timeout can't clobber a more specific message.
-    if (!validName || appReady || bundleError || loadError) {
+    if (!validSlug || appReady || bundleError || loadError) {
       return undefined;
     }
 
     const onViolation = (event: SecurityPolicyViolationEvent) => {
       if (
         event.effectiveDirective.startsWith("frame-src") &&
-        event.blockedURI.startsWith(window.location.origin)
+        event.blockedURI.startsWith(frameOrigin)
       ) {
         setLoadError(
           t`Frame ${event.blockedURI} was blocked by the browser’s content security policy.`,
@@ -233,14 +295,46 @@ export function DataAppView({
       document.removeEventListener("securitypolicyviolation", onViolation);
       window.clearTimeout(timer);
     };
-  }, [validName, appReady, bundleError, loadError]);
+  }, [validSlug, appReady, bundleError, loadError, frameOrigin]);
 
-  if (!validName) {
+  if (!validSlug) {
     return (
       <NotFound
         title={t`Data app not found`}
         message={t`This data app doesn’t exist or has been disabled.`}
       />
+    );
+  }
+
+  // The server refuses the app's document then, so the frame would never report back.
+  if (isIsolatedOriginMisconfigured) {
+    return (
+      <CenteredEmptyState
+        title={t`Data apps are unavailable`}
+        message={
+          isAdmin
+            ? t`MB_ISOLATED_ORIGIN is set to a value that can’t be used, so data apps are turned off. The server log says why.`
+            : t`Ask an administrator for help.`
+        }
+        illustrationElement={<Icon name="warning" size={64} />}
+      />
+    );
+  }
+
+  if (originMismatch?.kind === "redirect") {
+    return <LoadingAndErrorWrapper loading />;
+  }
+
+  if (originMismatch?.kind === "wrong-origin") {
+    return (
+      <CenteredEmptyState
+        title={t`Open this data app at the main address`}
+        message={t`Data apps don’t open at this address. Use the button below to open this one.`}
+      >
+        <Button component="a" href={originMismatch.url} variant="filled">
+          {t`Open data app`}
+        </Button>
+      </CenteredEmptyState>
     );
   }
 
@@ -380,9 +474,10 @@ export function DataAppView({
       */}
       <iframe
         ref={setIframeEl}
-        title={meta.display_name}
+        title={meta.name}
         src={src}
         sandbox="allow-scripts allow-same-origin allow-downloads allow-forms allow-modals allow-popups"
+        allow="clipboard-write"
         style={{
           display: "block",
           width: "100%",

@@ -13,3 +13,6 @@
 docs/api.json                  linguist-generated
 docs/api.html                  linguist-generated
 resources/openapi/openapi.json linguist-generated
+
+# App DB snapshots: written by metabase.app-db.snapshot-test-util.generate/generate!, never by hand.
+test_resources/app_db_snapshots/** linguist-generated

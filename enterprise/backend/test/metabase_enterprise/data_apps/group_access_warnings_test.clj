@@ -9,6 +9,7 @@
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -275,8 +276,8 @@
                      :model/Table owls {:db_id (:id aviary) :name "owls" :display_name "Owls" :schema "PUBLIC"}
                      :model/Table albatrosses {:db_id (:id zoo) :name "albatrosses"
                                                :display_name "Albatrosses" :schema nil}
-                     :model/TableUserSettings _ {:table_id (:id finches) :display_name "Finches"}
                      :model/PermissionsGroup group {}]
+        (table-user-settings/upsert-table-user-settings! finches {:display_name "Finches"})
         (with-app-reading! [app [(:id albatrosses) (:id owls) (:id finches)]]
           (doseq [group-id [(:id (perms/all-users-group)) (:id group)]
                   database-id [(:id aviary) (:id zoo)]]
@@ -290,3 +291,19 @@
                                     {:id (:id albatrosses) :name "Albatrosses" :schema nil
                                      :database_id (:id zoo) :database_name "Zoo"}]}]
                  (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app "group-permission-warnings")))))))))
+
+(deftest tenant-group-warnings-do-not-inherit-internal-access-test
+  (mt/with-premium-features #{:data-apps :tenants :advanced-permissions}
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-perm-for-group-and-table! (perms/all-external-users-group) (mt/id :venues) :perms/view-data :blocked
+        (with-app-reading! [app [(mt/id :venues)]]
+          (mt/with-temp [:model/PermissionsGroup group {:is_tenant_group true}]
+            (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
+            (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+            (group-access/add-groups! app [(:id group)])
+            (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :venues)}]}]
+                    (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app "group-permission-warnings"))))
+            (mt/with-perm-for-group-and-table! (perms/all-external-users-group) (mt/id :venues) :perms/view-data :unrestricted
+              (is (= [] (group-access/permission-warnings app))))
+            (perms/set-table-permission! group (mt/id :venues) :perms/view-data :unrestricted)
+            (is (= [] (group-access/permission-warnings app)))))))))

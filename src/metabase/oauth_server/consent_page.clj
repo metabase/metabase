@@ -5,7 +5,8 @@
    [clojure.string :as str]
    [hiccup2.core :as h]
    [metabase.appearance.core :as appearance]
-   [metabase.system.core :as system]))
+   [metabase.system.core :as system]
+   [metabase.util.fonts :as u.fonts]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,19 +31,18 @@
    bundled font directory. Returns an empty string for custom (non-bundled) fonts since
    they are loaded via application-font-files."
   [font-name]
-  (let [dir-name      (str/replace font-name " " "_")
-        file-stem     (str/replace font-name " " "")
+  (let [file-stem     (if (= font-name "Lato") "lato-v16-latin" (str/replace font-name " " ""))
+        stem-for      (fn [weight]
+                        (if (= font-name "Lato")
+                          (str file-stem "-" (if (= weight 400) "regular" "700"))
+                          (str file-stem "-" (if (= weight 400) "Regular" "Bold"))))
         css-font-name (css-escape-font-name font-name)
-        fonts-url     (absolute-url "/app/fonts")]
-    (if (= font-name "Lato")
-      (str "@font-face { font-family: 'Lato'; font-weight: 400; font-style: normal; font-display: swap;"
-           " src: url('" fonts-url "/Lato/lato-v16-latin-regular.woff2') format('woff2'); }\n"
-           "@font-face { font-family: 'Lato'; font-weight: 700; font-style: normal; font-display: swap;"
-           " src: url('" fonts-url "/Lato/lato-v16-latin-700.woff2') format('woff2'); }\n")
-      (str "@font-face { font-family: '" css-font-name "'; font-weight: 400; font-style: normal; font-display: swap;"
-           " src: url('" fonts-url "/" dir-name "/" file-stem "-Regular.woff2') format('woff2'); }\n"
-           "@font-face { font-family: '" css-font-name "'; font-weight: 700; font-style: normal; font-display: swap;"
-           " src: url('" fonts-url "/" dir-name "/" file-stem "-Bold.woff2') format('woff2'); }\n"))))
+        face          (fn [weight]
+                        (when-let [path (u.fonts/hashed-font-url-path font-name (stem-for weight) "woff2")]
+                          (str "@font-face { font-family: '" css-font-name "'; font-weight: " weight
+                               "; font-style: normal; font-display: swap;"
+                               " src: url('" (absolute-url path) "') format('woff2'); }\n")))]
+    (str (face 400) (face 700))))
 
 (def ^:private default-logo-url "app/assets/img/logo.svg")
 

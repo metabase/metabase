@@ -33,7 +33,7 @@ export const getStatusIcon = (
   return MODERATION_STATUS_ICONS.get(status) || noIcon;
 };
 
-export function getIconForReview(review: ModerationReview, options?: any) {
+export function getIconForReview(review: ModerationReview, options?: boolean) {
   return getStatusIcon(review?.status, options);
 }
 
@@ -153,7 +153,11 @@ export function getModerationTimelineEvents(
   });
 }
 
-export const getQuestionIcon = (card: any) => {
+export const getQuestionIcon = (card: {
+  model?: string;
+  type?: string;
+  moderated_status?: string | null;
+}) => {
   return (card.model === "dataset" || card.type === "model") &&
     card.moderated_status === "verified"
     ? // Unjustified type cast. FIXME

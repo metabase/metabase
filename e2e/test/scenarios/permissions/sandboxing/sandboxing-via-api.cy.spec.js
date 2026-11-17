@@ -114,7 +114,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
               name: TTAG_NAME,
               "display-name": "CID",
               type: "dimension",
-              dimension: ["field", PEOPLE.ID, null],
+              "field-id": PEOPLE.ID,
               "widget-type": "id",
             },
           },
@@ -298,7 +298,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
               name: TTAG_NAME,
               "display-name": "CID",
               type: "dimension",
-              dimension: ["field", PEOPLE.ID, null],
+              "field-id": PEOPLE.ID,
               "widget-type": "id",
             },
           },
@@ -941,7 +941,6 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         expect(response.statusCode).to.eq(400);
         expect(response.body.message).to.eq(ERROR_MESSAGE);
       });
-      H.modal().scrollTo("bottom");
       H.modal().findByText(ERROR_MESSAGE);
     });
 

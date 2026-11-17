@@ -1,6 +1,6 @@
 import { mockSettings } from "__support__/settings";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
-import type { Channel, ParameterValueOrArray } from "metabase-types/api";
+import type { ParameterValueOrArray } from "metabase-types/api";
 import {
   createMockChannel,
   createMockDashboardSubscription,
@@ -13,7 +13,6 @@ import {
   buildRecipientText,
   formatFilter,
   formatSubscriptionDelivery,
-  formatSubscriptionSchedule,
   getActiveFilters,
   getChannelRecipients,
   getRecipientName,
@@ -196,70 +195,6 @@ describe("formatFilter", () => {
   });
 });
 
-describe("formatSubscriptionSchedule", () => {
-  it("formats hourly and daily schedules", () => {
-    expect(
-      formatSubscriptionSchedule(
-        createMockChannel({ schedule_type: "hourly" }),
-      ),
-    ).toBe("Hourly");
-    expect(
-      formatSubscriptionSchedule(
-        createMockChannel({ schedule_type: "daily", schedule_hour: 8 }),
-      ),
-    ).toBe("Daily at 8:00 AM");
-  });
-
-  it("formats a weekly schedule with the day of the week", () => {
-    expect(
-      formatSubscriptionSchedule(
-        createMockChannel({
-          schedule_type: "weekly",
-          schedule_day: "mon",
-          schedule_hour: 9,
-        }),
-      ),
-    ).toBe("Mondays at 9:00 AM");
-  });
-
-  it("formats a monthly schedule with the frame and day", () => {
-    expect(
-      formatSubscriptionSchedule(
-        createMockChannel({
-          schedule_type: "monthly",
-          schedule_frame: "first",
-          schedule_day: "mon",
-          schedule_hour: 8,
-        }),
-      ),
-    ).toBe("Monthly on the first Monday at 8:00 AM");
-    expect(
-      formatSubscriptionSchedule(
-        createMockChannel({
-          schedule_type: "monthly",
-          schedule_frame: "last",
-          schedule_hour: 20,
-        }),
-      ),
-    ).toBe("Monthly on the last calendar day at 8:00 PM");
-  });
-
-  it.each<Partial<Channel>>([
-    { schedule_type: "daily" },
-    { schedule_type: "weekly", schedule_hour: 9 },
-    { schedule_type: "weekly", schedule_day: "mon" },
-    { schedule_type: "monthly", schedule_hour: 8 },
-    { schedule_type: "monthly", schedule_frame: "first" },
-  ])(
-    "says the schedule is not set when $schedule_type misses a field",
-    (opts) => {
-      expect(formatSubscriptionSchedule(createMockChannel(opts))).toBe(
-        "Schedule not set",
-      );
-    },
-  );
-});
-
 describe("formatSubscriptionDelivery", () => {
   afterEach(() => {
     mockSettings();
@@ -332,7 +267,6 @@ describe("formatSubscriptionDelivery", () => {
     });
 
     expect(formatSubscriptionDelivery(channel)).toBe("Emailed daily at 20:00");
-    expect(formatSubscriptionSchedule(channel)).toBe("Daily at 20:00");
   });
 });
 

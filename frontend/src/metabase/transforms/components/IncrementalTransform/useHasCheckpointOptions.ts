@@ -9,7 +9,6 @@ import { useMetadataProviderFactory } from "metabase/metadata-store";
 import { getLibQuery, isMbqlQuery } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
 import type { TransformSource } from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api/table";
 
 import { getSourceFieldOptions } from "./KeysetColumnSelect";
 import { useNativeHasCheckpointFieldOptions } from "./useNativeCheckpointFieldOptions";
@@ -38,8 +37,8 @@ export const useHasCheckpointOptions = (source: TransformSource) => {
     useNativeHasCheckpointFieldOptions(libQuery);
 
   const pythonTableId = isPythonTransform
-    ? Object.values(source["source-tables"]).find(({ table_id }) =>
-        isConcreteTableId(table_id),
+    ? Object.values(source["source-tables"]).find(
+        ({ table_id }) => table_id != null,
       )?.table_id
     : null;
   const { data: pythonTable } = useGetTableQueryMetadataQuery(

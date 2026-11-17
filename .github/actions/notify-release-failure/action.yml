@@ -1,0 +1,51 @@
+name: Notify release failure
+description: Sends a failure or warning message to the release thread
+
+inputs:
+  title:
+    description: What failed (e.g. "Publishing"). The generic version is added when a version is set.
+    required: true
+  version:
+    description: Release version to find the release thread. Empty posts to the channel.
+    required: false
+    default: ""
+  level:
+    description: failure marks the thread as failed. warning does not block the release or change the thread reaction.
+    required: false
+    default: failure
+  slack-channel:
+    description: Slack release channel name
+    required: true
+  slack-bot-token:
+    description: Slack bot token
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
+    - name: Send failure message
+      uses: actions/github-script@v9
+      env:
+        TITLE: ${{ inputs.title }}
+        VERSION: ${{ inputs.version }}
+        LEVEL: ${{ inputs.level }}
+        SLACK_RELEASE_CHANNEL: ${{ inputs.slack-channel }}
+        SLACK_BOT_TOKEN: ${{ inputs.slack-bot-token }}
+      with:
+        script: | # js
+          const { sendReleaseSlackMessage, githubRunLink, getGenericVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          const { owner, repo } = context.repo;
+          const { TITLE: title, VERSION: version, LEVEL: level } = process.env;
+          const label = version ? `${title} ${getGenericVersion(version)} failed` : `${title} failed`;
+          const runLink = githubRunLink(label, context.runId.toString(), owner, repo);
+
+          await sendReleaseSlackMessage({
+            channelName: process.env.SLACK_RELEASE_CHANNEL,
+            version: version || undefined,
+            ...(level === 'warning'
+              ? { emoji: 'warning', message: `${runLink}. The release is not blocked.` }
+              : { emoji: 'x', message: runLink, status: 'failure' }),
+          });

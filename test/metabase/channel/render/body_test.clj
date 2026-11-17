@@ -4,7 +4,6 @@
    [clj-http.fake :as fake]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [clojure.zip :as zip]
    [hiccup.core :refer [html]]
    [hickory.select :as hik.s]
@@ -20,7 +19,8 @@
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -236,10 +236,10 @@
 
 (def ^:private header-alignment-table-columns
   "Viz settings naming every column, in result order. Their presence masked the bug (#71069)."
-  {:metabase.models.visualization-settings/table-columns
+  {:table.columns
    (vec (for [col-name (map :name header-alignment-cols)]
-          {:metabase.models.visualization-settings/table-column-name    col-name
-           :metabase.models.visualization-settings/table-column-enabled true}))})
+          {:name    col-name
+           :enabled true}))})
 
 (defn- rendered-table-headers
   "The titles actually rendered into the <th> cells of a `:table` part."
@@ -482,15 +482,9 @@
       (testing "the placeholder is styled in the secondary/muted color, not left blank"
         (is (str/includes? html-str style/color-gray-3))))))
 
-(defn- replace-style-maps [hiccup-map]
-  (walk/postwalk (fn [maybe-map]
-                   (if (and (map? maybe-map)
-                            (contains? maybe-map :style))
-                     :style-map
-                     maybe-map)) hiccup-map))
-
-(def ^:private render-truncation-warning'
-  (comp replace-style-maps #'body/render-truncation-warning))
+(defn render-truncation-warning' [row-limit row-count]
+  (match/replace-all (#'body/render-truncation-warning row-limit row-count)
+    {:style _} :style-map))
 
 (deftest no-truncation-warnig-for-style
   (is (nil? (render-truncation-warning' 10 5))))
@@ -1402,13 +1396,13 @@
           test-rows [[1 "Alice"] [2 "Bob"]]
           test-data {:cols test-cols :rows test-rows}
           ;; Simulate duplicated table columns viz settings
-          viz-settings {:metabase.models.visualization-settings/table-columns
-                        [{:metabase.models.visualization-settings/table-column-name "ID"
-                          :metabase.models.visualization-settings/table-column-enabled true}
-                         {:metabase.models.visualization-settings/table-column-name "ID" ; duplicate
-                          :metabase.models.visualization-settings/table-column-enabled true}
-                         {:metabase.models.visualization-settings/table-column-name "NAME"
-                          :metabase.models.visualization-settings/table-column-enabled true}]}
+          viz-settings {:table.columns
+                        [{:name "ID"
+                          :enabled true}
+                         {:name "ID" ; duplicate
+                          :enabled true}
+                         {:name "NAME"
+                          :enabled true}]}
           [ordered-cols ordered-rows] (#'body/order-data test-data viz-settings)]
       (testing "should return cols without errors"
         (is (= 2 (count ordered-cols)))
@@ -1429,10 +1423,10 @@
           test-rows [[1 "Alice" "alice@example.com" "555-1234" "123 Main St" "Boston" "MA" "02101" "USA" "2024-01-01"]]
           test-data {:cols test-cols :rows test-rows}
           reordered-names ["EMAIL" "NAME" "CITY" "STATE" "ZIP" "ID" "PHONE" "ADDRESS" "COUNTRY" "CREATED_AT"]
-          viz-settings {:metabase.models.visualization-settings/table-columns
+          viz-settings {:table.columns
                         (vec (for [col-name reordered-names]
-                               {:metabase.models.visualization-settings/table-column-name col-name
-                                :metabase.models.visualization-settings/table-column-enabled true}))}
+                               {:name col-name
+                                :enabled true}))}
           [ordered-cols ordered-rows] (#'body/order-data test-data viz-settings)]
       (testing "cols should follow table-columns order"
         (is (= reordered-names (map :name ordered-cols))))
@@ -1444,10 +1438,10 @@
   (mt/with-column-remappings [orders.product_id products.title]
     (testing "order-data respect table-columns order from viz-settings and keep remapped columns (#62053)"
       (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders {:limit 1})
-                                       :visualization_settings {:metabase.models.visualization-settings/table-columns
+                                       :visualization_settings {:table.columns
                                                                 (vec (for [col-name ["QUANTITY" "CREATED_AT" "DISCOUNT" "TOTAL" "TAX" "SUBTOTAL" "USER_ID" "ID" "PRODUCT_ID"]]
-                                                                       {:metabase.models.visualization-settings/table-column-name col-name
-                                                                        :metabase.models.visualization-settings/table-column-enabled true}))}}]
+                                                                       {:name col-name
+                                                                        :enabled true}))}}]
         ;; trigger render to gather prep-data for rendering
         (let [table (body/render :table nil "UTC" card nil  (:data (:result (notification.execute/execute-card (mt/user->id :crowberto) (:id card)))))]
           (is (=  ["Quantity"
@@ -1619,15 +1613,33 @@
                                  ["pivot and cell alike" (assoc simple-pivot-settings :table.cell_column "SOURCE")]]]
         (testing reason
           (is (= flat (html (:content (render-simple-pivot settings)))))))))
-  (testing "a result with four columns stays flat"
-    (let [cols (conj simple-pivot-cols {:name "extra" :display_name "Extra" :base_type :type/Text})
-          rows (mapv #(conj % "x") simple-pivot-rows)]
-      (is (= [["Category" "Source"    "Count" "Extra"]
-              ["Gizmo"    "Google"    "1"     "x"]
-              ["Gizmo"    "Organic"   "2"     "x"]
-              ["Widget"   "Affiliate" "3"     "x"]
-              ["Widget"   "Google"    "4"     "x"]]
-             (rendered-grid (render-simple-pivot simple-pivot-settings cols rows)))))))
+  (testing "a result with fewer than three columns stays flat"
+    (let [cols [{:name "SOURCE" :display_name "Source" :base_type :type/Text}
+                {:name "count"  :display_name "Count"  :base_type :type/Integer}]
+          rows [["Google" 1] ["Organic" 2]]]
+      (is (= [["Source" "Count"] ["Google" "1"] ["Organic" "2"]]
+             (rendered-grid (render-simple-pivot simple-pivot-settings cols rows))))))
+  (testing "a result with more than three columns pivots, ignoring the extra columns (#84401)"
+    (let [cols (into [(first simple-pivot-cols)
+                      (second simple-pivot-cols)
+                      {:name "extra" :display_name "Extra" :base_type :type/Text}]
+                     (drop 2 simple-pivot-cols))
+          rows (mapv (fn [[category source cnt]] [category source "x" cnt]) simple-pivot-rows)]
+      (is (= [["Category" "Affiliate" "Google" "Organic"]
+              ["Gizmo"    ""          "1"      "2"]
+              ["Widget"   "3"         "4"      ""]]
+             (rendered-grid (render-simple-pivot simple-pivot-settings cols rows))))))
+  (testing "the first column that is neither the pivot nor the cell column holds the row labels"
+    (let [cols (into [{:name "extra" :display_name "Extra" :base_type :type/Text}] simple-pivot-cols)
+          rows (mapv #(into ["x"] %) simple-pivot-rows)]
+      (is (= [["Extra" "Google" "Organic" "Affiliate"]
+              ["x"     "4"      "2"       "3"]]
+             (rendered-grid (render-simple-pivot simple-pivot-settings cols rows))))))
+  (testing "a repeated (normal, pivot) pair shows the last row's value, as in the browser"
+    (is (= [["Category" "Google"]
+            ["Gizmo"    "2"]]
+           (rendered-grid (render-simple-pivot simple-pivot-settings simple-pivot-cols
+                                               [["Gizmo" "Google" 1] ["Gizmo" "Google" 2]]))))))
 
 (deftest simple-pivot-row-limit-test
   (testing "the grid is built from every row, not only the first attachment-table-row-limit rows"

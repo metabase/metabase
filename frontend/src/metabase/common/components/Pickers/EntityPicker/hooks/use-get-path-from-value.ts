@@ -601,6 +601,9 @@ async function getCollectionPathFromValue({
 function getItemByModel(value: OmniPickerValue, dispatch: DispatchFn) {
   switch (value.model) {
     case "table":
+      if (typeof value.id !== "number") {
+        return Promise.reject(new Error(`Invalid table id: ${value.id}`));
+      }
       return dispatch(
         tableApi.endpoints.getTable.initiate({ id: value.id }),
       ).unwrap();

@@ -201,7 +201,7 @@ describe(suiteTitle, () => {
 
     it("shows dashboard of id=1 when activity log is empty", () => {
       visitNewEmbedPage();
-      assertDashboard({ id: 1, name: "Person overview" });
+      assertDashboard({ id: 1, name: "Content with cobwebs" });
       cy.wait("@emptyRecentItems");
 
       cy.log("dashboard title and card of id=1 should be visible");
@@ -209,8 +209,8 @@ describe(suiteTitle, () => {
       H.waitForSimpleEmbedIframesToLoad();
 
       H.getSimpleEmbedIframeContent().within(() => {
-        cy.findByText("Person overview").should("be.visible");
-        cy.findByText("Person detail").should("be.visible");
+        cy.findByText("Content with cobwebs").should("be.visible");
+        cy.findByText("Dashboards without recent views").should("be.visible");
       });
     });
   });
@@ -251,7 +251,7 @@ describe(suiteTitle, () => {
     cy.wait("@getRecents");
 
     H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("Person overview").should("not.exist");
+      cy.findByText("Content with cobwebs").should("not.exist");
       cy.findByText("Orders in a dashboard").should("be.visible");
     });
   });

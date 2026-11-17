@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { t } from "ttag";
 
 import remoteSyncUpsellImage from "assets/img/data-studio-remote-sync-upsell.svg";

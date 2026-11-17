@@ -34,15 +34,12 @@ export function QuestionSummarizeWidget({
     }
   };
 
-  useRegisterShortcut(
-    [
-      {
-        id: "query-builder-toggle-summarize-sidebar",
-        perform: handleClick,
-      },
-    ],
-    [isShowingSummarySidebar],
-  );
+  useRegisterShortcut([
+    {
+      id: "query-builder-toggle-summarize-sidebar",
+      perform: handleClick,
+    },
+  ]);
 
   return (
     <Button

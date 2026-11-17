@@ -15,6 +15,7 @@
    [metabase.events.core :as events]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
@@ -32,7 +33,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private chart-id-schema
+(def chart-id-schema
   "A chart ID must fit `report_card.metabot_chart_id`, a `varchar(36)`."
   [:string {:min 1 :max 36}])
 
@@ -42,19 +43,26 @@
   []
   (= :h2 (mdb/db-type)))
 
+(defn name-schema
+  "The schema of a name Metabot gives a question or dashboard: not blank, and at most 254 characters as the app DB
+  counts them. The model sees `description`, when there is one."
+  [description]
+  [:and {:json-schema (cond-> {:type "string" :minLength 1 :maxLength 254}
+                        description (assoc :description description))}
+   :string
+   [:fn {:error/fn (fn [{:keys [value]} _]
+                     (if (mr/validate ms/NonBlankString value)
+                       (str "must contain 1 to 254 "
+                            (if (h2-app-db?) "UTF-16 code units" "Unicode code points"))
+                       "must be a non-blank string"))}
+    (fn [^String s]
+      (and (mr/validate ms/NonBlankString s)
+           (<= (if (h2-app-db?) (.length s) (.codePointCount s 0 (.length s))) 254)))]])
+
 (def ^:private save-entity-schema
   [:map {:closed true}
    [:chart_id chart-id-schema]
-   [:name [:and {:json-schema {:type "string" :minLength 1 :maxLength 254}}
-           :string
-           [:fn {:error/fn (fn [{:keys [value]} _]
-                             (if (mr/validate ms/NonBlankString value)
-                               (str "must contain 1 to 254 "
-                                    (if (h2-app-db?) "UTF-16 code units" "Unicode code points"))
-                               "must be a non-blank string"))}
-            (fn [^String s]
-              (and (mr/validate ms/NonBlankString s)
-                   (<= (if (h2-app-db?) (.length s) (.codePointCount s 0 (.length s))) 254)))]]]
+   [:name (name-schema nil)]
    [:description :string]
    [:destination
     [:multi {:dispatch :target_type}
@@ -109,7 +117,7 @@
                :text (str "To offer another collection, read `metabase://collections?tree=true` with"
                           " `read_resource` and pick one with `can_write=true`.")}]})
 
-(defn- check-writable!
+(defn check-writable!
   "Convert a 403 from `check` into [[destination-not-writable!]].
   `check` must be a write or create permission check for `destination`."
   [destination check]
@@ -128,7 +136,7 @@
   [{:keys [message]}]
   {:message message :recovery []})
 
-(defn- do-with-save-rejections
+(defn do-with-save-rejections
   "Return `thunk`'s result, converting undeclared API 4xx failures into recoverable save errors."
   [thunk]
   (try
@@ -136,7 +144,7 @@
     (catch clojure.lang.ExceptionInfo e
       (let [data (ex-data e)
             status-code (:status-code data)]
-        (if (and (not (contains? data tools.error/error-key))
+        (if (and (not (tools.error/declared? e))
                  (int? status-code) (<= 400 status-code 499))
           (save-rejected! {:message (ex-message e)})
           (throw e))))))
@@ -199,13 +207,27 @@
                         (some-> (get-in chart [:chart_config :display_type]) keyword)
                         :table)}))
 
-(defn- personal-collection-id []
+(defn savable-chart
+  "The chart `chart-id` from agent memory as `{:dataset_query :display}`, ready to save as a card.
+  Throws when the chart is unknown or the user can't run its query, and, when this Metabot uses only curated
+  content, when the query reads anything uncurated."
+  [chart-id]
+  (let [{:keys [dataset_query] :as chart} (resolve-chart chart-id)]
+    (check-query-permissions! dataset_query)
+    ;; A chart may hold a query from the user's viewing context, which nothing judged on the way in.
+    (when (shared/curated-only?)
+      (curation/check-curated-query! (str "chart " chart-id) dataset_query))
+    chart))
+
+(defn personal-collection-id
+  "The current user's personal collection ID. Throws [[no-personal-collection!]] when the user has none."
+  []
   (or (:id (collection/user->personal-collection api/*current-user-id*))
       ;; API-key users have no personal collection; without this check the nil would
       ;; silently save into the root collection instead
       (no-personal-collection! {})))
 
-(defn- collection-name
+(defn collection-name
   "Current display name of a collection target, for the LLM-facing save summary.
   A `nil` id is the root (\"Our analytics\") collection."
   [collection-id]
@@ -301,7 +323,7 @@
        :destination-name (:name document)
        :link             (str "metabase://document/" document-id)})))
 
-(defn- publish-card-create!
+(defn publish-card-create!
   "Publish the `:event/card-create` event for a card that has already been committed.
   Log failures without throwing."
   [card]
@@ -350,15 +372,15 @@
 (defrecord SaveEntityTool []
   tools/Tool
   (declaration [_]
-    {:name        "save_entity"
-     :description tool-description
-     :scope       scope/agent-question-create
-     :args        save-entity-schema})
+    {:name            "save_entity"
+     :description     tool-description
+     :scope           scope/agent-question-create
+     :args            save-entity-schema
+     :metabot/writes? true})
 
   (handle [_ {:keys [chart_id destination description] question-name :name} _ctx]
-    (let [{:keys [dataset_query display]} (resolve-chart chart_id)
-          _    (check-query-permissions! dataset_query)
-          args {:name          question-name
+    (let [{:keys [dataset_query display]} (savable-chart chart_id)
+          args {:name         question-name
                 :description    description
                 :dataset_query  dataset_query
                 :display        display

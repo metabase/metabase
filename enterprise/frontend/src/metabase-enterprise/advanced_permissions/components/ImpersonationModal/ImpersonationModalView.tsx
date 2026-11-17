@@ -1,9 +1,9 @@
+/* eslint-disable metabase/no-literal-metabase-strings */
 import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink/ExternalLink";
-import { FormFooter } from "metabase/common/components/FormFooter";
 import { Link } from "metabase/common/components/Link/Link";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
@@ -14,12 +14,15 @@ import {
   FormSelect,
   FormSubmitButton,
 } from "metabase/forms";
-import { Alert, Button, Icon, Stack, Text } from "metabase/ui";
+import { Button, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
+import { impersonatesUsers } from "metabase-enterprise/advanced_permissions/utils";
 import { renderUserAttributesForSelect } from "metabase-enterprise/sandboxes/utils";
 import type { Database, UserAttributeKey } from "metabase-types/api";
 
 import { ImpersonationWarning } from "../ImpersonationWarning";
+
+import { ImpersonationNotice } from "./ImpersonationNotice";
 
 const ROLE_ATTRIBUTION_MAPPING_SCHEMA = Yup.object({
   attribute: Yup.string().required(Errors.required).default(""),
@@ -68,93 +71,76 @@ export const ImpersonationModalView = ({
     database.features?.includes("connection-impersonation-requires-role") &&
     (!database.details || database.details["role"] == null);
 
-  // for redshift, we impersonate using users, not roles
-  const impersonationUsesUsers = database.engine === "redshift";
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Only shows for admins.
   const { url: permsDocsUrl } = useDocsUrl("permissions/data");
 
-  const modalTitle = impersonationUsesUsers
-    ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
-      t`Map a Metabase user attribute to database users`
-    : t`Map a user attribute to database roles`;
+  const modalMessage = impersonatesUsers(database)
+    ? t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database user you associate with the user attribute.`
+    : t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute.`;
 
-  const modalMessage = impersonationUsesUsers
-    ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
-      t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database user you associate with the user attribute.`
-    : // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
-      t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute.`;
+  const description = (
+    <Text lh="lg">
+      {modalMessage}{" "}
+      <ExternalLink
+        className={CS.link}
+        href={permsDocsUrl}
+      >{t`Learn More`}</ExternalLink>
+    </Text>
+  );
+
+  if (roleRequired) {
+    return (
+      <ImpersonationNotice description={description} onClose={onCancel}>
+        {t`Connection impersonation requires specifying a user role on the database connection.`}{" "}
+        <Link
+          variant="brand"
+          to={`/admin/databases/${database.id}`}
+        >{t`Edit connection`}</Link>
+      </ImpersonationNotice>
+    );
+  }
+
+  if (!hasAttributes) {
+    return (
+      <ImpersonationNotice description={description} onClose={onCancel}>
+        {t`To associate a user with a database role, you'll need to give that user at least one user attribute.`}{" "}
+        <Link variant="brand" to="/admin/people">{t`Edit user settings`}</Link>
+      </ImpersonationNotice>
+    );
+  }
 
   return (
-    <Stack gap="sm" p="xxl">
-      <h2>{modalTitle}</h2>
-      <Text my="sm" lh="lg">
-        {modalMessage}{" "}
-        <ExternalLink
-          className={CS.link}
-          href={permsDocsUrl}
-        >{t`Learn More`}</ExternalLink>
-      </Text>
-      {roleRequired ? (
-        <>
-          <Alert size="compact" icon={<Icon name="warning" />} color="warning">
-            {t`Connection impersonation requires specifying a user role on the database connection.`}{" "}
-            <Link
-              variant="brand"
-              to={`/admin/databases/${database.id}`}
-            >{t`Edit connection`}</Link>
-          </Alert>
+    <FormProvider
+      initialValues={initialValues}
+      validationSchema={ROLE_ATTRIBUTION_MAPPING_SCHEMA}
+      enableReinitialize
+      onSubmit={handleSubmit}
+    >
+      {({ isValid }) => (
+        <Form>
+          <Stack gap="xl">
+            {description}
+            <FormSelect
+              name="attribute"
+              placeholder={t`Pick a user attribute`}
+              label={t`User attribute`}
+              data={attributeOptions}
+              renderOption={renderUserAttributesForSelect}
+            />
+            <ImpersonationWarning database={database} />
+          </Stack>
 
-          <FormFooter>
-            <Button type="button" onClick={onCancel}>{t`Close`}</Button>
-          </FormFooter>
-        </>
-      ) : hasAttributes ? (
-        <FormProvider
-          initialValues={initialValues}
-          validationSchema={ROLE_ATTRIBUTION_MAPPING_SCHEMA}
-          enableReinitialize
-          onSubmit={handleSubmit}
-        >
-          {({ isValid }) => (
-            <Form>
-              <FormSelect
-                name="attribute"
-                placeholder={t`Pick a user attribute`}
-                label={t`User attribute`}
-                data={attributeOptions}
-                mb="1.25rem"
-                renderOption={renderUserAttributesForSelect}
-              />
-
-              <ImpersonationWarning database={database} />
-
-              <FormFooter>
-                <FormErrorMessage />
-                <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
-                <FormSubmitButton
-                  label={t`Save`}
-                  disabled={!isValid}
-                  variant="filled"
-                />
-              </FormFooter>
-            </Form>
-          )}
-        </FormProvider>
-      ) : (
-        <>
-          <Alert size="compact" icon={<Icon name="warning" />} color="warning">
-            {t`To associate a user with a database role, you'll need to give that user at least one user attribute.`}{" "}
-            <Link
-              variant="brand"
-              to="/admin/people"
-            >{t`Edit user settings`}</Link>
-          </Alert>
-
-          <FormFooter>
-            <Button type="button" onClick={onCancel}>{t`Close`}</Button>
-          </FormFooter>
-        </>
+          <Modal.Footer>
+            <FormErrorMessage flex={1} />
+            <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+            <FormSubmitButton
+              label={t`Save`}
+              disabled={!isValid}
+              variant="filled"
+            />
+          </Modal.Footer>
+        </Form>
       )}
-    </Stack>
+    </FormProvider>
   );
 };

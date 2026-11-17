@@ -1,5 +1,6 @@
 ---
 title: Supported browsers
+summary: Which browsers and versions Metabase supports.
 redirect_from:
   - /docs/latest/administration-guide/supported-browsers
 ---
