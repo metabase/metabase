@@ -11,7 +11,7 @@
    [toucan2.core :as t2]))
 
 (mr/def ::status
-  [:enum :unprovisioned :provisioning :provisioned :deprovisioning])
+  [:enum :unprovisioned :provisioning :provisioned :deprovisioning :teardown_failed :never_started])
 
 (mr/def ::workspace-database.insert
   [:map {:closed true}
@@ -42,6 +42,16 @@
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
+
+(defn all-databases
+  "Every Database."
+  []
+  (t2/select :model/Database))
+
+(defn update-database-settings!
+  "Replace the `:settings` of the Database with `database-id`."
+  [database-id settings]
+  (t2/update! :model/Database :id database-id {:settings settings}))
 
 (mu/defn database-engine
   "The `:engine` of the Database with `database-id`, or nil."
@@ -86,6 +96,11 @@
   "Whether a Workspace with `workspace-id` exists."
   [workspace-id :- ms/PositiveInt]
   (t2/exists? :model/Workspace :id workspace-id))
+
+(defn any-workspace-exists?
+  "Whether any Workspace exists."
+  []
+  (t2/exists? :model/Workspace))
 
 (mu/defn workspace
   "The Workspace with `workspace-id`, or nil."
@@ -132,14 +147,14 @@
   (t2/select-one :model/WorkspaceDatabase :id workspace-database-id))
 
 (mu/defn workspace-databases
-  "The WorkspaceDatabases of the Workspace with `workspace-id`."
+  "The WorkspaceDatabases of the Workspace with `workspace-id`, ordered by id."
   [workspace-id :- ms/PositiveInt]
-  (t2/select :model/WorkspaceDatabase :workspace_id workspace-id))
+  (t2/select :model/WorkspaceDatabase :workspace_id workspace-id {:order-by [[:id :asc]]}))
 
 (mu/defn workspace-databases-of-workspaces
-  "The WorkspaceDatabases of the Workspaces with ids in `workspace-ids`."
+  "The WorkspaceDatabases of the Workspaces with ids in `workspace-ids`, ordered by id."
   [workspace-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/WorkspaceDatabase :workspace_id [:in workspace-ids]))
+  (t2/select :model/WorkspaceDatabase :workspace_id [:in workspace-ids] {:order-by [[:id :asc]]}))
 
 (mu/defn workspace-database-ids-with-status
   "The ids of the WorkspaceDatabases of the Workspace with `workspace-id` whose status is `status`."
@@ -166,6 +181,18 @@
    to-status             :- ::status]
   (t2/update! :model/WorkspaceDatabase {:id workspace-database-id :status from-status}
               {:status to-status :updated_at (mi/current-timestamp)}))
+
+(mu/defn transition-workspace-database-at!
+  "Set the status of the WorkspaceDatabase with `workspace-database-id` to `to-status`, and its `updated_at` to
+  `updated-at`, if its status is `from-status`. The `UPDATE` statement carries the status condition, so of two
+  concurrent calls from the same status only one updates the row. Returns the number of rows updated."
+  [workspace-database-id :- ms/PositiveInt
+   from-status           :- ::status
+   to-status             :- ::status
+   updated-at            :- (ms/InstanceOfClass java.time.OffsetDateTime)]
+  (t2/update! :model/WorkspaceDatabase
+              {:id workspace-database-id :status from-status}
+              {:status to-status :updated_at updated-at}))
 
 (mu/defn transition-workspace-databases!
   "Set the status of every WorkspaceDatabase of the Workspace with `workspace-id` that is `from-status` to
@@ -254,23 +281,25 @@
                  :from_table_name (:table from-spec)))
 
 (mu/defn upsert-table-remapping!
-  "Insert a TableRemapping from `from-spec` to `to-spec` unless one from `from-spec` already exists. Idempotent on the
+  "Make the TableRemapping from `from-spec` point at `to-spec`: insert it, or update one that points elsewhere, such as
+  a row left from an earlier workspace schema. Leaves a row that already points at `to-spec` untouched. Keyed on the
   unique constraint `(database_id, from_db, from_schema, from_table_name)`: [[app-db/update-or-insert!]] retries the
   lookup when a concurrent insert wins the race."
   [database-id :- ::lib.schema.id/database
    from-spec   :- ::table-spec
    to-spec     :- ::table-spec]
-  (app-db/update-or-insert!
-   :model/TableRemapping
-   {:database_id     database-id
-    :from_db         (:db from-spec)
-    :from_schema     (:schema from-spec)
-    :from_table_name (:table from-spec)}
-   (fn [existing]
-     (when-not existing
-       {:to_db         (:db to-spec)
-        :to_schema     (:schema to-spec)
-        :to_table_name (:table to-spec)}))))
+  (let [to-columns {:to_db         (:db to-spec)
+                    :to_schema     (:schema to-spec)
+                    :to_table_name (:table to-spec)}]
+    (app-db/update-or-insert!
+     :model/TableRemapping
+     {:database_id     database-id
+      :from_db         (:db from-spec)
+      :from_schema     (:schema from-spec)
+      :from_table_name (:table from-spec)}
+     (fn [existing]
+       (when (not= to-columns (select-keys existing (keys to-columns)))
+         to-columns)))))
 
 (mu/defn delete-table-remapping!
   "Delete the TableRemapping of the Database with `database-id` whose source is `from-spec`. Returns the number of

@@ -21,6 +21,7 @@
   "The target a transform targeting `target` on `db-id` would write to, without recording
    anything. On a workspaced database that is the workspace's remapped copy; checks such as
    \"does the target table already exist\" must ask about that table, not the canonical one.
+   The EE impl throws a 400 on a workspace instance when the database has no workspace schema.
 
    OSS / no-workspace fallback: returns `target` unchanged."
   metabase-enterprise.workspaces.transform-hooks

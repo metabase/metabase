@@ -128,6 +128,7 @@
      audit-app
      auth-provider
      batch-processing
+     change-log
      channel
      collections
      content-verification
