@@ -55,7 +55,7 @@
 
 (methodical/defmethod t2.before-delete/before-delete :before :hook/events
   [model instance]
-  (collect! model :delete instance {:previous-object (t2.realize/realize instance)})
+  (collect! (model-of model) :delete instance {:previous-object (t2.realize/realize instance)})
   instance)
 
 (methodical/defmethod t2.pipeline/build :before [:toucan.query-type/delete.* :hook/events :default]

@@ -433,12 +433,11 @@
         (with-redefs [events/publish-event! (fn [topic _event]
                                               (when (= :event/card-create topic)
                                                 (throw (ex-info "A subscriber failed." {}))))]
-          (testing "the save succeeds and creates one card even when a card-create subscriber fails"
+          (testing "a failing card-create subscriber fails the save in its transaction, which leaves no card behind"
             (let [outcome (invoke-save-entity
                            (assoc chart-args :destination {:target_type "collection" :collection_id (:id coll)}))]
-              (is (nil? (:error outcome)))
-              (is (= [(get-in outcome [:structured-output :card-id])]
-                     (t2/select-pks-vec :model/Card :collection_id (:id coll)))))))))))
+              (is (=? {:class :unrecoverable} (:error outcome)))
+              (is (empty? (t2/select-pks-vec :model/Card :collection_id (:id coll)))))))))))
 
 (deftest undeclared-failure-test
   (testing "an unexpected failure ends the turn without reaching the model"

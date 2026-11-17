@@ -721,14 +721,16 @@
         (is (contains? deps [:model/Dashboard 222]))
         (is (contains? deps [:model/Table 333]))))))
 
-(deftest update-publishes-no-events-test
-  (testing "updating a Document through the model publishes no events: the writing function does"
+(deftest update-publishes-lifecycle-event-test
+  (testing "updating a Document through the model publishes its update event with the previous row"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Test Document"}]
       (let [events-published (atom [])]
         (with-redefs [events/publish-event! (fn [topic event]
                                               (swap! events-published conj [topic event]))]
-          (t2/update! :model/Document :id doc-id {:name "Updated Name"})
-          (is (empty? @events-published)))))))
+          (t2/update! :model/Document :id doc-id {:name "Updated Name"}))
+        (is (=? [[:event/document-update {:object          {:id doc-id :name "Updated Name"}
+                                          :previous-object {:id doc-id :name "Test Document"}}]]
+                (filterv (comp #{:event/document-update} first) @events-published)))))))
 
 (deftest never-viewed-document-reports-null-activity-anchor
   (testing "a never-viewed document's activity anchor is NULL, not its last_viewed_at storage default

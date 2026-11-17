@@ -502,6 +502,11 @@
     (queries/with-copy-source-card source-card
       (queries/check-allowed-to-create-card! card card-type))
     (let [created-card (queries/create-card! card @api/*current-user*)]
+      (when (and (some? (:result_metadata card))
+                 (= (name (:type created-card)) "question"))
+        (events/publish-event! :event/card-create-with-result-metadata
+                               {:card-id (:id created-card)
+                                :user-id api/*current-user-id*}))
       (-> created-card
           hydrate-card-details
           (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*))))))
