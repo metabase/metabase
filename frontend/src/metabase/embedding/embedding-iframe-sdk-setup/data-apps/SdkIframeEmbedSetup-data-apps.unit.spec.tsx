@@ -114,8 +114,6 @@ describe("data app embedding setup", () => {
     ).not.toBeInTheDocument();
   });
 
-  // data apps does not support theme overrides,
-  // as each data app already defines its SDK theme.
   it("does not let the admin switch experiences when opened from a data app", async () => {
     setupDataApps({
       initialState: { resourceType: "data-app", resourceId: "sales" },
@@ -135,6 +133,8 @@ describe("data app embedding setup", () => {
     ).not.toBeInTheDocument();
   });
 
+  // data apps does not support theme overrides,
+  // as each data app already defines its SDK theme.
   it("omits the saved theme from data app snippets", async () => {
     setupDataApps({
       initialState: { resourceType: "data-app", resourceId: "sales" },
@@ -273,6 +273,23 @@ describe("data app embedding setup", () => {
     expect(await screen.findByText("No data apps found")).toBeInTheDocument();
 
     expect(screen.getByRole("button", { name: "Get code" })).toBeDisabled();
+  });
+
+  it("lets the admin switch away from data apps when the app list is empty", async () => {
+    setupDataApps({ apps: [] });
+
+    await userEvent.click(screen.getByRole("radio", { name: /Data App/ }));
+    await userEvent.click(screen.getByRole("textbox", { name: "Data app" }));
+    expect(await screen.findByText("No data apps found")).toBeInTheDocument();
+
+    expect(screen.getByRole("button", { name: "Get code" })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("radio", { name: /Dashboard/ }));
+    expect(screen.getByRole("radio", { name: /Dashboard/ })).toBeChecked();
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Next" })).toBeEnabled(),
+    );
   });
 
   it("waits for the app list to load before previewing or generating code", async () => {
