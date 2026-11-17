@@ -5,7 +5,7 @@ summary: "Reference for the theme object that styles modular embeds, including t
 
 # Appearance reference
 
-This page lists every option in the `theme` object. The same object works for web components (in `defineMetabaseConfig()`) and the React SDK (in `defineMetabaseTheme()`).
+This page lists every option in the `theme` object for [modular embedding](./modular-embedding.md). The same object works for web components (in `defineMetabaseConfig()`) and the React SDK (in `defineMetabaseTheme()`).
 
 To add a theme to your embeds, see [Customize the appearance of your embeds](./appearance.md).
 
@@ -153,7 +153,16 @@ This example sets every option in the theme object. See the tables below for mor
 
 ## Colors
 
-Each option in the `colors` object accepts any CSS color string.
+Set colors inside the `colors` object. Each option accepts any CSS color string:
+
+```js
+{
+  colors: {
+    brand: "#509EE3",
+    "text-primary": "#4C5773",
+  },
+}
+```
 
 | Color                  | What it does                                                                         |
 | ---------------------- | ------------------------------------------------------------------------------------ |
@@ -200,7 +209,7 @@ colors: {
 }
 ```
 
-If you set a custom series color in a chart's visualization settings, that color overrides the theme.
+If you set a custom series color in a chart's [visualization settings](../questions/visualizations/visualizing-results.md), that color overrides the theme.
 
 ## Component options
 

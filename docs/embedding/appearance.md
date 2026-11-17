@@ -7,9 +7,13 @@ redirect_from:
 
 # Customize the appearance of your embeds
 
-Every modular embed on a page shares one theme. The theme object is the same for web components and the React SDK, so every example on this page works with both.
+A theme is an object that sets colors, fonts, and component options. Every [embed configuration](./config.md) has one theme, and the theme applies to every embed that uses that configuration. The theme object is the same for web components and the React SDK, so every example on this page works with both.
 
-On all plans, you can [pick a light or dark theme](#pick-a-light-or-dark-theme). On Pro and Enterprise plans, you can also save reusable themes in Metabase and set individual colors, fonts, and component options.
+There are three ways to set a theme:
+
+- **Use a preset:** Set `preset` to `"light"` or `"dark"`. Available on all plans.
+- **Save a theme:** Save a theme in **Embedding hub** > **Appearance**, then select it in the embed wizard. The wizard copies your theme into the embed's code. Available on Pro and Enterprise plans only.
+- **Set options in code:** Add options directly to your embed configuration. These values override the preset or saved theme. Available on Pro and Enterprise plans only.
 
 For every option in the theme object, see [Appearance reference](./appearance-reference.md).
 
@@ -57,15 +61,15 @@ Presets are available on all plans. Any colors you set alongside a preset overri
 
 ## Save a theme in Metabase
 
+_Embedding hub > Appearance_
+
 {% include plans-blockquote.html feature="Saved embedding themes" is_plural=true %}
 
 ![Embedding themes](./images/themes.png)
 
-A saved theme is a named set of colors and fonts. The embed wizard copies the theme into each new embed's config, and you can copy the theme's values into your code.
+A saved theme is a named set of colors and fonts that you set in **Embedding hub** > **Appearance**. When you select a saved theme in the embed wizard, the wizard copies it into the embed's code.
 
-To manage themes, go to **Embedding hub** > **Appearance**. Metabase includes a light and a dark theme that use the appearance settings of your Metabase.
-
-In the **Themes** section, you can:
+Metabase includes a light and a dark theme that use the [appearance settings](../configuring-metabase/appearance.md) of your Metabase. In the **Themes** section, you can:
 
 - **Create a theme:** Click **New theme**, then set a name, colors, and font.
 - **Edit a theme:** Click a theme card to open the editor. View your changes in the live preview.
@@ -75,9 +79,9 @@ In the **Themes** section, you can:
 
 ![Theme editor](./images/theme-editor.png)
 
-Use **Branding elements** to set the [loading message](../configuring-metabase/appearance.md#loading-message) and the [illustrations](../configuring-metabase/appearance.md#metabase-illustrations) for empty results. Both are the same settings as in **Admin** > **Settings** > **Appearance**.
+Use **Branding elements** to set the [loading message](../configuring-metabase/appearance.md#loading-message) and the [illustrations](../configuring-metabase/appearance.md#metabase-illustrations) for empty results. These settings apply to your whole Metabase, not just embeds. Change them in the Embedding hub or in **Admin** > **Settings** > **Appearance**.
 
-### Use a saved theme in the embed wizard
+### Apply a saved theme to a new embed
 
 In the last step of the [embed wizard](./modular-embedding.md#3-customize-your-embed), you can pick:
 
@@ -87,11 +91,11 @@ In the last step of the [embed wizard](./modular-embedding.md#3-customize-your-e
 
 ![Embed wizard appearance](./images/embed-wizard-appearance.png)
 
-The wizard copies the theme's values into the generated `theme` object. Each embed has its own copy, so editing or deleting the saved theme doesn't change the embeds you already generated. To apply changes to an existing embed, regenerate the snippet in the wizard or edit the `theme` object in your code.
+The wizard copies the theme's values into the generated `theme` object. The generated code is a copy, not a reference to the saved theme. Editing or deleting the saved theme doesn't change embeds you already generated. To apply changes, create a new embed in the wizard or edit the `theme` object in your code.
 
-### Use a saved theme in code
+### Apply a saved theme to an existing embed
 
-To use a saved theme outside the wizard, copy its values into your theme object. A saved theme has the same structure as the theme object:
+To apply a saved theme to an embed you already generated, copy the theme's values into your theme object. A saved theme has the same structure as the theme object:
 
 ```js
 {
@@ -107,6 +111,8 @@ To use a saved theme outside the wizard, copy its values into your theme object.
 ## Set colors and fonts
 
 {% include plans-blockquote.html feature="Advanced theme options" is_plural=true %}
+
+The theme editor sets colors and fonts. This section and the ones that follow describe the full theme object you set in code. The theme object includes more options than the editor, like chart colors, styles for individual components, and the z-index of overlays. It works without the wizard.
 
 To change the colors and font of your embeds, set `colors` and `fontFamily`:
 
@@ -129,6 +135,8 @@ For the full list of colors, see [Colors](./appearance-reference.md#colors).
 
 ## Set chart colors
 
+{% include plans-blockquote.html feature="Advanced theme options" is_plural=true %}
+
 To change the series colors in charts, set `colors.charts`. You can set up to eight colors. Each one is either a color string or an object with a `base` color, where `tint` and `shade` are optional lighter and darker variations:
 
 ```js
@@ -142,9 +150,11 @@ To change the series colors in charts, set `colors.charts`. You can set up to ei
 }
 ```
 
-If you set a custom series color in a chart's visualization settings, that color overrides the theme.
+If you set a custom series color in a chart's [visualization settings](../questions/visualizations/visualizing-results.md), that color overrides the theme.
 
 ## Style individual components
+
+{% include plans-blockquote.html feature="Advanced theme options" is_plural=true %}
 
 To style specific components, like dashboard cards or data tables, set options under `components`:
 
@@ -170,6 +180,8 @@ To style specific components, like dashboard cards or data tables, set options u
 For the full list of component options, see [Component options](./appearance-reference.md#component-options).
 
 ## Fix overlays hidden behind your app's modals
+
+{% include plans-blockquote.html feature="Advanced theme options" is_plural=true %}
 
 Metabase overlays, like click-action menus and save dialogs, have a z-index of `200`. If your app renders its own modal, drawer, or backdrop with a higher z-index, it hides the Metabase overlay.
 
