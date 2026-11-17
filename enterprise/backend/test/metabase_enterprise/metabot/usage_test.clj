@@ -517,6 +517,9 @@
         (testing "a document generation counts as a message"
           (insert-llm-call! user-id "document_generate_content" "document-1")
           (is (= "test limit reached" (check-message-limit! 3 nil))))
+        (testing "a summary formula counts as a message"
+          (insert-llm-call! user-id "summary_formula" "formula-1")
+          (is (= "test limit reached" (check-message-limit! 4 nil))))
         (finally
           (cleanup-llm-calls! user-id))))))
 
