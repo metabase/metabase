@@ -59,20 +59,21 @@ def needs_quoting(name: str, dialect: str = None) -> bool:
         return True
     return False
 
-def unquote_identifier(name: str, dialect: str = None):
-    """If name is already a quoted identifier (e.g., `foo` in MySQL, "foo" in Postgres),
-    return (unquoted_name, True). Otherwise return (name, False)."""
+def parse_identifier(name: str, dialect: str = None):
+    """The identifier `name` read the way the dialect reads a column alias, `SELECT 1 AS <name>`. None when `name` is
+    not one identifier: `x,y`, `x;y`, a keyword such as `select`, or a name that does not parse."""
     if not name:
-        return (name, False)
+        return None
     try:
-        dummy_sql = "SELECT 1 AS " + name
-        ast = sqlglot.parse_one(dummy_sql, dialect=dialect)
-        ident = ast.expressions[0].args.get("alias")
-        if ident and ident.quoted:
-            return (ident.this, True)
-    except:
-        pass
-    return (name, False)
+        ast = sqlglot.parse_one("SELECT 1 AS " + name, dialect=dialect)
+    except Exception:
+        return None
+    if not isinstance(ast, exp.Select) or len(ast.expressions) != 1 or not isinstance(ast.expressions[0], exp.Alias):
+        return None
+    ident = ast.expressions[0].args.get("alias")
+    if isinstance(ident, exp.Identifier) and (ident.quoted or ident.this == name):
+        return ident
+    return None
 
 def temp_table_prefix(table):
     """
@@ -476,7 +477,8 @@ def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
     """
     Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax, and rewrite every
     base-table reference into a self-UNION subquery so the new table doesn't inherit a source
-    column's IDENTITY property.
+    column's IDENTITY property. A set operation (UNION, INTERSECT, EXCEPT) takes the INTO in its
+    first SELECT.
 
     Transforms: SELECT * FROM products
     Into:       SELECT * INTO "new_table" FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products
@@ -505,8 +507,12 @@ def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
     """
     ast = sqlglot.parse_one(sql, read=dialect)
 
-    if not isinstance(ast, exp.Select):
-        raise ValueError("SQL must be a SELECT statement")
+    # T-SQL takes the INTO of a set operation (UNION, INTERSECT, EXCEPT) in its first SELECT.
+    into_select = ast
+    while isinstance(into_select, exp.SetOperation):
+        into_select = into_select.this
+    if not isinstance(into_select, exp.Select):
+        raise ValueError("SQL must be a SELECT statement, or a set operation whose first query is one")
 
     cte_names = {cte.alias for cte in ast.find_all(exp.CTE) if cte.alias}
     seen_ids = set()
@@ -542,8 +548,7 @@ def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
     # The table_name is pre-formatted, so parse it to preserve quotes
     into = exp.Into(this=exp.to_table(table_name))
 
-    # Set the into clause on the select
-    ast.set("into", into)
+    into_select.set("into", into)
 
     # Generate SQL in the target dialect
     return ast.sql(dialect=dialect)
@@ -740,12 +745,14 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
 
         def set_identifier(node, arg, name):
             # Sets `arg` of `node` to the identifier `name`, quoted if the identifier it replaces was, if `name` comes
-            # quoted, or if `name` needs quoting. Some nodes hold non-Identifier children (e.g. Anonymous), which count
-            # as unquoted.
+            # quoted, or if `name` needs quoting. A name that is not one identifier is quoted whole, so it reads back as
+            # that one name. Some nodes hold non-Identifier children (e.g. Anonymous), which count as unquoted.
             original = node.args.get(arg)
             original_quoted = isinstance(original, exp.Identifier) and original.quoted
-            raw_name, was_quoted = unquote_identifier(name, dialect)
-            quoted = original_quoted or was_quoted or needs_quoting(raw_name, dialect)
+            parsed = parse_identifier(name, dialect)
+            was_quoted = parsed is not None and parsed.quoted
+            raw_name = parsed.this if was_quoted else name
+            quoted = original_quoted or parsed is None or was_quoted or needs_quoting(raw_name, dialect)
             node.set(arg, exp.Identifier(this=raw_name, quoted=quoted))
 
         def replace_table(node, replacement, catalog_arg, schema_arg, table_arg):
@@ -800,8 +807,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                                    if column_matches(key_table, key_column)),
                                   None)
                 if new_column:
-                    column_quoted = isinstance(node.this, exp.Identifier) and node.this.quoted
-                    node.set("this", exp.Identifier(this=new_column, quoted=column_quoted))
+                    set_identifier(node, "this", new_column)
 
             return node
 

@@ -23,7 +23,6 @@ export const DataModel = {
   Shared: {
     visitArea,
     getBasePathForArea,
-    getCheckLocation,
     getTriggeredFromArea,
     verifyAndCloseToast,
     verifyTablePreview,
@@ -79,9 +78,7 @@ export const DataModel = {
     getDescriptionInput: getFieldDescriptionInput,
     getPreviewButton: getFieldPreviewButton,
     getFieldValuesButton: getFieldValuesButton,
-    getDataType: getFieldDataType,
     getCoercionToggle: getFieldCoercionToggle,
-    getCoercionInput: getFieldCoercionInput,
     getSemanticTypeInput: getFieldSemanticTypeInput,
     getSemanticTypeCurrencyInput: getFieldSemanticTypeCurrencyInput,
     getSemanticTypeFkTarget: getFieldSemanticTypeFkTargetInput,
@@ -90,11 +87,7 @@ export const DataModel = {
     getDisplayValuesInput: getFieldDisplayValuesInput,
     getDisplayValuesFkTargetInput: getFieldDisplayValuesFkTargetInput,
     getUnfoldJsonInput: getFieldUnfoldJsonInput,
-    getFormatControl: getFieldFormatControl,
-    getMiniBarChartToggle: getFieldMiniBarChartToggle,
-    getMultiplyByNumberInput: getFieldMultiplyByNumberInput,
     getPrefixInput: getFieldPrefixInput,
-    getSuffixInput: getFieldSuffixInput,
     getCloseButton: getFieldSectionCloseButton,
   },
   PreviewSection: {
@@ -530,16 +523,8 @@ function getRawFieldName() {
   return getFieldSection().findByLabelText("Field name");
 }
 
-function getFieldDataType() {
-  return getFieldSection().findByLabelText("Data type");
-}
-
 function getFieldCoercionToggle() {
   return getFieldSection().findByLabelText("Cast to a specific data type");
-}
-
-function getFieldCoercionInput() {
-  return getFieldSection().findByPlaceholderText("Select data type");
 }
 
 function getFieldSemanticTypeInput() {
@@ -576,24 +561,8 @@ function getFieldUnfoldJsonInput() {
   );
 }
 
-function getFieldMiniBarChartToggle() {
-  return getFieldSection().findByLabelText("Show a mini bar chart");
-}
-
-function getFieldMultiplyByNumberInput() {
-  return getFieldSection().findByLabelText("Multiply by a number");
-}
-
-function getFieldFormatControl() {
-  return getFieldSection().findByTestId("chart-settings-widget-number_style");
-}
-
 function getFieldPrefixInput() {
   return getFieldSection().findByTestId("prefix");
-}
-
-function getFieldSuffixInput() {
-  return getFieldSection().findByTestId("suffix");
 }
 
 function getFieldSectionCloseButton() {
@@ -824,13 +793,6 @@ export type Area = (typeof areas)[number];
 
 export function getBasePathForArea(area: Area) {
   return () => (area === "admin" ? "/admin/datamodel" : "/data-studio/data");
-}
-
-export function getCheckLocation(area: Area) {
-  return (path: string) => {
-    const basePath = getBasePathForArea(area)();
-    cy.location("pathname").should("eq", `${basePath}${path}`);
-  };
 }
 
 export function getTriggeredFromArea(area: Area) {

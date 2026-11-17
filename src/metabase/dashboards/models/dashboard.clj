@@ -3,7 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.audit-app.core :as audit]
+   [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.dashboards.db :as dashboards.db]
@@ -17,7 +17,6 @@
    [metabase.parameters.core :as parameters]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
@@ -47,25 +46,42 @@
 
 (doto :model/Dashboard
   (derive :metabase/model)
-  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies))
+  (derive :hook/dependencies)
+  (derive :hook/change-log))
 
-(defmethod mi/can-write? :model/Dashboard
-  ([instance]
-   ;; Dashboards in audit collection should be read only
-   (and (not (and
-              ;; We want to make sure there's an existing audit collection before doing the equality check below.
-              ;; If there is no audit collection, this will be nil:
-              (some? (:id (audit/default-audit-collection)))
-              ;; Is a direct descendant of audit collection
-              (= (:collection_id instance) (:id (audit/default-audit-collection)))))
-        (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
-  ([_ pk]
-   (mi/can-write? (dashboards.db/dashboard pk))))
+(methodical/defmethod change-log/ignored-columns :model/Dashboard [_model]
+  #{:last_viewed_at :view_count})
 
-(perms/define-collection-based-visibility! :model/Dashboard)
+(defn- check-can-read-keys
+  "Throws unless `dashboard` has the columns its `:can_read` and `:can_write` hydrations read."
+  [dashboard]
+  (api/check-500 (contains? dashboard :collection_id) "No :collection_id is set for a Dashboard."))
+
+(methodical/defmethod t2/batched-hydrate [:model/Dashboard :can_read]
+  "Whether the current user reads each of `dashboards`, as the content of its Collection."
+  [_model _k dashboards]
+  (run! #(when % (check-can-read-keys %)) dashboards)
+  (let [readable (collection/content-readable-collection-ids (map :collection_id (remove nil? dashboards))
+                                                             {:root-namespace nil, :audit-rules? true})]
+    (for [dashboard dashboards]
+      (when dashboard
+        (vary-meta dashboard assoc :can_read (contains? readable (:collection_id dashboard)))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Dashboard :can_write]
+  "Whether the current user writes each of `dashboards`, as the content of its Collection."
+  [_model _k dashboards]
+  (run! #(when % (check-can-read-keys %)) dashboards)
+  (let [writable (collection/content-writable-collection-ids (map :collection_id (remove nil? dashboards))
+                                                             {:root-namespace nil, :audit-rules? true})]
+    (for [dashboard dashboards]
+      (when dashboard
+        (assoc dashboard :can_write (contains? writable (:collection_id dashboard)))))))
+
+(defmethod mi/can-create? :model/Dashboard
+  [_model {collection-id :collection_id}]
+  (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
 
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})
@@ -290,12 +306,12 @@
   (qp.metadata/legacy-result-metadata query api/*current-user-id*))
 
 (defn- save-card!
-  [card]
+  [id->existing-card card]
   (cond
     ;; If this is a pre-existing card, just return it
-    (and (integer? (:id card)) (dashboards.db/card (:id card)))
+    (and (integer? (:id card)) (get id->existing-card (:id card)))
     (do
-      (api/read-check :model/Card (:id card))
+      (api/read-check (get id->existing-card (:id card)))
       card)
 
     ;; Don't save text cards
@@ -312,7 +328,7 @@
                          (assoc :creator_id api/*current-user-id*))
                      (lib/normalize ::queries.schema/card.update)))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
-      (t2/hydrate card :creator :dashboard_count :can_write :collection))))
+      card)))
 
 (defn- check-dashcard-parameter-mapping-permissions
   [dashcards]
@@ -349,17 +365,20 @@
                                       :creator_id api/*current-user-id*))
                            (lib/normalize ::dashboards.schema/dashboard.update)))
           {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)
+          dashcards  (for [dashcard dashcards]
+                       (-> dashcard
+                           (update :card #(some-> % (assoc :dashboard_id (:id dashboard)
+                                                           :collection_id parent-collection-id)))
+                           (update :series #(some->> % (mapv (fn [card] (assoc card :collection_id parent-collection-id)))))))
+          existing-card-ids (into [] (comp (mapcat (fn [{:keys [card series]}] (cons card series)))
+                                           (keep :id)
+                                           (filter pos-int?)
+                                           (distinct))
+                                  dashcards)
+          id->existing-card (m/index-by :id (t2/hydrate (dashboards.db/cards-by-ids existing-card-ids) :can_read))
           dashcards-to-add (for [dashcard dashcards]
-                             (let [card     (some-> dashcard :card
-                                                    (assoc :dashboard_id (:id dashboard)
-                                                           :collection_id parent-collection-id)
-                                                    save-card!)
-                                   series   (some->> dashcard
-                                                     :series
-                                                     (mapv (fn [card]
-                                                             (-> card
-                                                                 (assoc :collection_id parent-collection-id)
-                                                                 save-card!))))
+                             (let [card     (some->> dashcard :card (save-card! id->existing-card))
+                                   series   (some->> dashcard :series (mapv #(save-card! id->existing-card %)))
                                    dashcard (-> dashcard
                                                 (dissoc :card :id :creator_id)
                                                 (update :parameter_mappings
@@ -564,4 +583,5 @@
 
 (defmethod remote-sync/spec :model/Dashboard
   [_model]
-  {:synced-filter-clause dashboards.db/synced-dashboards-clause})
+  {:synced-items         dashboards.db/synced-dashboard-items
+   :synced-filter-clause dashboards.db/synced-dashboards-clause})

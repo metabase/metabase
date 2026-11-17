@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.measures.schema :as measures.schema]
    [metabase.remote-sync.core :as remote-sync]
@@ -18,7 +19,10 @@
   [:and
    (when-not (:include-archived? opts)
      [:= (u/qualified-key alias :archived) false])
-   (remote-sync/synced-fk-clause alias :table_id :model/TableUserSettings opts)])
+   [:in (u/qualified-key alias :table_id)
+    ^:allow-subquery {:select [:settings.table_id]
+                      :from   [[(t2/table-name :model/TableUserSettings) :settings]]
+                      :where  (remote-sync/synced-filter-clause :model/TableUserSettings :settings opts)}]])
 
 (mu/defn insert-measure!
   "Insert a Measure and return the inserted instance."
@@ -42,11 +46,6 @@
   []
   (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(mu/defn table-database-ids
-  "The set of Database ids of the Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
-
 (mu/defn update-measure!
   "Apply `changes` to the Measure with `id`."
   [id      :- ::lib.schema.id/measure
@@ -69,3 +68,11 @@
    dimensions         :- [:maybe sequential?]
    dimension-mappings :- [:maybe [:sequential ::measures.schema/measure.dimension-mapping]]]
   (t2/update! :model/Measure :id id {:dimensions dimensions, :dimension_mappings dimension-mappings}))
+
+(mu/defn synced-measure-items :- [:sequential ::measures.schema/measure]
+  "The Measures with `ids`, with their Table and its Collection and ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Measure :id :name :table_id] :id [:in ids])
+        (t2/hydrate [:table [:collection :effective_ancestors]])
+        (->> (mapv (fn [row] (update row :table #(some-> % (collection.root/hydrate-root-collection root)))))))))

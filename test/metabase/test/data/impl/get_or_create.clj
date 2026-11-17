@@ -6,7 +6,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.analyze :as sync.analyze]
    [metabase.sync.core :as sync]
@@ -456,8 +456,7 @@
 
 (defn- create-database-with-bound-settings! [driver dbdef]
   (letfn [(thunk []
-            (binding [api/*current-user-id*              nil
-                      api/*current-user-permissions-set* nil]
+            (binding [api/*current-user-id* nil]
               (create-database! driver dbdef)))]
     ;; make sure report timezone isn't set, possibly causing weird things to happen when data is loaded -- this
     ;; code may run inside of some other block that sets report timezone

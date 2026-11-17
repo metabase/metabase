@@ -56,6 +56,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -336,13 +337,15 @@
    `from-spec` is `{:db :schema :name}`. Output uses nil-instead-of-empty-string for
    slots the driver doesn't emit."
   [database-id from-spec]
-  (when-let [database (ws.db/database database-id)]
-    (let [driver   (keyword (:engine database))
-          enriched (enrich-from-spec database from-spec)]
-      (some-> (canonical->isolated driver
-                                   (ws.remapping/remappings-for-db database-id)
-                                   (consumer-shape->spec enriched))
-              spec->consumer-shape))))
+  ;; Remappings first: outside workspace mode they usually cost no query on a database without any, and then neither
+  ;; does this.
+  (let [remappings (ws.remapping/remappings-for-db database-id)]
+    (when (seq remappings)
+      (when-let [database (ws.db/database database-id)]
+        (let [driver   (keyword (:engine database))
+              enriched (enrich-from-spec database from-spec)]
+          (some-> (canonical->isolated driver remappings (consumer-shape->spec enriched))
+                  spec->consumer-shape))))))
 
 (defenterprise workspace-remap-schema+name
   "Enterprise impl of the sync hook. Returns `{:db :schema :name}` for the
@@ -363,6 +366,14 @@
    [[metabase-enterprise.workspaces.query-processor.middleware]]."
   [database-id]
   (ws.remapping/remappings-for-db database-id))
+
+(defenterprise table-remappings-exist?
+  "Enterprise impl of the sync predicate. Like the other sync hooks, deliberately ungated on premium features:
+   if rows exist they must be respected, regardless of current token state."
+  :feature :none
+  [db-id]
+  ;; The store's `exists?` check, not [[ws.remapping/enabled-for-db?]]: sync must not honour `*skip-remapping?*`.
+  (boolean (ws.remapping/enabled-for-db?* ws.remapping/*remapping-store* db-id)))
 
 (defenterprise filter-workspace-side-tables
   "Enterprise impl of the table-list filter. Drops tuples whose `(schema, name)`
@@ -417,13 +428,14 @@
    connection, so the iso `:db` matches canonical and this collapses to the
    single-canonical-run path."
   [db-id]
-  (let [database     (ws.db/database db-id)
-        canonical-db (-> database :details :db)
-        iso-dbs      (into #{}
+  (let [mappings (all-mappings-for-db db-id)
+        iso-dbs  (when (seq mappings)
+                   (let [canonical-db (-> (ws.db/database db-id) :details :db)]
+                     (into #{}
                            (comp (map (comp denormalize-level :db second))
                                  (remove nil?)
                                  (remove #(= % canonical-db)))
-                           (all-mappings-for-db db-id))]
+                           mappings)))]
     (if (seq iso-dbs)
       (map (fn [iso-db] {:db iso-db}) iso-dbs)
       [nil])))
@@ -521,11 +533,11 @@
    leaks above this boundary."
   :feature :none
   [db-id to-spec]
-  (when-let [driver (some-> (ws.db/database-engine db-id) keyword)]
-    (some-> (isolated->canonical driver
-                                 (all-mappings-for-db db-id)
-                                 (consumer-shape->spec to-spec))
-            spec->consumer-shape)))
+  (let [mappings (all-mappings-for-db db-id)]
+    (when (seq mappings)
+      (when-let [driver (some-> (ws.db/database-engine db-id) keyword)]
+        (some-> (isolated->canonical driver mappings (consumer-shape->spec to-spec))
+                spec->consumer-shape)))))
 
 (defenterprise call-with-display-context
   "Enterprise impl: bind `ws.remapping/*skip-remapping?*` true around `thunk` so Phase 1
@@ -559,7 +571,8 @@
   "Idempotently ensure a remapping row exists, via the active store.
 
    Idempotent on the unique key `(database_id, from_db, from_schema, from_table_name)`:
-   a duplicate is a no-op (the existing row is left untouched). Concurrent-insert races
+   a duplicate is a no-op, and a row from `from-spec` that points elsewhere is updated to
+   `to-spec`, so a run repairs a row a schema change left behind. Concurrent-insert races
    are handled portably by [[metabase.app-db.core/update-or-insert!]]. Returns truthy when
    the remapping is in place after the call.
 
@@ -590,39 +603,14 @@
   [database-id]
   (ws.remapping/clear-for-db! database-id))
 
-(defn add-transform-target-mapping!
-  "Register a remapping for a transform target on a workspaced database. The from-side spec
-   is normalized via [[spec-for-table]] so it carries the right slots for the driver
-   (e.g., 3-slot for SQL Server/BigQuery, 2-slot for Postgres/ClickHouse,
-   1-slot for MySQL). Delegates to [[add-mapping!]] (idempotent on the unique constraint).
-
-   Inputs:
-   - `db-id` -- the canonical `:model/Database` id.
-   - `target` -- the transform's target map, with `:schema` and `:name` for the canonical
-     identifier the transform was configured to write to. Same shape `resolve-transform-target`
-     already passes around.
-
-   Resolution:
-   - From-side: a synthetic `:model/Database` + `:model/Table` shape is fed through
-     `spec-for-table` so `:db` and `:schema` slots are filled per the driver's
-     `qualified-name-components`.
-   - To-side: workspace output namespace comes from `ws/db-workspace-namespace`,
-     a `{:db ?, :schema ?}` map sourced from `config.yml`. The `:db` and
-     `:schema` slots both flow into the `TableRemapping` row's `to_db` /
-     `to_schema` columns - so cross-DB SQL Server / BigQuery workspaces are
-     now expressible end-to-end.
-
-   Returns the to-side as a denormalized `{:db :schema :name}` map (consumer
-   shape: `nil` for slots the driver doesn't fill, string otherwise). The
-   storage layer's `\"\"` sentinel never leaks above this boundary, so the value
-   can be `assoc`ed onto a transform target without a per-call denormalization shim.
-
-   Throws when the database is not workspaced -- reaching this with a non-workspaced
-   db is a programming error; gate on [[ws/db-workspace-namespace]] first."
+(defn- transform-target-specs
+  "The `{:from-spec :to-spec}` storage specs for remapping transform `target` on workspaced
+   database `db-id`. Reads the workspace config and the database row; records nothing.
+   Throws when the database is not workspaced."
   [db-id target]
   (let [workspace-ns (ws/db-workspace-namespace db-id)]
     (when-not workspace-ns
-      (throw (ex-info "Cannot record transform-target remapping: database is not workspaced"
+      (throw (ex-info "Cannot remap transform target: database is not workspaced"
                       {:db-id db-id :target target})))
     (let [database     (or (ws.db/database db-id)
                            (throw (ex-info "Database not found"
@@ -642,8 +630,71 @@
           to-spec      (-> (remapped-table-name (:engine database) from-spec)
                            (assoc :db     (normalize-level (:db workspace-ns))
                                   :schema (normalize-level (:schema workspace-ns))))]
-      (add-mapping! db-id from-spec to-spec)
-      ;; Hand callers the denormalized shape so storage's `""` sentinel stays
-      ;; below the line. Symmetric with the read hooks (`workspace-remap-schema+name`,
-      ;; `canonical-schema+name`) which also denormalize at the boundary.
-      (spec->consumer-shape to-spec))))
+      {:from-spec from-spec :to-spec to-spec})))
+
+(defn- check-copy-not-taken!
+  "Throw a 409 when a remapping from a different source already points at `to-spec`.
+
+   The copy's name is `schema__table` with no escaping, so two sources can share it: `a__b.c` and
+   `a.b__c` both become `a__b__c`. This guards the sequential case only. Two colliding transforms
+   whose first runs overlap both pass, because neither has a row yet; the unique constraint then
+   fails the second run's record, after its write."
+  [db-id from-spec to-spec]
+  (let [table-key #(select-keys (normalize-spec %) [:db :schema :table])
+        from      (table-key from-spec)
+        to        (table-key to-spec)
+        other     (some (fn [[other-from other-to]]
+                          (when (and (= (table-key other-to) to)
+                                     (not= (table-key other-from) from))
+                            (table-key other-from)))
+                        (ws.remapping/remappings-for-db db-id))]
+    (when other
+      (throw (ex-info (tru "Another table''s workspace copy already uses the name {0}." (:table to))
+                      {:status-code 409
+                       :db-id       db-id
+                       :from        from
+                       :to          to
+                       :taken-by    other})))))
+
+(defn transform-target-remapping
+  "The to-side [[add-transform-target-mapping!]] would record for `target` on workspaced
+   database `db-id`, as a denormalized `{:db :schema :name}` map, without recording it.
+   Throws when the database is not workspaced, and a 409 when another source table's copy already
+   has that name (see [[check-copy-not-taken!]])."
+  [db-id target]
+  (let [{:keys [from-spec to-spec]} (transform-target-specs db-id target)]
+    (check-copy-not-taken! db-id from-spec to-spec)
+    (spec->consumer-shape to-spec)))
+
+(defn add-transform-target-mapping!
+  "Register a remapping for a transform target on a workspaced database. The from-side spec
+   is normalized via [[spec-for-table]] so it carries the right slots for the driver
+   (e.g., 3-slot for SQL Server/BigQuery, 2-slot for Postgres/ClickHouse,
+   1-slot for MySQL). Delegates to [[add-mapping!]] (idempotent on the unique constraint).
+
+   Inputs:
+   - `db-id` -- the canonical `:model/Database` id.
+   - `target` -- the transform's target map, with `:schema` and `:name` for the canonical
+     identifier the transform was configured to write to. Same shape `workspace-transform-target`
+     already passes around.
+
+   Resolution:
+   - From-side: a synthetic `:model/Database` + `:model/Table` shape is fed through
+     `spec-for-table` so `:db` and `:schema` slots are filled per the driver's
+     `qualified-name-components`.
+   - To-side: workspace output namespace comes from `ws/db-workspace-namespace`,
+     a `{:db ?, :schema ?}` map sourced from `config.yml`. The `:db` and
+     `:schema` slots both flow into the `TableRemapping` row's `to_db` /
+     `to_schema` columns - so cross-DB SQL Server / BigQuery workspaces are
+     now expressible end-to-end.
+
+   Returns the to-side as a denormalized `{:db :schema :name}` map (consumer
+   shape: `nil` for slots the driver doesn't fill, string otherwise). The
+   storage layer's `\"\"` sentinel never leaks above this boundary.
+
+   Throws when the database is not workspaced -- reaching this with a non-workspaced
+   db is a programming error; gate on [[ws/db-workspace-namespace]] first."
+  [db-id target]
+  (let [{:keys [from-spec to-spec]} (transform-target-specs db-id target)]
+    (add-mapping! db-id from-spec to-spec)
+    (spec->consumer-shape to-spec)))

@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import {
   type CreateGlossaryRequest,
-  type GlossaryItem,
   type UpdateGlossaryRequest,
   useCreateGlossaryMutation,
   useDeleteGlossaryMutation,
@@ -10,6 +9,7 @@ import {
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataToasts } from "metabase/common/hooks";
+import type { GlossaryItem } from "metabase-types/api";
 
 export type UseGlossaryMutationsOptions = {
   onCreated?: (id: GlossaryItem["id"]) => void;

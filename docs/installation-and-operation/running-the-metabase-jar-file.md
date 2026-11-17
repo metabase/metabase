@@ -166,4 +166,4 @@ See [Upgrading Metabase](upgrading-metabase.md).
 
 ## Setting up Metabase
 
-Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../configuring-metabase/setting-up-metabase.md).
+Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../getting-started/setting-up-metabase.md).

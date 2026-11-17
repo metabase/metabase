@@ -60,17 +60,20 @@
    :manifest :metabase_version :bundle_hash :dev_bundle_url
    :created_at :updated_at])
 
-(defmethod mi/can-read? :model/CustomVizPlugin
-  ([_instance]   (some? api/*current-user-id*))
-  ([_model _pk]  (some? api/*current-user-id*)))
+(methodical/defmethod t2/simple-hydrate [:model/CustomVizPlugin :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (some? api/*current-user-id*))))
 
 ;; A bundled plugin on a read-only instance comes from the repository, so it can only change there. Dev-only plugins
 ;; are never synced (see the remote-sync spec below), so existing ones stay writable, but `can-create?` refuses new
 ;; ones too: a read-only instance registers no plugins.
-(defmethod mi/can-write? :model/CustomVizPlugin
-  ([plugin]     (mi/can-write? :model/CustomVizPlugin (:id plugin)))
-  ([_model pk]  (and api/*is-superuser?*
-                     (remote-sync/can-write? :model/CustomVizPlugin pk))))
+(methodical/defmethod t2/simple-hydrate [:model/CustomVizPlugin :can_write]
+  [_model k plugin]
+  (assoc plugin k (boolean (and api/*is-superuser?*
+                                (or (not (remote-sync/read-only?))
+                                    (nil? (if (contains? plugin :bundle_hash)
+                                            (:bundle_hash plugin)
+                                            (t2/select-one-fn :bundle_hash :model/CustomVizPlugin (:id plugin)))))))))
 
 (defmethod mi/can-create? :model/CustomVizPlugin
   [_model _plugin]
@@ -81,7 +84,7 @@
   [plugin changes]
   (and api/*is-superuser?*
        (or (not (remote-sync/synced-changes? :model/CustomVizPlugin plugin changes))
-           (remote-sync/can-write? :model/CustomVizPlugin (:id plugin)))))
+           (not (remote-sync/read-only?)))))
 
 (methodical/defmethod mi/to-json :model/CustomVizPlugin
   "Never include the raw bundle bytes in JSON."
@@ -261,5 +264,6 @@
   [_model]
   ;; a dev-only plugin has no stored bundle: it is this instance's alone, a push has nothing to write for it, and a
   ;; pull must not remove it
-  {:label                :identifier
+  {:name                 :identifier
+   :synced-items         custom-viz-plugin.db/synced-custom-viz-plugin-items
    :synced-filter-clause (fn [alias _opts] [:not= (u/qualified-key alias :bundle_hash) nil])})

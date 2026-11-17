@@ -31,9 +31,13 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [potemkin :as p]))
+   [potemkin :as p])
+  (:import
+   (com.fasterxml.jackson.core JsonProcessingException)
+   (com.fasterxml.jackson.core.io JsonEOFException)))
 
 (set! *warn-on-reflection* true)
 
@@ -152,6 +156,33 @@
     (sequential? v) "an array"
     :else           "an unsupported value"))
 
+(defn json-text?
+  "Whether `v` is a string that looks like a JSON object or array, ignoring surrounding whitespace."
+  [v]
+  (and (string? v)
+       (let [trimmed (str/trim v)]
+         (or (str/starts-with? trimmed "{")
+             (str/starts-with? trimmed "[")))))
+
+(defn- json-text-error
+  "What is wrong with the JSON text `s`, such as `the text ends before the JSON is complete`, or nil when it parses."
+  [^String s]
+  (try
+    (json/decode s)
+    nil
+    (catch JsonEOFException _
+      "the text ends before the JSON is complete")
+    (catch JsonProcessingException e
+      ;; The location is missing for some failures, such as a number too long to read. It can also sit just after
+      ;; the bad token (`NaN` is reported at the following character), so it is given as "near".
+      (if-let [location (.getLocation e)]
+        (str "the text is not valid JSON near line " (.getLineNr location) ", column " (.getColumnNr location))
+        "the text is not valid JSON"))
+    ;; Parse failures arrive as JsonProcessingException, so this is only a backstop that keeps a surprise from
+    ;; turning a type error into an internal failure.
+    (catch Exception _
+      "the text is not valid JSON")))
+
 (defn- argument-path
   "The path `in` into a tool's arguments, written the way the model would name it, such as `ops[1].card_id`."
   [in]
@@ -200,7 +231,13 @@
   [arguments in errors]
   ;; Errors reported deeper than `in` come from inside a value of the right type, under an `:or`.
   (let [about-value? (every? #(= in (:in %)) errors)
-        texts        (distinct (map :text errors))]
+        texts        (distinct (map :text errors))
+        value        (get-in arguments in)
+        ;; Only quoted JSON text that does not parse gets this message: saying where it breaks gives the model
+        ;; something to fix, and a type error alone gets the same call again. Text that parses was decoded before the
+        ;; tool ran, except inside a list, where it keeps the type error.
+        json-error   (when (and about-value? (= texts ["invalid type"]) (json-text? value))
+                       (json-text-error value))]
     (cond
       (and about-value? (= texts ["disallowed key"]))
       {:one "is not a supported argument.", :many "are not supported arguments."}
@@ -208,8 +245,14 @@
       (and about-value? (= texts ["missing required key"]))
       {:one "is required.", :many "are required."}
 
+      json-error
+      {:one  (str "was sent as a string of JSON text, and " json-error
+                  ". Fix the JSON and send the value itself, not a quoted string.")
+       :many (str "were sent as strings of JSON text, and " json-error
+                  ". Fix the JSON and send the values themselves, not quoted strings.")}
+
       about-value?
-      (agreeing (str (str/join "; " texts) "; received " (json-type-name (get-in arguments in)) "."))
+      (agreeing (str (str/join "; " texts) "; received " (json-type-name value) "."))
 
       :else
       ;; One clause per kind of error, naming the fields that missing and unsupported keys are about.

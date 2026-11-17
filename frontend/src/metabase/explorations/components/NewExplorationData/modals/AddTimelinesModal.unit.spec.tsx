@@ -102,6 +102,23 @@ describe("AddTimelinesModal", () => {
     expect(screen.queryByText("Releases")).not.toBeInTheDocument();
   });
 
+  it("filters timelines by a case-insensitive name fragment and restores them when the search is cleared", async () => {
+    setup();
+
+    const searchInput = screen.getByPlaceholderText("Search for a timeline");
+    await userEvent.type(searchInput, "RELEASE");
+
+    expect(checkboxFor("Releases")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: "Marketing" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.clear(searchInput);
+
+    expect(checkboxFor("Releases")).toBeInTheDocument();
+    expect(checkboxFor("Marketing")).toBeInTheDocument();
+  });
+
   it("pre-checks timelines already in the selection", () => {
     setup({ timelines: [releases] });
 

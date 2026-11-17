@@ -32,6 +32,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -1255,6 +1256,36 @@
       (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)))
       (is (= [1 true 2 false] params)))))
 
+(deftest ^:parallel compile-create-temp-table-from-a-set-operation-test
+  (mt/test-driver :sqlserver
+    (let [compile! (fn [sql]
+                     (first (driver/compile-create-temp-table :sqlserver {:table "#mb_test_1" :query {:query sql :params []}})))]
+      (testing "a set operation takes the INTO in its first SELECT"
+        (is (= "SELECT 1 AS id INTO [#mb_test_1] UNION ALL SELECT 2 AS id"
+               (compile! "SELECT 1 AS id UNION ALL SELECT 2 AS id")))
+        (is (= "SELECT 1 AS id INTO [#mb_test_1] EXCEPT SELECT 2 AS id INTERSECT SELECT 3"
+               (compile! "SELECT 1 AS id EXCEPT SELECT 2 AS id INTERSECT SELECT 3"))))
+      (testing "with a WITH clause, which stays in front"
+        (is (= "WITH c AS (SELECT 1 AS id) SELECT id INTO [#mb_test_1] FROM c UNION ALL SELECT 2"
+               (compile! "WITH c AS (SELECT 1 AS id) SELECT id FROM c UNION ALL SELECT 2"))))
+      (testing "each branch's base tables are wrapped, as in a plain SELECT"
+        (is (= (str "SELECT id INTO [#mb_test_1] FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products"
+                    " UNION ALL SELECT id FROM (SELECT * FROM orders UNION ALL SELECT * FROM orders WHERE 1 = 0) AS orders")
+               (compile! "SELECT id FROM products UNION ALL SELECT id FROM orders"))))
+      (testing "a statement that is not a query is still refused"
+        (is (thrown-with-msg? Exception #"must be a SELECT statement"
+                              (compile! "UPDATE t SET a = 1"))))
+      (testing "with the Macaw parser, a set operation also takes the INTO in its first SELECT"
+        (binding [sql-tools.settings/*parser-backend-override* :macaw]
+          (is (= "SELECT 1 AS id INTO \"#mb_test_1\" UNION ALL SELECT 2 AS id"
+                 (compile! "SELECT 1 AS id UNION ALL SELECT 2 AS id")))
+          (is (thrown-with-msg? Exception #"must be a SELECT statement"
+                                (compile! "(SELECT 1 AS id) UNION ALL SELECT 2")))))
+      (testing "a transform whose query is a set operation compiles the same way"
+        (is (= ["SELECT 1 AS id INTO [t] UNION ALL SELECT 2 AS id" nil]
+               (driver/compile-transform :sqlserver {:query        {:query "SELECT 1 AS id UNION ALL SELECT 2 AS id"}
+                                                     :output-table "t"})))))))
+
 (deftest ^:parallel compile-transform-test
   (mt/test-driver :sqlserver
     (testing "compile-transform wraps each base table in a self-UNION subquery so the target doesn't inherit
@@ -1506,3 +1537,29 @@
              (is (= "scopeTempTablesToConnection"
                     (.getPrepareMethod ^com.microsoft.sqlserver.jdbc.ISQLServerConnection sqlserver-conn))))))
         (is (= "prepexec" (.getPrepareMethod ^com.microsoft.sqlserver.jdbc.ISQLServerConnection @physical)))))))
+
+(deftest destroy-workspace-isolation-quotes-table-names-test
+  (testing "Teardown builds each DROP TABLE with QUOTENAME on the schema name and the table name. This checks the SQL text only; it does not run it on SQL Server."
+    (let [batch (atom [])
+          stmt  (reify java.sql.Statement
+                  (addBatch [_ sql] (swap! batch conj sql))
+                  (executeBatch [_] (int-array (count @batch)))
+                  (close [_]))
+          conn  (reify java.sql.Connection
+                  (createStatement [_] stmt))]
+      (with-redefs [driver.u/ensure-lib-database                         identity
+                    sql-jdbc.execute/do-with-connection-with-options (fn [_driver _db _opts f] (f conn))]
+        (driver/destroy-workspace-isolation! :sqlserver {} {:schema           "ws_schema"
+                                                            :database_details {:user "ws_user"}}))
+      (is (= [(str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
+                   "SELECT @drop_tables_sql += 'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + '; ' "
+                   "FROM sys.tables WHERE schema_id = SCHEMA_ID('ws_schema'); "
+                   "EXEC sp_executesql @drop_tables_sql")
+              "IF EXISTS (SELECT * FROM sys.schemas WHERE name = 'ws_schema') DROP SCHEMA \"ws_schema\""
+              "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = 'ws_user') DROP USER \"ws_user\""
+              (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
+                   "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                   "FROM sys.dm_exec_sessions WHERE login_name = 'ws_user'; "
+                   "EXEC sp_executesql @kill_sessions_sql")
+              "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = 'ws_user') DROP LOGIN \"ws_user\""]
+             @batch)))))

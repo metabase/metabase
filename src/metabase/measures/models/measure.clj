@@ -61,31 +61,27 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies))
 
-(defmethod mi/can-read? :model/Measure
-  ([instance]
-   (let [table (or (:table instance)
-                   (measures.db/table (:table_id instance)))]
-     (mi/can-read? table)))
-  ([_model pk]
-   (mi/can-read? (measures.db/measure pk))))
+(methodical/defmethod t2/batched-hydrate [:model/Measure :can_read]
+  "Whether the current user can read each of `measures`, which they can when they read its Table, the Tables answered
+  together."
+  [_model k measures]
+  (let [rows  (t2/hydrate (into [] (remove nil?) measures) [:table :can_read])
+        flags (into {} (map (juxt :id (comp mi/can-read? :table))) rows)]
+    (for [measure measures]
+      (when measure
+        (vary-meta measure assoc k (get flags (:id measure) false))))))
 
 ;; Measures can be written by superusers or data analysts with unrestricted view data permissions, but not on a
 ;; read-only instance that syncs their table.
-(defmethod mi/can-write? :model/Measure
-  ([instance]
-   (let [table (or (:table instance)
-                   (measures.db/table (:table_id instance)))]
-     (and (or api/*is-superuser?*
-              (and (api/entitled-data-analyst?)
-                   (perms/user-has-permission-for-table?
-                    api/*current-user-id*
-                    :perms/view-data
-                    :unrestricted
-                    (:db_id table)
-                    (u/the-id table))))
-          (remote-sync/can-write? :model/TableUserSettings (:id table)))))
-  ([_model pk]
-   (mi/can-write? (measures.db/measure pk))))
+(defn- measure-writable?
+  "Whether the current user can write `instance`, a Measure with or without its `:table`."
+  [instance]
+  (let [table (or (:table instance)
+                  (measures.db/table (:table_id instance)))]
+    (and (or api/*is-superuser?*
+             (and (api/entitled-data-analyst?)
+                  (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
+         (collection/remote-sync-writable-table? table))))
 
 ;; Measures can be created by superusers or data analysts with unrestricted view data permissions, but not on a
 ;; read-only instance that syncs their table.
@@ -95,20 +91,15 @@
                   (measures.db/table (:table_id instance)))]
     (and (or api/*is-superuser?*
              (and (api/entitled-data-analyst?)
-                  (perms/user-has-permission-for-table?
-                   api/*current-user-id*
-                   :perms/view-data
-                   :unrestricted
-                   (:db_id table)
-                   (u/the-id table))))
-         (remote-sync/can-write? :model/TableUserSettings (:id table)))))
+                  (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
+         (collection/remote-sync-writable-table? table))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Measure :can_write]
   "Batched hydration for :can_write on measures, hydrating their tables first."
   [_model k measures]
   (mi/instances-with-hydrated-data
    measures k
-   #(u/index-by :id mi/can-write? (t2/hydrate (remove nil? measures) :table))
+   #(u/index-by :id (comp boolean measure-writable?) (t2/hydrate (remove nil? measures) :table))
    :id
    {:default false}))
 
@@ -151,12 +142,6 @@
   ;; additional checks (Enterprise Edition only)
   (pre-delete-check-sandbox-constraints-for-measure measure)
   measure)
-
-(defmethod mi/perms-objects-set :model/Measure
-  [measure read-or-write]
-  (let [table (or (:table measure)
-                  (measures.db/table-perms-columns (u/the-id (:table_id measure))))]
-    (mi/perms-objects-set table read-or-write)))
 
 (defn- normalize-definition-from-db
   "Normalize a measure definition read from the database.
@@ -255,5 +240,5 @@
 
 (defmethod remote-sync/spec :model/Measure
   [_model]
-  {:parent               (fn [{:keys [table_id]}] [:model/TableUserSettings table_id])
+  {:synced-items         measures.db/synced-measure-items
    :synced-filter-clause measures.db/synced-measures-clause})

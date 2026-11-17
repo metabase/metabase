@@ -183,7 +183,7 @@
   (api/create-check :model/Transform body)
   (transforms.core/check-database-feature (transforms.u/->definition body))
   (transforms.core/validate-incremental-column-type! (transforms.u/->definition body))
-  (api/check (not (transforms-base.u/target-table-exists? body))
+  (api/check (not (transforms-base.u/planned-target-table-exists? body))
              409
              (deferred-tru "A table with that name already exists."))
   (-> (transforms.core/create-transform! body)
@@ -323,6 +323,15 @@
   (api/write-check :model/Transform id)
   (transforms-base.u/delete-target-table-by-id! id)
   nil)
+
+(api.macros/defendpoint :delete "/collection/:id" :- :nil
+  "Delete a transforms folder, its subfolders and every transform in them. With `delete-tables`, also drop their
+  output tables."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   {:keys [delete-tables]} :- [:map {:closed true}
+                               [:delete-tables {:default false} [:maybe ms/BooleanValue]]]]
+  (transforms.core/delete-transforms-folder! (api/write-check :model/Collection id) (boolean delete-tables)))
 
 (api.macros/defendpoint :post "/:id/cancel" :- :nil
   "Cancel the current run for a given transform."

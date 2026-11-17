@@ -176,12 +176,15 @@
         (str/replace "<" "&lt;")
         (str/replace ">" "&gt;"))))
 
-(defn- escape-pipes
-  "Escape `|` so a value can't break a markdown table row.
-  Custom `:value-fn`s replace [[metabase.metabot.tmpl/markdown-table]]'s default, which does this."
-  [s]
-  (when s
-    (str/replace s "|" "\\|")))
+(defn- markdown-cell
+  "Render `v` as the text of one markdown table cell in `|safe` template output.
+  Pipes are escaped and each line break becomes a space, so the value stays in its column."
+  [v]
+  ;; The model copies these values into filters and reads them raw, so any other escape would need explaining to it.
+  (-> (str v)
+      escape-xml-content
+      (str/replace "|" "\\|")
+      (str/replace #"\r\n|\r|\n" " ")))
 
 (defn- json-cell-safe
   "Keep a JSON string valid inside a markdown table cell. Markdown `\\|` escaping is not
@@ -261,7 +264,7 @@
 
 (defn format-fields-table
   "Format fields as markdown table for LLM.
-   Matches Python render_table output format.
+   Based on Python render_table output, with cells escaped by [[markdown-cell]].
    Note: This output is used with |safe in templates, so we must escape manually."
   [fields & [{:keys [columns] :or {columns {:name          "Field Name"
                                             :field_id      "Field ID"
@@ -271,12 +274,9 @@
   (te/markdown-table
    fields columns
    {:value-fn (fn [k v]
-                (escape-pipes
-                 (escape-xml
-                  (cond
-                    (nil? v)                                  ""
-                    (and (#{:type :base-type} k) (keyword? v)) (clojure.core/name v)
-                    :else                                      (str v)))))}))
+                (markdown-cell (if (and (#{:type :base-type} k) (keyword? v))
+                                 (clojure.core/name v)
+                                 v)))}))
 
 (defn- fully-qualified-name
   "Get fully qualified name for a table."
@@ -314,13 +314,18 @@
 
 (defn collection->xml
   "Format collection for LLM consumption.
-   Matches Python Collection.llm_representation exactly."
-  [{:keys [name description authority_level]}]
+   Matches Python Collection.llm_representation exactly, except we additionally say when the collection is in the
+   trash."
+  [{:keys [id name description authority_level path archived]}]
   (render-llm-template
    :collection
-   {:collection_name            (or name "Our analytics")
+   {:collection_id              (some-> id str)
+    :collection_name            (or name "Our analytics")
+    :collection_path            path
     :collection_description     description
-    :collection_authority_level authority_level}))
+    ;; A Collection read from the app DB has its authority level as a keyword.
+    :collection_authority_level (some-> authority_level u/qualified-name)
+    :collection_archived        (boolean archived)}))
 
 (defn- drill-in-location-context
   "The `<pfx>_database_name` / `<pfx>_base_table_fqn` keys a standalone measure/segment drill-in carries so
@@ -431,6 +436,17 @@
           (str fqn " (via " table_reference ")")
           fqn)))))
 
+(defn- dimension-cell
+  "Render the value under `k` for a cell of a metric dimensions table."
+  [k v]
+  (cond
+    (nil? v)         ""
+    (keyword? v)     (markdown-cell (clojure.core/name v))
+    ;; `reference` is a JSON array the LLM copies verbatim. Keep the cell valid
+    ;; JSON by encoding pipes as `\u007c` instead of markdown `\|`.
+    (= k :reference) (json-cell-safe (escape-xml-content v))
+    :else            (markdown-cell v)))
+
 (defn format-metric-dimensions-table
   "Render a metric's dimensions with their source tables and field references.
 
@@ -452,14 +468,7 @@
         dims)
    {:name "Field Name" :field_id "Field ID" :type "Type" :source "Source table"
     :reference "Reference (copy as is if it starts with [\"field\"; else put it in a field clause)"}
-   {:value-fn (fn [k v]
-                (cond
-                  (nil? v)         ""
-                  (keyword? v)     (escape-pipes (clojure.core/name v))
-                  ;; `reference` is a JSON array the LLM copies verbatim. Keep the cell valid
-                  ;; JSON by encoding pipes as `\u007c` instead of markdown `\|`.
-                  (= k :reference) (json-cell-safe (escape-xml-content v))
-                  :else            (escape-pipes (escape-xml (str v)))))}))
+   {:value-fn dimension-cell}))
 
 (defn- format-join-required-dimensions-table
   "Like [[format-metric-dimensions-table]] but the Reference is the FULL alias-qualified field clause
@@ -471,12 +480,7 @@
    (map (fn [d] (assoc d :reference (some-> (:reference d) json/encode))) dims)
    {:name "Field Name" :field_id "Field ID" :type "Type"
     :reference "Reference (copy as is if it starts with [\"field\"; else put it in a field clause)"}
-   {:value-fn (fn [k v]
-                (cond
-                  (nil? v)         ""
-                  (keyword? v)     (escape-pipes (clojure.core/name v))
-                  (= k :reference) (json-cell-safe (escape-xml-content v))
-                  :else            (escape-pipes (escape-xml (str v)))))}))
+   {:value-fn dimension-cell}))
 
 (defn- format-metric-join-required-dimensions
   "Render the metric's FK-less join dimensions — the columns the metric reaches through an explicit
@@ -614,15 +618,15 @@
   "Format query result rows as a markdown table.
    Note: Uses |safe in template, so values must be escaped."
   [columns rows]
-  (let [header    (format-markdown-row (map :name columns))
+  (let [header    (format-markdown-row (map (comp markdown-cell :name) columns))
         data-rows (map (fn [row]
-                         (format-markdown-row (map #(escape-xml (str %)) row)))
+                         (format-markdown-row (map markdown-cell row)))
                        rows)]
     (str header "\n" (str/join "\n" data-rows) "\n")))
 
 (defn query-result->xml
   "Format query result for LLM consumption.
-   Matches Python QueryResult.llm_representation exactly."
+   Based on Python QueryResult.llm_representation, with table cells escaped."
   [{:keys [result_columns rows]}]
   (render-llm-template
    :query_results
@@ -746,27 +750,65 @@
   "Cap on a dashboard filter's name."
   100)
 
+(def ^:private max-dashboard-filter-default-values
+  "Cap on the values listed for a dashboard filter's default."
+  10)
+
+(def ^:private max-dashboard-filter-default-length
+  "Cap on a dashboard filter's default, as written in the prompt."
+  500)
+
+(defn- dashboard-filter-default
+  "The text of a dashboard filter's `default`, with at most [[max-dashboard-filter-default-values]] of its values and
+  [[max-dashboard-filter-default-length]] characters, and a note of how many values were left out.
+  A string default is written as it is, anything else as JSON."
+  [default]
+  (let [shown (cond-> default (sequential? default) (->> (take max-dashboard-filter-default-values) vec))
+        more  (when (sequential? default) (- (count default) (count shown)))]
+    (str (truncate (if (string? shown) shown (json/encode shown)) max-dashboard-filter-default-length)
+         (when (pos-int? more) (str " (+" more " more)")))))
+
+(defn dashboard-filter->xml
+  "The `<filter>` element for the dashboard filter `parameter`.
+  It shows the filter's default and the dashcards it filters (`:connected_dashcards`), when it has them."
+  [{:keys [id name type default connected_dashcards]}]
+  (str "<filter id=\"" (escape-xml id)
+       "\" name=\"" (escape-xml (truncate name max-dashboard-filter-name-length))
+       "\" type=\"" (escape-xml (u/qualified-name type)) "\""
+       (when (some? default)
+         (str " default=\"" (escape-xml (dashboard-filter-default default)) "\""))
+       (when (seq connected_dashcards)
+         (str " connected_dashcards=\"" (str/join ", " connected_dashcards) "\""))
+       "/>"))
+
 (defn- dashboard-filters->xml
-  "The `<filters>` block for a dashboard's `parameters`, or nil when it has none. Lists at most
-  [[max-dashboard-filters]] of them and says how many were left out."
+  "The `<filters>` block for a dashboard's `parameters`, or nil when it has none.
+  Lists at most [[max-dashboard-filters]] of them and says how many were left out."
   [parameters]
   (when (seq parameters)
     (let [total (count parameters)]
       (str "  <filters>\n"
            (str/join (for [param (take max-dashboard-filters parameters)]
-                       (str "    <filter id=\"" (escape-xml (:id param))
-                            "\" name=\"" (escape-xml (truncate (:name param) max-dashboard-filter-name-length))
-                            "\" type=\"" (escape-xml (u/qualified-name (:type param))) "\"/>\n")))
+                       (str "    " (dashboard-filter->xml param) "\n")))
            (when (> total max-dashboard-filters)
              (str "    <truncation-note>Showing " max-dashboard-filters " of " total " filters; the other "
                   (- total max-dashboard-filters) " are not listed.</truncation-note>\n"))
            "  </filters>\n"))))
 
+(defn- dashboard-history->xml
+  "The lines saying who created the dashboard and who last edited it, and when, or nil when neither is known."
+  [{:keys [created_by created_at last_edited_by last_edited_at]}]
+  (not-empty
+   (str (when created_by
+          (str "  <created by=\"" (escape-xml created_by) "\" at=\"" created_at "\"/>\n"))
+        (when last_edited_by
+          (str "  <last_edited by=\"" (escape-xml last_edited_by) "\" at=\"" last_edited_at "\"/>\n")))))
+
 (defn dashboard->xml
   "Format dashboard for LLM consumption.
-   Matches Python Dashboard.llm_representation exactly, except we additionally surface the
-   dashboard's filters."
-  [{:keys [id name description verified collection parameters dashcards]}]
+   Matches Python Dashboard.llm_representation exactly, except we additionally surface who created and last edited
+   the dashboard, whether it is in the trash, its filters, and the tab the user has open."
+  [{:keys [id name description verified archived collection parameters dashcards open_tab] :as dashboard}]
   ;; Group cards by tab and sort
   ;; TODO (Chris 2026-07-09) -- tabs sort by raw id here but by position in
   ;; resources/fetch-dashboard-items; align on position
@@ -790,10 +832,15 @@
      :dashboard
      {:dashboard_id (str id)
       :dashboard_verified (boolean verified)
+      :dashboard_archived (boolean archived)
       :dashboard_name name
       :dashboard_description description
+      :dashboard_history_xml (dashboard-history->xml dashboard)
       :dashboard_collection_xml (when collection (collection->xml collection))
       :dashboard_filters_xml (dashboard-filters->xml parameters)
+      :dashboard_open_tab_xml (when open_tab
+                                (str "  <open_tab id=\"" (:id open_tab) "\" name=\"" (escape-xml (:name open_tab))
+                                     "\"/>\n"))
       :dashboard_tabs_xml tabs-xml})))
 
 (defn database-schema->xml
@@ -818,13 +865,13 @@
 
 (defn user->xml
   "Format user for LLM consumption.
-   Matches Python DummyGetCurrentUserResultSchema.llm_representation exactly.
+   Based on Python DummyGetCurrentUserResultSchema.llm_representation, with glossary cells escaped.
    Note: Glossary rows are used with |safe, so we must escape manually."
   [{:keys [id name email glossary]}]
   (let [glossary-rows (when (seq glossary)
                         (str/join "\n"
                                   (map (fn [[term definition]]
-                                         (str "| " (escape-xml term) " | " (escape-xml definition) " |"))
+                                         (format-markdown-row (map markdown-cell [term definition])))
                                        glossary)))]
     (render-llm-template
      :user
@@ -938,11 +985,11 @@
 
 (defn field-values-metadata->xml
   "Format field values metadata for LLM consumption.
-   Matches Python FieldValuesMetadata.llm_representation, with notes when only some values are listed
-   or when the database couldn't be sampled for statistics.
+   Based on Python FieldValuesMetadata.llm_representation, with cells escaped by [[markdown-cell]].
+   Adds a note when only some values are listed or when the database couldn't be sampled for statistics.
    Tables use |safe in the template, so values must be escaped."
   [{:keys [field_values field_values_total has_more_values statistics statistics_unavailable]}]
-  (let [escape-value        (fn [_k v] (escape-pipes (escape-xml (str v))))
+  (let [escape-value        (fn [_k v] (markdown-cell v))
         sample-values-table (when (seq field_values)
                               (te/markdown-table
                                (map vector field_values)
@@ -952,7 +999,7 @@
         partial?            (and field_values_total
                                  (or has_more_values (< shown field_values_total)))
 
-        stats-map   (into {} (filter (fn [[_ v]] (some? v)) statistics))
+        stats-map   (u/remove-nils statistics)
         stats-table (when (seq stats-map)
                       (te/markdown-table
                        (update-keys stats-map #(->> % name (str "sample-")))
@@ -1065,7 +1112,8 @@
 
 (def ^:private item-attr-keys
   "Attributes rendered as XML attrs on each <item> element. Order matters for stable output."
-  [:type :id :dashcard_id :tab_id :name :uri :database_id :collection_id :table_id :can_write
+  [:type :id :dashcard_id :tab_id :all_tabs :row :col :size_x :size_y :name :uri
+   :database_id :collection_id :table_id :can_write
    :schema :display_name :authority_level :is_personal :path :location
    :engine :sql_unavailable :timestamp])
 
@@ -1098,7 +1146,8 @@
       :next-page-uri  \"metabase://databases?page=2\"}   ; present when truncated
 
    An optional `:tabs` vector of `{:id .. :name ..}` (dashboard items) renders as a `<tabs>`
-   block ahead of the items; items reference tabs via their `tab_id` attribute.
+   block ahead of the items; items reference tabs via their `tab_id` attribute, and an item on every tab has
+   `all_tabs`.
 
    Output shape:
      <list type=\"databases\" total=\"5\" page=\"1\" pages=\"1\" showing=\"5\" truncated=\"false\">

@@ -62,3 +62,8 @@
   "Delete the CustomVizPlugin with `plugin-id`, returning the number deleted."
   [plugin-id :- ms/PositiveInt]
   (t2/delete! :model/CustomVizPlugin :id plugin-id))
+
+(mu/defn synced-custom-viz-plugin-items :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin]
+  "The CustomVizPlugins with `ids`, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (t2/select [:model/CustomVizPlugin :id :identifier :display_name] :id [:in ids]))

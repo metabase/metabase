@@ -11,6 +11,7 @@ This changelog covers the `@metabase/custom-viz` npm package — the API and CLI
 ### Features
 
 - `@metabase/custom-viz pack` no longer packs files listed under `assets` in `metabase-plugin.json`. Metabase only ever served the icon, so those files were dead weight in the archive; the icon is still packed from `dist/assets/`.
+- `FormatValueOptions` and `ColumnVisualizationSettings` include the duration options `duration_unit`, `duration_style` and `duration_precision`, used when `number_style` is `"duration"` ([#87151](https://github.com/metabase/metabase/pull/87151)).
 
 ## 2.0.1
 
