@@ -215,6 +215,17 @@
       (is (partial= [{:id (:id (perms-group/all-users)), :name "All Users"}]
                     (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1"))))))
 
+(deftest groups-list-unpaged-test
+  (testing "GET /api/permissions/group"
+    (testing "an unpaged request returns every group, not just the first default page (metabase#17200)"
+      (let [names (mapv #(str "Group " %) (range 51))]
+        (try
+          (t2/insert! :model/PermissionsGroup (mapv #(array-map :name %) names))
+          (let [returned (set (map :name (mt/user-http-request :crowberto :get 200 "permissions/group")))]
+            (is (= #{} (set (remove returned names)))))
+          (finally
+            (t2/delete! :model/PermissionsGroup :name [:in names])))))))
+
 (deftest fetch-groups-tenancy-filter-test
   (testing "GET /api/permissions/group with tenancy filter"
     (mt/with-premium-features #{:tenants}
@@ -287,8 +298,16 @@
                    [:membership_id ms/PositiveInt]]
                   (get id->member (mt/user->id :rasta))))
       (testing "Should *not* include inactive users"
-        (is (nil?
-             (get id->member :trashbird)))))
+        (mt/with-temp [:model/User {inactive-id :id} {:is_active false}]
+          (let [group-id (:id (perms-group/all-users))]
+            (testing "the deactivated user is still a member of the group"
+              (is (t2/exists? :model/PermissionsGroupMembership
+                              :user_id inactive-id :group_id group-id)))
+            (is (nil? (->> (mt/user-http-request
+                            :crowberto :get 200 (format "permissions/group/%d" group-id))
+                           :members
+                           (m/index-by :user_id)
+                           (#(get % inactive-id)))))))))
     (testing "returns 404 for nonexistent id"
       (is (= "Not found."
              (mt/user-http-request :crowberto :get 404 "permissions/group/10000"))))
