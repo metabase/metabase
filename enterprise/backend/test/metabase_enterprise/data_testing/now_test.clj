@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.executor :as data-testing.executor]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.api.common :as api]
@@ -17,7 +18,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang ExceptionInfo)))
+   (clojure.lang ExceptionInfo)
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -173,6 +175,36 @@
           (is (= "Asia/Tokyo" (session-tz)))
           (is (= :passed (run!))))))))
 
+(defn- first-warehouse-error!
+  "Redshift's first error when the query under test of a run of `subject`, a `subject-type`, with `definition` is
+  prepared on a test connection that holds the run's inputs, and the query's SQL and parameters. A run's own
+  preparation drops that error, and reports only that the transaction is aborted."
+  [subject-type subject definition]
+  (try
+    (let [{:keys [driver database input->table labels compiled]}
+          (#'data-testing.runner/validated-plan subject-type subject definition)]
+      (str "SQL: " (:query compiled) "\nParameters: " (pr-str (:params compiled)) "\nFirst error: "
+           (driver/do-with-test-connection
+            driver database
+            (fn [^Connection conn]
+              (let [output (driver/temp-table-name driver)
+                    steps  [["create the inputs" #(#'data-testing.runner/create-inputs! driver conn input->table labels)]
+                            ["describe the query" #(with-open [stmt (.prepareStatement conn ^String (:query compiled))]
+                                                     (.getParameterCount (.getParameterMetaData stmt)))]
+                            ["run the query" #(data-testing.executor/run-query driver conn
+                                                                               [(:query compiled) (vec (:params compiled))] 1)]
+                            ["create the output" #(data-testing.executor/create-temp-table! driver conn output compiled)]]]
+                (or (some (fn [[step thunk]]
+                            (try
+                              (thunk)
+                              nil
+                              (catch Throwable e
+                                (str "at \"" step "\": " (ex-message e)))))
+                          steps)
+                    "none"))))))
+    (catch Throwable e
+      (str "The probe failed: " (ex-message e)))))
+
 (defn- run-transform-test!
   "Save a transform of `source-query` into a new table and a test of it with `inputs`, the further `test-fields`, and
   one expectation, `(expectation-of target)` where `target` is the target table's qualified name, then run the test.
@@ -189,7 +221,12 @@
                                                               :inputs       inputs
                                                               :expectations [(expectation-of (str schema "." target-name))]}
                                                              test-fields)]
-      (outcome! :transform transform :model/TransformTest test-id))))
+      (let [result (outcome! :transform transform :model/TransformTest test-id)]
+        (when (= ::data-testing.errors/query-failed result)
+          (swap! refusals conj (first-warehouse-error!
+                                :transform transform
+                                (data-testing.runner/test-definition (t2/select-one :model/TransformTest :id test-id)))))
+        result))))
 
 (deftest transform-reads-the-pinned-clock-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
