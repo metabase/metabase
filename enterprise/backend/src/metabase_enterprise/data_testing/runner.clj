@@ -75,11 +75,8 @@
    [:writes?      :boolean]])
 
 (mr/def ::definition
-  "What a run reads of a test: its inputs, its expectations, and the values of its subject's parameters."
-  [:map {:closed true}
-   [:inputs       ::data-testing.schema/inputs]
-   [:expectations ::data-testing.schema/expectations]
-   [:parameters   {:optional true} [:maybe ::data-testing.schema/parameters]]])
+  "What a run reads of a test."
+  ::data-testing.subject/definition)
 
 (mr/def ::built-expectation
   "An expectation built by [[expectations.protocol/build]]."

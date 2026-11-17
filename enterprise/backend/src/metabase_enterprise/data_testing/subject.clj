@@ -56,9 +56,9 @@
            [:writes?  [:= true]]]]])
 
 (mr/def ::definition
-  "What a subject's plan may read of the test: its inputs, its expectations, and the values of the subject's
+  "What a run reads of a test, and a subject's plan may: its inputs, its expectations, and the values of the subject's
   parameters."
-  [:map
+  [:map {:closed true}
    [:inputs       ::data-testing.schema/inputs]
    [:expectations ::data-testing.schema/expectations]
    [:parameters   {:optional true} [:maybe ::data-testing.schema/parameters]]])

@@ -3,12 +3,14 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
+   [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -52,6 +54,20 @@
   (disj (mt/normal-drivers-with-feature :transforms/testing) :redshift))
 
 (def ^:private one-row "SELECT 1 AS id, 'abc' AS name")
+
+(deftest definition-is-one-closed-schema-test
+  (let [definition {:inputs [] :expectations [] :parameters {"id" 1}}]
+    (doseq [schema [::data-testing.runner/definition ::data-testing.subject/definition]]
+      (testing (str schema " admits the inputs, expectations and parameters of a test")
+        (is (mr/validate schema definition)))
+      (testing (str schema " refuses a key a run does not read")
+        (is (not (mr/validate schema (assoc definition :name "a test")))))))
+  (testing "a definition for a subject without parameters is closed too"
+    (is (not (mr/validate ::data-testing.subject/definition-without-parameters
+                          {:inputs [] :expectations [] :name "a test"})))
+    (is (not (mr/validate ::data-testing.subject/definition-without-parameters
+                          {:inputs [] :expectations [] :parameters {"id" 1}})))
+    (is (mr/validate ::data-testing.subject/definition-without-parameters {:inputs [] :expectations []}))))
 
 (deftest run-transform-test-rows-input-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
