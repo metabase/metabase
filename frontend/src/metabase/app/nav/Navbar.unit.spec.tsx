@@ -1,4 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
@@ -10,6 +11,8 @@ import {
   setupSettingEndpoint,
 } from "__support__/server-mocks";
 import {
+  createMockAdminAppState,
+  createMockAdminState,
   createMockAppState,
   createMockDashboardState,
   createMockEmbedOptions,
@@ -22,10 +25,12 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
+import { getAdminPaths } from "metabase/admin/app/reducers";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { CLOSE_NAVBAR, OPEN_NAVBAR } from "metabase/redux/app";
-import type { DashboardState, State } from "metabase/redux/store";
+import type { AdminPath, DashboardState, State } from "metabase/redux/store";
 import { Route } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
 import type { Collection, User } from "metabase-types/api";
@@ -47,6 +52,7 @@ type SetupOpts = {
   collections?: Collection[];
   trashCollection?: Collection;
   dashboardState?: DashboardState;
+  adminPaths?: AdminPath[];
 };
 
 async function setup({
@@ -58,6 +64,7 @@ async function setup({
   collections = [],
   trashCollection,
   dashboardState,
+  adminPaths = [],
 }: SetupOpts = {}) {
   setupCollectionsEndpoints({ collections, trashCollection });
   setupDatabasesEndpoints([createMockDatabase()]);
@@ -82,6 +89,9 @@ async function setup({
       options: createMockEmbedOptions(embedOptions),
     }),
     currentUser: user,
+    admin: createMockAdminState({
+      app: createMockAdminAppState({ paths: adminPaths }),
+    }),
     ...(dashboardState ? { dashboard: dashboardState } : {}),
   });
 
@@ -245,6 +255,76 @@ describe("nav > containers > Navbar > Core App", () => {
         "aria-selected",
         "false",
       );
+    });
+  });
+
+  describe("admin app (metabase#45042)", () => {
+    const setupAdmin = () =>
+      setup({
+        pathname: "/admin/settings/general",
+        route: "/admin/*",
+        user: createMockUser({ is_superuser: true }),
+        adminPaths: getAdminPaths(),
+      });
+
+    it("shows the admin tabs in the desktop list and only above the md breakpoint", async () => {
+      await setupAdmin();
+
+      const navbar = screen.getByTestId("admin-navbar");
+      const tabs = within(navbar).getByTestId("admin-navbar-items");
+      expect(
+        within(tabs).getByRole("link", { name: "Settings" }),
+      ).toHaveAttribute("href", "/admin/settings");
+      expect(
+        within(tabs).getByRole("link", { name: "People" }),
+      ).toHaveAttribute("href", "/admin/people");
+      expect(
+        within(navbar).getByTestId("app-switcher-target"),
+      ).toBeInTheDocument();
+
+      // jsdom applies no media queries; these Mantine classes on the wrappers
+      // are what swap the tab list for the burger menu at narrow viewports.
+      // No Testing Library query reaches the wrappers.
+      const toggle = within(navbar).getByRole("button", {
+        name: "Toggle navigation",
+      });
+      // eslint-disable-next-line testing-library/no-node-access
+      expect(tabs.parentElement).toHaveClass("mantine-visible-from-md");
+      // eslint-disable-next-line testing-library/no-node-access
+      expect(toggle.parentElement).toHaveClass("mantine-hidden-from-md");
+    });
+
+    it("toggles the mobile navigation links and keeps the app switcher working", async () => {
+      await setupAdmin();
+
+      const navbar = screen.getByTestId("admin-navbar");
+      const toggle = within(navbar).getByRole("button", {
+        name: "Toggle navigation",
+      });
+      expect(
+        within(navbar).queryByRole("list", { name: "Navigation links" }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(toggle);
+      const mobileLinks = within(navbar).getByRole("list", {
+        name: "Navigation links",
+      });
+      expect(
+        within(mobileLinks).getByRole("link", { name: "Settings" }),
+      ).toHaveAttribute("href", "/admin/settings");
+      expect(
+        within(mobileLinks).getByRole("link", { name: "People" }),
+      ).toHaveAttribute("href", "/admin/people");
+
+      await userEvent.click(toggle);
+      expect(
+        within(navbar).queryByRole("list", { name: "Navigation links" }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(within(navbar).getByTestId("app-switcher-target"));
+      expect(
+        await screen.findByRole("menuitem", { name: /Main app/ }),
+      ).toHaveAttribute("href", "/");
     });
   });
 

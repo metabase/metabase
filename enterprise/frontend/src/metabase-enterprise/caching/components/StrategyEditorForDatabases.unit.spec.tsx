@@ -418,6 +418,72 @@ describe("StrategyEditorForDatabases (table behaviors)", () => {
     expect(screen.queryByText("Discard your changes?")).not.toBeInTheDocument();
   });
 
+  it("resets the schedule form to the saved schedule when changes are discarded (metabase#45890)", async () => {
+    setup();
+    await userEvent.click(
+      await screen.findByLabelText(/Edit policy for database 'Database 2'/),
+    );
+    await selectCacheStrategy(/^Schedule/i);
+    await userEvent.click(await getSaveButton());
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/cache", { method: "PUT" }),
+      ).toHaveLength(1);
+    });
+    const putCall = fetchMock.callHistory.lastCall("path:/api/cache", {
+      method: "PUT",
+    });
+    expect(JSON.parse(String(putCall?.options.body))).toMatchObject({
+      model: "database",
+      model_id: 2,
+      strategy: { type: "schedule", schedule: "0 0 * * * ? *" },
+    });
+    expect(
+      await screen.findByLabelText(
+        "Edit policy for database 'Database 2' (currently: Scheduled: hourly)",
+      ),
+    ).toBeInTheDocument();
+
+    const panel = screen.getByTestId("cache-policy-panel");
+    expect(within(panel).getByLabelText("Frequency")).toHaveValue("hourly");
+    await userEvent.click(within(panel).getByLabelText("Frequency"));
+    await userEvent.click(
+      within(await screen.findByRole("listbox")).getByRole("option", {
+        name: "weekly",
+      }),
+    );
+    expect(within(panel).getByLabelText("Frequency")).toHaveValue("weekly");
+
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Cancel" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Discard your changes?",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Discard" }),
+    );
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("cache-policy-panel"),
+      ).not.toBeInTheDocument();
+    });
+    // Discarding drops the draft instead of saving it.
+    expect(
+      fetchMock.callHistory.calls("path:/api/cache", { method: "PUT" }),
+    ).toHaveLength(1);
+
+    await userEvent.click(
+      await screen.findByLabelText(/Edit policy for database 'Database 2'/),
+    );
+    expect(
+      within(await screen.findByTestId("cache-policy-panel")).getByLabelText(
+        "Frequency",
+      ),
+    ).toHaveValue("hourly");
+  });
+
   it("navigates between rows with the sidesheet chevrons", async () => {
     setup();
     await userEvent.click(await screen.findByLabelText(/Edit default policy/));
