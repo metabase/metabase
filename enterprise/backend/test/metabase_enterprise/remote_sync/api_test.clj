@@ -93,10 +93,12 @@
 (deftest settings-null-url-turns-off-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
-      (is (true? (mt/user-http-request :crowberto :get 200 "setting/remote-sync-enabled")))
-      (testing "a null URL, which the Turn off button sends, turns remote sync off"
-        (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:remote-sync-url nil})
-        (is (false? (mt/user-http-request :crowberto :get 200 "setting/remote-sync-enabled")))))))
+      (mt/with-temp [:model/Collection collection {:name "Synced" :location "/" :is_remote_synced true}]
+        (is (true? (mt/user-http-request :crowberto :get 200 "setting/remote-sync-enabled")))
+        (testing "a null URL, which the Turn off button sends, turns remote sync off and stops syncing collections"
+          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:remote-sync-url nil})
+          (is (false? (mt/user-http-request :crowberto :get 200 "setting/remote-sync-enabled")))
+          (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id collection)))))))))
 
 (deftest test-connection-test
   (remote-sync.tu/with-repository [url]
