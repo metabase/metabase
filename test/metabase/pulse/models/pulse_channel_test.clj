@@ -447,3 +447,77 @@
             (t2/update! :model/PulseChannel :id pc-id-2 daily-at-6pm)
             (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
                     (send-pulse-triggers pulse-id)))))))))
+
+(defn- status-code
+  "The `:status-code` of the exception `thunk` throws, or nil when it throws none."
+  [thunk]
+  (try
+    (thunk)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (:status-code (ex-data e)))))
+
+(defn- insert-channel!
+  "Insert a PulseChannel made of the defaults of one, `pulse-id` and `overrides`, and return its id."
+  [pulse-id overrides]
+  (t2/insert-returning-pk! :model/PulseChannel (merge (mt/with-temp-defaults :model/PulseChannel)
+                                                      {:pulse_id pulse-id}
+                                                      overrides)))
+
+(deftest insert-rules-test
+  (mt/with-temp [:model/Pulse {pulse-id :id} {}]
+    (mt/with-model-cleanup [:model/PulseChannel]
+      (doseq [[testing-name overrides] {"a channel type that does not exist"       {:channel_type :sms}
+                                        "a schedule type that does not exist"      {:schedule_type :yearly}
+                                        "a daily schedule without an hour"         {:schedule_type :daily, :schedule_hour nil}
+                                        "an hour past the end of the day"          {:schedule_type :daily, :schedule_hour 24}
+                                        "a weekly schedule without a day"          {:schedule_type :weekly, :schedule_hour 8}
+                                        "a monthly schedule without a frame"       {:schedule_type :monthly, :schedule_hour 8}
+                                        "a mid-month schedule with a day"          {:schedule_type :monthly, :schedule_hour 8
+                                                                                    :schedule_frame :mid, :schedule_day "mon"}
+                                        "details with a key no channel has"        {:details {:bogus true}}
+                                        "details with an emails that is not a list" {:details {:emails "a@example.com"}}}]
+        (testing testing-name
+          (is (= 400 (status-code #(insert-channel! pulse-id overrides))))))
+      (testing "schedules that are valid"
+        (doseq [overrides [{:schedule_type :hourly, :schedule_hour nil}
+                           {:schedule_type :daily, :schedule_hour 0}
+                           {:schedule_type :weekly, :schedule_hour 8, :schedule_day "mon"}
+                           {:schedule_type :monthly, :schedule_hour 8, :schedule_frame :mid}
+                           {:schedule_type :monthly, :schedule_hour 8, :schedule_frame :last, :schedule_day "fri"}
+                           {:channel_type "slack", :schedule_type "hourly", :details {:channel "#general"}}]]
+          (testing (pr-str overrides)
+            (is (some? (insert-channel! pulse-id overrides)))))))))
+
+(deftest update-rules-test
+  (mt/with-temp [:model/Pulse        {pulse-id :id}   {}
+                 :model/PulseChannel {channel-id :id} {:pulse_id pulse-id}]
+    (doseq [[testing-name changes] {"a channel type that does not exist"  {:channel_type :sms}
+                                    "a schedule type that does not exist" {:schedule_type :yearly}
+                                    "an hour past the end of the day"     {:schedule_hour 24}
+                                    "a schedule type that needs a day"    {:schedule_type :weekly}
+                                    "a monthly schedule without a frame"  {:schedule_type :monthly}
+                                    "details with a key no channel has"   {:details {:bogus true}}}]
+      (testing testing-name
+        (is (= 400 (status-code #(t2/update! :model/PulseChannel :id channel-id changes))))
+        (is (=? {:channel_type :email, :schedule_type :daily, :schedule_hour 15}
+                (t2/select-one :model/PulseChannel :id channel-id)))))
+    (testing "changes that leave a valid channel"
+      (is (= 1 (t2/update! :model/PulseChannel :id channel-id {:schedule_type :weekly, :schedule_day "mon"})))
+      (is (= 1 (t2/update! :model/PulseChannel :id channel-id {:schedule_hour 7})))
+      (is (= 1 (t2/update! :model/PulseChannel :id channel-id {:details {:emails ["a@example.com"]}})))
+      (is (=? {:schedule_type :weekly, :schedule_day "mon", :schedule_hour 7}
+              (t2/select-one :model/PulseChannel :id channel-id))))))
+
+(deftest invalid-update-leaves-triggers-alone-test
+  (with-send-pulse-setup!
+    (mt/with-temp [:model/Pulse        {pulse-id :id}  {}
+                   :model/PulseChannel {daily-id :id}  (merge {:pulse_id pulse-id :channel_type :email} daily-at-6pm)
+                   :model/PulseChannel {weekly-id :id} {:pulse_id pulse-id, :channel_type :slack
+                                                        :schedule_type :weekly, :schedule_hour 8, :schedule_day "mon"}]
+      (let [triggers (send-pulse-triggers pulse-id)]
+        (testing "one UPDATE of both channels that makes the weekly one invalid"
+          (is (= 400 (status-code #(t2/update! :model/PulseChannel :id [:in [daily-id weekly-id]]
+                                               {:schedule_type :monthly, :schedule_frame :mid}))))
+          (testing "moves no trigger, not even the one of the channel the change would leave valid"
+            (is (= triggers (send-pulse-triggers pulse-id)))))))))

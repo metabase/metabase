@@ -18,6 +18,7 @@
   Legacy note: Currently Pulses are associated with a dashboard, but this is not always the case since there are legacy
   pulses that are a collection of cards, not dashboard."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -28,6 +29,7 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :as premium-features]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.schema :as pulse.schema]
@@ -41,7 +43,7 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
+;;; ------------------------------------------------------- Setup ----------------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Pulse [_model] :pulse)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :pulse]  [_original-model _k] :model/Pulse)
@@ -60,7 +62,11 @@
 (t2/deftransforms :model/Pulse
   {:parameters transform-pulse-parameters})
 
-(defn- assert-valid-parameters [{:keys [parameters]}]
+;;; ------------------------------------------------------- Hooks ----------------------------------------------------------
+
+(defn- check-parameters
+  "Throw a 400 unless the `:parameters` of `pulse` are a sequence of maps with String `:id` keys."
+  [{:keys [parameters]}]
   (when-not (mr/validate [:maybe
                           [:sequential
                            [:and
@@ -68,23 +74,39 @@
                             [:map-of :keyword :any]]]]
                          parameters)
     (throw (ex-info (tru ":parameters must be a sequence of maps with String :id keys")
-                    {:parameters parameters}))))
+                    {:status-code 400
+                     :parameters  parameters}))))
 
-(t2/define-before-insert :model/Pulse
-  [notification]
-  (let [defaults      {:parameters []}
-        dashboard-id  (:dashboard_id notification)
-        collection-id (if dashboard-id
-                        (pulse.db/dashboard-collection-id dashboard-id)
-                        (:collection_id notification))
-        notification  (->> (for [[k v] notification
-                                 :when (some? v)]
-                             {k v})
-                           (apply merge defaults {:collection_id collection-id}))]
-    (u/prog1 notification
-      (assert-valid-parameters notification)
-      (collection/check-allowed-content :model/Pulse (:collection_id notification))
-      (collection/check-collection-namespace :model/Pulse (:collection_id notification)))))
+(defn- check-dashboard-subscription
+  "Throw a 400 when `pulse` is a dashboard subscription with a column of an alert or a collection position."
+  [{:keys [dashboard_id collection_position alert_condition alert_first_only alert_above_goal]}]
+  (when (and dashboard_id (some some? [alert_condition alert_first_only alert_above_goal]))
+    (throw (ex-info (tru "A dashboard subscription cannot have the columns of an alert.")
+                    {:status-code 400})))
+  (when (and dashboard_id (some? collection_position))
+    (throw (ex-info (tru "A dashboard subscription cannot have a collection position.")
+                    {:status-code 400}))))
+
+(defn- new-pulse
+  "`pulse`, a row an INSERT writes, without its nil columns, with the defaults of a Pulse, and filed in the Collection
+  of its Dashboard when it is a dashboard subscription, per `dashboard->collection-id`."
+  [{:keys [dashboard_id] :as pulse} dashboard->collection-id]
+  (merge {:parameters []}
+         (into {} (filter (comp some? val)) pulse)
+         {:collection_id (if dashboard_id
+                           (get dashboard->collection-id dashboard_id)
+                           (:collection_id pulse))}))
+
+(mi/define-before-insert :model/Pulse
+  [pulses]
+  (let [dashboard->collection-id (pulse.db/dashboard-collection-ids (into #{} (keep :dashboard_id) pulses))]
+    (mapv (fn [pulse]
+            (u/prog1 (new-pulse pulse dashboard->collection-id)
+              (check-parameters <>)
+              (check-dashboard-subscription <>)
+              (collection/check-allowed-content :model/Pulse (:collection_id <>))
+              (collection/check-collection-namespace :model/Pulse (:collection_id <>))))
+          pulses)))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-moving-dashboard-subscriptions*
@@ -93,31 +115,32 @@
   false)
 
 (t2/define-before-update :model/Pulse
-  [notification]
-  (let [{:keys [collection_id dashboard_id]} (t2/original notification)
-        changes                              (t2/changes notification)]
-    (collection/check-allowed-content :model/Pulse (:collection_id changes))
-    (when (and dashboard_id
-               (contains? notification :collection_id)
-               (not= (:collection_id notification) collection_id)
-               (not *allow-moving-dashboard-subscriptions*))
-      (throw (ex-info (tru "collection ID of a dashboard subscription cannot be directly modified") notification)))
+  [pulse]
+  (let [changes (t2/changes pulse)
+        {original-dashboard-id :dashboard_id} (t2/original pulse)]
+    (when (and original-dashboard-id (contains? changes :dashboard_id))
+      (throw (ex-info (tru "dashboard ID of a dashboard subscription cannot be modified") {:status-code 400})))
+    (when (and original-dashboard-id (contains? changes :collection_id) (not *allow-moving-dashboard-subscriptions*))
+      (throw (ex-info (tru "collection ID of a dashboard subscription cannot be directly modified") {:status-code 400})))
+    (when (contains? changes :collection_id)
+      (collection/check-allowed-content :model/Pulse (:collection_id changes))
+      (collection/check-collection-namespace :model/Pulse (:collection_id pulse)))
+    (when (contains? changes :parameters)
+      (check-parameters pulse))
+    (when (some #(contains? changes %) [:dashboard_id :collection_position :alert_condition :alert_first_only :alert_above_goal])
+      (check-dashboard-subscription pulse))
     (when (contains? changes :archived)
       (if (:archived changes)
-        (pulse.db/set-pulse-channels-enabled! (u/the-id notification) false)
-        (pulse.db/set-pulse-channels-enabled! (u/the-id notification) true)))
-    (when (and dashboard_id
-               (contains? notification :dashboard_id)
-               (not= (:dashboard_id notification) dashboard_id))
-      (throw (ex-info (tru "dashboard ID of a dashboard subscription cannot be modified") notification))))
-  (u/prog1 notification
-    (assert-valid-parameters notification)
-    (collection/check-collection-namespace :model/Pulse (:collection_id notification))))
+        (pulse.db/set-pulse-channels-enabled! (u/the-id pulse) false)
+        (pulse.db/set-pulse-channels-enabled! (u/the-id pulse) true)))
+    pulse))
 
 (t2/define-before-delete :model/Pulse
   [pulse]
   ;; to trigger deleting the scheduled jobs
   (pulse.db/delete-pulse-channels-for-pulse! (u/the-id pulse)))
+
+;;; ---------------------------------------------------- Permissions -----------------------------------------------------
 
 (defn- alert->card
   "Return the Card associated with an Alert, fetching it if needed, for permissions-checking purposes."
@@ -199,6 +222,30 @@
             (or api/*is-superuser?*
                 (and (collection-permits? notification :read)
                      (current-user-is-creator? notification)))))))
+
+(defn- email-recipient-keys
+  "The set of recipients of the email channel of `pulse`, a Pulse or the changes to one: Users by their `:id`, other
+  addresses by their `:email`."
+  [pulse]
+  (->> (:channels pulse)
+       (m/find-first #(= :email (keyword (:channel_type %))))
+       :recipients
+       (keep (some-fn :id :email))
+       set))
+
+(defn- recipient-additions-permitted?
+  "Whether the current user may add the recipients that `changes` brings to `pulse`: with advanced permissions, only a
+  superuser or a user with the subscription permission may."
+  [pulse changes]
+  (or (not (premium-features/enable-advanced-permissions?))
+      (boolean api/*is-superuser?*)
+      (perms/current-user-has-application-permissions? :subscription)
+      (empty? (set/difference (email-recipient-keys changes) (email-recipient-keys pulse)))))
+
+(defmethod mi/can-update? :model/Pulse
+  [pulse changes]
+  (and (mi/can-write? pulse)
+       (recipient-additions-permitted? pulse changes)))
 
 (defn- can-read-attachments?
   "Return true if the card has attachments and those can be read. If it has no attachments, return true"

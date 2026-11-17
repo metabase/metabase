@@ -4,7 +4,6 @@
 
   Deprecated: will soon be migrated to notification APIs."
   (:require
-   [clojure.set :refer [difference]]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -17,7 +16,6 @@
    [metabase.notification.core :as notification]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
@@ -292,8 +290,8 @@
 
 (defn update-pulse-with-perm-checks!
   "Apply `pulse-updates` to the Pulse with `id`, running the same permission checks `PUT /api/pulse/:id`
-  runs: the subscription/monitoring application permission, a write check on the Pulse, read checks on
-  any `:cards`, the collection-change check, and the advanced-permissions gate on adding recipients.
+  runs: the subscription/monitoring application permission, `api/update-check` on the Pulse (write access and the
+  advanced-permissions gate on adding recipients), read checks on any `:cards`, and the collection-change check.
   Returns the updated Pulse.
 
   A dashboard subscription stays in the collection of its dashboard, and it has no pin position. Throw a 400 when
@@ -312,36 +310,24 @@
     (perms/check-has-application-permission :monitoring)
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-has-application-permission :subscription false)))
-  (let [pulse-before-update (api/write-check (models.pulse/retrieve-pulse id))
-        ;; Drop the unchanged keys before every check below: the collection check would demand write access to the old
-        ;; and the requested collection, and `before-update` throws on any change to `:collection_id`.
-        pulse-updates       (cond->> pulse-updates
-                              (:dashboard_id pulse-before-update) (drop-unchanged-collection-keys pulse-before-update))]
-    (check-card-read-permissions cards)
-    (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
-    ;; if advanced-permissions is enabled, only superuser or non-admin with subscription permission can
-    ;; update pulse's recipients
-    (when (premium-features/enable-advanced-permissions?)
-      ;; key recipients the same way pulse-channel does: user recipients by :id, external recipients by
-      ;; :email, so changes to external addresses are part of the diff too
-      (let [recipient-key     (some-fn :id :email)
-            to-add-recipients (difference (set (keep recipient-key (:recipients (email-channel pulse-updates))))
-                                          (set (keep recipient-key (:recipients (email-channel pulse-before-update)))))
-            has-subscription-perms? (perms/current-user-has-application-permissions? :subscription)]
-        (api/check (or api/*is-superuser?*
-                       has-subscription-perms?
-                       (empty? to-add-recipients))
-                   [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")])))
-    (let [pulse-updates (maybe-add-recipients pulse-updates pulse-before-update)]
-      (t2/with-transaction [_conn]
-        ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
-        ;; depending on what changed.
-        (api/maybe-reconcile-collection-position! (select-keys pulse-before-update [:collection_id :collection_position]) (select-keys pulse-updates [:collection_id :collection_position]))
-        ;; ok, now update the Pulse
-        (models.pulse/update-pulse!
-         (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
-                                            :archived :parameters])
-                :id id)))))
+  (let [pulse-before-update (api/check-404 (models.pulse/retrieve-pulse id))]
+    (api/update-check pulse-before-update pulse-updates)
+    (let [;; Drop the unchanged keys before every check below: the collection check would demand write access to the old
+          ;; and the requested collection, and `before-update` throws on any change to `:collection_id`.
+          pulse-updates (cond->> pulse-updates
+                          (:dashboard_id pulse-before-update) (drop-unchanged-collection-keys pulse-before-update))]
+      (check-card-read-permissions cards)
+      (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
+      (let [pulse-updates (maybe-add-recipients pulse-updates pulse-before-update)]
+        (t2/with-transaction [_conn]
+          ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
+          ;; depending on what changed.
+          (api/maybe-reconcile-collection-position! (select-keys pulse-before-update [:collection_id :collection_position]) (select-keys pulse-updates [:collection_id :collection_position]))
+          ;; ok, now update the Pulse
+          (models.pulse/update-pulse!
+           (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
+                                              :archived :parameters])
+                  :id id))))))
   (models.pulse/retrieve-pulse id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.api.response :as api.response]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.channel.core :as channel]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.rest.api.channel-test :as api.channel-test]
@@ -17,7 +18,7 @@
    [metabase.models.interface :as mi]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.api :as pulse.api]
    [metabase.pulse.models.pulse :as models.pulse]
@@ -1658,8 +1659,7 @@
                    :model/PulseChannel {channel-id :id} {:pulse_id      pulse-id
                                                          :channel_type  "email"
                                                          :schedule_type "daily"
-                                                         :details       {:other  "stuff"
-                                                                         :emails ["foo@bar.com"]}}]
+                                                         :details       {:emails ["foo@bar.com"]}}]
       (testing "Should be able to delete your own subscription"
         (mt/with-temp [:model/PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= nil
@@ -1770,6 +1770,130 @@
               (str "expected an ExceptionInfo (status-carrying), got " (some-> ex type) " for " (pr-str bad)))
           (is (= 400 (:status-code (ex-data ex)))
               (str "expected a 400 for a bad :cards ref " (pr-str bad))))))))
+
+(def ^:private update-attempts
+  "What a user tries when updating a pulse: a name for the attempt and the request body, built from the ids of the
+  fixture."
+  [[:rename           (fn [_] {:name "Renamed"})]
+   [:archive          (fn [_] {:archived true})]
+   [:add-recipient    (fn [{:keys [recipient-id new-recipient-id]}]
+                        {:channels [{:enabled       true
+                                     :channel_type  "email"
+                                     :schedule_type "daily"
+                                     :schedule_hour 8
+                                     :recipients    [{:id recipient-id} {:id new-recipient-id}]}]})]
+   [:remove-recipient (fn [_]
+                        {:channels [{:enabled       true
+                                     :channel_type  "email"
+                                     :schedule_type "daily"
+                                     :schedule_hour 8
+                                     :recipients    []}]})]
+   [:readable-card    (fn [{:keys [readable-card-id]}]
+                        {:cards [{:id readable-card-id :include_csv false :include_xls false :dashboard_card_id nil}]})]
+   [:unreadable-card  (fn [{:keys [unreadable-card-id]}]
+                        {:cards [{:id unreadable-card-id :include_csv false :include_xls false :dashboard_card_id nil}]})]
+   [:move-writable    (fn [{:keys [writable-collection-id]}]
+                        {:collection_id writable-collection-id})]
+   [:move-read-only   (fn [{:keys [read-only-collection-id]}]
+                        {:collection_id read-only-collection-id})]])
+
+(defn- do-with-update-fixture!
+  "Call `(f ids)` with a pulse created by rasta in a collection All Users can write, one recipient, and the other
+  collections and cards the attempts of [[update-attempts]] refer to."
+  [f]
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/User       {other-id :id other-email :email} {}
+                   :model/User       {new-recipient-id :id}       {}
+                   :model/Collection {collection-id :id}          {}
+                   :model/Collection {writable-collection-id :id} {}
+                   :model/Collection {read-only-collection-id :id} {}
+                   :model/Collection {hidden-collection-id :id}   {}
+                   :model/Card       {readable-card-id :id}       {:collection_id collection-id}
+                   :model/Card       {unreadable-card-id :id}     {:collection_id hidden-collection-id}
+                   :model/Pulse      {pulse-id :id}               {:creator_id (mt/user->id :rasta)
+                                                                   :collection_id collection-id
+                                                                   :name "Original"}
+                   :model/PulseChannel {channel-id :id}           {:pulse_id pulse-id
+                                                                   :channel_type "email"
+                                                                   :schedule_type "daily"
+                                                                   :schedule_hour 8}
+                   :model/PulseChannelRecipient _                 {:pulse_channel_id channel-id
+                                                                   :user_id (mt/user->id :lucky)}]
+      (auth-identity/set-password! other-id "p@ssw0rd-Test-1234")
+      (doseq [id [collection-id writable-collection-id]]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) id))
+      (perms/grant-collection-read-permissions! (perms-group/all-users) read-only-collection-id)
+      (f {:pulse-id                pulse-id
+          :recipient-id            (mt/user->id :lucky)
+          :new-recipient-id        new-recipient-id
+          :credentials             {:admin     (mt/user->credentials :crowberto)
+                                    :creator   (mt/user->credentials :rasta)
+                                    :recipient (mt/user->credentials :lucky)
+                                    :other     {:username other-email :password "p@ssw0rd-Test-1234"}}
+          :readable-card-id        readable-card-id
+          :unreadable-card-id      unreadable-card-id
+          :writable-collection-id  writable-collection-id
+          :read-only-collection-id read-only-collection-id}))))
+
+(deftest update-pulse-by-user-and-change-test
+  (testing "PUT /api/pulse/:id: who may change what"
+    (doseq [[user expected] {:admin     {:rename           200
+                                         :archive          200
+                                         :add-recipient    200
+                                         :remove-recipient 200
+                                         :readable-card    200
+                                         :unreadable-card  200
+                                         :move-writable    200
+                                         :move-read-only   200}
+                             :creator   {:rename           200
+                                         :archive          200
+                                         :add-recipient    200
+                                         :remove-recipient 200
+                                         :readable-card    200
+                                         :unreadable-card  403
+                                         :move-writable    200
+                                         :move-read-only   403}
+                             :recipient {:rename           403
+                                         :archive          403
+                                         :add-recipient    403
+                                         :remove-recipient 403
+                                         :readable-card    403
+                                         :unreadable-card  403
+                                         :move-writable    403
+                                         :move-read-only   403}
+                             :other     {:rename           403
+                                         :archive          403
+                                         :add-recipient    403
+                                         :remove-recipient 403
+                                         :readable-card    403
+                                         :unreadable-card  403
+                                         :move-writable    403
+                                         :move-read-only   403}}
+            [attempt body-fn] update-attempts]
+      (testing (str (name user) " " (name attempt))
+        (do-with-update-fixture!
+         (fn [{:keys [pulse-id credentials] :as ids}]
+           (mt/client (get credentials user) :put (get expected attempt) (str "pulse/" pulse-id)
+                      (body-fn ids))))))))
+
+(deftest update-pulse-recipients-without-subscription-permission-test
+  (mt/when-ee-evailable
+   (testing "PUT /api/pulse/:id: a user with the monitoring permission but not the subscription one"
+     (mt/with-premium-features #{:advanced-permissions}
+       (try
+         (perms/revoke-application-permissions! (perms-group/all-users) :subscription)
+         (perms/grant-application-permissions! (perms-group/all-users) :monitoring)
+         (doseq [[attempt expected] {:rename           200
+                                     :add-recipient    403
+                                     :remove-recipient 200}
+                 :let [body-fn (some (fn [[k f]] (when (= k attempt) f)) update-attempts)]]
+           (testing (name attempt)
+             (do-with-update-fixture!
+              (fn [{:keys [pulse-id credentials] :as ids}]
+                (mt/client (:creator credentials) :put expected (str "pulse/" pulse-id) (body-fn ids))))))
+         (finally
+           (perms/revoke-application-permissions! (perms-group/all-users) :monitoring)
+           (perms/grant-application-permissions! (perms-group/all-users) :subscription)))))))
 
 (deftest tenant-hidden-recipients-survive-update-test
   (mt/when-ee-evailable

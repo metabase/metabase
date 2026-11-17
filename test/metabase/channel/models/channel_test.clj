@@ -48,7 +48,7 @@
      :model/Pulse        {pulse-id :id} {:name "Test pulse"}
      :model/PulseChannel {pc-id :id}    {:pulse_id pulse-id
                                          :channel_id id
-                                         :channel_type "metabase-test"
+                                         :channel_type "http"
                                          :enabled true}]
     (testing "do not try to delete pulse-channel if active doesn't change"
       (is (pos? (t2/update! :model/Channel :id id {:name "New name"})))
