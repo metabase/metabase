@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
@@ -157,21 +158,17 @@
   remapped to a workspace copy, `ws_action_test.categories`, which does not exist: a query that reached it would fail."
   [thunk]
   (let [{:keys [schema name]} (data-testing.test-util/categories-table)]
-    (try
-      (ws/set-instance-workspace! {:name      "action-test-ws"
-                                   :databases {(mt/id) {:input_schemas [schema]
-                                                        :output        {:schema "ws_action_test"}}}})
-      (t2/insert! :model/TableRemapping {:database_id     (mt/id)
-                                         :from_db         ""
-                                         :from_schema     schema
-                                         :from_table_name name
-                                         :to_db           ""
-                                         :to_schema       "ws_action_test"
-                                         :to_table_name   name})
-      (thunk)
-      (finally
-        (ws/clear-instance-workspace!)
-        (t2/delete! :model/TableRemapping :database_id (mt/id) :to_schema "ws_action_test")))))
+    (ws.tu/with-workspace-db!
+      (mt/id) "ws_action_test"
+      (fn []
+        (t2/insert! :model/TableRemapping {:database_id     (mt/id)
+                                           :from_db         ""
+                                           :from_schema     schema
+                                           :from_table_name name
+                                           :to_db           ""
+                                           :to_schema       "ws_action_test"
+                                           :to_table_name   name})
+        (thunk)))))
 
 (defn- schema-qualified-action
   "The default query action, with its SQL naming the categories table with its schema: the workspace remapping rewrites
