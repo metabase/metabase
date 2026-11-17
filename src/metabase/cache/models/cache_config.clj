@@ -29,6 +29,7 @@
 
 (doto :model/CacheConfig
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/timestamped?))
 
 (methodical/defmethod t2/table-name :model/CacheConfig [_model] :cache_config)
@@ -168,16 +169,13 @@
 
 ;;; ----------------------------------------------------- API ------------------------------------------------------
 
-(defn- audit-caching-change! [user-id id prev new]
-  (events/publish-event!
-   :event/cache-config-update
-   {:user-id  user-id
-    :model    :model/CacheConfig
-    :model-id id
-    :details  {:model     (or (:model prev) (:model new))
-               :model-id  (or (:model_id prev) (:model_id new))
-               :old-value (dissoc prev :model :model_id)
-               :new-value (dissoc new :model :model_id)}}))
+(defn- caching-change
+  "The details of the change of a cache config from `prev` to `new`, which the audit log records."
+  [prev new]
+  {:model     (or (:model prev) (:model new))
+   :model-id  (or (:model_id prev) (:model_id new))
+   :old-value (dissoc prev :model :model_id)
+   :new-value (dissoc new :model :model_id)})
 
 (defn root-strategy
   "Returns root strategy, if it's defined."
@@ -242,23 +240,20 @@
 
 (defn store!
   "Store cache configuration in DB."
-  [user-id {:keys [model model_id] :as config}]
+  [_user-id {:keys [model model_id] :as config}]
   (t2/with-transaction [_tx]
     (let [data    (config->row config)
           current (cache.db/lock-cache-config model model_id)]
-      (u/prog1 (cache.db/upsert-cache-config! model model_id data)
-        (audit-caching-change! user-id <> current data)))))
+      (events/with-event-context {:details (caching-change current data)}
+        (cache.db/upsert-cache-config! model model_id data)))))
 
 (defn delete!
   "Delete cache configuration (possibly multiple), identified by a `model` and a vector of `model-ids`."
-  [user-id model model-ids]
+  [_user-id model model-ids]
   (when-let [current (seq (cache.db/cache-configs-for model model-ids))]
-    (cache.db/delete-cache-configs! model model-ids)
     (doseq [item current]
-      (audit-caching-change! user-id
-                             (:id item)
-                             (select-keys item [:strategy :config :model :model_id])
-                             nil))))
+      (events/with-event-context {:details (caching-change (select-keys item [:strategy :config :model :model_id]) nil)}
+        (cache.db/delete-cache-configs! model [(:model_id item)])))))
 
 (defn delete-target-configs!
   "Deletes the CacheConfigs targeting the `model` entities with `model-ids`, which are being deleted."

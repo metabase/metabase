@@ -337,11 +337,13 @@
   (audit-log/record-event! topic event))
 
 (events/derive! ::cache-config-changed-event ::event)
+(events/derive! :event/cache-config-create ::cache-config-changed-event)
 (events/derive! :event/cache-config-update ::cache-config-changed-event)
+(events/derive! :event/cache-config-delete ::cache-config-changed-event)
 
 (methodical/defmethod events/publish-event! ::cache-config-changed-event
-  [topic event]
-  (audit-log/record-event! topic event))
+  [_topic event]
+  (record-lifecycle! :event/cache-config-update event false))
 
 (events/derive! ::channel-event ::event)
 (events/derive! :event/channel-create ::channel-event)
@@ -397,7 +399,11 @@
 
 (methodical/defmethod events/publish-event! ::comment-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (record-lifecycle! (if (and (= :event/comment-update topic) (u.events/changed? event :deleted_at))
+                       :event/comment-delete
+                       topic)
+                     event
+                     false))
 
 (events/derive! ::transform-event ::event)
 (events/derive! ::lifecycle-event ::event)
@@ -468,7 +474,7 @@
 
 (methodical/defmethod events/publish-event! ::glossary-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (record-lifecycle! topic event true))
 
 (events/derive! ::custom-viz-plugin-event ::event)
 (events/derive! :event/custom-viz-plugin-create ::custom-viz-plugin-event)

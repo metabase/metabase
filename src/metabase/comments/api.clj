@@ -213,9 +213,6 @@
                        ;; New comments always have empty reactions map
                        (assoc :reactions []))]
     (notify-comment! comment {:entity entity :parent parent})
-    (events/publish-event! :event/comment-create
-                           {:object comment
-                            :user-id api/*current-user-id*})
     comment))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -239,9 +236,6 @@
       (comments.db/update-comment! comment-id changes))
     (let [updated-comment (-> (comments.db/comment-by-id comment-id)
                               (t2/hydrate :creator :reactions))]
-      (events/publish-event! :event/comment-update
-                             {:object updated-comment
-                              :user-id api/*current-user-id*})
       updated-comment)))
 
 (api.macros/defendpoint :delete "/:comment-id" :- ::api/generic-204-no-content
@@ -255,9 +249,6 @@
     (api/check-400 (not (:deleted_at comment)) "Comment is already deleted")
     ;; Soft delete the comment
     (comments.db/soft-delete-comment! comment-id)
-    (events/publish-event! :event/comment-delete
-                           {:object comment
-                            :user-id api/*current-user-id*})
     ;; Return 204 No Content
     api/generic-204-no-content))
 

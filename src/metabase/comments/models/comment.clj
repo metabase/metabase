@@ -15,6 +15,7 @@
 
 (doto :model/Comment
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/timestamped?))
 
 ;; NOTE: the `content_html` column is deprecated and no longer written to.
