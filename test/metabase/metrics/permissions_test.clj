@@ -6,8 +6,8 @@
    [metabase.metrics.core :as metrics]
    [metabase.metrics.permissions :as metrics.perms]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.metric :as permissions.metric]
-   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -236,11 +236,14 @@
                             :dimension_mappings [{:dimension-id "d-tax" :target [:field {} fid-tax]}
                                                  {:dimension-id "d-total" :target [:field {} fid-total]}]})
           calls     (atom 0)]
-      ;; Two metrics × two dimensions all live on the Orders table -> a single distinct
-      ;; (db, table), so the access check must fire exactly once.
+      ;; Two metrics × two dimensions all live on the Orders table, and their Tables are answered together, so the
+      ;; access check must fire exactly once.
       (mt/with-test-user :rasta
-        (mt/with-dynamic-fn-redefs [perms/user-has-permission-for-table? (fn [& _] (swap! calls inc) true)]
-          (metrics.perms/filter-dimensions-for-user-batch [(mk) (mk)])))
+        (let [table-permissions-for-user (mt/original-fn #'perms/table-permissions-for-user)]
+          (mt/with-dynamic-fn-redefs [perms/table-permissions-for-user (fn [& args]
+                                                                         (swap! calls inc)
+                                                                         (apply table-permissions-for-user args))]
+            (metrics.perms/filter-dimensions-for-user-batch [(mk) (mk)]))))
       (is (= 1 @calls)))))
 
 (deftest dimension-mapping-source-field-permissions-test

@@ -1,7 +1,6 @@
 (ns metabase.dashboards.models.dashboard-test
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.models.interface :as mi]
@@ -259,28 +258,23 @@
 
 (deftest perms-test
   (with-dash-in-collection! [_db collection dash]
-    (testing (str "Check that if a Dashboard is in a Collection, someone who would not be able to see it under the old "
-                  "artifact-permissions regime will be able to see it if they have permissions for that Collection")
-      (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})]
-        (is (true?
-             (mi/can-read? dash)))))
-    (testing (str "Check that if a Dashboard is in a Collection, someone who would otherwise be able to see it under "
-                  "the old artifact-permissions regime will *NOT* be able to see it if they don't have permissions for "
-                  "that Collection")
-      (mt/with-full-data-perms-for-all-users!
-        (binding [api/*current-user-permissions-set* (atom #{})]
-          (is (= false
-                 (mi/can-read? dash))))))
-    (testing "Do we have *write* Permissions for a Dashboard if we have *write* Permissions for the Collection its in?"
-      (binding [api/*current-user-permissions-set* (atom #{(perms/collection-readwrite-path collection)})]
-        (mi/can-write? dash)))))
+    (mt/with-test-user :rasta
+      (testing "Dashboard in Collection is not readable without permissions for that Collection"
+        (mt/with-full-data-perms-for-all-users!
+          (is (false? (mi/can-read? (t2/hydrate dash :can_read))))))
+      (testing "Dashboard in Collection is readable, not writable, with read permissions for that Collection"
+        (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+        (is (true? (mi/can-read? (t2/hydrate dash :can_read))))
+        (is (false? (mi/can-write? (t2/hydrate dash :can_write)))))
+      (testing "Dashboard in Collection is writable with write permissions for that Collection"
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection)
+        (is (true? (mi/can-write? (t2/hydrate dash :can_write))))))))
 
 (deftest transient-dashboards-test
   (testing "test that we save a transient dashboard"
     (tu/with-model-cleanup [:model/Card :model/Dashboard :model/DashboardCard :model/Collection]
       (let [rastas-personal-collection (collection/user->personal-collection (test.users/user->id :rasta))]
-        (binding [api/*current-user-id*              (test.users/user->id :rasta)
-                  api/*current-user-permissions-set* (-> :rasta test.users/user->id perms/user-permissions-set atom)]
+        (mt/with-current-user (test.users/user->id :rasta)
           (let [dashboard       (magic/automagic-analysis (t2/select-one :model/Table :id (mt/id :venues)) {})
                 saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
             (is (= (t2/count :model/DashboardCard :dashboard_id (u/the-id saved-dashboard))

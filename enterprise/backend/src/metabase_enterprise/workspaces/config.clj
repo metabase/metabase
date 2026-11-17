@@ -5,7 +5,6 @@
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
-   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secrets]
@@ -15,26 +14,44 @@
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
+(set! *warn-on-reflection* true)
+
+(defn- literal-schema-pattern
+  "`schema-name` as a sync-filter pattern that matches only `schema-name`.
+   [[metabase.driver.sync/schema-pattern->re-pattern]] splits patterns on `,`, trims each one,
+   expands `*` and passes everything else through as regex source, so a real name containing
+   `,`, `*`, edge whitespace or a regex metacharacter (`.`, `+`, `(`) would miss itself, match
+   other names, or fail to compile.
+   Each character outside `[A-Za-z0-9_]` becomes a Java regex `\\x{HEX}` escape, which contains
+   none of the characters that conversion acts on."
+  [schema-name]
+  (str/replace schema-name #"[^A-Za-z0-9_]" #(format "\\x{%X}" (.codePointAt ^String % 0))))
+
 (defn- schema-filter-entries
   "Build sync-filter keys for the workspace's input scope. Per-engine:
 
    - schema-having JDBC drivers (Postgres, Redshift, SQL Server)
      emit `:schema-filters-*` — `metabase.driver.sync` reads these to scope
-     describe-database to the named schemas.
+     describe-database to the named schemas. Names go through
+     [[literal-schema-pattern]] so each matches only itself.
    - ClickHouse emits `:db-filters-*` — CH calls its top-level namespaces
      'databases' (= schemas in MB's vocabulary) and its describe-database
      impl reads `:db-filters-*`, not `:schema-filters-*`. The canonical
      CH details already carry `:db-filters-patterns <bound-db>`, which would
      otherwise leak through and restrict sync to the canonical DB the
-     workspace user has no GRANTs on.
+     workspace user has no GRANTs on. CH reads these as a comma-separated
+     list of trimmed names (with `-` read as `_`), not as regex, so they stay
+     unescaped. A name holding `,`, `-` or edge whitespace therefore does not
+     select exactly itself.
    - BigQuery emits `:dataset-filters-*` — its `list-datasets` reads these
-     instead (BQ doesn't go through `metabase.driver.sync`).
+     instead, through the same pattern syntax, so names are escaped the same way.
    - No-schema engines (MySQL) emit `{}` — JDBC reports `TABLE_SCHEM` as null
      and `schema-patterns->filter-fn*` documents inclusion patterns NEVER
      match a `nil` schema. Scoping on those is enforced by the connection's
      bound database (`:details.db`)."
   [{:keys [engine] :as db} wsd]
-  (let [patterns (str/join "," (:input_schemas wsd))]
+  (let [input-schemas (:input_schemas wsd)
+        patterns      (str/join "," (map literal-schema-pattern input-schemas))]
     (cond
       (= engine :bigquery-cloud-sdk)
       {:dataset-filters-type     "inclusion"
@@ -42,7 +59,7 @@
 
       (= engine :clickhouse)
       {:db-filters-type     "inclusion"
-       :db-filters-patterns patterns}
+       :db-filters-patterns (str/join "," input-schemas)}
 
       (driver.u/supports? engine :schemas db)
       {:schema-filters-type     "inclusion"
@@ -291,30 +308,9 @@
                                        (schema-filter-entries db wsd)
                                        {:let-user-control-scheduling false})))})
 
-(defn- expand-output
-  "Expand a driver-opaque `output_namespace` string into the `{:db ?, :schema ?}`
-   namespace map QP middleware, transform_hooks, and table_remapping consume.
-
-   For 3-slot drivers (SQL Server, BigQuery) the `:db` slot is filled from
-   `Database.details`. For 2-slot drivers the namespace string lands in the
-   schema slot. For no-schema drivers (MySQL) it lands in the db slot.
-
-   `output_namespace` blank → `:schema` is `nil`: the workspace database isn't
-   provisioned yet and QP/transform consumers treat it as having no output
-   mapping."
-  [db output-namespace]
-  (let [components (set (driver/qualified-name-components (:engine db)))
-        positions  (ws/engine-namespace-positions db)
-        schema     (when-not (str/blank? output-namespace) output-namespace)]
-    (cond-> {}
-      (:db components)     (assoc :db (:db positions))
-      (:schema components) (assoc :schema schema)
-      (and (:db components) (not (:schema components)))
-      (assoc :db schema))))
-
 (defn- workspace-database-entry [wsd db]
   [(:name db) {:input_schemas (vec (:input_schemas wsd))
-               :output        (expand-output db (:output_namespace wsd))}])
+               :output        (ws/expand-output-namespace db (:output_namespace wsd))}])
 
 (defn- stub-database-entry [db]
   {:name    (:name db)
@@ -340,6 +336,54 @@
       :details   {}
       :is_sample true}]))
 
+(defn- template-form?
+  "True if `s` contains `{{` or `[[`. The sidecar parses every config.yml string for both forms at
+   boot: `{{` reads the environment, and a `[[` it cannot parse makes boot throw."
+  [s]
+  (boolean (re-find #"\{\{|\[\[" s)))
+
+(defn- template-paths
+  "Paths to every string in `x`, map keys included, that contains a template form (`{{` or `[[`)."
+  [path x]
+  (cond
+    (map? x)        (mapcat (fn [[k v]]
+                              (concat (when (and (string? k) (template-form? k))
+                                        [(conj path k)])
+                                      (template-paths (conj path k) v)))
+                            x)
+    (sequential? x) (mapcat (fn [i v] (template-paths (conj path i) v)) (range) x)
+    (string? x)     (when (template-form? x) [path])
+    :else           nil))
+
+(defn- path->str [path]
+  (str/join "." (map #(if (keyword? %) (name %) (str %)) path)))
+
+(defn- template-locations
+  "Describe where `config` carries a template form (`{{` or `[[`), by database and field path. Never includes
+   the value itself: it can be a secret."
+  [config]
+  (concat
+   (for [db   (-> config :config :databases)
+         path (template-paths [] db)]
+     (format "database %s field %s" (pr-str (:name db)) (path->str path)))
+   (for [path (template-paths [] (-> config :config :workspace))]
+     (str "workspace field " (path->str path)))))
+
+(defn- check-no-template-forms
+  "Throw a 422 if any string in `config` contains `{{` or `[[`. The sidecar expands `{{env X}}`
+   templates in every string of config.yml at boot, so a template the parent emits would read the
+   developer's environment, and a `[[` without a `{{` inside makes the sidecar's boot throw.
+   Templating is for sections the caller adds."
+  [workspace-id config]
+  (when-let [locations (seq (template-locations config))]
+    (throw (ex-info (str "Cannot build config: these fields contain {{ or [[, which the sidecar would parse at boot: "
+                         (str/join "; " locations)
+                         ". Remove {{ and [[ from these fields. A retry without that change returns the same error.")
+                    {:status-code  422
+                     :workspace_id workspace-id
+                     :locations    (vec locations)})))
+  config)
+
 (defn build-workspace-config
   "Return a downloadable config.yml-shaped map for `workspace-id`:
 
@@ -355,16 +399,24 @@
   (`drop-unused-tunnel-secrets`), replaces every Secret id with the value of the
   inlined secrets in use (`inline-secrets`), and adds `schema-filters-*` keys
   derived from `:input_schemas`. Per-database workspace entries carry the
-  expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
-  `instance-workspace` setting stores. Returns nil when the workspace does not
-  exist. Throws a 409 `ex-info` when a workspace database is not `:provisioned`
-  (waiting clears it), and a 422 when only an admin can clear the cause: its
-  `:additional-options` set a login (`check-additional-options!`), it uses SSL
-  client-certificate auth, or an inlined secret in use can't ship
-  (`inlined-secret-entries`)."
+  expanded `{:db ?, :schema ?}` namespace map directly — the shape
+  the sidecar's `workspace:` section loader translates into settings. Returns nil when the workspace does not
+  exist. Throws a 409 `ex-info` when a workspace database is not `:provisioned`.
+  Retry while a database is `:provisioning` or `:deprovisioning`. In any other
+  status, waiting does not clear the 409; delete the workspace. Throws a 422 when
+  only an admin can clear the cause: its `:additional-options` set a login (`check-additional-options!`),
+  it uses SSL client-certificate auth, an inlined secret in use can't ship
+  (`inlined-secret-entries`), an emitted string contains a template form
+  (`{{` or `[[`), or the workspace has no databases."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
     (let [wsds (:databases ws)]
+      (when (empty? wsds)
+        (throw (ex-info (format (str "Workspace %s has no databases, so it has no config to download. Delete the "
+                                     "workspace and create a new one.")
+                                (pr-str (:name ws)))
+                        {:status-code  422
+                         :workspace_id workspace-id})))
       (when (some #(not= :provisioned (:status %)) wsds)
         (throw (ex-info "Cannot build config while workspace has databases that are not :provisioned"
                         {:status-code  409
@@ -380,12 +432,34 @@
             ws-entries       (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
             stub-entries     (mapv stub-database-entry (stub-databases workspace-db-ids))
             sample-entries   (sample-database-entries)]
-        {:version 1
-         :config  {:databases (-> ws-entries
-                                  (into stub-entries)
-                                  (into sample-entries))
-                   :workspace {:name      (:name ws)
-                               :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
+        (check-no-template-forms
+         workspace-id
+         {:version 1
+          :config  {:databases (-> ws-entries
+                                   (into stub-entries)
+                                   (into sample-entries))
+                    :workspace {:name      (:name ws)
+                                :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}})))))
+
+(defn check-no-tunnelled-databases
+  "Throw a 422 naming the first database of workspace `workspace-id` whose SSH tunnel is on. A config download by a
+  credential with the `mb:workspace-manager` scope must not carry the parent's tunnel secrets, and a tunnel without them
+  cannot authenticate, so such a download is refused."
+  [workspace-id]
+  (when-let [db (some->> (workspace/get-workspace workspace-id)
+                         :databases
+                         (mapv :database_id)
+                         not-empty
+                         ws.db/databases
+                         (filter (comp :tunnel-enabled :details))
+                         first)]
+    (throw (ex-info (format (str "Database %s uses an SSH tunnel. A credential with the mb:workspace-manager scope "
+                                 "cannot download the config of a workspace with a tunnelled database, because the "
+                                 "config would need the parent's tunnel secrets. Download it with an unscoped admin "
+                                 "credential, or remove the database from the workspace.")
+                            (pr-str (:name db)))
+                    {:status-code 422
+                     :database_id (:id db)}))))
 
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."

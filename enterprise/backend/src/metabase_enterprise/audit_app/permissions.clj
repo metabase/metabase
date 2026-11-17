@@ -11,7 +11,8 @@
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [toucan2.core :as t2]))
 
 (def audit-db-view-names
   "Used for giving granular permissions into the audit db. Instead of granting permissions to
@@ -52,7 +53,7 @@
   ;; The query goes under `:query`, because its own `:type` key would take the place of the error type.
   ;; Check if the user has access to the analytics collection, since this should be coupled with access to the
   ;; audit database in general.
-  (when-not (mi/can-read? (audit/default-audit-collection))
+  (when-not (some-> (audit/default-audit-collection) (t2/hydrate :can_read) mi/can-read?)
     (throw (query-perms/perms-exception (tru "You do not have access to the audit database") nil {:query outer-query})))
   ;; query->source-table-ids returns a set of table IDs or a map with the key `:native?`
   (when (= query-type :native)

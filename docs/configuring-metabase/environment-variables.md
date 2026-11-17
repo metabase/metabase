@@ -489,6 +489,17 @@ Timeout in minutes for the database's query execution, both for the Metabase app
 
 Whether or not the default GeoJSON maps are enabled.
 
+### `MB_DEPRECATED_AGENT_API_ENABLED [DEPRECATED]`
+
+> DEPRECATED: 0.66.0
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `deprecated-agent-api-enabled`.
+- [Configuration file name](./config-file.md): `deprecated-agent-api-enabled`
+
+Whether the deprecated Agent API stays available. The Agent API is deprecated and will be removed in Metabase 67; use the MCP server for agents instead. Off by default; an admin turns it on to keep using the Agent API until it is removed.
+
 ### `MB_DISABLE_AUTO_SYNC`
 
 - Type: boolean
@@ -3138,6 +3149,14 @@ Defaults to external-only on Metabase Cloud and allow-all when self-hosted.
 Also covers the SSH tunnel host and the database auth-provider URLs.
 
 Set this when Metabase must reach a warehouse on a private network (allow-private) or on this machine (allow-all). There is no admin UI for it, and a value stored in the application database is ignored. Defaults to external-only on Metabase Cloud and allow-all when self-hosted. Metabase refuses to start if this is set to anything but one of the three policies, rather than run on a policy nobody chose.
+
+### `MB_WORKSPACES_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `workspaces-enabled`
+
+Whether this instance is a workspace. A transform on a database that has a `database-workspace-schema` writes to that schema instead of to its production table, and later reads of the production table read the workspace copy. A transform on a database that has no `database-workspace-schema` is refused. Not the per-database switch that a parent uses to offer workspaces (`database-enable-workspaces`). Turning this setting off through the settings API, `config.yml`, or `DELETE /api/ee/workspace-instance/current` deletes every table remapping (the record that sends reads to the workspace copy). Unsetting `MB_WORKSPACES_ENABLED` does not. While `MB_WORKSPACES_ENABLED` is set, a write of the other value is refused, a `config.yml` that sets the other value stops Metabase from starting, and `PUT /api/database/:id` and `POST /api/ee/workspace-instance/current` refuse to change a database's `database-workspace-schema`.
 
 ## Other environment variables
 

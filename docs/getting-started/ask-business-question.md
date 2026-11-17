@@ -90,4 +90,4 @@ You also have a personal collection, where you can save anything you create late
 
 ## Next steps
 
-You can now find an answer that someone else has already built. The next step is working with a dashboard or question you've found: narrowing a time range, region, or product with filters, and clicking into a chart to see the data behind it. That's covered in the next article in this series, [Interacting with questions and dashboards](./explore-data.md).
+You can now find an answer that someone else has already built. The next step is working with a dashboard or question you've found: clicking into a chart to see the data behind it, and narrowing a time range, region, or product with filters. Check out [Explore dashboards](./explore-data.md) and [Filter and limit data](./filter.md).

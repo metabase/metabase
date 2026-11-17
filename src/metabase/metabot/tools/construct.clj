@@ -43,17 +43,14 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.quoting :as quoting])
+   [metabase.util.quoting :as quoting]
+   [toucan2.core :as t2])
   (:import
    (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------ Schema ------------------------------------------------
-
-(def ^:private construct-visualization-schema
-  [:map {:closed true}
-   [:chart_type (into [:enum] shared/chart-types)]])
 
 (def ^:private source-table-description
   "How [[construct-notebook-query-json-schema]] describes a stage's `source-table`."
@@ -143,7 +140,7 @@
   [:map {:closed true}
    [:reasoning {:optional true} :string]
    [:query LLMQueryArgument]
-   [:visualization {:optional true} construct-visualization-schema]
+   shared/visualization-arg
    shared/show-chart-arg
    [:title :string]
    [:description :string]])
@@ -676,15 +673,19 @@
               (distinct))
         (tree-seq coll? seq parsed-query)))
 
-(defn- readable-card-by-ref
-  "The Card `ref` names, when it exists and the current user can read it; nil otherwise, which leaves a missing or
-  unreadable Card to resolve's own answer."
-  [ref]
-  (when-let [card (cond
-                    (string? ref)                           (metabot.db/card-by-entity-id ref)
-                    repr.resolve/*numeric-ids-allowed?*   (metabot.db/card ref))]
-    (when (mi/can-read? card)
-      card)))
+(defn- readable-cards-by-ref
+  "A function from each of `refs` to the Card it names, when that Card exists and the current user can read it; nil
+  otherwise, which leaves a missing or unreadable Card to resolve's own answer."
+  [refs]
+  (let [by-eid    (metabot.db/cards-with-entity-ids (into [] (comp (filter string?) (distinct)) refs))
+        by-id     (if repr.resolve/*numeric-ids-allowed?*
+                    (metabot.db/cards-with-ids (into [] (comp (filter pos-int?) (distinct)) refs))
+                    [])
+        readable  (into #{} (comp (filter mi/can-read?) (map :id)) (t2/hydrate (into by-eid by-id) :can_read))
+        eid->card (into {} (comp (filter (comp readable :id)) (map (juxt :entity_id identity))) by-eid)
+        id->card  (into {} (comp (filter (comp readable :id)) (map (juxt :id identity))) by-id)]
+    (fn [ref]
+      (if (string? ref) (eid->card ref) (id->card ref)))))
 
 (defn- check-curated-portable-sources!
   "Under [[shared/curated-only?]], before repair reads the query: reject it when its first-stage source, a Card it
@@ -696,18 +697,18 @@
   [[check-source-table-query-permissions!]] resolved."
   [metadata-provider parsed-query table-ids]
   (when (shared/curated-only?)
-    (let [cards        (into [] (keep readable-card-by-ref) (source-card-refs parsed-query))
-          metric-ids   (into #{}
-                             (comp (keep readable-card-by-ref) (map :id))
-                             (portable-metric-refs parsed-query))
+    (let [source-ref   (or (first-stage-source-card-eid parsed-query)
+                           (when repr.resolve/*numeric-ids-allowed?*
+                             (first-stage-numeric-source-card parsed-query)))
+          card-refs    (source-card-refs parsed-query)
+          metric-refs  (portable-metric-refs parsed-query)
+          card-by-ref  (readable-cards-by-ref (cond-> (into card-refs metric-refs) source-ref (conj source-ref)))
+          cards        (into [] (keep card-by-ref) card-refs)
+          metric-ids   (into #{} (comp (keep card-by-ref) (map :id)) metric-refs)
           ;; a metric Card used as a source is judged as a metric, as the full rule judges it
           metric-ids   (into metric-ids (comp (filter #(= :metric (:type %))) (map :id)) cards)
           card-ids     (into #{} (comp (remove #(= :metric (:type %))) (map :id)) cards)
-          source-card  (some-> (or (first-stage-source-card-eid parsed-query)
-                                   (when repr.resolve/*numeric-ids-allowed?*
-                                     (first-stage-numeric-source-card parsed-query)))
-                               readable-card-by-ref
-                               :id)
+          source-card  (some-> source-ref card-by-ref :id)
           source-table (when-let [fk (or (first-stage-source-table-fk parsed-query)
                                          (when repr.resolve/*numeric-ids-allowed?*
                                            (first-stage-numeric-source-table parsed-query)))]
@@ -1192,7 +1193,7 @@
                        (into {}
                              (comp (filter mi/can-query?)
                                    (map (fn [{:keys [id schema name]}] [id [db-name schema name]])))
-                             (metabot.db/table-schema-rows (vec source-table-ids))))
+                             (t2/hydrate (metabot.db/table-schema-rows (vec source-table-ids)) :can_query)))
         describe     (fn [metric-id]
                        (let [r        (get required-by-metric-id metric-id)
                              eid      (when (= :card (:kind r))
@@ -1304,7 +1305,8 @@
     7. Export that final numeric MBQL 5 back to the portable form for the LLM-facing
        `:query-json` / `query-content` output.
 
-  Returns a map with `:structured-output` and `:instructions` keys. Throws with an
+  Returns a map with `:structured-output` and `:instructions` keys. `:repairs` in `:structured-output` names the
+  repair passes that changed the query ([[repr.repair/repairs]]). Throws with an
   `:agent-error?` ex-data flag when the LLM input is invalid, so the outer tool wrapper can
   surface a helpful message to the LLM without a stack trace.
 
@@ -1380,7 +1382,10 @@
         {:structured-output {:query-id       query-id
                              :query          pmbql-query
                              :query-json     exported-repr
-                             :result-columns (result-columns-for-query pmbql-query mp)}
+                             :result-columns (result-columns-for-query pmbql-query mp)
+                             ;; For the `agent_used_tool` event only. The model reads `:output`, which does
+                             ;; not hold it, and persistence does not store it.
+                             :repairs        (repr.repair/repairs repaired)}
          :instructions      (instructions/query-created-instructions-for query-id false)})
       (catch clojure.lang.ExceptionInfo e
         ;; Permission failures are not LLM-input repair errors. Preserve the original 403 so
@@ -1460,13 +1465,6 @@
                 (with-recovery-hint e recovery-hint)
                 e))))))
 
-(defn- chart-type->keyword
-  [chart-type]
-  (cond
-    (keyword? chart-type) chart-type
-    (string? chart-type)  (keyword chart-type)
-    :else                 chart-type))
-
 (defn- query-json->llm-content
   "Render the portable repr-form `query-json` map as the JSON code block embedded inside
   `<query>` for the LLM. The wire format is `::lib.schema/external-query` JSON; we serialize
@@ -1541,6 +1539,17 @@
        (str "- To state any of its values, call `run_query` with `query_id` `" query-id
             "` first. Call it without telling the user you are doing so.")))))
 
+(defn- hidden-chart-instructions
+  "What to tell the model about a query it asked not to show the user. Its chart is still made, so the model can add
+  it to a dashboard without another tool call."
+  [chart-id query-id]
+  (te/lines
+   "Your query has been created."
+   ""
+   (instructions/query-hidden-instructions-for query-id)
+   (when (shared/tool-offered? "write_dashboard")
+     (instructions/add-to-dashboard-instruction chart-id))))
+
 (defrecord ConstructNotebookQueryTool []
   tools/Tool
   (declaration [_]
@@ -1550,31 +1559,27 @@
      :args        construct-notebook-query-args-schema})
 
   (handle [_ {:keys [query visualization show_chart title description]} _ctx]
-    (let [chart-type (or (-> visualization
-                             (some-> (update-keys (comp keyword u/->kebab-case-en name)))
-                             :chart-type
-                             chart-type->keyword)
-                         :table)
+    (let [chart-type (shared/visualization-chart-type visualization)
           ;; Declared pipeline errors and refusals are recoverable; anything else is `:internal`.
           structured (:structured-output (tools/with-pipeline-errors
                                            (execute-representations-query query {:preprocess-check? true})))
           ;; A query built only to be read needs run_query to read it, so without that the chart is the one way
           ;; the user sees anything and is always shown. Readability reads the app DB, so it is checked only when
           ;; it can change the delivery.
-          show-chart? (not (and (false? show_chart) (tools.run-query/results-readable?)))]
+          show-chart? (not (and (false? show_chart) (tools.run-query/results-readable?)))
+          ;; A hidden query gets a chart too, which the user isn't shown, so its `chart_id` can go on a dashboard.
+          chart       (create-chart-tools/create-chart
+                       {:query-id      (:query-id structured)
+                        :chart-type    chart-type
+                        :queries-state {(:query-id structured) (:query structured)}})]
       (if-not show-chart?
-        (let [instruction-text (te/lines
-                                "Your query has been created."
-                                ""
-                                (instructions/query-hidden-instructions-for (:query-id structured)))]
-          {:output            (tool-output (llm-shape/query->xml (structured->query-data structured))
-                                           instruction-text)
-           :structured-output (assoc structured :result-type :query)})
-        (let [chart            (create-chart-tools/create-chart
-                                {:query-id      (:query-id structured)
-                                 :chart-type    chart-type
-                                 :queries-state {(:query-id structured) (:query structured)}})
-              instruction-text (chart-instructions (:chart-id chart) (:query-id structured))]
+        {:output            (tool-output (llm-shape/query->xml (structured->query-data structured))
+                                         (hidden-chart-instructions (:chart-id chart) (:query-id structured)))
+         :structured-output (assoc structured
+                                   :result-type :query
+                                   :chart-id    (:chart-id chart)
+                                   :chart-type  (:chart-type chart))}
+        (let [instruction-text (chart-instructions (:chart-id chart) (:query-id structured))]
           {:output            (tool-output (structured->chart-xml structured (:chart-id chart) chart-type)
                                            instruction-text)
            :structured-output (assoc structured

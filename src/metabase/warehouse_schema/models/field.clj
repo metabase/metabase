@@ -2,13 +2,14 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.change-log.core :as change-log]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -124,10 +125,14 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/dependencies)
+  (derive :hook/change-log)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
+
+(methodical/defmethod change-log/ignored-columns :model/Field [_model]
+  #{:database_indexed :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed})
 
 (t2/define-after-select :model/Field
   [field]
@@ -179,25 +184,38 @@
   ;; foreign key constraints in generated columns. #44866
   (warehouse-schema.db/delete-child-fields! (:id field)))
 
-(defn- field->table
-  "Get the Table for a Field, either from hydration or by fetching."
-  [instance]
-  (or (:table instance)
-      (warehouse-schema.db/table (:table_id instance))))
+(defn- check-permission-keys
+  "Throws unless `field` has its Table, hydrated or by `:table_id`, which its permission hydrations read."
+  [field]
+  (api/check-500 (or (some? (:table field)) (some? (:table_id field))) "No :table_id is set for a Field."))
 
-(defmethod mi/can-read? :model/Field
-  ;; Field permissions delegate to the parent Table. User can read this field if they can read its table.
-  ([instance]
-   (mi/can-read? (field->table instance)))
-  ([_model pk]
-   (mi/can-read? (warehouse-schema.db/field pk))))
+(defn- hydrate-table-permission
+  "Sets on each of `fields` the answer of its Table for `k`, `:can_read` or `:can_query`, the Tables answered
+  together."
+  [k fields]
+  (let [rows   (into [] (remove nil?) fields)
+        _      (run! check-permission-keys rows)
+        tables (into {} (keep (fn [{:keys [table]}] (when table [(:id table) table]))) rows)
+        ids    (into [] (comp (map :table_id) (remove nil?) (remove tables) (distinct)) rows)
+        tables (cond-> tables
+                 (seq ids) (into (map (juxt :id identity)) (warehouse-schema.db/tables-by-ids ids)))
+        flags  (into {} (map (juxt :id (if (= k :can_read) mi/can-read? mi/can-query?))) (t2/hydrate (vals tables) k))]
+    (for [field fields]
+      (when field
+        (let [answer (boolean (get flags (or (:id (:table field)) (:table_id field))))]
+          (if (= k :can_read)
+            (vary-meta field assoc k answer)
+            (assoc field k answer)))))))
 
-(defmethod mi/can-query? :model/Field
-  ;; Field permissions delegate to the parent Table. User can query this field if they can query its table.
-  ([instance]
-   (mi/can-query? (field->table instance)))
-  ([_model pk]
-   (mi/can-query? (warehouse-schema.db/field pk))))
+(methodical/defmethod t2/batched-hydrate [:model/Field :can_read]
+  "Whether the current user can read each of `fields`, which they can when they read its Table."
+  [_model k fields]
+  (hydrate-table-permission k fields))
+
+(methodical/defmethod t2/batched-hydrate [:model/Field :can_query]
+  "Whether the current user can query each of `fields`, which they can when they query its Table."
+  [_model k fields]
+  (hydrate-table-permission k fields))
 
 (defenterprise current-user-can-write-field?
   "OSS implementation: whether the current user, a superuser, can write the field `instance`, which nobody can when a
@@ -206,23 +224,16 @@
   [instance]
   (let [table (or (:table instance)
                   (warehouse-schema.db/table (:table_id instance)))]
-    (and (remote-sync/can-write? :model/TableUserSettings (:id table))
+    (and (collection/remote-sync-writable-table? table)
          (mi/superuser?))))
 
-(defmethod mi/can-write? :model/Field
-  ([instance]
-   (current-user-can-write-field? instance))
-  ([_model pk]
-   (mi/can-write? (warehouse-schema.db/field pk))))
-
 (methodical/defmethod t2/batched-hydrate [:model/Field :can_write]
-  "Batched hydration for :can_write on fields, hydrating their tables first."
+  "Whether the current user can change the metadata of each of `fields`, their Tables hydrated first."
   [_model k fields]
-  (mi/instances-with-hydrated-data
-   fields k
-   #(u/index-by :id mi/can-write? (t2/hydrate (remove nil? fields) :table))
-   :id
-   {:default false}))
+  (let [writable (u/index-by :id (comp boolean current-user-can-write-field?) (t2/hydrate (remove nil? fields) :table))]
+    (for [field fields]
+      (when field
+        (assoc field k (boolean (get writable (:id field))))))))
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -330,19 +341,11 @@
   true)
 
 (defn readable-fields-only
-  "Efficiently checks if each field is readable and returns only readable fields.
-
-  Reading a Field delegates to its Table, so the tables are loaded up front -- otherwise this costs a query per
-  distinct table, and another per distinct database, which is what makes it expensive for callers whose fields fan
-  out across tables, such as hydrating `:target` over a dashboard's FK columns."
+  "The readable `fields`, checked against their hydrated Tables."
   [fields]
-  (let [fields (t2/hydrate fields :table)
-        tables (into #{} (keep :table) fields)]
-    (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
-                                    :table-ids (into #{} (keep :id) tables)})
-    (for [field fields
-          :when (mi/can-read? field)]
-      (dissoc field :table))))
+  (for [field (t2/hydrate fields :table :can_read)
+        :when (mi/can-read? field)]
+    (dissoc field :table)))
 
 (mi/define-batched-hydration-method with-targets
   :target

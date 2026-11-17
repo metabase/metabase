@@ -8,13 +8,14 @@
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.revisions.db :as revisions.db]
-   [metabase.revisions.models.revision.diff :refer [diff-strings*]]
+   [metabase.revisions.models.revision.diff :as revision.diff :refer [diff-strings*]]
    [metabase.segments.schema]
    [metabase.transforms.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
@@ -65,15 +66,41 @@
        :after  after})))
 
 (defmulti diff-strings
-  "Return a seq of string describing the difference between `object-1` and `object-2`.
+  "Return a seq of string describing the difference between `object-1` and `object-2`, naming the Collections and
+  Dashboards they moved between from `names` (see [[readable-names]]).
 
   Each string in the seq should be i18n-ed."
-  {:arglists '([model object-1 object-2])}
+  {:arglists '([model object-1 object-2 names])}
   mi/dispatch-on-model)
 
 (defmethod diff-strings :default
-  [model o1 o2]
-  (diff-strings* (name model) o1 o2))
+  [model o1 o2 names]
+  (diff-strings* (name model) o1 o2 names))
+
+(mr/def ::names
+  "The names of the Collections, Dashboards and data-test subjects the current user can read, by id, for revision
+  descriptions. `:subject-names` is keyed by model, then id."
+  [:map {:closed true}
+   [:collection-names [:map-of pos-int? :string]]
+   [:dashboard-names  [:map-of pos-int? :string]]
+   [:subject-names    [:map-of :keyword [:map-of pos-int? :string]]]])
+
+(mu/defn readable-names :- ::names
+  "The names of the Collections, Dashboards and data-test subjects that the revision `objects` reference and the
+  current user can read, loaded and checked together."
+  [objects :- [:sequential [:fn {:error/message "a revision object"} map?]]]
+  (let [ids   (fn [k] (into [] (comp (keep k) (filter pos-int?) (distinct)) objects))
+        names (fn [rows]
+                (into {}
+                      (comp (filter mi/can-read?) (map (juxt :id :name)))
+                      (t2/hydrate rows :can_read)))]
+    {:collection-names (names (revisions.db/collections-by-ids (ids :collection_id)))
+     :dashboard-names  (names (revisions.db/dashboards-by-ids (ids :dashboard_id)))
+     :subject-names    (into {}
+                             (keep (fn [[k model]]
+                                     (when-let [subject-ids (not-empty (ids k))]
+                                       [model (names (revisions.db/entities-by-ids model subject-ids))])))
+                             revision.diff/data-test-subject-models)}))
 
 (defmulti revision-readable?
   "Whether the current user may see the revision whose serialized snapshot is `object`. Defaults to true: a caller
@@ -85,6 +112,17 @@
 (defmethod revision-readable? :default
   [_model _object]
   true)
+
+(defmulti revisions-readable?
+  "Whether the current user may see each of the revisions whose serialized snapshots are `objects`, as a vector of
+  booleans in the order of `objects`. Defaults to [[revision-readable?]] of each; models whose check reads the app DB
+  override this to answer the whole list at once."
+  {:arglists '([model objects])}
+  mi/dispatch-on-model)
+
+(defmethod revisions-readable? :default
+  [model objects]
+  (mapv #(boolean (revision-readable? model %)) objects))
 
 (defmulti check-revert-available
   "Throw a 402 unless the token has the premium feature that a revert of `model` to a revision needs. The default
@@ -154,18 +192,18 @@
 ;;; # Functions
 
 (defn- revision-changes
-  [model prev-revision revision]
+  [model prev-revision revision names]
   (cond
     (:is_creation revision)  [(deferred-tru "created this")]
     (:is_reversion revision) [(deferred-tru "reverted to an earlier version")]
     ;; We only keep [[revision/max-revisions]] number of revision per entity.
     ;; prev-revision can be nil when we generate description for oldest revision
     (nil? prev-revision)     [(deferred-tru "modified this")]
-    :else                    (diff-strings model (:object prev-revision) (:object revision))))
+    :else                    (diff-strings model (:object prev-revision) (:object revision) names)))
 
 (defn- revision-description-info
-  [model prev-revision revision]
-  (let [changes (revision-changes model prev-revision revision)]
+  [model prev-revision revision names]
+  (let [changes (revision-changes model prev-revision revision names)]
     {:description          (if (seq changes)
                              (u/build-sentence changes)
                              ;; HACK: before #30285 we record revision even when there is nothing changed,
@@ -177,16 +215,20 @@
      :has_multiple_changes (> (count changes) 1)}))
 
 (defn add-revision-details
-  "Add enriched revision data such as `:diff` and `:description` as well as filter out some unnecessary props."
-  [model revision prev-revision]
-  (-> revision
-      (assoc :diff (diff-map model (:object prev-revision) (:object revision)))
-      (merge (revision-description-info model prev-revision revision))
-      ;; add revision user details
-      (t2/hydrate :user)
-      (update :user select-keys [:id :first_name :last_name :common_name])
-      ;; Filter out irrelevant info
-      (dissoc :model :model_id :user_id :object)))
+  "Add enriched revision data such as `:diff` and `:description` as well as filter out some unnecessary props, naming
+  Collections and Dashboards from `names`, the [[readable-names]] of the two revisions when not given."
+  ([model revision prev-revision]
+   (add-revision-details model revision prev-revision
+                         (readable-names (into [] (keep :object) [revision prev-revision]))))
+  ([model revision prev-revision names]
+   (-> revision
+       (assoc :diff (diff-map model (:object prev-revision) (:object revision)))
+       (merge (revision-description-info model prev-revision revision names))
+       ;; add revision user details
+       (t2/hydrate :user)
+       (update :user select-keys [:id :first_name :last_name :common_name])
+       ;; Filter out irrelevant info
+       (dissoc :model :model_id :user_id :object))))
 
 (mu/defn revisions
   "Get the revisions for `model` with `id` in reverse chronological order."
@@ -202,11 +244,16 @@
   [model :- [:fn toucan-model?]
    id    :- pos-int?]
   (when-let [revisions (revisions model id)]
-    (loop [acc [], [r1 r2 & more] (filterv #(revision-readable? model (:object %)) revisions)]
-      (if-not r2
-        (conj acc (add-revision-details model r1 nil))
-        (recur (conj acc (add-revision-details model r1 r2))
-               (conj more r2))))))
+    (let [visible (t2/hydrate (into []
+                                    (comp (filter first) (map second))
+                                    (map vector (revisions-readable? model (map :object revisions)) revisions))
+                              :user)
+          names   (readable-names (into [] (keep :object) visible))]
+      (loop [acc [], [r1 r2 & more] visible]
+        (if-not r2
+          (conj acc (add-revision-details model r1 nil names))
+          (recur (conj acc (add-revision-details model r1 r2 names))
+                 (conj more r2)))))))
 
 (def ^:private PushRevisionInput
   (into [:multi {:dispatch :entity}]

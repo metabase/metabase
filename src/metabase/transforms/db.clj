@@ -103,17 +103,25 @@
    changes      :- ::transforms.schema/transform.update]
   (t2/update! :model/Transform :id transform-id changes))
 
-(mu/defn lock-transform! :- :nil
-  "Lock the row of the Transform with `transform-id` against writes until the current transaction ends."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-pks-vec :model/Transform {:where [:= :id transform-id]
-                                       :for   :update})
-  nil)
-
 (mu/defn delete-transform!
   "Delete the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
   (t2/delete! :model/Transform :id transform-id))
+
+(mu/defn transforms-in-collections
+  "The Transforms in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
+  (t2/select :model/Transform :collection_id [:in [:auto/param collection-ids]]))
+
+(mu/defn collections-by-ids
+  "The Collections with `collection-ids`."
+  [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
+  (t2/select :model/Collection :id [:in [:auto/param collection-ids]]))
+
+(mu/defn delete-collection!
+  "Delete the Collection with `collection-id`."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/delete! :model/Collection :id [:auto/param collection-id]))
 
 ;;; ---------------------------------------------- Transform tags ----------------------------------------------
 

@@ -16,6 +16,14 @@
    id    :- ms/PositiveInt]
   (t2/select-one model :id id))
 
+(mu/defn entities-by-ids
+  "The `model` rows with `ids`. See [[entity]] for why `model` is generic."
+  [model :- :keyword
+   ids   :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select model :id [:in ids])
+    []))
+
 (mu/defn raw-row
   "The `model` row with `id` read straight from its table, or nil. See [[entity]] for why `model` is generic."
   [model :- :keyword
@@ -88,6 +96,27 @@
    model-id    :- ms/PositiveInt
    revision-id :- ms/PositiveInt]
   (t2/select-one :model/Revision :model model-name, :model_id model-id, :id revision-id))
+
+(mu/defn cards-by-ids
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
+
+(mu/defn collections-by-ids
+  "The Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (if (seq collection-ids)
+    (t2/select :model/Collection :id [:in collection-ids])
+    []))
+
+(mu/defn dashboards-by-ids
+  "The Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (if (seq dashboard-ids)
+    (t2/select :model/Dashboard :id [:in dashboard-ids])
+    []))
 
 (mu/defn card
   "The Card with `card-id`, or nil."

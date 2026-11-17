@@ -83,32 +83,29 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies))
 
-(defmethod mi/can-read? :model/Segment
-  ([instance]
-   (let [table (:table (t2/hydrate instance :table))]
-     (mi/can-read? table)))
-  ([_model pk]
-   (mi/can-read? (segments.db/segment pk))))
+(methodical/defmethod t2/batched-hydrate [:model/Segment :can_read]
+  "Whether the current user can read each of `segments`, which they can when they read its Table, the Tables answered
+  together."
+  [_model k segments]
+  (let [rows  (t2/hydrate (into [] (remove nil?) segments) [:table :can_read])
+        flags (into {} (map (juxt :id (comp mi/can-read? :table))) rows)]
+    (for [segment segments]
+      (when segment
+        (vary-meta segment assoc k (get flags (:id segment) false))))))
 
 ;; Segments can be written by
 ;; a) superusers
 ;; b) OR data analysts with unrestricted view-data permissions
 ;; but not on a read-only instance that syncs their table
-(defmethod mi/can-write? :model/Segment
-  ([instance]
-   (let [table (or (:table instance)
-                   (segments.db/table (:table_id instance)))]
-     (and (or (mi/superuser?)
-              (and (api/entitled-data-analyst?)
-                   (perms/user-has-permission-for-table?
-                    api/*current-user-id*
-                    :perms/view-data
-                    :unrestricted
-                    (:db_id table)
-                    (u/the-id table))))
-          (remote-sync/can-write? :model/TableUserSettings (:id table)))))
-  ([_model pk]
-   (mi/can-write? (segments.db/segment pk))))
+(defn- segment-writable?
+  "Whether the current user can write `instance`, a Segment with or without its `:table`."
+  [instance]
+  (let [table (or (:table instance)
+                  (segments.db/table (:table_id instance)))]
+    (and (or (mi/superuser?)
+             (and (api/entitled-data-analyst?)
+                  (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
+         (collection/remote-sync-writable-table? table))))
 
 ;; Segments can be created by
 ;; a) superusers
@@ -120,20 +117,15 @@
                   (segments.db/table (:table_id instance)))]
     (and (or (mi/superuser?)
              (and (api/entitled-data-analyst?)
-                  (perms/user-has-permission-for-table?
-                   api/*current-user-id*
-                   :perms/view-data
-                   :unrestricted
-                   (:db_id table)
-                   (u/the-id table))))
-         (remote-sync/can-write? :model/TableUserSettings (:id table)))))
+                  (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
+         (collection/remote-sync-writable-table? table))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Segment :can_write]
   "Batched hydration for :can_write on segments, hydrating their tables first."
   [_model k segments]
   (mi/instances-with-hydrated-data
    segments k
-   #(u/index-by :id mi/can-write? (t2/hydrate (remove nil? segments) :table))
+   #(u/index-by :id (comp boolean segment-writable?) (t2/hydrate (remove nil? segments) :table))
    :id
    {:default false}))
 
@@ -177,17 +169,20 @@
         (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition))))
     segment))
 
+(defenterprise delete-segment-tests!
+  "Delete the tests of the segment `segment-id` through Toucan, so that each test's delete hook runs. No-op in OSS."
+  metabase-enterprise.data-testing.models.segment-test
+  [_segment-id]
+  nil)
+
 (t2/define-before-delete :model/Segment
   [segment]
   ;; additional checks (Enterprise Edition only)
   (pre-delete-check-sandbox-constraints-for-segment segment)
+  ;; The `segment_test.segment_id` FK is ON DELETE CASCADE, but a cascade runs no hook, and the SegmentTest hook is
+  ;; what sets the test id of the test's runs to null.
+  (delete-segment-tests! (:id segment))
   segment)
-
-(defmethod mi/perms-objects-set :model/Segment
-  [segment read-or-write]
-  (let [table (or (:table segment)
-                  (segments.db/table-perms-columns (u/the-id (:table_id segment))))]
-    (mi/perms-objects-set table read-or-write)))
 
 (defn- maybe-migrated-segment-definition
   [segment]

@@ -191,14 +191,9 @@
   (and (= (:type part) :tool-output)
        (nil? (get-in part [:result :error]))))
 
-(defn- terminal-tool-call?
+(defn- successful-terminal-call?
   "Whether `parts` contain a **successful** call to one of the profile's `terminal-tools` (a set of
-  tool-name strings). This lets a profile end the turn as soon as it produces its answer (e.g. the
-  `:sql` profile after a successful `edit_sql_query`, or `ask_for_sql_clarification`) instead of
-  forcing the model to keep emitting tool calls under `:required-tool-call?`.
-
-  Terminality is a per-profile decision — the same tool is non-terminal in profiles that don't list
-  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct."
+  tool-name strings), whatever the `:non-terminal?` marks on the results."
   [terminal-tools parts]
   (boolean
    (when (seq terminal-tools)
@@ -208,6 +203,22 @@
                     (contains? terminal-tools (:function p))
                     (successful-tool-output? (get outputs (:id p)))))
              parts)))))
+
+(defn- terminal-tool-call?
+  "Whether `parts` contain a successful call to one of the profile's `terminal-tools` that ends the turn. This lets a
+  profile end the turn as soon as it produces its answer (e.g. the `:sql` profile after a successful `edit_sql_query`,
+  or `ask_for_sql_clarification`) instead of forcing the model to keep emitting tool calls under
+  `:required-tool-call?`.
+
+  Terminality is a per-profile decision — the same tool is non-terminal in profiles that don't list
+  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct. No call
+  ends it while any result in `parts` is marked `:non-terminal?`, such as SQL with new reference
+  warnings: the model has not read that result yet. On the last step [[finish-reason]] ignores the marks."
+  [terminal-tools parts]
+  ;; Checked over every output, not only the terminal call's own: a second call that repeats the warning of a
+  ;; first one in the same response is accepted and unmarked, though the model has seen neither.
+  (and (not-any? #(and (= :tool-output (:type %)) (get-in % [:result :non-terminal?])) parts)
+       (successful-terminal-call? terminal-tools parts)))
 
 (defn- truncated?
   "Whether the provider cut this iteration off at its output-token limit. A truncated
@@ -280,15 +291,20 @@
        (not (errored? parts))))
 
 (defn- finish-reason
-  "Determine why the agent loop stopped."
+  "Determine why the agent loop stopped.
+
+  On the last step a successful terminal-tool call ends the turn as `:terminal-tool` even when a result is marked
+  `:non-terminal?`: the model has no step left to act on the mark."
   [iteration max-iterations terminal-tools parts]
-  (cond
-    (truncated? parts)                         :length
-    (errored? parts)                           :error
-    (terminal-tool-call? terminal-tools parts) :terminal-tool
-    (and (>= iteration max-iterations)
-         (has-tool-calls? parts))              :max-iterations
-    :else                                      :stop))
+  (let [last-step? (>= iteration max-iterations)]
+    (cond
+      (truncated? parts)                               :length
+      (errored? parts)                                 :error
+      (if last-step?
+        (successful-terminal-call? terminal-tools parts)
+        (terminal-tool-call? terminal-tools parts))    :terminal-tool
+      (and last-step? (has-tool-calls? parts))         :max-iterations
+      :else                                            :stop)))
 
 ;;; Call LLM
 (defn- part->invert-links-key
@@ -395,12 +411,14 @@
       ;; same turn by the tool itself, see edit-chart-tool) can carry
       ;; :image_base_64/:timeline_events/:chart_config that the tool-output's
       ;; structured-output doesn't know about; a full replace would drop them.
+      ;; The query comes from memory when it holds one under that id: queries are stored before charts, so a SQL
+      ;; edit later in the same response is already there, and the chart must show the edited query.
       (memory/set-chart mem
                         chart-id
                         (merge (get-in mem [:state :charts chart-id])
                                {:chart_id chart-id
                                 :query_id query-id
-                                :queries [query]
+                                :queries [(get-in mem [:state :queries query-id] query)]
                                 :visualization_settings {:chart_type chart-type}}))))
    memory
    parts))
@@ -682,6 +700,34 @@
                             (self/provider-error e)
                             {:message (.getMessage e), :type (str (type e)), :data (ex-data e)})})
 
+(defn- usage-model
+  "The model that token usage is keyed by: `provider-and-model` without its `metabase/` routing prefix."
+  [provider-and-model]
+  (or (some-> provider-and-model llm.provider/strip-managed-prefix)
+      "unknown"))
+
+(defn- record-call-usage-xf
+  "Transducer over the parts of one LLM call that records the usage of that call on its eval span, as
+  `:ai/usage {model usage}`. It sums the `:usage` parts of the call. It is `identity` when no eval capture is active.
+
+  Some models have a rate that changes with the size of one request, so the evals price each call, not the sum of
+  the turn.
+
+  The record goes to the innermost open span, so reduce the call inside its `ait/with-llm-call`."
+  [provider-and-model]
+  (if-not (ait/capture-active?)
+    identity
+    (let [model (usage-model provider-and-model)]
+      (fn [rf]
+        (let [call-usage (volatile! {})]
+          (fn
+            ([] (rf))
+            ([result] (rf result))
+            ([result part]
+             (when (= :usage (:type part))
+               (ait/record! {:ai/usage {model (vswap! call-usage #(merge-with + % (:usage part)))}}))
+             (rf result part))))))))
+
 (defn- accumulate-usage-xf
   "Transducer that merges each `:usage` part into the cumulative usage atom
   (keyed by provider-and-model) and replaces the part's `:usage` with the running total.
@@ -694,8 +740,7 @@
   whether the request was routed through the AI proxy.
   Non-usage parts pass through unchanged."
   [usage-atom provider-and-model]
-  (let [model (or (some-> provider-and-model llm.provider/strip-managed-prefix)
-                  "unknown")]
+  (let [model (usage-model provider-and-model)]
     (map (fn [part]
            (if (= (:type part) :usage)
              (assoc part
@@ -703,6 +748,14 @@
                     :usage (-> (swap! usage-atom update model (partial merge-with +) (:usage part))
                                (get model)))
              part)))))
+
+(defn- call-usage-xf
+  "Transducer over the parts of one LLM call that records the usage of the call and of the turn.
+  [[record-call-usage-xf]] is first, because [[accumulate-usage-xf]] replaces the `:usage` of each part with the
+  running total of the turn."
+  [usage-atom provider-and-model]
+  (comp (record-call-usage-xf provider-and-model)
+        (accumulate-usage-xf usage-atom provider-and-model)))
 
 (defn- step-limit-reply-parts
   "The parts of the last LLM call of a turn that reached its step limit, or nil when there is no such call.
@@ -724,7 +777,7 @@
                                   {:role :user :content step-limit-instruction})]
             (u/prog1 (ait/with-llm-call {:ai/iteration iteration
                                          :ai/model     (:model profile)}
-                       (u/prog1 (into [] (comp (accumulate-usage-xf usage-atom (:model profile))
+                       (u/prog1 (into [] (comp (call-usage-xf usage-atom (:model profile))
                                                (u/tee-xf parts-atom))
                                       (call-llm memory profile tools system-msg iteration
                                                 (assoc tracking-opts :iteration iteration)
@@ -778,7 +831,7 @@
           parts-atom         (atom [])
           link-registry-atom (atom (get-in memory [:state :link-registry] {}))
           input-parts        (turn-input-parts sent-parts context memory tools @link-registry-atom)
-          xf                 (comp (accumulate-usage-xf usage-atom (:model profile))
+          xf                 (comp (call-usage-xf usage-atom (:model profile))
                                    (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
           ;; function (e.g. parts->aisdk-sse-xf wrapping streaming-writer-rf) whose completion

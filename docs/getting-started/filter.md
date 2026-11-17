@@ -11,7 +11,7 @@ summary: "Learn all the ways to filter and limit data in Metabase"
 
 ## Introduction
 
-In Metabase, you can restrict the data you're seeing by using a filter, like "orders from the last month" or "customers from Canada". In this guide, you'll see all the ways to add filters to charts and tables in Metabase, and learn some filtering tips and tricks. If you want to learn how to work with dashboard filters, check out the [tutorial on Dashboard filters](../dashboards/filters.md) instead.
+In Metabase, you can restrict the data you're seeing by using a filter, like "orders from the last month" or "customers from Canada". In this guide, you'll see all the ways to add filters to charts and tables in Metabase, and learn some filtering tips and tricks. If you want to learn how to work with dashboard filters, check out the [tutorial on dashboard filters](./dashboard-filters.md) instead.
 
 We assume that you already know how to [Ask a question in the query builder](./ask-a-question.md).
 
@@ -31,11 +31,11 @@ You can filter based on a data point with a single click:
 
   ![Table cell with a filter popup](./images/cell-filter.png)
 
-- When viewing a chart, click on a chart’s component - a data point, a bar, pie segment, etc — to filter the chart based on the data point’s values:
+- When viewing a chart, click on a part of the chart (a data point, a bar, a pie segment, and so on) to filter the chart based on the data point’s values:
 
   ![Chart data point with a filter popup](./images/chart-point-filter.png)
 
-  To see this in action, go to the “E-commerce insights” dashboard in the Examples collection that comes with every new Metabase instance, and try clicking on different parts of the "Revenue and orders over time" chart.
+  To see this in action, go to the “E-commerce Insights” dashboard in the Examples collection that comes with every new Metabase instance, and try clicking on different parts of the "Revenue and orders over time" chart.
 
 ## Filter a time series chart
 
@@ -51,7 +51,7 @@ When viewing a table or a chart, you can add multiple filters at once, without a
 
 This is helpful when you have large tables. If you add filters one by one, Metabase will send a query to your database every time you add another filter. If you add multiple filters at once, Metabase will only send one query.
 
-Metabase will filter for records that satisfy all the filter conditions at once (in other words, it will combine filter using AND condition). If you want to combine filters using OR, you can use [Custom expressions](../questions/query-builder/expressions.md).
+Metabase will filter for records that satisfy all the filter conditions at once (in other words, it will combine filters with `AND`). If you want to combine filters using OR, you can use [Custom expressions](../questions/query-builder/expressions.md).
 
 ## Filter using custom expressions
 
@@ -83,14 +83,14 @@ To filter a summary:
 
 ### Filter for multiple values
 
-Some filter types allow you to filter for multiple values at once. In dropdown filters, you can select multiple values by clicking on checkboxes. In text box filter like “Contains”, “Starts with”, you can press “,” (comma) after entering a value to add another value.
+Some filter types allow you to filter for multiple values at once. In dropdown filters, you can select multiple values by clicking on checkboxes. In text box filters like “Contains” and “Starts with”, you can press “,” (comma) after entering a value to add another value.
 
 ![Contains filter with two values](./images/contains-two-filters.png)
 
 The logic of how Metabase combines values on the same filter depends on whether you add multiple values in a single filter, or use a separate filter for each value:
 
 - A single filter `Name Contains: anna, marie` will search for records that contain “anna” **or** “marie”
-- Two filters `Name Contains: anna` , `Name Contains: marie` will search for records that contain “anna” **and** “marie” at the same time.
+- Two filters `Name Contains: anna`, `Name Contains: marie` will search for records that contain “anna” **and** “marie” at the same time.
 
 You can get more control over how Metabase combines filters by using custom expressions.
 
@@ -100,31 +100,31 @@ Last or previous period filters will include dates up until the end of the previ
 
 | Filter          | Dates                                       |
 | --------------- | ------------------------------------------- |
-| Last year       | Jan 1, 2023 - Dec 31, 2023                  |
-| Last 2 years    | Jan 1, 2022 - Dec 31, 2023                  |
+| Last year       | Jan 1, 2023 – Dec 31, 2023                  |
+| Last 2 years    | Jan 1, 2022 – Dec 31, 2023                  |
 | Last 4 quarters | Jul 1, 2023 – Jun 30, 2024                  |
-| Last 12 months  | Aug 1, 2023 - July 31, 2024                 |
-| Last 52 weeks   | Aug 7, 2023 (Monday) - Aug 4, 2024 (Sunday) |
-| Last 365 days   | Aug 9, 2023 - Aug 7, 2024                   |
+| Last 12 months  | Aug 1, 2023 – Jul 31, 2024                  |
+| Last 52 weeks   | Aug 7, 2023 (Monday) – Aug 4, 2024 (Sunday) |
+| Last 365 days   | Aug 9, 2023 – Aug 7, 2024                   |
 
-So you should select the period granularity based on what's the last complete period you want to be included. For example, if you wanted to include all _days_ from Aug 1, 2023 to Aug 7, 2024, you should select "Last 7 _days_" instead of "Last week".
+So select the period granularity based on the last complete period that you want to include. For example, if you wanted to include all _days_ from Aug 1, 2024 to Aug 7, 2024, you should select "Last 7 _days_" instead of "Last week".
 
 Metabase shows you the date range included in your filter, so make sure to check that the date range matches what you expect!
 
 #### "Include current period" in date filters
 
-When using a “Last period” filter, you can choose to include current period. In this case, Metabase uses the filter determined by the Last Period, and adds another _full_ period that includes the current date. This might give date ranges that extend into the future.
+When using a “Last period” filter, you can choose to include the current period. In this case, Metabase uses the filter determined by the Last Period, and adds another _full_ period that includes the current date. This might give date ranges that extend into the future.
 
 If today is **Thursday, August 8, 2024,** and your week starts on Monday, then the Last period filters **with Include current period toggled on** behave like this:
 
 | Filter                                   | Dates                                                     |
 | ---------------------------------------- | --------------------------------------------------------- |
-| Last year including current period       | Jan 1, 2023 - Dec 31, 2024                                |
-| Last 2 years including current period    | Jan 1, 2022 - Dec 31, 2024                                |
-| Last 4 quarters including current period | Jul 1, 2023 – Jun 30, 2024                                |
-| Last 12 months including current period  | Aug 1, 2023 - Aug 31, 2024                                |
-| Last 52 weeks including current period   | Aug 7, 2023 (Monday) - Aug 11, 2024 (Sunday)              |
-| Last 365 days including current period   | Aug 9, 2023 - Aug 8, 2024 (Note that 2024 is a leap year) |
+| Last year including current period       | Jan 1, 2023 – Dec 31, 2024                                |
+| Last 2 years including current period    | Jan 1, 2022 – Dec 31, 2024                                |
+| Last 4 quarters including current period | Jul 1, 2023 – Sep 30, 2024                                |
+| Last 12 months including current period  | Aug 1, 2023 – Aug 31, 2024                                |
+| Last 52 weeks including current period   | Aug 7, 2023 (Monday) – Aug 11, 2024 (Sunday)              |
+| Last 365 days including current period   | Aug 9, 2023 – Aug 8, 2024 (Note that 2024 is a leap year) |
 
 ### Filter for text
 

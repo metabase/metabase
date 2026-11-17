@@ -37,7 +37,7 @@
    {:keys [card-id]} :- [:map {:closed true}
                          [:card-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-data-studio-access)
-  (-> (filter mi/can-read? (data-testing.db/card-tests {:card-id card-id}))
+  (-> (filter mi/can-read? (t2/hydrate (data-testing.db/card-tests {:card-id card-id}) :can_read))
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/card-test.response
@@ -56,7 +56,13 @@
 
   A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.
   A run is refused when the card's result has two columns of one name, since the run stores the result in a table.
-  On a database that ignores case in column names, two names that differ only in case are one name."
+  On a database that ignores case in column names, two names that differ only in case are one name.
+
+  An input that gives rows must declare every column that the card's query reads from the input's table. A test
+  whose input lacks such a column is refused, naming the table and the columns. The check covers only the columns that
+  the SQL parser places on one table. It skips the tables that Metabase hides, and the columns marked sensitive or
+  retired. A test that it accepts can still fail when it runs. On a database that keeps the case of column names, a
+  declared name that differs from the table's only in case does not match it."
   [_route-params
    _query-params
    {:keys [card_id inputs expectations] :as body} :- ::data-testing.schema/card-test.create]

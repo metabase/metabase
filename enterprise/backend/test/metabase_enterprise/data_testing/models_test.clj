@@ -278,9 +278,9 @@
                                                          :last_heartbeat (minutes-ago 10)}]
     (let [reaped    (atom nil)
           published (atom [])]
-      (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
-                                                          (swap! published conj [topic (-> event :object :id)])
-                                                          event)]
+      (with-redefs [events/publish-event! (fn [topic event]
+                                            (swap! published conj [topic (-> event :object :id)])
+                                            event)]
         (testing "a sweep over a stale run of a type this version does not know does not throw"
           (is (nil? (caught #(reset! reaped (data-testing.run-tracking/reap-orphaned-runs! 5)))))))
       (testing "the stale transform run is timed out, returned, and its timeout event published"

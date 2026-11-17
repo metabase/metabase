@@ -1,7 +1,9 @@
 (ns metabase.sql-tools.common-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.sql-tools.common :as sql-tools.common]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -81,3 +83,57 @@
                        :semantic-type            :Semantic/*}}]
                (sql-tools.common/resolve-field :h2 nil composite)))
         (is (< @calls 5))))))
+
+(def ^:private events-and-users
+  "A Postgres database whose `public.events` has the columns `id`, `CreatedAt`, `Name` and `name`, and whose
+  `public.users` has `id` and `Email`."
+  (providers.mock/mock-metadata-provider
+   {:database {:id 1 :engine :postgres :name "pg" :features #{}}
+    :tables   [{:id 10 :db-id 1 :schema "public" :name "events" :active true}
+               {:id 11 :db-id 1 :schema "public" :name "users" :active true}]
+    :fields   (for [[id table-id field-name] [[100 10 "id"] [101 10 "CreatedAt"] [102 10 "Name"] [103 10 "name"]
+                                              [110 11 "id"] [111 11 "Email"]]]
+                {:id id :table-id table-id :name field-name :base-type :type/Text :active true})}))
+
+(defn- candidates
+  "The ids of the candidate columns of the reference to `column` in the select list of `sql`, on Postgres; a candidate
+  that belongs to no table appears as `:none`."
+  [sql column]
+  (let [{:keys [returned-fields]} (sql-tools/field-references :postgres sql)
+        field                     (some #(when (= column (:column %)) %) returned-fields)]
+    (mapv #(or (:id %) :none) (sql-tools/field-candidates :postgres events-and-users field))))
+
+(defn- resolved
+  "The id of the column `resolve-field` picks for the reference to `column` in the select list of `sql`, on Postgres."
+  [sql column]
+  (let [{:keys [returned-fields]} (sql-tools/field-references :postgres sql)
+        field                     (some #(when (= column (:column %)) %) returned-fields)]
+    (-> (sql-tools/resolve-field :postgres events-and-users field) first :col :id)))
+
+(deftest field-candidates-test
+  (testing "a quoted mixed-case column, which the parser reports lower-cased, is the table's column of that spelling"
+    (is (= [101] (candidates "SELECT \"CreatedAt\" FROM \"public\".\"events\"" "createdat"))))
+  (testing "a name that two columns of one table share, case aside, gives both"
+    (is (= #{102 103} (set (candidates "SELECT \"Name\" FROM \"public\".\"events\"" "name")))))
+  (testing "an unqualified column of a join is the column of the one table that has it"
+    (is (= [111] (candidates "SELECT \"Email\" FROM \"public\".\"events\" e JOIN \"public\".\"users\" u ON e.id = u.id"
+                             "email"))))
+  (testing "an unqualified column that both tables of a join have gives the column of each"
+    (is (= #{100 110} (set (candidates "SELECT id FROM \"public\".\"events\" e JOIN \"public\".\"users\" u ON e.id = u.id"
+                                       "id")))))
+  (testing "a column of an inner query shadows a column of that name in an outer one"
+    (is (= [110] (candidates (str "SELECT (SELECT id FROM \"public\".\"users\" LIMIT 1) AS x"
+                                  " FROM \"public\".\"events\"")
+                             "id"))))
+  (testing "a name no table has gives none"
+    (is (= [] (candidates "SELECT \"Missing\" FROM \"public\".\"events\"" "missing"))))
+  (testing "a name no table has gives an empty vector, not nil"
+    (let [{:keys [returned-fields]} (sql-tools/field-references :postgres "SELECT \"Missing\" FROM \"public\".\"events\"")]
+      (is (= [] (sql-tools/field-candidates :postgres events-and-users (first returned-fields))))))
+  (testing "a source whose columns are unknown, such as a table function, gives a candidate that belongs to no table"
+    (is (= #{:none 100} (set (candidates "SELECT id FROM \"public\".\"events\", generate_series(1, 2) AS g" "id")))))
+  (testing "`resolve-field` picks the first candidate"
+    (doseq [[sql column] [["SELECT \"Name\" FROM \"public\".\"events\"" "name"]
+                          ["SELECT id FROM \"public\".\"events\" e JOIN \"public\".\"users\" u ON e.id = u.id" "id"]
+                          ["SELECT \"CreatedAt\" FROM \"public\".\"events\"" "createdat"]]]
+      (is (= (first (candidates sql column)) (resolved sql column)) sql))))

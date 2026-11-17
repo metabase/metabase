@@ -6,11 +6,9 @@
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
@@ -77,50 +75,33 @@
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
-(defn- query-database-id
-  "The id of the Database the query of `card` runs on, or nil when `card` has no query."
-  [card]
-  (some-> (not-empty (:dataset_query card)) lib/database-id))
-
 (defn- card-allows?
-  "Whether `card-check` holds for the Card `card-id`, and the current user may run the card's query and write the native
-  SQL of a test against the Database of that query."
-  [card-check card-id]
-  (boolean
-   (when-let [card (data-testing.db/card card-id)]
-     (and (card-check card)
-          ;; A run compiles the query with the cards and snippets it includes, and its errors can quote their SQL, so
-          ;; the user must be allowed to run the query itself, not only to read the card.
-          (query-perms/can-run-query? (:dataset_query card))
-          (or (mi/superuser?)
-              (some-> (query-database-id card) data-testing.models/can-run-native-query?))))))
+  "Whether `card-check` holds for the Card `card-id`, hydrated with `k`, and the current user may run the card's query
+  and write the native SQL of a test against the Database of that query."
+  [card-check k card-id]
+  (let [card (data-testing.db/card card-id)]
+    (data-testing.models/query-subject-allows? card-check k card (:dataset_query card))))
 
 (mu/defn- can-save-test? :- :boolean
   "Whether the current user may save or delete a test of the Card `card-id`: they may edit the card and run its query,
   and write the native SQL of a test against the Database of its query."
   [card-id :- ::lib.schema.id/card]
-  (card-allows? mi/can-write? card-id))
+  (card-allows? mi/can-write? :can_write card-id))
 
 (mu/defn can-run? :- :boolean
   "Whether the current user may run the saved `card-test`: they may read its card and run the card's query, and write
   the native SQL of a test against the Database of the card's query."
   [card-test :- ::data-testing.schema/card-test]
   ;; Input SQL can read any table of the Database, and the guards do not check it, so reading the card is not enough.
-  (card-allows? mi/can-read? (:card_id card-test)))
+  (card-allows? mi/can-read? :can_read (:card_id card-test)))
 
-(defmethod mi/can-read? :model/CardTest
-  ([instance]
-   (mi/can-read? :model/Card (:card_id instance)))
-  ([_model pk]
-   (when-let [card-test (data-testing.db/card-test pk)]
-     (mi/can-read? card-test))))
+(methodical/defmethod t2/simple-hydrate [:model/CardTest :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (some-> (data-testing.db/card (:card_id instance)) (t2/hydrate :can_read) mi/can-read?))))
 
-(defmethod mi/can-write? :model/CardTest
-  ([instance]
-   (can-save-test? (:card_id instance)))
-  ([_model pk]
-   (when-let [card-test (data-testing.db/card-test pk)]
-     (mi/can-write? card-test))))
+(methodical/defmethod t2/simple-hydrate [:model/CardTest :can_write]
+  [_model k instance]
+  (assoc instance k (boolean (can-save-test? (:card_id instance)))))
 
 (defmethod mi/can-create? :model/CardTest
   [_model instance]
@@ -140,10 +121,14 @@
   [_model _id card-test]
   (select-keys card-test revision-columns))
 
-(defmethod revision/revision-readable? :model/CardTest
-  [_model object]
+(defmethod revision/revisions-readable? :model/CardTest
+  [_model objects]
   ;; An older revision can name a card that has since been deleted; nobody may read a revision about it.
-  (boolean (some-> (data-testing.db/card (:card_id object)) mi/can-read?)))
+  (let [readable-ids (into #{}
+                           (comp (filter mi/can-read?) (map :id))
+                           (t2/hydrate (data-testing.db/cards-by-ids (into [] (comp (keep :card_id) (distinct)) objects))
+                                       :can_read))]
+    (mapv #(contains? readable-ids (:card_id %)) objects)))
 
 (defmethod revision/revert-to-revision! :model/CardTest
   [_model id _user-id serialized-instance]

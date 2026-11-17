@@ -21,7 +21,7 @@ You assemble your question from the basic building blocks:
 - Joins
 - Sorts
 
-You can combine the query builder blocks in different order, and have multiple blocks of the same type — for example filter, summarize, then filter the summarized results, join them with a different table, and add another summary. The next step of your query will use the result from the previous one.
+You can combine the query builder blocks in any order, and have multiple blocks of the same type — for example filter, summarize, then filter the summarized results, join them with a different table, and add another summary. The next step of your query will use the result from the previous one.
 
 At every stage of your question, you can preview results as a table or create a visualization, and you can switch between the query builder, the query's result as a chart, and the results as a table at any time.
 
@@ -31,11 +31,11 @@ In this tutorial, we'll only cover the basic querying operations — filter, sum
 
 ## 1. Select the data source
 
-Start a new query builder question using table Invoices from the Sample Database as the source:
+Start a new query builder question using the Invoices table from the Sample Database as the source:
 
 - Click on the "+ New" button
 - Select "Question"
-- In the data picker, switch to "Tables" tab, select the Sample Database and click on the Invoices table.
+- In the data picker, switch to the "Tables" tab, select the Sample Database and click on the Invoices table.
 
 Once you select the Invoices table, Metabase will take you to the query builder with the Data, Filter, and Summary steps. The Data step will contain the link to the Invoices table.
 
@@ -81,13 +81,13 @@ Time to build your first chart!
 
 - To view the results as a chart, click on the "Visualize" button at the bottom of the query builder.
 
-That's it! Metabase will automatically create bar chart for you:
+That's it! Metabase will automatically create a bar chart for you:
 
 ![First chart](./images/first-chart.png)
 
 ## 6. Sort your results
 
-The bar chart would be easier to read if the results would be sorted from the biggest bar to the smallest. To reorder the bars, we can sort the result of our query.
+The bar chart would be easier to read if the results were sorted from the biggest bar to the smallest. To reorder the bars, we can sort the result of our query.
 
 1. Go back to the query builder by clicking on the "Show editor" button in the top right corner;
 2. Add a Sort block and sort by `Average of Payment`;
@@ -116,7 +116,7 @@ Let's change the bar chart to a pie chart:
 
 ![Pie chart](./images/pie-chart.png)
 
-> 💡 **Tip** : Metabase has a ton of chart options, but not every chart can work for every dataset (you wouldn't put a time series on a map). At the top of the visualization sidebar, Metabase shows you the visualization types that will work with the shape of your data. But charts you see in the "Other charts" block will probably not work.
+Metabase has a ton of chart options, but not every chart can work for every dataset (you wouldn't put a time series on a map). At the top of the visualization sidebar, Metabase shows you the visualization types that will work with the shape of your data. But charts you see in the "Other charts" block will probably not work.
 
 ## Refine results at each step
 
@@ -143,7 +143,7 @@ You can keep adding more steps to your query — more filters, more summaries, o
 
 For example, we see on our line chart that there are times where the average payment has huge spikes. Let’s count these spikes per plan.
 
-- Go back to the query builder by clicking on "Show editor" button in the top right corner.
+- Go back to the query builder by clicking on the "Show editor" button in the top right corner.
 - Add another Filter block after the Summarize block and filter for `Average of Payment` over 2000.
 - Add another Summarize block after the second Filter block, and Count the rows by `Plan`.
 - Visualize.

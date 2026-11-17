@@ -8,12 +8,10 @@ import sqlglot
 # syntax. Falling back to parsing as a 'Command'."); silence them so customer SQL never reaches
 # stderr/server logs.
 logging.getLogger("sqlglot").setLevel(logging.CRITICAL)
-import sqlglot.lineage as lineage
 import sqlglot.optimizer as optimizer
-import sqlglot.optimizer.qualify as qualify
 from sqlglot import exp
 from sqlglot.dialects.clickhouse import ClickHouse
-from sqlglot.errors import OptimizeError, ParseError
+from sqlglot.errors import ParseError
 from sqlglot.optimizer.normalize_identifiers import normalize_identifiers
 
 # sqlglot (as of 28.6.0) renders every placeholder in ClickHouse's named-parameter
@@ -59,20 +57,21 @@ def needs_quoting(name: str, dialect: str = None) -> bool:
         return True
     return False
 
-def unquote_identifier(name: str, dialect: str = None):
-    """If name is already a quoted identifier (e.g., `foo` in MySQL, "foo" in Postgres),
-    return (unquoted_name, True). Otherwise return (name, False)."""
+def parse_identifier(name: str, dialect: str = None):
+    """The identifier `name` read the way the dialect reads a column alias, `SELECT 1 AS <name>`. None when `name` is
+    not one identifier: `x,y`, `x;y`, a keyword such as `select`, or a name that does not parse."""
     if not name:
-        return (name, False)
+        return None
     try:
-        dummy_sql = "SELECT 1 AS " + name
-        ast = sqlglot.parse_one(dummy_sql, dialect=dialect)
-        ident = ast.expressions[0].args.get("alias")
-        if ident and ident.quoted:
-            return (ident.this, True)
-    except:
-        pass
-    return (name, False)
+        ast = sqlglot.parse_one("SELECT 1 AS " + name, dialect=dialect)
+    except Exception:
+        return None
+    if not isinstance(ast, exp.Select) or len(ast.expressions) != 1 or not isinstance(ast.expressions[0], exp.Alias):
+        return None
+    ident = ast.expressions[0].args.get("alias")
+    if isinstance(ident, exp.Identifier) and (ident.quoted or ident.this == name):
+        return ident
+    return None
 
 def temp_table_prefix(table):
     """
@@ -281,133 +280,6 @@ def referenced_fields(sql: str, dialect: str = "postgres") -> str:
     # Sort for deterministic output: catalog, schema, table, field
     return json.dumps(sorted(fields, key=lambda x: (x[0] or "", x[1] or "", x[2], x[3])))
 
-def serialize_error(e):
-    """
-    Convert SQLGlot exceptions to structured error dicts.
-
-    Unrecognized error formats fall through to 'unhandled' type - the Clojure
-    layer can add more specific handling if needed.
-    """
-
-    message = e.args[0]
-    assert isinstance(message, str), "Unexpected error format."
-
-    match = re.search(r'^Unknown table:\s*(?P<table>.*)', message)
-    if match:
-        return {"status": "error",
-                "type": "unknown_table",
-                "message": match.group(),
-                "table": match.group('table')}
-
-    match = re.search(r'''(?P<message>^Column '(?P<column>\S+)' could not be resolved.)(?P<details>.*)''', message)
-    if match:
-        return {"status": "error",
-                "type": "column_not_resolved",
-                "message": match.group('message'),
-                "column": match.group('column'),
-                "details": match.group('details')}
-
-    # ('Invalid expression / Unexpected token. Line 1, Col: 23.\n  complete nonsense \x1b[4mquery\x1b[0m',)
-    match = re.search(r'(?P<message>^Invalid expression.*?\.)(?P<details>.*)', message)
-    if match:
-        return {"status": "error",
-                "type": "invalid_expression",
-                "message": match.group('message'),
-                "details": match.group('details')}
-
-    return {"status": "error",
-            "type": "unhandled",
-            "message": message}
-
-def validate_query(dialect, sql, default_table_schema, sqlglot_schema_json):
-    """
-    Validate a SQL query against a schema using sqlglot's qualify optimizer.
-
-    Validation modes:
-    - Strict mode (sqlglot_schema provided): Validates columns and tables exist in schema.
-      Returns errors for unknown tables, unresolved columns, missing table aliases.
-    - Permissive mode (sqlglot_schema is None/empty): Only checks SQL syntax, infers schema
-      from query structure. Useful for UDTFs and queries against unknown tables.
-
-    Returns JSON with:
-    - If valid: {"status": "ok"}
-    - If error: {"status": "error", "type": "...", "message": "...", ...}
-
-    Error types:
-    - unknown_table: Table reference not found in schema (strict mode only)
-    - column_not_resolved: Column not found (includes 'column' and optionally 'details')
-    - invalid_expression: Syntax/parse error
-    - unhandled: Other errors
-
-    :param dialect: SQLGlot dialect string (e.g., "postgres", "mysql")
-    :param sql: SQL query string to validate
-    :param default_table_schema: Default schema for unqualified tables
-    :param sqlglot_schema_json: JSON-encoded schema dict {schema: {table: {column: type}}},
-                                or None/empty for permissive mode
-    """
-    status = {"status": "ok"}
-
-    # Decode JSON schema if provided (GraalVM Polyglot passes complex maps as JSON strings)
-    sqlglot_schema = json.loads(sqlglot_schema_json) if sqlglot_schema_json else None
-
-    # Determine validation mode based on whether schema is provided
-    # - Strict mode: schema provided → validate columns/tables exist
-    # - Permissive mode: no schema → only check syntax, infer schema from query
-    strict_mode = sqlglot_schema is not None and len(sqlglot_schema) > 0
-
-    try:
-        ast = sqlglot.parse_one(sql, read=dialect)
-        ast = qualify.qualify(ast,
-                            db=default_table_schema,
-                            dialect=dialect,
-                            schema=sqlglot_schema if strict_mode else None,
-                            # In strict mode: don't infer, validate against provided schema
-                            # In permissive mode: infer schema from query (handles UDTFs)
-                            infer_schema=not strict_mode,
-                            # In strict mode: validate that columns can be resolved
-                            validate_qualify_columns=strict_mode,
-                            sql=sql)
-    except ParseError as e:
-        status |= serialize_error(e)
-    except OptimizeError as e:
-        status |= serialize_error(e)
-
-    return json.dumps(status)
-
-#############################################################################
-# Experimental (using lineage)
-#############################################################################
-
-def is_pure_column(root):
-    """
-    Check whether the lineage graph is a path of columns terminated by table.
-
-    :param root: The root of the lineage graph
-    """
-    for node in root.walk():
-        expression = node.expression
-        downstream = node.downstream
-
-        # We are looking for "path"...
-        if len(downstream) > 1:
-            return False
-
-        examined = None
-        if (isinstance(expression, exp.Alias)):
-            examined = expression.this
-        else:
-            examined = expression
-
-        # ...of `exp.Column`s...
-        if isinstance(examined, exp.Column):
-            continue
-        # ...terminated by the `exp.Table`
-        elif isinstance(examined, exp.Table):
-            continue
-        else:
-            return False
-    return True
-
 def simple_query(sql: str, dialect: str = None) -> str:
     """
     Check if SQL is a simple SELECT (no LIMIT, OFFSET, or CTEs).
@@ -476,7 +348,8 @@ def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
     """
     Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax, and rewrite every
     base-table reference into a self-UNION subquery so the new table doesn't inherit a source
-    column's IDENTITY property.
+    column's IDENTITY property. A set operation (UNION, INTERSECT, EXCEPT) takes the INTO in its
+    first SELECT.
 
     Transforms: SELECT * FROM products
     Into:       SELECT * INTO "new_table" FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products
@@ -505,8 +378,12 @@ def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
     """
     ast = sqlglot.parse_one(sql, read=dialect)
 
-    if not isinstance(ast, exp.Select):
-        raise ValueError("SQL must be a SELECT statement")
+    # T-SQL takes the INTO of a set operation (UNION, INTERSECT, EXCEPT) in its first SELECT.
+    into_select = ast
+    while isinstance(into_select, exp.SetOperation):
+        into_select = into_select.this
+    if not isinstance(into_select, exp.Select):
+        raise ValueError("SQL must be a SELECT statement, or a set operation whose first query is one")
 
     cte_names = {cte.alias for cte in ast.find_all(exp.CTE) if cte.alias}
     seen_ids = set()
@@ -542,8 +419,7 @@ def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
     # The table_name is pre-formatted, so parse it to preserve quotes
     into = exp.Into(this=exp.to_table(table_name))
 
-    # Set the into clause on the select
-    ast.set("into", into)
+    into_select.set("into", into)
 
     # Generate SQL in the target dialect
     return ast.sql(dialect=dialect)
@@ -570,66 +446,6 @@ def add_insert_clause(sql: str, table_name: str, dialect: str = None) -> str:
         raise ValueError("SQL must be a SELECT statement")
 
     return exp.insert(ast, exp.to_table(table_name)).sql(dialect=dialect)
-
-
-def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema_json):
-    """
-    Extract column lineage from SQL query.
-
-    Args:
-        dialect: SQL dialect string (e.g., "postgres", "mysql")
-        sql: SQL query string
-        default_table_schema: Default schema name (e.g., "public")
-        sqlglot_schema_json: JSON-encoded schema map (to avoid GraalVM polyglot issues)
-
-    Returns:
-        JSON array of [alias, is_pure, dependencies] tuples
-    """
-    # Decode schema from JSON (passed from Clojure to avoid polyglot map issues)
-    sqlglot_schema = json.loads(sqlglot_schema_json) if sqlglot_schema_json else None
-
-    ast = sqlglot.parse_one(sql, read=dialect)
-    ast = qualify.qualify(ast,
-                          db=default_table_schema,
-                          dialect=dialect,
-                          schema=sqlglot_schema,
-                          infer_schema=True,
-                          sql=sql)
-
-    assert isinstance(ast, exp.Query), "Ast does not represent a `Query`."
-
-    dependencies = []
-    for select in ast.named_selects:
-
-        # Note: SQL allows duplicate column aliases (e.g., SELECT 1 AS x, 2 AS x).
-        # We track columns by position, not by name, so duplicates are fine.
-
-        select_elm_lineage = lineage.lineage(select, ast.sql(dialect), dialect=dialect)
-        is_pure_select = is_pure_column(select_elm_lineage)
-
-        leaves = set()
-        for node in select_elm_lineage.walk():
-            if (# Leaf nodes of `.walk` are `exp.Table`s. We are interested
-                # in the columns selected from those tables (i.e. penultimate
-                # level). The condition is intended to examine those columns.
-                len(node.downstream) == 1
-                and isinstance(node.downstream[0].expression, exp.Table)
-                and not node.downstream[0].downstream):
-                # For UDTFs/table functions, the penultimate node may not be a Column
-                # (e.g., FLATTEN results). Skip these gracefully.
-                if not isinstance(node.expression.this, exp.Column):
-                    continue
-                # Extract table parts (catalog, schema, table) from the source.
-                # Note: Schema may be missing when table is aliased to its own name.
-                table = table_parts(node.downstream[0].expression)
-                # Skip UDTFs and other function-based sources that don't have real table names
-                if table is not None:
-                    namespaced_column = table + (node.expression.this.name, )
-                    leaves.add(namespaced_column)
-
-        dependencies.append((select, is_pure_select, tuple(leaves), ))
-
-    return json.dumps(dependencies)
 
 
 def fold_keys(mapping):
@@ -740,12 +556,14 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
 
         def set_identifier(node, arg, name):
             # Sets `arg` of `node` to the identifier `name`, quoted if the identifier it replaces was, if `name` comes
-            # quoted, or if `name` needs quoting. Some nodes hold non-Identifier children (e.g. Anonymous), which count
-            # as unquoted.
+            # quoted, or if `name` needs quoting. A name that is not one identifier is quoted whole, so it reads back as
+            # that one name. Some nodes hold non-Identifier children (e.g. Anonymous), which count as unquoted.
             original = node.args.get(arg)
             original_quoted = isinstance(original, exp.Identifier) and original.quoted
-            raw_name, was_quoted = unquote_identifier(name, dialect)
-            quoted = original_quoted or was_quoted or needs_quoting(raw_name, dialect)
+            parsed = parse_identifier(name, dialect)
+            was_quoted = parsed is not None and parsed.quoted
+            raw_name = parsed.this if was_quoted else name
+            quoted = original_quoted or parsed is None or was_quoted or needs_quoting(raw_name, dialect)
             node.set(arg, exp.Identifier(this=raw_name, quoted=quoted))
 
         def replace_table(node, replacement, catalog_arg, schema_arg, table_arg):
@@ -800,8 +618,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                                    if column_matches(key_table, key_column)),
                                   None)
                 if new_column:
-                    column_quoted = isinstance(node.this, exp.Identifier) and node.this.quoted
-                    node.set("this", exp.Identifier(this=new_column, quoted=column_quoted))
+                    set_identifier(node, "this", new_column)
 
             return node
 

@@ -1,6 +1,6 @@
 ---
 title: "Create a dashboard"
-summary: "Learn to how to create a dashboard and add questions and cards to it."
+summary: "Learn how to create a dashboard and add questions and cards to it."
 ---
 
 # Create a dashboard

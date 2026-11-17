@@ -11,15 +11,15 @@ This tutorial will walk you through exploring questions and dashboards in the Ex
 
 You can find the Examples collection in the left navigation sidebar. If you need a refresher, check out the previous article on [how to find data in Metabase](./find-data.md).
 
-We'll work with the **e-Commerce dashboard** pinned in the Examples collection.
+We'll work with the **E-commerce Insights** dashboard pinned in the Examples collection.
 
 ## See and download results as a table
 
 You can see and download the numbers behind every dashboard and chart.
 
-1. **Go to the example e-Commerce dashboard in the Examples collection**
+1. **Go to the E-commerce Insights dashboard in the Examples collection.**
 
-   You should see multiple tabs and cards with charts. For example **“Revenue and orders over time”** card shows the total revenue and order count for each month. The data shows an interesting seasonal pattern for orders, so let’s explore it further!
+   You should see multiple tabs and cards with charts. For example, the **“Revenue and orders over time”** card shows the total revenue and order count for each month. The data shows an interesting seasonal pattern for orders, so let’s explore it further!
 
 2. **Open the question “Revenue and orders over time”** by clicking on the chart title in the dashboard.
 
@@ -63,18 +63,18 @@ Let's make “Revenue and orders over time” into a line chart.
 
 On many charts in Metabase, you can get more information about any value on a chart simply by clicking on the data point that you're interested in.
 
-1. **Open the example eCommerce dashboard and switch to “Portfolio Performance“ tab**.
+1. **Open the E-commerce Insights dashboard and switch to the “Portfolio Performance” tab**.
 
-   The “**Revenue by state”** chart shows the map of the United States and revenue for each state. Texas has the largest revenue (look for the region with the darkest color).
+   The **“Revenue by state”** chart shows the map of the United States and revenue for each state. Texas has the largest revenue (look for the region with the darkest color).
 
    Why is Texas so successful? We can dive deeper into the Texas numbers and look at the orders that contribute to the revenue.
 
 2. **Look at all orders from Texas** on the “Revenue by state” chart:
 
    - Click on Texas (the region with the darkest color)
-   - Select “See these orders” from the menu.
+   - Select “See these Orders” from the menu.
 
-   You’ll see a table that shows all orders from Texans. From here, you could look for patterns in activity, for example, are specific products that sell more? Or are times of day or days of the week that have spikes in activity?
+   You’ll see a table that shows all orders from Texans. From here, you could look for patterns in activity. For example, are there specific products that sell more? Are there times of day or days of the week that have spikes in activity?
 
    You can continue drilling down into the data from this table view.
 
@@ -82,22 +82,22 @@ On many charts in Metabase, you can get more information about any value on a ch
 
 3. **Find all records for a product with ID `1`**:
 
-   - Click on a cell in the Product ID column that contains ID 1. You will summon the Action menu.
-   - In the action menu, select "See this Product's orders"
+   - Click on a cell in the Product ID column that contains ID 1. You will summon the action menu.
+   - In the action menu, select "View this Product's Orders".
 
    The table will now display just the orders from Texas for this specific product. You can see the exact filters applied to the data above the table:
 
-   ![Filter for ](./images/filters-drill-down.png)
+   ![Filter for orders from Texas, shown above the table](./images/filters-drill-down.png)
 
-   You could continue drilling through this data - for example, you could click on any user ID, and see just the orders for that user and that product. You can go all the way down to individual unaggregated records.
+   You could continue drilling through this data. For example, you could click on any user ID, and see just the orders for that user and that product. You can go all the way down to individual unaggregated records.
 
-4. **Return to the original “Revenue by State” question** by clicking on “Started with Revenue by state” at the top left of your screen.
+4. **Return to the original “Revenue by state” question** by clicking on “Started from Revenue by state” at the top left of your screen.
 
-The drill through options that you get depend on the type of chart you're using and your data: for example, on time series charts you can select a time period to zoom in on it.
+The drill-through options that you get depend on the type of chart you're using and your data: for example, on time series charts you can select a time period to zoom in on it.
 
 ## Summary
 
-You can explore data behind dashboards and questions on your own. For example, you can
+You can explore data behind dashboards and questions on your own. For example, you can:
 
 - See and download results as a table.
 - Change the visualization type.

@@ -5,6 +5,7 @@
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.workspaces.config :as config]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
+   [metabase.driver.sync :as driver.sync]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -280,6 +281,81 @@
         (is (= "schema_a,schema_b,schema_c"
                (-> cfg :config :databases first :details :schema-filters-patterns)))))))
 
+(def ^:private schema-name->near-misses
+  "Schema names that need escaping in a sync-filter pattern (pattern syntax, or characters outside `[A-Za-z0-9_]`),
+  each with names its pattern must not match."
+  {"a+b"       ["ab" "aab"]
+   "a,b"       ["a" "b"]
+   "a|b"       ["a" "b"]
+   " sp "      ["sp"]
+   "crazy\\*s" ["crazy*s" "crazys"]
+   "sales.v2"  ["salesXv2"]
+   "*"         ["public" "**"]
+   "x(y"       ["xy"]
+   "my-schema" ["my_schema"]
+   "café"      ["cafe"]
+   "naïve😀"   ["naive" "naïve"]})
+
+(defn- built-schema-filter-patterns
+  "The `:schema-filters-patterns` the config emits for a Postgres database with `input-schemas`."
+  [input-schemas]
+  (mt/with-temp [:model/Database {db-id :id} {:name "DW" :engine :postgres :details {:host "h" :port 5432}}
+                 :model/Workspace {ws-id :id} {:name       "literal"
+                                               :creator_id (mt/user->id :crowberto)}
+                 :model/WorkspaceDatabase _
+                 {:workspace_id     ws-id
+                  :database_id      db-id
+                  :database_details {}
+                  :output_namespace "mb__isolation_slug_7"
+                  :input_schemas    input-schemas
+                  :status           :provisioned}]
+    (->> (config/build-workspace-config ws-id) :config :databases
+         (u/seek #(= "DW" (:name %)))
+         :details
+         :schema-filters-patterns)))
+
+(defn- pattern-matches? [patterns schema-name]
+  (boolean (re-matches (driver.sync/schema-pattern->re-pattern patterns) schema-name)))
+
+(deftest build-workspace-config-input-schemas-match-literally-test
+  (testing "each input schema's sync-filter pattern matches that name and none of its near-misses"
+    (doseq [[schema-name near-misses] schema-name->near-misses]
+      (testing (pr-str schema-name)
+        (let [patterns (built-schema-filter-patterns [schema-name])]
+          (is (pattern-matches? patterns schema-name))
+          (doseq [other (cons "mb__isolation_slug_7" near-misses)]
+            (is (not (pattern-matches? patterns other))
+                (str "should not match " (pr-str other))))))))
+  (testing "joined into one filter, the filter matches every input schema and no near-miss"
+    (let [patterns (built-schema-filter-patterns (vec (keys schema-name->near-misses)))]
+      (doseq [schema-name (keys schema-name->near-misses)]
+        (is (pattern-matches? patterns schema-name) (pr-str schema-name)))
+      (doseq [other (cons "mb__isolation_slug_7"
+                          (remove (set (keys schema-name->near-misses))
+                                  (mapcat val schema-name->near-misses)))]
+        (is (not (pattern-matches? patterns other)) (str "should not match " (pr-str other)))))))
+
+;; Tagged so the driver jobs, which have the ClickHouse driver on the classpath, run it; the Enterprise Tests job
+;; doesn't, so there it would pass with no assertions. It needs no ClickHouse server.
+(deftest ^:mb/driver-tests build-workspace-config-clickhouse-db-filters-stay-raw-test
+  (when (workspaces.tu/driver-loadable? :clickhouse)
+    (testing "ClickHouse reads :db-filters-patterns as a list of names, not regex, so they are emitted unescaped"
+      (mt/with-temp [:model/Database {db-id :id} {:name "CH" :engine :clickhouse :details {:db "default"}}
+                     :model/Workspace {ws-id :id} {:name       "ch-ws"
+                                                   :creator_id (mt/user->id :crowberto)}
+                     :model/WorkspaceDatabase _
+                     {:workspace_id     ws-id
+                      :database_id      db-id
+                      :database_details {}
+                      :output_namespace "ws_alice"
+                      :input_schemas    ["sales.v2" "a+b"]
+                      :status           :provisioned}]
+        (is (= "sales.v2,a+b"
+               (->> (config/build-workspace-config ws-id) :config :databases
+                    (u/seek #(= "CH" (:name %)))
+                    :details
+                    :db-filters-patterns)))))))
+
 (deftest build-workspace-config-bigquery-emits-dataset-filters-test
   (when (workspaces.tu/driver-loadable? :bigquery-cloud-sdk)
     (testing "BigQuery emits :dataset-filters-* (not :schema-filters-*); BQ's list-datasets reads dataset-filters"
@@ -324,16 +400,106 @@
            #"not :provisioned"
            (config/build-workspace-config ws-id))))))
 
+(deftest build-workspace-config-emits-no-template-forms-test
+  (testing "The sidecar expands `{{env X}}` in every config.yml string at boot, so the parent refuses (422)
+            to emit a config carrying `{{`. The error names the database and field path, never the value."
+    (mt/with-temp [:model/Database {db-id :id}
+                   {:name    "Templated DW"
+                    :engine  :postgres
+                    :details {:host "{{env MB_WS_TEST_SECRET}}.attacker.example" :port 5432}}
+                   :model/Workspace {ws-id :id} {:name       "templated"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      db-id
+                    :database_details {:user "u" :password "{{env MB_WS_TEST_PASSWORD}}"}
+                    :output_namespace "ws_templated"
+                    :input_schemas    ["public"]
+                    :status           :provisioned}]
+      (let [e (try
+                (config/build-workspace-config ws-id)
+                nil
+                (catch clojure.lang.ExceptionInfo e e))]
+        (is (some? e))
+        (is (= 422 (:status-code (ex-data e))))
+        (is (= #{"database \"Templated DW\" field details.host"
+                 "database \"Templated DW\" field details.password"}
+               (set (:locations (ex-data e)))))
+        (is (not (re-find #"MB_WS_TEST" (ex-message e)))
+            "the message must not echo the template value")))))
+
+(deftest build-workspace-config-emits-no-optional-forms-test
+  (testing "The sidecar parses `[[...]]` in every config.yml string at boot and throws when one holds no
+            `{{`, so the parent refuses (422) to emit a config carrying `[[` as well."
+    (mt/with-temp [:model/Database {db-id :id}
+                   {:name    "Bracketed DW"
+                    :engine  :postgres
+                    :details {:host "db.example" :port 5432}}
+                   :model/Workspace {ws-id :id} {:name       "bracketed"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      db-id
+                    :database_details {:user "u" :password "p[[w]]d"}
+                    :output_namespace "ws_bracketed"
+                    :input_schemas    ["public"]
+                    :status           :provisioned}]
+      (let [e (try
+                (config/build-workspace-config ws-id)
+                nil
+                (catch clojure.lang.ExceptionInfo e e))]
+        (is (some? e))
+        (is (= 422 (:status-code (ex-data e))))
+        (is (= ["database \"Bracketed DW\" field details.password"]
+               (:locations (ex-data e))))
+        (is (not (re-find #"p\[\[w" (ex-message e)))
+            "the message must not echo the value")))))
+
+(deftest build-workspace-config-template-forms-outside-details-test
+  (testing "The refusal also covers database names (which are workspace map keys), workspace fields, and stub entries"
+    (mt/with-temp [:model/Database {db-id :id}
+                   {:name    "DW [[a]]"
+                    :engine  :postgres
+                    :details {:host "db.example" :port 5432}}
+                   :model/Database _
+                   {:name    "Stub [[b]]"
+                    :engine  :postgres
+                    :details {:host "stub.example" :port 5432}}
+                   :model/Workspace {ws-id :id} {:name       "named"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      db-id
+                    :database_details {:user "u" :password "p"}
+                    :output_namespace "ws_named"
+                    :input_schemas    ["public" "{{env MB_WS_TEST_SCHEMA}}"]
+                    :status           :provisioned}]
+      (let [e (try
+                (config/build-workspace-config ws-id)
+                nil
+                (catch clojure.lang.ExceptionInfo e e))]
+        (is (some? e))
+        (is (= 422 (:status-code (ex-data e))))
+        ;; the sync filter escapes `{` as `\x{7B}`, so details.schema-filters-patterns carries no
+        ;; template form; the raw input schema is still refused at input_schemas.1
+        (is (= #{"database \"DW [[a]]\" field name"
+                 "database \"Stub [[b]]\" field name"
+                 "workspace field databases.DW [[a]]"
+                 "workspace field databases.DW [[a]].input_schemas.1"}
+               (set (:locations (ex-data e)))))
+        (is (not (re-find #"MB_WS_TEST" (ex-message e)))
+            "the message must not echo a templated value")))))
+
 (deftest build-workspace-config-empty-workspace-test
-  (testing "A workspace with no databases still produces the version+config outer shape"
+  (testing "A workspace with no databases has no config: a 422 that names the workspace"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name       "Empty"
                                                  :creator_id (mt/user->id :crowberto)}]
-      (let [cfg (config/build-workspace-config ws-id)]
-        (is (= 1 (:version cfg)))
-        (is (= "Empty" (-> cfg :config :workspace :name)))
-        (is (empty? (remove (some-fn :is_stub :is_sample) (-> cfg :config :databases)))
-            "no non-stub, non-sample databases since the workspace has none of its own")
-        (is (= {} (-> cfg :config :workspace :databases)))))))
+      (is (=? {:message #"Workspace \"Empty\" has no databases.*"
+               :data    {:status-code 422 :workspace_id ws-id}}
+              (try
+                (config/build-workspace-config ws-id)
+                (catch clojure.lang.ExceptionInfo e
+                  {:message (ex-message e) :data (ex-data e)})))))))
 
 (deftest build-workspace-config-injects-stubs-for-non-workspace-dbs-test
   (testing "Databases that exist in the instance but are not provisioned for the workspace appear
@@ -440,8 +606,15 @@
                                                  :engine    :h2
                                                  :details   {:db "real-sample-details"}
                                                  :is_sample true}
+                   :model/Database ws-db        {:name "sample-emit-ws-db" :engine :postgres :details {}}
                    :model/Workspace {ws-id :id} {:name       "sample-emit-ws"
-                                                 :creator_id (mt/user->id :crowberto)}]
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _   {:workspace_id     ws-id
+                                                 :database_id      (:id ws-db)
+                                                 :database_details {}
+                                                 :output_namespace ""
+                                                 :input_schemas    ["public"]
+                                                 :status           :provisioned}]
       (let [cfg-dbs (-> (config/build-workspace-config ws-id) :config :databases)
             samples (filter :is_sample cfg-dbs)]
         (testing "exactly one sample entry is emitted"

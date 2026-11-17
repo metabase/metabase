@@ -1105,9 +1105,9 @@
         (let [database (t2/select-one :model/Database :id db-id)]
           (t2/with-call-count [call-count]
             (magic/candidate-tables database)
-            ;; 1. load the tables, 2. their permissions in one primed load however many there are, 3. the databases'
-            ;; own grants, which `table-permission-for-user` coalesces in and which loads once per request.
-            (is (<= (call-count) 3))))))))
+            ;; 1. load the tables, then for each permission type `can-read?` checks (view-data, create-queries) one
+            ;; query for the databases' rows and one for the rows of every loaded table, however many there are.
+            (is (<= (call-count) 5))))))))
 
 (deftest ^:parallel empty-table-test
   (testing "candidate-tables should work with an empty Table (no Fields)"

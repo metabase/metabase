@@ -191,9 +191,9 @@
   (testing "Document revision events are published and handled correctly"
     (let [original-event (mt/original-fn #'events/publish-event!)
           events-received (atom [])]
-      (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
-                                                          (swap! events-received conj [topic event])
-                                                          (original-event topic event))]
+      (with-redefs [events/publish-event! (fn [topic event]
+                                            (swap! events-received conj [topic event])
+                                            (original-event topic event))]
         (mt/with-temp [:model/Document {doc-id :id, :as document} {:name "Event Test Document"
                                                                    :document {:type "doc" :content []}
                                                                    :creator_id (mt/user->id :rasta)}]
