@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import type { ComponentType, Ref } from "react";
+import type React from "react";
+import type { ComponentType } from "react";
 import _ from "underscore";
 
 import {
@@ -44,6 +45,7 @@ import type {
   DashboardCard,
   DashboardTab,
   Parameter,
+  QuestionDashboardCard,
   Timeline,
   TimelineEvent,
   VisualizationSettings,
@@ -70,24 +72,26 @@ import {
 // jsdom has no layout, and the global mock sizes every chart 1000x1000. This one sizes a
 // dashboard chart from its grid size instead, so a small card measures as small.
 jest.mock("metabase/common/components/ExplicitSize", () => {
-  const { forwardRef } = jest.requireActual("react");
+  const { forwardRef }: typeof React = jest.requireActual("react");
   const PIXELS_PER_GRID_UNIT = 60;
+  const getPixels = (props: object, dimension: "width" | "height") => {
+    const gridSize: Partial<VisualizationGridSize> | undefined =
+      "gridSize" in props && props.gridSize != null
+        ? Object(props.gridSize)
+        : undefined;
+    const units = gridSize?.[dimension];
+    return units != null ? units * PIXELS_PER_GRID_UNIT : 1000;
+  };
   return {
     ExplicitSize:
       () =>
-      (
-        ComposedComponent: ComponentType<{ gridSize?: VisualizationGridSize }>,
-      ) =>
-        forwardRef(function WrappedComponent(
-          props: { gridSize?: VisualizationGridSize },
-          ref: Ref<unknown>,
-        ) {
-          const { gridSize } = props;
+      <P extends object>(ComposedComponent: ComponentType<P>) =>
+        forwardRef<unknown, P>(function WrappedComponent(props, ref) {
           return (
             <ComposedComponent
               ref={ref}
-              width={gridSize ? gridSize.width * PIXELS_PER_GRID_UNIT : 1000}
-              height={gridSize ? gridSize.height * PIXELS_PER_GRID_UNIT : 1000}
+              width={getPixels(props, "width")}
+              height={getPixels(props, "height")}
               {...props}
             />
           );
@@ -218,8 +222,8 @@ const createTimeSeriesCard = (opts: Partial<Card> = {}) =>
 
 const createPlacement = (
   card: Card,
-  opts: Partial<DashboardCard> & { title?: string } = {},
-) => {
+  opts: Partial<QuestionDashboardCard> & { title?: string } = {},
+): QuestionDashboardCard => {
   const { title, ...dashcardOpts } = opts;
   return createMockDashboardCard({
     card_id: card.id,
@@ -246,7 +250,7 @@ const DASHCARD_QUERY_URL =
   /\/api\/dashboard\/\d+\/dashcard\/(\d+)\/card\/(\d+)\/query$/;
 
 interface SetupOpts {
-  dashcards: DashboardCard[];
+  dashcards: QuestionDashboardCard[];
   tabs?: DashboardTab[];
   parameters?: Parameter[];
   timelines?: Timeline[];
@@ -269,7 +273,7 @@ function setup({
   const cards = _.uniq(
     [
       ...dashcards.flatMap((dashcard) => [
-        ...(dashcard.card ? [dashcard.card] : []),
+        dashcard.card,
         ...(dashcard.series ?? []),
       ]),
       ...extraCards,
@@ -278,7 +282,7 @@ function setup({
     (card) => card.id,
   );
   const getRows = (cardId: CardId) => rowsByCardId[cardId] ?? MONTHLY_ROWS;
-  let storedDashboard: Dashboard = createMockDashboard({
+  const dashboard: Dashboard = createMockDashboard({
     id: DASHBOARD_ID,
     name: "Events dashboard",
     collection_id: null,
@@ -286,12 +290,13 @@ function setup({
     tabs,
     parameters,
   });
+  let storedDashcards = dashcards;
   let storedTimelines = timelines;
 
   setupNotificationChannelsEndpoints({});
   setupDatabasesEndpoints([DATABASE]);
   setupDashboardQueryMetadataEndpoint(
-    storedDashboard,
+    dashboard,
     createMockDashboardQueryMetadata({ databases: [DATABASE] }),
   );
   setupCollectionsEndpoints({ collections: [] });
@@ -306,7 +311,11 @@ function setup({
   setupBookmarksEndpoints([]);
   setupLastDownloadFormatEndpoints();
 
-  fetchMock.get(`path:/api/dashboard/${DASHBOARD_ID}`, () => storedDashboard, {
+  const getStoredDashboard = () => ({
+    ...dashboard,
+    dashcards: storedDashcards,
+  });
+  fetchMock.get(`path:/api/dashboard/${DASHBOARD_ID}`, getStoredDashboard, {
     name: "get-dashboard",
   });
   fetchMock.put(
@@ -320,19 +329,16 @@ function setup({
         const savedCardIds = new Map(
           body.dashcards.map((dashcard) => [dashcard.id, dashcard.card_id]),
         );
-        storedDashboard = {
-          ...storedDashboard,
-          dashcards: storedDashboard.dashcards
-            .filter((dashcard) => savedIds.includes(dashcard.id))
-            .map((dashcard) => {
-              const card = cards.find(
-                ({ id }) => id === savedCardIds.get(dashcard.id),
-              );
-              return card ? { ...dashcard, card_id: card.id, card } : dashcard;
-            }),
-        };
+        storedDashcards = storedDashcards
+          .filter((dashcard) => savedIds.includes(dashcard.id))
+          .map((dashcard) => {
+            const card = cards.find(
+              ({ id }) => id === savedCardIds.get(dashcard.id),
+            );
+            return card ? { ...dashcard, card_id: card.id, card } : dashcard;
+          });
       }
-      return storedDashboard;
+      return getStoredDashboard();
     },
     { name: "save-dashboard" },
   );

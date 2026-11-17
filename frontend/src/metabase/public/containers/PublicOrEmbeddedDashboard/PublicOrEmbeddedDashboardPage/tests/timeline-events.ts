@@ -104,10 +104,13 @@ export function setupTimeSeriesChart() {
   );
 }
 
+// public routes send `/api/timeline` requests to `/api/public/timeline`, so match any prefix
+const TIMELINE_API_PATH = /^\/api\/([a-z_]+\/)?timeline/;
+
 export const getTimelineRequests = () =>
   fetchMock.callHistory
     .calls()
-    .filter((call) => new URL(call.url).pathname.startsWith("/api/timeline"));
+    .filter((call) => TIMELINE_API_PATH.test(new URL(call.url).pathname));
 
 export const getTimeSeriesDashCard = () =>
   checkNotNull(
