@@ -1,0 +1,7 @@
+# API-only setup, settings route (#86735)
+// "Setup without config.yml" in sidecar.openapi.yaml, step 3 through the settings instead of POST /current.
+// POST /api/database and its sync are not in the specs, so they are not steps.
+mbcode -> parent: getWorkspaceConfig
+mbcode -> sidecar: setDatabaseWorkspaceSchema <- {settings.database-workspace-schema}
+mbcode -> sidecar: setWorkspacesEnabled <- {value}
+mbcode -> sidecar: getCurrentWorkspace {data.databases.database_id, data.databases.schema}
