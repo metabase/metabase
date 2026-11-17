@@ -22,8 +22,9 @@ import { DatabasesPermissionsPage } from "metabase/admin/permissions/pages/Datab
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES } from "metabase/plugins";
 import { Route } from "metabase/router";
+import { setLocalization } from "metabase/utils/i18n";
 import { defer } from "metabase/utils/promise";
-import type { Database } from "metabase-types/api";
+import type { Database, Group } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTokenFeatures,
@@ -49,6 +50,7 @@ interface SetupOpts {
   deferDatabaseMetadata?: boolean;
   databases?: Database[];
   initialRoute?: string;
+  groups?: Omit<Group, "members">[];
 }
 
 const setup = async ({
@@ -57,10 +59,11 @@ const setup = async ({
   deferDatabaseMetadata = false,
   databases = [TEST_DATABASE],
   initialRoute = `/admin/permissions/data/database/${databases[0].id}`,
+  groups = TEST_GROUPS,
 }: SetupOpts = {}) => {
   setupDatabasesEndpoints(databases);
-  setupPermissionsGraphEndpoints(TEST_GROUPS, databases);
-  setupGroupsEndpoint(TEST_GROUPS);
+  setupPermissionsGraphEndpoints(groups, databases);
+  setupGroupsEndpoint(groups);
 
   const databaseMetadata = defer<Database>();
 
@@ -185,6 +188,70 @@ describe("DatabasesPermissionsPage", () => {
         ),
       ).toBeInTheDocument();
     });
+  });
+
+  describe("in a non-default locale (metabase#33035)", () => {
+    // The special groups keep their English names in the app DB; the UI
+    // translates them. Anything that identifies a group by its displayed name
+    // breaks once these differ.
+    const SPECIAL_GROUPS = [
+      createMockGroup({
+        id: 1,
+        name: "All Users",
+        magic_group_type: "all-internal-users",
+      }),
+      createMockGroup({
+        id: 2,
+        name: "Administrators",
+        magic_group_type: "admin",
+      }),
+      createMockGroup({ id: 3, name: "Marketing" }),
+    ];
+
+    const DE_LOCALE = {
+      headers: {
+        language: "de",
+        "plural-forms": "nplurals=2; plural=(n != 1);",
+      },
+      translations: {
+        "": {
+          "All Users": { msgstr: ["Alle Benutzer"] },
+          Administrators: { msgstr: ["Administratoren"] },
+          "Group name": { msgstr: ["Gruppenname"] },
+        },
+      },
+    };
+
+    const EN_LOCALE = {
+      headers: {
+        language: "en",
+        "plural-forms": "nplurals=2; plural=(n != 1);",
+      },
+      translations: { "": {} },
+    };
+
+    afterEach(() => {
+      setLocalization(EN_LOCALE);
+    });
+
+    it.each([
+      { language: "en", locale: EN_LOCALE, groupNameHeader: "Group name" },
+      { language: "de", locale: DE_LOCALE, groupNameHeader: "Gruppenname" },
+    ])(
+      "renders the database permissions page in $language",
+      async ({ locale, groupNameHeader }) => {
+        setLocalization(locale);
+        await setup({ groups: SPECIAL_GROUPS });
+
+        expect(
+          await screen.findByRole("columnheader", { name: groupNameHeader }),
+        ).toBeInTheDocument();
+        expect(await screen.findByText("Orders")).toBeInTheDocument();
+        expect(
+          screen.getByRole("row", { name: /Marketing/ }),
+        ).toBeInTheDocument();
+      },
+    );
   });
 
   describe("triggering beforeunload events", () => {
