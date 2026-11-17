@@ -193,7 +193,7 @@ async function openMoreMenu() {
   await userEvent.click(
     await screen.findByRole("button", { name: "More options" }),
   );
-  return within(await screen.findByRole("menu"));
+  return screen.findByRole("menu");
 }
 
 describe("metric pages (EE)", () => {
@@ -206,7 +206,7 @@ describe("metric pages (EE)", () => {
 
       await screen.findByTestId("metric-about-page");
       const menu = await openMoreMenu();
-      expect(menu.getByText("Open in Data Studio")).toBeInTheDocument();
+      expect(within(menu).getByText("Open in Data Studio")).toBeInTheDocument();
     });
 
     it("is not offered on the Data Studio page of the same metric", async () => {
@@ -217,8 +217,10 @@ describe("metric pages (EE)", () => {
 
       await screen.findByTestId("metric-about-page");
       const menu = await openMoreMenu();
-      expect(menu.getByText("Bookmark")).toBeInTheDocument();
-      expect(menu.queryByText("Open in Data Studio")).not.toBeInTheDocument();
+      expect(within(menu).getByText("Bookmark")).toBeInTheDocument();
+      expect(
+        within(menu).queryByText("Open in Data Studio"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -258,7 +260,9 @@ describe("metric pages (EE)", () => {
     await screen.findByTestId("metric-about-page");
     const menu = await openMoreMenu();
     expect(
-      await menu.findByRole("menuitem", { name: /Metric usage analytics/ }),
+      await within(menu).findByRole("menuitem", {
+        name: /Metric usage analytics/,
+      }),
     ).toHaveAttribute(
       "href",
       `/dashboard/${QUESTION_OVERVIEW_DASHBOARD_ID}?question_id=${CARD_ID}`,

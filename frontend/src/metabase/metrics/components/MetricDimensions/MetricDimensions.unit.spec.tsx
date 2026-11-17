@@ -1136,23 +1136,25 @@ const ROW_HEIGHT = 40;
 
 /**
  * jsdom has no layout. Gives every sortable row a rect from its position in
- * the list, so dnd-kit can find the row a dragged one crosses.
+ * the list, so dnd-kit can find the row a dragged one crosses. The drag
+ * overlay's copy of a row starts where that row is.
  */
 function mockRowRects() {
   const original = Element.prototype.getBoundingClientRect;
   jest
     .spyOn(Element.prototype, "getBoundingClientRect")
     .mockImplementation(function (this: Element) {
-      const list = this.parentElement;
-      const isSortableRow =
-        this.getAttribute("role") === "listitem" && list != null;
-      if (!isSortableRow) {
+      if (!(this instanceof HTMLElement) || this.role !== "listitem") {
         return original.call(this);
       }
-      const index = Array.from(list.children).indexOf(this);
+      const list = screen.getByTestId("metric-dimension-list");
+      const rowTestIds = within(list)
+        .getAllByTestId(/^dimension-row-/)
+        .map((row) => row.dataset.testid);
+      const testId = within(this).getByTestId(/^dimension-row-/).dataset.testid;
       return DOMRect.fromRect({
         x: 0,
-        y: index * ROW_HEIGHT,
+        y: rowTestIds.indexOf(testId) * ROW_HEIGHT,
         width: 300,
         height: ROW_HEIGHT,
       });
@@ -1187,7 +1189,8 @@ async function dragRowAbove(sourceName: string, targetName: string) {
   );
   const handle = within(rows[sourceIndex]).getByTestId("dimension-drag-handle");
   const startY = sourceIndex * ROW_HEIGHT + ROW_HEIGHT / 2;
-  const endY = targetIndex * ROW_HEIGHT - ROW_HEIGHT / 2;
+  // dnd-kit picks the row the dragged row overlaps most
+  const endY = targetIndex * ROW_HEIGHT + ROW_HEIGHT / 4;
 
   dispatchPointer(handle, "pointerdown", { clientX: 10, clientY: startY });
   dispatchPointer(document, "pointermove", {
@@ -1196,6 +1199,10 @@ async function dragRowAbove(sourceName: string, targetName: string) {
   });
   dispatchPointer(document, "pointermove", { clientX: 10, clientY: endY });
   dispatchPointer(document, "pointerup", { clientX: 10, clientY: endY });
-  // Let the drag overlay finish its drop animation inside act()
-  await act(async () => {});
+  // The drag overlay renders a copy of the row until its drop animation ends
+  await waitFor(() => {
+    expect(screen.getAllByTestId(`dimension-row-${sourceName}`)).toHaveLength(
+      1,
+    );
+  });
 }

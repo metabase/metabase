@@ -3,7 +3,6 @@ import fetchMock from "fetch-mock";
 
 import {
   setupAdhocQueryMetadataEndpoint,
-  setupNotificationChannelsEndpoints,
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
@@ -13,6 +12,7 @@ import {
   setupForbiddenCardEndpoints,
   setupMetricDatasetEndpoint,
   setupMetricEndpoint,
+  setupNotificationChannelsEndpoints,
 } from "__support__/server-mocks";
 import { setupAuditInfoEndpoint } from "__support__/server-mocks/audit";
 import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
@@ -21,8 +21,8 @@ import { PERMISSION_ERROR } from "__support__/server-mocks/constants";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { createMockState } from "__support__/state";
 import {
-  renderRoutes,
   act,
+  renderRoutes,
   renderWithProviders,
   screen,
   waitFor,
