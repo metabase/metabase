@@ -879,6 +879,9 @@ describe("PublicOrEmbeddedDashboardPage > content translation", () => {
       expect(
         within(tableBody).queryByText("Francesca Gleason"),
       ).not.toBeInTheDocument();
+      expect(
+        within(tableBody).queryByText("Francesca Hammes"),
+      ).not.toBeInTheDocument();
 
       await userEvent.click(
         within(screen.getByTestId("parameter-widget")).getByText("Multi"),
@@ -904,9 +907,19 @@ describe("PublicOrEmbeddedDashboardPage > content translation", () => {
           within(screen.getByTestId("table-body")).getAllByRole("row"),
         ).toHaveLength(1),
       );
+      const singleFilteredBody = screen.getByTestId("table-body");
       expect(
-        within(screen.getByTestId("table-body")).getByText("Glacia Froskeon"),
+        within(singleFilteredBody).getByText("Glacia Froskeon"),
       ).toBeInTheDocument();
+      expect(
+        within(singleFilteredBody).queryByText("Hammera Francite"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(singleFilteredBody).queryByText("Francesca Gleason"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(singleFilteredBody).queryByText("Francesca Hammes"),
+      ).not.toBeInTheDocument();
       expect(
         within(screen.getByTestId("parameter-widget")).getByText(
           "Glacia Froskeon",
@@ -945,6 +958,12 @@ describe("PublicOrEmbeddedDashboardPage > content translation", () => {
       ).toBeInTheDocument();
       expect(
         within(filteredBody).queryByText("Granto Francello"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(filteredBody).queryByText("Francesca Gleason"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(filteredBody).queryByText("Francesca Hammes"),
       ).not.toBeInTheDocument();
     });
   });
