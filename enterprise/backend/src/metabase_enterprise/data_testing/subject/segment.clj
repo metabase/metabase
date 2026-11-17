@@ -37,7 +37,7 @@
 (mu/defmethod data-testing.subject/subject-plan :segment :- ::data-testing.subject/subject-plan
   [_subject-type
    {:keys [definition] segment-name :name} :- ::data-testing.subject/segment
-   inputs                                  :- ::data-testing.schema/inputs]
+   {:keys [inputs]}                        :- ::data-testing.subject/definition-without-parameters]
   (let [database (data-testing.subject/testable-database (lib/database-id definition))]
     (data-testing.subject/query-output-plan
      database
