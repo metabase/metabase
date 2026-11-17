@@ -289,6 +289,7 @@ describe("collection timelines", () => {
       expect(
         await screen.findByText("October 20, 2026, 10:20 AM"),
       ).toBeInTheDocument();
+      expect(within(eventList()).getByText("RC1")).toBeInTheDocument();
       expect(screen.getByRole("dialog")).toHaveTextContent(
         "Our analytics events",
       );
@@ -318,6 +319,7 @@ describe("collection timelines", () => {
       expect(
         await screen.findByText("October 20, 2026, 12:00 AM"),
       ).toBeInTheDocument();
+      expect(within(eventList()).getByText("RC1")).toBeInTheDocument();
       expect(screen.getByRole("dialog")).toHaveTextContent(
         "Our analytics events",
       );
