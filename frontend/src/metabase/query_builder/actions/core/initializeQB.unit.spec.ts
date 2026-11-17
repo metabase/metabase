@@ -598,6 +598,7 @@ describe("QB Actions > initializeQB", () => {
           dataset_query: result.card.dataset_query,
           display: result.card.display,
           visualization_settings: result.card.visualization_settings,
+          parameters: result.card.parameters,
         });
         expect(dispatch).toHaveBeenCalledWith(
           sharedQB.setPendingMetabotCard(null),

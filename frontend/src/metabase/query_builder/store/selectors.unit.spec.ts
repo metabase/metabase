@@ -598,6 +598,7 @@ describe("getShouldShowUnsavedChangesWarning", () => {
         "dataset_query",
         "display",
         "visualization_settings",
+        "parameters",
       );
 
       const getState = (changes: Partial<Card>) =>
@@ -627,6 +628,21 @@ describe("getShouldShowUnsavedChangesWarning", () => {
         [
           "the visualization settings",
           { visualization_settings: { "table.pivot": true } },
+        ],
+        [
+          "where a variable's values come from",
+          {
+            parameters: [
+              {
+                id: "x",
+                name: "x",
+                slug: "x",
+                type: "category",
+                values_source_type: "static-list",
+                values_source_config: { values: ["a"] },
+              },
+            ],
+          },
         ],
       ])("warns once the user changes %s", (_name, changes) => {
         expect(getShouldShowUnsavedChangesWarning(getState(changes))).toBe(

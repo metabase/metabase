@@ -645,7 +645,13 @@ export const isResultsMetadataDirty = createSelector(
 export const getMetabotCardBaseline = (
   question: Question,
 ): MetabotCardBaseline =>
-  _.pick(question.card(), "dataset_query", "display", "visualization_settings");
+  _.pick(
+    question.card(),
+    "dataset_query",
+    "display",
+    "visualization_settings",
+    "parameters",
+  );
 
 export const getShouldShowUnsavedChangesWarning = createSelector(
   [

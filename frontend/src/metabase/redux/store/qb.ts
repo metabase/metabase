@@ -92,7 +92,7 @@ export interface QueryBuilderUIControls {
 
 export type MetabotCardBaseline = Pick<
   Card,
-  "dataset_query" | "display" | "visualization_settings"
+  "dataset_query" | "display" | "visualization_settings" | "parameters"
 >;
 
 /** A question Metabot is opening; the query builder init of `url` consumes it. */
