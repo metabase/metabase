@@ -202,7 +202,7 @@
         (is (re-find #"\"person 1 only\"" (ex-message e)))
         (is (re-find #"has no output" (ex-message e)))))))
 
-(defn- validation-refusal
+(defn- validation-refusal!
   "The refusal [[data-testing.runner/validate-test]] gives a test of the write `sql` with `params`, as its `:error-type`
   and message, or nil when it is not refused."
   [sql params]
@@ -221,9 +221,9 @@
   (mt/test-drivers (drivers-that-write)
     (let [returning (str (refund-1) " RETURNING id")]
       (testing "control: an UPDATE that returns no rows is not refused"
-        (is (nil? (validation-refusal (refund-1) ["refunded" 1]))))
+        (is (nil? (validation-refusal! (refund-1) ["refunded" 1]))))
       (testing "an UPDATE with RETURNING is refused when the test is saved, as a 400 that names RETURNING"
-        (let [{:keys [error-type message]} (validation-refusal returning ["refunded" 1])]
+        (let [{:keys [error-type message]} (validation-refusal! returning ["refunded" 1])]
           (is (= ::data-testing.errors/write-returns-rows error-type))
           (is (= 400 (data-testing.errors/status-code error-type)))
           (is (re-find #"RETURNING" (str message)))))
