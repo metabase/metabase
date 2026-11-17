@@ -122,6 +122,20 @@ function toFilterClause(
             values: [condition.value],
             options: {},
           });
+    case "in":
+      // A status bucket: text values usually, numbers for coded statuses
+      return Lib.isNumeric(column)
+        ? Lib.numberFilterClause({
+            operator: "=",
+            column,
+            values: condition.values.map(Number),
+          })
+        : Lib.stringFilterClause({
+            operator: "=",
+            column,
+            values: condition.values,
+            options: {},
+          });
     case "is-null":
     case "not-null":
       return Lib.defaultFilterClause({ operator: condition.operator, column });

@@ -18,6 +18,8 @@ export type TableSegmentsOverrides = {
   defaultSegment?: DefaultSegment;
   /** `null` means an admin said the table has no required filter */
   requiredFilter?: DatasetQuery | null;
+  /** Proposed cohorts already accepted or dismissed */
+  resolvedCohortKeys: string[];
 };
 
 type TableSegmentsState = {
@@ -30,6 +32,7 @@ const STORAGE_KEY = "metabase-prototype-table-segments";
 
 const EMPTY_OVERRIDES: TableSegmentsOverrides = {
   systemSegments: {},
+  resolvedCohortKeys: [],
 };
 
 function parseDatasetQuery(value: unknown): DatasetQuery | undefined {
@@ -79,6 +82,11 @@ function parseOverrides(value: unknown): TableSegmentsOverrides {
       value.requiredFilter === null
         ? null
         : parseDatasetQuery(value.requiredFilter),
+    resolvedCohortKeys: Array.isArray(value.resolvedCohortKeys)
+      ? value.resolvedCohortKeys.filter(
+          (key): key is string => typeof key === "string",
+        )
+      : [],
   };
 }
 
@@ -94,8 +102,8 @@ function getTableKey(table: Pick<Table, "db_id" | "id">) {
 }
 
 /**
- * Every table's default segment, required filter, and edited system segments,
- * as an admin set them.
+ * Every table's default segment, required filter, edited system segments,
+ * and handled cohort proposals, as an admin set them.
  */
 export function useTableSegments() {
   const [state, updateState] = usePrototypeStorage(STORAGE_KEY, parseState);
@@ -159,10 +167,23 @@ export function useTableSegments() {
     [updateOverrides],
   );
 
+  const resolveCohort = useCallback(
+    (table: Pick<Table, "db_id" | "id">, cohortKey: string) =>
+      updateOverrides(table, (overrides) => ({
+        ...overrides,
+        resolvedCohortKeys: _.uniq([
+          ...overrides.resolvedCohortKeys,
+          cohortKey,
+        ]),
+      })),
+    [updateOverrides],
+  );
+
   return {
     getTableSegmentsOverrides,
     setSystemSegmentDefinition,
     setDefaultSegment,
     setRequiredFilter,
+    resolveCohort,
   };
 }

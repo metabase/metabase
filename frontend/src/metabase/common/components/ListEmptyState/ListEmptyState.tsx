@@ -13,6 +13,8 @@ type ListEmptyStateProps = {
   action?: ReactNode;
   /** Shown large in a gray circle in place of the default illustration */
   icon?: IconName;
+  /** A smaller circle and icon, for an empty list inside a page */
+  isCompact?: boolean;
 };
 
 export function ListEmptyState({
@@ -20,9 +22,12 @@ export function ListEmptyState({
   description,
   action,
   icon,
+  isCompact = false,
 }: ListEmptyStateProps) {
   return (
-    <Box p="xxl">
+    // Compact sits in a list whose empty area already pads it; with that and
+    // the list's header, the card comes to 200px
+    <Box px={isCompact ? 0 : "xxl"} py={isCompact ? "lg" : "xxl"}>
       {/* Long explanatory labels wrap into a readable column */}
       <Box maw="30rem" mx="auto">
         <EmptyState
@@ -30,8 +35,18 @@ export function ListEmptyState({
           spacing="sm"
           illustrationElement={
             icon != null ? (
-              <Center w={100} h={100} bdrs="50%" bg="background_page-secondary">
-                <Icon name={icon} size={40} c="text-secondary" opacity={0.5} />
+              <Center
+                w={isCompact ? 64 : 100}
+                h={isCompact ? 64 : 100}
+                bdrs="50%"
+                bg="background_page-secondary"
+              >
+                <Icon
+                  name={icon}
+                  size={isCompact ? 24 : 40}
+                  c="text-secondary"
+                  opacity={0.5}
+                />
               </Center>
             ) : (
               <img

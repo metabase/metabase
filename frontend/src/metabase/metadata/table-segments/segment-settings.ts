@@ -9,7 +9,7 @@ import { DEFAULT_REQUIRED_FILTER_ROW_THRESHOLD } from "./inference";
 
 /** What an admin set for a database or schema; absent means inherit */
 export type SegmentSettingsOverrides = {
-  /** Off: sync generates no system segments */
+  /** Off: sync generates no system segments and proposes no cohorts */
   generateSegments?: boolean;
   /** Tables with at least this many rows get a proposed required filter */
   requiredFilterRowThreshold?: number;

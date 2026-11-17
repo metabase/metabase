@@ -1,0 +1,7 @@
+/* A plain wrapper: the fieldset only disables the picker's controls */
+.readOnlyPicker {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}

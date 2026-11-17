@@ -1,5 +1,8 @@
 import { Flex, Group, Icon, Pill } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import type { DatasetQuery, IconName, Table } from "metabase-types/api";
+
+import { useTableQuery } from "../table-segments";
 
 /** One clause of a segment's or measure's definition, as a card shows it */
 export type QueryClause = {
@@ -7,13 +10,33 @@ export type QueryClause = {
   name: string;
 };
 
+const STAGE_INDEX = -1;
+
 const CLAUSE_ICONS: Record<QueryClause["kind"], IconName> = {
   aggregation: "sum",
   filter: "filter",
 };
 
+/** A definition's aggregations, then its filters, by their display names */
+export function getQueryClauses(query: Lib.Query): QueryClause[] {
+  return [
+    ...Lib.aggregations(query, STAGE_INDEX).map(
+      (aggregation): QueryClause => ({
+        kind: "aggregation",
+        name: Lib.displayInfo(query, STAGE_INDEX, aggregation).displayName,
+      }),
+    ),
+    ...Lib.filters(query, STAGE_INDEX).map(
+      (filter): QueryClause => ({
+        kind: "filter",
+        name: Lib.displayInfo(query, STAGE_INDEX, filter).displayName,
+      }),
+    ),
+  ];
+}
+
 /** A clause's kind icon and display name, inside a pill */
-function ClausePillLabel({ kind, name }: QueryClause) {
+export function ClausePillLabel({ kind, name }: QueryClause) {
   return (
     <Flex component="span" align="center" gap="xs">
       <Icon name={CLAUSE_ICONS[kind]} size={12} c="text-secondary" />
@@ -33,4 +56,20 @@ export function ClausePills({ clauses }: { clauses: QueryClause[] }) {
       ))}
     </Group>
   );
+}
+
+/**
+ * Reads a segment's or measure's definition into its card's pills. A
+ * definition the query library can't read gets none, and the card falls back
+ * to its server description.
+ */
+export function useDefinitionClauses(table: Table) {
+  const { fromDefinition } = useTableQuery(table);
+  return (definition: DatasetQuery): QueryClause[] | undefined => {
+    try {
+      return getQueryClauses(fromDefinition(definition));
+    } catch {
+      return undefined;
+    }
+  };
 }

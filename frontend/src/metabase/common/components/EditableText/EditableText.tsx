@@ -63,6 +63,8 @@ export const EditableText = forwardRef(function EditableText(
     "data-testid": dataTestId,
     as,
     className,
+    // Belongs on the textarea, which takes the typing
+    autoFocus,
     ...props
   }: EditableTextProps,
   ref: Ref<HTMLDivElement>,
@@ -184,6 +186,7 @@ export const EditableText = forwardRef(function EditableText(
           placeholder={placeholder}
           maxLength={maxLength}
           disabled={isDisabled}
+          autoFocus={autoFocus}
           data-testid={dataTestId}
           onFocus={onFocus}
           onBlur={handleBlur}

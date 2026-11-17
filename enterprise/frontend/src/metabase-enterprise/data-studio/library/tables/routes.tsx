@@ -74,6 +74,13 @@ const systemSegmentPage = () =>
     Component: PublishedTableSystemSegmentPage,
   }));
 
+const segmentGroupPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-tables" */ "metabase/data-studio/segments/pages/SegmentGroupPage"
+  ).then(({ PublishedTableSegmentGroupPage }) => ({
+    Component: PublishedTableSegmentGroupPage,
+  }));
+
 const segmentDetailPage = () =>
   import(
     /* webpackChunkName: "data-studio-tables" */ "metabase/data-studio/segments/pages/PublishedTableSegmentDetailPage"
@@ -93,6 +100,13 @@ const segmentDependenciesPage = () =>
     /* webpackChunkName: "data-studio-tables" */ "metabase/data-studio/segments/pages/PublishedTableSegmentDependenciesPage"
   ).then(({ PublishedTableSegmentDependenciesPage }) => ({
     Component: PublishedTableSegmentDependenciesPage,
+  }));
+
+const measureGroupPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-tables" */ "metabase/data-studio/measures/pages/MeasureGroupPage"
+  ).then(({ PublishedTableMeasureGroupPage }) => ({
+    Component: PublishedTableMeasureGroupPage,
   }));
 
 const newMeasurePage = () =>
@@ -138,6 +152,12 @@ export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
         <Route index lazy={newSegmentPage} />
       </Route>
       <Route path=":tableId/segments/system/:role" lazy={systemSegmentPage} />
+      <Route path=":tableId/segments/groups/new" element={<IsAdmin />}>
+        <Route index lazy={segmentGroupPage} />
+      </Route>
+      <Route path=":tableId/segments/groups/:groupId" element={<IsAdmin />}>
+        <Route index lazy={segmentGroupPage} />
+      </Route>
       <Route path=":tableId/segments/:segmentId" lazy={segmentDetailPage} />
       <Route
         path=":tableId/segments/:segmentId/revisions"
@@ -154,6 +174,12 @@ export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
       <Route path=":tableId/measures" lazy={tableMeasuresPage} />
       <Route path=":tableId/measures/new" element={<IsAdmin />}>
         <Route index lazy={newMeasurePage} />
+      </Route>
+      <Route path=":tableId/measures/groups/new" element={<IsAdmin />}>
+        <Route index lazy={measureGroupPage} />
+      </Route>
+      <Route path=":tableId/measures/groups/:groupId" element={<IsAdmin />}>
+        <Route index lazy={measureGroupPage} />
       </Route>
       <Route path=":tableId/measures/:measureId" lazy={measureDetailPage} />
       <Route
