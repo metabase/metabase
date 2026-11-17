@@ -1435,10 +1435,11 @@
         (let [query (products-count-by-boolean-expression (mt/metadata-provider))
               b     (column-named query "b")]
           (testing "in a custom column"
-            ;; The last stage has no ORDER BY, so Vertica and Starburst can return the rows in any order.
             (is (= [[false 149 true] [true 51 false]]
-                   (sort (mt/formatted-rows [mt/boolish->bool int mt/boolish->bool]
-                                            (qp/process-query (lib/expression query "not b" (lib/not b))))))))
+                   (mt/formatted-rows [mt/boolish->bool int mt/boolish->bool]
+                                      (qp/process-query (-> query
+                                                            (lib/expression "not b" (lib/not b))
+                                                            (lib/order-by b :asc)))))))
           (testing "in a filter"
             (is (= [[true 51]]
                    (mt/formatted-rows [mt/boolish->bool int]
