@@ -697,8 +697,7 @@
   Some models have a rate that changes with the size of one request, so the evals price each call, not the sum of
   the turn.
 
-  The record goes to the innermost open span, so reduce the call inside its `ait/with-llm-call`. Put this transducer
-  before [[accumulate-usage-xf]], which replaces the `:usage` of each part with the running total of the turn."
+  The record goes to the innermost open span, so reduce the call inside its `ait/with-llm-call`."
   [provider-and-model]
   (if-not (ait/capture-active?)
     identity
@@ -734,6 +733,14 @@
                                (get model)))
              part)))))
 
+(defn- call-usage-xf
+  "Transducer over the parts of one LLM call that records the usage of the call and of the turn.
+  [[record-call-usage-xf]] is first, because [[accumulate-usage-xf]] replaces the `:usage` of each part with the
+  running total of the turn."
+  [usage-atom provider-and-model]
+  (comp (record-call-usage-xf provider-and-model)
+        (accumulate-usage-xf usage-atom provider-and-model)))
+
 (defn- step-limit-reply-parts
   "The parts of the last LLM call of a turn that reached its step limit, or nil when there is no such call.
 
@@ -754,8 +761,7 @@
                                   {:role :user :content step-limit-instruction})]
             (u/prog1 (ait/with-llm-call {:ai/iteration iteration
                                          :ai/model     (:model profile)}
-                       (u/prog1 (into [] (comp (record-call-usage-xf (:model profile))
-                                               (accumulate-usage-xf usage-atom (:model profile))
+                       (u/prog1 (into [] (comp (call-usage-xf usage-atom (:model profile))
                                                (u/tee-xf parts-atom))
                                       (call-llm memory profile tools system-msg iteration
                                                 (assoc tracking-opts :iteration iteration)
@@ -809,8 +815,7 @@
           parts-atom         (atom [])
           link-registry-atom (atom (get-in memory [:state :link-registry] {}))
           input-parts        (turn-input-parts sent-parts context memory tools @link-registry-atom)
-          xf                 (comp (record-call-usage-xf (:model profile))
-                                   (accumulate-usage-xf usage-atom (:model profile))
+          xf                 (comp (call-usage-xf usage-atom (:model profile))
                                    (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
           ;; function (e.g. parts->aisdk-sse-xf wrapping streaming-writer-rf) whose completion
