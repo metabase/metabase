@@ -198,6 +198,14 @@ describe("CollectionHeader", () => {
       const button = screen.getByLabelText("calendar icon");
       expect(button).toBeInTheDocument();
     });
+
+    it("should link read-only users to the root collection timelines", () => {
+      setup({ collection: { id: "root", can_write: false } });
+
+      expect(
+        screen.getByRole("link", { name: "calendar icon" }),
+      ).toHaveAttribute("href", "/collection/root/timelines");
+    });
   });
 
   describe("collection bookmark", () => {
