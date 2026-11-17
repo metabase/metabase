@@ -530,7 +530,7 @@
             so this pins that get_content still applies it."
     (mt/with-temp [:model/Collection   {locked-id :id} {}
                    :model/Card         {card-id :id}   {:name "Sub Card"}
-                   :model/Dashboard    {dash-id :id}   {}
+                   :model/Dashboard    {dash-id :id}   {:collection_id locked-id}
                    :model/Pulse        {pulse-id :id}  {:name          "Private Weekly"
                                                         :dashboard_id  dash-id
                                                         :collection_id locked-id

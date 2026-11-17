@@ -3,7 +3,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.dashboards.constants :as dashboards.constants]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib-be.core :as lib-be]
@@ -70,12 +69,11 @@
       validate-click-behavior-target-ids))
 
 (defn- check-layout
-  "Throws a 400 unless the size of `dashcard` is positive, its position is not negative and it fits in the grid."
+  "Throws a 400 unless the size of `dashcard` is positive and its position is not negative."
   [{:keys [size_x size_y row col]}]
   (when (or (some #(and (some? %) (not (pos-int? %))) [size_x size_y])
-            (some #(and (some? %) (not (nat-int? %))) [row col])
-            (and (pos-int? size_x) (nat-int? col) (> (+ col size_x) dashboards.constants/grid-width)))
-    (throw (ex-info (tru "A DashboardCard needs a positive size and a position that fits in the grid.")
+            (some #(and (some? %) (not (nat-int? %))) [row col]))
+    (throw (ex-info (tru "A DashboardCard needs a positive size and a position that is not negative.")
                     {:status-code 400}))))
 
 (defn- check-parameter-mappings

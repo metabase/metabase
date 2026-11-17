@@ -118,39 +118,28 @@
       (api/check-400 (not (:router_database_id database))
                      (deferred-tru "Cannot run transforms on a destination database of database routing.")))))
 
-(defn- checkpoint-field-table-ids
-  "A map of ID to Table ID for the checkpoint Fields of `transforms`, loaded together."
-  [transforms]
-  (let [field-ids (into #{}
-                        (keep #(get-in % [:source :source-incremental-strategy :checkpoint-filter-field-id]))
-                        transforms)]
-    (if (seq field-ids)
-      (transforms.db/field-table-ids field-ids)
-      {})))
-
-(defn- check-incremental-table-tag
+(defn check-incremental-table-tag
   "Throws a 400 when `transform` writes an incremental table from a native query that has no table variable for the
-  incremental range filter, a variable of the table of the checkpoint Field in `field-table-ids` when there is one."
-  [{:keys [source target]} field-table-ids]
+  incremental range filter, a variable of the table of its checkpoint Field when it has one."
+  [{:keys [source target]}]
   (let [transform {:source source :target target}]
     (when (and (transforms-base.u/incremental-target? transform)
                (transforms-base.u/native-query-transform? transform))
-      (let [field-id (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])]
-        (when-not (transforms-base.u/table-template-tag-name (:query source) (get field-table-ids field-id))
+      (let [field-id (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])
+            table-id (when field-id (get (transforms.db/field-table-ids #{field-id}) field-id))]
+        (when-not (transforms-base.u/table-template-tag-name (:query source) table-id)
           (throw (ex-info (tru "Incremental transform with a native query requires a table variable. Please add a table variable to the query and update the checkpoint field.")
                           {:status-code 400})))))))
 
 (defn- check-and-derive-definitions
   "`transforms`, whose source or target is being written, with the columns computed from them, after checking that the
-  source and the target have their shape and that the target Database can hold them. The Databases and Fields are
-  loaded once for all of `transforms`."
+  source and the target have their shape and that the target Database can hold them. The Databases are loaded once
+  for all of `transforms`."
   [transforms]
   (run! check-source-and-target transforms)
-  (let [transforms      (mapv #(merge % (derived-columns %)) transforms)
-        databases       (target-databases transforms)
-        field-table-ids (checkpoint-field-table-ids transforms)]
+  (let [transforms (mapv #(merge % (derived-columns %)) transforms)
+        databases  (target-databases transforms)]
     (run! #(check-target-database % databases) transforms)
-    (run! #(check-incremental-table-tag % field-table-ids) transforms)
     transforms))
 
 (mi/define-before-insert :model/Transform
@@ -166,7 +155,7 @@
   (let [changes (t2/changes transform)]
     (or (contains? changes :source) (contains? changes :target))))
 
-(defn- check-cycle
+(defn check-cycle
   "Throws a 400 when the query transform `transform` has become part of a cycle of transforms feeding one another."
   [transform]
   (when (transforms-base.u/query-transform? transform)

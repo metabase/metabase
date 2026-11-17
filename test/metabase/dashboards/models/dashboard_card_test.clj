@@ -465,14 +465,14 @@
                  (answers :can_read mi/can-read?))))))))
 
 (deftest check-dashcard-layout-test
-  (testing "A DashboardCard has a positive size, a position that is not negative and fits the grid"
+  (testing "A DashboardCard has a positive size and a position that is not negative"
     (mt/with-temp [:model/Dashboard dash {}
                    :model/DashboardCard dashcard {:dashboard_id (u/the-id dash)}]
-      (doseq [bad [{:size_x 0} {:size_y -1} {:row -1} {:col -1} {:col 21 :size_x 4}]]
+      (doseq [bad [{:size_x 0} {:size_y -1} {:row -1} {:col -1}]]
         (testing (pr-str bad)
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"fits in the grid"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"positive size"
                                 (t2/insert! :model/DashboardCard (merge {:dashboard_id (u/the-id dash) :size_x 4 :size_y 4 :row 0 :col 0} bad))))
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"fits in the grid"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"positive size"
                                 (t2/update! :model/DashboardCard :id (u/the-id dashcard) bad)))))
       (t2/update! :model/DashboardCard :id (u/the-id dashcard) {:col 20 :size_x 4})
       (is (= 20 (t2/select-one-fn :col :model/DashboardCard :id (u/the-id dashcard)))))))

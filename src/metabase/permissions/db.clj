@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.published-tables :as published-tables]
    [metabase.permissions.schema :as permissions.schema]
@@ -1171,7 +1172,9 @@
 (mu/defn deactivate-all-tenants!
   "Deactivate every active Tenant, returning the number updated."
   []
-  (t2/update! :model/Tenant :is_active true {:is_active false}))
+  (if config/ee-available?
+    (t2/update! :model/Tenant :is_active true {:is_active false})
+    0))
 
 ;;; --------------------------------------------- Databases and Tables ---------------------------------------------
 

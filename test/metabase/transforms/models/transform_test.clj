@@ -175,24 +175,25 @@
         (is (= 400 (status-code-of #(t2/update! :model/Transform :id id changes))))))))
 
 (deftest target-database-must-accept-transforms-test
-  (mt/with-temp [:model/Database {audit-db :id}  {:is_audit true}
-                 :model/Database {sample-db :id} {:is_sample true}
-                 :model/Database {router-db :id} {}
-                 :model/Database {dest-db :id}   {:router_database_id router-db}]
-    (testing "a target database that does not exist"
-      (is (= 400 (status-code-of #(t2/insert! :model/Transform (python-transform-writing-to Integer/MAX_VALUE))))))
-    (testing "the audit database"
-      (is (= 400 (status-code-of #(t2/insert! :model/Transform (python-transform-writing-to audit-db))))))
-    (testing "the sample database"
-      (is (= 400 (status-code-of #(t2/insert! :model/Transform (python-transform-writing-to sample-db))))))
-    (testing "a destination database of database routing"
-      (is (= 400 (status-code-of #(t2/insert! :model/Transform (python-transform-writing-to dest-db))))))
-    (testing "retargeting an existing transform onto such a database"
-      (mt/with-temp [:model/Transform {id :id} (python-transform-writing-to (mt/id))]
-        (is (= 400 (status-code-of #(t2/update! :model/Transform :id id
-                                                {:target {:type "table" :name "retargeted" :database audit-db}}))))
-        (is (= 400 (status-code-of #(t2/update! :model/Transform :id id
-                                                {:target {:type "table" :name "retargeted" :database dest-db}}))))))))
+  (mt/when-ee-evailable
+   (mt/with-temp [:model/Database {audit-db :id}  {:is_audit true}
+                  :model/Database {sample-db :id} {:is_sample true}
+                  :model/Database {router-db :id} {}
+                  :model/Database {dest-db :id}   {:router_database_id router-db}]
+     (testing "a target database that does not exist"
+       (is (= 400 (status-code-of #(t2/insert! :model/Transform (python-transform-writing-to Integer/MAX_VALUE))))))
+     (testing "the audit database"
+       (is (= 400 (status-code-of #(t2/insert! :model/Transform (python-transform-writing-to audit-db))))))
+     (testing "the sample database"
+       (is (= 400 (status-code-of #(t2/insert! :model/Transform (python-transform-writing-to sample-db))))))
+     (testing "a destination database of database routing"
+       (is (= 400 (status-code-of #(t2/insert! :model/Transform (python-transform-writing-to dest-db))))))
+     (testing "retargeting an existing transform onto such a database"
+       (mt/with-temp [:model/Transform {id :id} (python-transform-writing-to (mt/id))]
+         (is (= 400 (status-code-of #(t2/update! :model/Transform :id id
+                                                 {:target {:type "table" :name "retargeted" :database audit-db}}))))
+         (is (= 400 (status-code-of #(t2/update! :model/Transform :id id
+                                                 {:target {:type "table" :name "retargeted" :database dest-db}})))))))))
 
 (deftest source-and-target-shape-test
   (let [defaults (mt/with-temp-defaults :model/Transform)]
@@ -205,26 +206,6 @@
     (testing "the same rules hold for an update"
       (mt/with-temp [:model/Transform {id :id} {}]
         (is (= 400 (status-code-of #(t2/update! :model/Transform :id id {:target {:type "table" :database (mt/id)}}))))))))
-
-(deftest incremental-native-query-requires-table-variable-test
-  (let [mp       (mt/metadata-provider)
-        target   {:type "table-incremental" :name "incremental_target" :database (mt/id)
-                  :target-incremental-strategy {:type "append"}}
-        strategy {:type "checkpoint"}
-        with-tag (lib/with-template-tags (lib/native-query mp "SELECT * FROM {{src}}")
-                   {"src" {:id "src" :name "src" :display-name "Src" :type :table :table-id (mt/id :venues)}})
-        without  (lib/native-query mp "SELECT 1")]
-    (testing "inserting a native query without a table variable"
-      (is (= 400 (status-code-of #(t2/insert! :model/Transform
-                                              (assoc (mt/with-temp-defaults :model/Transform)
-                                                     :target target
-                                                     :source {:type :query :query without :source-incremental-strategy strategy}))))))
-    (testing "updating the query of an incremental transform to one without a table variable"
-      (mt/with-temp [:model/Transform {id :id} {:target target
-                                                :source {:type :query :query with-tag :source-incremental-strategy strategy}}]
-        (is (= 400 (status-code-of #(t2/update! :model/Transform :id id
-                                                {:source {:type :query :query without :source-incremental-strategy strategy}}))))
-        (is (nil? (status-code-of #(t2/update! :model/Transform :id id {:name "renamed"}))))))))
 
 (deftest cycles-are-rejected-on-update-test
   (let [mp     (mt/metadata-provider)

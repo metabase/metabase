@@ -34,6 +34,7 @@
                                                           :card_id          (u/the-id card)
                                                           :position         0}]
       (is (thrown? Exception
-                   (t2/insert! :model/DashboardCardSeries {:dashboardcard_id (u/the-id dashcard)
-                                                           :card_id          (u/the-id other-card)
-                                                           :position         0}))))))
+                   (t2/with-transaction [_conn]
+                     (t2/insert! :model/DashboardCardSeries {:dashboardcard_id (u/the-id dashcard)
+                                                             :card_id          (u/the-id other-card)
+                                                             :position         0})))))))

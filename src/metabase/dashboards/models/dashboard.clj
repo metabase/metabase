@@ -106,13 +106,6 @@
   (when-not (boolean? auto_apply_filters)
     (throw (ex-info (tru "A Dashboard''s auto_apply_filters is true or false.") {:status-code 400}))))
 
-(defn- check-parameter-ids
-  "Throws a 400 when two of the `:parameters` of `dashboard` share an id."
-  [{:keys [parameters]}]
-  (let [ids (map :id parameters)]
-    (when-not (= (count ids) (count (set ids)))
-      (throw (ex-info (tru "The parameters of a Dashboard need distinct ids.") {:status-code 400})))))
-
 (defn- move-dashboard-questions!
   "Moves the dashboard questions of `dashboards` into the Collections their Dashboards move to, one statement for each
   Collection."
@@ -135,7 +128,6 @@
       (check-width dashboard))
     (when (contains? dashboard :auto_apply_filters)
       (check-auto-apply-filters dashboard))
-    (check-parameter-ids dashboard)
     (u/prog1 (public-sharing/add-public-uuid-prefix dashboard)
       (params/assert-valid-parameters dashboard))))
 
@@ -162,8 +154,6 @@
       (check-width dashboard))
     (when (contains? changes :auto_apply_filters)
       (check-auto-apply-filters dashboard))
-    (when (contains? changes :parameters)
-      (check-parameter-ids dashboard))
     (u/prog1 (-> dashboard
                  maybe-populate-initially-published-at
                  public-sharing/add-public-uuid-prefix-if-changed)

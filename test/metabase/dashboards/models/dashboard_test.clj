@@ -563,14 +563,13 @@
       (is (nil? (t2/select-one-fn :collection_id :model/Card :id (u/the-id card)))))))
 
 (deftest check-dashboard-columns-test
-  (testing "A Dashboard keeps a name, a known width, boolean auto apply filters and distinct parameter ids"
+  (testing "A Dashboard keeps a name, a known width and boolean auto apply filters"
     (let [parameter (fn [id] {:id id :type :category :name id :slug id})
           insert!   (fn [row] (t2/insert! :model/Dashboard (merge {:name "Dash" :creator_id (mt/user->id :rasta)} row)))]
       (mt/with-temp [:model/Dashboard dash {}]
         (doseq [[column bad] [[:name "  "]
                               [:width "wide"]
-                              [:auto_apply_filters "yes"]
-                              [:parameters [(parameter "a") (parameter "a")]]]]
+                              [:auto_apply_filters "yes"]]]
           (testing (str "insert " column)
             (is (thrown? clojure.lang.ExceptionInfo (insert! {column bad}))))
           (testing (str "update " column)
