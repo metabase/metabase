@@ -66,7 +66,6 @@
                     (t2/select-one :model/FieldUserSettings :field_id field-id)))))))))
 
 (def ^:private comment-after-sync
-  "Not static, because [[sync-comment-on-existing-field-test]] changes this dataset."
   (mt/dataset-definition "comment-after-sync"
                          [["comment_after_sync"
                            [{:field-name "comment_after_sync", :base-type :type/Text}]
