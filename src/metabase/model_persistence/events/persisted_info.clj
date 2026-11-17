@@ -1,6 +1,6 @@
 (ns metabase.model-persistence.events.persisted-info
-  "Handlers of the lifecycle events that have a model Card persisted when its database persists models, whoever wrote
-  it."
+  "Handlers of the lifecycle events that have a model Card persisted when its database persists models, for the user
+  who wrote it."
   (:require
    [metabase.events.core :as events]
    [metabase.model-persistence.db :as model-persistence.db]
@@ -16,8 +16,8 @@
 (events/derive! :event/card-update ::event)
 
 (defn- turn-on-model!
-  "Turn the persistence of the model Card `card-id` on, for `user-id` if there is one, when its database persists models
-  and it has no PersistedInfo, even an `off` or `deletable` one, so only the model conversion of a Card does."
+  "Turn the persistence of the model Card `card-id` on for `user-id` when its database persists models and it has no
+  PersistedInfo, even an `off` or `deletable` one, so only the model conversion of a Card does."
   [card-id user-id]
   (try
     (when-let [card (model-persistence.db/card-for-persistence card-id)]
@@ -31,5 +31,5 @@
 
 (methodical/defmethod events/publish-event! ::event
   [_topic {:keys [object user-id]}]
-  (when (= (keyword (:type object)) :model)
+  (when (and user-id (= (keyword (:type object)) :model))
     (turn-on-model! (:id object) user-id)))
