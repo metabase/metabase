@@ -1,29 +1,40 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupMfaStatusEndpoint,
   setupMfaStatusEndpointError,
+  setupStatefulMfaAccountEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import type { MfaEnforcement, MfaStatus } from "metabase-types/api";
 import {
+  createMockMfaEnrollResponse,
   createMockMfaStatus,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { AccountSecurityPanel } from "./AccountSecurityPanel";
 
+const PASSWORD = "Pa55word!";
+const CODE = "246810";
+const NEW_SECRET = "NEWSECRET234567";
+const NEW_RECOVERY_CODES = ["aaaaa-11111", "bbbbb-22222"];
+
 type SetupOpts = {
   status?: MfaStatus;
   hasStatusError?: boolean;
   hasFeature?: boolean;
   enforcement?: MfaEnforcement;
+  isStateful?: boolean;
 };
 
 function setup({
@@ -31,9 +42,21 @@ function setup({
   hasStatusError = false,
   hasFeature = true,
   enforcement = "optional",
+  isStateful = false,
 }: SetupOpts = {}) {
   if (hasStatusError) {
     setupMfaStatusEndpointError();
+  } else if (isStateful) {
+    setupStatefulMfaAccountEndpoints({
+      status,
+      password: PASSWORD,
+      code: CODE,
+      enrollResponse: createMockMfaEnrollResponse({
+        secret: NEW_SECRET,
+        otpauth_uri: `otpauth://totp/Metabase?secret=${NEW_SECRET}`,
+      }),
+      recoveryCodes: NEW_RECOVERY_CODES,
+    });
   } else {
     setupMfaStatusEndpoint(status);
   }
@@ -50,7 +73,102 @@ function setup({
   });
 }
 
+function lastRequestBody(path: string): unknown {
+  const call = fetchMock.callHistory.calls(`path:${path}`).at(-1);
+  return call ? JSON.parse(String(call.options.body)) : undefined;
+}
+
 describe("AccountSecurityPanel", () => {
+  it("should let an enrolled user disable 2FA with a code and then set it up again", async () => {
+    setup({
+      status: createMockMfaStatus({ enrolled: true }),
+      isStateful: true,
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Disable" }),
+    );
+    const disableModal = await screen.findByRole("dialog", {
+      name: "Disable two-factor authentication",
+    });
+    expect(
+      within(disableModal).getByText(
+        "Are you sure you want to disable two-factor authentication? Your account will be protected by your password only, and your recovery codes will stop working.",
+      ),
+    ).toBeInTheDocument();
+    await userEvent.type(
+      within(disableModal).getByLabelText(
+        "Confirm with an authenticator code or a recovery code",
+      ),
+      CODE,
+    );
+    await userEvent.click(
+      within(disableModal).getByRole("button", { name: "Disable" }),
+    );
+
+    const setupButton = await screen.findByRole("button", {
+      name: "Set up two-factor authentication",
+    });
+    expect(setupButton).toBeEnabled();
+    expect(lastRequestBody("/api/ee/mfa/disable")).toEqual({ code: CODE });
+    expect(
+      screen.queryByRole("button", { name: "Disable" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(setupButton);
+    const setupModal = await screen.findByRole("dialog", {
+      name: "Set up two-factor authentication",
+    });
+    await userEvent.type(
+      within(setupModal).getByLabelText("Confirm your password to begin"),
+      PASSWORD,
+    );
+    await userEvent.click(
+      within(setupModal).getByRole("button", { name: "Continue" }),
+    );
+
+    expect(await within(setupModal).findByText(NEW_SECRET)).toBeInTheDocument();
+    expect(lastRequestBody("/api/ee/mfa/enroll")).toEqual({
+      password: PASSWORD,
+    });
+    await userEvent.type(
+      within(setupModal).getByLabelText(
+        "Enter the 6-digit code from the authenticator app",
+      ),
+      CODE,
+    );
+    await userEvent.click(
+      within(setupModal).getByRole("button", { name: "Set up authentication" }),
+    );
+
+    expect(
+      await within(setupModal).findByText("Your recovery codes"),
+    ).toBeInTheDocument();
+    expect(
+      within(setupModal).getByText(NEW_RECOVERY_CODES[1]),
+    ).toBeInTheDocument();
+    expect(lastRequestBody("/api/ee/mfa/enroll/confirm")).toEqual({
+      code: CODE,
+    });
+    await userEvent.click(
+      within(setupModal).getByRole("button", { name: "Done" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", {
+          name: "Set up two-factor authentication",
+        }),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      await screen.findByRole("button", { name: "Disable" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Generate recovery codes" }),
+    ).toBeInTheDocument();
+  });
+
   it("should open the setup modal when the user is not enrolled", async () => {
     setup({ status: createMockMfaStatus({ enrolled: false }) });
 

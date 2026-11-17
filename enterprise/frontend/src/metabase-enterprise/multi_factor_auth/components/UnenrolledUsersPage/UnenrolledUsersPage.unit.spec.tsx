@@ -1,15 +1,20 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupMfaUnenrolledUsersEndpoint,
   setupMfaUnenrolledUsersEndpointError,
+  setupMfaUnenrolledUsersSearchEndpoint,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
+  waitFor,
+  within,
 } from "__support__/ui";
 import type { MfaAdminUser } from "metabase-types/api";
+import { createMockMfaEnrolledUser } from "metabase-types/api/mocks";
 
 import { UnenrolledUsersPage } from "./UnenrolledUsersPage";
 
@@ -20,17 +25,41 @@ jest.mock("metabase/utils/constants", () => ({
   SEARCH_DEBOUNCE_DURATION: 0,
 }));
 
+const NO_DATA_USER: MfaAdminUser = createMockMfaEnrolledUser({
+  id: 3,
+  first_name: "No",
+  last_name: "Data",
+  common_name: "No Data",
+  email: "nodata@metabase.test",
+});
+
+const ADMIN_USER: MfaAdminUser = createMockMfaEnrolledUser({
+  id: 1,
+  first_name: "Bobby",
+  last_name: "Tables",
+  common_name: "Bobby Tables",
+  email: "admin@metabase.test",
+  is_superuser: true,
+});
+
 type SetupOpts = {
   users?: MfaAdminUser[];
   hasError?: boolean;
+  isSearchable?: boolean;
 };
 
-function setup({ users = [], hasError = false }: SetupOpts = {}) {
+function setup({
+  users = [],
+  hasError = false,
+  isSearchable = false,
+}: SetupOpts = {}) {
   // TreeTable virtualizes rows, so the container needs a measurable size
   mockGetBoundingClientRect({ width: 800, height: 600 });
 
   if (hasError) {
     setupMfaUnenrolledUsersEndpointError();
+  } else if (isSearchable) {
+    setupMfaUnenrolledUsersSearchEndpoint(users);
   } else {
     setupMfaUnenrolledUsersEndpoint(users);
   }
@@ -38,7 +67,41 @@ function setup({ users = [], hasError = false }: SetupOpts = {}) {
   renderWithProviders(<UnenrolledUsersPage />, { withRouter: true });
 }
 
+function lastListQuery() {
+  const url = fetchMock.callHistory
+    .calls("path:/api/ee/mfa/admin/unenrolled-users")
+    .at(-1)?.url;
+  return url ? new URL(url).searchParams.get("query") : undefined;
+}
+
 describe("UnenrolledUsersPage", () => {
+  it("lists the users without 2FA and narrows the list to the searched person", async () => {
+    setup({ users: [NO_DATA_USER, ADMIN_USER], isSearchable: true });
+
+    const table = await screen.findByTestId("mfa-unenrolled-users-table");
+    expect(
+      await within(table).findByText("nodata@metabase.test"),
+    ).toBeInTheDocument();
+    expect(within(table).getByText("admin@metabase.test")).toBeInTheDocument();
+    expect(lastListQuery()).toBeNull();
+
+    await userEvent.type(screen.getByPlaceholderText("Search…"), "Bobby");
+
+    await waitFor(() => expect(lastListQuery()).toBe("Bobby"));
+    await waitFor(() => {
+      expect(
+        within(screen.getByTestId("mfa-unenrolled-users-table")).queryByText(
+          "nodata@metabase.test",
+        ),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      within(screen.getByTestId("mfa-unenrolled-users-table")).getByText(
+        "admin@metabase.test",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("distinguishes everyone being enrolled from a search that matches nobody", async () => {
     setup({ users: [] });
 

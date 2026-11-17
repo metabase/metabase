@@ -5,6 +5,7 @@ import {
   setupMfaAdminRemoveEndpoint,
   setupMfaEnrolledUsersEndpoint,
   setupMfaEnrolledUsersEndpointError,
+  setupStatefulMfaEnrolledUsersEndpoints,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import {
@@ -12,6 +13,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  within,
 } from "__support__/ui";
 import type { MfaEnrolledUser } from "metabase-types/api";
 import {
@@ -38,21 +40,37 @@ const OTHER_USER = createMockMfaEnrolledUser({
   email: "bobby@metabase.test",
 });
 
+const SECOND_USER = createMockMfaEnrolledUser({
+  id: 3,
+  first_name: "Robert",
+  last_name: "Normal",
+  common_name: "Robert Normal",
+  email: "normal@metabase.test",
+});
+
 type SetupOpts = {
   users?: MfaEnrolledUser[];
   hasError?: boolean;
+  isStateful?: boolean;
 };
 
-function setup({ users = [OTHER_USER], hasError = false }: SetupOpts = {}) {
+function setup({
+  users = [OTHER_USER],
+  hasError = false,
+  isStateful = false,
+}: SetupOpts = {}) {
   // TreeTable virtualizes rows, so the container needs a measurable size
   mockGetBoundingClientRect({ width: 800, height: 600 });
 
   if (hasError) {
     setupMfaEnrolledUsersEndpointError();
+    setupMfaAdminRemoveEndpoint();
+  } else if (isStateful) {
+    setupStatefulMfaEnrolledUsersEndpoints(users);
   } else {
     setupMfaEnrolledUsersEndpoint(users);
+    setupMfaAdminRemoveEndpoint();
   }
-  setupMfaAdminRemoveEndpoint();
 
   renderWithProviders(<EnrolledUsersPage />, {
     withRouter: true,
@@ -75,6 +93,50 @@ describe("EnrolledUsersPage", () => {
 
     expect(await screen.findByText("Bobby Tables")).toBeInTheDocument();
     expect(screen.getByText("bobby@metabase.test")).toBeInTheDocument();
+  });
+
+  it("removes a user's enrollment from their row and drops them from the list", async () => {
+    setup({ users: [OTHER_USER, SECOND_USER], isStateful: true });
+
+    const table = await screen.findByTestId("mfa-enrolled-users-table");
+    expect(await within(table).findByText("Robert Normal")).toBeInTheDocument();
+    expect(within(table).getByText("normal@metabase.test")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByLabelText("Actions for Robert Normal"));
+    await userEvent.click(
+      await screen.findByText("Remove two-factor authentication"),
+    );
+
+    const modal = await screen.findByRole("dialog");
+    expect(
+      within(modal).getByText(
+        "Remove two-factor authentication for Robert Normal?",
+      ),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Remove" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        within(screen.getByTestId("mfa-enrolled-users-table")).queryByText(
+          "normal@metabase.test",
+        ),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      within(screen.getByTestId("mfa-enrolled-users-table")).getByText(
+        "bobby@metabase.test",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    const removals = fetchMock.callHistory.calls(
+      "path:/api/ee/mfa/admin/remove",
+    );
+    expect(removals).toHaveLength(1);
+    const body: unknown = JSON.parse(String(removals[0].options.body));
+    expect(body).toEqual({ user_id: SECOND_USER.id });
   });
 
   it("marks deactivated users, who are listed because their enrollment still exists", async () => {
