@@ -795,22 +795,24 @@
   sharing must be enabled."
   [{:keys [dashboard-id]} :- [:map {:closed true}
                               [:dashboard-id ms/PositiveInt]]]
-  (api/check-superuser)
-  (public-sharing.validation/check-public-sharing-enabled)
-  (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
-  (let [existing-public-uuid (dashboards-rest.db/dashboard-public-uuid dashboard-id)
-        uuid (or existing-public-uuid
-                 (u/prog1 (str (random-uuid))
-                   ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
-                   (t2/with-transaction [_conn]
-                     (dashboards-rest.db/update-dashboard! dashboard-id
-                                                           {:public_uuid       <>
-                                                            :made_public_by_id api/*current-user-id*})
-                     (events/publish-event! :event/dashboard-public-link-created
-                                            {:object    (dashboards-rest.db/dashboard dashboard-id)
-                                             :object-id dashboard-id
-                                             :user-id   api/*current-user-id*}))))]
-    {:uuid uuid}))
+  (let [dashboard (api/check-404 (dashboards-rest.db/dashboard dashboard-id))
+        new-uuid  (str (random-uuid))]
+    (api/update-check dashboard {:public_uuid new-uuid, :made_public_by_id api/*current-user-id*})
+    (public-sharing.validation/check-public-sharing-enabled)
+    (api/check-not-archived dashboard)
+    (let [existing-public-uuid (dashboards-rest.db/dashboard-public-uuid dashboard-id)
+          uuid (or existing-public-uuid
+                   (u/prog1 new-uuid
+                     ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
+                     (t2/with-transaction [_conn]
+                       (dashboards-rest.db/update-dashboard! dashboard-id
+                                                             {:public_uuid       <>
+                                                              :made_public_by_id api/*current-user-id*})
+                       (events/publish-event! :event/dashboard-public-link-created
+                                              {:object    (dashboards-rest.db/dashboard dashboard-id)
+                                               :object-id dashboard-id
+                                               :user-id   api/*current-user-id*}))))]
+      {:uuid uuid})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -819,7 +821,8 @@
   "Delete the publicly-accessible link to this Dashboard."
   [{:keys [dashboard-id]} :- [:map {:closed true}
                               [:dashboard-id ms/PositiveInt]]]
-  (perms/check-has-application-permission :setting)
+  (let [dashboard (api/check-404 (dashboards-rest.db/dashboard dashboard-id))]
+    (api/update-check dashboard {:public_uuid nil, :made_public_by_id nil}))
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (t2/with-transaction [_conn]

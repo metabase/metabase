@@ -2151,7 +2151,7 @@
        (let [dashcard-info     (select-keys dashboard-card [:id :size_x :size_y :row :col :parameter_mappings])
              new-mappings      [{:parameter_id "_CATEGORY_ID_"
                                  :target       [:dimension [:field (mt/id :venues :price) nil]]}]
-             new-dashcard-info (assoc dashcard-info :size_x 1000)]
+             new-dashcard-info (assoc dashcard-info :size_x 20)]
          (f {:dashboard-id           dashboard-id
              :card-id                card-id
              :original-mappings      mappings
@@ -5957,6 +5957,57 @@
                 (testing "Database should contain nil embedding_type"
                   (is (= nil
                          (t2/select-one-fn :embedding_type :model/Dashboard :id (u/the-id dashboard)))))))))))))
+
+(def ^:private change-permission-cases
+  "Who may change the collection, the embedding and the public sharing of a Dashboard, by the permissions the user has
+  on the Dashboard's collection and on the collection it moves to, with the status each request answers."
+  [{:user :crowberto, :source nil,        :target nil,        :move 200, :embed 200, :share 200, :unshare 204}
+   {:user :rasta,     :source :readwrite, :target nil,        :move 403, :embed 403, :share 403, :unshare 403}
+   {:user :rasta,     :source :readwrite, :target :readwrite, :move 200, :embed 403, :share 403, :unshare 403}
+   {:user :rasta,     :source :read,      :target :readwrite, :move 403, :embed 403, :share 403, :unshare 403}
+   {:user :rasta,     :source nil,        :target nil,        :move 403, :embed 403, :share 403, :unshare 403}])
+
+(defn- grant-collection-permissions! [collection permission]
+  (case permission
+    :read      (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+    :readwrite (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+    nil))
+
+(deftest change-collection-embedding-and-public-sharing-permissions-test
+  (testing "Moving, embedding and sharing a Dashboard ask the user for the permissions of the change"
+    (mt/with-temporary-setting-values [enable-public-sharing true
+                                       enable-embedding-modular true]
+      (doseq [{:keys [user source target], :as expected} change-permission-cases]
+        (testing (pr-str (select-keys expected [:user :source :target]))
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temp [:model/Collection source-collection {}
+                           :model/Collection target-collection {}
+                           :model/Dashboard dashboard-a {:collection_id (u/the-id source-collection)}
+                           :model/Dashboard dashboard-b {:collection_id (u/the-id source-collection)}
+                           :model/Dashboard dashboard-c {:collection_id (u/the-id source-collection)
+                                                         :public_uuid   (str (random-uuid))}]
+              (grant-collection-permissions! source-collection source)
+              (grant-collection-permissions! target-collection target)
+              (testing "move to another collection"
+                (mt/user-http-request user :put (:move expected) (str "dashboard/" (u/the-id dashboard-a))
+                                      {:collection_id (u/the-id target-collection)})
+                (is (= (u/the-id (if (= 200 (:move expected)) target-collection source-collection))
+                       (t2/select-one-fn :collection_id :model/Dashboard :id (u/the-id dashboard-a)))))
+              (testing "turn on embedding"
+                (mt/user-http-request user :put (:embed expected) (str "dashboard/" (u/the-id dashboard-b))
+                                      {:enable_embedding true})
+                (is (= (= 200 (:embed expected))
+                       (t2/select-one-fn :enable_embedding :model/Dashboard :id (u/the-id dashboard-b)))))
+              (testing "create the public link"
+                (mt/user-http-request user :post (:share expected)
+                                      (format "dashboard/%d/public_link" (u/the-id dashboard-b)))
+                (is (= (= 200 (:share expected))
+                       (some? (t2/select-one-fn :public_uuid :model/Dashboard :id (u/the-id dashboard-b))))))
+              (testing "delete the public link"
+                (mt/user-http-request user :delete (:unshare expected)
+                                      (format "dashboard/%d/public_link" (u/the-id dashboard-c)))
+                (is (= (not= 204 (:unshare expected))
+                       (some? (t2/select-one-fn :public_uuid :model/Dashboard :id (u/the-id dashboard-c)))))))))))))
 
 (deftest save-dashboard-test
   (let [response (mt/user-http-request :crowberto :post 200 "dashboard/save" {:auto_apply_filters true,

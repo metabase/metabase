@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.constants :as dashboards.constants]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib-be.core :as lib-be]
@@ -10,14 +11,18 @@
    [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
+   [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+;;; ------------------------------------------------------ Setup -----------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/DashboardCard [_model] :report_dashboardcard)
 
@@ -33,6 +38,8 @@
   {:parameter_mappings     parameters/transform-parameter-mappings
    :visualization_settings lib-be/transform-visualization-settings
    :inline_parameters      mi/transform-json})
+
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (defn- validate-link-card-entity-id
   "Require the link-card entity id to be an integer before it is stored. It is used as an id when the linked
@@ -62,17 +69,62 @@
       validate-link-card-entity-id
       validate-click-behavior-target-ids))
 
+(defn- check-layout
+  "Throws a 400 unless the size of `dashcard` is positive, its position is not negative and it fits in the grid."
+  [{:keys [size_x size_y row col]}]
+  (when (or (some #(and (some? %) (not (pos-int? %))) [size_x size_y])
+            (some #(and (some? %) (not (nat-int? %))) [row col])
+            (and (pos-int? size_x) (nat-int? col) (> (+ col size_x) dashboards.constants/grid-width)))
+    (throw (ex-info (tru "A DashboardCard needs a positive size and a position that fits in the grid.")
+                    {:status-code 400}))))
+
+(defn- check-parameter-mappings
+  "Throws unless the `:parameter_mappings` of `dashcard`, normalized, are a sequence of mappings."
+  [{:keys [parameter_mappings]}]
+  (params/assert-valid-parameter-mappings
+   {:parameter_mappings (some->> parameter_mappings (lib/normalize ::parameters.schema/parameter-mappings))}))
+
+(defn- check-tabs
+  "Throws a 400 unless the tab of each of `dashcards` belongs to the Dashboard of the dashcard, the tabs loaded
+  together."
+  [dashcards]
+  (when-let [tab-ids (seq (into #{} (keep :dashboard_tab_id) dashcards))]
+    (let [tab-id->dashboard-id (dashboards.db/tab-dashboard-ids (vec tab-ids))]
+      (doseq [{:keys [dashboard_id dashboard_tab_id]} dashcards
+              :when dashboard_tab_id]
+        (when-not (= dashboard_id (get tab-id->dashboard-id dashboard_tab_id))
+          (throw (ex-info (tru "A DashboardCard''s tab must belong to its Dashboard.") {:status-code 400})))))))
+
+(mi/define-before-insert :model/DashboardCard
+  [dashcards]
+  (check-tabs dashcards)
+  dashcards)
+
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
+  (check-layout dashcard)
+  (check-parameter-mappings dashcard)
   (-> (merge {:parameter_mappings     []
               :visualization_settings {}
               :inline_parameters      []}
              dashcard)
       validate-dashcard-on-write))
 
+(mi/define-before-update :model/DashboardCard
+  [dashcards]
+  (check-tabs (filter #(contains? (t2/changes %) :dashboard_tab_id) dashcards))
+  dashcards)
+
 (t2/define-before-update :model/DashboardCard
   [dashcard]
-  (validate-dashcard-on-write dashcard))
+  (let [changes (t2/changes dashcard)]
+    (when (contains? changes :dashboard_id)
+      (throw (ex-info (tru "A DashboardCard cannot move to another Dashboard.") {:status-code 400})))
+    (when (some #(contains? changes %) [:size_x :size_y :row :col])
+      (check-layout dashcard))
+    (when (contains? changes :parameter_mappings)
+      (check-parameter-mappings dashcard))
+    (validate-dashcard-on-write dashcard)))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard
@@ -83,6 +135,8 @@
     dashcard))
 
 (declare series)
+
+;;; --------------------------------------------------- Permissions --------------------------------------------------
 
 (defn- card-collection-ids
   "For each of `dashcards`, by id, the ids of the Collections, nil for the root, of its Card and of the Cards of its
@@ -405,6 +459,8 @@
                                                                opts))))
                :parameter_mappings     serialization/parameter-mappings-transform
                :visualization_settings serialization/visualization-settings-transform}})
+
+;;; -------------------------------------------------- Remote sync ---------------------------------------------------
 
 (defmethod remote-sync/spec :model/DashboardCard
   [_model]

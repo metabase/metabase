@@ -538,3 +538,82 @@
                                                            [:card [:map
                                                                    [:id [:= (:id card)]]]]]]]])}}
             (-> dash (t2/hydrate :resolved-params) :resolved-params)))))
+
+(deftest collection-namespace-test
+  (testing "A Dashboard goes in a Collection of an allowed namespace, when it is inserted and when it moves"
+    (mt/with-temp [:model/Collection snippets {:namespace :snippets}
+                   :model/Collection plain    {}
+                   :model/Dashboard  dash     {:collection_id (u/the-id plain)}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
+                            (t2/insert! :model/Dashboard {:name "Dash" :creator_id (mt/user->id :rasta)
+                                                          :collection_id (u/the-id snippets)})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
+                            (t2/update! :model/Dashboard :id (u/the-id dash) {:collection_id (u/the-id snippets)})))
+      (is (= (u/the-id plain) (t2/select-one-fn :collection_id :model/Dashboard :id (u/the-id dash)))))))
+
+(deftest move-dashboard-moves-dashboard-questions-test
+  (testing "Any update of the collection of a Dashboard moves the questions saved in it"
+    (mt/with-temp [:model/Collection source {}
+                   :model/Collection target {}
+                   :model/Dashboard  dash   {:collection_id (u/the-id source)}
+                   :model/Card       card   {:dashboard_id (u/the-id dash) :collection_id (u/the-id source)}]
+      (t2/update! :model/Dashboard :id (u/the-id dash) {:collection_id (u/the-id target)})
+      (is (= (u/the-id target) (t2/select-one-fn :collection_id :model/Card :id (u/the-id card))))
+      (t2/update! :model/Dashboard :id (u/the-id dash) {:collection_id nil})
+      (is (nil? (t2/select-one-fn :collection_id :model/Card :id (u/the-id card)))))))
+
+(deftest check-dashboard-columns-test
+  (testing "A Dashboard keeps a name, a known width, boolean auto apply filters and distinct parameter ids"
+    (let [parameter (fn [id] {:id id :type :category :name id :slug id})
+          insert!   (fn [row] (t2/insert! :model/Dashboard (merge {:name "Dash" :creator_id (mt/user->id :rasta)} row)))]
+      (mt/with-temp [:model/Dashboard dash {}]
+        (doseq [[column bad] [[:name "  "]
+                              [:width "wide"]
+                              [:auto_apply_filters "yes"]
+                              [:parameters [(parameter "a") (parameter "a")]]]]
+          (testing (str "insert " column)
+            (is (thrown? clojure.lang.ExceptionInfo (insert! {column bad}))))
+          (testing (str "update " column)
+            (is (thrown? clojure.lang.ExceptionInfo (t2/update! :model/Dashboard :id (u/the-id dash) {column bad})))))
+        (is (some? (insert! {:width "full" :auto_apply_filters false
+                             :parameters [(parameter "a") (parameter "b")]})))
+        (t2/update! :model/Dashboard :id (u/the-id dash) {:width "full"})
+        (is (= "full" (t2/select-one-fn :width :model/Dashboard :id (u/the-id dash))))))))
+
+(def ^:private change-permission-table
+  "The changes of a Dashboard the permission check refuses a user, by what the user may write."
+  [{:writes #{}                 :changes {:name "New"}                   :allowed? false}
+   {:writes #{:source}          :changes {:name "New"}                   :allowed? true}
+   {:writes #{:source}          :changes {:collection_id :target}        :allowed? false}
+   {:writes #{:source :target}  :changes {:collection_id :target}        :allowed? true}
+   {:writes #{:source :target}  :changes {:enable_embedding true}        :allowed? false}
+   {:writes #{:source :target}  :changes {:public_uuid "a-public-link"}  :allowed? false}])
+
+(deftest can-update-dashboard-test
+  (testing "Whether the current user may change a Dashboard depends on the collections and on the columns changed"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (doseq [{:keys [writes changes allowed?]} change-permission-table]
+        (mt/with-temp [:model/Collection source {}
+                       :model/Collection target {}
+                       :model/Dashboard  dash   {:collection_id (u/the-id source)}]
+          (let [collections {:source source :target target}
+                changes     (cond-> changes
+                              (= :target (:collection_id changes)) (assoc :collection_id (u/the-id target)))]
+            (doseq [collection-key writes]
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) (collections collection-key)))
+            (testing (pr-str {:writes writes :changes changes})
+              (mt/with-test-user :rasta
+                (is (= allowed? (mi/can-update? (t2/hydrate dash :can_write) changes))))
+              (mt/with-test-user :crowberto
+                (is (true? (mi/can-update? (t2/hydrate dash :can_write) changes)))))))))))
+
+(deftest can-create-dashboard-test
+  (testing "Creating a Dashboard needs write access to its collection, and a superuser to start it shared"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection writable {}]
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) writable)
+        (mt/with-test-user :rasta
+          (is (true? (mi/can-create? :model/Dashboard {:collection_id (u/the-id writable)})))
+          (is (false? (mi/can-create? :model/Dashboard {:collection_id (u/the-id writable) :enable_embedding true}))))
+        (mt/with-test-user :crowberto
+          (is (true? (mi/can-create? :model/Dashboard {:collection_id (u/the-id writable) :enable_embedding true}))))))))

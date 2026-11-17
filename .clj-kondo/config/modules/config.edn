@@ -820,6 +820,7 @@
            models
            parameters
            parameters.schema
+           permissions
            public-sharing
            pulse
            queries

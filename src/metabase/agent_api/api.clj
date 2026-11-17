@@ -1581,7 +1581,7 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- ::update-dashboard-request]
-  (let [current-dash (api/write-check :model/Dashboard id)
+  (let [current-dash (api/check-404 (agent-api.db/dashboard id))
         updates      (cond-> {}
                        (contains? body :name)          (assoc :name (:name body))
                        (contains? body :description)   (assoc :description (:description body))
@@ -1593,8 +1593,9 @@
         ;; 200 but discards the move. Matching REST for now; rejecting the combination with a 400
         ;; may serve LLM callers better.
         updates      (api/updates-with-archived-directly current-dash updates)
-        ;; A move requires write on BOTH source and target collection. `api/write-check :model/Dashboard`
-        ;; above only covered the source entity. Mirror the REST endpoint's gate.
+        ;; A move requires write on BOTH source and target collection: the update check asks it, and the
+        ;; collection check refuses an archived target. Mirror the REST endpoint's gate.
+        _            (api/update-check current-dash updates)
         _            (collection/check-allowed-to-change-collection current-dash updates)
         mutations    (:dashcards body)
         ;; Card mutations on an archived dashboard are rejected, like the REST path. That includes
@@ -1609,7 +1610,7 @@
                                   [400 "Can't modify dashcards while archiving the dashboard."]))
         result       (t2/with-transaction [_conn]
                        (when (seq updates)
-                         (dashboard/cascade-card-state-from-dashboard-update! current-dash updates)
+                         (dashboard/cascade-archived-from-dashboard-update! current-dash updates)
                          (agent-api.db/update-dashboard! id updates)
                          ;; Fire :event/collection-touch with the *target* collection id so the
                          ;; activity feed records the right collection. Note: the dashboards-rest

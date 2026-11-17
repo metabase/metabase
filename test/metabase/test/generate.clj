@@ -122,7 +122,9 @@
 (s/def :parameter/id   ::not-empty-string)
 (s/def :parameter/type #{:text})
 (s/def ::parameter  (s/keys :req-un [:parameter/id :parameter/type]))
-(s/def ::parameters (s/coll-of ::parameter))
+(s/def ::parameters (s/with-gen (s/coll-of ::parameter)
+                      #(gen/fmap (fn [parameters] (into [] (m/distinct-by :id) parameters))
+                                 (s/gen (s/coll-of ::parameter)))))
 
 (s/def :action/type #{:query :implicit})
 

@@ -125,15 +125,11 @@
                               :dashboard-id (u/the-id dash)})
      dash)))
 
-(defn- check-allowed-to-change-embedding
-  "You must be a superuser to change the value of `enable_embedding`, `embedding_type` or `embedding_params`. Embedding must be
-  enabled."
+(defn- check-embedding-enabled
+  "Throws a 400 unless embedding is enabled, when `dash-updates` change the embedding of `dash-before-update`."
   [dash-before-update dash-updates]
-  (when (or (api/column-will-change? (:enable_embedding dash-before-update) (get dash-updates :enable_embedding ::api/not-provided))
-            (api/column-will-change? (:embedding_type dash-before-update) (get dash-updates :embedding_type ::api/not-provided))
-            (api/column-will-change? (:embedding_params dash-before-update) (get dash-updates :embedding_params ::api/not-provided)))
-    (embedding.validation/check-embedding-enabled)
-    (api/check-superuser)))
+  (when (dashboard/changes-embedding? dash-before-update dash-updates)
+    (embedding.validation/check-embedding-enabled)))
 
 (mu/defn- param-target->field-id :- [:maybe ::lib.schema.id/field]
   [target :- ::lib.schema.common/possibly-unnormalized-clause
@@ -320,7 +316,7 @@
     {:name       "update-dashboard"
      :attributes {:dashboard/id id}}
     (check-new-references (stored-references id) dash-updates)
-    (let [current-dash                       (api/write-check :model/Dashboard id)
+    (let [current-dash                       (api/check-404 (dashboards.db/dashboard id))
           ;; If there are parameters in the update, we want the old params so that we can do a check to see if any of
           ;; the notifications were broken by the update.
           {original-params :resolved-params} (when parameters
@@ -333,8 +329,9 @@
           ;; tests that exclude it. so this only checks for dashcards
           update-dashcards-and-tabs?         (contains? dash-updates :dashcards)
           dash-updates                       (api/updates-with-archived-directly current-dash dash-updates)]
+      (api/update-check current-dash dash-updates)
       (collection/check-allowed-to-change-collection current-dash dash-updates)
-      (check-allowed-to-change-embedding current-dash dash-updates)
+      (check-embedding-enabled current-dash dash-updates)
       (api/check-500
        (do
          (t2/with-transaction [_conn]
@@ -347,7 +344,7 @@
                                 :present #{:description :position :width :collection_id :collection_position :cache_ttl :archived_directly :embedding_type}
                                 :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                            :embedding_params :archived :auto_apply_filters}))]
-             (dashboard/cascade-card-state-from-dashboard-update! current-dash dash-updates)
+             (dashboard/cascade-archived-from-dashboard-update! current-dash dash-updates)
              (dashboards.db/update-dashboard! id updates)
              (when (contains? updates :collection_id)
                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
