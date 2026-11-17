@@ -948,46 +948,56 @@
         (getMetaData [_] (reify DatabaseMetaData (getDatabaseProductName [_] product)))
         (close [_])))))
 
+(defn- do-with-product-app-db
+  "Bind an application DB of `db-type` whose connections report `product`, and call `f` with a function returning
+  how many connections it has opened.
+  The first connection throws when `fail-first?` is set."
+  [db-type product fail-first? f]
+  (let [calls (atom 0)]
+    (mdb.connection/with-application-db
+      (mdb.connection/application-db db-type (product-data-source product calls fail-first?))
+      (f #(deref calls)))))
+
 (deftest mariadb?-test
   (testing "a :mysql application DB reads the product name once"
     (doseq [[product expected] {"MariaDB" true, "MySQL" false}]
-      (let [calls  (atom 0)
-            app-db (mdb.connection/application-db :mysql (product-data-source product calls false))]
-        (mdb.connection/with-application-db app-db
-          (is (= {:answers [expected expected], :calls 1}
-                 {:answers [(mdb.connection/mariadb?) (mdb.connection/mariadb?)], :calls @calls}))))))
+      (do-with-product-app-db
+       :mysql product false
+       (fn [calls]
+         (is (= {:answers [expected expected], :calls 1}
+                {:answers [(mdb.connection/mariadb?) (mdb.connection/mariadb?)], :calls (calls)}))))))
   (testing "a failed read is not cached, so the next call tries again"
-    (let [calls  (atom 0)
-          app-db (mdb.connection/application-db :mysql (product-data-source "MariaDB" calls true))]
-      (mdb.connection/with-application-db app-db
-        (is (thrown? SQLException (mdb.connection/mariadb?)))
-        (is (true? (mdb.connection/mariadb?)))
-        (is (= 2 @calls)))))
+    (do-with-product-app-db
+     :mysql "MariaDB" true
+     (fn [calls]
+       (is (thrown? SQLException (mdb.connection/mariadb?)))
+       (is (true? (mdb.connection/mariadb?)))
+       (is (= 2 (calls))))))
   (testing "other application DB types are never MariaDB, and never connect"
-    (let [calls  (atom 0)
-          app-db (mdb.connection/application-db :h2 (product-data-source "MariaDB" calls false))]
-      (mdb.connection/with-application-db app-db
-        (is (= {:answer false, :calls 0}
-               {:answer (mdb.connection/mariadb?), :calls @calls}))))))
+    (do-with-product-app-db
+     :h2 "MariaDB" false
+     (fn [calls]
+       (is (= {:answer false, :calls 0}
+              {:answer (mdb.connection/mariadb?), :calls (calls)}))))))
 
 (deftest record-mariadb!-test
   (testing "a recorded answer is used without connecting"
-    (let [calls  (atom 0)
-          app-db (mdb.connection/application-db :mysql (product-data-source "MySQL" calls false))]
-      (mdb.connection/with-application-db app-db
-        (mdb.connection/record-mariadb! true)
-        (is (= {:answer true, :calls 0}
-               {:answer (mdb.connection/mariadb?), :calls @calls})))))
+    (do-with-product-app-db
+     :mysql "MySQL" false
+     (fn [calls]
+       (mdb.connection/record-mariadb! true)
+       (is (= {:answer true, :calls 0}
+              {:answer (mdb.connection/mariadb?), :calls (calls)})))))
   (testing "an answer already read is kept"
-    (let [calls  (atom 0)
-          app-db (mdb.connection/application-db :mysql (product-data-source "MySQL" calls false))]
-      (mdb.connection/with-application-db app-db
-        (mdb.connection/mariadb?)
-        (mdb.connection/record-mariadb! true)
-        (is (false? (mdb.connection/mariadb?))))))
+    (do-with-product-app-db
+     :mysql "MySQL" false
+     (fn [_calls]
+       (mdb.connection/mariadb?)
+       (mdb.connection/record-mariadb! true)
+       (is (false? (mdb.connection/mariadb?))))))
   (testing "a recorded answer is ignored for types other than :mysql"
-    (let [calls  (atom 0)
-          app-db (mdb.connection/application-db :h2 (product-data-source "MariaDB" calls false))]
-      (mdb.connection/with-application-db app-db
-        (mdb.connection/record-mariadb! true)
-        (is (false? (mdb.connection/mariadb?)))))))
+    (do-with-product-app-db
+     :h2 "MariaDB" false
+     (fn [_calls]
+       (mdb.connection/record-mariadb! true)
+       (is (false? (mdb.connection/mariadb?)))))))

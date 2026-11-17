@@ -180,10 +180,9 @@
          (not (pos? (compare ((juxt :major :minor :patch) required-version)
                              [major minor patch]))))))
 
+;; Public for [[metabase.app-db.core/verify-application-db-connection!]], which most callers should use instead.
 (mu/defn verify-db-connection
-  "Test connection to application database with `data-source` and throw an exception if we have any troubles
-  connecting. Public so [[metabase.app-db.core/verify-application-db-connection!]] can call it from outside this
-  namespace; most callers should use that wrapper instead of invoking this directly.
+  "Check the application database connection through `data-source`, and throw if it fails or has an unsupported version.
   Returns whether the database is MariaDB."
   [db-type     :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]

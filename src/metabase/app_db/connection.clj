@@ -174,8 +174,8 @@
 (defn record-mariadb!
   "Record whether the application DB is MariaDB, so [[mariadb?]] need not connect.
   A no-op when the answer is already known, which it always is for types other than `:mysql`."
-  [mariadb?]
-  (compare-and-set! (.mariadb? (current-application-db)) nil (boolean mariadb?))
+  [answer]
+  (compare-and-set! (.mariadb? (current-application-db)) nil (boolean answer))
   nil)
 
 (defn quartz-data-source
