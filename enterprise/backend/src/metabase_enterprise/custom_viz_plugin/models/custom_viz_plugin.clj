@@ -148,11 +148,7 @@
   "The archive of the `files` read from beside a plugin's YAML. A file that isn't there is left out, and
   validation names it."
   [files]
-  (cache/files->bundle (into {}
-                             (keep (fn [[path content]]
-                                     (when content
-                                       [path (text->file content)])))
-                             files)))
+  (cache/files->bundle (update-vals (u/remove-nils files) text->file)))
 
 (defmethod serialization/spec :model/CustomVizPlugin [_]
   {:schema       ::custom-viz-plugin.schema/external-custom-viz-plugin
