@@ -65,6 +65,8 @@ export type DashboardContextOwnProps = {
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: unknown) => void;
   onLoadWithoutCards?: (dashboard: Dashboard) => void;
+  /** Called when every card query of a load is done, unlike `onLoad` it also waits for every series of a multi-series card. */
+  onLoadingComplete?: () => void;
   onAddQuestion?: (dashboard: Dashboard | null) => void;
   navigateToNewCardFromDashboard:
     | ((opts: NavigateToNewCardFromDashboardOpts) => void)
@@ -145,6 +147,7 @@ const DashboardContextProviderInner = forwardRef(
       parameterQueryParams = {},
       onLoad,
       onLoadWithoutCards,
+      onLoadingComplete,
       onError,
       dashcardMenu,
       dashboardActions: initDashboardActions,
@@ -296,9 +299,11 @@ const DashboardContextProviderInner = forwardRef(
 
       try {
         if (hasDashboardLoaded) {
-          fetchDashboardCardData({ reload: false, clearCache: true });
+          fetchDashboardCardData({ reload: false, clearCache: true })?.then(
+            onLoadingComplete,
+          );
         } else if (hasTabChanged || hasParameterValueChanged) {
-          fetchDashboardCardData();
+          fetchDashboardCardData()?.then(onLoadingComplete);
         }
       } catch (e) {
         handleError?.(e);
@@ -306,6 +311,7 @@ const DashboardContextProviderInner = forwardRef(
     }, [
       fetchDashboardCardData,
       handleError,
+      onLoadingComplete,
       parameterValues,
       previousDashboard,
       previousParameterValues,
