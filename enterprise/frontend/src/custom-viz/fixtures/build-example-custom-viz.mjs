@@ -60,6 +60,9 @@ async function buildDemoViz({ index, manifest, out }) {
 
   rmSync(stage, { recursive: true, force: true });
   mkdirSync(resolve(stage, "dist/assets"), { recursive: true });
+  cpSync(resolve(PLUGIN_ROOT, "public/assets"), resolve(stage, "dist/assets"), {
+    recursive: true,
+  });
 
   // Bundle the React-based plugin into a single IIFE. We bundle React
   // itself: real customer plugins also self-contain React, and the
