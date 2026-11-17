@@ -12,7 +12,7 @@ import { createMockDashboard } from "metabase-types/api/mocks";
 
 export function setupDashboardEndpoints(
   dashboard: Dashboard,
-  { delay = 0 }: { delay?: number } = {},
+  { delay }: { delay?: number } = {},
 ) {
   fetchMock.get(`path:/api/dashboard/${dashboard.id}`, dashboard, { delay });
   fetchMock.put(`path:/api/dashboard/${dashboard.id}`, async (call) => {
@@ -49,8 +49,15 @@ export function setupDashboardCreateEndpoint(dashboard: Partial<Dashboard>) {
 export function setupDashboardQueryMetadataEndpoint(
   dashboard: Dashboard,
   metadata: DashboardQueryMetadata,
+  { delay }: { delay?: number } = {},
 ) {
-  fetchMock.get(`path:/api/dashboard/${dashboard.id}/query_metadata`, metadata);
+  fetchMock.get(
+    `path:/api/dashboard/${dashboard.id}/query_metadata`,
+    metadata,
+    {
+      delay,
+    },
+  );
 }
 
 export function setupDashboardsEndpoints(dashboards: Dashboard[]) {

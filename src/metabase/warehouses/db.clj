@@ -18,6 +18,11 @@
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one :model/Database :id database-id))
 
+(mu/defn database-settings-by-name
+  "The `:settings` of a Database named `database-name`, or nil."
+  [database-name :- :string]
+  (t2/select-one-fn :settings :model/Database :name database-name))
+
 (mu/defn non-destination-database
   "The Database with `database-id` if it is not a routing destination, or nil."
   [database-id :- ::lib.schema.id/database]
@@ -83,6 +88,8 @@
                           [:not [:exists ^:allow-subquery {:select [1]
                                                            :from   [[(t2/table-name :model/Field) :child_field]]
                                                            :where  [:= :child_field.parent_id :metabase_field.id]}]])]
+    ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
     (t2/query-one {:delete-from (t2/table-name :model/Field)
                    :where       [:and
                                  [:in :table_id table-ids-query]
@@ -114,6 +121,8 @@
   deleted."
   [database-id :- ::lib.schema.id/database
    card-ids    :- [:sequential ::lib.schema.id/card]]
+  ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
   (first (t2/query {:delete-from (t2/table-name :model/Card)
                     :where       [:and
                                   [:= :database_id database-id]

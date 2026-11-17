@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
    [metabase.util.malli.registry :as mr]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (use-fixtures :once
@@ -86,10 +87,16 @@
                                                                            (:children (get specs parent))))))))))
 
 (deftest primary-keys-match-models-test
-  (testing "the primary key of each spec is the first primary key of its model"
+  (testing "each serialized model has one primary key column, which serialization uses"
     (doseq [[model-name model] (model-specs)]
       (testing model-name
-        (is (= (first (t2/primary-keys model)) (serialization.spec/primary-key model)))))))
+        (is (= (t2/primary-keys model) [(serialization.spec/primary-key model)]))))))
+
+(methodical/defmethod t2/primary-keys ::two-key-model [_model] [:kind :local_id])
+
+(deftest primary-key-rejects-several-columns-test
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"single primary key column"
+                        (serialization.spec/primary-key ::two-key-model))))
 
 (def ^:private implicit-columns
   "The columns a spec never declares, since serialization never exports them."

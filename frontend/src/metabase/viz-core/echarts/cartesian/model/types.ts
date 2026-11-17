@@ -186,7 +186,7 @@ export type YAxisModel = {
   label?: string;
   formatter: AxisFormatter;
   formatGoal: AxisFormatter;
-  splitNumber?: number;
+  splitNumber: number;
   hasResponsiveTicks?: boolean;
   isNormalized?: boolean;
 };
