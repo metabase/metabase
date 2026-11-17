@@ -86,13 +86,6 @@
        (t2/update! :model/Transform :id transform-id
                    {:target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}})
        (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id index-id))))))
-  (testing "the same holds while deserializing"
-    (temp-transform-with-index!
-     (fn [transform-id index-id]
-       (binding [mi/*deserializing?* true]
-         (t2/update! :model/Transform :id transform-id
-                     {:target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}}))
-       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id index-id))))))
   (testing "an unrelated edit (renaming the transform) leaves the indexes alone"
     (temp-transform-with-index!
      (fn [transform-id index-id]

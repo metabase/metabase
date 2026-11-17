@@ -62,7 +62,7 @@
    {:keys [card_id inputs expectations] :as body} :- ::data-testing.schema/card-test.create]
   (api/create-check :model/CardTest body)
   (validate-test! card_id inputs expectations)
-  (data-testing.db/insert-card-test! (assoc body :creator_id api/*current-user-id*)))
+  (data-testing.models.card-test/create-card-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/card-test
   "Update a card test.
@@ -80,7 +80,7 @@
       (let [{:keys [card_id inputs expectations]} (merge card-test body)]
         (validate-test! card_id inputs expectations)))
     (when (seq body)
-      (data-testing.db/update-card-test! id body)))
+      (data-testing.models.card-test/update-card-test! id body)))
   (data-testing.db/card-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -88,7 +88,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/CardTest id)
-  (data-testing.db/delete-card-test! id)
+  (data-testing.models.card-test/delete-card-test! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result

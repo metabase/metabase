@@ -551,15 +551,14 @@
                             (t2/update! :model/ImplicitAction {:action_id action-id} {:table_id (mt/id :categories)})))
       (is (nil? (t2/select-one-fn :table_id :model/ImplicitAction :action_id action-id))))))
 
-(deftest load-moves-action-to-another-model-test
-  (testing "a serdes load can move an action to another model, as exports from before the model was fixed can hold such a move"
+(deftest model-update-moves-action-to-another-model-test
+  (testing "a model update can move an action to another model, as SerDes loads of exports from before the model was fixed do"
     (mt/with-temp [:model/Collection {other-coll :id} {}
                    :model/Card       {other-id :id}   {:type :model :dataset_query (table-query :categories)
                                                        :collection_id other-coll}]
       (mt/with-actions [_                   {:type :model :dataset_query (table-query :categories)}
                         {:keys [action-id]} {:type :query}]
-        (binding [mi/*deserializing?* true]
-          (t2/update! :model/Action :id action-id {:model_id other-id :collection_id other-coll}))
+        (t2/update! :model/Action :id action-id {:model_id other-id :collection_id other-coll})
         (is (= {:model_id other-id :collection_id other-coll}
                (t2/select-one [:model/Action :model_id :collection_id] :id action-id)))))))
 

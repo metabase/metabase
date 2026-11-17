@@ -30,7 +30,8 @@ An endpoint parses the request, calls the permission check, and calls the write.
 - Write `before-update` as a flat list of `(when ...)` checks over `(t2/changes row)`, then return the row.
 - Throw `(ex-info (tru "...") {:status-code 400})`. `api/check-400` and friends are fine too.
 - Never read the current user in a hook: no `api/*current-user-id*`, `api/*is-superuser?*`, or permission call.
-- Never read `mi/*deserializing?*`. SerDes is a writer like any other.
+- Never ask who the writer is. SerDes and remote sync are writers like any other: events, audit rows and revisions
+  are published by the write function a user action calls, not by a hook.
 - Hold an invariant whatever the premium token says. A `defenterprise` an invariant calls is `:feature :none`.
 - Run a check that reads other rows only when the column it guards changes, and only in `before-update` when the
   row needs its id for the check (cycle detection).

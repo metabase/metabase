@@ -4,7 +4,6 @@
   (:require
    [clojure.walk :as walk]
    [metabase.dependencies.hooks :as dependencies.hooks]
-   [metabase.models.interface :as mi]
    [metabase.serialization.dependencies :as serialization.dependencies]
    [metabase.serialization.entity :as serialization.entity]
    [metabase.serialization.protocol :as protocol]
@@ -151,10 +150,9 @@
   ([model entities]
    (load model protocol.app-db/store entities import-opts))
   ([model store entities opts]
-   (binding [mi/*deserializing?* true]
-     (let [entities (vec entities)]
-       (load-items! model store (prepare-items model store entities opts (fn [_] (rows-by-refs store model entities)))
-                    opts)))))
+   (let [entities (vec entities)]
+     (load-items! model store (prepare-items model store entities opts (fn [_] (rows-by-refs store model entities)))
+                  opts))))
 
 (defn import
   "The rows that `entities` of `model` import to, with their references resolved at once in the app DB."

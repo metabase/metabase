@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -63,6 +64,14 @@
 (defmethod audit-app/model-details :model/TransformTest
   [transform-test _event-type]
   (select-keys transform-test [:transform_id :name :description]))
+
+;;; ---------------------------------------------------- Hooks -----------------------------------------------------
+
+(t2/define-before-delete :model/TransformTest [transform-test]
+  ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
+  ;; delete's transaction. Toucan 2 has no after-delete hook.
+  (data-testing.db/clear-test-id-of-runs! :transform (:id transform-test))
+  transform-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
@@ -133,6 +142,44 @@
        (or (not (remote-sync/synced-changes? :model/TransformTest instance changes))
            (not (remote-sync/read-only?)))))
 
+;;; ---------------------------------------------------- Writes ----------------------------------------------------
+
+(mu/defn create-transform-test! :- ::data-testing.schema/transform-test
+  "Insert the TransformTest `transform-test` and publish its create event as its creator, returning the inserted test."
+  [transform-test :- [:merge
+                      ::data-testing.schema/transform-test.create
+                      [:map {:closed true}
+                       [:creator_id ::lib.schema.id/user]]]]
+  (u/prog1 (data-testing.db/insert-transform-test! transform-test)
+    (events/publish-event! :event/transform-test-create {:object <> :user-id (:creator_id <>)})))
+
+(mu/defn update-transform-test! :- :nil
+  "Apply `changes` to the TransformTest with `id` and publish its update event when a column changed."
+  [id      :- ms/PositiveInt
+   changes :- ::data-testing.schema/transform-test.update]
+  (when (pos? (data-testing.db/update-transform-test! id changes))
+    (events/publish-event! :event/transform-test-update {:object (data-testing.db/transform-test id)}))
+  nil)
+
+(mu/defn delete-transform-test! :- :nil
+  "Delete the TransformTest with `id` and publish its delete event."
+  [id :- ms/PositiveInt]
+  (when-let [transform-test (data-testing.db/transform-test id)]
+    (data-testing.db/delete-transform-test! id)
+    (events/publish-event! :event/transform-test-delete {:object transform-test}))
+  nil)
+
+(defenterprise delete-transform-tests!
+  "Enterprise implementation: delete the tests of the transform `transform-id`, each through its own hook, and publish
+  a delete event for each. Runs whatever the token says, since the rows outlive the feature. See the OSS declaration in
+  `metabase.transforms.models.transform`."
+  :feature :none
+  [transform-id]
+  (let [transform-tests (data-testing.db/transform-tests {:transform-id transform-id})]
+    (data-testing.db/delete-transform-tests! transform-id)
+    (doseq [transform-test transform-tests]
+      (events/publish-event! :event/transform-test-delete {:object transform-test}))))
+
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
 (def ^:private revision-columns
@@ -152,38 +199,7 @@
 
 (defmethod revision/revert-to-revision! :model/TransformTest
   [_model id _user-id serialized-instance]
-  (data-testing.db/update-transform-test! id (select-keys serialized-instance revision-columns)))
-
-;;; ---------------------------------------------------- Events ----------------------------------------------------
-
-(t2/define-after-insert :model/TransformTest [transform-test]
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/transform-test-create
-                           {:object  (t2/instance :model/TransformTest transform-test)
-                            :user-id (:creator_id transform-test)}))
-  transform-test)
-
-(t2/define-after-update :model/TransformTest [transform-test]
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/transform-test-update
-                           {:object (t2/instance :model/TransformTest transform-test)}))
-  transform-test)
-
-(defenterprise delete-transform-tests!
-  "Enterprise implementation: delete the tests of the transform `transform-id`, each through its own hook. Runs
-  whatever the token says, since the rows outlive the feature. See the OSS declaration in
-  `metabase.transforms.models.transform`."
-  :feature :none
-  [transform-id]
-  (data-testing.db/delete-transform-tests! transform-id))
-
-(t2/define-before-delete :model/TransformTest [transform-test]
-  ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
-  ;; delete's transaction. Toucan 2 has no after-delete hook.
-  (data-testing.db/clear-test-id-of-runs! :transform (:id transform-test))
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/transform-test-delete {:object transform-test}))
-  transform-test)
+  (update-transform-test! id (select-keys serialized-instance revision-columns)))
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 

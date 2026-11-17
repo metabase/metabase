@@ -96,7 +96,7 @@ liability it usually is.
 See the `model-rules` skill.
 
 - [ ] No rule about a row lives only in an endpoint; a writer that calls no endpoint cannot break it
-- [ ] Hooks read no current user and no `mi/*deserializing?*`
+- [ ] Hooks read no current user and do not depend on who the writer is
 - [ ] Derived columns are computed in hooks and absent from request schemas
 - [ ] Per-user rules are in `:can_read` / `:can_write` hydrations, `mi/can-create?` or `mi/can-update?`
 - [ ] Uniqueness rules have a unique index

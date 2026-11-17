@@ -11,7 +11,6 @@
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-utils :refer [personal-collection with-library-not-synced without-library]]
    [metabase.config.core :as config]
-   [metabase.models.interface :as mi]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -1922,26 +1921,25 @@
 
 (deftest data-app-collection-items-test
   (testing "GET /api/collection/:id/items lists the actions and questions of a data app collection"
-    (binding [mi/*deserializing?* true]
-      (mt/with-temp [:model/Collection     {app-coll-id :id}     {:namespace "data-apps", :name "Data app collection"}
-                     :model/Collection     {actions-coll-id :id} {:namespace "data-actions", :name "Data actions folder"}
-                     :model/Action         {in-app :id}          {:type :implicit, :name "In app", :collection_id app-coll-id}
-                     :model/ImplicitAction _                     {:action_id in-app, :kind "row/update", :table_id (mt/id :venues)}
-                     :model/Action         {in-folder :id}       {:type :implicit, :name "In folder", :collection_id actions-coll-id}
-                     :model/ImplicitAction _                     {:action_id in-folder, :kind "row/update", :table_id (mt/id :venues)}
-                     :model/Card           _                     {:name          "App question"
-                                                                  :collection_id app-coll-id
-                                                                  :dataset_query (mt/mbql-query venues)}]
-        (let [items (fn [coll-id model]
-                      (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items") :models model)
-                           :data
-                           (map #(select-keys % [:name :model :collection_namespace]))))]
-          (is (= [{:name "In app", :model "action", :collection_namespace "data-apps"}]
-                 (items app-coll-id "action")))
-          (is (= [{:name "App question", :model "card"}]
-                 (map #(dissoc % :collection_namespace) (items app-coll-id "card"))))
-          (is (= [{:name "In folder", :model "action", :collection_namespace "data-actions"}]
-                 (items actions-coll-id "action"))))))))
+    (mt/with-temp [:model/Collection     {app-coll-id :id}     {:namespace "data-apps", :name "Data app collection"}
+                   :model/Collection     {actions-coll-id :id} {:namespace "data-actions", :name "Data actions folder"}
+                   :model/Action         {in-app :id}          {:type :implicit, :name "In app", :collection_id app-coll-id}
+                   :model/ImplicitAction _                     {:action_id in-app, :kind "row/update", :table_id (mt/id :venues)}
+                   :model/Action         {in-folder :id}       {:type :implicit, :name "In folder", :collection_id actions-coll-id}
+                   :model/ImplicitAction _                     {:action_id in-folder, :kind "row/update", :table_id (mt/id :venues)}
+                   :model/Card           _                     {:name          "App question"
+                                                                :collection_id app-coll-id
+                                                                :dataset_query (mt/mbql-query venues)}]
+      (let [items (fn [coll-id model]
+                    (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items") :models model)
+                         :data
+                         (map #(select-keys % [:name :model :collection_namespace]))))]
+        (is (= [{:name "In app", :model "action", :collection_namespace "data-apps"}]
+               (items app-coll-id "action")))
+        (is (= [{:name "App question", :model "card"}]
+               (map #(dissoc % :collection_namespace) (items app-coll-id "card"))))
+        (is (= [{:name "In folder", :model "action", :collection_namespace "data-actions"}]
+               (items actions-coll-id "action")))))))
 
 (deftest snippet-collection-items-count-only-test
   (testing "The snippets namespace is unpaginated, but a count-only request still keeps its LIMIT"

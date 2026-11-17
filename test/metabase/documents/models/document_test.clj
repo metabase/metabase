@@ -738,8 +738,6 @@
         (with-redefs [events/publish-event! (fn [topic event]
                                               (swap! events-published conj [topic event]))]
           (t2/update! :model/Document :id doc-id {:name "Updated Name"})
-          (binding [mi/*deserializing?* true]
-            (t2/update! :model/Document :id doc-id {:name "Deserialized Name"}))
           (is (empty? @events-published)))))))
 
 (deftest never-viewed-document-reports-null-activity-anchor

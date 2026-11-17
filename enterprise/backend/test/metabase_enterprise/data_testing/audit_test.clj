@@ -1,7 +1,8 @@
 (ns metabase-enterprise.data-testing.audit-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase-enterprise.data-testing.models]
+   [metabase-enterprise.data-testing.models :as data-testing.models]
+   [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase.audit-app.events.audit-log]
@@ -22,40 +23,51 @@
 
 (deftest transform-test-audit-events-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Transform     {transform-id :id} {}
-                   :model/TransformTest {transform-test-id :id} {:transform_id transform-id
-                                                                 :creator_id   (mt/user->id :crowberto)
-                                                                 :name         "Original"
-                                                                 :description  "Checks output"}]
-      (testing "create"
-        (is (= {:model_id transform-test-id
-                :user_id  (mt/user->id :crowberto)
-                :details  {:transform_id transform-id
-                           :name         "Original"
-                           :description  "Checks output"}
-                :topic    :transform-test-create
-                :model    "TransformTest"}
-               (mt/latest-audit-log-entry :transform-test-create transform-test-id))))
-      (testing "update"
+    (mt/with-temp [:model/Transform {transform-id :id} {}]
+      (let [{transform-test-id :id} (data-testing.models/create-transform-test! {:transform_id transform-id
+                                                                                 :creator_id   (mt/user->id :crowberto)
+                                                                                 :name         "Original"
+                                                                                 :description  "Checks output"
+                                                                                 :inputs       []
+                                                                                 :expectations []})]
+        (testing "create"
+          (is (= {:model_id transform-test-id
+                  :user_id  (mt/user->id :crowberto)
+                  :details  {:transform_id transform-id
+                             :name         "Original"
+                             :description  "Checks output"}
+                  :topic    :transform-test-create
+                  :model    "TransformTest"}
+                 (mt/latest-audit-log-entry :transform-test-create transform-test-id))))
+        (testing "update"
+          (data-testing.models/update-transform-test! transform-test-id {:name "Renamed"})
+          (is (= {:model_id transform-test-id
+                  :user_id  (mt/user->id :crowberto)
+                  :details  {:transform_id transform-id
+                             :name         "Renamed"
+                             :description  "Checks output"}
+                  :topic    :transform-test-update
+                  :model    "TransformTest"}
+                 (mt/latest-audit-log-entry :transform-test-update transform-test-id))))
+        (testing "delete"
+          (data-testing.models/delete-transform-test! transform-test-id)
+          (is (= {:model_id transform-test-id
+                  :user_id  (mt/user->id :crowberto)
+                  :details  {:transform_id transform-id
+                             :name         "Renamed"
+                             :description  "Checks output"}
+                  :topic    :transform-test-delete
+                  :model    "TransformTest"}
+                 (mt/latest-audit-log-entry :transform-test-delete transform-test-id))))))))
+
+(deftest transform-test-model-writes-write-no-audit-row-test
+  (testing "Inserting, updating and deleting a transform test through the model writes no audit row"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Transform     {transform-id :id}      {}
+                     :model/TransformTest {transform-test-id :id} {:transform_id transform-id}]
         (t2/update! :model/TransformTest :id transform-test-id {:name "Renamed"})
-        (is (= {:model_id transform-test-id
-                :user_id  (mt/user->id :crowberto)
-                :details  {:transform_id transform-id
-                           :name         "Renamed"
-                           :description  "Checks output"}
-                :topic    :transform-test-update
-                :model    "TransformTest"}
-               (mt/latest-audit-log-entry :transform-test-update transform-test-id))))
-      (testing "delete"
         (t2/delete! :model/TransformTest :id transform-test-id)
-        (is (= {:model_id transform-test-id
-                :user_id  (mt/user->id :crowberto)
-                :details  {:transform_id transform-id
-                           :name         "Renamed"
-                           :description  "Checks output"}
-                :topic    :transform-test-delete
-                :model    "TransformTest"}
-               (mt/latest-audit-log-entry :transform-test-delete transform-test-id)))))))
+        (is (zero? (t2/count :model/AuditLog :model "TransformTest" :model_id transform-test-id)))))))
 
 (deftest transform-test-run-audit-events-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -121,55 +133,69 @@
 
 (deftest card-test-audit-events-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Card     {card-id :id}      {}
-                   :model/CardTest {card-test-id :id} {:card_id     card-id
-                                                       :creator_id  (mt/user->id :crowberto)
-                                                       :name        "Original"
-                                                       :description "Checks output"}]
-      (testing "create"
-        (is (= {:model_id card-test-id
-                :user_id  (mt/user->id :crowberto)
-                :details  {:card_id     card-id
-                           :name        "Original"
-                           :description "Checks output"}
-                :topic    :card-test-create
-                :model    "CardTest"}
-               (mt/latest-audit-log-entry :card-test-create card-test-id))))
-      (testing "update"
+    (mt/with-temp [:model/Card {card-id :id} {}]
+      (let [{card-test-id :id} (data-testing.models.card-test/create-card-test! {:card_id      card-id
+                                                                                 :creator_id   (mt/user->id :crowberto)
+                                                                                 :name         "Original"
+                                                                                 :description  "Checks output"
+                                                                                 :inputs       []
+                                                                                 :expectations []})]
+        (testing "create"
+          (is (= {:model_id card-test-id
+                  :user_id  (mt/user->id :crowberto)
+                  :details  {:card_id     card-id
+                             :name        "Original"
+                             :description "Checks output"}
+                  :topic    :card-test-create
+                  :model    "CardTest"}
+                 (mt/latest-audit-log-entry :card-test-create card-test-id))))
+        (testing "update"
+          (data-testing.models.card-test/update-card-test! card-test-id {:name "Renamed"})
+          (is (= {:model_id card-test-id
+                  :user_id  (mt/user->id :crowberto)
+                  :details  {:card_id     card-id
+                             :name        "Renamed"
+                             :description "Checks output"}
+                  :topic    :card-test-update
+                  :model    "CardTest"}
+                 (mt/latest-audit-log-entry :card-test-update card-test-id))))
+        (testing "delete"
+          (data-testing.models.card-test/delete-card-test! card-test-id)
+          (is (= {:model_id card-test-id
+                  :user_id  (mt/user->id :crowberto)
+                  :details  {:card_id     card-id
+                             :name        "Renamed"
+                             :description "Checks output"}
+                  :topic    :card-test-delete
+                  :model    "CardTest"}
+                 (mt/latest-audit-log-entry :card-test-delete card-test-id))))))))
+
+(deftest card-test-model-writes-write-no-audit-row-test
+  (testing "Inserting, updating and deleting a card test through the model writes no audit row"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card     {card-id :id}      {}
+                     :model/CardTest {card-test-id :id} {:card_id card-id}]
         (t2/update! :model/CardTest :id card-test-id {:name "Renamed"})
-        (is (= {:model_id card-test-id
-                :user_id  (mt/user->id :crowberto)
-                :details  {:card_id     card-id
-                           :name        "Renamed"
-                           :description "Checks output"}
-                :topic    :card-test-update
-                :model    "CardTest"}
-               (mt/latest-audit-log-entry :card-test-update card-test-id))))
-      (testing "delete"
         (t2/delete! :model/CardTest :id card-test-id)
-        (is (= {:model_id card-test-id
-                :user_id  (mt/user->id :crowberto)
-                :details  {:card_id     card-id
-                           :name        "Renamed"
-                           :description "Checks output"}
-                :topic    :card-test-delete
-                :model    "CardTest"}
-               (mt/latest-audit-log-entry :card-test-delete card-test-id)))))))
+        (is (zero? (t2/count :model/AuditLog :model "CardTest" :model_id card-test-id)))))))
 
 (deftest card-test-audit-events-name-the-creator-then-the-acting-user-test
   (testing "The create row names the test's creator; the update and delete rows name the user who acts"
     (mt/with-current-user (mt/user->id :rasta)
-      (mt/with-temp [:model/Card     {card-id :id}      {}
-                     :model/CardTest {card-test-id :id} {:card_id    card-id
-                                                         :creator_id (mt/user->id :crowberto)}]
-        (testing "create"
-          (is (=? {:user_id (mt/user->id :crowberto)}
-                  (mt/latest-audit-log-entry :card-test-create card-test-id))))
-        (testing "update"
-          (t2/update! :model/CardTest :id card-test-id {:name "Renamed"})
-          (is (=? {:user_id (mt/user->id :rasta)}
-                  (mt/latest-audit-log-entry :card-test-update card-test-id))))
-        (testing "delete"
-          (t2/delete! :model/CardTest :id card-test-id)
-          (is (=? {:user_id (mt/user->id :rasta)}
-                  (mt/latest-audit-log-entry :card-test-delete card-test-id))))))))
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (let [{card-test-id :id} (data-testing.models.card-test/create-card-test! {:card_id      card-id
+                                                                                   :creator_id   (mt/user->id :crowberto)
+                                                                                   :name         "Original"
+                                                                                   :inputs       []
+                                                                                   :expectations []})]
+          (testing "create"
+            (is (=? {:user_id (mt/user->id :crowberto)}
+                    (mt/latest-audit-log-entry :card-test-create card-test-id))))
+          (testing "update"
+            (data-testing.models.card-test/update-card-test! card-test-id {:name "Renamed"})
+            (is (=? {:user_id (mt/user->id :rasta)}
+                    (mt/latest-audit-log-entry :card-test-update card-test-id))))
+          (testing "delete"
+            (data-testing.models.card-test/delete-card-test! card-test-id)
+            (is (=? {:user_id (mt/user->id :rasta)}
+                    (mt/latest-audit-log-entry :card-test-delete card-test-id)))))))))
