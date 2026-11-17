@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.run-tracking.core :as rt]
@@ -19,13 +20,6 @@
 (defonce ^:private active-runs
   (atom #{}))
 
-(def ^:private run-topics
-  ;; The audit topics of each test type's runs.
-  {:transform {:start   :event/transform-test-run-start
-               :timeout :event/transform-test-run-timeout}
-   :card      {:start   :event/card-test-run-start
-               :timeout :event/card-test-run-timeout}})
-
 (mu/defn start-run! :- ::data-testing.schema/data-test-run
   "Create a started run of the `test-type` test `test-id`, publish the start event of `test-type`, and register the run
   as owned by this process."
@@ -36,7 +30,7 @@
     test-id      :- ms/PositiveInt
     initiated-by :- [:maybe ::lib.schema.id/user]]
    (let [run (data-testing.db/insert-test-run! test-type test-id initiated-by)]
-     (events/publish-event! (get-in run-topics [test-type :start])
+     (events/publish-event! (get-in (data-testing.test-type/spec test-type) [:run-topics :start])
                             (-> {:object run}
                                 (m/assoc-some :user-id initiated-by)))
      (swap! active-runs conj (:id run))
@@ -77,7 +71,7 @@
                                    :terminal {:status "timeout" :end_time :%now}})]
     (doseq [run reaped]
       ;; A run of a test type this version does not know, written by a newer node, has no topic here.
-      (if-let [topic (get-in run-topics [(:test_type run) :timeout])]
+      (if-let [topic (get-in (data-testing.test-type/spec (:test_type run)) [:run-topics :timeout])]
         (try
           (events/publish-event! topic
                                  (-> {:object (assoc run :status :timeout)}

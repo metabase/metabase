@@ -4,6 +4,7 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -29,6 +30,11 @@
 (methodical/defmethod t2/model-for-automagic-hydration [:model/CardTest :card]
   [_original-model _k]
   :model/Card)
+
+(defmethod data-testing.test-type/spec :card [_test-type]
+  {:model      :model/CardTest
+   :run-topics {:start   :event/card-test-run-start
+                :timeout :event/card-test-run-timeout}})
 
 (t2/deftransforms :model/CardTest
   {:inputs       (data-testing.models/json-column ::data-testing.schema/inputs)

@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -16,19 +17,13 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private test-type->model
-  {:transform :model/TransformTest
-   :card      :model/CardTest})
-
 (mu/defn- readable-test-ids :- [:set ms/PositiveInt]
   "The ids of the `test-type` tests the current user can read."
   [test-type :- ::data-testing.schema/test-type]
   (into #{}
         (comp (filter mi/can-read?)
               (map :id))
-        (t2/hydrate (case test-type
-                      :transform (data-testing.db/transform-tests {})
-                      :card      (data-testing.db/card-tests {}))
+        (t2/hydrate (data-testing.db/saved-tests (:model (data-testing.test-type/spec test-type)))
                     :can_read)))
 
 (mu/defn- timestamp-range :- [:maybe [:tuple [:maybe ms/TemporalInstant] [:maybe ms/TemporalInstant]]]
@@ -55,7 +50,7 @@
        [:start-time {:optional true} [:maybe ms/NonBlankString]]
        [:end-time   {:optional true} [:maybe ms/NonBlankString]]]]
   (let [test-ids                          (if test-id
-                                            (do (api/read-check (test-type->model test-type) test-id)
+                                            (do (api/read-check (:model (data-testing.test-type/spec test-type)) test-id)
                                                 #{test-id})
                                             (do (api/check-data-studio-access)
                                                 (readable-test-ids test-type)))

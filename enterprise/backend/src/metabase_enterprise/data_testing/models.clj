@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -39,6 +40,11 @@
 (methodical/defmethod t2/model-for-automagic-hydration [:model/TransformTest :transform]
   [_original-model _k]
   :model/Transform)
+
+(defmethod data-testing.test-type/spec :transform [_test-type]
+  {:model      :model/TransformTest
+   :run-topics {:start   :event/transform-test-run-start
+                :timeout :event/transform-test-run-timeout}})
 
 (t2/deftransforms :model/TransformTest
   {:inputs       (json-column ::data-testing.schema/inputs)

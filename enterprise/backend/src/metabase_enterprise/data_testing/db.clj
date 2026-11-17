@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
@@ -30,6 +31,11 @@
   (t2/select :model/TransformTest (cond-> {:order-by [[:name :asc] [:id :asc]]}
                                     transform-id (assoc :where [:= :transform_id transform-id]))))
 
+(mu/defn saved-tests :- [:sequential ::data-testing.schema/saved-test]
+  "Every saved test of `model`."
+  [model :- :keyword]
+  (t2/select model))
+
 (mu/defn transform-test :- [:maybe ::data-testing.schema/transform-test]
   "The TransformTest with `id`, or nil."
   [id :- ms/PositiveInt]
@@ -54,10 +60,6 @@
                                   :initiated_by initiated-by
                                   :status       :started}))
 
-(def ^:private test-type->table
-  {:transform :transform_test
-   :card      :card_test})
-
 (mu/defn- runs-of-tests-clause :- vector?
   "A clause that holds for a run of one of the `test-type` tests with `test-ids` that started no earlier than its test
   was created."
@@ -71,7 +73,7 @@
      ;; test_id has no foreign key, so a run can keep the id of a deleted test, and a later test can get the same id.
      ;; The start time tells the runs of the later test from those of the deleted one.
      [:exists ^:allow-subquery {:select [1]
-                                :from   [[(test-type->table test-type) :the_test]]
+                                :from   [[(t2/table-name (:model (data-testing.test-type/spec test-type))) :the_test]]
                                 :where  [:and
                                          [:= :the_test.id :data_test_run.test_id]
                                          [:>= :data_test_run.start_time :the_test.created_at]]}]]))
