@@ -77,7 +77,7 @@ async function navigate(
   direction: "back" | "forward",
   page: { router: { back(): void; forward(): void } },
 ) {
-  await act(async () => {
+  act(() => {
     if (direction === "back") {
       page.router.back();
     } else {

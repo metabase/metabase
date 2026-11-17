@@ -5,6 +5,7 @@ import {
   deleteCharForward,
 } from "@codemirror/commands";
 import { EditorView } from "@codemirror/view";
+import { getConfig } from "@testing-library/dom";
 import { act, fireEvent, within } from "@testing-library/react";
 import Color from "color";
 import fetchMock from "fetch-mock";
@@ -735,11 +736,11 @@ export async function reloadPage(page: ReturnType<typeof renderPage>) {
 }
 
 /**
- * Lets responses and store notifications that are still in flight land inside
- * `act` before the test ends, then resets the URL the page mirrored.
+ * Lets responses and store notifications that are still in flight land before
+ * the test ends, then resets the URL the page mirrored.
  */
 export async function cleanupPage() {
-  await act(async () => {
+  await getConfig().asyncWrapper(async () => {
     await fetchMock.callHistory.flush(true);
     await sleep(SETTLE_MS);
   });
@@ -837,8 +838,11 @@ export function getEditorText() {
   return getEditorView().state.doc.toString();
 }
 
-// Popovers and the deferred definition update schedule short timers. Letting
-// them run inside `act` keeps their state updates in the interaction.
+// Popovers, the store and the deferred definition update schedule short
+// timers after an interaction. `settle` lets them run the way `waitFor` does,
+// with React's act environment off. An async `act` would not do: after its
+// callback resolves, it waits a macrotask with no act scope, and a timer that
+// fires then is reported as an update outside act.
 const SETTLE_MS = 50;
 
 function sleep(ms: number) {
@@ -846,22 +850,18 @@ function sleep(ms: number) {
 }
 
 export async function settle() {
-  await act(() => sleep(SETTLE_MS));
+  await getConfig().asyncWrapper(() => sleep(SETTLE_MS));
 }
 
 /** Clicks an element and lets the timers the click schedules run. */
 export async function click(element: Element) {
-  await act(async () => {
-    fireEvent.click(element);
-    await sleep(SETTLE_MS);
-  });
+  fireEvent.click(element);
+  await settle();
 }
 
 async function interact(fn: (view: EditorView) => void) {
-  await act(async () => {
-    fn(getEditorView());
-    await sleep(SETTLE_MS);
-  });
+  act(() => fn(getEditorView()));
+  await settle();
 }
 
 /** Clicks the formula bar to open the editor, as the e2e helper does. */
