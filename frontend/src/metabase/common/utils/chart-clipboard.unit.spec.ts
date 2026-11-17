@@ -1,4 +1,5 @@
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
 import { deserializeCardFromUrl, serializeCardForUrl } from "./card";
 import {
@@ -6,7 +7,7 @@ import {
   serializeChartClipboard,
 } from "./chart-clipboard";
 
-const datasetQuery = createMockStructuredDatasetQuery();
+const datasetQuery = Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
 const SITE_URL = "https://metabase.example";
 
 describe("chart-clipboard", () => {

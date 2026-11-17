@@ -210,12 +210,16 @@ export type VisualizationSettingsDefinitions = {
   column_title?: DatasetColumnSettingDefinition<Value, Props>;
   currency?: DatasetColumnSettingDefinition<Value, Props>;
   currency_in_header?: DatasetColumnSettingDefinition<Value, Props>;
+  currency_position?: DatasetColumnSettingDefinition<Value, Props>;
   currency_style?: DatasetColumnSettingDefinition<Value, Props>;
   date_abbreviate?: DatasetColumnSettingDefinition<Value, Props>;
   date_separator?: DatasetColumnSettingDefinition<Value, Props>;
   date_style?: DatasetColumnSettingDefinition<Value, Props>;
   decimals?: DatasetColumnSettingDefinition<Value, Props>;
   display?: SingleSeriesSettingDefinition<Value, Props>;
+  duration_precision?: DatasetColumnSettingDefinition<Value, Props>;
+  duration_style?: DatasetColumnSettingDefinition<Value, Props>;
+  duration_unit?: DatasetColumnSettingDefinition<Value, Props>;
   "gauge.range"?: SeriesSettingDefinition<Value, Props>;
   "gauge.segments"?: SeriesSettingDefinition<
     Value,

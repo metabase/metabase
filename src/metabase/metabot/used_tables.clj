@@ -195,7 +195,7 @@
   ([metadata-providerable message-id parts]
    (let [outputs-by-id (into {}
                              (comp (filter #(= :tool-output (:type %)))
-                                   (map (juxt :id identity)))
+                                   (u/index-by :id))
                              parts)
          pairs         (into []
                              (comp (filter #(= :tool-input (:type %)))

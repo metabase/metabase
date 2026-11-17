@@ -31,7 +31,7 @@
   (t2/select-one-fn :value :setting :key k))
 
 (defn- restart! []
-  (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+  (reset! (:status (mdb.connection/current-application-db)) ::not-set-up)
   (mdb/setup-db! :create-sample-content? false))
 
 (defn- restore-cache-now!

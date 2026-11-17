@@ -227,7 +227,7 @@ export interface MetabaseQuestionAttributes {
    *
    * @remarks Pro/Enterprise, Guest embed
    */
-  "entity-types"?: ("model" | "table")[];
+  "entity-types"?: ("model" | "table" | "metric" | "semantic-layer")[];
 
   /**
    * Optional custom context string passed through to the guest token endpoint.
@@ -296,9 +296,14 @@ export interface MetabaseBrowserAttributes {
 
   /**
    * An array of entity types to show in the question's data picker:
-   * `model`, `table`.
+   * `model`, `table`, `metric`, `semantic-layer`.
    */
-  "data-picker-entity-types"?: ("model" | "table")[];
+  "data-picker-entity-types"?: (
+    | "model"
+    | "table"
+    | "metric"
+    | "semantic-layer"
+  )[];
 
   /**
    * Whether to show the "New question" button.
@@ -350,6 +355,22 @@ export interface MetabaseMetabotAttributes {
    * The collection to save a question to.
    */
   "target-collection"?: number | string;
+}
+
+/**
+ * Attributes for the `<metabase-data-app>` web component.
+ *
+ * Embeds a Metabase data app. Only available for authenticated (SSO) modular embeds.
+ *
+ * @remarks Pro/Enterprise
+ **/
+export interface MetabaseDataAppAttributes {
+  /**
+   * App slug, optionally followed by routes and query parameters.
+   *
+   * For example, `my-app` or `my-app/orders/details?tab=summary`.
+   **/
+  path: string;
 }
 
 /**
@@ -461,4 +482,5 @@ export interface ComponentToAttributes {
   "metabase-dashboard": MetabaseDashboardAttributes;
   "metabase-browser": MetabaseBrowserAttributes;
   "metabase-metabot": MetabaseMetabotAttributes;
+  "metabase-data-app": MetabaseDataAppAttributes;
 }

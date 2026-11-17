@@ -59,42 +59,45 @@
             (recur (cons next-node nodes) (conj result next-node))))))))
 
 (defn- prefer-requested-fks
-  "Sometimes when trying to find a chain of joins between two requested tables, there are multiple FKs which point
-  between them. These create parallel edges in the graph of joins, and we need to choose one. This function groups
-  edges by their source and target, keeps any single edges, and tries to disambiguate using the input set of preferred
-  field IDs.
+  "Pick one edge from a group of parallel edges between the same source/target tables. Two independent preference
+  signals, consulted in order:
 
-  If they cannot be disambiguated (either because multiple FKs are preferred, or none are) then log quietly and choose
-  one arbitrarily."
-  [preferred-fk-ids edges]
-  (if (= (count edges) 1)
-    (first edges)
-    (let [preferred (filter (fn [{{lhs-field :field} :lhs
-                                  {rhs-field :field} :rhs}]
-                              (or (preferred-fk-ids lhs-field)
-                                  (preferred-fk-ids rhs-field)))
-                            edges)]
-      (case (count preferred)
-        1 (first preferred)
-        (do (log/debugf "Could not choose between multiple FKs for a chain filters join. %d edges, %d preferred"
-                        (count edges)
-                        (count preferred))
-            (or (first preferred)
-                (first edges)))))))
+  1. `preferred-fk-pairs` — unordered `#{lhs rhs}` pairs the caller knows the expanded query already uses. An exact
+     pair match is the strongest signal.
+  2. `preferred-fk-ids` — field-ids the caller wants to see on at least one endpoint (e.g. a parameter target
+     already bound to the FK itself, as in #65838).
+
+  If neither signal yields exactly one winner, log quietly and pick deterministically from whatever shortlist we
+  have."
+  [preferred-fk-ids preferred-fk-pairs edges]
+  (if (<= (count edges) 1)
+    (first edges)                       ; Edges should not be empty. We return nil if it is.
+    (let [exact (filter (fn [{{lhs :field} :lhs {rhs :field} :rhs}]
+                          (contains? preferred-fk-pairs #{lhs rhs}))
+                        edges)
+          by-id (filter (fn [{{lhs :field} :lhs {rhs :field} :rhs}]
+                          (or (preferred-fk-ids lhs) (preferred-fk-ids rhs)))
+                        edges)
+          choices (or (seq exact) (seq by-id) edges)]
+      (if (= (count choices) 1)
+        (first choices)
+        (do (log/debugf "Could not choose between multiple FKs for a chain filters join. %d edges, %d candidates"
+                        (count edges) (count choices))
+            (first choices))))))
 
 (defn dedupe-joins
   "Remove unnecessary joins from a collection of `in-joins`.
 
   `keep-ids` = the IDs of Tables that we want to keep joins for. Joins that are not needed to keep these Tables may be
   removed.
-  `field-ids` = FKs we prefer - where there are parallel edges, we expect exactly one of them to be in this set.
-
-  Note that this function implements a simple greedy algorithm, replacing the previous optimal, but exponential
-  implementation."
-  [source-id field-ids in-joins keep-ids]
-  (let [;; Group up any parallel edges, and choose one from each group. Prefer the input `field-ids`.
+  `field-ids` = field-ids the caller wants to see on at least one endpoint of a parallel edge (parameter-bound-to-FK
+  case from #65838).
+  `fk-pairs` = unordered `#{lhs rhs}` pairs the caller knows the expanded query already uses. An exact match wins
+  over a field-id match when both signals are available."
+  [source-id field-ids fk-pairs in-joins keep-ids]
+  (let [;; Group up any parallel edges, and choose one from each group.
         edges     (-> (group-by edge-nodes in-joins)
-                      (update-vals #(prefer-requested-fks field-ids %))
+                      (update-vals #(prefer-requested-fks field-ids fk-pairs %))
                       vals)
         out-edges (group-by source-node edges)
         in-edges  (group-by target-node edges)

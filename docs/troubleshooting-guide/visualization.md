@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting question and dashboard visualizations
+summary: Fix charts and dashboard cards that don't look or behave the way you set them up.
 ---
 
 # Troubleshooting question and dashboard visualizations

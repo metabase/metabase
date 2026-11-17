@@ -202,7 +202,6 @@
       "parameter_mappings": [],
       "display": "bar",
       "entity_id": "-bUYBBcHLFTB73n5RiXMr",
-      "collection_preview": true,
       "visualization_settings": {
         "stackable.stack_type": "stacked",
         "graph.dimensions": ["CREATED_AT", "SOURCE"],

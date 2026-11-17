@@ -33,8 +33,8 @@
   - chart-id: ID of the chart to edit
   - new-chart-type: New chart type to use
   - charts-state: Map of chart-id to chart data from agent state
-  - query: (optional) fallback query to use when the chart's own :queries is
-    empty, e.g. a chart whose query only lives in the caller's queries-state
+  - query: (optional) the current query stored under the chart's :query_id. It replaces the chart's own copy, which
+    is stale once that query has been edited, and fills it in when the chart has none
 
   Returns a map with result and new-chart-data.
 
@@ -55,12 +55,11 @@
     (when-not chart-data
       (recoverable.common/unknown-chart-id! {:chart-id  chart-id
                                              :available (sort (keys charts-state))}))
-    (let [;; The caller may have resolved the query from somewhere other than
-          ;; charts-state (e.g. queries-state, when the chart carries a
-          ;; :query_id but no :queries). Fall back to that so :query on the
-          ;; result below doesn't end up nil while :query-id is set.
+    (let [;; The result below carries `:query-id` and `:query`, and the end-of-response memory update stores that
+          ;; `:query` under that ID. So it must be the query as it stands now, not the copy the chart took when it was
+          ;; made: after an SQL edit, that copy would undo the edit.
           chart-data     (cond-> chart-data
-                           (not (first (:queries chart-data))) (assoc :queries [query]))
+                           query (update :queries #(into [query] (rest %))))
           new-chart-data (-> chart-data
                              (assoc :chart_id (str (random-uuid)))
                              (assoc :visualization_settings {:chart_type new-chart-type}))]

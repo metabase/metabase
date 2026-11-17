@@ -1,9 +1,12 @@
 import { color } from "metabase/ui/colors/palette";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
 import { toCountBreakoutRawSeries } from "./raw-series";
 
-const jsQuery = createMockStructuredDatasetQuery();
+const jsQuery = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+);
 
 const opts = {
   display: "row" as const,

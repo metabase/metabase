@@ -4,7 +4,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.collections.core :as collections]
    [metabase.documents.db :as documents.db]
    [metabase.documents.models.document :as m.document]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -15,6 +14,7 @@
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -55,6 +55,18 @@
    [:cards {:optional true} [:maybe (cards-to-create-schema :int)]]
    [:archived {:optional true} [:maybe :boolean]]])
 
+(defn- insert-card-embed!
+  "Persist an embed for `card-id` into document `document-id`, re-reading the document inside the
+  transaction so a concurrent edit cannot be overwritten. Returns the updated row, unchecked."
+  [document-id card-id position extra-attrs]
+  (t2/with-transaction [_conn]
+    (let [document (api/check-404 (documents.db/document document-id))
+          updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
+          updates  (cond-> (select-keys updated [:document])
+                     (:is_placeholder document) (assoc :is_placeholder false))]
+      (documents.db/update-document! document-id updates)
+      (merge document updates))))
+
 (defn add-card-to-document!
   "Insert an embed for the already-created card with `card-id` into the prose-mirror ast of the
   document with `document-id` and persist it. `position` is a 0-based index among the document's
@@ -66,16 +78,16 @@
 
   Adding a card clears `:is_placeholder` when it was set. The caller is responsible for
   write-checking the document first. The document is re-read inside the transaction so a
-  concurrent edit cannot be overwritten. Returns the updated document."
+  concurrent edit cannot be overwritten. Returns the updated document, hydrated as by
+  [[m.document/get-document]]; [[add-card-to-document-row!]] skips the hydration."
   [document-id card-id position & {:keys [extra-attrs]}]
-  (t2/with-transaction [_conn]
-    (let [document (api/check-404 (documents.db/document document-id))
-          updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
-          updates  (cond-> (select-keys updated [:document])
-                     (:is_placeholder document) (assoc :is_placeholder false))]
-      (documents.db/update-document! document-id updates)
-      (collections/check-for-remote-sync-update document)))
+  (insert-card-embed! document-id card-id position extra-attrs)
   (m.document/get-document document-id :log-view? false))
+
+(defn add-card-to-document-row!
+  "[[add-card-to-document!]] for callers that don't need the hydrated document result."
+  [document-id card-id position & {:keys [extra-attrs]}]
+  (api/read-check (insert-card-embed! document-id card-id position extra-attrs)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -88,7 +100,7 @@
   ;; Documents attached to an exploration are internal to that exploration — every other listing surface (search,
   ;; recents, collection items) excludes them too.
   {:items (as-> (documents.db/visible-unarchived-documents) docs
-            (filter mi/can-read? docs)
+            (filterv mi/can-read? (t2/hydrate docs :can_read))
             (t2/hydrate docs :creator :can_write :is_remote_synced))})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -133,11 +145,7 @@
       (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
     (m.document/update-document! existing-document body)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:document-id"
+(api.macros/defendpoint :delete "/:document-id" :- ::api/generic-204-no-content
   "Permanently deletes an archived Document."
   [{:keys [document-id]} :- [:map {:closed true} [:document-id ms/PositiveInt]]]
   (let [document (api/check-404 (documents.db/document document-id))]
@@ -184,7 +192,7 @@
                                               :archived_directly (boolean (:archived_directly card))}))
                 (assoc accum (:id card) (:id new-card))))
             {}
-            cards-to-copy)))
+            (t2/hydrate cards-to-copy :can_read))))
 
 (defn copy-document!
   "Copy the document with `from-document-id` into `:collection_id` (nil = root), along with the
@@ -215,9 +223,7 @@
                                                            {:document (:document existing-document)
                                                             :content_type (:content_type existing-document)}
                                                            card-id-map)))
-                         (u/prog1 (m.document/get-document new-document-id)
-                           (when (collections/remote-synced-collection? collection_id)
-                             (collections/check-non-remote-synced-dependencies <>)))))]
+                         (m.document/get-document new-document-id)))]
     (events/publish-event! :event/document-create
                            {:object new-document
                             :user-id api/*current-user-id*})
@@ -265,11 +271,7 @@
         ;; Always select after update to ensure we return what's actually stored
         {:uuid (documents.db/document-public-uuid document-id)}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:document-id/public-link"
+(api.macros/defendpoint :delete "/:document-id/public-link" :- ::api/generic-204-no-content
   "Remove the public link for a Document.
 
   Deletes the public UUID from the Document, making it no longer accessible via the public sharing endpoint.
@@ -320,11 +322,8 @@
     (api/check-404 (and (contains? (set (prose-mirror/card-ids document)) card-id)
                         (documents.db/unarchived-card-in-document-exists? card-id document-id)))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:document-id/card/:card-id/query/:export-format"
+  :- ::qp.streaming/export-response
   "Download query results for a Card embedded in a Document.
 
   Returns query results in the requested format. The user must have read access to the document
@@ -365,6 +364,12 @@
                  :pivot?                 pivot-results?
                  :js-int-to-string?      false}))
 
+(defn- +content-gate-cache
+  [handler]
+  (fn [request respond raise]
+    (m.document/with-content-gate-cache
+      (handler request respond raise))))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/document/` routes."
-  (api.macros/ns-handler *ns* +auth))
+  (api.macros/ns-handler *ns* +auth +content-gate-cache))

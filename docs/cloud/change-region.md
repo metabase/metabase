@@ -1,5 +1,6 @@
 ---
 title: "Changing which region your Metabase is hosted in"
+summary: Move your Metabase Cloud instance to a different region, including the downtime to plan for and the IP allowlist and CNAME changes to make afterward.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true

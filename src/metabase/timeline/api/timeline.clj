@@ -1,7 +1,6 @@
 (ns metabase.timeline.api.timeline
   "/api/timeline endpoints."
   (:require
-   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
@@ -18,6 +17,10 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(events/derive! :event/timeline-create :metabase/event)
+(events/derive! :event/timeline-update :metabase/event)
+(events/derive! :event/timeline-delete :metabase/event)
 
 (mr/def ::include
   [:enum :events])
@@ -60,7 +63,6 @@
 
 (api.macros/defendpoint :get "/" :- [:sequential ::Timeline]
   "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines."
-  {:scope api-scope/data-app}
   [_route-params
    {:keys [include], archived? :archived} :- [:map {:closed true}
                                               [:include  {:optional true} ::include]
@@ -123,11 +125,7 @@
     (u/prog1 (t2/hydrate (timeline.db/timeline id) :creator [:collection :can_write] :is_remote_synced)
       (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a [[Timeline]]. Will cascade delete its events as well."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]

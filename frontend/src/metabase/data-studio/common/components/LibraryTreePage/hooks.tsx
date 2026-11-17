@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import type { ExpandedState, Row } from "@tanstack/react-table";
 import {
   type ReactNode,
