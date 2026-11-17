@@ -174,6 +174,20 @@ describe("data app embedding setup", () => {
     ).toBeInTheDocument();
   });
 
+  it("does not let the admin copy the code from the keyboard before embedding is enabled", async () => {
+    setupDataApps({
+      initialState: { resourceType: "data-app", resourceId: "sales" },
+      modularEmbeddingEnabled: false,
+      showModularEmbedTerms: true,
+    });
+
+    await waitForRequestsToSettle();
+
+    // jsdom ignores `inert`, so we check for it instead of tabbing to the
+    // button. Browsers skip inert elements for focus, selection and copying.
+    expect(screen.getByTestId("embed-code-section")).toHaveAttribute("inert");
+  });
+
   it("excludes draft and outdated apps and selects an available app", async () => {
     setupDataApps({
       apps: [

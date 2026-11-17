@@ -1,6 +1,3 @@
-import cx from "classnames";
-
-import CS from "metabase/css/core/index.css";
 import { useUpdateSettingsMutation } from "metabase/settings";
 import { Stack } from "metabase/ui";
 import type { SettingKey } from "metabase-types/api";
@@ -65,10 +62,12 @@ export const GetCodeStep = () => {
   // show the setup the experience step would otherwise show for data apps.
   const showDataAppSetup = experience === "data-app" && isFirstStep;
 
+  // `inert` keeps the code from being focused, selected, or copied with the
+  // keyboard until embedding is enabled, not just from being clicked.
   const isDimmed = showDataAppSetup && !allowPreviewAndNavigation;
   const dimmedProps = {
     opacity: isDimmed ? 0.5 : 1,
-    className: cx(isDimmed && CS.pointerEventsNone),
+    inert: isDimmed,
   };
 
   return (
@@ -82,7 +81,7 @@ export const GetCodeStep = () => {
       {!isGuestEmbed && experience !== "data-app" && <MetabaseAccountCard />}
 
       {showCode ? (
-        <Stack gap="lg" {...dimmedProps}>
+        <Stack gap="lg" data-testid="embed-code-section" {...dimmedProps}>
           <EmbedCodeCard
             snippet={snippet}
             onCopy={handleFrontendSnippetCopied}
