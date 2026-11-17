@@ -2025,8 +2025,8 @@
              (can-write-all-collections-or-root? [new-id] {:root-namespace nil})))))
 
 (defmulti allowed-namespaces
-  "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in. By default, only the
-  default namespace (namespace = `nil`)."
+  "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in.
+  Models without their own method get [[default-allowed-namespaces]]."
   {:arglists '([model])}
   t2.protocols/dispatch-value)
 
@@ -2054,21 +2054,20 @@
   true)
 
 (defn searchable-namespace-clause
-  "HoneySQL clause matching rows whose `namespace-column` is one of the [[default-allowed-namespaces]]. Search indexes
-  the Collections in these namespaces and the content inside them. Query-time permissions narrow this further, e.g.
-  `analytics` is only visible with the audit app enabled."
+  "HoneySQL clause matching rows whose `namespace-column` holds one of the [[default-allowed-namespaces]].
+  Search specs use it to index the Collections in these namespaces and the content inside them.
+  Query-time permissions narrow this further: `analytics` content stays hidden unless the audit app is enabled."
   [namespace-column]
   (into [:or]
-        (map (fn [collection-namespace]
-               [:= namespace-column (some-> collection-namespace name)]))
-        (sort-by str default-allowed-namespaces)))
+        (for [collection-namespace default-allowed-namespaces]
+          [:= namespace-column (some-> collection-namespace name)])))
 
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see
   `allowed-namespaces`), or throw an Exception.
 
-    ;; Cards can only go in Collections in the default namespace (namespace = nil)
-    (check-collection-namespace Card new-collection-id)
+    ;; Snippets can only go in Collections in the `snippets` namespace
+    (check-collection-namespace :model/NativeQuerySnippet new-collection-id)
 
   `collection` is a Collection id or the row [[content-parent]] gives."
   [model collection]
