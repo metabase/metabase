@@ -94,3 +94,16 @@
       (is (= [[(mt/user->id :rasta) 2]] @calls))
       (finally
         (events/register-owned-consumer! ::owned (constantly nil) (constantly nil))))))
+
+(deftest where-clause-writes-publish-per-row-test
+  (let [creator (mt/user->id :rasta)
+        ids     (mapv #(t2/insert-returning-pk! :model/EventsTestTimeline {:name (str "w" %) :icon "cake" :creator_id creator})
+                      (range 3))]
+    (reset! received [])
+    (t2/update! :model/EventsTestTimeline {:where [:in :id ids]} {:name "same"})
+    (testing "an update with a where clause publishes one event per changed row"
+      (is (= 3 (count (filter #(= :event/events-test-timeline-update (:topic %)) @received)))))
+    (reset! received [])
+    (t2/delete! :model/EventsTestTimeline :name "same" :id [:in ids])
+    (testing "a delete by column publishes one event per row"
+      (is (= 3 (count (filter #(= :event/events-test-timeline-delete (:topic %)) @received)))))))

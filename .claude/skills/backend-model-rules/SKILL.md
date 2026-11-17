@@ -105,21 +105,21 @@ that needs the row as stored.
 ## Write paths
 
 An endpoint or tool: parse the request, load the row with `api/check-404`, call `api/update-check` with the changes
-(or `api/create-check` with the whole new row, not only its collection), call the write function, return the
-hydrated row. The write function is the one function per operation that every user-facing writer of the model shares
-(`dashboards.write/update-dashboard!`, `transforms.crud/update-transform!`); with a single REST writer it is the
-endpoint's own helper.
+(or `api/create-check` with the whole new row, not only its collection), write, return the hydrated row.
 
-- Every user-facing writer of a model calls the check: REST, MCP and Metabot tools, Agent API, bulk endpoints,
-  revision revert, copy; grep the model's `update-...!` and `t2/update! :model/X` callers when adding a rule. A bulk
-  endpoint hydrates `:can_write` on all rows once, then checks each.
-- Nobody publishes a lifecycle event by hand: a model that derives `:hook/events` (and requires
-  `metabase.events.core`) publishes `:event/<name>-create|update|delete` for every write by any writer, in its transaction.
-- A write function that writes several rows of one aggregate opens `events/with-batched-events`: one transaction, the
-  events of its writes delivered once, merged per row, before the commit (nothing on a throw; nested batches join).
-  A message for the records the writes cause: `(events/with-event-context {:revision-message m} ...)`.
-- A moment that is no row write (login, read, sync begin, transform run, user invited) is published by hand; a rule
-  that must see rows before the write (a delete's cascade) registers a capture function on the bus instead.
+- A write through the model (`t2/insert!`, `t2/update!`, `t2/delete!` on `:model/X`, with or without a where clause) is
+  complete wherever it is called, also from a plain function in `<module>/db.clj`: the model's hooks enforce the rules
+  and `:hook/events` publishes the lifecycle event. A shared write function is a convenience, not a requirement.
+- A statement that bypasses the model (`t2/query` with hand-written SQL, a write against a table-name keyword) runs
+  no hooks and publishes nothing; do not write that way.
+- The caller's job: the per-user check at every user-facing writer (REST, MCP and Metabot tools, Agent API, bulk,
+  revert, copy; a bulk endpoint hydrates `:can_write` once); `events/with-batched-events` around a write of several rows
+  of one aggregate, so its reactions happen once per owner (nothing on a throw; nested batches join); and
+  `(events/with-event-context {:revision-message m} ...)` for the records the write causes.
+- Nobody publishes a lifecycle event by hand: a model deriving `:hook/events` publishes
+  `:event/<name>-create|update|delete` for every write, in its transaction. A moment that is a column change
+  (public link, publish) is derived by its consumer with `u.events/changed?`; only a moment that is no row write
+  (login, read, sync begin, transform run, user invited) is published by hand.
 
 ## Events
 
