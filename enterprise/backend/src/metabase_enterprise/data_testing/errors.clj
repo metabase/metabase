@@ -38,7 +38,7 @@
    ::duplicate-output-columns   422  ; The output of the query under test has two columns of one name.
    ::setup-failed               422  ; A test input could not be materialized.
    ::expectation-failed         422  ; An expectation's own query failed to execute.
-   ::uncheckable-write          422  ; The write of a subject cannot be checked: its database has no SQL dialect, or it holds a list too long to parse.
+   ::uncheckable-write          422  ; The write of a subject cannot be checked: its database has no SQL dialect, or its SQL holds a list too long to parse.
 
    ;; 501 — not built yet
    ::unsupported-format         501}); The expectation is of a type the schema knows and no `build` method handles.
