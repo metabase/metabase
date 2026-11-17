@@ -17,9 +17,14 @@
   "Cap on the synonyms/examples list length — a curated entity needs a handful, not hundreds."
   50)
 
+(defn normalize-ai-context
+  "The OSI `ai_context` oneOf in the object form stored: the string shorthand becomes its `:instructions`."
+  [ai-context]
+  (if (string? ai-context) {:instructions ai-context} ai-context))
+
 (mr/def ::osi-ai-context.ai-context
   "The `:ai_context` column of a OsiAiContext, decoded."
-  [:map {:closed true}
+  [:map {:closed true :decode/normalize normalize-ai-context}
    [:instructions {:optional true} [:maybe [:string {:max entity-retrieval/max-instructions-len}]]]
    [:synonyms     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]
    [:examples     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]])

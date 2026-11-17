@@ -120,7 +120,7 @@
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
     [:select-keys ::database [:auto_run_queries :caveats :description :engine :is_audit :is_attached_dwh
-                              :is_full_sync :is_on_demand :default_schema :name :points_of_interest :provider_name
+                              :is_full_sync :is_on_demand :default_schema :name :points_of_interest
                               :refingerprint :settings :timezone :uploads_enabled :uploads_schema_name
                               :uploads_table_prefix :cache_field_values_schedule :metadata_sync_schedule :details
                               :write_data_details :admin_details :creator_id :router_database_id :initial_sync_status

@@ -23,7 +23,7 @@
 (mr/def ::checkpoint-strategy
   [:map {:closed true}
    [:type [:= "checkpoint"]]
-   [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field]
+   [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field-or-older-export-id]
    [:lookback {:optional true} [:maybe ::lookback]]])
 
 (mr/def ::source-incremental-strategy
@@ -42,7 +42,7 @@
 (mr/def ::python-source
   "The `:source` of a Python transform: its script and the tables it reads."
   [:map {:closed true}
-   [:source-database {:optional true} [:maybe ::lib.schema.id/database]]
+   [:source-database {:optional true} [:maybe ::lib.schema.id/database-or-older-export-id]]
    ;; NB: if source is checkpoint, only one table allowed
    [:source-tables   {:decode/normalize #(cond-> % (map? %) (-> (update-keys name) transforms-base.u/source-tables-map->vec))}
     [:sequential ::transforms-base.u/source-table-entry]]

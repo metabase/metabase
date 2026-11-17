@@ -279,7 +279,7 @@
    [:data_source             {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:data_layer              {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:owner_email             {:optional true} [:maybe :string]]
-   [:owner_user_id           {:optional true} [:maybe ::lib.schema.id/user]]
+   [:owner_user_id           {:optional true} [:maybe ::lib.schema.id/user-or-older-export-id]]
    [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
    [:is_published            {:optional true} [:maybe :boolean]]
    [:transform_id            {:optional true} [:maybe ::lib.schema.id/transform]]

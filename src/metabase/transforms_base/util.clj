@@ -1018,10 +1018,10 @@
   `:database_id`/`:schema`/`:table` (looked up to fill in `:table_id`), so only `:alias` is required."
   [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:alias :string]
-   [:database_id {:optional true} [:maybe ::lib.schema.id/database]]
+   [:database_id {:optional true} [:maybe ::lib.schema.id/database-or-older-export-id]]
    [:schema {:optional true} [:maybe :string]]
    [:table {:optional true} :string]
-   [:table_id {:optional true} [:maybe ::lib.schema.id/table]]])
+   [:table_id {:optional true} [:maybe ::lib.schema.id/table-or-older-export-id]]])
 
 (mu/defn normalize-source-tables :- [:sequential ::source-table-entry]
   "Normalize source-table entries by enriching them with full metadata.
