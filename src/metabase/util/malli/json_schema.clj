@@ -74,12 +74,13 @@
 
 (defn- merges-cleanly?
   "Whether merging the JSON Schema `branch` into the JSON Schema `node` accepts what both accepted together.
-  False when the branch has its own `$id`, has a constraining key the node also has with a different value, or when a
-  keyword on one side depends on a keyword on the other."
+  False when the branch has its own `$id` or anchor, or a constraining key the node also has with a different value.
+  Also false when a keyword on one side depends on a keyword on the other."
   [node branch]
   (and (map? branch)
-       ;; a branch's `$id` would become the base every `$ref` in the node resolves against
-       (not (contains? branch :$id))
+       ;; a branch's `$id` would become the base every `$ref` in the node resolves against, and its anchors would
+       ;; name the whole node
+       (not-any? #(contains? branch %) [:$anchor :$dynamicAnchor :$id])
        ;; an equal value, such as `type: object` on both, merges without losing anything
        (not (mp/some #(and (contains? node %)
                            (not (annotation-keys %))
@@ -161,23 +162,30 @@
          (not= (:description siblings) (:description replacement)))
     (assoc :description (str (:description siblings) " " (:description replacement)))))
 
+(def ^:private applicator-keys
+  "JSON Schema keywords that only apply subschemas to the value, and so mean the same beside other keywords as under an
+  `allOf`."
+  #{:allOf :anyOf :not :oneOf})
+
 (defn replace-one-of
   "Replace the `oneOf` of the JSON Schema `node` with the JSON Schema `replacement`, keeping `node`'s metadata.
-  Where only [[annotation-keys]] and a `discriminator` sit beside the `oneOf`, `replacement` merges into them (see
-  [[merge-beside]]).
-  Where any other keyword does, `replacement` joins those keywords under `allOf`, and its description, if they have
-  none, stays on the node."
+  The replacement merges into the keywords beside the `oneOf` (see [[merge-beside]]) where those are only
+  [[annotation-keys]], or where the replacement asserts only [[applicator-keys]] they lack.
+  Otherwise it joins them under `allOf`, and its description, if they have none, stays on the node."
   [node replacement]
-  (let [siblings (dissoc node :oneOf)]
+  (let [siblings   (dissoc node :oneOf)
+        assertions (keys (apply dissoc replacement annotation-keys))]
     (with-meta
-     ;; A sibling assertion must hold as well, and some read their neighbors (`additionalProperties` reads
-     ;; `properties`, `minContains` reads `contains`), so only `allOf` keeps both meanings intact.
      (cond
-       ;; a `discriminator` belongs beside the alternatives it tells apart
-       (every? (conj annotation-keys :discriminator) (keys siblings))
+       ;; merging also keeps a `discriminator` beside the alternatives it tells apart
+       (or (every? annotation-keys (keys siblings))
+           (and (every? applicator-keys assertions)
+                (not-any? #(contains? siblings %) assertions)))
        (merge-beside replacement siblings)
 
-       ;; readers look for a property's description at its top level, not inside `allOf`
+       ;; A sibling assertion must hold as well, and some read their neighbors (`additionalProperties` reads
+       ;; `properties`, `minContains` reads `contains`), so only `allOf` keeps both meanings intact.
+       ;; Readers look for a property's description at its top level, not inside `allOf`.
        (and (:description replacement) (not (contains? siblings :description)))
        (-> siblings
            (assoc :description (:description replacement))

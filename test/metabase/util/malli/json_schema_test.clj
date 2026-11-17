@@ -49,19 +49,23 @@
     (is (= {:not {}}
            (mu.json-schema/transform [:any {:json-schema {:oneOf []}}])))))
 
-(deftest ^:parallel collapse-branches-test
+(deftest ^:parallel collapse-branches-merge-test
   (testing "one branch left merges into the node"
     (is (= {:type "string", :minLength 1}
            (mu.json-schema/transform [:any {:json-schema {:type "string", :allOf [{:minLength 1}]}}])))
     ;; a key with the same value on both sides merges without losing anything
     (is (= {:type "string", :minLength 1}
-           (mu.json-schema/transform [:any {:json-schema {:type "string", :allOf [{:type "string", :minLength 1}]}}]))))
+           (mu.json-schema/transform [:any {:json-schema {:type "string", :allOf [{:type "string", :minLength 1}]}}])))))
+
+(deftest ^:parallel collapse-branches-clash-test
   (testing "one branch left sharing a constraining key with the node stays, as merging would drop a constraint"
     (is (= {:type "string", :allOf [{:type "integer"}]}
            (mu.json-schema/transform [:any {:json-schema {:type "string", :allOf [{:type "integer"}]}}])))
     ;; and so does an `anyOf` with one alternative left
     (is (= {:type "string", :anyOf [{:type "integer"}]}
-           (mu.json-schema/transform [:any {:json-schema {:type "string", :anyOf [{:type "integer"}]}}]))))
+           (mu.json-schema/transform [:any {:json-schema {:type "string", :anyOf [{:type "integer"}]}}])))))
+
+(deftest ^:parallel collapse-branches-neighbor-test
   (testing "one branch left with a keyword that reads a keyword of the node stays, as merging would change it"
     ;; `additionalProperties` would start allowing the node's `properties`, in either direction
     (is (= {:properties {"a" {}}, :allOf [{:additionalProperties false}]}
@@ -82,7 +86,9 @@
   (testing "one branch left whose neighbor-reading keyword accepts anything merges, as nothing it reads changes"
     (is (= {:properties {"a" {}}, :additionalProperties {}}
            (mu.json-schema/transform
-            [:any {:json-schema {:properties {:a {}}, :allOf [{:additionalProperties {}}]}}]))))
+            [:any {:json-schema {:properties {:a {}}, :allOf [{:additionalProperties {}}]}}])))))
+
+(deftest ^:parallel collapse-branches-resource-test
   (testing "one branch with its own `$id` stays, as the `$id` would rebase every `$ref` in the node"
     (is (= {:$ref "kind", :allOf [{:$id "nested/base", :type "string"}]}
            (mu.json-schema/transform
@@ -90,7 +96,13 @@
     ;; including a `$ref` nested under a property
     (is (= {:properties {"x" {:$ref "kind"}}, :allOf [{:$id "nested/base", :type "object"}]}
            (mu.json-schema/transform
-            [:any {:json-schema {:properties {:x {:$ref "kind"}}, :allOf [{:$id "nested/base", :type "object"}]}}]))))
+            [:any {:json-schema {:properties {:x {:$ref "kind"}}, :allOf [{:$id "nested/base", :type "object"}]}}])))
+    ;; an anchor would come to name the whole node, constraints and all
+    (is (= {:required ["a"], :allOf [{:$anchor "foo", :type "object"}]}
+           (mu.json-schema/transform
+            [:any {:json-schema {:required [:a], :allOf [{:$anchor "foo", :type "object"}]}}])))))
+
+(deftest ^:parallel collapse-branches-discriminator-test
   (testing "a `discriminator` stays beside the alternatives it tells apart"
     (is (= {:discriminator {:propertyName "op"}, :anyOf [{:type "object"}]}
            (mu.json-schema/transform
@@ -98,7 +110,15 @@
     ;; also when they arrive as a `oneOf`
     (is (= {:discriminator {:propertyName "op"}, :anyOf [{:type "object"} {:type "array"}]}
            (mu.json-schema/transform
-            [:any {:json-schema {:discriminator {:propertyName "op"}, :oneOf [{:type "object"} {:type "array"}]}}]))))
+            [:any {:json-schema {:discriminator {:propertyName "op"}, :oneOf [{:type "object"} {:type "array"}]}}])))
+    ;; and beside other assertions, since an `anyOf` means the same there as under an `allOf`
+    (is (= {:type "object", :discriminator {:propertyName "op"}, :anyOf [{:required ["a"]} {:required ["b"]}]}
+           (mu.json-schema/transform
+            [:any {:json-schema {:type          "object"
+                                 :discriminator {:propertyName "op"}
+                                 :oneOf         [{:required [:a]} {:required [:b]}]}}])))))
+
+(deftest ^:parallel collapse-branches-annotation-test
   (testing "a conjunct that constrains nothing goes, but its annotation stays on the node"
     (is (= {:type "integer", :deprecated true}
            (mu.json-schema/transform [:and :int [:any {:json-schema {:deprecated true}}]])))))
