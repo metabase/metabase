@@ -275,7 +275,8 @@ function inferFromColumns(fields: Field[]): RoleInference | null {
     };
   }
 
-  // The lifecycle rules decide which columns are statuses and milestones
+  // The shared lifecycle rules, so roles, processes, and cohorts agree on
+  // which columns are statuses and milestones
   const milestones = getMilestoneFields(fields);
   const status = getStatusFields(fields)[0];
   if (milestones.length >= 2 && status) {

@@ -27,8 +27,15 @@ import {
 import { useNavigate, useParams } from "metabase/router";
 import { Box, Drawer, Flex, Stack, Transition, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import type {
+  DatabaseId,
+  FieldId,
+  SchemaName,
+  TableId,
+} from "metabase-types/api";
 
 import S from "./DataModel.module.css";
+import { DatabaseDetailsPanel } from "./DatabaseDetailsPanel";
 import {
   DetailPanel,
   DetailPanelHeader,
@@ -36,8 +43,9 @@ import {
 } from "./DetailPanel";
 import { FieldDetailsPanel } from "./FieldDetailsPanel";
 import { PropertyDetailsPanel } from "./PropertyDetailsPanel";
+import { SchemaDetailsPanel } from "./SchemaDetailsPanel";
 import { RouterTablePicker } from "./TablePicker";
-import type { TreePath } from "./TablePicker/types";
+import type { ChangeOptions, TreePath } from "./TablePicker/types";
 import { TableSection } from "./TableSection";
 import { TableAttributesEditBulk } from "./TableSection/TableAttributesEditBulk";
 import {
@@ -127,6 +135,18 @@ function DataModelContent() {
   const [onUpdateCallback, setOnUpdateCallback] = useState<
     ((path?: TreePath) => void) | null
   >(null);
+  // The tree path the person last clicked. The tree also selects a lone
+  // database or schema on its own, and that must not open a drawer.
+  const [pickedPath, setPickedPath] = useState<TreePath | null>(null);
+
+  const handlePathChange = useCallback(
+    (path: TreePath, options?: ChangeOptions) => {
+      if (!options?.isAutomatic) {
+        setPickedPath(path);
+      }
+    },
+    [],
+  );
 
   const containerRef = useRef<HTMLDivElement>(null);
   // Assigned each render below, once the open panels are known; they're
@@ -177,6 +197,16 @@ function DataModelContent() {
     !hasSelectedMoreThanOneTable &&
     !showBulkTableEdit;
 
+  const openContainer = getOpenContainer({
+    pickedPath,
+    databaseId,
+    schemaName,
+    databaseExists,
+    fieldId,
+    hasSelectedItems,
+    tableId: metadataTableId,
+  });
+
   const showPropertyDetails =
     showTableDetailsSection &&
     activeTab === "properties" &&
@@ -184,7 +214,10 @@ function DataModelContent() {
     selectedPropertyName != null;
 
   const isDrawerOpen =
-    showBulkTableEdit || showTableDetailsSection || showFieldDetails;
+    openContainer != null ||
+    showBulkTableEdit ||
+    showTableDetailsSection ||
+    showFieldDetails;
 
   const closeDrawer = () => {
     closePreview();
@@ -213,6 +246,8 @@ function DataModelContent() {
     );
   };
 
+  const closeContainerDetails = () => setPickedPath(null);
+
   // Esc closes the innermost open panel: preview, then field, then the drawer
   closeActivePanelRef.current = () => {
     if (showPropertyDetails) {
@@ -221,9 +256,37 @@ function DataModelContent() {
       closePreview();
     } else if (showFieldDetails) {
       closeFieldDetails();
+    } else if (openContainer != null) {
+      closeContainerDetails();
     } else if (isDrawerOpen) {
       closeDrawer();
     }
+  };
+
+  const renderContainerPanel = (container: OpenContainer) => {
+    if (container.type === "database") {
+      return (
+        <DatabaseDetailsPanel
+          ref={scrollToPanel}
+          databaseId={container.databaseId}
+          defaultWidth={panelWidths.database}
+          onWidthChange={handlePanelWidthChange("database")}
+          onClose={closeContainerDetails}
+        />
+      );
+    }
+
+    const { databaseId, schemaName } = container;
+    return (
+      <SchemaDetailsPanel
+        ref={scrollToPanel}
+        databaseId={databaseId}
+        schemaName={schemaName}
+        defaultWidth={panelWidths.schema}
+        onWidthChange={handlePanelWidthChange("schema")}
+        onClose={closeContainerDetails}
+      />
+    );
   };
 
   const fieldPanel = showFieldDetails ? (
@@ -255,6 +318,8 @@ function DataModelContent() {
       h="100%"
       data-drawer-panels
     >
+      {openContainer && renderContainerPanel(openContainer)}
+
       {showBulkTableEdit && (
         <DetailPanel
           defaultWidth={panelWidths.table}
@@ -394,6 +459,7 @@ function DataModelContent() {
             tableId={navigationTableId}
             params={params}
             setOnUpdateCallback={setOnUpdateCallback}
+            onPathChange={handlePathChange}
           />
         </PageContainer>
 
@@ -437,4 +503,52 @@ function DataModelContent() {
       </Drawer>
     </Box>
   );
+}
+
+type OpenContainer =
+  | { type: "database"; databaseId: DatabaseId }
+  | { type: "schema"; databaseId: DatabaseId; schemaName: SchemaName };
+
+/**
+ * The database or schema whose drawer is open: the one the person clicked in
+ * the tree, while the URL is still on it and nothing deeper is selected.
+ */
+function getOpenContainer({
+  pickedPath,
+  databaseId,
+  schemaName,
+  databaseExists,
+  fieldId,
+  hasSelectedItems,
+  tableId,
+}: {
+  pickedPath: TreePath | null;
+  databaseId: DatabaseId | undefined;
+  schemaName: SchemaName | undefined;
+  databaseExists: boolean | undefined;
+  fieldId: FieldId | undefined;
+  hasSelectedItems: boolean;
+  tableId: TableId | undefined;
+}): OpenContainer | null {
+  const isContainerOnly =
+    databaseExists === true &&
+    tableId == null &&
+    fieldId == null &&
+    !hasSelectedItems;
+  if (
+    !isContainerOnly ||
+    pickedPath == null ||
+    databaseId == null ||
+    pickedPath.databaseId !== databaseId ||
+    pickedPath.tableId != null
+  ) {
+    return null;
+  }
+  // A picked database stays open when the tree then selects its lone schema
+  if (pickedPath.schemaName == null) {
+    return { type: "database", databaseId };
+  }
+  return pickedPath.schemaName === schemaName
+    ? { type: "schema", databaseId, schemaName: pickedPath.schemaName }
+    : null;
 }

@@ -39,6 +39,30 @@ export function FieldDetailsSkeleton() {
   );
 }
 
+/** Loading placeholder shaped like the database panel's sections. */
+export function DatabaseDetailsSkeleton() {
+  return (
+    <Stack gap="xxl" data-testid="database-details-skeleton">
+      <SectionSkeleton rows={2} />
+      <SectionSkeleton rows={3} />
+      <SectionSkeleton rows={2} />
+      <SectionSkeleton rows={4} />
+    </Stack>
+  );
+}
+
+/** Loading placeholder shaped like the schema panel's sections. */
+export function SchemaDetailsSkeleton() {
+  return (
+    <Stack gap="xxl" data-testid="schema-details-skeleton">
+      <SectionSkeleton rows={3} />
+      <SectionSkeleton rows={2} />
+      <SectionSkeleton rows={2} />
+      <SectionSkeleton rows={3} />
+    </Stack>
+  );
+}
+
 function SectionSkeleton({ rows }: { rows: number }) {
   return (
     <Stack gap="lg">

@@ -6,8 +6,13 @@ import {
   EntityList,
   EntityListItem,
 } from "metabase/data-studio/common/components/EntityList";
+import { SystemSegmentItem } from "metabase/data-studio/data-model/pages/DataModel/TableSection/SegmentList";
+import {
+  isDefaultSegment,
+  useTableSegmentsModel,
+} from "metabase/data-studio/data-model/pages/DataModel/TableSection/table-segments";
 import { useSelector } from "metabase/redux";
-import { Flex } from "metabase/ui";
+import { Flex, Stack, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Table, TableId } from "metabase-types/api";
 
@@ -20,9 +25,10 @@ export function TableSegments({ table }: TableSegmentsProps) {
     getUserCanWriteSegments(state, table.is_published),
   );
   const segments = table.segments ?? [];
+  const { systemSegments, defaultSegment } = useTableSegmentsModel(table);
 
   return (
-    <Flex direction="column" flex={1}>
+    <Flex direction="column" flex={1} gap="xl">
       <EntityList
         items={segments}
         title={t`Segments`}
@@ -55,6 +61,27 @@ export function TableSegments({ table }: TableSegmentsProps) {
           />
         )}
       />
+      {systemSegments.length > 0 && (
+        <Stack gap="lg">
+          <Title order={4}>{t`Default segments`}</Title>
+          <Stack gap="sm" role="list">
+            {systemSegments.map((segment) => (
+              <SystemSegmentItem
+                key={segment.role}
+                segment={segment}
+                href={Urls.dataStudioPublishedTableSystemSegment(
+                  table.id,
+                  segment.role,
+                )}
+                isDefault={isDefaultSegment(defaultSegment, {
+                  type: "system",
+                  role: segment.role,
+                })}
+              />
+            ))}
+          </Stack>
+        </Stack>
+      )}
     </Flex>
   );
 }

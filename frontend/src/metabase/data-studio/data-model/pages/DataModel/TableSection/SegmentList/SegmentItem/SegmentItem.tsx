@@ -1,5 +1,7 @@
+import { t } from "ttag";
+
 import { Link } from "metabase/common/components/Link";
-import { Card, Ellipsified, Flex, Icon, Stack, Text } from "metabase/ui";
+import { Badge, Card, Ellipsified, Flex, Icon, Stack, Text } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 
 import S from "./SegmentItem.module.css";
@@ -36,5 +38,14 @@ export function SegmentItem({ segment, href }: SegmentItemProps) {
         )}
       </Stack>
     </Card>
+  );
+}
+
+/** Marks the segment a table's questions start from */
+export function DefaultSegmentBadge() {
+  return (
+    <Badge variant="light" flex="0 0 auto">
+      {t`Default`}
+    </Badge>
   );
 }
