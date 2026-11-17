@@ -1,5 +1,6 @@
 (ns metabase-enterprise.tenants.models
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.tenants.db :as tenants.db]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
@@ -15,48 +16,28 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
+
 (methodical/defmethod t2/table-name :model/Tenant [_model] :tenant)
+
+(t2/deftransforms :model/Tenant
+  {:attributes mi/transform-json-no-keywordization})
+
+(doto :model/Tenant
+  (derive :metabase/model)
+  (derive :hook/timestamped?)
+  (derive ::mi/write-policy.superuser)
+  (derive ::mi/create-policy.superuser))
 
 (defmethod audit-app/model-details :model/Tenant
   [entity _event-type]
   (select-keys entity [:name :slug :is_active :attributes]))
 
-(t2/deftransforms :model/Tenant
-  {:attributes mi/transform-json-no-keywordization})
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (def Slug
   "The malli schema for a tenant's slug"
   [:re #"^[-_a-z0-9]{1,255}$"])
-
-(t2/define-before-insert :model/Tenant
-  [tenant]
-  (let [tenant-collection-id (tenants.db/insert-collection! {:type      collection/tenant-specific-root-collection-type
-                                                             :name      (format "Tenant Collection: %s" (:name tenant))
-                                                             :namespace :tenant-specific})]
-    (u/prog1 (assoc tenant :tenant_collection_id tenant-collection-id)
-      ;; The API layer is responsible for doing validation with nice error messages, here we just throw as a final layer
-      ;; of defense.
-      (mu/validate-throw Slug (:slug tenant)))))
-
-(defn tenant-exists?
-  "Given a tenant name, returns truthy if the name (or its slugified version) is already reserved."
-  [{n :name slug :slug}]
-  (tenants.db/tenant-name-or-slug-exists? n slug))
-
-(doto :model/Tenant
-  (derive :metabase/model)
-  (derive :hook/timestamped?))
-
-(methodical/defmethod t2/batched-hydrate [:model/Tenant :member_count]
-  [_model k tenants]
-  (mi/instances-with-hydrated-data
-   tenants k
-   (fn []
-     (->> (tenants.db/active-member-counts (map u/the-id tenants))
-          (map (juxt :tenant_id :count))
-          (into {})))
-   :id
-   {:default 0}))
 
 (def ^:private StrictAttributes
   [:map-of
@@ -81,6 +62,96 @@
    (mu/with-api-error-message
     [:fn #(mr/validate StrictAttributes %)]
     (deferred-tru "attribute keys must be a keyword or string and must not start with `@`"))])
+
+(defn- check-slug
+  "Throws a 400 unless `slug` is lower-case letters, digits, `-` and `_`."
+  [slug]
+  (when-not (mr/validate Slug slug)
+    (throw (ex-info (tru "invalid slug") {:status-code 400}))))
+
+(defn- check-name
+  "Throws a 400 when `tenant-name` is blank."
+  [tenant-name]
+  (when (str/blank? tenant-name)
+    (throw (ex-info (tru "A tenant needs a name.") {:status-code 400}))))
+
+(defn- check-attributes
+  "Throws a 400 when a key of `attributes` starts with `@`, which marks the attributes Metabase sets itself."
+  [attributes]
+  (when (some #(str/starts-with? (name %) "@") (keys attributes))
+    (throw (ex-info (tru "attribute keys must not start with `@`") {:status-code 400}))))
+
+(defn- check-new-name-and-slug
+  "Throws a 400 when `tenant`, a row an INSERT writes, has the name or slug of an existing Tenant."
+  [{tenant-name :name :keys [slug]}]
+  (when (tenants.db/tenant-name-or-slug-exists? tenant-name slug)
+    (throw (ex-info (tru "This tenant name or slug is already taken.") {:status-code 400}))))
+
+(t2/define-before-insert :model/Tenant
+  [{tenant-name :name :keys [slug attributes] :as tenant}]
+  (check-name tenant-name)
+  (check-slug slug)
+  (check-attributes attributes)
+  (check-new-name-and-slug tenant)
+  (let [tenant-collection-id (tenants.db/insert-collection! {:type      collection/tenant-specific-root-collection-type
+                                                             :name      (format "Tenant Collection: %s" (:name tenant))
+                                                             :namespace :tenant-specific})]
+    (assoc tenant :tenant_collection_id tenant-collection-id)))
+
+(t2/define-before-update :model/Tenant
+  [{:keys [id] :as tenant}]
+  (let [changes (t2/changes tenant)]
+    (when (contains? changes :slug)
+      (throw (ex-info (tru "You cannot change the slug of a tenant.") {:status-code 400})))
+    (when (contains? changes :tenant_collection_id)
+      (throw (ex-info (tru "You cannot change the collection of a tenant.") {:status-code 400})))
+    (when (contains? changes :name)
+      (check-name (:name changes)))
+    (when (contains? changes :attributes)
+      (check-attributes (:attributes changes)))
+    (when (and (contains? changes :name) (tenants.db/other-tenant-named? (:name changes) id))
+      (throw (ex-info (tru "This name is already taken.") {:status-code 400})))
+    (when (false? (:is_active changes))
+      (tenants.db/deactivate-tenant-users! id)
+      (collection/with-allow-modifying-tenant-root-collections
+        (tenants.db/set-collection-archived! (:tenant_collection_id tenant) true)))
+    (when (true? (:is_active changes))
+      (tenants.db/reactivate-tenant-users! id)
+      (collection/with-allow-modifying-tenant-root-collections
+        (tenants.db/set-collection-archived! (:tenant_collection_id tenant) false)))
+    tenant))
+
+(mi/define-update-in-transaction :model/Tenant)
+
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
+
+(defn current-user-reads-tenants?
+  "Whether the current user may read Tenants, which superusers and users outside any tenant may."
+  []
+  (boolean (or (mi/superuser?) (nil? (:tenant_id @api/*current-user*)))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Tenant :can_read]
+  "Whether the current user can read each of `tenants`, per [[current-user-reads-tenants?]]."
+  [_model k tenants]
+  (let [readable? (current-user-reads-tenants?)]
+    (for [tenant tenants]
+      (when tenant
+        (vary-meta tenant assoc k readable?)))))
+
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
+
+(methodical/defmethod t2/batched-hydrate [:model/Tenant :member_count]
+  [_model k tenants]
+  (mi/instances-with-hydrated-data
+   tenants k
+   (fn []
+     (->> (tenants.db/active-member-counts (map u/the-id tenants))
+          (map (juxt :tenant_id :count))
+          (into {})))
+   :id
+   {:default 0}))
+
+;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (defenterprise user->tenant-collection-and-descendant-ids
   "EE version of user->tenant-collection-and-descendant-ids. Returns a vector of the tenant collection ID and all

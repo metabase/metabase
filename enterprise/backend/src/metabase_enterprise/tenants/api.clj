@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -42,17 +41,21 @@
 (defn- present-tenant [tenant]
   (first (present-tenants [tenant])))
 
+(defn- checked-tenant
+  "The Tenant with `id`, once `check` (`api/read-check` or `api/write-check`) passes for it; the check runs first, so a
+  refused caller gets a 403 whether or not the Tenant exists."
+  [check id]
+  (let [tenant (tenants.db/tenant id)]
+    (check (or tenant (t2/instance :model/Tenant {:id id})))
+    (api/check-404 tenant)))
+
 (defn create-tenant!
-  "Creates a new tenant, validating it, verifying that it does not already exist and publishing audit events as
-  necessary."
+  "Creates a new tenant, validating its shape and publishing audit events as necessary."
   [tenant]
   (when-not (mr/validate CreateTenantArguments tenant)
     (throw (ex-info "Invalid Tenant"
                     {:status-code 400
                      :errors (mr/explain CreateTenantArguments tenant)})))
-  (api/check-403 api/*is-superuser?*)
-  (api/check-400 (not (tenant/tenant-exists? tenant))
-                 "This tenant name or slug is already taken.")
   (let [new-tenant (tenants.db/insert-tenant! tenant)]
     (events/publish-event! :event/tenant-create {:object new-tenant})
     (present-tenant new-tenant)))
@@ -62,6 +65,7 @@
   [_route-params
    _query-params
    tenant :- CreateTenantArguments]
+  (api/create-check :model/Tenant tenant)
   (create-tenant! tenant))
 
 (api.macros/defendpoint :get "/" :- [:map {:closed true} [:data [:sequential Tenant]]]
@@ -70,7 +74,7 @@
    {:keys [status]} :- [:map {:closed true}
                         [:status {:default "all"} [:enum "all" "deactivated" "active"]]]
    _]
-  (api/check-403 (or api/*is-superuser?* (not (:tenant_id @api/*current-user*))))
+  (api/check-403 (tenant/current-user-reads-tenants?))
   {:data (present-tenants
           (tenants.db/tenants-page status
                                    (when (request/paged?) (request/limit))
@@ -85,40 +89,27 @@
 (mu/defn update-tenant!
   "Updates a tenant, publishing any necessary events after doing so"
   [tenant-id :- ms/PositiveInt
-   {:keys [is_active] :as tenant} :- UpdateTenantArguments]
+   tenant :- UpdateTenantArguments]
   (t2/with-transaction [_cn]
-    (collection/with-allow-modifying-tenant-root-collections
-      (let [tenant-before-update (tenants.db/tenant tenant-id)
-            _                    (tenants.db/update-tenant! tenant-id tenant)
-            tenant-after-update  (tenants.db/tenant tenant-id)]
-        (when (false? is_active)
-          (tenants.db/deactivate-tenant-users! tenant-id)
-          (some-> (tenants.db/collection-with-archived-state (:tenant_collection_id tenant-before-update) false)
-                  collection/archive-collection!))
-        (when (true? is_active)
-          (tenants.db/reactivate-tenant-users! tenant-id)
-          (some-> (tenants.db/collection-with-archived-state (:tenant_collection_id tenant-before-update) true)
-                  (collection/unarchive-collection! {})))
-        (events/publish-event! :event/tenant-update {:object          tenant-after-update
-                                                     :previous-object tenant-before-update})
-        tenant-after-update))))
+    (let [tenant-before-update (tenants.db/tenant tenant-id)
+          _                    (tenants.db/update-tenant! tenant-id tenant)
+          tenant-after-update  (tenants.db/tenant tenant-id)]
+      (events/publish-event! :event/tenant-update {:object          tenant-after-update
+                                                   :previous-object tenant-before-update})
+      tenant-after-update)))
 
 (api.macros/defendpoint :put "/:id" :- Tenant
   "Update a tenant, can set name, attributes, or whether this tenant is active."
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    tenant :- UpdateTenantArguments]
-  (api/check-403 api/*is-superuser?*)
-  (when (:name tenant)
-    (api/check-400 (not (tenants.db/other-tenant-named? (:name tenant) id))
-                   "This name is already taken."))
+  (checked-tenant api/write-check id)
   (present-tenant (update-tenant! id tenant)))
 
 (api.macros/defendpoint :get "/:id" :- Tenant
   "Get info about a tenant"
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (api/check-403 (or api/*is-superuser?* (not (:tenant_id @api/*current-user*))))
-  (present-tenant (tenants.db/tenant id)))
+  (present-tenant (checked-tenant api/read-check id)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/tenant` routes"
