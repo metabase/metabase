@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -161,6 +162,22 @@
                 :description          "created this."
                 :has_multiple_changes false}]
               (get-revisions :card id))))))
+
+(deftest transform-revert-publishes-audit-event-test
+  (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Transform {transform-id :id} {:name "Before"}]
+        (create-transform-revision! transform-id true :crowberto)
+        (t2/update! :model/Transform :id transform-id {:name "After"})
+        (create-transform-revision! transform-id false :crowberto)
+        (let [revision-id (t2/select-one-pk :model/Revision :model "Transform" :model_id transform-id
+                                            {:order-by [[:id :asc]]})
+              topics      (atom [])]
+          (with-redefs [events/publish-event! (fn [topic event] (swap! topics conj [topic (get-in event [:object :id])]))]
+            (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                  {:entity "transform" :id transform-id :revision_id revision-id}))
+          (is (= "Before" (t2/select-one-fn :name :model/Transform :id transform-id)))
+          (is (some #{[:event/update-transform transform-id]} @topics)))))))
 
 (deftest transform-revisions-guard-prior-source-per-entitlement-test
   (testing "a Transform's revision history is authorized per snapshot: a prior :source is served only to callers

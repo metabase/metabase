@@ -30,19 +30,27 @@
 
 (derive :model/TransformRun :metabase/model)
 
-(def ^:private terminal-statuses
-  #{:succeeded :failed :canceled :timeout})
-
 (t2/define-before-update :model/TransformRun
   [run]
-  (let [changes (t2/changes run)]
-    (cond-> run
-      (and (contains? terminal-statuses (keyword (:status changes))) (not (contains? changes :end_time)))
-      (assoc :end_time (mi/now)))))
+  (cond-> run
+    (transforms.models.u/ended-without-end-time? run) (assoc :end_time (mi/now))))
 
 (t2/deftransforms :model/TransformRun
   {:status     mi/transform-keyword
    :run_method mi/transform-keyword})
+
+(mi/define-before-insert :model/TransformRun
+  [runs]
+  (let [transform-ids (into #{} (keep :transform_id) runs)
+        transforms    (when (seq transform-ids) (transforms.db/transform-snapshots-by-id transform-ids))]
+    (mapv (fn [{:keys [transform_id] :as run}]
+            (if-let [transform (get transforms transform_id)]
+              (assoc run
+                     :transform_name      (:name transform)
+                     :transform_entity_id (:entity_id transform)
+                     :metered_as          (premium-features/transform-metered-as (:source_type transform)))
+              run))
+          runs)))
 
 ;; a run is only readable if its transform is; orphaned runs (transform deleted) are superuser-only
 (methodical/defmethod t2/simple-hydrate [:model/TransformRun :can_read]
@@ -94,20 +102,15 @@
 (mu/defn start-run! :- ::transforms.schema/transform-run
   "Start a run. If `user_id` is provided in properties, it will be stored with the run
    and used for attribution in the audit log (avoiding 'External user' for scheduled runs).
-   Also captures `transform_name` and `transform_entity_id` for historical reference."
+   The insert hook also captures `transform_name`, `transform_entity_id` and `metered_as` for historical reference."
   ([transform-id :- ::lib.schema.id/transform]
    (start-run! transform-id {}))
   ([transform-id :- ::lib.schema.id/transform
     properties   :- ::transforms.schema/transform-run.update]
-   (let [transform  (transforms.db/transform-snapshot transform-id)
-         metered-as (premium-features/transform-metered-as (:source_type transform))
-         run (transforms.db/insert-run! (assoc properties
+   (let [run (transforms.db/insert-run! (assoc properties
                                                :transform_id transform-id
-                                               :transform_name (:name transform)
-                                               :transform_entity_id (:entity_id transform)
                                                :status :started
-                                               :is_active true
-                                               :metered_as metered-as))]
+                                               :is_active true))]
      ;; Pass user_id to the event so audit log properly attributes the run
      (events/publish-event! :event/transform-run-start
                             (cond-> {:object run}

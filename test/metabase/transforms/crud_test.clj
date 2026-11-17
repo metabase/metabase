@@ -1,9 +1,12 @@
 (ns metabase.transforms.crud-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
-   [metabase.transforms.crud :as transforms.crud]))
+   [metabase.transforms.crud :as transforms.crud]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -54,3 +57,31 @@
            (validates?! (lookback-transform num-field {:value 4 :unit "day"})))))
     (testing "no configured lookback is a no-op"
       (is (validates?! (lookback-transform dt-field nil))))))
+
+(deftest update-transform-publishes-audit-event-test
+  (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Transform {id :id} {:target {:type "table" :schema "PUBLIC" :name "audited_target" :database (mt/id)}}]
+        (let [topics (atom [])]
+          (mt/with-dynamic-fn-redefs [driver.u/supports? (fn [& _] true)]
+            (with-redefs [events/publish-event! (fn [topic _] (swap! topics conj topic))]
+              (mt/with-current-user (mt/user->id :crowberto)
+                (transforms.crud/update-transform! id {:name "Renamed"}))))
+          (is (= "Renamed" (t2/select-one-fn :name :model/Transform :id id)))
+          (is (some #{:event/update-transform} @topics)))))))
+
+(deftest check-references-test
+  (let [definition {:name   "Referencing transform"
+                    :source {:type :query :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                    :target {:type "table" :name "referenced_target" :database (mt/id)}}]
+    (testing "a target database without the features the transform needs"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not support the requested transform features"
+                            (transforms.crud/check-references definition #{}))))
+    (testing "a target database that supports them, schemas included"
+      (mt/with-dynamic-fn-redefs [driver.u/supports? (fn [_driver feature & _] (not= feature :schemas))]
+        (is (nil? (transforms.crud/check-references definition #{:source :target})))))
+    (testing "a target schema the driver needs"
+      (mt/with-dynamic-fn-redefs [driver.u/supports? (fn [& _] true)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"target schema is required"
+                              (transforms.crud/check-references definition #{:target})))
+        (is (nil? (transforms.crud/check-references definition #{:source})))))))

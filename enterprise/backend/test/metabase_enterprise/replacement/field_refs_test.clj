@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -502,3 +503,17 @@
         (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
         (is (= dash-updated (:updated_at (t2/select-one :model/Dashboard :id dashboard-id))))
         (is (= dc-updated (:updated_at (t2/select-one :model/DashboardCard :id dashcard-id))))))))
+
+(deftest transform-upgrade-field-refs!-publishes-audit-event-test
+  (let [mp     (mt/metadata-provider)
+        query  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                   (lib/breakout (lib.metadata/field mp (mt/id :orders :id)))
+                   lib/append-stage
+                   (lib/filter (lib/= (lib.metadata/field mp (mt/id :orders :id)) 1)))
+        topics (atom [])]
+    (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
+                                                        :source {:type :query :query query}
+                                                        :target {:database (mt/id) :type "table" :name "out"}}]
+      (with-redefs [events/publish-event! (fn [topic event] (swap! topics conj [topic (get-in event [:object :id])]))]
+        (replacement.field-refs/upgrade-field-refs! [:transform transform-id]))
+      (is (= [[:event/update-transform transform-id]] @topics)))))

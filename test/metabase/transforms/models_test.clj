@@ -301,15 +301,22 @@
           (is (= transform-name (:transform_name run)))
           (is (= entity-id (:transform_entity_id run))))))))
 
+(defn- incremental-native-query
+  "A native query on `db-id` with a table variable for the incremental range filter."
+  [db-id sql]
+  (lib/with-template-tags
+    (lib/native-query (lib-be/application-database-metadata-provider db-id) sql)
+    {"source_table" {:id "source_table" :name "source_table" :display-name "Source Table" :type :table :table-id (mt/id :venues)}}))
+
 (deftest checkpoint-reset-on-filter-field-change-test
   (testing "Changing checkpoint-filter-field-id resets stored checkpoint"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Transform {transform-id :id}
                      {:source {:type :query
-                               :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")
+                               :query (incremental-native-query db-id "SELECT 1 FROM {{source_table}}")
                                :source-incremental-strategy {:type "checkpoint"
-                                                             :checkpoint-filter-field-id 100}}
+                                                             :checkpoint-filter-field-id (mt/id :venues :id)}}
                       :target {:type "table-incremental"
                                :schema "public"
                                :name "test_incr"
@@ -322,9 +329,9 @@
         (testing "changing checkpoint-filter-field-id resets checkpoint"
           (t2/update! :model/Transform :id transform-id
                       {:source {:type :query
-                                :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")
+                                :query (incremental-native-query db-id "SELECT 1 FROM {{source_table}}")
                                 :source-incremental-strategy {:type "checkpoint"
-                                                              :checkpoint-filter-field-id 200}}})
+                                                              :checkpoint-filter-field-id (mt/id :venues :price)}}})
           (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (nil? (:last_checkpoint_value t)))))
         (testing "updating without changing checkpoint-filter-field-id preserves checkpoint"
@@ -333,9 +340,9 @@
                       {:last_checkpoint_value "99"})
           (t2/update! :model/Transform :id transform-id
                       {:source {:type :query
-                                :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 2")
+                                :query (incremental-native-query db-id "SELECT 2 FROM {{source_table}}")
                                 :source-incremental-strategy {:type "checkpoint"
-                                                              :checkpoint-filter-field-id 200}}})
+                                                              :checkpoint-filter-field-id (mt/id :venues :price)}}})
           (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (= "99" (:last_checkpoint_value t)))))))))
 
@@ -345,9 +352,9 @@
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Transform {transform-id :id}
                      {:source {:type :query
-                               :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")
+                               :query (incremental-native-query db-id "SELECT 1 FROM {{source_table}}")
                                :source-incremental-strategy {:type "checkpoint"
-                                                             :checkpoint-filter-field-id 100
+                                                             :checkpoint-filter-field-id (mt/id :venues :id)
                                                              :lookback {:value 4 :unit "day"}}}
                       :target {:type "table-incremental"
                                :schema "public"
@@ -407,3 +414,53 @@
           (let [result (transforms.job-run/paged-job-runs {:job-id j1-id :limit 1 :offset 0})]
             (is (= 1 (count (:data result))))
             (is (= 2 (:total result)))))))))
+
+(defn- started-run-attributes
+  "The attributes of a started run of each run model, linked to the Transform `transform-id` and the job `job-id`, with
+  snapshot values the insert hooks replace."
+  [transform-id job-id]
+  {:model/TransformRun    {:transform_id        transform-id
+                           :transform_name      "ignored"
+                           :transform_entity_id "ignored"
+                           :status              "started"
+                           :run_method          "manual"
+                           :is_active           true}
+   :model/TransformJobRun {:job_id        job-id
+                           :job_name      "ignored"
+                           :job_entity_id "ignored"
+                           :status        "started"
+                           :run_method    "cron"
+                           :start_time    #t "2025-09-01T10:00:00Z"
+                           :is_active     true}
+   :model/TransformDagRun {:source_transform_id        transform-id
+                           :source_transform_name      "ignored"
+                           :source_transform_entity_id "ignored"
+                           :direction                  :downstream
+                           :transform_count            1
+                           :status                     :started
+                           :start_time                 #t "2025-09-01T10:00:00Z"
+                           :is_active                  true}})
+
+(deftest run-snapshot-columns-are-derived-on-insert-test
+  (mt/with-temp [:model/Transform    {transform-id :id transform-name :name transform-entity-id :entity_id} {}
+                 :model/TransformJob {job-id :id job-name :name job-entity-id :entity_id} {:name "Snapshot Job"}]
+    (let [attributes (started-run-attributes transform-id job-id)]
+      (mt/with-temp [:model/TransformRun    run     (:model/TransformRun attributes)
+                     :model/TransformJobRun job-run (:model/TransformJobRun attributes)
+                     :model/TransformDagRun dag-run (:model/TransformDagRun attributes)]
+        (is (=? {:transform_name transform-name, :transform_entity_id transform-entity-id}
+                (t2/select-one :model/TransformRun :id (:id run))))
+        (is (=? {:job_name job-name, :job_entity_id job-entity-id}
+                (t2/select-one :model/TransformJobRun :id (:id job-run))))
+        (is (=? {:source_transform_name transform-name, :source_transform_entity_id transform-entity-id}
+                (t2/select-one :model/TransformDagRun :id (:id dag-run))))))))
+
+(deftest runs-get-end-time-when-they-end-test
+  (mt/with-temp [:model/Transform    {transform-id :id} {}
+                 :model/TransformJob {job-id :id} {}]
+    (doseq [[model attributes] (started-run-attributes transform-id job-id)]
+      (testing model
+        (mt/with-temp [model {run-id :id} (assoc attributes :end_time nil)]
+          (is (nil? (t2/select-one-fn :end_time model :id run-id)))
+          (t2/update! model :id run-id {:status :succeeded :is_active nil})
+          (is (some? (t2/select-one-fn :end_time model :id run-id))))))))

@@ -418,39 +418,41 @@
                         (is (contains? events "model_to_transforms_migration_success"))
                         (is (not (contains? events "model_to_transforms_migration_failure")))))))))))))))
 
-(deftest replace-model-with-transform-failure-test
+(deftest ^:mb/driver-tests replace-model-with-transform-failure-test
   (testing "POST /replace-model-with-transform — transform execution failure leaves model unchanged"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {model-id :id}
-                       {:database_id   (mt/id)
-                        :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                        :type          :model
-                        :name          "Model"}]
-          (mt/with-model-cleanup [:model/ReplacementRun :model/Transform]
-            (mt/with-dynamic-fn-redefs [transforms/execute! (fn [_ _] (throw (ex-info "Simulated transform failure" {})))]
-              (snowplow-test/with-fake-snowplow-collector
-                (let [response (mt/user-http-request :crowberto :post 202
-                                                     "ee/replacement/replace-model-with-transform"
-                                                     {:card_id          model-id
-                                                      :transform_name   "Failing Transform"
-                                                      :transform_target {:type     "table"
-                                                                         :schema   "PUBLIC"
-                                                                         :name     "fail_transform"
-                                                                         :database (mt/id)}})
-                      run-id   (:run_id response)
-                      final    (poll-run run-id)]
-                  (testing "run reaches failed status"
-                    (is (= "failed" (:status final))))
-                  (testing "error message is captured"
-                    (is (some? (:message final))))
-                  (testing "model is NOT converted to a question"
-                    (is (= :model (t2/select-one-fn :type :model/Card :id model-id))))
-                  (testing "tracks the migration started and failure analytics events, not success"
-                    (let [events (tracked-event-names!)]
-                      (is (contains? events "model_to_transforms_migration_started"))
-                      (is (contains? events "model_to_transforms_migration_failure"))
-                      (is (not (contains? events "model_to_transforms_migration_success"))))))))))))))
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:dependencies}
+        (let [mp     (mt/metadata-provider)
+              schema (t2/select-one-fn :schema :model/Table :id (mt/id :orders))]
+          (mt/with-temp [:model/Card {model-id :id}
+                         {:database_id   (mt/id)
+                          :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          :type          :model
+                          :name          "Model"}]
+            (mt/with-model-cleanup [:model/ReplacementRun :model/Transform]
+              (mt/with-dynamic-fn-redefs [transforms/execute! (fn [_ _] (throw (ex-info "Simulated transform failure" {})))]
+                (snowplow-test/with-fake-snowplow-collector
+                  (let [response (mt/user-http-request :crowberto :post 202
+                                                       "ee/replacement/replace-model-with-transform"
+                                                       {:card_id          model-id
+                                                        :transform_name   "Failing Transform"
+                                                        :transform_target {:type     "table"
+                                                                           :schema   schema
+                                                                           :name     "fail_transform"
+                                                                           :database (mt/id)}})
+                        run-id   (:run_id response)
+                        final    (poll-run run-id)]
+                    (testing "run reaches failed status"
+                      (is (= "failed" (:status final))))
+                    (testing "error message is captured"
+                      (is (some? (:message final))))
+                    (testing "model is NOT converted to a question"
+                      (is (= :model (t2/select-one-fn :type :model/Card :id model-id))))
+                    (testing "tracks the migration started and failure analytics events, not success"
+                      (let [events (tracked-event-names!)]
+                        (is (contains? events "model_to_transforms_migration_started"))
+                        (is (contains? events "model_to_transforms_migration_failure"))
+                        (is (not (contains? events "model_to_transforms_migration_success")))))))))))))))
 
 (deftest replace-model-with-transform-dependent-shapes-test
   (testing "POST /replace-model-with-transform correctly handles every dependent shape"

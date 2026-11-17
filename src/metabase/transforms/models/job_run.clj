@@ -15,22 +15,28 @@
 
 (methodical/defmethod t2/table-name :model/TransformJobRun [_model] :transform_job_run)
 
-(derive :model/TransformJobRun :metabase/model)
-(derive :model/TransformJobRun :hook/timestamped?)
-
-(def ^:private terminal-statuses
-  #{:succeeded :failed :canceled :timeout})
+(doto :model/TransformJobRun
+  (derive :metabase/model)
+  (derive :hook/timestamped?))
 
 (t2/define-before-update :model/TransformJobRun
   [run]
-  (let [changes (t2/changes run)]
-    (cond-> run
-      (and (contains? terminal-statuses (keyword (:status changes))) (not (contains? changes :end_time)))
-      (assoc :end_time (mi/now)))))
+  (cond-> run
+    (transforms.models.u/ended-without-end-time? run) (assoc :end_time (mi/now))))
 
 (t2/deftransforms :model/TransformJobRun
   {:status mi/transform-keyword
    :run_method mi/transform-keyword})
+
+(mi/define-before-insert :model/TransformJobRun
+  [runs]
+  (let [job-ids (into #{} (keep :job_id) runs)
+        jobs    (when (seq job-ids) (transforms.db/job-snapshots-by-id job-ids))]
+    (mapv (fn [{:keys [job_id] :as run}]
+            (if-let [job (get jobs job_id)]
+              (assoc run :job_name (some-> (:name job) str) :job_entity_id (:entity_id job))
+              run))
+          runs)))
 
 (mu/defn latest-runs :- [:maybe [:vector ::transforms.schema/transform-job-run]]
   "Return the latest runs for `job-ids`."
@@ -40,19 +46,14 @@
           (transforms.db/latest-job-runs-reducible job-ids))))
 
 (mu/defn start-run! :- ::transforms.schema/transform-job-run
-  "Start a run. Snapshots the job's name and entity_id so the run stays displayable after the job
+  "Start a run. The insert hook snapshots the job's name and entity_id so the run stays displayable after the job
   is deleted (`transform_job_run.job_id` has no FK; job runs outlive their job)."
   ([job-id     :- ms/PositiveInt
     run-method :- [:enum :manual :cron]]
-   ;; :built_in_type so the after-select hook localizes built-in job names; str realizes the
-   ;; LocalizedString into the snapshot
-   (let [job (transforms.db/job-snapshot job-id)]
-     (transforms.db/insert-job-run! {:job_id        job-id
-                                     :job_name      (some-> (:name job) str)
-                                     :job_entity_id (:entity_id job)
-                                     :run_method    run-method
-                                     :status        :started
-                                     :is_active     true}))))
+   (transforms.db/insert-job-run! {:job_id     job-id
+                                   :run_method run-method
+                                   :status     :started
+                                   :is_active  true})))
 
 (mu/defn reap-orphaned-runs! :- [:maybe [:sequential ::transforms.schema/transform-job-run]]
   "Time out active job runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator

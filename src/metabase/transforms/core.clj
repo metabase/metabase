@@ -40,12 +40,8 @@
   add-source-readable
   is-temp-transform-table?]
  [metabase.transforms.crud
-  check-database-feature
   requestable-indexes
   check-feature-enabled!
-  validate-incremental-column-type!
-  validate-target-schema!
-  validate-transform-query!
   get-transforms
   get-transform
   create-transform!

@@ -167,6 +167,21 @@
                    (get-in (t2/select-one :model/Transform :id transform-id)
                            [:source :query :stages 0 :source-table])))))))))
 
+(deftest transform-swap-source!-publishes-audit-event-test
+  (mt/with-premium-features #{:dependencies}
+    (mt/with-test-user :rasta
+      (let [mp     (mt/metadata-provider)
+            query  (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            topics (atom [])]
+        (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
+                                                            :source {:type :query :query query}
+                                                            :target {:database (mt/id) :type "table" :name "out"}}]
+          (with-redefs [events/publish-event! (fn [topic event] (swap! topics conj [topic (get-in event [:object :id])]))]
+            (replacement.source-swap/swap-source! [:transform transform-id]
+                                                  [:table (mt/id :orders)]
+                                                  [:table (mt/id :reviews)]))
+          (is (some #{[:event/update-transform transform-id]} @topics)))))))
+
 ;;; ------------------------------------------------- Segment ----------------------------------------------------------
 
 (deftest segment-swap-source!-source-table-test
