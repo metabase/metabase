@@ -18,6 +18,7 @@ import type {
   ItemDependencies,
   PermissionDebugResponse,
   PreviewCell,
+  PreviewCollection,
   PreviewCollectionsResponse,
   PreviewDataResponse,
   PreviewPrincipal,
@@ -157,10 +158,9 @@ describe("WhyListSidesheet", () => {
   it("answers first, then opening the dashboard, its data and exploring it", async () => {
     setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
 
-    expect(
-      await screen.findByText("Access to “Sales overview”"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Dashboard · as Sandy Sales")).toBeInTheDocument();
+    expect(await screen.findByText("Sales overview")).toBeInTheDocument();
+    expect(screen.getByText("Explain access")).toBeInTheDocument();
+    expect(screen.getByText("as Sandy Sales")).toBeInTheDocument();
     expect(screen.getByTestId("why-verdict")).toHaveTextContent(
       "Sandy Sales can see this dashboard.",
     );
@@ -204,7 +204,7 @@ describe("WhyListSidesheet", () => {
     );
   });
 
-  it("puts a blocked verdict in an error alert, with the collection under Opening this dashboard", async () => {
+  it("puts a blocked verdict in an error alert that says why not, with the collection under Opening this dashboard", async () => {
     setup({
       openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
       salesReportsAccess: "none",
@@ -212,7 +212,9 @@ describe("WhyListSidesheet", () => {
     });
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Sandy Sales can't open this dashboard.");
+    expect(alert).toHaveTextContent(
+      "Sandy Sales can't open this dashboard.Sandy Sales has no access to its collection, Sales reports.",
+    );
     expect(
       within(alert).getByRole("img", { name: "close icon" }),
     ).toBeInTheDocument();
@@ -495,7 +497,7 @@ describe("WhyListSidesheet", () => {
         {...getProps({ type: "collection", id: SALES_REPORTS_ID })}
       />,
     );
-    await screen.findByText("Opening this collection");
+    await screen.findByText("Sandy Sales can curate this collection.");
     rerender(
       <WhyListSidesheet
         {...getProps({ type: "dashboard", id: SALES_OVERVIEW_ID })}
@@ -516,7 +518,6 @@ describe("WhyListSidesheet", () => {
     expect(
       await screen.findByText("Sandy Sales can curate this collection."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Opening this collection")).toBeInTheDocument();
 
     rerender(
       <WhyListSidesheet
@@ -524,9 +525,7 @@ describe("WhyListSidesheet", () => {
       />,
     );
 
-    expect(
-      await screen.findByText("Access to “Q4 pipeline”"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Q4 pipeline")).toBeInTheDocument();
     const verdict = screen.getByTestId("why-verdict");
     expect(
       within(verdict).getByText("Sandy Sales can view this collection."),
@@ -555,12 +554,112 @@ describe("WhyListSidesheet", () => {
       "People get the most permissive collection access",
     );
   });
+
+  it("answers a collection in one verdict line, whose status opens the why, with no card under it", async () => {
+    setup({ openedItem: { type: "collection", id: SALES_REPORTS_ID } });
+    const verdict = await screen.findByTestId("why-verdict");
+    expect(verdict).toHaveTextContent(
+      "Sandy Sales can curate this collection.",
+    );
+    expect(
+      screen.queryByText("Opening this collection"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      within(verdict).getByRole("button", { name: /Curate/ }),
+    );
+
+    expect(
+      screen.getByText(
+        "Sandy Sales has Curate access to the Sales reports collection, from Sales.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Explain access")).toBeInTheDocument();
+  });
+
+  it("lists on All collections only the collections the page lists, with the person's whole access behind See everything", async () => {
+    setup({
+      openedItem: null,
+      isAllCollections: true,
+      mainCollections: {
+        ...COLLECTIONS,
+        collections: [
+          getCollection("root", "Our analytics", 0, "read"),
+          ...COLLECTIONS.collections,
+        ],
+      },
+      sharedCollections: {
+        ...COLLECTIONS,
+        collections: [
+          getCollection("root", "Shared collections", 0, "read"),
+          getCollection(18, "Onboarding kit", 1, "write"),
+          getCollection(17, "Product templates", 1, "none"),
+        ],
+      },
+    });
+
+    expect(await screen.findByText("All collections")).toBeInTheDocument();
+    expect(screen.getByText("Collections")).toBeInTheDocument();
+    expect(getVisibleTexts("Our analytics")).toHaveLength(1);
+    expect(getVisibleTexts("Onboarding kit")).toHaveLength(1);
+    // inside Our analytics, so the page doesn't list it
+    expect(screen.queryByText("Sales reports")).not.toBeInTheDocument();
+    expect(screen.queryByText("Product templates")).not.toBeInTheDocument();
+    expect(screen.queryByText("Shared collections")).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByText("See everything Sandy Sales can access"),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /Collections \(5\)/ }),
+    ).toHaveAttribute("aria-expanded", "true");
+    // Product templates and the Reviews table
+    expect(
+      screen.getByRole("button", { name: /Can't access \(2\)/ }),
+    ).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("leaves a tenant user's list without internal collections or another tenant's collection", async () => {
+    setup({
+      openedItem: null,
+      isAllCollections: true,
+      mainCollections: NO_COLLECTIONS,
+      tenantCollections: {
+        ...COLLECTIONS,
+        collections: [
+          {
+            ...getCollection(9, "Tenant Collection: Acme", 0, "write"),
+            source: "tenant",
+          },
+          {
+            ...getCollection(12, "Tenant Collection: Globex", 0, "none"),
+            source: "other-tenant",
+          },
+        ],
+      },
+    });
+
+    expect(
+      await screen.findByText("Tenant Collection: Acme"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Sales reports")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Tenant Collection: Globex"),
+    ).not.toBeInTheDocument();
+  });
 });
 
 type SetupOpts = {
-  openedItem: OpenedItem;
+  /** Null on a page with no item: "All collections" with `isAllCollections`. */
+  openedItem: OpenedItem | null;
+  isAllCollections?: boolean;
   /** Sales reports' collection access, "write" (Curate) unless given. */
   salesReportsAccess?: string;
+  /** Each tab's collections: the main tab's Sales reports and Q4 pipeline, and no shared or tenant tab, unless given. */
+  mainCollections?: PreviewCollectionsResponse;
+  sharedCollections?: PreviewCollectionsResponse;
+  tenantCollections?: PreviewCollectionsResponse;
   /** The tables the dashboard uses, Orders unless given. */
   tableIds?: number[];
   /** Whether the dashboard opens, and whether its cards load; both allowed unless given. */
@@ -570,21 +669,25 @@ type SetupOpts = {
 
 function setup({
   openedItem,
+  isAllCollections,
   salesReportsAccess = "write",
-  tableIds = [ORDERS_ID],
-  dashboardRead = ALLOW,
-  dashboardQuery = ALLOW,
-}: SetupOpts) {
-  setupPermissionPreviewCollectionsEndpoint("default", {
+  mainCollections = {
     ...COLLECTIONS,
     collections: COLLECTIONS.collections.map((collection) =>
       collection.id === SALES_REPORTS_ID
         ? { ...collection, access: getCell(salesReportsAccess) }
         : collection,
     ),
-  });
-  setupPermissionPreviewCollectionsEndpoint("shared", NO_COLLECTIONS);
-  setupPermissionPreviewCollectionsEndpoint("tenant", NO_COLLECTIONS);
+  },
+  sharedCollections = NO_COLLECTIONS,
+  tenantCollections = NO_COLLECTIONS,
+  tableIds = [ORDERS_ID],
+  dashboardRead = ALLOW,
+  dashboardQuery = ALLOW,
+}: SetupOpts) {
+  setupPermissionPreviewCollectionsEndpoint("default", mainCollections);
+  setupPermissionPreviewCollectionsEndpoint("shared", sharedCollections);
+  setupPermissionPreviewCollectionsEndpoint("tenant", tenantCollections);
   fetchMock.get("path:/api/ee/permission_debug/preview/item-scope", {
     ...SALES_OVERVIEW,
     table_ids: tableIds,
@@ -617,10 +720,15 @@ function setup({
     ),
   );
 
-  return renderWithProviders(<WhyListSidesheet {...getProps(openedItem)} />);
+  return renderWithProviders(
+    <WhyListSidesheet
+      {...getProps(openedItem)}
+      isAllCollections={isAllCollections}
+    />,
+  );
 }
 
-function getProps(openedItem: OpenedItem) {
+function getProps(openedItem: OpenedItem | null) {
   return {
     isOpen: true,
     preview: { userId: SANDY.id },
@@ -628,6 +736,15 @@ function getProps(openedItem: OpenedItem) {
     openedItem,
     onClose: jest.fn<void, []>(),
   };
+}
+
+function getCollection(
+  id: PreviewCollection["id"],
+  name: string,
+  depth: number,
+  access: string,
+): PreviewCollection {
+  return { id, name, depth, source: "group", access: getCell(access) };
 }
 
 function findAllPermissions() {

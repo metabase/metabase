@@ -29,6 +29,8 @@ export type WhyVerdict = {
   text: string;
   /** The group the access comes from, shown on its own line under the sentence. */
   group?: string;
+  /** Why an item doesn't open, shown with the verdict so the answer leads with it. */
+  reason?: string;
 };
 
 export type ItemType = "dashboard" | "question" | "model" | "metric";
@@ -51,13 +53,21 @@ export type ItemWhyPage = {
   permissions: WhyTarget[];
 };
 
-/** A collection: whether the person can open it, and from which group. */
+/** A collection: whether the person can open it, and from which group; on Our analytics, also the collections in it. */
 export type CollectionWhyPage = {
   kind: "collection";
   name: string | null;
   verdict: WhyVerdict;
-  blocked: WhyTarget[];
-  reasons: WhyTarget[];
+  /** The collection's own access, which the verdict's status opens; null when no collection permission applies. */
+  target: WhyTarget | null;
+  /** The collections the frame lists on this page: only Our analytics lists them here. */
+  collections: WhyTarget[];
+};
+
+/** The frame's collection browser at its top: the collections it lists, each with its access. */
+export type AllCollectionsWhyPage = {
+  kind: "all-collections";
+  collections: WhyTarget[];
 };
 
 /** The person's whole access: what's blocked and filtered, then counts of what they can open. */
@@ -72,7 +82,7 @@ export type SummaryWhyPage = {
 
 /** What "Explain access" shows: the page open (null when no item is), and the whole-access summary. */
 export type WhyList = {
-  page: ItemWhyPage | CollectionWhyPage | null;
+  page: ItemWhyPage | CollectionWhyPage | AllCollectionsWhyPage | null;
   summary: SummaryWhyPage;
 };
 
@@ -87,12 +97,14 @@ export type WhyPreview = {
  * What "Explain access" says about the item open in the frame, and about the person's whole access. Whether the item
  * opens and whether its data loads come from Metabase's own permission checks, run as the user the preview runs as;
  * the groups behind each answer come from the permissions graph, with the preview's attribute values. `null` while
- * loading. All of it is read as the admin, so it works in a "View app as…" tab too.
+ * loading. All of it is read as the admin, so it works in a "View app as…" tab too. `isAllCollections` says the frame
+ * shows its collection browser's top, where no item is open.
  */
 export function useWhyList(
   preview: WhyPreview | null,
   item: OpenedItem | null,
   who: string,
+  isAllCollections = false,
 ): WhyList | null {
   const principal: Principal | null =
     preview != null ? { type: "user", id: preview.userId } : null;
@@ -139,13 +151,25 @@ export function useWhyList(
   }
   const collections: CollectionLists = {
     main: mainCollections,
+    shared: sharedCollections,
+    tenant: tenantCollections,
     all: [mainCollections, sharedCollections, tenantCollections]
       .filter((list) => list.applies)
       .flatMap((list) => list.collections),
   };
   const summary = getSummaryPage(who, collections, dataPreview);
   if (item == null) {
-    return { page: null, summary };
+    return {
+      page: isAllCollections
+        ? {
+            kind: "all-collections",
+            collections: getAllCollectionsList(collections).map((collection) =>
+              getCollectionWhyTarget(who, collection),
+            ),
+          }
+        : null,
+      summary,
+    };
   }
   if (item.type === "collection") {
     if (item.id != null && readCheck == null) {
@@ -173,11 +197,64 @@ export function useWhyList(
   };
 }
 
-/** The collections of every tab that applies to the person, and the main tab's, which holds the root collection. */
+/** Each tab's collections, and those of every tab that applies to the person; the main tab holds the root collection. */
 type CollectionLists = {
   main: PreviewCollectionsResponse;
+  shared: PreviewCollectionsResponse;
+  tenant: PreviewCollectionsResponse;
   all: PreviewCollection[];
 };
+
+/**
+ * What the frame's "All collections" lists, in its order (`use-all-collections-items.ts`): Our analytics, or the
+ * collections in it the person can open when they can't open it; the top shared collections; their own tenant's
+ * collection; their personal collection. Only those the person can open.
+ */
+function getAllCollectionsList({
+  main,
+  shared,
+  tenant,
+}: CollectionLists): PreviewCollection[] {
+  const mainCollections = main.applies ? main.collections : [];
+  const root = mainCollections.find(({ id }) => id === "root");
+  const ourAnalytics =
+    root == null
+      ? []
+      : canOpen(root)
+        ? [root]
+        : getChildCollections(mainCollections);
+  const sharedCollections = shared.applies
+    ? getChildCollections(shared.collections)
+    : [];
+  const tenantCollections = tenant.applies
+    ? tenant.collections.filter(
+        (collection) =>
+          collection.source === "tenant" &&
+          collection.depth === 0 &&
+          canOpen(collection),
+      )
+    : [];
+  const personalCollections = mainCollections.filter(
+    ({ source }) => source === "personal",
+  );
+  return [
+    ...ourAnalytics,
+    ...sharedCollections,
+    ...tenantCollections,
+    ...personalCollections,
+  ];
+}
+
+/** The collections right under a tab's root that the person can open. */
+function getChildCollections(collections: PreviewCollection[]) {
+  return collections.filter(
+    (collection) => collection.depth === 1 && canOpen(collection),
+  );
+}
+
+function canOpen(collection: PreviewCollection) {
+  return collection.access.value !== "none";
+}
 
 /** The check that answers whether the item opens (`read`) or whether its data loads (`query`); a collection has no query. */
 function getCheckRequest(
@@ -209,9 +286,10 @@ function getSummaryPage(
   collections: CollectionLists,
   dataPreview: PreviewDataResponse,
 ): SummaryWhyPage {
-  const collectionTargets = collections.all.map((collection) =>
-    getCollectionWhyTarget(who, collection),
-  );
+  // the frame never shows a tenant user other tenants' collections
+  const collectionTargets = collections.all
+    .filter(({ source }) => source !== "other-tenant")
+    .map((collection) => getCollectionWhyTarget(who, collection));
   const tableTargets = dataPreview.databases.flatMap((database) =>
     database.tables.map((table) =>
       getTableWhyTarget(who, database, table, "view_data"),
@@ -251,7 +329,10 @@ function getSummaryPage(
   };
 }
 
-/** A collection's own sheet; the root collection has no check of its own, so its main-tab value answers. */
+/**
+ * A collection's own sheet; the root collection has no check of its own, so its main-tab value answers, and it lists
+ * the collections in it, as the frame does.
+ */
 function getCollectionPage(
   who: string,
   collections: CollectionLists,
@@ -267,21 +348,26 @@ function getCollectionPage(
         kind: "unknown",
         text: t`No collection permissions apply to this page.`,
       },
-      blocked: [],
-      reasons: [],
+      target: null,
+      collections: [],
     };
   }
-  const canOpen =
+  const canOpenCollection =
     readCheck != null
       ? readCheck.decision === "allow"
       : target != null && !isBlocking(target);
-  const targets = target != null ? [target] : [];
+  const childCollections =
+    collectionId == null && collections.main.applies
+      ? getChildCollections(collections.main.collections)
+      : [];
   return {
     kind: "collection",
     name: target?.subject.value ?? null,
-    verdict: getCollectionVerdict(who, canOpen, target),
-    blocked: canOpen ? [] : targets,
-    reasons: canOpen ? targets : [],
+    verdict: getCollectionVerdict(who, canOpenCollection, target),
+    target,
+    collections: childCollections.map((collection) =>
+      getCollectionWhyTarget(who, collection),
+    ),
   };
 }
 
@@ -347,6 +433,7 @@ function getItemPage(
       readCheck,
       queryCheck,
       filtered.length > 0,
+      collectionTarget,
     ),
     filtered,
     collection: collectionTarget,
@@ -370,8 +457,9 @@ function getTableRank(target: WhyTarget) {
 }
 
 /**
- * The outcome only, the sections below give the reasons: whether the item opens (its read check), then whether its
+ * The outcome, with the sections below giving the reasons: whether the item opens (its read check), then whether its
  * data loads (its query check). A question's query stops at one blocked table; a dashboard's cards load one by one.
+ * An item that doesn't open says why when its collection is the cause, so the answer leads with it.
  */
 function getItemVerdict(
   who: string,
@@ -379,10 +467,18 @@ function getItemVerdict(
   readCheck: PermissionDebugResponse,
   queryCheck: PermissionDebugResponse,
   isFiltered: boolean,
+  collection: WhyTarget | null,
 ): WhyVerdict {
   const copy = getItemVerdictCopy(who, itemType);
   if (readCheck.decision !== "allow") {
-    return { kind: "blocked", text: copy.blocked };
+    return {
+      kind: "blocked",
+      text: copy.blocked,
+      reason:
+        collection != null && isBlocking(collection)
+          ? t`${who} has no access to its collection, ${collection.title}.`
+          : undefined,
+    };
   }
   if (itemType === "dashboard") {
     const cardCount = queryCheck.data["card-count"] ?? 0;

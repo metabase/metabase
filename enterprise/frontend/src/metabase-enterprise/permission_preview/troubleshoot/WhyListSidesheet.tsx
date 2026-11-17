@@ -28,6 +28,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import { CreateQueriesContent } from "./CreateQueriesContent";
 import S from "./WhyListSidesheet.module.css";
@@ -41,6 +42,7 @@ import {
 import type { OpenedItem } from "./item-path";
 import { getPreviewColumnName, getPreviewOption } from "./preview-options";
 import {
+  type AllCollectionsWhyPage,
   type CollectionWhyPage,
   type ItemType,
   type ItemWhyPage,
@@ -57,6 +59,8 @@ type WhyListSidesheetProps = {
   whoName: string;
   /** The item the page shows now; the sheet follows it while open. */
   openedItem: OpenedItem | null;
+  /** Whether the page shows its collection browser's top, "All collections", rather than a page with no item. */
+  isAllCollections?: boolean;
   onClose: () => void;
 };
 
@@ -84,19 +88,30 @@ const OpenRowsContext = createContext<{
 
 /**
  * "Explain access": answers whether the person can open the page shown, then shows only what decides it (what blocks,
- * what filters, why it opens), with every permission on it folded away; with no item open, their whole access. Each
- * row opens the per-value "why" of the permission tabs.
+ * what filters, why it opens), with every permission on it folded away; on "All collections" and Our analytics, the
+ * collections the page lists; with no item open, their whole access. Each row opens the per-value "why" of the
+ * permission tabs.
  */
 export function WhyListSidesheet({
   isOpen,
   preview,
   whoName,
   openedItem,
+  isAllCollections = false,
   onClose,
 }: WhyListSidesheetProps) {
-  const list = useWhyList(isOpen ? preview : null, openedItem, whoName);
+  const list = useWhyList(
+    isOpen ? preview : null,
+    openedItem,
+    whoName,
+    isAllCollections,
+  );
   const itemKey =
-    openedItem != null ? `${openedItem.type}-${openedItem.id}` : "none";
+    openedItem != null
+      ? `${openedItem.type}-${openedItem.id}`
+      : isAllCollections
+        ? "all-collections"
+        : "none";
   const [sheetState, setSheetState] = useState<SheetState>(() =>
     getEmptySheetState(itemKey),
   );
@@ -150,17 +165,17 @@ export function WhyListSidesheet({
   const page = list?.page ?? null;
   const isSummary = view?.kind === "summary" || (list != null && page == null);
 
+  const heading = list != null ? getSheetHeading(view, page, whoName) : null;
+  const summaryLink = (
+    <SummaryLink
+      whoName={whoName}
+      onClick={() => openView({ kind: "summary" })}
+    />
+  );
+
   return (
     <Sidesheet
-      title={
-        <SheetTitle
-          view={view}
-          page={page}
-          isLoading={list == null}
-          whoName={whoName}
-          onBack={handleBack}
-        />
-      }
+      title={<SheetTitle hasBack={view != null} onBack={handleBack} />}
       isOpen={isOpen}
       onClose={handleClose}
       withOverlay={false}
@@ -171,6 +186,7 @@ export function WhyListSidesheet({
         <OpenRowsContext.Provider
           value={{ openRows, onToggle: handleToggleRow }}
         >
+          {heading != null && <ItemLine {...heading} />}
           {view?.kind === "detail" ? (
             <WhyContent target={view.target} />
           ) : view?.kind === "explore" ? (
@@ -181,9 +197,6 @@ export function WhyListSidesheet({
             <SummaryCard summary={list.summary} onOpen={handleOpenTarget} />
           ) : page?.kind === "item" ? (
             <>
-              <Text c="text-secondary">
-                {getItemSubtitle(page.itemType, whoName)}
-              </Text>
               <ItemCard
                 page={page}
                 onOpen={handleOpenTarget}
@@ -191,19 +204,24 @@ export function WhyListSidesheet({
                   openView({ kind: "explore", targets })
                 }
               />
-              <SummaryLink
-                whoName={whoName}
-                onClick={() => openView({ kind: "summary" })}
-              />
+              {summaryLink}
             </>
           ) : page?.kind === "collection" ? (
             <>
-              <Text c="text-secondary">{t`Collection · as ${whoName}`}</Text>
-              <CollectionCard page={page} onOpen={handleOpenTarget} />
-              <SummaryLink
-                whoName={whoName}
-                onClick={() => openView({ kind: "summary" })}
+              <CollectionVerdict page={page} onOpen={handleOpenTarget} />
+              <CollectionList
+                targets={page.collections}
+                onOpen={handleOpenTarget}
               />
+              {summaryLink}
+            </>
+          ) : page?.kind === "all-collections" ? (
+            <>
+              <CollectionList
+                targets={page.collections}
+                onOpen={handleOpenTarget}
+              />
+              {summaryLink}
             </>
           ) : null}
         </OpenRowsContext.Provider>
@@ -223,57 +241,95 @@ function useOpenRow(rowKey: string, initiallyOpen: boolean) {
   return [isOpen, () => onToggle(rowKey, !isOpen)] as const;
 }
 
+/** Always "Explain access"; a view opened over the page adds Back. */
 function SheetTitle({
-  view,
-  page,
-  isLoading,
-  whoName,
+  hasBack,
   onBack,
 }: {
-  view: SheetView | null;
-  page: ItemWhyPage | CollectionWhyPage | null;
-  isLoading: boolean;
-  whoName: string;
+  hasBack: boolean;
   onBack: () => void;
 }) {
-  if (view != null) {
-    return (
-      <Flex align="center" gap="xs">
-        <Button
-          size="compact-sm"
-          variant="subtle"
-          aria-label={t`Back`}
-          leftSection={<Icon name="chevronleft" />}
-          onClick={onBack}
-        />
-        {view.kind === "detail"
-          ? `${view.target.title} · ${getPreviewColumnName(view.target.column)}`
-          : view.kind === "explore"
-            ? getPreviewColumnName("create_queries")
-            : t`What ${whoName} can access`}
-      </Flex>
-    );
-  }
-  if (isLoading) {
+  if (!hasBack) {
     return t`Explain access`;
   }
-  if (page?.name != null) {
-    return t`Access to “${page.name}”`;
-  }
-  return page != null ? t`Access` : t`What ${whoName} can access`;
+  return (
+    <Flex align="center" gap="xs">
+      <Button
+        size="compact-sm"
+        variant="subtle"
+        aria-label={t`Back`}
+        leftSection={<Icon name="chevronleft" />}
+        onClick={onBack}
+      />
+      {t`Explain access`}
+    </Flex>
+  );
 }
 
-function getItemSubtitle(itemType: ItemType, whoName: string) {
-  switch (itemType) {
-    case "dashboard":
-      return t`Dashboard · as ${whoName}`;
-    case "model":
-      return t`Model · as ${whoName}`;
-    case "metric":
-      return t`Metric · as ${whoName}`;
-    case "question":
-      return t`Question · as ${whoName}`;
+type SheetHeading = {
+  icon: IconName;
+  name: string;
+  /** The person the sheet explains, after the name; none where the name already says it. */
+  whoName?: string;
+};
+
+/** What the sheet explains: the view opened over the page, else the page's item, collection or list. */
+function getSheetHeading(
+  view: SheetView | null,
+  page: ItemWhyPage | CollectionWhyPage | AllCollectionsWhyPage | null,
+  whoName: string,
+): SheetHeading | null {
+  if (view?.kind === "detail") {
+    return {
+      icon: view.target.column === "collection" ? "folder" : "table",
+      name: view.target.title,
+      whoName,
+    };
   }
+  if (view?.kind === "explore") {
+    return {
+      icon: "table",
+      name: getPreviewColumnName("create_queries"),
+      whoName,
+    };
+  }
+  if (view?.kind === "summary" || page == null) {
+    return { icon: "eye", name: t`Everything ${whoName} can access` };
+  }
+  switch (page.kind) {
+    case "item":
+      return { icon: ITEM_ICONS[page.itemType], name: page.name, whoName };
+    case "collection":
+      return { icon: "folder", name: page.name ?? t`This page`, whoName };
+    case "all-collections":
+      return { icon: "folder", name: t`All collections`, whoName };
+  }
+}
+
+const ITEM_ICONS: Record<ItemType, IconName> = {
+  dashboard: "dashboard",
+  question: "table2",
+  model: "model",
+  metric: "metric",
+};
+
+/** One line under the title: the item's icon and name, which truncates, then "as {name}". */
+function ItemLine({ icon, name, whoName }: SheetHeading) {
+  return (
+    <Flex align="center" gap="xs" wrap="nowrap" miw={0}>
+      <Icon name={icon} c="text-secondary" style={{ flexShrink: 0 }} />
+      <Tooltip label={name}>
+        <Text fw="bold" truncate="end" miw={0}>
+          {name}
+        </Text>
+      </Tooltip>
+      {whoName != null && (
+        <Text size="sm" c="text-secondary" style={{ flexShrink: 0 }}>
+          {t`as ${whoName}`}
+        </Text>
+      )}
+    </Flex>
+  );
 }
 
 /**
@@ -404,16 +460,18 @@ function SectionHeading({
       <Title c="text-secondary" order={4}>
         {heading}
       </Title>
-      <Tooltip label={info} multiline maw="20rem">
-        <UnstyledButton
-          aria-label={infoLabel}
-          c="text-secondary"
-          display="flex"
-        >
-          <Icon name="info" />
-        </UnstyledButton>
-      </Tooltip>
+      <InfoButton info={info} label={infoLabel} />
     </Flex>
+  );
+}
+
+function InfoButton({ info, label }: { info: string; label: string }) {
+  return (
+    <Tooltip label={info} multiline maw="20rem">
+      <UnstyledButton aria-label={label} c="text-secondary" display="flex">
+        <Icon name="info" />
+      </UnstyledButton>
+    </Tooltip>
   );
 }
 
@@ -655,31 +713,54 @@ function getItemSectionsCopy(itemType: ItemType, permissionCount: number) {
   }
 }
 
-function CollectionCard({
+/** A collection's answer in one line: whether it opens and from which group, its ⓘ, and its status to open the why. */
+function CollectionVerdict({
   page,
   onOpen,
 }: {
   page: CollectionWhyPage;
   onOpen: (target: WhyTarget) => void;
 }) {
+  const { target } = page;
   return (
-    <SidesheetCard>
-      <Verdict verdict={page.verdict} />
-      <BlockedSection targets={page.blocked} onOpen={onOpen} />
-      {page.reasons.length > 0 && (
-        <SidesheetCardSection>
-          <SectionHeading
-            heading={t`Opening this collection`}
+    <Verdict
+      verdict={page.verdict}
+      info={
+        target != null && (
+          <InfoButton
             info={t`People get the most permissive collection access across all of their groups. Dashboards and questions in this collection get the same access. Open a dashboard or question to see which tables it uses.`}
-            infoLabel={t`About collection permissions`}
+            label={t`About collection permissions`}
           />
-          <AccessRows targets={page.reasons} onOpen={onOpen} />
-        </SidesheetCardSection>
-      )}
+        )
+      }
+      status={
+        target != null && (
+          <StatusLink target={target} onClick={() => onOpen(target)} />
+        )
+      }
+    />
+  );
+}
+
+/** The collections the page lists, each with its access. */
+function CollectionList({
+  targets,
+  onOpen,
+}: {
+  targets: WhyTarget[];
+  onOpen: (target: WhyTarget) => void;
+}) {
+  if (targets.length === 0) {
+    return null;
+  }
+  return (
+    <SidesheetCard title={t`Collections`}>
+      <AccessRows targets={targets} onOpen={onOpen} />
     </SidesheetCard>
   );
 }
 
+/** What the person can access first and unfolded, then what's filtered, then what they can't access, folded. */
 function SummaryCard({
   summary,
   onOpen,
@@ -687,27 +768,43 @@ function SummaryCard({
   summary: SummaryWhyPage;
   onOpen: (target: WhyTarget) => void;
 }) {
+  const { collections, tables, blocked } = summary;
   return (
     <SidesheetCard>
       <Verdict verdict={summary.verdict} hasIcon={false} />
-      <BlockedSection targets={summary.blocked} onOpen={onOpen} />
-      <FilteredSection targets={summary.filtered} onOpen={onOpen} />
-      {(summary.collections.length > 0 || summary.tables.length > 0) && (
+      {(collections.length > 0 || tables.length > 0) && (
         <SidesheetCardSection title={t`Has access to`}>
           <Stack gap="xs">
-            <Disclosure
-              rowKey="summary-collections"
-              label={t`Collections (${summary.collections.length})`}
-            >
-              <AccessRows targets={summary.collections} onOpen={onOpen} />
-            </Disclosure>
-            <Disclosure
-              rowKey="summary-tables"
-              label={t`Tables (${summary.tables.length})`}
-            >
-              <AccessRows targets={summary.tables} onOpen={onOpen} />
-            </Disclosure>
+            {collections.length > 0 && (
+              <Disclosure
+                rowKey="summary-collections"
+                label={t`Collections (${collections.length})`}
+                initiallyOpen
+              >
+                <AccessRows targets={collections} onOpen={onOpen} />
+              </Disclosure>
+            )}
+            {tables.length > 0 && (
+              <Disclosure
+                rowKey="summary-tables"
+                label={t`Tables (${tables.length})`}
+                initiallyOpen
+              >
+                <AccessRows targets={tables} onOpen={onOpen} />
+              </Disclosure>
+            )}
           </Stack>
+        </SidesheetCardSection>
+      )}
+      <FilteredSection targets={summary.filtered} onOpen={onOpen} />
+      {blocked.length > 0 && (
+        <SidesheetCardSection>
+          <Disclosure
+            rowKey="summary-blocked"
+            label={t`Can't access (${blocked.length})`}
+          >
+            <AccessRows targets={blocked} onOpen={onOpen} />
+          </Disclosure>
         </SidesheetCardSection>
       )}
     </SidesheetCard>
@@ -725,13 +822,20 @@ const VERDICT_ICONS: Record<
   unknown: { icon: "info", iconColor: "text-secondary" },
 };
 
-/** `hasIcon={false}` for the summary: what someone can access isn't a warning, even when something is blocked. */
+/**
+ * `hasIcon={false}` for the summary: what someone can access isn't a warning, even when something is blocked. A
+ * collection's verdict adds its ⓘ after the sentence and its status at the end.
+ */
 function Verdict({
   verdict,
   hasIcon = true,
+  info,
+  status,
 }: {
   verdict: WhyVerdict;
   hasIcon?: boolean;
+  info?: ReactNode;
+  status?: ReactNode;
 }) {
   const icon = VERDICT_ICONS[verdict.kind];
   return (
@@ -744,41 +848,29 @@ function Verdict({
           style={{ flexShrink: 0 }}
         />
       )}
-      <Stack gap={0}>
-        <Text fw="bold">{verdict.text}</Text>
+      <Stack gap={0} flex={1} miw={0}>
+        <Flex align="center" gap="xs">
+          <Text fw="bold">{verdict.text}</Text>
+          {info}
+        </Flex>
         {verdict.group != null && (
           <Text c="text-secondary">{t`from ${verdict.group}`}</Text>
         )}
       </Stack>
+      {status}
     </Flex>
   );
 }
 
-/** A verdict that the item doesn't open, in the design system's error alert. */
+/** A verdict that the item doesn't open, in the design system's error alert, with why not when it's known. */
 function VerdictAlert({ verdict }: { verdict: WhyVerdict }) {
   return (
     <Alert color="error" icon={<Icon name="close" />} data-testid="why-verdict">
       <Text fw="bold" c="inherit">
         {verdict.text}
       </Text>
+      {verdict.reason != null && <Text c="inherit">{verdict.reason}</Text>}
     </Alert>
-  );
-}
-
-function BlockedSection({
-  targets,
-  onOpen,
-}: {
-  targets: WhyTarget[];
-  onOpen: (target: WhyTarget) => void;
-}) {
-  if (targets.length === 0) {
-    return null;
-  }
-  return (
-    <SidesheetCardSection title={t`Blocked`}>
-      <AccessRows targets={targets} onOpen={onOpen} />
-    </SidesheetCardSection>
   );
 }
 
@@ -913,13 +1005,15 @@ function PermissionRow({
 function Disclosure({
   rowKey,
   label,
+  initiallyOpen = false,
   children,
 }: {
   rowKey: string;
   label: string;
+  initiallyOpen?: boolean;
   children: ReactNode;
 }) {
-  const [isExpanded, toggle] = useOpenRow(rowKey, false);
+  const [isExpanded, toggle] = useOpenRow(rowKey, initiallyOpen);
   return (
     <div>
       <UnstyledButton aria-expanded={isExpanded} onClick={toggle}>

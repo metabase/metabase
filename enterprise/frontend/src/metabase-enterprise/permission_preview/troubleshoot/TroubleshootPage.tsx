@@ -292,6 +292,7 @@ export function TroubleshootPage() {
         }
         whoName={whoName}
         openedItem={openedItem}
+        isAllCollections={framePath === START_PATH}
         onClose={() => setIsWhyOpen(false)}
       />
     </PermissionsPageLayout>

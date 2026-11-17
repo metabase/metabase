@@ -21,7 +21,7 @@ import type {
 } from "../api";
 
 import { parseOpenedItem } from "./item-path";
-import { type WhyPreview, useWhyList } from "./use-why-list";
+import { type WhyList, type WhyPreview, useWhyList } from "./use-why-list";
 
 /** The user a preview runs as: Sandy herself, or the stand-in user of a group or tenant. */
 const SANDY: PreviewPrincipal = {
@@ -117,7 +117,7 @@ describe("useWhyList", () => {
       const { result } = setup({ path: "/model/1-orders-by-state" });
 
       await waitFor(() =>
-        expect(result.current?.page?.verdict).toEqual({
+        expect(getVerdict(result.current)).toEqual({
           kind: "allowed",
           text: "Sandy Sales can see this model.",
         }),
@@ -137,7 +137,7 @@ describe("useWhyList", () => {
       });
 
       await waitFor(() =>
-        expect(result.current?.page?.verdict).toEqual({
+        expect(getVerdict(result.current)).toEqual({
           kind: "filtered",
           text: "Sandy Sales can see this dashboard.",
         }),
@@ -164,7 +164,7 @@ describe("useWhyList", () => {
       );
     });
 
-    it("says the person can't open a question the read check denies, even with a blocked table, without naming a reason", async () => {
+    it("says the person can't open a question the read check denies, and that its collection is why, even with a blocked table", async () => {
       const { result } = setup({
         path: "/question/1-orders-by-state",
         collectionAccess: "none",
@@ -174,9 +174,10 @@ describe("useWhyList", () => {
       });
 
       await waitFor(() =>
-        expect(result.current?.page?.verdict).toEqual({
+        expect(getVerdict(result.current)).toEqual({
           kind: "blocked",
           text: "Sandy Sales can't open this question.",
+          reason: "Sandy Sales has no access to its collection, Sales.",
         }),
       );
       expect(result.current?.page).toMatchObject({
@@ -192,7 +193,7 @@ describe("useWhyList", () => {
       });
 
       await waitFor(() =>
-        expect(result.current?.page?.verdict).toEqual({
+        expect(getVerdict(result.current)).toEqual({
           kind: "partial",
           text: "Sandy Sales can open this question but can't see its results.",
         }),
@@ -207,7 +208,7 @@ describe("useWhyList", () => {
       });
 
       await waitFor(() =>
-        expect(result.current?.page?.verdict).toEqual({
+        expect(getVerdict(result.current)).toEqual({
           kind: "allowed",
           text: "Sandy Sales can see this question.",
         }),
@@ -231,7 +232,7 @@ describe("useWhyList", () => {
       });
 
       await waitFor(() =>
-        expect(result.current?.page?.verdict).toEqual({
+        expect(getVerdict(result.current)).toEqual({
           kind: "partial",
           text: "Sandy Sales can open this dashboard but can't see 2 of its 5 cards.",
         }),
@@ -249,7 +250,7 @@ describe("useWhyList", () => {
       });
 
       await waitFor(() =>
-        expect(result.current?.page?.verdict).toEqual({
+        expect(getVerdict(result.current)).toEqual({
           kind: "partial",
           text: "Sandy Sales can open this dashboard but can't see any of its cards.",
         }),
@@ -270,7 +271,31 @@ describe("useWhyList", () => {
             text: "Sandy Sales can view this collection.",
             group: "Sales",
           },
-          reasons: [{ title: "Sales" }],
+          target: { title: "Sales" },
+          collections: [],
+        }),
+      );
+    });
+
+    it("lists on Our analytics the collections right in it that the person can open, as the frame does", async () => {
+      const { result } = setup({
+        path: "/collection/root",
+        collections: {
+          default: [
+            getCollection("root", "Our analytics", 0, "read"),
+            getCollection(14, "Sales reports", 1, "write"),
+            getCollection(15, "Q4 pipeline", 2, "write"),
+            getCollection(16, "Finance", 1, "none"),
+          ],
+        },
+      });
+
+      await waitFor(() =>
+        expect(result.current?.page).toMatchObject({
+          kind: "collection",
+          name: "Our analytics",
+          target: { title: "Our analytics" },
+          collections: [{ title: "Sales reports" }],
         }),
       );
     });
@@ -288,8 +313,99 @@ describe("useWhyList", () => {
             kind: "blocked",
             text: "Sandy Sales can't open this collection.",
           },
-          blocked: [{ title: "Sales" }],
+          target: { title: "Sales" },
         }),
+      );
+    });
+  });
+
+  describe("All collections", () => {
+    it("lists Our analytics, the top shared collections and the personal collection, only those the person can open", async () => {
+      const { result } = setup({
+        path: "/",
+        isAllCollections: true,
+        collections: {
+          default: [
+            getCollection("root", "Our analytics", 0, "read"),
+            getCollection(14, "Sales reports", 1, "write"),
+            {
+              ...getCollection(11, "Their personal collection", 0, "write"),
+              source: "personal",
+            },
+          ],
+          shared: [
+            getCollection("root", "Shared collections", 0, "read"),
+            getCollection(18, "Onboarding kit", 1, "write"),
+            getCollection(17, "Product templates", 1, "none"),
+            getCollection(21, "Onboarding drafts", 2, "write"),
+          ],
+          tenant: [getCollection(9, "Tenant Collection: Acme", 0, "read")],
+        },
+      });
+
+      await waitFor(() =>
+        expect(getPageCollections(result.current)).toEqual([
+          "Our analytics",
+          "Onboarding kit",
+          "Their personal collection",
+        ]),
+      );
+    });
+
+    it("lists the collections in Our analytics instead when the person can't open it", async () => {
+      const { result } = setup({
+        path: "/",
+        isAllCollections: true,
+        collections: {
+          default: [
+            getCollection("root", "Our analytics", 0, "none"),
+            getCollection(14, "Sales reports", 1, "write"),
+            getCollection(16, "Finance", 1, "none"),
+          ],
+        },
+      });
+
+      await waitFor(() =>
+        expect(getPageCollections(result.current)).toEqual(["Sales reports"]),
+      );
+    });
+
+    it("lists for a tenant user their own tenant's collection, and no internal or other tenant's collection", async () => {
+      const { result } = setup({
+        path: "/",
+        isAllCollections: true,
+        collections: {
+          default: null,
+          shared: [
+            getCollection("root", "Shared collections", 0, "read"),
+            getCollection(18, "Onboarding kit", 1, "read"),
+          ],
+          tenant: [
+            {
+              ...getCollection(9, "Tenant Collection: Acme", 0, "write"),
+              source: "tenant",
+            },
+            {
+              ...getCollection(10, "Acme reports", 1, "write"),
+              source: "tenant",
+            },
+            {
+              ...getCollection(12, "Tenant Collection: Globex", 0, "none"),
+              source: "other-tenant",
+            },
+          ],
+        },
+      });
+
+      await waitFor(() =>
+        expect(getPageCollections(result.current)).toEqual([
+          "Onboarding kit",
+          "Tenant Collection: Acme",
+        ]),
+      );
+      // nor does their whole access count another tenant's collection as one they can't access
+      expect(result.current?.summary.blocked.map(({ title }) => title)).toEqual(
+        [],
       );
     });
   });
@@ -321,6 +437,11 @@ type SetupOpts = {
   orders?: { view_data?: string; security?: PreviewSecurity };
   read?: PermissionDebugResponse;
   query?: PermissionDebugResponse;
+  /** Each tab's collections in place of the one Sales collection; `null` for a tab that doesn't apply. */
+  collections?: Partial<
+    Record<CollectionNamespace, PreviewCollection[] | null>
+  >;
+  isAllCollections?: boolean;
 };
 
 function setup({
@@ -332,19 +453,26 @@ function setup({
   orders = {},
   read = ALLOW,
   query = ALLOW,
+  collections,
+  isAllCollections,
 }: SetupOpts) {
-  const collection: PreviewCollection = {
-    id: SALES_COLLECTION_ID,
-    name: collectionName,
-    depth: 1,
-    source: "group",
-    access: getCell(collectionAccess),
-  };
+  const collection = getCollection(
+    SALES_COLLECTION_ID,
+    collectionName,
+    1,
+    collectionAccess,
+  );
   const namespaces: CollectionNamespace[] = ["default", "shared", "tenant"];
   namespaces.forEach((namespace) =>
     setupPermissionPreviewCollectionsEndpoint(
       namespace,
-      getCollections(namespace === collectionNamespace ? [collection] : null),
+      getCollections(
+        collections != null
+          ? (collections[namespace] ?? null)
+          : namespace === collectionNamespace
+            ? [collection]
+            : null,
+      ),
     ),
   );
   const ordersTable: PreviewTableAccess = {
@@ -400,9 +528,33 @@ function setup({
   }
 
   return renderHookWithProviders(
-    () => useWhyList(preview, item, "Sandy Sales"),
+    () => useWhyList(preview, item, "Sandy Sales", isAllCollections),
     {},
   );
+}
+
+function getCollection(
+  id: PreviewCollection["id"],
+  name: string,
+  depth: number,
+  access: string,
+): PreviewCollection {
+  return { id, name, depth, source: "group", access: getCell(access) };
+}
+
+function getVerdict(list: WhyList | null) {
+  const page = list?.page;
+  return page != null && page.kind !== "all-collections"
+    ? page.verdict
+    : undefined;
+}
+
+/** The names of the collections the page lists, on All collections or Our analytics. */
+function getPageCollections(list: WhyList | null) {
+  const page = list?.page;
+  return page?.kind === "all-collections" || page?.kind === "collection"
+    ? page.collections.map(({ title }) => title)
+    : undefined;
 }
 
 /** One tab's collections; `null` for a tab that doesn't apply to the person. */
