@@ -25,6 +25,7 @@ import type {
 } from "../../../components/expressions/Editor/Editor";
 import { ToolbarSegment } from "../../../components/expressions/Editor/InlineToolbar";
 import AiIcon from "../../../components/expressions/Editor/ai.svg?component";
+import type { GeneratedBreakout } from "../../../components/expressions/Editor/api";
 import CloseIcon from "../../../components/expressions/Editor/close.svg?component";
 import PlayIcon from "../../../components/expressions/Editor/play.svg?component";
 import { Layout } from "../../../components/expressions/Layout";
@@ -58,6 +59,10 @@ export type InlineExpressionEditorProps = {
   initialSource?: string;
   /** A function to start with, from the list of the picker. */
   initialExpressionClause?: Lib.DefinedClauseName | null;
+  /** The current group-by columns of an aggregation, for the AI. */
+  breakouts?: string[];
+  /** Called with the group-by columns of an accepted AI suggestion. */
+  onAcceptBreakouts?: (breakouts: GeneratedBreakout[]) => void;
   onSourceChange?: (source: string, isValid: boolean) => void;
 
   onDone: () => void;
@@ -133,6 +138,8 @@ export function InlineExpressionEditor({
   onCommit,
   initialSource,
   initialExpressionClause,
+  breakouts,
+  onAcceptBreakouts,
   onSourceChange,
   onDone,
   onDiscard,
@@ -454,6 +461,8 @@ export function InlineExpressionEditor({
         name={name}
         hasDefaultName={hasDefaultName}
         onAcceptName={handleAcceptName}
+        breakouts={breakouts}
+        onAcceptBreakouts={onAcceptBreakouts}
         inline
       />
 

@@ -57,6 +57,7 @@ import type { Shortcut } from "./Shortcuts";
 import { Shortcuts } from "./Shortcuts";
 import { useSqlHint } from "./SqlHint";
 import { Tooltip } from "./Tooltip";
+import type { GeneratedBreakout } from "./api";
 import { useColumnHover } from "./column-hover";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
@@ -105,6 +106,10 @@ export type EditorProps = {
   hasDefaultName?: boolean;
   /** Called with the column name of an accepted AI suggestion. */
   onAcceptName?: (name: string) => void;
+  /** The current group-by columns of an aggregation, for the AI. */
+  breakouts?: string[];
+  /** Called with the group-by columns of an accepted AI suggestion. */
+  onAcceptBreakouts?: (breakouts: GeneratedBreakout[]) => void;
   initialSource?: string;
 
   onChange: (
@@ -174,7 +179,11 @@ export type ValidateNow = () => {
   error: ExpressionError | null;
 };
 
-type Proposal = { source: string; name?: string };
+type Proposal = {
+  source: string;
+  name?: string;
+  breakouts?: GeneratedBreakout[];
+};
 
 export type EditorChangeMeta = {
   /** False for the initial format pass, so autosaving callers can skip it. */
@@ -236,6 +245,8 @@ export function Editor(props: EditorProps) {
     name,
     hasDefaultName = false,
     onAcceptName,
+    breakouts,
+    onAcceptBreakouts,
     onProposalChange,
     onGenerated,
     showErrors = true,
@@ -470,13 +481,16 @@ export function Editor(props: EditorProps) {
   );
 
   const proposeSource = useCallback(
-    async (source: string, name?: string) => {
+    async (source: string, name?: string, breakouts?: GeneratedBreakout[]) => {
       const formatted = await formatProposedSource(source);
       if (isComplexEdit(sourceRef.current, formatted)) {
-        setProposal({ source: formatted, name });
+        setProposal({ source: formatted, name, breakouts });
       } else {
         if (name?.trim()) {
           onAcceptName?.(name.trim());
+        }
+        if (breakouts != null) {
+          onAcceptBreakouts?.(breakouts);
         }
         acceptSource(formatted);
         reportGenerated(formatted, name?.trim());
@@ -487,6 +501,7 @@ export function Editor(props: EditorProps) {
       formatProposedSource,
       acceptSource,
       onAcceptName,
+      onAcceptBreakouts,
       focusEnd,
       reportGenerated,
     ],
@@ -535,9 +550,12 @@ export function Editor(props: EditorProps) {
     if (name) {
       onAcceptName?.(name);
     }
+    if (proposal.breakouts != null) {
+      onAcceptBreakouts?.(proposal.breakouts);
+    }
     acceptSource(proposal.source);
     focusEnd(proposal.source);
-  }, [proposal, acceptSource, onAcceptName, focusEnd]);
+  }, [proposal, acceptSource, onAcceptName, onAcceptBreakouts, focusEnd]);
 
   const handleRejectProposed = useCallback(() => {
     setProposal(null);
@@ -568,6 +586,7 @@ export function Editor(props: EditorProps) {
     availableColumns,
     name,
     hasDefaultName,
+    breakouts,
     validate,
   });
 
@@ -636,7 +655,7 @@ export function Editor(props: EditorProps) {
         return;
       }
       handleClosePrompt();
-      proposeSource(result.expression, result.name);
+      proposeSource(result.expression, result.name, result.breakouts);
     },
     [promptPos, generate, handleClosePrompt, proposeSource],
   );
@@ -652,6 +671,7 @@ export function Editor(props: EditorProps) {
     generate,
     applySource,
     onAcceptName,
+    onAcceptBreakouts,
     generateRef,
     requestRef: textRequestRef,
     isEnabled: Boolean(canGenerateFromText),
@@ -1207,6 +1227,7 @@ function useTextRequest({
   generate,
   applySource,
   onAcceptName,
+  onAcceptBreakouts,
   generateRef,
   requestRef,
   isEnabled,
@@ -1216,6 +1237,7 @@ function useTextRequest({
   generate: ReturnType<typeof useGenerateExpression>["generate"];
   applySource: (source: string) => Promise<unknown>;
   onAcceptName?: (name: string) => void;
+  onAcceptBreakouts?: (breakouts: GeneratedBreakout[]) => void;
   generateRef?: MutableRefObject<GenerateNow | null>;
   /** Set to the request for autocomplete, with whether it is possible. */
   requestRef: MutableRefObject<{ isEnabled: boolean; run: () => void }>;
@@ -1246,8 +1268,11 @@ function useTextRequest({
     if (result.name?.trim()) {
       onAcceptName?.(result.name.trim());
     }
+    if (result.breakouts != null) {
+      onAcceptBreakouts?.(result.breakouts);
+    }
     await applySource(result.expression);
-  }, [generate, applySource, onAcceptName, onStart]);
+  }, [generate, applySource, onAcceptName, onAcceptBreakouts, onStart]);
 
   const clearError = useCallback(() => setError(undefined), []);
 

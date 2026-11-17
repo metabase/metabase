@@ -11,11 +11,16 @@ type GenerateExpressionRequest = {
   column_values?: Record<string, string[]>;
   name?: string;
   has_default_name?: boolean;
+  /** The current group-by columns of an aggregation, like `[Created At: Month]`. */
+  breakouts?: string[];
   previous_attempts?: { expression: string; error: string }[];
 };
 
+/** A group-by column from the AI, like `[Created At]` and the unit "month". */
+export type GeneratedBreakout = { column: string; unit?: string };
+
 type GenerateExpressionResponse =
-  | { expression: string; name?: string }
+  | { expression: string; name?: string; breakouts?: GeneratedBreakout[] }
   /** The request is not possible with a custom expression. */
   | { message: string };
 

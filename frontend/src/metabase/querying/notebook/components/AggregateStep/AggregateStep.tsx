@@ -6,8 +6,10 @@ import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import { AggregationPicker } from "metabase/querying/common/components/AggregationPicker";
+import { formatIdentifier } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
 
+import type { GeneratedBreakout } from "../../../components/expressions/Editor/api";
 import type { NotebookStepProps } from "../../types";
 import { ClauseStep, useInlineClauseEditor } from "../ClauseStep";
 import { ExpressionPill } from "../ExpressionStep/ExpressionPill";
@@ -102,6 +104,26 @@ export function AggregateStep({
         Lib.withExpressionName(aggregation, name),
       ),
     );
+
+  // The AI can also change the group-by columns of the step.
+  const breakoutNames = Lib.breakouts(query, stageIndex).map((breakout) =>
+    formatIdentifier(
+      Lib.displayInfo(query, stageIndex, breakout).longDisplayName,
+    ),
+  );
+  const handleAcceptBreakouts = (breakouts: GeneratedBreakout[]) => {
+    const current = inline.queryRef.current;
+    const withoutBreakouts = Lib.breakouts(current, stageIndex).reduceRight(
+      (query, breakout) => Lib.removeClause(query, stageIndex, breakout),
+      current,
+    );
+    const nextQuery = breakouts.reduce((query, { column, unit }) => {
+      const found = findBreakoutColumn(query, stageIndex, column, unit);
+      return found != null ? Lib.breakout(query, stageIndex, found) : query;
+    }, withoutBreakouts);
+    inline.queryRef.current = nextQuery;
+    updateQuery(nextQuery);
+  };
 
   const editedInfo =
     inline.editedClause != null
@@ -223,6 +245,8 @@ export function AggregateStep({
             name={editedInfo?.isNamed ? editedInfo.displayName : undefined}
             hasDefaultName={!editedInfo?.isNamed}
             initialExpressionClause={inline.openEditor.initialExpressionClause}
+            breakouts={breakoutNames}
+            onAcceptBreakouts={handleAcceptBreakouts}
             onCommit={handleCommit}
             onDone={inline.close}
             onDiscard={inline.close}
@@ -280,6 +304,28 @@ function AggregationPopover({
 }
 
 const noop = () => {};
+
+/** The column for a group-by column from the AI, with its time unit. */
+function findBreakoutColumn(
+  query: Lib.Query,
+  stageIndex: number,
+  name: string,
+  unit: string | undefined,
+) {
+  const column = Lib.breakoutableColumns(query, stageIndex).find(
+    (column) =>
+      formatIdentifier(
+        Lib.displayInfo(query, stageIndex, column).longDisplayName,
+      ) === name,
+  );
+  if (column == null || unit == null) {
+    return column;
+  }
+  const bucket = Lib.availableTemporalBuckets(query, stageIndex, column).find(
+    (bucket) => Lib.displayInfo(query, stageIndex, bucket).shortName === unit,
+  );
+  return bucket != null ? Lib.withTemporalBucket(column, bucket) : column;
+}
 
 const renderInSlot = (
   node: JSX.Element,

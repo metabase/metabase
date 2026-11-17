@@ -8,14 +8,14 @@ import {
 } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
 
-import { useGenerateExpressionMutation } from "./api";
+import { type GeneratedBreakout, useGenerateExpressionMutation } from "./api";
 import { useGetColumnValues } from "./column-values";
 
 // The first try, then retries that get the editor's errors for the earlier tries.
 const MAX_ATTEMPTS = 3;
 
 export type GenerateExpressionResult =
-  | { expression: string; name?: string }
+  | { expression: string; name?: string; breakouts?: GeneratedBreakout[] }
   /** The request is not possible, or it failed. */
   | { message: string };
 
@@ -27,6 +27,8 @@ type Options = {
   /** Absent for a column that is not created yet. */
   name?: string;
   hasDefaultName: boolean;
+  /** The current group-by columns of an aggregation. */
+  breakouts?: string[];
   /** Returns the editor's error for `source`, or null when it is valid. */
   validate: (source: string) => string | null;
 };
@@ -42,6 +44,7 @@ export function useGenerateExpression({
   availableColumns,
   name,
   hasDefaultName,
+  breakouts,
   validate,
 }: Options) {
   const [generateExpression] = useGenerateExpressionMutation();
@@ -104,6 +107,7 @@ export function useGenerateExpression({
           column_values: columnValues,
           name,
           has_default_name: hasDefaultName,
+          breakouts,
           previous_attempts: previousAttempts,
         });
         requestRef.current = request;
@@ -144,6 +148,7 @@ export function useGenerateExpression({
       availableColumns,
       name,
       hasDefaultName,
+      breakouts,
       query,
       stageIndex,
       getColumnValues,
