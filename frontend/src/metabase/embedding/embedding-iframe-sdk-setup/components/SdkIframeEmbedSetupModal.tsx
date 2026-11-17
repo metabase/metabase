@@ -25,7 +25,7 @@ import {
 import type { SettingKey } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
-import { useIsDataAppMissing } from "../data-apps/use-is-data-app-missing";
+import { useDataAppStatus } from "../data-apps/use-data-app-status";
 
 import { SdkIframeEmbedPreview } from "./SdkIframeEmbedPreview";
 import S from "./SdkIframeEmbedSetup.module.css";
@@ -40,6 +40,7 @@ export const SdkIframeEmbedSetupContent = () => {
     handleBack,
     canGoBack,
     allowPreviewAndNavigation,
+    isSimpleEmbedFeatureAvailable,
     isLoading,
     experience,
     resource,
@@ -73,10 +74,40 @@ export const SdkIframeEmbedSetupContent = () => {
     settings,
   );
 
-  const isDataAppMissing = useIsDataAppMissing(settings);
+  const dataAppStatus = useDataAppStatus(settings);
+  const isDataAppMissing =
+    dataAppStatus !== null && dataAppStatus !== "available";
+
   const isMissingResource =
     isDataAppMissing ||
     (isQuestionOrDashboard && !isLoading && (!resource || resource.archived));
+
+  // Admins can't fix the empty preview by selecting something when
+  // modular embedding is off, or when a data app opens on the code step.
+  const emptyPreviewMessage = match({
+    needsModularEmbedding:
+      !allowPreviewAndNavigation &&
+      !settings.isGuest &&
+      isSimpleEmbedFeatureAvailable,
+    isDataAppOnCodeStep:
+      experience === "data-app" && currentStep === "get-code",
+    dataAppStatus,
+  })
+    .with(
+      { needsModularEmbedding: true },
+      () => t`Preview will appear when you enable modular embedding`,
+    )
+    .with({ isDataAppOnCodeStep: true, dataAppStatus: "loading" }, () => null)
+    .with(
+      { isDataAppOnCodeStep: true, dataAppStatus: "error" },
+      () => t`Could not load the list of data apps.`,
+    )
+    .with(
+      { isDataAppOnCodeStep: true, dataAppStatus: "unavailable" },
+      () =>
+        t`This data app isn't available to embed. Make it live in Data Studio to preview it.`,
+    )
+    .otherwise(() => t`Preview will appear when you select what to embed`);
 
   const siteUrl = useSetting("site-url");
   const isSiteUrlMismatched = !isSiteUrlMatchingCurrentOrigin(siteUrl);
@@ -165,9 +196,11 @@ export const SdkIframeEmbedSetupContent = () => {
                     src={noResultsSource}
                     alt="No results"
                   />
-                  <Text c="text-secondary">
-                    {t`Preview will appear when you select what to embed`}
-                  </Text>
+                  {emptyPreviewMessage && (
+                    <Text c="text-secondary" ta="center" maw="24rem">
+                      {emptyPreviewMessage}
+                    </Text>
+                  )}
                 </Stack>
               </Flex>
             </Card>

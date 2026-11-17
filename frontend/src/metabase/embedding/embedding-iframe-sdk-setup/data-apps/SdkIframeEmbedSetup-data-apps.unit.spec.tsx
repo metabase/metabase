@@ -169,6 +169,9 @@ describe("data app embedding setup", () => {
       screen.getByRole("button", { name: "Agree and enable" }),
     ).toBeEnabled();
     expect(screen.getByRole("button", { name: /Done/ })).toBeDisabled();
+    expect(
+      screen.getByText("Preview will appear when you enable modular embedding"),
+    ).toBeInTheDocument();
   });
 
   it("excludes draft and outdated apps and selects an available app", async () => {
@@ -254,7 +257,9 @@ describe("data app embedding setup", () => {
       expect(screen.getByRole("button", { name: /Done/ })).toBeDisabled();
       expect(screen.queryByTitle("Data app preview")).not.toBeInTheDocument();
       expect(
-        screen.getByText("Preview will appear when you select what to embed"),
+        screen.getByText(
+          "This data app isn't available to embed. Make it live in Data Studio to preview it.",
+        ),
       ).toBeInTheDocument();
     },
   );
