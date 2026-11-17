@@ -14,10 +14,9 @@
     and every expectation that carries the author's own SQL.
 
   The parser reports the table an INSERT, UPDATE or DELETE writes among the tables a query reads, so both guards cover
-  the tables a subject modifies. The exception is a bare target named like a CTE of the same statement: the parser
-  takes it for the CTE, and the database writes the table. The parser sees no table inside a procedure or a function,
-  so [[ensure-single-write]] admits only one INSERT, UPDATE or DELETE, and refuses the functions it knows to run SQL
-  text or act outside the statement. A write made inside any other function goes unseen.
+  the tables a subject modifies. The parser sees no table inside a procedure or a function, so [[ensure-single-write]]
+  admits only one INSERT, UPDATE or DELETE, and refuses the functions it knows to run SQL text or act outside the
+  statement. A write made inside any other function goes unseen.
 
   [[table-label]] is here too, and is not validation: it is the one way this module renders a table in a message."
   (:require

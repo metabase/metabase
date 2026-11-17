@@ -375,6 +375,20 @@
                                                       :sql  (str "SELECT * FROM {{output}} o JOIN " (qualified :orders)
                                                                  " r ON o.id = r.id")}]))))))))
 
+(deftest data-modifying-cte-writing-a-table-named-like-a-cte-is-refused-test
+  (mt/test-driver :postgres
+    (let [orders  (:name (table-ref :orders))
+          deletes (fn [ctes]
+                    (native-card (str "WITH " ctes "d AS (DELETE FROM " orders " WHERE id = -1 RETURNING id) "
+                                      "SELECT id FROM d")))
+          expects [{:type :empty :name "no output" :sql "SELECT * FROM {{output}}"}]]
+      (testing "control: a card whose data-modifying CTE deletes from a table with no input is refused"
+        (is (= ::data-testing.errors/missing-inputs
+               (:error-type (refusal #(run-card-test! (deletes "") [] expects))))))
+      (testing "the table the CTE deletes from is the table, not a sibling CTE of its name, so it is refused alike"
+        (is (= ::data-testing.errors/missing-inputs
+               (:error-type (refusal #(run-card-test! (deletes (str orders " AS (SELECT 1 AS id), ")) [] expects)))))))))
+
 (deftest date-column-under-a-report-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (mt/with-report-timezone-id! "Asia/Tokyo"

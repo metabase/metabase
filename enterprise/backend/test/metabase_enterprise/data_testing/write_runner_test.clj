@@ -137,6 +137,35 @@
         (is (= ::data-testing.errors/missing-inputs (:error-type (ex-data e))))
         (is (re-find (re-pattern (str "(?i)" (:name (table-ref :orders)))) (ex-message e)))))))
 
+(deftest write-to-a-table-named-like-a-cte-is-refused-test
+  (mt/test-drivers (drivers-that-write)
+    (let [orders (:name (table-ref :orders))
+          cte    (str "WITH " orders " AS (SELECT id FROM " (qualified :people) ") ")
+          refuse (fn [sql params]
+                   (refusal! (str cte sql) params [(people-rows)] [(reading refunded-only-1)]))]
+      (testing "control: an UPDATE of the bare name with no CTE and no input is refused as a missing input"
+        (is (= ::data-testing.errors/missing-inputs
+               (refusal! (str "UPDATE " orders " SET quantity = quantity WHERE id = ?") [1]
+                         [(people-rows)] [(reading refunded-only-1)]))))
+      (testing "the target of an UPDATE is the table, not the CTE of its name, so it is refused as a missing input"
+        (is (= ::data-testing.errors/missing-inputs
+               (refuse (str "UPDATE " orders " SET quantity = quantity WHERE id = ?") [1]))))
+      (testing "the target of an INSERT, likewise"
+        (is (= ::data-testing.errors/missing-inputs
+               (refuse (str "INSERT INTO " orders " (id) SELECT id FROM " orders " WHERE id = ?") [-1]))))
+      (testing "the target of a DELETE, likewise"
+        (is (= ::data-testing.errors/missing-inputs
+               (refuse (str "DELETE FROM " orders " WHERE id = ?") [-1])))))))
+
+(deftest write-to-a-table-named-like-a-cte-runs-on-its-input-test
+  (mt/test-drivers (drivers-that-write)
+    (let [people (:name (table-ref :people))]
+      (testing "the target of an UPDATE named like a CTE is rewritten to its input's temp table, which the write changes"
+        (is (=? {:status       :passed
+                 :expectations [{:name "only person 1 is refunded" :status :passed}]}
+                (run-write! (str "WITH " people " AS (SELECT 1 AS id) UPDATE " people " SET name = ? WHERE id = ?")
+                            ["refunded" 1] [(people-rows)] [(reading refunded-only-1)])))))))
+
 (deftest write-must-be-one-insert-update-or-delete-test
   (mt/test-drivers (drivers-that-write)
     (let [people (qualified :people)]

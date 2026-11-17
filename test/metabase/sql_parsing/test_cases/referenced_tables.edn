@@ -184,6 +184,36 @@
    :sql     "MERGE INTO people tt USING orders ss ON tt.id = ss.id WHEN MATCHED THEN UPDATE SET total = ss.total"
    :tables  [[nil nil "orders"] [nil nil "people"]]}
 
+  {:name    "the table an UPDATE writes is the table, not a CTE of its name"
+   :dialect "postgres"
+   :sql     "WITH orders AS (SELECT 1 AS id) UPDATE orders SET total = 0 WHERE id IN (SELECT id FROM orders)"
+   :tables  [[nil nil "orders"]]}
+
+  {:name    "the table an INSERT writes, likewise, while its SELECT reads the CTE"
+   :dialect "postgres"
+   :sql     "WITH orders AS (SELECT id FROM people) INSERT INTO orders (id) SELECT id FROM orders"
+   :tables  [[nil nil "orders"] [nil nil "people"]]}
+
+  {:name    "the table a DELETE writes, likewise"
+   :dialect "postgres"
+   :sql     "WITH orders AS (SELECT 1 AS id) DELETE FROM orders"
+   :tables  [[nil nil "orders"]]}
+
+  {:name    "the table a MERGE writes, likewise"
+   :dialect "postgres"
+   :sql     "WITH orders AS (SELECT 1 AS id) MERGE INTO orders USING people p ON orders.id = p.id WHEN MATCHED THEN DELETE"
+   :tables  [[nil nil "orders"] [nil nil "people"]]}
+
+  {:name    "the table a data-modifying CTE writes is the table, not a sibling CTE of its name"
+   :dialect "postgres"
+   :sql     "WITH orders AS (SELECT 1 AS id), d AS (DELETE FROM orders RETURNING id) SELECT * FROM d"
+   :tables  [[nil nil "orders"]]}
+
+  {:name    "in T-SQL an UPDATE of a CTE writes through it to the table it reads, so the target is the CTE"
+   :dialect "tsql"
+   :sql     "WITH orders AS (SELECT id, total FROM people) UPDATE orders SET total = 0"
+   :tables  [[nil nil "people"]]}
+
   {:name    "a view is the table it names, the tables behind it being the warehouse's business"
    :dialect "postgres"
    :sql     "SELECT ssn FROM masked_view"
