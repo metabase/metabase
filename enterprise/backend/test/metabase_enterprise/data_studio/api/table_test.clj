@@ -408,3 +408,38 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request analyst-id :post 403 "ee/data-studio/table/unpublish-tables"
                                        {:table_ids [table-id]}))))))))
+
+(deftest change-log-test
+  (testing "publishing and unpublishing tables logs them to the change log"
+    (mt/with-premium-features #{:library :change-log}
+      (mt/with-temp [:model/Collection {coll-id :id}     {:type collection/library-data-collection-type}
+                     :model/Database   {db-id :id}       {}
+                     :model/Table      {products-id :id} {:db_id db-id :name "products"}
+                     :model/Field      {prod-name-f :id} {:table_id products-id :name "name"
+                                                          :semantic_type :type/Name :base_type :type/Text}
+                     :model/Table      {orders-id :id}   {:db_id db-id :name "orders" :is_published true
+                                                          :collection_id coll-id}
+                     :model/Field      {product-fk :id}  {:table_id orders-id :name "product_id"
+                                                          :semantic_type :type/FK :base_type :type/Integer}
+                     :model/Dimension  _                 {:field_id product-fk
+                                                          :human_readable_field_id prod-name-f
+                                                          :type :external}]
+        (let [updates (fn [table-id]
+                        (count (t2/query {:select [:id]
+                                          :from   [:change_log]
+                                          :where  [:and
+                                                   [:= :table_name "metabase_table"]
+                                                   [:= :row_id table-id]
+                                                   [:= :action "update"]]})))
+              before  (updates products-id)]
+          (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
+                                {:table_ids [products-id], :collection_id coll-id})
+          (is (= (inc before) (updates products-id)))
+          (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-tables"
+                                {:table_ids [products-id]})
+          (is (= (+ before 2) (updates products-id)))
+          (testing "and so does unpublishing the tables that depend on an unpublished one"
+            (t2/update! :metabase_table :id orders-id {:is_published true, :collection_id coll-id})
+            (let [before (updates orders-id)]
+              (collection/unpublish-downstream-fk-tables! [products-id])
+              (is (= (inc before) (updates orders-id))))))))))

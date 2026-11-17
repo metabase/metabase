@@ -475,6 +475,16 @@
                     :model/DashboardCard
                     :model/Database}}
 
+  change-log
+  {:team "Cloud"
+   :api  #{metabase.change-log.core
+           metabase.change-log.init}
+   :uses #{app-db
+           config
+           premium-features
+           task
+           util}}
+
   ;; TODO -- way too many API namespaces.
   channel
   {:team "Gadget"
@@ -704,6 +714,7 @@
    :uses #{api
            app-db
            audit-app
+           change-log
            collections
            config
            embedding
@@ -1552,6 +1563,7 @@
    :uses #{api
            app-db
            audit-app
+           change-log
            collections
            config
            events
@@ -1573,6 +1585,7 @@
    :model-imports #{:model/Collection
                     :model/Database
                     :model/Table
+                    :model/Tenant
                     :model/User}}
 
   permissions-rest
@@ -1688,6 +1701,7 @@
            metabase.pulse.init}
    :uses #{api
            app-db
+           change-log
            channel
            classloader
            collections
@@ -1734,6 +1748,7 @@
            app-db
            audit-app
            cache
+           change-log
            channel
            collections
            config
@@ -1785,6 +1800,7 @@
   {:team "Querying Platform"
    :api  #{metabase.queries-rest.api}
    :uses #{api
+           change-log
            collections
            eid-translation
            embedding
@@ -2493,6 +2509,7 @@
            analytics-interface
            api
            appearance
+           change-log
            driver
            events
            lib
@@ -2642,6 +2659,7 @@
            api
            app-db
            audit-app
+           change-log
            collections
            driver
            lib
@@ -3080,6 +3098,7 @@
   {:team "UX West"
    :api  #{metabase-enterprise.data-studio.api}
    :uses #{api
+           change-log
            collections
            events
            models

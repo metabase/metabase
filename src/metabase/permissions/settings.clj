@@ -2,6 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
+   [metabase.change-log.core :as change-log]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
@@ -56,8 +57,11 @@
 (defn- update-use-tenants! [new-val]
   (when-not new-val
     ;; deactivate all tenants
-    (t2/query {:update :tenant
-               :set {:is_active false}})
+    (t2/with-transaction [_conn]
+      (change-log/log-rows! :model/Tenant :update)
+      #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
+      (t2/query {:update :tenant
+                 :set {:is_active false}}))
     ;; deactivate all tenant users, so if the tenant is reactivated someday they'll come back too
     (t2/update! :model/User :tenant_id [:not= nil]
                 :is_active true

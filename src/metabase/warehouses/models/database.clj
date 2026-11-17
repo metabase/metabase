@@ -66,6 +66,7 @@
 (doto :model/Database
   (derive :metabase/model)
   (derive :hook/timestamped?)
+  (derive :hook/change-log)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
@@ -457,6 +458,8 @@
                                         {:select [1]
                                          :from   [[(t2/table-name :model/Field) :child_field]]
                                          :where  [:= :child_field.parent_id :metabase_field.id]}]])]
+        ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
+        #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
         (loop []
           (let [deleted (t2/query-one
                          {:delete-from (t2/table-name :model/Field)
@@ -497,6 +500,8 @@
                ;; damn circular deps
                ((requiring-resolve 'metabase.search.core/delete!) :model/Card (map (comp str :id) batch)))))
   (when (not= :postgres (mdb/db-type))
+    ;; The change log's delete hook already logs what a Database delete cascades to.
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
     (t2/query {:delete-from (t2/table-name :model/Card)
                :where       [:= :database_id id]}))
   (try

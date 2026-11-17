@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.change-log.core :as change-log]
    [metabase.models.interface :as mi]
    [metabase.notification.models :as notification.models]
    [metabase.util :as u]
@@ -118,7 +119,8 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive ::mi/read-policy.always-allow)
-  (derive ::mi/write-policy.superuser))
+  (derive ::mi/write-policy.superuser)
+  (derive :hook/change-log))
 
 (t2/deftransforms :model/PulseChannel
   {:details (mi/transform-encrypted-json "pulse_channel.details")
@@ -251,9 +253,12 @@
       (let [vs (map #(assoc {:pulse_channel_id id} :user_id %) recipients+)]
         (t2/insert! :model/PulseChannelRecipient vs)))
     (when (seq recipients-)
-      (t2/delete! (t2/table-name :model/PulseChannelRecipient)
-                  :pulse_channel_id id
-                  :user_id          [:in recipients-]))))
+      (t2/with-transaction [_conn]
+        (change-log/log-rows! :model/PulseChannelRecipient :delete :pulse_channel_id id :user_id [:in recipients-])
+        #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
+        (t2/delete! (t2/table-name :model/PulseChannelRecipient)
+                    :pulse_channel_id id
+                    :user_id          [:in recipients-])))))
 
 (defn update-pulse-channel!
   "Updates an existing `PulseChannel` along with all related data associated with the channel such as

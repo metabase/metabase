@@ -10,7 +10,9 @@
 
 (doto :model/PulseCard
   (derive :metabase/model)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/change-log)
+  (derive :hook/change-log-before-update-noop))
 
 (defn next-position-for
   "Return the next available `pulse_card.position` for the given `pulse`"

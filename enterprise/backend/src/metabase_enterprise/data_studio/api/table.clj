@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.change-log.core :as change-log]
    [metabase.collections.core :as collection]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -134,10 +135,13 @@
           table-ids-to-update (when (seq downstream-ids)
                                 (t2/select-pks-set :model/Table :id [:in downstream-ids] :is_published true))]
       (when (seq table-ids-to-update)
-        (t2/query {:update (t2/table-name :model/Table)
-                   :set    {:collection_id nil
-                            :is_published  false}
-                   :where  [:in :id table-ids-to-update]})
+        (t2/with-transaction [_conn]
+          (change-log/log-rows! :model/Table :update :id [:in table-ids-to-update])
+          #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
+          (t2/query {:update (t2/table-name :model/Table)
+                     :set    {:collection_id nil
+                              :is_published  false}
+                     :where  [:in :id table-ids-to-update]}))
         ;; Publish events for audit log and remote sync tracking
         (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
           (doseq [table updated-tables]
@@ -182,10 +186,13 @@
         ;; Get table IDs before update for event publishing
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
-    (t2/query {:update (t2/table-name :model/Table)
-               :set    {:collection_id (:id target-collection)
-                        :is_published  true}
-               :where  update-where})
+    (t2/with-transaction [_conn]
+      (change-log/log-rows! :model/Table :update {:where update-where})
+      #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
+      (t2/query {:update (t2/table-name :model/Table)
+                 :set    {:collection_id (:id target-collection)
+                          :is_published  true}
+                 :where  update-where}))
     ;; Publish events for audit log and remote sync tracking
     (when (seq table-ids-to-update)
       (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
@@ -208,10 +215,13 @@
         ;; Get table IDs before update for event publishing
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
-    (t2/query {:update (t2/table-name :model/Table)
-               :set    {:collection_id nil
-                        :is_published  false}
-               :where  update-where})
+    (t2/with-transaction [_conn]
+      (change-log/log-rows! :model/Table :update {:where update-where})
+      #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
+      (t2/query {:update (t2/table-name :model/Table)
+                 :set    {:collection_id nil
+                          :is_published  false}
+                 :where  update-where}))
     ;; Publish events for audit log and remote sync tracking
     (when (seq table-ids-to-update)
       (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]

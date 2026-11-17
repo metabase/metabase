@@ -72,6 +72,7 @@
   :metabase/namespace-name                                   {:level :warning}
   :metabase/no-jsqlparser-imports                            {:level :warning}
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
+  :metabase/change-log-raw-write                             {:level :warning}
   :metabase/toucan-model-ns                                  {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
@@ -587,6 +588,8 @@
    metabase-enterprise.transforms-python.drivers-test/with-test-table                                                        hooks.common/with-two-bindings
    metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
+   metabase.app-db.core/query                                                                                                hooks.metabase.toucan.change-log/lint-write
+   metabase.app-db.query/query                                                                                               hooks.metabase.toucan.change-log/lint-write
    metabase.app-db.schema-migrations-test.impl/test-migrations                                                               hooks.metabase.app-db.schema-migrations-test.impl/test-migrations!
    metabase.channel.render.js.pool/with-static-viz-context                                                                   hooks.common/with-one-top-level-binding
    metabase.channel.template.handlebars-helper/defhelper                                                                     hooks.metabase.channel.template.handlebars-helper/defhelper
@@ -722,7 +725,20 @@
    metabase.util/format-color                                                                                                hooks.metabase.util/format-color
    metabase.xrays.api.automagic-dashboards-test/with-indexed-model!                                                          hooks.metabase.xrays.api.automagic-dashboards-test/with-indexed-model!
    taoensso.nippy/extend-freeze                                                                                              hooks.taoensso.nippy/extend-freeze
-   taoensso.nippy/extend-thaw                                                                                                hooks.taoensso.nippy/extend-thaw}
+   taoensso.nippy/extend-thaw                                                                                                hooks.taoensso.nippy/extend-thaw
+   toucan2.core/delete!                                                                                                      hooks.metabase.toucan.change-log/lint-write
+   toucan2.core/insert!                                                                                                      hooks.metabase.toucan.change-log/lint-write
+   toucan2.core/insert-returning-instance!                                                                                   hooks.metabase.toucan.change-log/lint-write
+   toucan2.core/insert-returning-instances!                                                                                  hooks.metabase.toucan.change-log/lint-write
+   toucan2.core/insert-returning-pk!                                                                                         hooks.metabase.toucan.change-log/lint-write
+   toucan2.core/insert-returning-pks!                                                                                        hooks.metabase.toucan.change-log/lint-write
+   toucan2.core/query                                                                                                        hooks.metabase.toucan.change-log/lint-write
+   toucan2.core/query-one                                                                                                    hooks.metabase.toucan.change-log/lint-write
+   toucan2.core/reducible-query                                                                                              hooks.metabase.toucan.change-log/lint-write
+   toucan2.core/reducible-update                                                                                             hooks.metabase.toucan.change-log/lint-write
+   toucan2.core/reducible-update-returning-pks                                                                               hooks.metabase.toucan.change-log/lint-write
+   toucan2.core/update!                                                                                                      hooks.metabase.toucan.change-log/lint-write
+   toucan2.core/update-returning-pks!                                                                                        hooks.metabase.toucan.change-log/lint-write}
 
   :macroexpand
   {clojurewerkz.quartzite.jobs/build                                                            macros.quartz/build-job

@@ -43,6 +43,7 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
+  (derive :hook/change-log)
   (derive ::mi/read-policy.full-perms-for-perms-set))
 
 (t2/deftransforms :model/Pulse
