@@ -842,7 +842,7 @@
         {:html html, :viz-settings @captured, :warnings (mapv :message (messages))}))))
 
 (deftest ^:parallel render-failed-dynamic-goal-test
-  (testing "a failed referenced query still renders the chart, keeping the goal reference for the JS renderer to hide"
+  (testing "a failed goal source query still renders the chart, keeping the goal reference for the JS renderer to hide"
     (let [{:keys [html viz-settings warnings]} (render-broken-goal true)]
       (is (not (str/includes? html render-error-box)))
       (is (= goal-ref (:graph.goal_value viz-settings)))
