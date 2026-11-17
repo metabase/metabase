@@ -76,8 +76,9 @@
 
   Bookmarks whose target `user-id` can no longer read are filtered out."
   [user-id :- ::lib.schema.id/user]
-  (let [user-scope {:current-user-id user-id
-                    :is-superuser?   (perms/is-superuser? user-id)}]
+  (let [user-scope {:current-user-id  user-id
+                    :is-superuser?    (perms/is-superuser? user-id)
+                    :is-data-analyst? (boolean (perms/is-data-analyst? user-id))}]
     (->> (bookmarks.db/bookmark-rows-for-user user-id user-scope)
          (map normalize-bookmark-result))))
 

@@ -1,5 +1,5 @@
-import type { CardId } from "./card";
-import type { CollectionId } from "./collection";
+import type { Card, CardId } from "./card";
+import type { Collection, CollectionId } from "./collection";
 import type { DashCardId, DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
@@ -95,6 +95,8 @@ export interface WritebackActionBase {
   database_enabled_actions?: boolean;
   can_write?: boolean;
   entity_id: BaseEntityId;
+  model?: Card;
+  collection?: Collection | null;
 }
 
 export type PublicWritebackAction = Pick<

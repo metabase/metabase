@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field :as field]
@@ -71,11 +71,11 @@
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (mt/with-test-user :rasta
-        (is (not (mi/can-read? (t2/select-one :model/Field :id field-id)))))
+        (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/Field :id field-id) :can_read)))))
       ;; Grant view-data permission - field should still not be readable
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (mt/with-test-user :rasta
-        (is (false? (boolean (mi/can-read? (t2/select-one :model/Field :id field-id)))))))))
+        (is (false? (boolean (mi/can-read? (t2/hydrate (t2/select-one :model/Field :id field-id) :can_read)))))))))
 
 (deftest field-can-read?-delegates-to-parent-table-allowed-test
   (testing "Field can-read? delegates to parent table"
@@ -89,12 +89,12 @@
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (mt/with-test-user :rasta
-        (is (not (mi/can-read? (t2/select-one :model/Field :id field-id)))))
+        (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/Field :id field-id) :can_read)))))
       ;; Grant view-data permission - now field should be readable
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (data-perms/set-table-permission! pg table-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? (t2/select-one :model/Field :id field-id))))))))
+        (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Field :id field-id) :can_read))))))))
 
 (deftest field-can-query?-delegates-to-parent-table-test
   (testing "Field can-query? delegates to parent table"
@@ -110,7 +110,7 @@
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (data-perms/set-table-permission! pg table-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-query? (t2/select-one :model/Field :id field-id))))))))
+        (is (true? (mi/can-query? (t2/hydrate (t2/select-one :model/Field :id field-id) :can_query))))))))
 
 ;;; ---------------------------------- effective_type invariant guard tests -----------------------------------
 ;;; GHY-3388: a Field with coercion_strategy=nil and effective_type ≠ base_type is internally

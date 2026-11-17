@@ -8,7 +8,7 @@
    [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
@@ -47,7 +47,6 @@
 
 (doto :model/Document
   (derive :metabase/model)
-  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/dependencies))
@@ -126,19 +125,36 @@
 ;; can-read?/can-write? compose the collection-permission policy with the content-visibility gate:
 ;; a document's rendered body can embed data the viewer isn't entitled to, so content access can be
 ;; narrower than collection access.
-(defmethod mi/can-read? :model/Document
-  ([instance]
-   (and (mi/current-user-has-full-permissions? :read instance)
-        (content-visible? instance)))
-  ([_model pk]
-   (mi/can-read? (documents.db/document pk))))
+(defn- check-can-read-keys
+  "Throws unless `document` has the columns its `:can_read` and `:can_write` hydrations read."
+  [document]
+  (api/check-500 (contains? document :collection_id) "No :collection_id is set for a Document."))
 
-(defmethod mi/can-write? :model/Document
-  ([instance]
-   (and (mi/current-user-has-full-permissions? :write instance)
-        (content-visible? instance)))
-  ([_model pk]
-   (mi/can-write? (documents.db/document pk))))
+(methodical/defmethod t2/batched-hydrate [:model/Document :can_read]
+  "Whether the current user reads each of `documents`, as the content of its Collection."
+  [_model _k documents]
+  (run! #(when % (check-can-read-keys %)) documents)
+  (let [readable (collection/content-readable-collection-ids (map :collection_id (remove nil? documents))
+                                                             {:root-namespace nil, :audit-rules? false})]
+    (for [document documents]
+      (when document
+        (vary-meta document assoc :can_read (boolean (and (contains? readable (:collection_id document))
+                                                          (content-visible? document))))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Document :can_write]
+  "Whether the current user writes each of `documents`, as the content of its Collection."
+  [_model _k documents]
+  (run! #(when % (check-can-read-keys %)) documents)
+  (let [writable (collection/content-writable-collection-ids (map :collection_id (remove nil? documents))
+                                                             {:root-namespace nil, :audit-rules? false})]
+    (for [document documents]
+      (when document
+        (assoc document :can_write (boolean (and (contains? writable (:collection_id document))
+                                                 (content-visible? document))))))))
+
+(defmethod mi/can-create? :model/Document
+  [_model {collection-id :collection_id}]
+  (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
 
 (def DocumentName
   "Validations for the name of a document"
@@ -180,7 +196,7 @@
    [:parameter_mappings {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:description {:optional true} [:maybe ms/NonBlankString]]
    [:display ms/NonBlankString]
-   [:visualization_settings ::lib.schema.visualization-settings/visualization-settings]
+   [:visualization_settings ::lib.schema.visualization/visualization-settings]
    [:result_metadata {:optional true} [:maybe ::queries.schema/card.result-metadata]]
    [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]
    [:source_card_id {:optional true} [:maybe ms/PositiveInt]]])
@@ -285,7 +301,7 @@
                        (:id (clone-card! (assoc card :document_id id :collection_id collection_id)
                                          @api/*current-user*))))
               {}
-              to-clone))))
+              (t2/hydrate to-clone :can_read)))))
 
 (defn- hydrate-document
   "Fetch a document by id along with the derived fields the API returns. Does *not* check permissions or
@@ -759,4 +775,5 @@
 
 (defmethod remote-sync/spec :model/Document
   [_model]
-  {:synced-filter-clause documents.db/synced-documents-clause})
+  {:synced-items         documents.db/synced-document-items
+   :synced-filter-clause documents.db/synced-documents-clause})

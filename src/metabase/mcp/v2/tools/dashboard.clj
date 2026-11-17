@@ -25,6 +25,7 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.toolkit.dashboard-op-schema :as dashboard-op-schema]
+   [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
    [toucan2.core :as t2]))
 
@@ -125,7 +126,8 @@
   target grammar, linked filters, value sources; learn(\"dashboard-layout\") covers the 24-column grid,
   per-display default sizes, and layout conventions. validate_only: true returns the layout the ops would
   produce without writing — but per-field parameter-mapping permission checks run only on the real save, so a
-  clean dry run can still be rejected. Returns the resulting dashboard, so no follow-up read is needed.
+  clean dry run can still be rejected. A card that move, resize or an explicit position puts over others pushes
+  them down, and pushed_dashcard_ids lists them. Returns the resulting dashboard, so no follow-up read is needed.
   Requires write permission on the dashboard and read permission on each card an op wires. A card an op adds or
   makes a filter's value source needs read permission too, unless the dashboard already uses it."
   {:name           "dashboard_write"
@@ -137,29 +139,29 @@
    :annotations    {:readOnlyHint false :destructiveHint true}
    :args           dashboard-write-args-schema}
   [args {:keys [token-scopes]}]
-  (let [dispatched (v2.write/dispatch-write dashboard-write-entry args)]
+  (let [dispatched (v2.write/dispatch-write dashboard-write-entry args)
+        dash       (dashboard-errors/do-with-teaching-errors
+                    #(case (first dispatched)
+                       :create
+                       (let [[_ body] dispatched
+                             attrs    (create-attrs body)]
+                         (when (contains? body :archived)
+                           (common/throw-teaching-error
+                            (message/msg [(str "\"archived\" applies to method \"update\" "
+                                               "only — remove it from this create call.")])))
+                         (dashboard-write/write! {:attrs          attrs
+                                                  :ops            (:ops body)
+                                                  :validate-only? (boolean (:validate_only body))}))
+
+                       :update
+                       (let [[_ id body] dispatched]
+                         (dashboard-write/write! {:dashboard      (fetch-dashboard id)
+                                                  :attrs          (dashboard-attrs body)
+                                                  :ops            (:ops body)
+                                                  :validate-only? (boolean (:validate_only body))}))))
+        pushed     (dashboard-ops/pushed-dashcard-ids dash)]
     (common/success-content
      (v2.write/readback token-scopes [metabot.scope/agent-content-read]
-                        (projections/project
-                         :dashboard :concise
-                         (dashboard-errors/do-with-teaching-errors
-                          #(dashboard-row
-                            (case (first dispatched)
-                              :create
-                              (let [[_ body] dispatched
-                                    attrs    (create-attrs body)]
-                                (when (contains? body :archived)
-                                  (common/throw-teaching-error
-                                   (message/msg [(str "\"archived\" applies to method \"update\" "
-                                                      "only — remove it from this create call.")])))
-                                (dashboard-write/write! {:attrs          attrs
-                                                         :ops            (:ops body)
-                                                         :validate-only? (boolean (:validate_only body))}))
-
-                              :update
-                              (let [[_ id body] dispatched]
-                                (dashboard-write/write! {:dashboard      (fetch-dashboard id)
-                                                         :attrs          (dashboard-attrs body)
-                                                         :ops            (:ops body)
-                                                         :validate-only? (boolean (:validate_only body))}))))))
+                        (cond-> (projections/project :dashboard :concise (dashboard-row dash))
+                          (seq pushed) (assoc :pushed_dashcard_ids pushed))
                         nil))))

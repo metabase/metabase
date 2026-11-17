@@ -8,9 +8,11 @@ export function setupDashcardQueryEndpoints(
   dashcard: StoreDashcard,
   // A promise holds the response until the test resolves it
   dataset: Dataset | Promise<Dataset>,
+  { delay }: { delay?: number } = {},
 ) {
   fetchMock.post(
     `path:/api/dashboard/${dashboardId}/dashcard/${dashcard.id}/card/${dashcard.card_id}/query`,
     dataset,
+    { delay },
   );
 }

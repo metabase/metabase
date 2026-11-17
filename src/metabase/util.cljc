@@ -19,13 +19,13 @@
    [clojure.data :refer [diff]]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [flatland.ordered.map :refer [ordered-map]]
    [medley.core :as m]
    [metabase.util.format :as u.format]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
    [metabase.util.namespaces :as u.ns]
    [metabase.util.number :as u.number]
@@ -105,6 +105,19 @@
                          :clj  'Throwable)
                       ~'_)))
 
+(defn run-each!
+  "Call each thunk in `steps`, a sequence of `[label thunk]` pairs, in order, whether or not an earlier one throws.
+  Returns the `[label exception]` pairs of the thunks that threw, in order, or an empty vector."
+  [steps]
+  (into []
+        (keep (fn [[label thunk]]
+                (try
+                  (thunk)
+                  nil
+                  (catch #?(:clj Throwable :cljs :default) e
+                    [label e]))))
+        steps))
+
 (defn strip-error
   "Transforms the error in a list of strings to log"
   ([e]
@@ -179,11 +192,8 @@
 (defn recursive-map-keys
   "Recursively replace the keys in a map with the value of `(f key)`."
   [f m]
-  (walk/postwalk
-   #(if (map? %)
-      (m/map-keys f %)
-      %)
-   m))
+  (match/replace-all m
+    #'map? (m/map-keys f &match)))
 
 (defn trimmed-string
   "`value` trimmed of surrounding whitespace, or nil when it is not a string or has nothing left once trimmed."
@@ -673,9 +683,13 @@
      (select-non-nil-keys {:a 100, :b nil} #{:a :b :c})
      ;; -> {:a 100}"
   [m ks]
-  (into {} (for [k     ks
-                 :when (some? (get m k))]
-             {k (get m k)})))
+  (persistent!
+   (reduce (fn [acc k]
+             (let [v (get m k)]
+               (cond-> acc
+                 (some? v) (assoc! k v))))
+           (transient {})
+           ks)))
 
 (defn select-keys-when
   "Returns a map that only contains keys that are either `:present` or `:non-nil`. Combines behavior of `select-keys`

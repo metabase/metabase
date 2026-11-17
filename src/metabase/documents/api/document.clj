@@ -14,6 +14,7 @@
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -99,7 +100,7 @@
   ;; Documents attached to an exploration are internal to that exploration — every other listing surface (search,
   ;; recents, collection items) excludes them too.
   {:items (as-> (documents.db/visible-unarchived-documents) docs
-            (filter mi/can-read? docs)
+            (filterv mi/can-read? (t2/hydrate docs :can_read))
             (t2/hydrate docs :creator :can_write :is_remote_synced))})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -191,7 +192,7 @@
                                               :archived_directly (boolean (:archived_directly card))}))
                 (assoc accum (:id card) (:id new-card))))
             {}
-            cards-to-copy)))
+            (t2/hydrate cards-to-copy :can_read))))
 
 (defn copy-document!
   "Copy the document with `from-document-id` into `:collection_id` (nil = root), along with the
@@ -321,11 +322,8 @@
     (api/check-404 (and (contains? (set (prose-mirror/card-ids document)) card-id)
                         (documents.db/unarchived-card-in-document-exists? card-id document-id)))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:document-id/card/:card-id/query/:export-format"
+  :- ::qp.streaming/export-response
   "Download query results for a Card embedded in a Document.
 
   Returns query results in the requested format. The user must have read access to the document

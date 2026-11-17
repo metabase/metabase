@@ -43,7 +43,6 @@
 ;;
 ;; <hr />
 
-
 (ns dev
   "Put everything needed for REPL development within easy reach"
   (:require
@@ -227,12 +226,6 @@
   session"
   [model-sym]
   `(require [(symbol (str "metabase.models." (quote ~model-sym))) :as (quote ~model-sym)]))
-
-(defmacro with-permissions
-  "Execute the body with the given permissions."
-  [permissions & body]
-  `(binding [api/*current-user-permissions-set* (delay ~permissions)]
-     ~@body))
 
 (defn query-jdbc-db
   "Execute a SQL query against a JDBC database. Useful for testing SQL syntax locally.
