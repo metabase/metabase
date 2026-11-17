@@ -258,7 +258,7 @@ function assertTooltipFooter({ name, value, secondaryValue }) {
 }
 
 /**
- * @param {{ header?: string, rows?: any[], footer?: { name: string, value: string, secondaryValue?: string } | null, blurAfter?: boolean }} options
+ * @param {{ header?: string, rows?: { name: string, color?: string, value?: string, secondaryValue?: string, index?: number }[], footer?: { name: string, value: string, secondaryValue?: string } | null, blurAfter?: boolean }} options
  */
 export function assertEChartsTooltip({ header, rows, footer, blurAfter }) {
   echartsTooltip().within(() => {

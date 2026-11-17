@@ -926,7 +926,7 @@ describe("dashcard actions panel", () => {
       .realHover({ scrollBehavior: false })
       .findByTestId("dashboardcard-actions-panel")
       .icon("close")
-      .click({ scrollBehavior: false });
+      .click("top", { scrollBehavior: false });
 
     H.getDashboardCards().should("have.length", 1);
     H.removeDashboardCard(0);
@@ -966,7 +966,7 @@ describe("dashcard actions panel", () => {
       "Make sure cypress can click the element, which means it is not covered by another",
     );
     cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("close").closest("a").click();
+      cy.icon("close").closest("a").click("bottom");
     });
     cy.findByTestId("dashcard").should("not.exist");
   });

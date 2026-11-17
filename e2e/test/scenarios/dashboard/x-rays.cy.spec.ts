@@ -14,6 +14,30 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
   const XRAY_DATASETS = 5; // enough to load most questions
 
+  it("should not display x-rays if the feature is disabled in admin settings (metabase#26571)", () => {
+    const xrayCaption =
+      "Try out these sample x-rays to see what Metabase can do.";
+
+    cy.visit("/");
+    cy.findByTestId("home-page").should("contain", xrayCaption);
+
+    cy.request("PUT", "/api/setting/enable-xrays", { value: false });
+    cy.intercept("GET", "/api/session/properties").as("settings");
+    cy.intercept("GET", "/api/database*").as("databases");
+    cy.reload();
+    cy.wait(["@settings", "@databases"]);
+
+    cy.findByTestId("home-page").within(() => {
+      cy.findByRole("button", { name: "Customize" }).should("be.visible");
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByText(xrayCaption).should("not.exist");
+      cy.findByText(/^A summary of/).should("not.exist");
+      cy.findByText(/^A glance at/).should("not.exist");
+      cy.findByText(/^A look at/).should("not.exist");
+      cy.findByText(/^Some insights about/).should("not.exist");
+    });
+  });
+
   it("should x-ray questions from a chart click (metabase#13112, metabase#31697, metabase#23820)", () => {
     cy.log("x-ray a question with explicit joins (metabase#13112)");
     const PRODUCTS_ALIAS = "Products";
