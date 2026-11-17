@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase.api.common :refer [*current-user-id* *is-superuser?*]]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -26,16 +27,12 @@
         groups-to-exclude (set/union sandboxed-groups impersonated-groups)
         groups-to-check (set/difference user-group-ids groups-to-exclude)]
     (if (seq groups-to-check)
-      (not (perms/groups-have-permission-for-table? groups-to-check
-                                                    :perms/view-data
-                                                    :unrestricted
-                                                    db_id
-                                                    table_id))
+      (not (perms/at-least-as-permissive? :perms/view-data (get (perms/table-permissions-for-groups groups-to-check :perms/view-data {table_id db_id}) table_id) :unrestricted))
       true)))
 
 (defenterprise enforced-sandboxes-for-user
   "Given a user-id, returns the set of sandboxes that should be enforced for the provided user ID. This result is cached
-  for the duration of a request in [[metabase.permissions.models.data-permissions/*sandboxes-for-user*]].
+  for the duration of a request in [[metabase.permissions.data-permissions/*sandboxes-for-user*]].
 
   WARNING: This should NOT be used directly for sandboxing enforcement. Use `*sandboxes-for-user*` or
   `enforced-sandboxes-for-tables` below, so that the cache is used."
@@ -46,19 +43,10 @@
   [user-id]
   (when user-id
     (let [user-group-ids           (user/group-ids user-id)
-          sandboxes-with-group-ids (t2/hydrate
-                                    (t2/select :model/Sandbox
-                                               {:select [[:pgm.group_id :group_id]
-                                                         [:s.*]]
-                                                :from [[:permissions_group_membership :pgm]]
-                                                :left-join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]]
-                                                :where [:and
-                                                        [:= :pgm.user_id user-id]]})
-                                    :table)
+          sandboxes-with-group-ids (t2/hydrate (sandbox.db/user-sandboxes-with-group-ids user-id) :table)
 
           impersonations-with-group-ids (when (seq user-group-ids)
-                                          (t2/select :model/ConnectionImpersonation
-                                                     :group_id [:in user-group-ids]))
+                                          (sandbox.db/impersonations-for-groups user-group-ids))
           group-id->impersonations (->> impersonations-with-group-ids
                                         (group-by :group_id))
           group-id->sandboxes (->> sandboxes-with-group-ids
@@ -78,24 +66,29 @@
     (let [enforced-sandboxes-for-user (perms/sandboxes-for-user)]
       (filter #((set table-ids) (:table_id %)) enforced-sandboxes-for-user))))
 
-(defn sandboxed-user-for-db?
+(defenterprise sandboxed-user-for-db?
   "Returns true if the currently logged in user has any enforced sandboxes for the provided database. Throws an
-  exception if no current user is bound."
+  exception if no current user is bound. Uses `:feature :none` so callers can recognize a sandboxed user even when
+  the `:sandboxes` feature is temporarily unavailable (e.g. during a transient token-check failure) and fail closed
+  instead of leaking data."
+  :feature :none
   [database-id]
-  (when-not *is-superuser?*
-    (if *current-user-id*
-      (let [sandboxes (t2/hydrate (seq (perms/sandboxes-for-user)) :table)]
-        (some #(= (get-in % [:table :db_id]) database-id)
-              sandboxes))
-      ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid
-      ;; returning `false` for users who should actually be sandboxes.
-      (throw (ex-info (str (tru "No current user found"))
-                      {:status-code 403})))))
+  (boolean
+   (when-not *is-superuser?*
+     (if *current-user-id*
+       (let [sandboxes (t2/hydrate (seq (perms/sandboxes-for-user)) :table)]
+         (some #(= (get-in % [:table :db_id]) database-id)
+               sandboxes))
+       ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid
+       ;; returning `false` for users who should actually be sandboxes.
+       (throw (ex-info (str (tru "No current user found"))
+                       {:status-code 403}))))))
 
 (defenterprise sandboxed-user?
   "Returns true if the currently logged in user has any enforced sandboxes. Throws an exception if no current user is
-  bound."
-  :feature :sandboxes
+  bound. Uses `:feature :none` so callers can recognize a sandboxed user even when the `:sandboxes` feature is
+  temporarily unavailable (e.g. during a transient token-check failure) and fail closed instead of leaking data."
+  :feature :none
   []
   (boolean
    (when-not *is-superuser?*

@@ -1,7 +1,9 @@
 (ns metabase.lib.schema.literal-test
   (:require
    [clojure.test :refer [are deftest is testing]]
+   [malli.core :as mc]
    [malli.error :as me]
+   [malli.transform :as mtx]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.literal :as literal]
    [metabase.util.malli.registry :as mr]))
@@ -126,3 +128,14 @@
         ;; look at the `:effective-type` and/or `:effective-type`, not the wrapped literal type.
         [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Number} "Not a number"]
         ::expression/string))))
+
+(deftest ^:parallel string-decode-literal-preserves-value-test
+  (are [input] (= input (mc/decode ::literal/literal input (mtx/string-transformer)))
+    "true"
+    "false"
+    "nil"
+    true
+    false
+    nil
+    "123"
+    123))

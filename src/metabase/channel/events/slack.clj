@@ -1,4 +1,6 @@
-(ns metabase.channel.events.slack)
+(ns metabase.channel.events.slack
+  (:require
+   [metabase.events.core :as events]))
 
-(derive ::event :metabase/event)
-(derive :event/slack-token-invalid ::event)
+(events/derive! ::event :metabase/event)
+(events/derive! :event/slack-token-invalid ::event)

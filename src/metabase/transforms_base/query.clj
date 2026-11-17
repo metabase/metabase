@@ -4,9 +4,9 @@
    This namespace handles MBQL/native query transform execution and returns
    results in memory rather than writing to transform_run rows."
   (:require
-   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.indexes.schema :as indexes.schema]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.transforms-base.interface :as transforms-base.i]
@@ -15,8 +15,7 @@
    [metabase.transforms-base.workspace-hooks :as transforms-base.workspace-hooks]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -41,7 +40,10 @@
    [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table :table-incremental]]
    [:conn-spec :any]
    [:query ::qp.compile/compiled]
-   [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
+   [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]
+   ;; Declared target indexes. `compile-transform` inlines the ones it can into the CTAS (e.g. Redshift SORTKEY,
+   ;; ClickHouse ORDER BY); the rest are created standalone.
+   [:indexes {:optional true} [:sequential ::indexes.schema/index-structured]]])
 
 (mr/def ::transform-opts
   [:map
@@ -49,7 +51,15 @@
 
 ;;; ------------------------------------------------- Helpers -------------------------------------------------
 
-(defn- transform-opts [transform-type transform]
+(mu/defn- transform-opts :- [:or
+                             [:map {:closed true} [:overwrite? :boolean]]
+                             [:map {:closed true}
+                              [:merge [:map {:closed true}
+                                       [:unique-key [:maybe [:sequential :string]]]
+                                       [:columns    [:maybe [:sequential :string]]]]]]
+                             [:map {:closed true}]]
+  [transform-type :- [:enum :table :table-incremental]
+   transform      :- ::transforms-base.schema/transform]
   (case transform-type
     :table {:overwrite? true}
     :table-incremental
@@ -92,11 +102,7 @@
     (when (and cancelled? (cancelled?))
       (throw (ex-info "Transform cancelled before start" {:status :cancelled})))
     (let [db (get-in source [:query :database])
-          {driver :engine :as database} (when db (t2/select-one :model/Database db))
-          _ (when-not database
-              (throw (ex-info "Source database for this transform has been deleted."
-                              {:transform-id (:id transform)
-                               :source-database-id db})))
+          {driver :engine :as database} (driver.u/lib-database db)
           _ (transforms-base.u/throw-if-db-routing-enabled! transform database)
           ;; Full incremental runs (no watermark — either the first ever, or one that follows a
           ;; checkpoint-config reset) drop and recreate the table rather than appending.
@@ -128,17 +134,15 @@
                              ;; the CTAS table name. See
                              ;; `metabase.driver.sql.query-processor/compile-transform :sql`.
                              :output-db (:db target)
-                             :output-table (transforms-base.u/qualified-table-name driver target)}
+                             :output-table (transforms-base.u/qualified-table-name driver target)
+                             :indexes (:indexes target)}
           opts (transform-opts effective-transform-type transform)
           features (transforms-base.u/required-database-features transform)]
       (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
         (throw (ex-info "The database does not support the requested transform target type."
                         {:driver driver, :database database, :features features})))
       (log/info "Executing transform" id "with target" (pr-str target))
-      ;; Create schema if needed
-      (when (and (not (str/blank? (:schema target)))
-                 (not (driver/schema-exists? driver db (:schema target))))
-        (driver/create-schema-if-needed! driver (:conn-spec transform-details) (:schema target)))
+      (transforms-base.u/create-target-schema! driver db (:conn-spec transform-details) (:schema target))
       ;; Check cancellation before running query
       (when (and cancelled? (cancelled?))
         (throw (ex-info "Transform cancelled before query execution" {:status :cancelled})))
@@ -156,7 +160,8 @@
           {:status :cancelled
            :error e}
           (do
-            (log/error e "Error executing transform")
+            ;; the caller owns the failure (and logs it); this returns it in the result map
+            (log/debugf "Error executing transform: %s" (ex-message e))
             {:status :failed
              :error e}))))))
 

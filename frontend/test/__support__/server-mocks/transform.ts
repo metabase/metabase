@@ -1,11 +1,15 @@
-import fetchMock from "fetch-mock";
+import fetchMock, { type RouteResponse } from "fetch-mock";
 
 import type {
+  DagTransform,
   Dataset,
   InspectorLensId,
+  ListTransformGraphRunsResponse,
   ListTransformJobRunsResponse,
   ListTransformRunsResponse,
+  RunTransformDagResponse,
   Transform,
+  TransformDagRunId,
   TransformId,
   TransformJob,
   TransformJobId,
@@ -14,14 +18,40 @@ import type {
   TransformTag,
 } from "metabase-types/api";
 
+import type { MockResponse } from "./types";
+
 export function setupListTransformRunsEndpoint(
   response: ListTransformRunsResponse,
 ) {
   fetchMock.get(`path:/api/transform/run`, response);
 }
 
+export function setupListTransformGraphRunsEndpoint(
+  response: ListTransformGraphRunsResponse,
+) {
+  fetchMock.get(`path:/api/transform/runs`, response);
+}
+
 export function setupListTransformsEndpoint(transforms: Transform[]) {
   fetchMock.get(`path:/api/transform`, transforms);
+}
+
+export function setupGetTransformEndpoint(
+  transform: Transform,
+  response: MockResponse<Transform> = transform,
+) {
+  fetchMock.get(`path:/api/transform/${transform.id}`, response);
+}
+
+export function setupUpdateTransformEndpoint(
+  transformId: TransformId,
+  response: RouteResponse,
+) {
+  fetchMock.put(`path:/api/transform/${transformId}`, response);
+}
+
+export function setupDeleteTransformEndpoint(transformId: TransformId) {
+  fetchMock.delete(`path:/api/transform/${transformId}`, 204);
 }
 
 export function setupListTransformTagsEndpoint(tags: TransformTag[]) {
@@ -39,8 +69,13 @@ export function setupListTransformJobsEndpoint(jobs: TransformJob[]) {
 export function setupListTransformJobTransformsEndpoint(
   jobId: TransformJobId,
   transforms: Transform[],
+  options?: { delay?: number },
 ) {
-  fetchMock.get(`path:/api/transform-job/${jobId}/transforms`, transforms);
+  fetchMock.get(
+    `path:/api/transform-job/${jobId}/transforms`,
+    transforms,
+    options,
+  );
 }
 
 export function setupListTransformJobTransformsEndpointWithError(
@@ -73,6 +108,40 @@ export function setupListJobRunTransformRunsEndpoint(
     `path:/api/transform-job/${jobId}/runs/${runId}/transform-runs`,
     runs,
   );
+}
+
+export function setupListDagTransformsEndpoint(
+  transformId: TransformId,
+  transforms: DagTransform[],
+) {
+  fetchMock.get(
+    `path:/api/transform/${transformId}/dag-transforms`,
+    transforms,
+  );
+}
+
+export function setupRunTransformDagEndpoint(
+  transformId: TransformId,
+  response: RunTransformDagResponse = {
+    message: "DAG run started",
+    dag_run_id: 1,
+  },
+) {
+  fetchMock.post(`path:/api/transform/${transformId}/run-dag`, response);
+}
+
+export function setupListDagRunTransformRunsEndpoint(
+  dagRunId: TransformDagRunId,
+  runs: TransformRunForJobRun[] | (() => TransformRunForJobRun[]),
+) {
+  fetchMock.get(`path:/api/transform-dag-run/${dagRunId}/transform-runs`, runs);
+}
+
+export function setupCancelJobRunEndpoint(
+  jobId: TransformJobId,
+  runId: TransformJobRunId,
+) {
+  fetchMock.post(`path:/api/transform-job/${jobId}/runs/${runId}/cancel`, 204);
 }
 
 export function setupCreateTransformJobEndpoint(job: TransformJob) {

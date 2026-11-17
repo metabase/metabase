@@ -1,5 +1,6 @@
 ---
 title: "Accounts and billing"
+summary: Manage your Metabase Store account. Change plans, add managers and billing contacts, update payment details, and download past invoices.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true
@@ -142,4 +143,4 @@ If you're on Metabase Cloud but need to switch to hosting Metabase yourself, [co
 
 ## Further reading
 
-- [How billing works](./how-billing-works.md)
+- [How billing works](https://www.metabase.com/how-billing-works)

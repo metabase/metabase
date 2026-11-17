@@ -20,11 +20,12 @@ export interface NativeQuerySnippet {
 
   creator?: UserInfo;
   collection?: Collection;
+  can_write?: boolean;
 }
 
-export interface ListSnippetsParams {
+export type ListSnippetsParams = {
   archived?: boolean;
-}
+};
 
 export interface CreateSnippetRequest {
   name: string;

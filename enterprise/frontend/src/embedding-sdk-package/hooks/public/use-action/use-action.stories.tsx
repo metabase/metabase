@@ -38,8 +38,8 @@ const HookTemplate: StoryFn<
 
   return (
     <MetabaseProvider authConfig={config}>
-      <Box p="md">
-        <Stack gap="md">
+      <Box p="lg">
+        <Stack gap="lg">
           <Button disabled={isExecuting} onClick={handleExecute}>
             {isExecuting ? "Executing…" : `Execute action ${ACTION_ID}`}
           </Button>
@@ -50,7 +50,7 @@ const HookTemplate: StoryFn<
               <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>
                 {JSON.stringify(result, null, 2)}
               </pre>
-              <Button mt="xs" variant="subtle" onClick={reset}>
+              <Button mt="xxs" variant="subtle" onClick={reset}>
                 Reset
               </Button>
             </Box>
@@ -58,13 +58,13 @@ const HookTemplate: StoryFn<
 
           {error ? (
             <Box>
-              <Text c="error" fw="bold">
+              <Text c="feedback-negative" fw="bold">
                 Error
               </Text>
               <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>
                 {error.data.message ?? "Action failed."}
               </pre>
-              <Button mt="xs" variant="subtle" onClick={reset}>
+              <Button mt="xxs" variant="subtle" onClick={reset}>
                 Dismiss
               </Button>
             </Box>

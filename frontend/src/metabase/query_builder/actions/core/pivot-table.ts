@@ -1,11 +1,11 @@
-import { assocIn } from "icepick";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
 
-import { getQuestionWithDefaultVisualizationSettings } from "./utils";
+import { getQuestionWithDefaultVisualizationSettings } from "../../utils/viz-settings";
 
 interface Options {
   question: Question;
@@ -33,7 +33,9 @@ export function computeQuestionPivotTable(options: Options) {
       const key = "pivot_table.column_split";
 
       if (rawSeries) {
-        const series = assocIn(rawSeries, [0, "card"], question.card());
+        const series = rawSeries.map((s, i) =>
+          i === 0 ? { ...s, card: question.card() } : s,
+        );
         const setting = getQuestionWithDefaultVisualizationSettings(
           question,
           series,

@@ -42,12 +42,14 @@ const QUERY = Lib.createTestQuery(PROVIDER, {
 describe("getName", () => {
   it("should return a plain name without suffix when no duplicates exist", () => {
     expect(
+      // Unjustified type cast. FIXME
       getName(QUERY, -1, { displayName: "Bar" } as Lib.ColumnExtractionInfo),
     ).toBe("Bar");
   });
 
   it("should return a name with a suffix to avoid name clashes", () => {
     expect(
+      // Unjustified type cast. FIXME
       getName(QUERY, -1, { displayName: "Date" } as Lib.ColumnExtractionInfo),
     ).toBe("Date (1)");
   });

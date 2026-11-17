@@ -2,14 +2,16 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [honey.sql.helpers :as sql.helpers]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.config.core :as config]
+   [metabase.global-system.mutable-component :as mc]
+   [metabase.global-system.system :as system]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.h2 :as h2]
    [metabase.search.appdb.specialization.postgres :as postgres]
-   [metabase.search.config :as search.config]
+   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
@@ -22,8 +24,7 @@
    [metabase.util.string :as string]
    [toucan2.core :as t2])
   (:import
-   (org.h2.jdbc JdbcSQLSyntaxErrorException)
-   (org.postgresql.util PSQLException)))
+   (java.util.concurrent.atomic AtomicBoolean)))
 
 (comment
   h2/keep-me
@@ -35,63 +36,104 @@
 
 (def ^:private sync-tracking-period (long (* 5 #_minutes 60e9)))
 
-(defonce ^:private next-sync-at (atom nil))
+;; The active and pending index tables, and `:next-sync-at`, the time after which a read syncs them with the database.
+;; The time lives in the same value, so a binding or a reset of the state covers it too. A state without it syncs on
+;; its next read. Writers that read the database before writing this state hold its slot lock. The exception is the
+;; test-only guard in [[batch-update!]], which only clears a table that is still the tracked one.
+(def ^:private indexes-component
+  (system/mutable-component-handle ::indexes (constantly {:active nil, :pending nil})))
 
-(defonce ^:dynamic ^:private ^{:doc "This atom is often reset! in threads, so modifications should be done only when locking it first."}
-  *indexes*
-  (atom {:active nil, :pending nil}))
+(defn indexes-handle
+  "The [[metabase.global-system.mutable-component/MutableComponentHandle]] for the tracked index tables."
+  []
+  indexes-component)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *mocking-tables* false)
 
 (defmethod search.engine/reset-tracking! :search.engine/appdb [_]
-  (reset! *indexes* nil))
+  (mc/reset! indexes-component nil))
+
+(defn- track-tables!
+  "Replace the tracked index tables with `tables`, keeping the time of the next sync."
+  [tables]
+  (mc/swap! indexes-component #(assoc tables :next-sync-at (:next-sync-at %))))
 
 (declare exists?)
 
 (defn- sync-tracking-atoms!
-  "Sync the *indexes* atom with the current database metadata state."
+  "Sync the tracked index tables with the current database metadata state."
   []
   ;; Locks the indexes so the reset! doesn't lose data written to the db by a different thread between the read and write
-  (locking *indexes*
+  (mc/with-slot-lock indexes-component
     (let [indexes (into {}
                         (for [[status table-name] (search-index-metadata/indexes :appdb (search.spec/index-version-hash))]
                           (if (exists? table-name)
                             [status (keyword table-name)]
                             ;; For debugging, make it clear why we are not tracking the given metadata.
                             [(keyword (name status) "not-found") (keyword table-name)])))]
-      (log/debugf "Sync tracking atoms: %s" indexes)
-      (reset! *indexes* indexes))))
+      (log/debugf "Sync tracked index tables: %s" indexes)
+      (track-tables! indexes))))
 
 (defn sync-from-restored-db!
-  "Re-sync tracking atoms with the current database state.
+  "Re-sync the tracked index tables with the current database state.
    Used after snapshot restore where the index tables are already present."
   []
-  (reset! next-sync-at nil)
+  (mc/swap! indexes-component assoc :next-sync-at nil)
   (sync-tracking-atoms!))
 
 ;; This exists only to be mocked.
 (defn- now [] (System/nanoTime))
 
+;; True while a thread is claiming a sync that has come due.
+;; The claim is a write, so it waits for the slot lock.
+;; A reindex can hold that lock for as long as its database work takes.
+;; Only the thread that sets this flag waits, and it syncs once it has the lock.
+;; The others read the state as it is.
+;; The flag is one for the process, so a binding of the index state shares it with the root.
+;; TODO (Chris 2026-11-13) -- This stands in for a write that gives up when the slot lock is held, which a monitor
+;; cannot do. If a second component needs one, make the slot locks `ReentrantLock`s and drop this flag.
+(defonce ^:private ^AtomicBoolean claiming-sync? (AtomicBoolean. false))
+
+(defn- stale?
+  "Whether the index state `state` is due a sync at `now-ns`."
+  [now-ns {:keys [next-sync-at]}]
+  (or (nil? next-sync-at) (> now-ns next-sync-at)))
+
+(defn- claim-sync!
+  "Claim the sync that is due at `now-ns`, and return whether this thread claimed it.
+   Returns false at once while another thread is claiming, so only one thread waits for the slot lock.
+   Of the threads that see a stale state, only the one whose swap moves the time on claims it."
+  [now-ns]
+  (and (.compareAndSet claiming-sync? false true)
+       (try
+         (let [[old] (mc/swap-vals! indexes-component
+                                    (fn [state]
+                                      (cond-> state
+                                        (stale? now-ns state) (assoc :next-sync-at (+ now-ns sync-tracking-period)))))]
+           (stale? now-ns old))
+         (finally
+           (.set claiming-sync? false)))))
+
 (defn- sync-tracking-atoms-if-stale! []
   (when-not *mocking-tables*
-    (let [current @next-sync-at
-          now-ns (now)]
-      (when (or (nil? current) (> now-ns current))
-        ;; Use compare-and-set! to ensure only one thread wins the race and syncs
-        (when (compare-and-set! next-sync-at current (+ now-ns sync-tracking-period))
-          (sync-tracking-atoms!))))))
+    (let [now-ns (now)]
+      ;; A write waits for the slot lock, so a fresh state is read without one.
+      (when (and (stale? now-ns @indexes-component)
+                 (claim-sync! now-ns))
+        (sync-tracking-atoms!)))))
 
 (defn active-table
   "The table against which we should currently make search queries."
   []
   (sync-tracking-atoms-if-stale!)
-  (:active @*indexes*))
+  (:active @indexes-component))
 
 (defn- pending-table
   "A partially populated table that will take over from [[active-table]] when it is done."
   []
   (sync-tracking-atoms-if-stale!)
-  (:pending @*indexes*))
+  (:pending @indexes-component))
 
 (defn gen-table-name
   "Generate a unique table name to use as a search index table. If no suffix is provided, none will be used"
@@ -109,82 +151,63 @@
   briefly stale relative to what has been dropped)."
   [table]
   (when table
-    (t2/exists? :information_schema.tables :table_name (table-name table))))
+    (search.db/table-exists? (table-name table))))
 
 (defn- drop-table! [table]
   (boolean
    (when table
-     (t2/query (sql.helpers/drop-table :if-exists (keyword (table-name table)))))))
+     (search.db/drop-search-index-table-if-exists! (keyword (table-name table))))))
 
 (defn- orphan-indexes []
   (map (comp keyword u/lower-case-en :table_name)
-       (t2/query {:select [:table_name]
-                  :from   :information_schema.tables
-                  :where  [:and
-                           [:= :table_schema :%current_schema]
-                           [:or
-                            [:like [:lower :table_name] [:inline "search\\_index\\_\\_%"]]
-                            ;; legacy table names
-                            [:in [:lower :table_name]
-                             (mapv #(vector :inline %) ["search_index" "search_index_next" "search_index_retired"])]]
-                           ;; Exclude temp tables — they are managed by with-temp-index-table
-                           [:not-like [:lower :table_name] [:inline "%\\_temp"]]
-                           [:not-in [:lower :table_name]
-                            {:select [:%lower.index_name]
-                             :from   [(t2/table-name :model/SearchIndexMetadata)]
-                             :where  [:= :engine [:inline "appdb"]]}]]})))
+       (search.db/orphan-index-table-names)))
 
-(defn- delete-obsolete-tables! []
-  ;; Delete metadata around indexes that are no longer needed.
-  (search-index-metadata/delete-obsolete! (search.spec/index-version-hash))
-  ;; Drop any indexes that are no longer referenced.
-  (let [dropped (volatile! [])]
-    (doseq [table (orphan-indexes)]
-      (try
-        (t2/query (sql.helpers/drop-table table))
-        (vswap! dropped conj table)
-        ;; Deletion could fail if it races with other instances
-        (catch Exception e
-          (log/warnf e "Failed to drop stale index %s" table))))
-    (log/infof "Dropped %d stale indexes: %s" (count @dropped) @dropped)))
+(defn- drop-orphan-index!
+  "Drop the orphan index `table`, returning it, or nil if the drop failed.
+  A failed drop is logged and never propagates."
+  [table]
+  (try
+    (search.db/drop-search-index-table! table)
+    table
+    ;; Deletion could fail if it races with other instances
+    (catch Exception e
+      (log/warnf "Failed to drop orphan index %s: %s" table (ex-message e))
+      nil)))
 
-(defn- ->db-type [t]
-  (get {:pk :int, :timestamp :timestamp-with-time-zone} t t))
+(defn- drop-orphan-indexes!
+  "Drop every index table that has no metadata row, returning those dropped.
+  Best effort: a failed drop is logged and never propagates."
+  []
+  (let [dropped (into [] (keep drop-orphan-index!) (orphan-indexes))]
+    (log/infof "Dropped %d orphan indexes: %s" (count dropped) dropped)
+    dropped))
 
-(defn- ->db-column [c]
-  (or (get {:id         :model_id
-            :created-at :model_created_at
-            :updated-at :model_updated_at}
-           c)
-      (keyword (u/->snake_case_en (name c)))))
+(defn- ddl-commits-caller-transaction?
+  "Whether dropping a table here would commit the transaction the caller is holding."
+  []
+  ;; Dropping a table is DDL, which h2 and mysql commit implicitly.
+  ;; Postgres keeps DDL inside the transaction, where it does no harm.
+  ;; Mysql cannot reach this while the appdb engine supports postgres and h2 only, but listing it means
+  ;; adding support does not quietly bring the rollback failure back.
+  (and (mdb/in-transaction?) (contains? #{:h2 :mysql} (mdb/db-type))))
 
-(def ^:private not-null
-  #{:archived :name})
-
-(def ^:private default
-  {:archived false})
-
-;; If this fails, we'll need to increase the size of :model below
-(assert (>= 32 (transduce (map (comp count name)) max 0 search.config/all-models)))
-
-(def ^:private base-schema
-  (into [[:model [:varchar 32] :not-null]
-         [:display_data :text :not-null]
-         [:legacy_input :text :not-null]
-         ;; useful for tracking the speed and age of the index
-         [:created_at :timestamp-with-time-zone
-          [:default [:raw "CURRENT_TIMESTAMP"]]
-          :not-null]
-         [:updated_at :timestamp-with-time-zone :not-null]]
-        (keep (fn [[k t]]
-                (when t
-                  (into [(->db-column k) (->db-type t)]
-                        (concat
-                         (when (not-null k)
-                           [:not-null])
-                         (when-some [d (default k)]
-                           [[:default d]]))))))
-        search.spec/attr-types))
+(defn delete-obsolete-tables!
+  "Prune obsolete index metadata, then drop the index tables that leaves unreferenced.
+  Best effort: failures are logged and never propagate.
+  Does nothing while mocking tables, where the pending table lives in the tracked index state with no metadata row.
+  Skips the drops when they would commit the caller's transaction, leaving those tables to a later sweep."
+  []
+  (when-not *mocking-tables*
+    (try
+      ;; Delete metadata around indexes that are no longer needed.
+      (search-index-metadata/delete-obsolete! (search.spec/index-version-hash))
+      ;; Drop any indexes that are no longer referenced.
+      ;; A sweep outside the caller's transaction gets the rest.
+      (if (ddl-commits-caller-transaction?)
+        (log/debug "Deferring orphan index drops: dropping here would commit the caller's transaction")
+        (drop-orphan-indexes!))
+      (catch Exception e
+        (log/warnf "Failed to clean up obsolete indexes: %s" (ex-message e))))))
 
 (defn create-table!
   "Create an index table with the given name. Should fail if it already exists."
@@ -192,23 +215,19 @@
   ;; Create with a separate transaction so that postgresql will complete the index creations before returning,
   ;; even when already running in a transaction
   (t2/with-transaction [_ (mdb/app-db)]
-    (-> (sql.helpers/create-table table-name)
-        (sql.helpers/with-columns (specialization/table-schema base-schema))
-        t2/query)
-    (let [table-name (name table-name)]
-      (doseq [stmt (specialization/post-create-statements table-name table-name)]
-        (t2/query stmt)))))
+    (search.db/create-search-index-table! table-name)))
 
 (defn maybe-create-pending!
   "Create a search index table if one doesn't exist. Record and return the name of the table, regardless."
   []
-  (locking *indexes*
+  (mc/with-slot-lock indexes-component
     (if *mocking-tables*
-      ;; In a test where the atoms are the source of truth, create a new table if necessary.
+      ;; In a test where the tracked index state is the source of truth, create a new table if necessary.
       (or (pending-table)
           (let [table-name (gen-table-name)]
             (create-table! table-name)
-            (swap! *indexes* assoc :pending table-name) table-name))
+            (mc/swap! indexes-component assoc :pending table-name)
+            table-name))
       ;; The database is the source of truth
       (let [{:keys [pending]} (sync-tracking-atoms!)]
         (or pending
@@ -219,12 +238,12 @@
                 (try
                   (create-table! table-name)
                   (catch Exception e
-                    (log/error e "Error creating pending index table, cleaning up metadata")
+                    (log/errorf "Error creating pending index table, cleaning up metadata: %s" (ex-message e))
                     (try
                       (t2/with-connection [safe-conn (mdb/app-db)]
-                        (t2/delete! :conn safe-conn :model/SearchIndexMetadata :index_name (name table-name)))
+                        (search.db/delete-index-metadata-by-name! safe-conn (name table-name)))
                       (catch Exception del-e
-                        (log/warn del-e "Error clearing out search metadata after failure")))
+                        (log/warnf "Error clearing out search metadata after failure: %s" (ex-message del-e))))
                     (sync-tracking-atoms!))))
               (let [pending (:pending (sync-tracking-atoms!))]
                 (log/infof "New pending index %s" pending)
@@ -237,27 +256,30 @@
   (try
     (specialization/analyze-table! table-name)
     (catch Exception e
-      (log/warnf e "Failed to analyze index table %s" table-name))))
+      (log/warnf "Failed to analyze index table %s: %s" table-name (ex-message e)))))
 
 (defn activate-table!
   "Make the pending index active if it exists. Returns true if it did so."
   []
-  (locking *indexes*
+  (mc/with-slot-lock indexes-component
     (if *mocking-tables*
-      ;; The atoms are the only source of truth, we must not update the metadata.
+      ;; The tracked index state is the only source of truth, we must not update the metadata.
       (boolean
-       (when-let [pending (:pending @*indexes*)]
+       (when-let [pending (:pending @indexes-component)]
          (analyze-table! pending)
-         (reset! *indexes* {:pending nil, :active pending}) true))
+         (track-tables! {:pending nil, :active pending})
+         true))
       ;; Ensure the metadata is updated and pruned.
       (let [{:keys [pending]} (sync-tracking-atoms!)]
         (log/infof "Activating pending index %s" pending)
         (when pending
           (analyze-table! pending)
           (let [active (keyword (search-index-metadata/active-pending! :appdb (search.spec/index-version-hash)))]
-            (reset! *indexes* {:pending nil :active active})
+            (track-tables! {:pending nil, :active active})
             (log/infof "Activated pending index %s" active)))
         ;; Clean up while we're here
+        ;; TODO (Chris 2026-11-13) -- This runs with the slot lock held, which a reader that syncs then waits for.
+        ;; It could run once the lock is released, as the reindex's own call does.
         (delete-obsolete-tables!)
         ;; Did *we* do a rotation?
         (boolean pending)))))
@@ -284,12 +306,6 @@
         (dissoc :native_query)
         (merge (specialization/extra-entry-fields entity)))))
 
-(defn- table-not-found-exception? [e]
-  ;; Use with care, obviously this can give false positives if used with a query that's *actually* malformed.
-  ;; TODO we should handle the MySQL and MariaDB flavors here too
-  (or (instance? PSQLException (ex-cause e))
-      (instance? JdbcSQLSyntaxErrorException (ex-cause e))))
-
 (defn- retry-upsert-ex [table-type table-name-before table-name-after e-before e-after]
   (ex-info "Failed retrying search index batch upsert"
            {:table-type                table-type
@@ -299,18 +315,27 @@
             :initial-exception-message (ex-message e-before)}
            e-after))
 
+(defn- isolate-write!
+  "Run `f` directly unless already in a transaction, in which case use a savepoint so the caller can catch an error
+  without aborting the enclosing transaction."
+  [f]
+  (if (mdb/in-transaction?)
+    (t2/with-transaction [_conn]
+      (f))
+    (f)))
+
 (defn- safe-batch-upsert!
-  "A version of batch-upsert! that no-ops for missing indexes, and handles stale index tracking metadata.
+  "Upsert a batch into the tracked table, refreshing stale tracking once when the table turns out to be missing.
 
-  Returns the name of the table that was written to, or nil if there is none being tracked, or nil
-  if the upsert failed for any other reason — in which case the failure is logged at ERROR and we
-  continue so the rest of the reindex can finish and activate whatever was successfully written.
-
-  We recover gracefully the first time if the tracking atom was stale, but do not check again on retry."
+  Returns the table name written, or nil if no table is tracked or the batch is skipped.
+  Throws when the tracked table is missing and the refresh names the same table, when the retry hits a missing
+  table again, and on interruption.
+  Any other failure is logged and the batch is skipped."
   [table-type table-name-fn entries]
-  ;; For convenience, no-op if we are not tracking any table.
   (when-let [table-name (table-name-fn)]
-    (let [upsert! (fn [t] (specialization/batch-upsert! t entries) t)]
+    (let [upsert! (fn [t]
+                    (isolate-write! #(specialization/batch-upsert! t entries))
+                    t)]
       (try
         (upsert! table-name)
         (catch InterruptedException ie
@@ -318,28 +343,33 @@
           (throw ie))
         (catch Exception e
           ;; If the failure is a legitimately non-existent table, refresh tracking and retry once.
-          (if (and (table-not-found-exception? e) (not (exists? table-name)))
+          (if (and (sql-errors/table-not-found? e) (not (exists? table-name)))
             (when-let [refreshed-table-name (do (sync-tracking-atoms!) (table-name-fn))]
               (if (= table-name refreshed-table-name)
-                (throw (ex-info "Currently tracked index does not exist" e {:table-name table-name}))
+                (throw (ex-info "Currently tracked index does not exist" {:table-name table-name} e))
                 (try
                   (upsert! refreshed-table-name)
                   (catch InterruptedException ie
                     (.interrupt (Thread/currentThread))
                     (throw ie))
                   (catch Exception e2
-                    (if (table-not-found-exception? e2)
+                    (if (sql-errors/table-not-found? e2)
                       (throw (retry-upsert-ex table-type table-name refreshed-table-name e e2))
                       (do (analytics/inc! :metabase-search/appdb-index-batches-skipped {:table-type table-type})
-                          (log/errorf (retry-upsert-ex table-type table-name refreshed-table-name e e2)
-                                      "Error upserting search index batch into %s table %s after refresh; skipping batch and continuing"
-                                      (name table-type) refreshed-table-name)
+                          (log/errorf "Error upserting search index batch into %s table %s after refresh; skipping batch and continuing: %s"
+                                      (name table-type) refreshed-table-name (ex-message e2))
                           nil))))))
             ;; Any other failure - log and continue so reindex can still finish.
             (do (analytics/inc! :metabase-search/appdb-index-batches-skipped {:table-type table-type})
-                (log/errorf e "Error upserting search index batch into %s table %s; skipping batch and continuing"
-                            (name table-type) table-name)
+                (log/errorf "Error upserting search index batch into %s table %s; skipping batch and continuing: %s"
+                            (name table-type) table-name (ex-message e))
                 nil)))))))
+
+(defn- stop-tracking!
+  "Stop tracking `table` as the `status` index table.
+  Leaves the state alone if another table has replaced it since the caller read it."
+  [status table]
+  (mc/swap! indexes-component #(cond-> % (= table (get % status)) (assoc status nil))))
 
 (defn- batch-update!
   "Create the given search index entries in bulk. Commits after each batch.
@@ -347,7 +377,7 @@
   `reindex-table`, when non-nil, is the destination captured once at the start of a full reindex (see
   [[index-docs!]]) -- the pending table when a rebuild is staging one, otherwise the active table for an
   initial build. During a reindex we write ONLY to that captured table, so a concurrent resync that
-  transiently blanks the tracking atom can't redirect writes elsewhere mid-rebuild. For incremental and
+  transiently blanks the tracked tables can't redirect writes elsewhere mid-rebuild. For incremental and
   in-place updates (`reindex-table` nil) we dual-write to the active and pending tables so an in-progress
   rebuild stays current."
   [reindex-table documents]
@@ -356,18 +386,22 @@
     (when-let [table (active-table)]
       (when (not (exists? table))
         (log/warnf "Unable to find table %s and no longer tracking it as active", table)
-        (swap! *indexes* assoc :active nil)))
+        (stop-tracking! :active table)))
     (when-let [table (pending-table)]
       (when (not (exists? table))
         (log/warnf "Unable to find table %s and no longer tracking it as pending", table)
-        (swap! *indexes* assoc :pending nil))))
+        (stop-tracking! :pending table))))
 
+  ;; TODO (Chris 2026-11-13) -- An incremental write reads the active and pending tables one after the other.
+  ;; So does `delete!`.
+  ;; An activation between the two reads leaves the entries out of the table it made active, until they change again
+  ;; or the next reindex.
   (let [reindexing? (some? reindex-table)
         do-writes   (fn []
                       (let [entries (map document->entry documents)
                             updated (if reindexing?
                                       ;; Full reindex: write only to the table captured for the whole run, so a
-                                      ;; transiently-blanked tracking atom can't redirect writes into the live
+                                      ;; transiently-blanked tracked table can't redirect writes into the live
                                       ;; active table (which would silently drop documents from the new index).
                                       (safe-batch-upsert! :pending (constantly reindex-table) entries)
                                       ;; Incremental / in-place: dual-write so an in-progress rebuild stays
@@ -378,7 +412,7 @@
                         (when updated
                           (u/prog1 (->> entries (map :model) frequencies)
                             (when reindexing?
-                              (t2/query ["commit"]))
+                              (search.db/commit!))
                             (log/trace "indexed documents for " <>)))))]
     (if reindexing?
       ;; New connection used for performing the updates which commit periodically without impacting any outer transactions.
@@ -395,7 +429,7 @@
           ;; Capture the destination table ONCE for the whole reindex: the pending table when a rebuild is
           ;; staging one, otherwise the active table (initial creation populates the freshly-activated table
           ;; directly, with no pending). Resolving this per batch is unsafe -- a concurrent TTL resync of the
-          ;; tracking atom can transiently blank :pending, which would otherwise flip the write target to the
+          ;; tracked tables can transiently blank :pending, which would otherwise flip the write target to the
           ;; live active table mid-rebuild and silently drop documents from the index we are about to activate.
           reindex-table (when reindexing? (or (pending-table) (active-table)))]
       (transduce (comp (partition-all insert-batch-size)
@@ -411,36 +445,24 @@
     (->> [(active-table) (pending-table)]
          (keep (fn [table-name]
                  (when table-name
-                   {search-model (try (t2/delete! table-name :model search-model :model_id [:in (set ids)])
-                                      ;; Race conditions with table being deleted, especially in tests.
-                                      (catch Exception e (if (table-not-found-exception? e) 0 (throw e))))})))
+                   ;; The table can disappear after we read its name, especially during tests.
+                   {search-model (try (isolate-write!
+                                       #(search.db/delete-index-rows! table-name search-model (set ids)))
+                                      (catch Exception e (if (sql-errors/table-not-found? e) 0 (throw e))))})))
          (apply merge-with +)
          (into {}))))
 
 (defn when-index-created
   "Return creation time of the active index, or nil if there is none."
   []
-  (t2/select-one-fn :created_at
-                    :model/SearchIndexMetadata
-                    :engine :appdb
-                    :version (search.spec/index-version-hash)
-                    :lang_code (i18n/site-locale-string)
-                    :status :active
-                    {:order-by [[:created_at :desc]]}))
-
-(defn search-query
-  "Query fragment for all models corresponding to a query parameter `:search-term`."
-  ([search-term search-ctx]
-   (search-query search-term search-ctx [:model_id :model]))
-  ([search-term search-ctx select-items]
-   (when-let [index-table (active-table)]
-     (specialization/base-query index-table search-term search-ctx select-items))))
+  (search.db/active-index-created-at (search.spec/index-version-hash) (i18n/site-locale-string)))
 
 (defn search
   "Use the index table to search for records."
   [search-term & [search-ctx]]
-  (map (juxt :model :name)
-       (t2/query (search-query search-term search-ctx [:model :name]))))
+  (when-let [index-table (active-table)]
+    (map (juxt :model :name)
+         (search.db/search-index-rows index-table search-term (:search-native-query search-ctx) [:model :name]))))
 
 (defn reset-index!
   "Ensure we have a blank slate; in case the table schema or stored data format has changed."
@@ -451,10 +473,12 @@
             ;; stop tracking any pending table
             (when-let [table-name (pending-table)]
               (when-not *mocking-tables*
-                (let [deleted (search-index-metadata/delete-index! :appdb (search.spec/index-version-hash) table-name)]
+                (let [deleted (search-index-metadata/delete-non-active-index! :appdb
+                                                                              (search.spec/index-version-hash)
+                                                                              table-name)]
                   (when (pos? deleted)
-                    (log/infof "Deleted %d pending indices" deleted))))
-              (swap! *indexes* assoc :pending nil))
+                    (log/infof "Deleted %d non-active metadata rows for index %s" deleted table-name))))
+              (mc/swap! indexes-component assoc :pending nil))
             (maybe-create-pending!)
             (activate-table!))]
     (if search.ingestion/*force-sync*
@@ -468,31 +492,36 @@
   "Ensure the index is ready to be populated. Return false if it was already ready."
   [& {:keys [force-reset?]}]
   ;; Be extra careful against races on initializing the setting
-  (locking *indexes*
+  (mc/with-slot-lock indexes-component
     (when-not *mocking-tables*
       (when (nil? (active-table))
         (sync-tracking-atoms!)))
     (when (or force-reset? (not (exists? (active-table))))
       (reset-index!))))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defn do-with-temp-index-table
+  "Impl for [[with-temp-index-table]]."
+  [thunk]
+  (if *mocking-tables*
+    (thunk)
+    (let [table-name (gen-table-name "_temp")
+          version    (str (string/random-string 8) "-temp")]
+      (binding [*mocking-tables* true]
+        (mc/binding indexes-component {:active table-name}
+                    (fn []
+                      (try
+                        (search.db/insert-index-metadata! {:engine     :appdb
+                                                           :version    version
+                                                           :lang_code  (i18n/site-locale-string)
+                                                           :status     :pending
+                                                           :index_name (name table-name)})
+                        (create-table! table-name)
+                        (thunk)
+                        (finally
+                          (drop-table! table-name)
+                          (search.db/delete-index-metadata-by-version! version)))))))))
+
 (defmacro with-temp-index-table
   "Create a temporary index table for the duration of the body. Uses the existing index if we're already mocking."
   [& body]
-  `(if @#'*mocking-tables*
-     ~@body
-     (let [table-name#      (gen-table-name "_temp")
-           version#         (str (string/random-string 8) "-temp")]
-       (binding [*mocking-tables* true
-                 *indexes*        (atom {:active table-name#})]
-         (try
-           (t2/insert! :model/SearchIndexMetadata {:engine     :appdb
-                                                   :version    version#
-                                                   :lang_code  (i18n/site-locale-string)
-                                                   :status     :pending
-                                                   :index_name (name table-name#)})
-           (create-table! table-name#)
-           ~@body
-           (finally
-             (#'drop-table! table-name#)
-             (t2/delete! :model/SearchIndexMetadata :version version#)))))))
+  `(do-with-temp-index-table (^:once fn* [] ~@body)))

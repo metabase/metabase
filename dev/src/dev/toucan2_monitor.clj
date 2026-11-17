@@ -150,5 +150,4 @@
   (summary)
   (to-csv!)
   (doseq [q (querles)]
-    #_:clj-kondo/ignore
     (println q)))

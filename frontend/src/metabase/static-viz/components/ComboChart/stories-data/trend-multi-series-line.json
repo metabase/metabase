@@ -113,7 +113,6 @@
       "include_csv": false,
       "display": "line",
       "entity_id": "6Sahqf3mvdbu07qOsIh3O",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.show_trendline": true,
         "graph.dimensions": ["CREATED_AT"],

@@ -56,9 +56,7 @@ export function ResizableArea(props: {
   // idle card → full-width editor). Don't shrink on initialHeight
   // changes — that would fight manual resizing.
   useEffect(() => {
-    setHeight((current) =>
-      initialHeight > current ? initialHeight : current,
-    );
+    setHeight((current) => (initialHeight > current ? initialHeight : current));
   }, [initialHeight]);
 
   useEffect(() => {

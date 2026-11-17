@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { NotebookProvider } from "metabase/querying/notebook/components/Notebook/context";
 import { NotebookCell } from "metabase/querying/notebook/components/NotebookCell";
 import { NotebookDataPicker } from "metabase/querying/notebook/components/NotebookDataPicker";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 
 import S from "./NewQueryNotebookPrompt.module.css";
 
@@ -18,11 +16,11 @@ type Props = {
 };
 
 export function NewQueryNotebookPrompt({ onSelect }: Props) {
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromOptsBuilder();
   const rootRef = useRef<HTMLDivElement>(null);
   const [isOpened, setIsOpened] = useState(false);
 
-  const question = useMemo(() => Question.create({ metadata }), [metadata]);
+  const question = useMemo(() => buildQuestion({}), [buildQuestion]);
   const query = question.query();
   const stageIndex = -1;
 
@@ -40,10 +38,7 @@ export function NewQueryNotebookPrompt({ onSelect }: Props) {
     table: Lib.TableMetadata | Lib.CardMetadata,
     metadataProvider: Lib.MetadataProvider,
   ) => {
-    const nextQuery = Lib.queryFromTableOrCardMetadata(
-      metadataProvider,
-      table,
-    );
+    const nextQuery = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
     const nextQuestion = question.setQuery(nextQuery);
     const url = Urls.question(nextQuestion).replace(
       /^\/question/,

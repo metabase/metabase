@@ -1,5 +1,6 @@
 ---
 title: "Installation and operation overview"
+summary: Install, configure, back up, and upgrade your Metabase. Also covers serialization, development instances, the Metabase CLI, and monitoring with Prometheus.
 ---
 
 # Installation and operation overview
@@ -38,7 +39,7 @@ Export your questions, dashboards, and more as YAML files that you can check int
 
 A command-line client that drives a Metabase instance over its API, on its own or through an AI agent.
 
-## [Monitoring your Metabase](./monitoring-metabase.md)
+## [Profiling your Metabase](../troubleshooting-guide/profiling-metabase.md)
 
 Monitor your Metabase with JMX.
 
@@ -64,4 +65,4 @@ Administrative commands built into the Metabase JAR.
 
 ---
 
-If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).
+If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners).

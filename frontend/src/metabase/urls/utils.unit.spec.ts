@@ -125,4 +125,11 @@ describe("parseListParam", () => {
     expect(parseListParam(null, parseStringParam)).toBeUndefined();
     expect(parseListParam(undefined, parseStringParam)).toBeUndefined();
   });
+
+  it("should return undefined for an absent search param", () => {
+    const params = new URLSearchParams("?other=a");
+    expect(
+      parseListParam(params.getAll("missing"), parseStringParam),
+    ).toBeUndefined();
+  });
 });

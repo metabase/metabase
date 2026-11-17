@@ -1,0 +1,20 @@
+import {
+  type MetabaseAuthConfig,
+  MetabaseProvider,
+} from "@metabase/embedding-sdk-react";
+import type { PropsWithChildren } from "react";
+
+const authConfig = {} as MetabaseAuthConfig;
+
+const Example = ({ children }: PropsWithChildren) => (
+  // [<snippet example>]
+  <MetabaseProvider
+    authConfig={authConfig}
+    // Allowlist the custom visualizations to load, by their names,
+    // each prefixed with `custom:`.
+    allowedCustomVisualizations={["custom:Calendar Heatmap", "custom:Thumbs"]}
+  >
+    {children}
+  </MetabaseProvider>
+  // [<endsnippet example>]
+);

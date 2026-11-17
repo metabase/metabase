@@ -8,11 +8,18 @@ import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIPro
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import {
   useMetabotAgent,
-  useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import { ActionIcon, Box, Icon, Paper, Text, UnstyledButton } from "metabase/ui";
+import { useSetting } from "metabase/settings";
+import {
+  ActionIcon,
+  Box,
+  Icon,
+  Paper,
+  Text,
+  UnstyledButton,
+} from "metabase/ui";
 
 import S from "./NewQueryAiPrompt.module.css";
 
@@ -49,7 +56,7 @@ export function NewQueryAiPrompt({ engaged = false }: Props) {
   ] = useDisclosure(false);
   const [isResearchActive, setIsResearchActive] = useState(false);
   const metabot = useMetabotAgent("ask");
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name") || "Metabot";
   const { isConfigured } = useUserMetabotPermissions();
 
   const handleSubmit = () => metabot.submitInput(metabot.prompt);
@@ -114,7 +121,7 @@ export function NewQueryAiPrompt({ engaged = false }: Props) {
           <ActionIcon
             className={S.sendButton}
             variant="filled"
-            size="2rem"
+            size="md"
             disabled={!isConfigured || inputDisabled}
             loading={metabot.isDoingScience}
             onClick={handleSubmit}

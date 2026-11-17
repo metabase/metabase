@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { DndContext } from "@dnd-kit/core";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import cx from "classnames";
@@ -18,7 +19,7 @@ import _ from "underscore";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { useMantineTheme } from "metabase/ui";
+import { Box, Flex, useMantineTheme } from "metabase/ui";
 import { sumArray } from "metabase/utils/arrays";
 import { getCspNonce } from "metabase/utils/csp";
 import { getScrollBarSize } from "metabase/utils/dom";
@@ -29,15 +30,13 @@ import {
 } from "metabase/visualizations/lib/data_grid";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
-import {
-  PivotTableRoot,
-  PivotTableTopLeftCellsContainer,
-} from "./PivotTable.styled";
+import S from "./PivotTable.module.css";
 import {
   BodyCell,
   Cell,
   LeftHeaderCell,
   TopHeaderCell,
+  getCellBackgroundColor,
 } from "./PivotTableCell";
 import { RowToggleIcon } from "./RowToggleIcon";
 import {
@@ -52,6 +51,7 @@ import type { HeaderWidthType, PivotTableClicked } from "./types";
 import {
   getCellWidthsForSection,
   getLeftHeaderWidths,
+  getTopHeaderRowsCount,
   leftHeaderCellSizeAndPositionGetter,
   topHeaderCellSizeAndPositionGetter,
 } from "./utils";
@@ -139,19 +139,15 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
           )}`,
         );
       }
-      const { [COLUMN_SHOW_TOTALS]: showTotals } = settings.column!(
+      const { [COLUMN_SHOW_TOTALS]: showTotals } = settings.column(
         columns[columnIndex],
       );
       return showTotals;
     }
     useEffect(() => {
       // This is needed in case the cell counts didn't change, but the data or cell sizes did
-      (
-        leftHeaderRef.current as Collection | null
-      )?.recomputeCellSizesAndPositions?.();
-      (
-        topHeaderRef.current as Collection | null
-      )?.recomputeCellSizesAndPositions?.();
+      leftHeaderRef.current?.recomputeCellSizesAndPositions?.();
+      topHeaderRef.current?.recomputeCellSizesAndPositions?.();
       gridRef.current?.recomputeGridSize?.();
     }, [
       data,
@@ -254,6 +250,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       let newColumnWidths: Partial<HeaderWidthType> = {};
 
       if (columnType === "leftHeader") {
+        // Unjustified type cast. FIXME
         const newLeftHeaderColumnWidths = [...(leftHeaderWidths as number[])];
         newLeftHeaderColumnWidths[columnIndex] = Math.max(
           newWidth,
@@ -335,8 +332,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       columnsWithoutPivotGroup,
     } = pivoted;
 
-    const topHeaderRows =
-      columnIndexes.length + (valueIndexes.length > 1 ? 1 : 0) || 1;
+    const topHeaderRows = getTopHeaderRowsCount(columnIndexes, valueIndexes);
 
     const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
     const bodyHeight = height - topHeaderHeight;
@@ -351,32 +347,36 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       }
 
       // The CLJS code adds `colIdx` to the objects used for click handling instead of the entire column
-      // to avoid duplicate column metadata conversions from CLJS data structures to JS objects
+      // to avoid duplicate column metadata conversions from CLJS data structures to JS objects.
+      // A value-cell click carries a top-level `colIdx` (identifying the aggregation column) AND
+      // a pre-built `data` array, so column-setting and data-enrichment must be independent (#79023).
       const { colIdx, ...updatedClicked } = clicked;
       if (typeof colIdx === "number") {
         updatedClicked.column = columnsWithoutPivotGroup[colIdx];
-        updatedClicked.data ??= [
-          {
-            value: updatedClicked.value,
-            col: columnsWithoutPivotGroup[colIdx] || null,
-          },
-        ];
-      } else if (updatedClicked.data) {
+      }
+      if (updatedClicked.data) {
         updatedClicked.data = updatedClicked.data.map(
           ({ colIdx, ...item }) => ({
             ...item,
             col: colIdx !== undefined ? columnsWithoutPivotGroup[colIdx] : null,
           }),
         );
+      } else if (typeof colIdx === "number") {
+        updatedClicked.data = [
+          {
+            value: updatedClicked.value,
+            col: columnsWithoutPivotGroup[colIdx] || null,
+          },
+        ];
       }
 
       if (updatedClicked.dimensions) {
-        updatedClicked.dimensions = updatedClicked.dimensions.map(
-          ({ colIdx, ...item }) => ({
-            ...item,
-            column:
-              colIdx !== undefined ? columnsWithoutPivotGroup[colIdx] : null,
-          }),
+        updatedClicked.dimensions = updatedClicked.dimensions.flatMap(
+          ({ colIdx, ...item }) => {
+            const column =
+              colIdx !== undefined ? columnsWithoutPivotGroup[colIdx] : null;
+            return column ? [{ ...item, column }] : [];
+          },
         );
       }
 
@@ -388,13 +388,21 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
         });
     }
 
+    const isEditingDashboard = isEditing && isDashboard;
+
     return (
       <DndContext modifiers={[restrictToHorizontalAxis]}>
-        <PivotTableRoot
+        <Box
           ref={ref}
-          shouldOverflow={shouldOverflow}
-          shouldHideScrollbars={isEditing && isDashboard}
-          isDashboard={isDashboard}
+          className={cx(S.root, {
+            [S.scrollX]: shouldOverflow,
+            [S.dashboard]: isDashboard,
+            [S.editing]: isEditingDashboard,
+            [CS.scrollHideAll]: isEditingDashboard,
+          })}
+          h="100%"
+          // inline so the px size matches the measured column widths; fz would convert it to rem
+          style={{ "--pivot-cell-height": `${CELL_HEIGHT}px`, fontSize }}
           data-testid="pivot-table"
         >
           <ScrollSync>
@@ -402,9 +410,16 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
               <div className={cx(CS.fullHeight, CS.flex, CS.flexColumn)}>
                 <div className={CS.flex} style={{ height: topHeaderHeight }}>
                   {/* top left corner - displays left header columns */}
-                  <PivotTableTopLeftCellsContainer
+                  <Flex
+                    className={S.borderRight}
+                    align="flex-end"
+                    pos="relative"
                     style={{
                       width: leftHeaderWidth,
+                      backgroundColor: getCellBackgroundColor({
+                        theme,
+                        isEmphasized: true,
+                      }),
                     }}
                   >
                     {rowIndexes.map((rowIndex: number, index: number) => (
@@ -444,7 +459,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                         }
                       />
                     ))}
-                  </PivotTableTopLeftCellsContainer>
+                  </Flex>
                   {/* top header */}
                   <Collection
                     aria-label="pivot-table-top-header"
@@ -477,6 +492,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                       )
                     }
                     onScroll={({ scrollLeft }) =>
+                      // Unjustified type cast. FIXME
                       onScroll({ scrollLeft } as OnScrollParams)
                     }
                     scrollLeft={scrollLeft}
@@ -515,6 +531,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                           height={bodyHeight - scrollBarOffsetSize()}
                           scrollTop={scrollTop}
                           onScroll={({ scrollTop }) =>
+                            // Unjustified type cast. FIXME
                             onScroll({ scrollTop } as OnScrollParams)
                           }
                         />
@@ -567,6 +584,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                             );
                           }}
                           onScroll={({ scrollLeft, scrollTop }) =>
+                            // Unjustified type cast. FIXME
                             onScroll({
                               scrollLeft,
                               scrollTop,
@@ -584,7 +602,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
               </div>
             )}
           </ScrollSync>
-        </PivotTableRoot>
+        </Box>
       </DndContext>
     );
   },

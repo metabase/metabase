@@ -1,28 +1,21 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { dashboardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   cardIsEquivalent,
   cardParametersAreEquivalent,
 } from "metabase/common/utils/card";
+import type { CardQuestionBuilder } from "metabase/metadata-store";
 import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { setErrorPage } from "metabase/redux/app";
 import type { Dispatch } from "metabase/redux/store";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
-import type { Card, Parameter } from "metabase-types/api";
-
-type BlankQueryOptions = {
-  db?: string;
-  table?: string;
-  segment?: string;
-  metric?: string;
-};
-
-type QueryParams = BlankQueryOptions & {
-  slug?: string;
-  objectId?: string;
-};
+import type {
+  Card,
+  Parameter,
+  ParameterValuesMap,
+  SeriesCard,
+} from "metabase-types/api";
 
 function shouldPropagateDashboardParameters({
   cardId,
@@ -84,14 +77,16 @@ async function verifyMatchingDashcardAndParameters({
 export function getParameterValuesForQuestion({
   card,
   queryParams,
-  metadata,
+  buildQuestion,
 }: {
-  card: Card;
-  queryParams?: QueryParams;
-  metadata: Metadata;
+  card: SeriesCard;
+  queryParams?: ParameterValuesMap;
+  buildQuestion: CardQuestionBuilder;
 }) {
-  const parameters = getCardUiParameters(card, metadata);
-  return getParameterValuesByIdFromQueryParams(parameters, queryParams ?? {});
+  return getParameterValuesByIdFromQueryParams(
+    buildQuestion(card).parameters(),
+    queryParams ?? {},
+  );
 }
 
 /**
@@ -108,13 +103,14 @@ export async function propagateDashboardParameters({
   originalCard,
   dispatch,
 }: {
-  card: Card;
+  card: SeriesCard;
   deserializedCard: Card; // DashCard (has dashboardId and dashcardId)
   originalCard?: Card | null;
   dispatch: Dispatch;
 }) {
   const cardId = card.id;
   if (
+    cardId &&
     shouldPropagateDashboardParameters({
       cardId,
       deserializedCard,
@@ -125,8 +121,11 @@ export async function propagateDashboardParameters({
     await verifyMatchingDashcardAndParameters({
       dispatch,
       cardId,
+      // Unjustified type cast. FIXME
       dashboardId: dashboardId as number,
+      // Unjustified type cast. FIXME
       dashcardId: dashcardId as number,
+      // Unjustified type cast. FIXME
       parameters: parameters as Parameter[],
     });
     card.parameters = parameters;

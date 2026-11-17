@@ -2,7 +2,7 @@
 id: construct-notebook-query-operators
 title: Construct notebook query — operator catalogs
 description: The full catalog of aggregation, filter, expression, and temporal-unit operators for construct_notebook_query — load when you need the exact name/arity of a specific operator or the list of temporal units.
-tools: [construct_notebook_query]
+tools: [construct_notebook_query, document_construct_model_chart]
 priority: 40
 ---
 # Construct Query Reference — Operator catalogs
@@ -29,7 +29,7 @@ These catalogs accompany `construct_notebook_query`. The clause shape and field 
 - `["share", {}, <bool-pred>]` — fraction of rows where pred is true.
 - `["stddev", {}, <num-expr>]`
 - `["var", {}, <num-expr>]`
-- `["metric", {}, "<portable_entity_id>"]` — reference a defined metric. The metric's base table must be the stage's `source-table`.
+- `["metric", {}, "<portable_entity_id>"]` references a defined metric. Use the source specified by its `<metric>` tag: `base_table_fully_qualified_name` as `source-table`, or `source_card_portable_entity_id` as `source-card`.
 - `["measure", {}, "<portable_entity_id>"]` — reference a defined measure (preferred over inlining its definition). The measure's table must be the stage's `source-table`.
 
 ## Order-by direction
@@ -39,7 +39,7 @@ These catalogs accompany `construct_notebook_query`. The clause shape and field 
 ## Filters
 
 Boolean:
-- `["and", {}, <pred>, <pred>, ...]` — min 2 args.
+- `["and", {}, <pred>, <pred>, ...]` – requires at least 2 arguments. Write plain "A and B" as two `filters:` entries; nest `and` under `or` or `not`.
 - `["or", {}, <pred>, <pred>, ...]` — min 2 args.
 - `["not", {}, <pred>]`
 
@@ -65,7 +65,7 @@ String (accept `{"case-sensitive": false}` in opts):
 - `["does-not-contain", {}, <str>, <substring>]`
 
 Temporal:
-- `["time-interval", {}, <temporal>, <n-or-:current/:last/:next>, "<unit>"]` — relative window. Opts may set `{"include-current": true}`.
+- `["time-interval", {}, <temporal>, <n>, "<unit>"]` — relative window. `<n>` is either an integer (negative = past) or one of the strings `"current"`, `"last"`, `"next"`. Opts may set `{"include-current": true}`.
 - `["during", {}, <temporal>, "<iso-date-or-datetime>", "<unit>"]` — value falls within the bucket containing the literal.
 - `["relative-time-interval", {}, <temporal>, <value>, "<bucket>", <offset-value>, "<offset-bucket>"]` — window offset from now.
 
@@ -106,14 +106,17 @@ Temporal:
 - `["get-year", {}, <temporal>]` / `["get-month", {}, <temporal>]` / `["get-day", {}, <temporal>]` / `["get-quarter", {}, <temporal>]`
 - `["get-hour", {}, <temporal>]` / `["get-minute", {}, <temporal>]` / `["get-second", {}, <temporal>]`
 - `["get-week", {}, <temporal>]` / `["get-day-of-week", {}, <temporal>]` — both accept optional 4th-slot mode `"iso"`, `"us"`, `"instance"`.
-- `["temporal-extract", {}, <temporal>, "<unit>"]` — extract one of the date/time extraction units listed below.
+- `["temporal-extract", {}, <temporal>, "<unit>"]` — `<unit>` comes from its **own** enum, *not* the temporal-bucketing list below: `year-of-era`, `quarter-of-year`, `month-of-year`, `week-of-year-iso`, `week-of-year-us`, `week-of-year-instance`, `day-of-month`, `day-of-week`, `day-of-week-iso`, `hour-of-day`, `minute-of-hour`, `second-of-minute`. There is no `year`, `week-of-year`, or `day-of-year` here — use `["get-year", {}, <temporal>]` for the year. Optional 5th slot is a week mode: `"iso"`, `"us"`, `"instance"`.
 - `["convert-timezone", {}, <temporal>, "<target-tz>"]` — optional 4th slot is source tz.
 - `["relative-datetime", {}, <n>, "<unit>"]` (or `["relative-datetime", {}, "current"]`)
 - `["absolute-datetime", {}, "<iso-string>", "<unit?>"]`
-- `["date", {}, <expr>]` / `["datetime", {}, <expr>]` / `["time", {}, <expr>]`
+- `["date", {}, <expr>]` / `["datetime", {}, <expr>]`
+- `["time", {}, "<time-str>", "<unit>"]` — the unit is **required**: `"default"`, `"millisecond"`, `"second"`, `"minute"`, or `"hour"`.
 - `["now", {}]` / `["today", {}]`
 
-## Temporal units (for `{"temporal-unit": ...}` on field refs and as `<unit>` args)
+## Temporal bucketing units (for `{"temporal-unit": ...}` on field refs and as `<unit>` args)
+
+> These are the *bucketing* units. `temporal-extract` has a different enum — see its entry above.
 
 - Date truncation: `day`, `week`, `month`, `quarter`, `year`
 - Date extraction (integer-returning): `day-of-week`, `day-of-month`, `day-of-year`, `week-of-year`, `month-of-year`, `quarter-of-year`, `year`, `year-of-era`

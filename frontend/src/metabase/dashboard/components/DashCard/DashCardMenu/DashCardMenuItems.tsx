@@ -1,47 +1,51 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useSdkDashboardContext } from "embedding-sdk-bundle/components/public/dashboard/context";
 import { canDownloadResults } from "metabase/common/utils/dataset";
-import { editQuestion } from "metabase/dashboard/actions";
+import { editQuestion, openEventsSidebar } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
-import type { DashboardCardCustomMenuItem } from "metabase/embedding-sdk/types/plugins";
+import type {
+  DashCardMenuItem,
+  DashboardCardCustomMenuItem,
+} from "metabase/embedding-sdk/types/plugins";
 import { useDispatch } from "metabase/redux";
 import { Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { DashCardId, Dataset } from "metabase-types/api";
 
-import type { DashCardMenuItem } from "./dashcard-menu";
 import { canEditQuestion } from "./utils";
 
 type DashCardMenuItemsProps = {
+  dashcardId: DashCardId;
   question: Question;
   result: Dataset;
   isDownloadingData: boolean;
   onDownload: () => void;
   onEditVisualization?: () => void;
-  dashcardId?: DashCardId;
   canEdit?: boolean;
+  withTimelineEvents?: boolean;
 };
 export const DashCardMenuItems = ({
+  dashcardId,
   question,
   result,
   isDownloadingData,
   onDownload,
   onEditVisualization,
   canEdit,
+  withTimelineEvents = false,
 }: DashCardMenuItemsProps) => {
   const dispatch = useDispatch();
 
   const {
+    dashcardMenu,
     onEditQuestion = (
       question: Question,
       mode: "query" | "view" | "notebook" = "notebook",
     ) => dispatch(editQuestion(question, mode)),
-  } = useSdkDashboardContext();
-
-  const { dashcardMenu } = useDashboardContext();
+  } = useDashboardContext();
+  // Unjustified type cast. FIXME
   const dashcardMenuItems = dashcardMenu as
     | DashboardCardCustomMenuItem
     | undefined;
@@ -92,6 +96,16 @@ export const DashCardMenuItems = ({
       }
     }
 
+    if (withTimelineEvents) {
+      items.push({
+        key: "MB_TIMELINE_EVENTS",
+        iconName: "calendar",
+        label: t`Events`,
+        onClick: () =>
+          dispatch(openEventsSidebar({ dashcardId }, "dashcard_menu")),
+      });
+    }
+
     if (withDownloads && canDownloadResults(result)) {
       items.push({
         key: "MB_DOWNLOAD_RESULTS",
@@ -129,6 +143,9 @@ export const DashCardMenuItems = ({
     result,
     withDownloads,
     withEditLink,
+    withTimelineEvents,
+    dashcardId,
+    dispatch,
     onEditVisualization,
     canEdit,
   ]);

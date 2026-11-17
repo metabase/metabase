@@ -1,5 +1,6 @@
 import cx from "classnames";
 import {
+  type JSX,
   type StyleHTMLAttributes,
   forwardRef,
   useEffect,
@@ -7,24 +8,18 @@ import {
   useState,
 } from "react";
 import { useMount, usePrevious } from "react-use";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   skipToken,
   useGetRemappedCardParameterValueQuery,
   useGetRemappedDashboardParameterValueQuery,
   useGetRemappedParameterValueQuery,
 } from "metabase/api";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
-import {
-  TokenField,
-  parseStringValue,
-} from "metabase/common/components/TokenField";
-import type { LayoutRendererArgs } from "metabase/common/components/TokenField/TokenField";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import CS from "metabase/css/core/index.css";
@@ -34,19 +29,17 @@ import {
   fetchDashboardParameterValues,
   fetchParameterValues,
 } from "metabase/parameters/actions";
-import { connect, useDispatch } from "metabase/redux";
-import { addRemappings } from "metabase/redux/remappings";
-import type { State } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
+import { useDispatch } from "metabase/redux";
 import {
-  type ComboboxItem,
+  Autocomplete,
   Loader,
   MultiAutocompleteOption,
   MultiAutocompleteValue,
 } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
 import { isNotNull } from "metabase/utils/types";
-import Field from "metabase-lib/v1/metadata/Field";
+import type * as Lib from "metabase-lib";
+import { hasRemappedFieldValues } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -60,9 +53,8 @@ import type {
 
 import { Value as ValueComponent } from "../Value";
 
-import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
 import { ListField } from "./ListField";
-import SingleSelectListField from "./SingleSelectListField";
+import { SingleSelectListField } from "./SingleSelectListField";
 import type { LoadingStateType, ValuesMode } from "./types";
 import {
   canUseCardEndpoints,
@@ -76,7 +68,7 @@ import {
   hasList,
   isExtensionOfPreviousSearch,
   isNumeric,
-  isSearchable,
+  parseStringValue,
   shouldList,
 } from "./utils";
 
@@ -84,15 +76,7 @@ const MAX_SEARCH_RESULTS = 100;
 const COMBOBOX_WIDTH = 364;
 const DROPDOWN_WIDTH = 314;
 
-function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
-  const metadata = getMetadata(state);
-  return {
-    fields: fields.map((field) => metadata.field(field.id) || field),
-  };
-}
-
 export interface IFieldValuesWidgetProps {
-  color?: "core-brand";
   maxResults?: number;
   style?: StyleHTMLAttributes<HTMLDivElement>;
   formatOptions?: Record<string, any>;
@@ -102,15 +86,11 @@ export interface IFieldValuesWidgetProps {
   minWidth?: number | null;
   width?: number | null;
 
-  disableList?: boolean;
-  disableSearch?: boolean;
-  disablePKRemappingForSearch?: boolean;
-  alwaysShowOptions?: boolean;
-  showOptionsInPopover?: boolean;
-
   parameter: Parameter;
   parameters?: Parameter[]; // linked parameters with values
-  fields: Field[];
+  // a field filter parameter that has no mapped fields still renders this
+  // widget, so that it can query values by parameter instead
+  fields?: Lib.ParameterFieldInfo[];
   dashboardId?: DashboardId;
   cardId?: CardId;
 
@@ -121,11 +101,8 @@ export interface IFieldValuesWidgetProps {
   autoFocus?: boolean;
   className?: string;
   placeholder?: string;
-  checkedColor?: string;
 
-  valueRenderer?: (value: string | number) => JSX.Element;
   optionRenderer?: (option: FieldValue) => JSX.Element;
-  layoutRenderer?: (props: LayoutRendererArgs) => JSX.Element;
 }
 
 export const FieldValuesWidgetInner = forwardRef<
@@ -133,22 +110,15 @@ export const FieldValuesWidgetInner = forwardRef<
   IFieldValuesWidgetProps
 >(function FieldValuesWidgetInner(
   {
-    color,
     maxResults = MAX_SEARCH_RESULTS,
-    alwaysShowOptions = true,
-    style = {},
     formatOptions = {},
     containerWidth,
     maxWidth = 500,
     minWidth,
     width,
-    disableList = false,
-    disableSearch = false,
-    disablePKRemappingForSearch,
-    showOptionsInPopover = false,
     parameter,
     parameters,
-    fields,
+    fields = [],
     dashboardId,
     cardId,
     value,
@@ -157,23 +127,15 @@ export const FieldValuesWidgetInner = forwardRef<
     autoFocus,
     className,
     placeholder,
-    checkedColor,
-    valueRenderer,
     optionRenderer,
-    layoutRenderer,
   },
   ref,
 ) {
   const [options, setOptions] = useState<FieldValue[]>([]);
   const [loadingState, setLoadingState] = useState<LoadingStateType>("INIT");
   const [lastValue, setLastValue] = useState<string>("");
-  const [valuesMode, setValuesMode] = useState<ValuesMode>(
-    getValuesMode({
-      parameter,
-      fields,
-      disableSearch,
-      disablePKRemappingForSearch,
-    }),
+  const [valuesMode, setValuesMode] = useState<ValuesMode>(() =>
+    getValuesMode(parameter),
   );
   const [isExpanded, setIsExpanded] = useState(false);
   const dispatch = useDispatch();
@@ -185,7 +147,7 @@ export const FieldValuesWidgetInner = forwardRef<
   const entityIdentifier = uuid ?? token ?? null;
 
   useMount(() => {
-    if (shouldList({ parameter, fields, disableSearch })) {
+    if (shouldList(parameter)) {
       fetchValues();
     }
   });
@@ -221,7 +183,6 @@ export const FieldValuesWidgetInner = forwardRef<
         hasMoreOptions = result.has_more_values;
       }
     } finally {
-      updateRemappings(newOptions);
       setOptions(newOptions);
       setValuesMode(
         hasMoreOptions && !isNumericParameter ? "search" : valuesMode,
@@ -274,17 +235,6 @@ export const FieldValuesWidgetInner = forwardRef<
     );
   };
 
-  // ? this may rely on field mutations
-  const updateRemappings = (options: FieldValue[]) => {
-    if (Field.remappedField(fields) != null) {
-      fields.forEach((field) => {
-        if (typeof field.id === "number") {
-          dispatch(addRemappings(field.id, options));
-        }
-      });
-    }
-  };
-
   const onInputChange = (value: string) => {
     let localValuesMode = valuesMode;
 
@@ -323,23 +273,6 @@ export const FieldValuesWidgetInner = forwardRef<
     search.current(value);
   };
 
-  if (!valueRenderer) {
-    valueRenderer = (value: string | number) => {
-      const option = options.find((option) => getValue(option) === value);
-      return renderValue({
-        fields,
-        formatOptions,
-        value,
-        parameter,
-        cardId,
-        dashboardId,
-        autoLoad: true,
-        compact: false,
-        displayValue: option?.[1],
-      });
-    };
-  }
-
   if (!optionRenderer) {
     optionRenderer = (option: FieldValue) =>
       renderValue({
@@ -354,57 +287,17 @@ export const FieldValuesWidgetInner = forwardRef<
       });
   }
 
-  if (!layoutRenderer) {
-    layoutRenderer = showOptionsInPopover
-      ? undefined
-      : ({
-          optionsList,
-          isFocused,
-          isAllSelected,
-          isFiltered,
-          valuesList,
-        }: LayoutRendererArgs) => (
-          <div>
-            {valuesList}
-            {renderOptions({
-              alwaysShowOptions,
-              parameter,
-              fields,
-              disableSearch,
-              disablePKRemappingForSearch,
-              loadingState,
-              options,
-              valuesMode,
-              optionsList,
-              isFocused,
-              isAllSelected,
-              isFiltered,
-            })}
-          </div>
-        );
-  }
-
   const tokenFieldPlaceholder = getTokenFieldPlaceholder({
     fields,
     parameter,
-    disableSearch,
     placeholder,
-    disablePKRemappingForSearch,
     options,
     valuesMode,
   });
 
-  const isListMode =
-    !disableList &&
-    shouldList({ parameter, fields, disableSearch }) &&
-    valuesMode === "list";
+  const isListMode = shouldList(parameter) && valuesMode === "list";
   const isLoading = loadingState === "LOADING";
-  const hasListValues = hasList({
-    parameter,
-    fields,
-    disableSearch,
-    options,
-  });
+  const hasListValues = hasList({ parameter, options });
   const isNumericParameter = isNumeric(parameter, fields);
 
   const parseNumericValue = (value: string) => {
@@ -421,6 +314,15 @@ export const FieldValuesWidgetInner = forwardRef<
       ? parseNumericValue(value)
       : parseStringValue(value);
   };
+
+  const parseValue = (value: string) =>
+    parseFreeformValue(value)?.toString() ?? null;
+
+  const commitValues = (values: string[]) =>
+    onChange(isNumericParameter ? values.map(parseNumericValue) : values);
+
+  const fieldValues = value.filter(isNotNull).map(String);
+  const optionsData = options.map(getOption).filter(isNotNull);
 
   return (
     <ErrorBoundary ref={ref}>
@@ -443,7 +345,6 @@ export const FieldValuesWidgetInner = forwardRef<
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
-            checkedColor={checkedColor}
           />
         ) : isListMode && hasListValues && !multi ? (
           <SingleSelectListField
@@ -453,15 +354,11 @@ export const FieldValuesWidgetInner = forwardRef<
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
-            checkedColor={checkedColor}
           />
         ) : multi ? (
           <MultiAutocompleteWithTranslation
-            value={value.filter(isNotNull).map((value) => String(value))}
-            data={options
-              .filter((option) => getValue(option) != null)
-              .map((option) => getOption(option))
-              .filter(isNotNull)}
+            value={fieldValues}
+            data={optionsData}
             placeholder={tokenFieldPlaceholder}
             rightSection={isLoading ? <Loader size="xs" /> : undefined}
             nothingFoundMessage={getNothingFoundMessage({
@@ -476,15 +373,7 @@ export const FieldValuesWidgetInner = forwardRef<
               position: "bottom-start",
             }}
             data-testid="token-field"
-            parseValue={(value) => {
-              if (isNumericParameter) {
-                const number = parseNumber(value);
-                return number != null ? String(number) : null;
-              } else {
-                const string = value.trim();
-                return string.length > 0 ? string : null;
-              }
-            }}
+            parseValue={parseValue}
             renderValue={({ value }) => (
               <RemappedValue
                 parameter={parameter}
@@ -498,47 +387,32 @@ export const FieldValuesWidgetInner = forwardRef<
             renderOption={({ option }) => (
               <RemappedOption option={option} fields={fields} tc={tc} />
             )}
-            onChange={(values) => {
-              if (isNumericParameter) {
-                onChange(values.map(parseNumericValue));
-              } else {
-                onChange(values);
-              }
-            }}
+            onChange={commitValues}
             onSearchChange={onInputChange}
           />
         ) : (
-          <TokenField
-            value={value.filter((v) => v != null)}
-            onChange={onChange}
+          <Autocomplete
+            value={fieldValues[0] ?? ""}
+            data={optionsData}
             placeholder={tokenFieldPlaceholder}
-            updateOnInputChange
-            // forwarded props
-            multi={multi}
+            rightSection={isLoading ? <Loader size="xs" /> : undefined}
             autoFocus={autoFocus}
-            color={color}
-            style={{ ...style, minWidth: "inherit" }}
             className={className}
-            optionsStyle={
-              !parameter && !showOptionsInPopover ? { maxHeight: "none" } : {}
-            }
-            // end forwarded props
-            options={options}
-            valueKey="0"
-            valueRenderer={valueRenderer}
-            optionRenderer={optionRenderer}
-            layoutRenderer={layoutRenderer}
-            filterOption={(option, filterString) => {
-              const lowerCaseFilterString = filterString.toLowerCase();
-              return option?.some?.(
-                (value) =>
-                  value != null &&
-                  String(value).toLowerCase().includes(lowerCaseFilterString),
-              );
+            w={COMBOBOX_WIDTH}
+            comboboxProps={{
+              withinPortal: false,
+              floatingStrategy: "fixed",
+              width: DROPDOWN_WIDTH,
+              position: "bottom-start",
             }}
-            onInputChange={onInputChange}
-            parseFreeformValue={parseFreeformValue}
-            updateOnInputBlur
+            data-testid="token-field"
+            selectFirstOptionOnChange
+            renderOption={({ option }) => (
+              <RemappedOption option={option} fields={fields} tc={tc} />
+            )}
+            parseValue={parseValue}
+            onSearchChange={onInputChange}
+            onChange={(value) => commitValues(value !== "" ? [value] : [])}
           />
         )}
       </div>
@@ -551,16 +425,14 @@ export const FieldValuesWidget = ExplicitSize<IFieldValuesWidgetProps>()(
 );
 
 // eslint-disable-next-line import/no-default-export
-export default connect(mapStateToProps, null, null, { forwardRef: true })(
-  FieldValuesWidget,
-);
+export default FieldValuesWidget;
 
 const LoadingState = () => (
   <div
     className={cx(CS.flex, CS.layoutCentered, CS.alignCenter)}
     style={{ minHeight: 82 }}
   >
-    <LoadingSpinner size={16} />
+    <Loader size="xs" />
   </div>
 );
 
@@ -569,7 +441,7 @@ function getNothingFoundMessage({
   loadingState,
   lastValue,
 }: {
-  fields: (Field | null)[];
+  fields: (Lib.ParameterFieldInfo | null)[];
   loadingState: LoadingStateType;
   lastValue: string;
 }) {
@@ -578,101 +450,9 @@ function getNothingFoundMessage({
   }
   if (fields.length === 1 && fields[0] != null) {
     const [field] = fields;
-    const searchField = field.searchField();
-    return t`No matching ${searchField?.display_name} found.`;
+    return t`No matching ${field.searchFieldDisplayName} found.`;
   } else {
     return t`No matching result`;
-  }
-}
-
-const NoMatchState = ({ fields }: { fields: (Field | null)[] }) => {
-  if (fields.length === 1 && !!fields[0]) {
-    const [{ display_name }] = fields;
-
-    return (
-      <OptionsMessage>
-        {jt`No matching ${(
-          <StyledEllipsified key={display_name}>
-            {display_name}
-          </StyledEllipsified>
-        )} found.`}
-      </OptionsMessage>
-    );
-  }
-
-  return <OptionsMessage>{t`No matching result`}</OptionsMessage>;
-};
-
-const EveryOptionState = () => (
-  <OptionsMessage>{t`Including every option in your filter probably won’t do much…`}</OptionsMessage>
-);
-
-interface RenderOptionsProps {
-  alwaysShowOptions: boolean;
-  parameter?: Parameter;
-  fields: Field[];
-  disableSearch: boolean;
-  disablePKRemappingForSearch?: boolean;
-  loadingState: LoadingStateType;
-  options: FieldValue[];
-  valuesMode: ValuesMode;
-  optionsList: React.ReactNode;
-  isFocused: boolean;
-  isAllSelected: boolean;
-  isFiltered: boolean;
-}
-
-function renderOptions({
-  alwaysShowOptions,
-  parameter,
-  fields,
-  disableSearch,
-  disablePKRemappingForSearch,
-  loadingState,
-  options,
-  valuesMode,
-  optionsList,
-  isFocused,
-  isAllSelected,
-  isFiltered,
-}: RenderOptionsProps) {
-  if (alwaysShowOptions || isFocused) {
-    if (optionsList) {
-      return optionsList;
-    } else if (
-      hasList({
-        parameter,
-        fields,
-        disableSearch,
-        options,
-      }) &&
-      valuesMode === "list"
-    ) {
-      if (isAllSelected) {
-        return <EveryOptionState />;
-      }
-    } else if (
-      isSearchable({
-        parameter,
-        fields,
-        disableSearch,
-        disablePKRemappingForSearch,
-        valuesMode,
-      })
-    ) {
-      if (loadingState === "LOADING") {
-        return <LoadingState />;
-      } else if (loadingState === "LOADED" && isFiltered) {
-        return (
-          <NoMatchState
-            fields={fields.map(
-              (field) =>
-                field.searchField(disablePKRemappingForSearch) as Field | null,
-            )}
-          />
-        );
-      }
-    }
   }
 }
 
@@ -687,7 +467,7 @@ function renderValue({
   compact,
   displayValue,
 }: {
-  fields: Field[];
+  fields: Lib.ParameterFieldInfo[];
   formatOptions: Record<string, any>;
   value: RowValue;
   parameter?: Parameter;
@@ -700,12 +480,12 @@ function renderValue({
   return (
     <ValueComponent
       value={value}
-      column={fields[0]}
+      field={fields[0]}
       parameter={parameter}
       cardId={cardId}
       dashboardId={dashboardId}
       maximumFractionDigits={20}
-      remap={displayValue || Field.remappedField(fields) != null}
+      remap={displayValue || hasRemappedFieldValues(fields)}
       displayValue={displayValue}
       {...formatOptions}
       autoLoad={autoLoad}
@@ -716,7 +496,7 @@ function renderValue({
 
 type RemappedValueProps = {
   parameter: Parameter;
-  fields: Field[];
+  fields: Lib.ParameterFieldInfo[];
   value: ParameterValueOrArray | null;
   dashboardId?: DashboardId;
   cardId?: CardId;
@@ -788,18 +568,18 @@ function RemappedValue({
 }
 
 type RemappedOptionProps = {
-  option: ComboboxItem;
-  fields: Field[];
+  option: { value: string; label?: string };
+  fields: Lib.ParameterFieldInfo[];
   tc: ContentTranslationFunction;
 };
 
 function RemappedOption({ option, fields, tc }: RemappedOptionProps) {
-  const isRemapped = Field.remappedField(fields) != null;
+  const isRemapped = hasRemappedFieldValues(fields);
+  const label = tc(option.label ?? option.value);
+
   if (!isRemapped) {
-    return tc(option.label);
+    return label;
   }
 
-  return (
-    <MultiAutocompleteOption value={option.value} label={tc(option.label)} />
-  );
+  return <MultiAutocompleteOption value={option.value} label={label} />;
 }

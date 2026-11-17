@@ -267,9 +267,11 @@ describe("sortObject", () => {
   });
 
   it("should sort keys recursively", () => {
+    // Unjustified type cast. FIXME
     const o1 = { o: {} as Record<string, number> };
     o1.o.a = 1;
     o1.o.b = 2;
+    // Unjustified type cast. FIXME
     const o2 = { o: {} as Record<string, number> };
     o2.o.b = 2;
     o2.o.a = 1;

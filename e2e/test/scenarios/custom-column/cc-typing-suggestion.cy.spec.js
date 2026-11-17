@@ -1,92 +1,11 @@
 const { H } = cy;
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
-
 describe("scenarios > question > custom column > typing suggestion", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
 
     H.openProductsTable({ mode: "notebook" });
-  });
-
-  it("should not suggest arithmetic operators", () => {
-    addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "[Price] " });
-    cy.findByTestId("expression-suggestions-list").should("not.exist");
-  });
-
-  it("should correctly accept the chosen field suggestion", () => {
-    addCustomColumn();
-    H.enterCustomColumnDetails({
-      formula:
-        "[Rating]{leftarrow}{leftarrow}{leftarrow}{backspace}{backspace}t",
-      blur: false,
-    });
-
-    // accept the only suggested item, i.e. "[Rating]"
-    H.CustomExpressionEditor.acceptCompletion();
-
-    // if the replacement is correct -> "[Rating]"
-    // if the replacement is wrong -> "[Rating] ng"
-    H.CustomExpressionEditor.value().should("equal", "[Rating]");
-  });
-
-  it("should correctly accept the chosen function suggestion", () => {
-    addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "le", blur: false });
-
-    H.CustomExpressionEditor.acceptCompletion();
-
-    H.CustomExpressionEditor.helpText()
-      .should("be.visible")
-      .should("contain", "length([Comment])");
-  });
-
-  it("should correctly insert function suggestion with the template", () => {
-    addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "bet", blur: false });
-    H.CustomExpressionEditor.acceptCompletion();
-    H.CustomExpressionEditor.value().should(
-      "equal",
-      "between(column, start, end)",
-    );
-  });
-
-  it("should correctly insert function suggestion with the template when it has no arguments", () => {
-    addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "now", blur: false });
-    H.CustomExpressionEditor.acceptCompletion();
-    H.CustomExpressionEditor.value().should("equal", "now()");
-  });
-
-  it("should show expression function helper if a proper function is typed", () => {
-    addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "lower(", blur: false });
-
-    H.CustomExpressionEditor.helpTextHeader()
-      .should("be.visible")
-      .should("contain", "lower(value)");
-
-    H.CustomExpressionEditor.helpText()
-      .should("be.visible")
-      .within(() => {
-        cy.findByText("Returns the string of text in all lower case.").should(
-          "be.visible",
-        );
-        cy.findByText(
-          "The column with values to convert to lower case.",
-        ).should("be.visible");
-      });
-  });
-
-  it("should not show suggestions for an unfocused field (metabase#31643)", () => {
-    H.summarize({ mode: "notebook" });
-    H.popover().findByText("Custom Expression").click();
-    H.enterCustomColumnDetails({ formula: "Count{enter}", blur: true });
-    H.CustomExpressionEditor.completions().should("not.exist");
   });
 
   it("should always show the help text popover on top of the custom expression widget (metabase#52711)", () => {
@@ -120,16 +39,12 @@ describe("scenarios > question > custom column > typing suggestion", () => {
       cy.findByText("Learn more").trigger("mousemove");
     });
     H.CustomExpressionEditor.helpText().should("be.visible");
-  });
 
-  it("should be possible to collapse the help text popover", () => {
-    addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "concat(", blur: false });
-
-    H.CustomExpressionEditor.helpText().should("be.visible");
-    H.CustomExpressionEditor.helpTextHeader().click();
-    H.CustomExpressionEditor.helpText().should("not.exist");
-    H.CustomExpressionEditor.helpTextHeader().click();
+    cy.log("right-clicking the help text should not close it (metabase#41305)");
+    H.CustomExpressionEditor.helpText()
+      .findByText("Combine two or more strings of text together.")
+      .rightclick();
+    H.popover().should("have.length", 2);
     H.CustomExpressionEditor.helpText().should("be.visible");
   });
 
@@ -207,89 +122,37 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     H.CustomExpressionEditor.get().findByText('"baz"').click();
     verifyHelptextPosition('"baz"');
   });
+});
 
-  it("should not show helptext for functions that are not supported by the expression mode", () => {
-    addCustomColumn();
-    H.CustomExpressionEditor.type("Average([Price]){leftarrow}{leftarrow}");
-    H.CustomExpressionEditor.helpText().should("not.exist");
+describe("scenarios > question > custom column > typing suggestion > keyboard (metabase#49342)", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
   });
 
-  it("should not show an error when a snippet is still active", () => {
-    addCustomColumn();
-    H.CustomExpressionEditor.type("conca{tab}", {
-      delay: 50,
-    });
-    H.popover()
-      .findByText(/Unknown column/)
-      .should("not.exist");
-    H.CustomExpressionEditor.type("{tab}", {
-      focus: false,
-      delay: 50,
-    });
-    H.popover()
-      .findByText(/Unknown column/)
-      .should("be.visible");
-  });
+  it("should not be possible to leave the expression input with the Tab key ", () => {
+    // This test used to be a repro for #49342, but the product feature changed
+    // so that the expression input can no longer be tabbed out of.
 
-  it("should be possible to complete a custom column that is just a rename of another custom column", () => {
-    H.createQuestion(
-      {
-        query: {
-          "source-table": ORDERS_ID,
-          expressions: {
-            Foo: ["+", 1, 1],
-            Bar: [
-              "expression",
-              "Foo",
-              {
-                "base-type": "type/Integer",
-              },
-            ],
-          },
-        },
-      },
-      { visitQuestion: true },
-    );
-    H.openNotebook();
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+    H.enterCustomColumnDetails({ formula: "[Tot{Enter}", blur: false });
+    cy.realPress("Tab");
+    H.CustomExpressionEditor.value().should("equal", "[Total]  ");
+    H.CustomExpressionEditor.nameInput().should("not.be.focused");
 
-    H.getNotebookStep("expression").icon("add").click();
-    H.CustomExpressionEditor.type("[Ba");
-    H.CustomExpressionEditor.completion("Bar").should("be.visible");
-  });
+    cy.log("Shift-tab from name input should stay within the popover");
+    H.CustomExpressionEditor.nameInput().focus();
+    H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
+    H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
+    H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
+    cy.focused().should("have.attr", "role", "textbox");
 
-  it("should be possible to complete an aggregation that is just a rename of another aggregation", () => {
-    H.createQuestion(
-      {
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [
-            [
-              "aggregation-options",
-              ["sum", ["field", ORDERS.TOTAL, null]],
-              {
-                name: "Foo",
-                "display-name": "Foo",
-              },
-            ],
-            [
-              "aggregation-options",
-              ["aggregation", 0],
-              {
-                name: "Bar",
-                "display-name": "Bar",
-              },
-            ],
-          ],
-        },
-      },
-      { visitQuestion: true },
-    );
-    H.openNotebook();
+    cy.realPress(["Shift", "Tab"]);
+    cy.button("Cancel").should("be.focused");
 
-    H.getNotebookStep("summarize").icon("add").click();
-    H.popover().findByText("Custom Expression").scrollIntoView().click();
-    H.CustomExpressionEditor.type("[Ba");
-    H.CustomExpressionEditor.completion("Bar").should("be.visible");
+    cy.realPress(["Shift", "Tab"]);
+    H.CustomExpressionEditor.nameInput().should("be.focused");
   });
 });
 
@@ -300,11 +163,10 @@ const addCustomColumn = () => {
 function verifyHelptextPosition(text) {
   H.CustomExpressionEditor.get()
     .findByText(text)
-    .then(($element) => {
-      const { left: textLeft } = $element[0].getBoundingClientRect();
-
-      H.CustomExpressionEditor.helpText().then(($element) => {
-        const { left: helpTextLeft } = $element[0].getBoundingClientRect();
+    .then(($text) => {
+      H.CustomExpressionEditor.helpText().should(($helpText) => {
+        const { left: textLeft } = $text[0].getBoundingClientRect();
+        const { left: helpTextLeft } = $helpText[0].getBoundingClientRect();
 
         expect(helpTextLeft).to.be.closeTo(textLeft, 5);
       });

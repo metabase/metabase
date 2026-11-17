@@ -49,7 +49,16 @@
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoField Temporal)))
 
-(driver/register! :starburst, :parent #{::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :starburst, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/host-carrying-parameters :starburst
+  [_driver]
+  ["httpProxy" "socksProxy" "oauth2TokenEndpoint"])
+
+(defmethod driver/non-host-parameters :starburst
+  [_driver]
+  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"
+   "disallowLocalRedirect"])
 
 (set! *warn-on-reflection* true)
 
@@ -67,24 +76,14 @@
                               :convert-timezone                true
                               :connection/multiple-databases   true
                               :metadata/key-constraints        false
+                              :native-pivot-tables             true
                               :now                             true
                               :database-routing                true
-                              :connection-impersonation        true}]
+                              :connection-impersonation        true
+                              :jdbc/set-query-timeout          false
+                              :regex/lookaheads-and-lookbehinds false
+                              :stage-ctes                       true}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
-
-(defn- format-field
-  [name value]
-  (if (nil? value)
-    ""
-    (str " " name ": " value)))
-
-(defmethod driver-api/query->remark :starburst
-  [_ {{:keys [card-id dashboard-id]} :info, :as query}]
-  (str
-   (driver-api/default-query->remark query)
-   (format-field "accountID" (driver-api/site-uuid))
-   (format-field "dashboardID" dashboard-id)
-   (format-field "cardID" card-id)))
 
 (defn- handle-execution-error-details
   [^Exception e details]
@@ -109,7 +108,6 @@
 
 ;;; The Starburst JDBC driver DOES NOT support the `.getImportedKeys` method so just return `nil` here so the
 ;;; implementation doesn't try to use it.
-#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-fks :starburst
   [_driver _database & {:as _options}]
   ;; starburst does not support finding foreign key metadata tables, but some connectors support foreign keys.
@@ -196,8 +194,10 @@
         db-type     (h2x/type-info->db-type type-info)]
     (if (and ;; AT TIME ZONE is only valid on these starburst types; if applied to something else (ex: `date`), then
          ;; an error will be thrown by the query analyzer
-         db-type
-         (re-find #"(?i)^time(?:stamp)?(?:\(\d+\))?(?: with time zone)?$" db-type)
+         (if db-type
+           (re-find #"(?i)^time(?:stamp)?(?:\(\d+\))?(?: with time zone)?$" db-type)
+           ;; the database type is lost when `expr` comes from a nested query, e.g. a custom column
+           (isa? (h2x/effective-type expr) :type/DateTimeWithTZ))
          ;; if one has already been set, don't do so again
          (not (::in-report-zone? (meta expr)))
          report-zone)
@@ -293,30 +293,30 @@
   [:raw (if bool "TRUE" "FALSE")])
 
 (defmethod sql.qp/->honeysql [:starburst :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod sql.qp/->honeysql [:starburst :median]
-  [driver [_ arg]]
+  [driver [_ _opts arg]]
   [:approx_percentile (sql.qp/->honeysql driver arg) 0.5])
 
 (defmethod sql.qp/->honeysql [:starburst :percentile]
-  [driver [_ arg p]]
+  [driver [_ _opts arg p]]
   [:approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)])
 
 (defmethod sql.qp/->honeysql [:starburst :log]
-  [driver [_ field]]
+  [driver [_ _opts field]]
   ;; recent starburst versions have a `log10` function (not `log`)
   [:log10 (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:starburst :count-where]
-  [driver [_ pred]]
+  [driver [_ _opts pred]]
   ;; starburst will use the precision given here in the final expression, which chops off digits
   ;; need to explicitly provide two digits after the decimal
-  (sql.qp/->honeysql driver [:sum-where 1.00M pred]))
+  (sql.qp/->honeysql driver [:sum-where {} 1.00M pred]))
 
 (defmethod sql.qp/->honeysql [:starburst :time]
-  [_ [_ t]]
+  [_ [_ _opts t]]
   ;; Convert t to locale time, then format as sql. Then add cast.
   (h2x/cast :time (u.date/format-sql (t/local-time t))))
 
@@ -362,7 +362,7 @@
      (->at-time-zone y)]))
 
 (defmethod sql.qp/->honeysql [:starburst :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
+  [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
         with_timezone? (or (sql.qp.u/field-with-tz? arg)
@@ -390,6 +390,7 @@
     [#"(?i)real"                              :type/Float]
     [#"(?i)double"                            :type/Float]
     [#"(?i)decimal.*"                         :type/Decimal]
+    [#"(?i)^number$"                          :type/Decimal]
     [#"(?i)varchar.*"                         :type/Text]
     [#"(?i)char.*"                            :type/Text]
     [#"(?i)json"                              :type/Text]
@@ -458,8 +459,8 @@
       ;; included in trino-jdbc. We check the vendor-specific error code instead.
       ;; See HiveMetadata.java and UnknownTableTypeException.java in trinodb/trino
       (when (= 133001 (.getErrorCode e))
-        (log/debugf e "Table %s.%s is not accessible through this catalog (mixed catalog table type)"
-                    table-schema table-name))
+        (log/debugf "Table %s.%s is not accessible through this catalog (mixed catalog table type): %s"
+                    table-schema table-name (ex-message e)))
       false)))
 
 (defn- describe-schema
@@ -509,12 +510,13 @@
                             [[schema name] comment])))
                   (jdbc/reducible-result-set rs {})))))
       (catch Throwable e
-        (log/debug e "Failed to read table comments from system.metadata.table_comments")
+        (log/debugf "Failed to read table comments from system.metadata.table_comments: %s" (ex-message e))
         {}))))
 
 (defmethod driver/describe-database* :starburst
   [driver database]
-  (let [{:keys [catalog schema]} (driver.conn/effective-details database)]
+  (let [{:keys [catalog schema]} (driver.conn/effective-details database)
+        catalog (u/lower-case-en catalog)]
     (sql-jdbc.execute/do-with-connection-with-options
      driver
      database
@@ -589,16 +591,6 @@
    db-or-id-or-spec
    options
    (fn [^java.sql.Connection conn]
-     (when-let [db (cond
-                     ;; id?
-                     (integer? db-or-id-or-spec)
-                     (driver-api/with-metadata-provider db-or-id-or-spec
-                       (driver-api/database (driver-api/metadata-provider)))
-                     ;; db?
-                     (u/id db-or-id-or-spec)     db-or-id-or-spec
-                     ;; otherwise it's a spec and we can't get the db
-                     :else nil)]
-       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (try
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (let [underlying-conn (pooled-conn->starburst-conn conn)]
@@ -608,7 +600,7 @@
        (try
          (.setReadOnly conn true)
          (catch Throwable e
-           (log/warn e "Error setting starburst connection to read-only")))
+           (log/warnf "Error setting starburst connection to read-only: %s" (ex-message e))))
        ;; as with statement and prepared-statement, cannot set holdability on the connection level
        conn
        (catch Throwable e
@@ -792,7 +784,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e "Error setting prepared statement fetch direction to FETCH_FORWARD")))
+          (log/debugf "Error setting prepared statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
       (if (.useExplicitPrepare ^TrinoConnection (.unwrap conn TrinoConnection))
         (proxy-prepared-statement driver conn stmt params)
         (proxy-optimized-prepared-statement driver conn stmt params))
@@ -809,7 +801,7 @@
     (try
       (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
       (catch Throwable e
-        (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
+        (log/debugf "Error setting statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
     (proxy [java.sql.Statement] []
       (execute [sql]
         (try
@@ -910,7 +902,23 @@
    :kerberos-config-path "KerberosConfigPath"
    :kerberos-delegation "KerberosDelegation"})
 
+(defn- check-kerberos-file-paths!
+  "The keytab, config and credential-cache paths are files on the Metabase host that an admin types in, so they have
+  to be somewhere `readable-paths` allows. A credential cache may also be named by type: `FILE:`/`DIR:` name a path,
+  the others (`KEYRING:`, `MEMORY:`, `KCM:`, ...) name no file."
+  [details]
+  (doseq [k     [:kerberos-keytab-path :kerberos-config-path :kerberos-credential-cache-path]
+          :let  [v    (some-> (get details k) str str/trim)
+                 path (cond
+                        (str/blank? v)                    nil
+                        (re-find #"(?i)^(FILE|DIR):" v)   (str/replace v #"(?i)^(FILE|DIR):" "")
+                        (re-find #"^[A-Za-z]{2,}:" v)     nil
+                        :else                             v)]
+          :when path]
+    (driver-api/ensure-readable-path! path)))
+
 (defn- details->kerberos-url-params [details]
+  (check-kerberos-file-paths! details)
   (let [remove-blank-vals (fn [m] (into {} (remove (comp str/blank? val) m)))
         ks                (keys kerb-props->url-param-names)]
     (-> (select-keys details ks)
@@ -937,6 +945,11 @@
               details)]
     ;; in any case, remove the standalone Kerberos properties from details map
     (apply dissoc (cons det (keys kerb-props->url-param-names)))))
+
+;; `jdbc-spec` splices the schema into the URL path after the catalog
+(defmethod driver/url-building-detail-keys :starburst
+  [driver]
+  (conj ((get-method driver/url-building-detail-keys :default) driver) :schema))
 
 (defn- jdbc-spec
   "Creates a spec for `clojure.java.jdbc` to use for connecting to starburst via JDBC, from the given `opts`."
@@ -1000,7 +1013,7 @@
 
 (defmethod sql.qp/inline-value [:starburst String]
   [_ ^String s]
-  (str \' (sql.u/escape-sql s :ansi) \'))
+  (sql.u/quote-literal s :ansi))
 
 (defmethod sql.qp/inline-value [:starburst Time]
   [driver t]
@@ -1033,8 +1046,8 @@
   (.setSessionUser ^TrinoConnection (.unwrap conn TrinoConnection) role))
 
 (defmethod sql.qp/->honeysql [:starburst ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar"]))
 
 ;; starburst returns line numbers in error messages which will be off by 1 if
 ;; the remark is prepended (#64133)

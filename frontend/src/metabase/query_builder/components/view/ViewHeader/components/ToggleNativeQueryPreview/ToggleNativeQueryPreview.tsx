@@ -1,13 +1,15 @@
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import { getEngineNativeType } from "metabase/databases/utils/engine";
-import { trackNotebookNativePreviewShown } from "metabase/query_builder/analytics";
-import { getUiControls } from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
+import { trackNotebookNativePreviewShown } from "../../../../../analytics";
+import { getUiControls } from "../../../../../store/selectors";
 import { canShowNativePreview } from "../../utils";
 
 const BUTTON_TEXT = {
@@ -40,7 +42,9 @@ export const ToggleNativeQueryPreview = ({
     isShowingNotebookNativePreview,
   }: { isShowingNotebookNativePreview: boolean } = useSelector(getUiControls);
 
-  const engineType = getEngineNativeType(question.database()?.engine);
+  const engineType = getEngineNativeType(
+    Lib.databaseDisplayInfo(question.query())?.engine ?? undefined,
+  );
   const buttonText = isShowingNotebookNativePreview
     ? BUTTON_CLOSE_TEXT[engineType]
     : BUTTON_TEXT[engineType];
@@ -58,10 +62,9 @@ export const ToggleNativeQueryPreview = ({
   return (
     <Tooltip label={buttonText} position="top">
       <ActionIcon
+        variant="subtle"
         aria-label={buttonText}
-        size={32}
         role="switch"
-        variant="viewHeader"
         onClick={handleClick}
       >
         <Icon name="sql" />

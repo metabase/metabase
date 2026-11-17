@@ -4,7 +4,6 @@ import { t } from "ttag";
 import {
   areFieldsComparable,
   getFieldDisplayName,
-  getRawTableFieldId,
 } from "metabase/metadata/utils/field";
 import {
   Flex,
@@ -33,14 +32,17 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   field: FkTargetPickerField;
   idFields: Field[];
   value: FieldId | null;
+  isLoading?: boolean;
   onChange: (value: FieldId | null) => void;
 }
 
 export const FkTargetPicker = ({
-  comboboxProps,
   field,
   idFields,
   value,
+  comboboxProps,
+  disabled,
+  isLoading,
   onChange,
   ...props
 }: Props) => {
@@ -75,7 +77,7 @@ export const FkTargetPicker = ({
       throw new Error("unreachable");
     }
 
-    return getRawTableFieldId(field);
+    return field.id;
   };
 
   const handleChange = (value: string | null) => {
@@ -89,6 +91,7 @@ export const FkTargetPicker = ({
     <Select
       aria-label={t`Foreign key target`}
       comboboxProps={{
+        keepMounted: false,
         middlewares: {
           flip: true,
           size: {
@@ -99,7 +102,7 @@ export const FkTargetPicker = ({
         ...comboboxProps,
       }}
       data={data}
-      disabled={!hasIdFields}
+      disabled={disabled || isLoading || !hasIdFields}
       filter={({ options, search }) => {
         const query = search.toLowerCase().trim();
 
@@ -121,7 +124,11 @@ export const FkTargetPicker = ({
         });
       }}
       nothingFoundMessage={t`Didn't find any results`}
-      placeholder={getFkFieldPlaceholder(field, comparableIdFields)}
+      placeholder={
+        isLoading
+          ? t`Loading…`
+          : getFkFieldPlaceholder(field, comparableIdFields)
+      }
       renderOption={(item) => {
         const field = getFieldFromValue(item.option.value);
         const selected = getFieldIdFromValue(item.option.value) === value;
@@ -130,14 +137,14 @@ export const FkTargetPicker = ({
           <SelectItem selected={selected}>
             <Icon name={selected ? "check" : "empty"} />
 
-            <Flex direction="column" flex="1" gap="xs">
+            <Flex direction="column" flex="1" gap="xxs">
               <Text c="inherit" component="span" lh="1rem">
                 {item.option.label}
               </Text>
 
               {field?.description && (
                 <Text
-                  c="text-disabled"
+                  c="text-secondary"
                   className={S.description}
                   component="span"
                   lh="1rem"
@@ -167,7 +174,7 @@ function getData(comparableIdFields: Field[], includeSchema: boolean) {
           field.table,
           includeSchema && field.table ? field.table.schema : undefined,
         ),
-        value: stringifyValue(getRawTableFieldId(field)) ?? "",
+        value: stringifyValue(field.id) ?? "",
       };
     })
     .sort((a, b) => a.label.localeCompare(b.label));

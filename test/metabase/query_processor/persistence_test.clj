@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -45,7 +46,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
       (testing (str driver/*driver* " can persist")
         (mt/dataset test-data
-          (let [[success? error] (ddl.i/check-can-persist (mt/db))]
+          (let [[success? error] (ddl.i/check-can-persist (lib.metadata/database (mt/metadata-provider)))]
             (is success? (str "Not able to persist on " driver/*driver*))
             (is (= :persist.check/valid error)))
           (testing "Populates the `cache_info` table with v1 information"
@@ -101,9 +102,10 @@
 (defn- populate-metadata [{query :dataset_query, id :id, :as _model}]
   (let [updater (a/thread
                   (let [metadata (-> query
+                                     ;; card result_metadata is persisted in legacy shape
                                      #_{:clj-kondo/ignore [:deprecated-var]}
                                      (qp.metadata/legacy-result-metadata nil))]
-                    (t2/update! :model/Card id {:result_metadata metadata})))]
+                    (t2/update! :model/Card :id id {:result_metadata metadata})))]
     ;; 4 seconds is long but redshift can be a little slow
     (when (= ::timed-out (mt/wait-for-result updater 4000 ::timed-out))
       (throw (ex-info "Query metadata not set in time for querying against model"
@@ -266,3 +268,42 @@
                 (testing "Returns nil when card-id is not present"
                   (is (nil? (#'sql.qp/resolve-persisted-source-sql
                              {:source-table (mt/id :products)}))))))))))))
+
+(deftest persisted-models-multi-stage-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+    (mt/with-persistence-enabled! [persist-models!]
+      (let [mp (mt/metadata-provider)
+            orders       (lib.metadata/table mp (mt/id :orders))
+            total        (lib.metadata/field mp (mt/id :orders :total))
+            base-query   (-> (lib/query mp orders)
+                             (lib/expression "double_total" (lib/* total 2)))
+            double-total (m/find-first #(= (:name %) "double_total")
+                                       (lib/breakoutable-columns base-query))
+            custom-col-query (-> base-query
+                                 (lib/aggregate (lib/count))
+                                 (lib/breakout double-total))
+            product-id  (lib.metadata/field mp (mt/id :orders :product_id))
+            base-query  (-> (lib/query mp orders)
+                            (lib/aggregate (lib/count))
+                            (lib/breakout product-id)
+                            lib/append-stage)
+            count-col   (m/find-first #(= (:name %) "count")
+                                      (lib/filterable-columns base-query))
+            multi-stage-query (lib/filter base-query (lib/> count-col 5))]
+        (doseq [[description model-query] [["custom columns" custom-col-query]
+                                           ["multiple stages" multi-stage-query]]]
+          (testing (format "Persisted models with %s can be used as a source (#72480)" description)
+            (mt/with-temp [:model/Card model {:type          :model
+                                              :database_id   (mt/id)
+                                              :query_type    :query
+                                              :dataset_query model-query}]
+              (persist-models!)
+              (let [card-mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                    results (-> (lib/query card-mp (lib.metadata/card card-mp (:id model)))
+                                (lib/limit 3)
+                                (qp/process-query))
+                    persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
+                (testing "Was persisted"
+                  (is (str/includes? (-> results :data :native_form :query) persisted-schema)))
+                (testing "Query returns rows"
+                  (is (= 3 (count (mt/rows results)))))))))))))

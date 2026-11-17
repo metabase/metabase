@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { trackSchemaEvent } from "metabase/analytics";
 import type { DashboardId } from "metabase-types/api";
 
@@ -42,6 +43,7 @@ export const trackDownloadResults = ({
     event: "download_results_clicked",
     resource_type: analyticsResourceType,
     accessed_via: accessedVia,
+    // Unjustified type cast. FIXME
     export_type: exportType as any,
   });
 };

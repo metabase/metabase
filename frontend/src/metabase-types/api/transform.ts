@@ -1,11 +1,12 @@
 import type { Collection, CollectionId } from "./collection";
 import type { DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
+import type { RequestableIndexes } from "./index-manager";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-import type { DatasetQuery, JoinStrategy } from "./query";
+import type { DatasetQuery, DateTimeAbsoluteUnit, JoinStrategy } from "./query";
 import type { ScheduleDisplayType } from "./settings";
 import type { SortDirection } from "./sorting";
-import type { ConcreteTableId, SchemaName, Table } from "./table";
+import type { SchemaName, Table, TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
 import type { CardDisplayType } from "./visualization";
 
@@ -13,6 +14,8 @@ export type TransformId = number;
 export type TransformTagId = number;
 export type TransformJobId = number;
 export type TransformRunId = number;
+
+export const PENDING_RUN_ID = -1;
 
 export type InspectorLensId = string;
 export type InspectorCardId = string;
@@ -40,7 +43,7 @@ export type Transform = {
   can_write?: boolean;
   can_execute?: boolean;
 
-  source_database_id?: DatabaseId | null;
+  source_database_id?: DatabaseId;
 
   // true when transform was deleted but still referenced by runs
   deleted?: boolean;
@@ -67,37 +70,33 @@ export type Transform = {
   table?: Table | null;
   last_run?: TransformRun | null;
   creator?: UserInfo;
+  requestable_indexes?: RequestableIndexes | null;
 };
 
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &
   Pick<Transform, "name" | "description" | "source" | "target">;
 
-export type TaggedTransform = Transform & { type: "transform" };
-
-export type UnsavedTransform = {
-  type: "unsaved-transform";
-  id: TransformId;
-  name: string;
-  source: DraftTransformSource;
-  target: {
-    name: string;
-    schema: string | null;
-    type: TransformTargetType;
-  };
-};
-
 export type PythonTransformTableEntry = {
   alias: string;
-  table_id: ConcreteTableId;
+  table_id: TableId;
   schema?: SchemaName | null;
   database_id: DatabaseId;
 };
 
 export type PythonTransformTableAliases = PythonTransformTableEntry[];
 
+export type LookbackUnit = "millisecond" | "second" | DateTimeAbsoluteUnit;
+
+// Only supported for temporal checkpoint columns.
+export type TransformLookback = {
+  value: number;
+  unit: LookbackUnit;
+};
+
 export type TransformSourceCheckpointStrategy = {
   type: "checkpoint";
   "checkpoint-filter-field-id": number;
+  lookback?: TransformLookback | null;
 };
 
 export type SourceIncrementalStrategy = TransformSourceCheckpointStrategy;
@@ -330,6 +329,11 @@ export type RunTransformResponse = {
   message?: string;
 };
 
+export type RunTransformJobResponse = {
+  job_run_id: TransformJobRunId | null;
+  message?: string;
+};
+
 export type ListTransformsRequest = {
   "last-run-start-time"?: string;
   "last-run-statuses"?: TransformRunStatus[];
@@ -376,6 +380,79 @@ export type ListJobRunTransformRunsRequest = {
   jobId: TransformJobId;
   runId: TransformJobRunId;
 };
+
+export type CancelJobRunRequest = {
+  jobId: TransformJobId;
+  runId: TransformJobRunId;
+};
+
+export type TransformDagRunId = number;
+
+export const TRANSFORM_DAG_DIRECTIONS = ["upstream", "downstream"] as const;
+export type TransformDagDirection = (typeof TRANSFORM_DAG_DIRECTIONS)[number];
+
+export type RunTransformDagRequest = {
+  id: TransformId;
+  direction: TransformDagDirection;
+  skip_fresh_deps?: boolean;
+};
+
+export type RunTransformDagResponse = {
+  dag_run_id: TransformDagRunId | null;
+  message: string;
+};
+
+export type ListDagTransformsRequest = {
+  transformId: TransformId;
+  direction: TransformDagDirection;
+};
+
+export type DagTransform = Pick<Transform, "id" | "name">;
+
+export type ListDagRunTransformRunsRequest = {
+  dagRunId: TransformDagRunId;
+};
+
+export const TRANSFORM_GRAPH_RUN_TYPES = ["job", "dag", "transform"] as const;
+export type TransformGraphRunType = (typeof TRANSFORM_GRAPH_RUN_TYPES)[number];
+
+export const TRANSFORM_GRAPH_RUN_SORT_COLUMNS = [
+  "start_time",
+  "end_time",
+] as const;
+export type TransformGraphRunSortColumn =
+  (typeof TRANSFORM_GRAPH_RUN_SORT_COLUMNS)[number];
+
+export type TransformGraphRun = {
+  run_type: TransformGraphRunType;
+  id: number;
+  entity_id: number | null;
+  name: string | null;
+  direction: TransformDagDirection | null;
+  transform_count: number | null;
+  run_method: TransformRunMethod | null;
+  status: TransformRunStatus | null;
+  is_active: boolean | null;
+  start_time: string;
+  end_time: string | null;
+  message: string | null;
+  user_id: UserId | null;
+};
+
+export type ListTransformGraphRunsRequest = {
+  types?: TransformGraphRunType[];
+  statuses?: TransformRunStatus[];
+  "transform-ids"?: TransformId[];
+  "start-time"?: string;
+  "end-time"?: string;
+  "run-methods"?: TransformRunMethod[];
+  "sort-column"?: TransformGraphRunSortColumn;
+  "sort-direction"?: SortDirection;
+} & PaginationRequest;
+
+export type ListTransformGraphRunsResponse = {
+  data: TransformGraphRun[];
+} & PaginationResponse;
 
 export type TestPythonTransformRequest = {
   code: string;
@@ -440,7 +517,7 @@ export type InspectorSummary = {
 };
 
 export type InspectorSource = {
-  table_id?: ConcreteTableId;
+  table_id?: TableId;
   table_name: string;
   schema?: SchemaName;
   db_id?: DatabaseId;
@@ -450,7 +527,7 @@ export type InspectorSource = {
 };
 
 export type InspectorTarget = {
-  table_id: ConcreteTableId;
+  table_id: TableId;
   table_name: string;
   schema?: SchemaName;
   row_count?: number;
@@ -518,7 +595,7 @@ export type InspectorCardDisplayType = CardDisplayType | "hidden";
 type InspectorCardMetadata = {
   card_type: "join_step" | "table_count" | "base_count";
   dedup_key: Array<string | number>;
-  table_id?: ConcreteTableId;
+  table_id?: TableId;
   join_step?: number;
   join_alias?: string;
   join_strategy?: JoinStrategy;

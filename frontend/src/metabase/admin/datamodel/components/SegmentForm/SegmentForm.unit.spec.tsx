@@ -5,8 +5,8 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { act, renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -63,6 +63,7 @@ const setup = ({ remoteSyncType, isTablePublished }: SetupOpts) => {
 const getNameInput = () => screen.getByLabelText("Name Your Segment");
 const getDescriptionInput = () =>
   screen.getByLabelText("Describe Your Segment");
+const READ_ONLY_ALERT = /This segment can't be edited/;
 
 describe("SegmentForm", () => {
   describe("remote sync read-only mode", () => {
@@ -72,14 +73,27 @@ describe("SegmentForm", () => {
       });
       expect(getNameInput()).toHaveAttribute("readonly");
       expect(getDescriptionInput()).toHaveAttribute("readonly");
+      expect(
+        await screen.findByRole("alert", { name: READ_ONLY_ALERT }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Save changes/ }),
+      ).not.toBeInTheDocument();
     });
 
     it("should not make form read-only when remote sync is read-only and table is not published", async () => {
       await act(() => {
         setup({ remoteSyncType: "read-only", isTablePublished: false });
       });
+      // The form stays read-only until the table has loaded.
+      expect(
+        await screen.findByRole("button", { name: /Save changes/ }),
+      ).toBeInTheDocument();
       expect(getNameInput()).not.toHaveAttribute("readonly");
       expect(getDescriptionInput()).not.toHaveAttribute("readonly");
+      expect(
+        screen.queryByRole("alert", { name: READ_ONLY_ALERT }),
+      ).not.toBeInTheDocument();
     });
 
     it("should not make form read-only when remote sync is read-write and table is published", async () => {

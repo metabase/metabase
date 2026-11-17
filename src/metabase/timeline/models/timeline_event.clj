@@ -1,8 +1,11 @@
 (ns metabase.timeline.models.timeline-event
   (:require
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
+   [metabase.timeline.db :as timeline.db]
+   [metabase.timeline.schema :as timeline.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -11,8 +14,7 @@
 (doto :model/TimelineEvent
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive :hook/entity-id))
 
 ;;;; schemas
 
@@ -22,12 +24,15 @@
 
 (def Icon
   "Schema for Timeline and TimelineEvents `icon`"
-  [:enum default-icon "cake" "mail" "warning" "bell" "cloud"])
+  ;; using "mail" icon is deprecated, but we keep it for backwards compatibility
+  [:enum default-icon "cake" "mail" "mail_at" "warning" "bell" "cloud"
+   "info" "note" "event"])
 
 (def Source
   "Timeline Event Source Schema. For Snowplow Events, where the Event is created from is important.
-  Events are added from one of three sources: `collections`, `questions` (cards in backend code), or directly with an API call. An API call is indicated by having no source key in the `timeline-event` request."
-  [:enum "collections" "question"])
+  Events are added from one of four sources: `collections`, `question` (cards in backend code), `dashboard`, or directly
+  with an API call. An API call is indicated by having no source key in the `timeline-event` request."
+  [:enum "collections" "question" "dashboard"])
 
 ;;;; transforms
 
@@ -40,11 +45,29 @@
 
 ;;;; permissions
 
-(defmethod mi/perms-objects-set :model/TimelineEvent
-  [event read-or-write]
-  (let [timeline (or (:timeline event)
-                     (t2/select-one 'Timeline :id (:timeline_id event)))]
-    (mi/perms-objects-set timeline read-or-write)))
+(defn- timeline-permissions
+  "Whether the current user passes `check`, `mi/can-read?` or `mi/can-write?`, on the Timeline of each of `events`, by
+  Timeline id, the Timelines hydrated with `k` together."
+  [k check events]
+  (run! #(when % (api/check-500 (contains? % :timeline_id) "No :timeline_id is set for a TimelineEvent.")) events)
+  (let [ids (into [] (comp (remove nil?) (keep :timeline_id) (distinct)) events)]
+    (if (seq ids)
+      (into {} (map (juxt :id check)) (t2/hydrate (vals (timeline.db/timelines-by-id ids)) k))
+      {})))
+
+(methodical/defmethod t2/batched-hydrate [:model/TimelineEvent :can_read]
+  [_model k events]
+  (let [permissions (timeline-permissions k mi/can-read? events)]
+    (for [event events]
+      (when event
+        (vary-meta event assoc :can_read (boolean (get permissions (:timeline_id event))))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/TimelineEvent :can_write]
+  [_model k events]
+  (let [permissions (timeline-permissions k mi/can-write? events)]
+    (for [event events]
+      (when event
+        (assoc event :can_write (boolean (get permissions (:timeline_id event))))))))
 
 (defmethod mi/can-create? :model/TimelineEvent
   [_ {:keys [timeline]}]
@@ -56,7 +79,7 @@
   [_model k events]
   (mi/instances-with-hydrated-data
    events k
-   #(t2/select-pk->fn identity :model/Timeline :id [:in (map :timeline_id events)])
+   #(timeline.db/timelines-by-id (map :timeline_id events))
    :timeline_id))
 
 (defn- fetch-events
@@ -64,29 +87,7 @@
   well as `all?`. By default, will return only unarchived events, unless `all?` is truthy and will return all events
   regardless of archive state."
   [timeline-ids {:events/keys [all? start end]}]
-  (let [clause {:where [:and
-                        ;; in our collections
-                        [:in :timeline_id timeline-ids]
-                        (when-not all?
-                          [:= :archived false])
-                        (when (or start end)
-                          [:or
-                           ;; absolute time in bounds
-                           [:and
-                            [:= :time_matters true]
-                            ;; less than or equal?
-                            (when start
-                              [:<= start :timestamp])
-                            (when end
-                              [:<= :timestamp end])]
-                           ;; non-specic time in bounds
-                           [:and
-                            [:= :time_matters false]
-                            (when start
-                              [:<= (h2x/->date start) (h2x/->date :timestamp)])
-                            (when end
-                              [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}]
-    (t2/hydrate (t2/select :model/TimelineEvent clause) :creator)))
+  (t2/hydrate (timeline.db/timeline-events-for-timelines timeline-ids all? start end) :creator))
 
 (defn include-events
   "Include events on `timelines` passed in. Options are optional and include whether to return unarchived events or all
@@ -110,26 +111,23 @@
 (defn dashcard-timeline-events
   "Look for a timeline and corresponding events associated with this dashcard."
   [{{:keys [collection_id] :as _card} :card}]
-  (let [timelines (t2/select :model/Timeline
-                             :collection_id collection_id
-                             :archived false)]
+  (let [timelines (timeline.db/timelines-for-collection collection_id false)]
     (->> (t2/hydrate timelines :creator [:collection :can_write])
          (map #(include-events-singular % {:events/all? true})))))
 
 ;;;; model
 
-(defmethod serdes/hash-fields :model/TimelineEvent
-  [_timeline-event]
-  [:name :timestamp (serdes/hydrated-hash :timeline) :created_at])
-
 ;;;; serialization
 
-;; nested in Timeline
-(defmethod serdes/make-spec "TimelineEvent" [_model-name _opts]
-  {:copy      [:archived :description :icon :name :time_matters :timezone]
-   :skip      []
-   :transform {:created_at  (serdes/date)
-               :creator_id  (serdes/fk :model/User)
-               :timeline_id (serdes/parent-ref)
-               :timestamp   (serdes/date)}
-   :defaults {:archived false}})
+(defmethod serialization/spec :model/TimelineEvent [_]
+  {:schema    ::timeline.schema/external-timeline-event
+   :copy      [:archived :description :entity_id :icon :name :time_matters :timezone]
+   :parent    {:model :model/Timeline :key :timeline_id :order (juxt :name :entity_id)}
+   :transform {:timeline_id serialization/import-only-transform
+               :creator_id serialization/user-transform
+               :timestamp  serialization/date-transform}
+   :defaults  {:archived false}})
+
+(defmethod remote-sync/spec :model/TimelineEvent
+  [_model]
+  {:synced-filter-clause timeline.db/synced-timeline-events-clause})

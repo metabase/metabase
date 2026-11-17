@@ -3,26 +3,23 @@ import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { Stack, Tabs } from "metabase/ui";
-import { updateSeriesColor } from "metabase/visualizations/lib/series";
+import { Box, Stack, Tabs } from "metabase/ui";
 import {
+  SERIES_SETTING_KEY,
+  type Widget,
   getComputedSettings,
+  getSettingDefinitionsForColumn,
   getSettingsWidgets,
-} from "metabase/visualizations/lib/settings";
-import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
-import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
-import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
-import type { Widget } from "metabase/visualizations/types";
+  keyForSingleSeries,
+  updateSeriesColor,
+} from "metabase/viz-core";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { DatasetColumn } from "metabase-types/api";
 
 import ChartSettingsWidgetList from "../../ChartSettingsWidgetList";
 import { ChartSettingsWidgetPopover } from "../../ChartSettingsWidgetPopover";
 
-import {
-  ChartSettingsListContainer,
-  SectionContainer,
-} from "./BaseChartSettings.styled";
+import S from "./BaseChartSettings.module.css";
 import { useChartSettingsSections } from "./hooks";
 import type { BaseChartSettingsProps } from "./types";
 
@@ -176,9 +173,11 @@ export const BaseChartSettings = ({
   }, []);
 
   const handleChangeSeriesColor = useCallback(
-    (seriesKey: string, color: string) => {
+    (seriesKey: string, hexValue: string, colorName?: string) => {
       if (chartSettings) {
-        onChange?.(updateSeriesColor(chartSettings, seriesKey, color));
+        onChange?.(
+          updateSeriesColor(chartSettings, seriesKey, hexValue, colorName),
+        );
       }
     },
     [chartSettings, onChange],
@@ -204,7 +203,7 @@ export const BaseChartSettings = ({
         {...stackProps}
       >
         {showSectionPicker && (
-          <SectionContainer>
+          <Box className={S.sectionContainer} w="100%" pt="lg" px="xl">
             <Tabs
               listBorder={false}
               value={chartSettingCurrentSection ?? null}
@@ -218,16 +217,23 @@ export const BaseChartSettings = ({
                 ))}
               </Tabs.List>
             </Tabs>
-          </SectionContainer>
+          </Box>
         )}
-        <ChartSettingsListContainer data-testid="chartsettings-list-container">
+        <Box
+          className={S.listContainer}
+          data-testid="chartsettings-list-container"
+          pos="relative"
+          pt="xl"
+          flex={1}
+        >
           <ChartSettingsWidgetList
             widgets={visibleWidgets}
             extraWidgetProps={extraWidgetProps}
           />
-        </ChartSettingsListContainer>
+        </Box>
       </Stack>
       <ChartSettingsWidgetPopover
+        // Unjustified type cast. FIXME
         anchor={popoverRef as HTMLElement}
         widgets={[styleWidget, formattingWidget].filter(
           (widget): widget is Widget => !!widget,

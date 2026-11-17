@@ -152,6 +152,16 @@ export type NormalizedParameter = {
   values_source_config?: ValuesSourceConfig;
 };
 
+// The parameter payload attached to query execution requests. `value` is
+// undefined when the parameter should fall back to its default.
+export type NormalizedQueryParameter = {
+  id: ParameterId;
+  type: string;
+  value?: ParameterValueOrArray | null;
+  target?: ParameterTarget;
+  options?: ParameterOptions;
+};
+
 export type GetParameterValuesRequest = {
   parameter: NormalizedParameter;
   field_ids: number[];

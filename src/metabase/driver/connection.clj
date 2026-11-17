@@ -10,11 +10,14 @@
    Primary API: [[effective-details]], [[with-write-connection]], [[default-details]]."
   (:require
    [metabase.analytics-interface.core :as analytics]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver.connection.workspaces :as driver.w]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]))
 
@@ -68,6 +71,7 @@
 (mr/def ::connection-type
   (into [:enum] connection-types))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *connection-type*
   "Which connection details [[effective-details]] should resolve.
 
@@ -134,6 +138,7 @@
   [& body]
   `(do-with-transform-connection (fn [] ~@body)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *suppress-resolution-telemetry*
   false)
 
@@ -167,6 +172,13 @@
   [_database]
   nil)
 
+(defn connection-database
+  "The Database that a connection for `database` goes to in the current context: the current user's routing
+  destination when `database` is a router, otherwise `database` itself."
+  [database]
+  (or (database-routing/routed-database database)
+      database))
+
 (defn- overlay-details-for-type
   "Returns the connection-type-specific details overlay for `database`, or nil if the
    requested type has no configured overlay (or is `:default`).
@@ -192,10 +204,13 @@
     overlay                        connection-type
     :else                          :default))
 
-(defn effective-details
+(mu/defn effective-details
   "Returns the connection details map appropriate for the current context.
 
-   Accepts a database (Toucan2 instance or lib/metadata). Returns nil for nil input.
+   Takes the Lib metadata of a Database.
+
+   Resolves database routing first: for a router, the details are those of the current user's destination (see
+   [[connection-database]]).
 
    By default, returns the primary `:details`. Within a [[with-write-connection]] or
    [[with-admin-connection]] scope, takes the corresponding `:write-data-details` /
@@ -206,23 +221,23 @@
    can differ. Within a
    [[driver.w/with-swapped-connection-details]] scope, applies workspace isolation
    overrides on top."
-  [database]
-  (when-let [database (some-> database driver.u/ensure-lib-database)]
-    (let [overlay  (perf/not-empty (overlay-details-for-type database *connection-type*))
-          base     (merge (:details database) overlay)
-          eff-type (resolve-effective-type *connection-type* overlay)]
-      ;; Track when an overlay is genuinely used (not fallback, not workspace-swapped).
-      ;; Default resolutions are not tracked here — see :metabase-db-connection/write-op for
-      ;; pool-level connection acquisition metrics.
-      (when (and overlay
-                 (not *suppress-resolution-telemetry*)
-                 (not (driver.w/has-connection-swap? (:id database))))
-        (try (analytics/inc! :metabase-db-connection/type-resolved
-                             {:connection-type (name *connection-type*)})
-             (catch Exception _ nil)))
-      (-> (driver.w/maybe-swap-details (:id database) base)
-          (assoc ::connection-pool-type eff-type)
-          (assoc ::database-id (u/id database))))))
+  [database :- ::lib.schema.metadata/database]
+  (let [database (connection-database database)
+        overlay  (perf/not-empty (overlay-details-for-type database *connection-type*))
+        base     (merge (:details database) overlay)
+        eff-type (resolve-effective-type *connection-type* overlay)]
+    ;; Track when an overlay is genuinely used (not fallback, not workspace-swapped).
+    ;; Default resolutions are not tracked here — see :metabase-db-connection/write-op for
+    ;; pool-level connection acquisition metrics.
+    (when (and overlay
+               (not *suppress-resolution-telemetry*)
+               (not (driver.w/has-connection-swap? (:id database))))
+      (try (analytics/inc! :metabase-db-connection/type-resolved
+                           {:connection-type (name *connection-type*)})
+           (catch Exception _ nil)))
+    (-> (driver.w/maybe-swap-details (:id database) base)
+        (assoc ::connection-pool-type eff-type)
+        (assoc ::database-id (u/id database)))))
 
 (defn details-for-exact-type
   "Returns the details map for exactly the given connection-type, with no fallback or merging.

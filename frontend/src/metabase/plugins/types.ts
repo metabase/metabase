@@ -1,8 +1,14 @@
-import type { ComponentType } from "react";
+import type { ComponentType, JSX } from "react";
 
-import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import type { ConfirmationState } from "metabase/common/hooks/use-confirmation";
 import type { Member, Membership, User } from "metabase-types/api";
+
+/**
+ * A route that a plugin fills in. The registry holds the loader rather than the
+ * component so the page stays out of the initial bundle. The router awaits it
+ * before it commits the location, so no Suspense boundary is involved.
+ */
+export type PluginRoute = () => Promise<{ Component: ComponentType }>;
 
 export interface AuthProvider {
   name: string;
@@ -47,15 +53,4 @@ export type PluginGroupManagersType = {
   deleteGroup: any;
   confirmDeleteMembershipAction: any;
   confirmUpdateMembershipAction: any;
-};
-
-export type SyncedCollectionsSidebarSectionProps = {
-  onItemSelect: VoidFunction;
-  selectedId?: number | string;
-  syncedCollections: CollectionTreeItem[];
-};
-
-export type GitSyncSetupMenuItemProps = {
-  isNavbarOpened: boolean;
-  onClick: VoidFunction;
 };

@@ -218,8 +218,8 @@ describe("Notebook", () => {
     const step = screen.getByTestId("step-summarize-0-0");
     expect(within(step).getByText("Formula")).toBeInTheDocument();
     expect(
-      within(step).getAllByText("Default time dimension").length,
-    ).toBeGreaterThanOrEqual(1);
+      within(step).queryByText("Default time dimension"),
+    ).not.toBeInTheDocument();
     expect(within(step).queryByText("Summarize")).not.toBeInTheDocument();
     expect(within(step).queryByText("by")).not.toBeInTheDocument();
     expect(

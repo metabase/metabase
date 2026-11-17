@@ -1,3 +1,7 @@
-export const RECENTS_TAB_ID = "recents-tab";
+/**
+ * How long the picker's search input waits after a keystroke before it
+ * searches.
+ */
+export const SEARCH_DEBOUNCE_MS = 300;
 
-export const SEARCH_TAB_ID = "search-tab";
+export const DATA_APPS_ROOT_ID = "data-apps";

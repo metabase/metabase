@@ -2,19 +2,19 @@ import type {
   CollectionPermissions,
   DatabaseId,
   GroupsPermissions,
+  PermissionsDatabase,
   Revision,
 } from "metabase-types/api";
 
 export type AdminPathKey =
   | "data-model"
   | "settings"
-  | "embedding"
   | "metabot"
   | "people"
   | "databases"
   | "permissions"
   | "audit"
-  | "tools"
+  | "help"
   | "performance"
   | "performance-models"
   | "performance-dashboards-and-questions"
@@ -22,7 +22,7 @@ export type AdminPathKey =
 
 export type AdminPath = {
   key: AdminPathKey;
-  name: string;
+  getName: () => string;
   path: string;
 };
 
@@ -33,6 +33,8 @@ export interface AdminState {
   permissions: {
     dataPermissions: GroupsPermissions;
     originalDataPermissions: GroupsPermissions;
+    /** Databases whose tables the permissions tree has seen, kept while the page is open. */
+    databasesWithTables: Record<DatabaseId, PermissionsDatabase>;
     dataPermissionsRevision: number | null;
     collectionPermissions: CollectionPermissions;
     originalCollectionPermissions: CollectionPermissions;

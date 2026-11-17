@@ -4,7 +4,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
@@ -40,7 +42,7 @@
                                  :template-tags {"time-unit" {:name         "time-unit"
                                                               :display-name "id"
                                                               :type         :temporal-unit
-                                                              :dimension    [:field (mt/id :orders :created_at) nil]}}))
+                                                              :field-id     (mt/id :orders :created_at)}}))
             parameterized-query (assoc native-query
                                        :parameters [{:type   :temporal-unit
                                                      :name   "time-unit"
@@ -88,7 +90,7 @@
                                  :template-tags {"time-unit" {:name         "time-unit"
                                                               :display-name "id"
                                                               :type         :temporal-unit
-                                                              :dimension    [:field (mt/id :orders :created_at) nil]
+                                                              :field-id     (mt/id :orders :created_at)
                                                               :alias        (mt/make-alias driver/*driver* "created_at")}}))
             parameterized-query (assoc native-query
                                        :parameters [{:type   :temporal-unit
@@ -128,6 +130,30 @@
                      (subvec 0 2)))
               (str "Unexpected results for aliased grouping " grouping)))))))
 
+(deftest ^:parallel temporal-unit-in-optional-clause-test
+  ;; Unlike the sibling tests, this one relies on a hand-written H2 query (LIMIT + an optional `[[…]]` clause) that the
+  ;; portable `mt/arbitrary-select-query` helper can't express, so it is gated to :h2 rather than the full driver set.
+  (mt/test-driver :h2
+    (testing "a :temporal-unit template tag inside an optional [[…]] clause"
+      (let [mp   (mt/metadata-provider)
+            make (fn [default]
+                   (let [q0       (lib/native-query mp "SELECT ID [[, {{unit}} AS unit]] FROM PEOPLE ORDER BY ID LIMIT 2")
+                         existing (m/find-first #(= (:name %) "unit") (lib/template-tags q0))]
+                     (lib/with-template-tags
+                       q0 {"unit" (merge existing
+                                         {:display-name "Unit"
+                                          :type         :temporal-unit
+                                          :field-id     (mt/id :people :created_at)
+                                          :default      default})})))]
+        (testing "the clause is included and bucketed when a default value is present"
+          (let [rows (mt/rows (qp/process-query (make "year")))]
+            (is (= 2 (count rows)))
+            (is (= 2 (count (first rows))))))
+        (testing "the clause is dropped entirely when the tag is unset"
+          (let [rows (mt/rows (qp/process-query (make nil)))]
+            (is (= 2 (count rows)))
+            (is (= 1 (count (first rows))))))))))
+
 (deftest ^:parallel bad-field-reference-throws-errors-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units ::temporal-units-test)
     (testing "temporal unit parameters"
@@ -137,7 +163,7 @@
                                  :template-tags {"time-unit" {:name         "time-unit"
                                                               :display-name "id"
                                                               :type         :temporal-unit
-                                                              :dimension    [:field 1000000000 nil]}}))
+                                                              :field-id     1000000000}}))
                          :parameters [{:type   :temporal-unit
                                        :name   "time-unit"
                                        :target [:variable [:template-tag "time-unit"]]
@@ -156,7 +182,7 @@
                                  :template-tags {"time-unit" {:name         "time-unit"
                                                               :display-name "id"
                                                               :type         :temporal-unit
-                                                              :dimension    [:field (mt/id :orders :created_at) nil]}}))
+                                                              :field-id     (mt/id :orders :created_at)}}))
                          :parameters [{:type   :temporal-unit
                                        :name   "time-unit"
                                        :target [:dimension [:template-tag "time-unit"]]

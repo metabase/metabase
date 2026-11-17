@@ -1,25 +1,33 @@
 /**
  * Public types for the `useAction` hook surface.
  *
- * The hook is schema-agnostic — these types describe just the action kind
- * union and the discriminated `result` shape it drives. A future Data App
- * integration will layer schema-derived helpers (`ActionParametersFromDataAppSchema`,
- * `ActionKindFromDataAppSchema`) on top; they are NOT shipped from this
- * branch.
+ * The hook itself is schema-agnostic — the `ActionKind` union and the
+ * discriminated `ActionResultForKind` shape it drives describe just the
+ * kind / response surface. The `…FromDataAppSchema` helpers below layer on
+ * top, deriving the hook's `TParameters` / `TKind` generics from a
+ * data app's action definition; the hook never sees the
+ * schema directly.
  */
 
-import type { RowValue } from "metabase-types/api";
+import type { SdkActionId } from "embedding-sdk-bundle/types/action";
+
+import type {
+  RowValue,
+  SchemaJavaScriptType,
+  TableFieldSchema,
+  TableSchema,
+} from "../data-schema";
 
 /**
- * Flat public kind union. Maps onto the backend's namespaced
- * `row/*` + `bulk/*` `implicitKind` and the `query` `type` value, but
- * exposes a simpler five-value surface to callers: `create` / `update` /
- * `delete` always refer to a single row, `bulk` covers any bulk variant,
- * and `sql` covers custom SQL actions (the backend's `query`-type action).
+ * Flat public kind union. Maps onto the backend's namespaced `row/*`
+ * `implicitKind` and the `query` `type` value, but exposes a simpler
+ * four-value surface to callers: `create` / `update` / `delete` always refer
+ * to a single row, and `sql` covers custom SQL actions (the backend's
+ * `query`-type action).
  *
  * @category useAction
  */
-export type ActionKind = "create" | "update" | "delete" | "bulk" | "sql";
+export type ActionKind = "create" | "update" | "delete" | "sql";
 
 /**
  * Response from a single-row create — the inserted row.
@@ -31,33 +39,21 @@ export type ActionResultForCreate = {
 };
 
 /**
- * Response from a single-row update — the affected primary keys.
+ * Response from a single-row update — the number of rows updated.
  *
  * @category useAction
  */
 export type ActionResultForUpdate = {
-  "rows-updated": readonly RowValue[];
+  "rows-updated": number;
 };
 
 /**
- * Response from a single-row delete — the affected primary keys.
+ * Response from a single-row delete — the number of rows deleted.
  *
  * @category useAction
  */
 export type ActionResultForDelete = {
-  "rows-deleted": readonly RowValue[];
-};
-
-/**
- * Response from any bulk variant — a success flag plus optional counts.
- *
- * @category useAction
- */
-export type ActionResultForBulk = {
-  success: boolean;
-  "rows-created"?: number;
-  "rows-updated"?: number;
-  "rows-deleted"?: number;
+  "rows-deleted": number;
 };
 
 /**
@@ -81,7 +77,6 @@ export type AnyActionResult =
   | ActionResultForCreate
   | ActionResultForUpdate
   | ActionResultForDelete
-  | ActionResultForBulk
   | ActionResultForSql;
 
 /**
@@ -123,8 +118,173 @@ export type ActionResultForKind<TKind extends ActionKind | undefined> =
       ? ActionResultForUpdate
       : TKind extends "delete"
         ? ActionResultForDelete
-        : TKind extends "bulk"
-          ? ActionResultForBulk
-          : TKind extends "sql"
-            ? ActionResultForSql
-            : AnyActionResult;
+        : TKind extends "sql"
+          ? ActionResultForSql
+          : AnyActionResult;
+
+// ============================================================================
+// Data App schema-derived helpers
+// ----------------------------------------------------------------------------
+// These read a single action definition of a data app
+// and derive the hook's `TParameters` / `TKind`. `useAction` applies them to a
+// `defineAction(...)` export, so a Data App writes neither generic.
+// ============================================================================
+
+/**
+ * The implicit actions a data app defines on a table.
+ *
+ * @category useAction
+ */
+export type ImplicitActionKind = "row/create" | "row/update" | "row/delete";
+
+/**
+ * A data app action that writes a row of a table from the app's schema: the
+ * dev preview runs it without saving it, and a production build runs the
+ * action `entityId` names.
+ *
+ * @category useAction
+ */
+export type ImplicitActionDefinition = {
+  entityId: string;
+  kind: ImplicitActionKind;
+  table: TableSchema;
+};
+
+/**
+ * What `defineAction` wraps. Its table's fields drive
+ * `ActionParametersFromDefinition`, and its `kind` drives
+ * `ActionKindFromDefinition`.
+ *
+ * @category useAction
+ */
+export type ActionDefinition = ImplicitActionDefinition;
+
+/** TS value type for a single action parameter, derived from its `jsType`. */
+type ActionParamValue<TParam extends { jsType?: SchemaJavaScriptType }> =
+  TParam["jsType"] extends "string"
+    ? string | null
+    : TParam["jsType"] extends "number"
+      ? number | null
+      : TParam["jsType"] extends "boolean"
+        ? boolean | null
+        : TParam["jsType"] extends "Date"
+          ? string | Date | null
+          : RowValue | null;
+
+/**
+ * An implicit action's parameters: its table's columns, by their `slug`, each
+ * typed by its `jsType` and optional, since the database decides what a row
+ * needs.
+ *
+ * @category useAction
+ * @notExported ActionParamValue
+ */
+export type TableActionParameters<TTable> = TTable extends {
+  fields: infer TFields extends Record<string, TableFieldSchema>;
+}
+  ? {
+      [TKey in keyof TFields as TFields[TKey]["slug"]]?: ActionParamValue<
+        TFields[TKey]
+      >;
+    }
+  : Record<string, unknown>;
+
+/**
+ * The parameters of an action definition, which type the hook's `execute`.
+ * Falls back to `Record<string, unknown>` if `TDefinition` is not a
+ * definition (e.g. a bare numeric id).
+ *
+ * @category useAction
+ */
+export type ActionParametersFromDefinition<TDefinition> = TDefinition extends {
+  table: infer TTable;
+}
+  ? TableActionParameters<TTable>
+  : Record<string, unknown>;
+
+/**
+ * Maps an action definition to the flat `ActionKind` union: `row/create`
+ * gives `"create"`, and so on. Feeds the hook's
+ * `TKind` generic so `result` is typed via `ActionResultForKind<TKind>`.
+ *
+ * @category useAction
+ */
+export type ActionKindFromDefinition<TDefinition> = TDefinition extends {
+  kind: `row/${infer TKind extends "create" | "update" | "delete"}`;
+}
+  ? TKind
+  : ActionKind;
+
+/**
+ * @interface
+ * @expand
+ * @category useAction
+ */
+export type UseActionResult<
+  TParameters extends Record<string, unknown> = Record<string, unknown>,
+  TKind extends ActionKind | undefined = undefined,
+> = {
+  /**
+   * Trigger the action with the given parameters. Returns the response body
+   * on success AND throws on failure — the same error is stored in `error`
+   * for render-time consumers. Resolves to the discriminated `result` shape
+   * (see `ActionResultForKind<TKind>`); when `TKind` is omitted it resolves
+   * to `AnyActionResult`, narrowable via `"<key>" in r`.
+   *
+   * Resolves to `null` (without making a request) when `actionId` is `null`
+   * or the SDK is not yet initialized — guard the host-side caller with
+   * `if (!actionId) return;` if these cases are reachable.
+   */
+  execute: (
+    parameters: TParameters,
+  ) => Promise<ActionResultForKind<TKind> | null>;
+  isExecuting: boolean;
+  /** Last response, or `null` before first call and after `reset()`. */
+  result: ActionResultForKind<TKind> | null;
+  /** Last thrown error, normalized to the public `ActionExecuteError` shape, or `null`. */
+  error: ActionExecuteError | null;
+  /** Clear `result` and `error`. */
+  reset: () => void;
+};
+
+/**
+ * Marks an action as declared through `defineAction`. A data app's `useAction`
+ * accepts only marked definitions, so an inline definition object is a
+ * compile-time error.
+ *
+ * @category useAction
+ */
+export declare class DefinedAction {
+  private readonly definedWithDefineAction: true;
+}
+
+/** The SDK's `useAction`: a definition object, or an id. */
+export interface UseAction {
+  /** A definition, which types `execute` and `result` itself. */
+  <TDefinition extends ActionDefinition>(
+    action: TDefinition | null,
+  ): UseActionResult<
+    ActionParametersFromDefinition<TDefinition>,
+    ActionKindFromDefinition<TDefinition>
+  >;
+
+  /** An id, which describes nothing: `useAction<Parameters, "create">(42)`. */
+  <
+    TParameters extends Record<string, unknown> = Record<string, unknown>,
+    TKind extends ActionKind | undefined = undefined,
+  >(
+    actionId: SdkActionId | null,
+  ): UseActionResult<TParameters, TKind>;
+}
+
+/**
+ * A data app's `useAction`: only a `defineAction(...)` definition.
+ */
+export interface UseDataAppAction {
+  <TDefinition extends DefinedAction & ActionDefinition>(
+    action: TDefinition | null,
+  ): UseActionResult<
+    ActionParametersFromDefinition<TDefinition>,
+    ActionKindFromDefinition<TDefinition>
+  >;
+}

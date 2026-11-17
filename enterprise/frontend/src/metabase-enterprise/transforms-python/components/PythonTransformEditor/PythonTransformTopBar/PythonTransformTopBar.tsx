@@ -3,14 +3,12 @@ import {
   useGetDatabaseQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { hasFeature } from "metabase/common/utils/database";
+import { hasFeature } from "metabase/databases";
 import { DatabaseDataSelector } from "metabase/querying/common/components/DataSelector";
-import { useSelector } from "metabase/redux";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import { Flex } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type { Database, DatabaseId, Transform } from "metabase-types/api";
+import type { DatabaseId, Transform } from "metabase-types/api";
 
 import S from "./PythonTransformTopBar.module.css";
 
@@ -31,18 +29,15 @@ export function PythonTransformTopBar({
   onDatabaseChange,
   canChangeDatabase = true,
 }: PythonTransformTopBarProps) {
-  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
-  const showEditButton =
-    !isEditMode && transform && !isRemoteSyncReadOnly && !readOnly;
+  const showEditButton = !isEditMode && transform && !readOnly;
 
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
   );
   const { data: databases } = useListDatabasesQuery();
 
-  const handleDatabaseChange = (value: string | null) => {
-    const newDatabaseId = value ? parseInt(value) : undefined;
-    if (newDatabaseId != null && newDatabaseId !== databaseId) {
+  const handleDatabaseChange = (newDatabaseId: DatabaseId) => {
+    if (newDatabaseId !== databaseId) {
       onDatabaseChange?.(newDatabaseId);
     }
   };
@@ -62,7 +57,7 @@ export function PythonTransformTopBar({
             setDatabaseFn={handleDatabaseChange}
             databases={databases?.data ?? []}
             readOnly={!isEditMode}
-            databaseIsDisabled={(database: Database) =>
+            databaseIsDisabled={(database) =>
               !doesDatabaseSupportTransforms(database) ||
               !hasFeature(database, "transforms/python")
             }
@@ -71,7 +66,7 @@ export function PythonTransformTopBar({
       ) : (
         <Flex
           h="3rem"
-          p="md"
+          p="lg"
           ml="sm"
           align="center"
           data-testid="selected-database"
@@ -80,15 +75,8 @@ export function PythonTransformTopBar({
         </Flex>
       )}
       {showEditButton && (
-        <Flex ml="auto" mr="lg" align="center" h="3rem">
-          <EditDefinitionButton
-            bg="transparent"
-            fz="sm"
-            h="1.5rem"
-            px="sm"
-            size="xs"
-            transformId={transform.id}
-          />
+        <Flex ml="auto" mr="xl" align="center" h="3rem">
+          <EditDefinitionButton size="sm" transformId={transform.id} />
         </Flex>
       )}
     </Flex>

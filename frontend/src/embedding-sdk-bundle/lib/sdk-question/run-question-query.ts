@@ -3,8 +3,7 @@ import type { SdkQuestionState } from "embedding-sdk-bundle/types/question";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { runQuestionQuery } from "metabase/querying/run-query";
 import type { Dispatch } from "metabase/redux/store";
-import { isNotNull } from "metabase/utils/types";
-import visualizations, { getSensibleDisplays } from "metabase/visualizations";
+import { getSensibleDisplays, visualizations } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DatasetData,
@@ -22,6 +21,7 @@ interface RunQuestionQueryParams {
   signal?: AbortSignal;
   dispatch: Dispatch;
   initialVisualization?: QueryVisualizationDisplayType;
+  ignoreCache?: boolean;
 }
 
 export async function runQuestionQuerySdk(
@@ -36,6 +36,7 @@ export async function runQuestionQuerySdk(
     signal,
     dispatch,
     initialVisualization,
+    ignoreCache = false,
   } = params;
 
   if (question.isSaved()) {
@@ -82,7 +83,9 @@ export async function runQuestionQuerySdk(
               ),
             ),
           )
-        ).filter(isNotNull),
+        ).flatMap((result) =>
+          result.status === "loaded" ? [result.display] : [],
+        ),
       );
 
     // The query and the custom-viz load are independent, so run them
@@ -91,7 +94,7 @@ export async function runQuestionQuerySdk(
       runQuestionQuery(question, {
         dispatch,
         signal,
-        ignoreCache: false,
+        ignoreCache,
         isDirty: isQueryDirty,
         token,
         ...(isGuestEmbed && {
@@ -127,17 +130,9 @@ export async function runQuestionQuerySdk(
       // lock it so the data shape doesn't auto-reset it.
       question = question.setDisplay(initialDisplay).lockDisplay();
     } else {
-      // Built-in sensibles only (custom viz never report sensible, no `isSensible`),
-      // plus the current display if it's a custom viz that loaded this run.
-      const sensibleDisplays = getSensibleDisplays(datasetData).filter(
-        (d) => !PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(d),
-      );
-      if (loadedDisplays.has(display)) {
-        sensibleDisplays.push(display);
-      }
       question = question.maybeResetDisplay(
         datasetData,
-        sensibleDisplays,
+        getSensibleDisplays([{ card: question.card(), data: datasetData }]),
         undefined,
       );
     }
@@ -153,7 +148,7 @@ export function shouldRunCardQuery({
   question: Question;
   isGuestEmbed: boolean | null;
 }): boolean {
-  // Questions fetched from `/api/embed/*` endpoints have some fields missing, and it forces the this.legacyNativeQuery().canRun() to return `false`
+  // Questions fetched from `/api/embed/*` endpoints have some fields missing, and it forces question.canRun() to return `false`
   // To avoid it we just force-return true
   if (isGuestEmbed) {
     return true;

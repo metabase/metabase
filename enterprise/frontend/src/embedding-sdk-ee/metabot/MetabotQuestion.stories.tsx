@@ -1,6 +1,5 @@
-import type { StoryFn } from "@storybook/react";
 import { HttpResponse, http } from "msw";
-import type { ComponentProps } from "react";
+import type { ComponentType } from "react";
 
 import { getStorybookSdkAuthConfigForUser } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
 import { MetabotQuestion } from "embedding-sdk-package";
@@ -8,14 +7,13 @@ import { MetabaseProvider } from "embedding-sdk-package/components/public/Metaba
 import { getHostedBundleStoryDecorator } from "embedding-sdk-package/test/getHostedBundleStoryDecorator";
 import {
   MOCK_AD_HOC_QUESTION_ID,
+  mockGeneratedCardChunk,
   mockStreamResponse,
 } from "embedding-sdk-shared/test/mocks/mock-metabot-response";
 import { Flex, Stack } from "metabase/ui";
 
 // side effect to activate the plugin
 import "./MetabotQuestion";
-
-type MetabotQuestionProps = ComponentProps<typeof MetabotQuestion>;
 
 const config = getStorybookSdkAuthConfigForUser("admin");
 
@@ -26,7 +24,7 @@ export default {
     layout: "fullscreen",
   },
   decorators: [
-    (Story: StoryFn) => (
+    (Story: ComponentType) => (
       <MetabaseProvider authConfig={config}>
         <Story />
       </MetabaseProvider>
@@ -35,7 +33,7 @@ export default {
   ],
 };
 
-const Template: StoryFn<MetabotQuestionProps> = () => {
+const Template = () => {
   return <MetabotQuestion height="100vh" />;
 };
 
@@ -53,15 +51,21 @@ export const Centered = {
   },
 };
 
-export const RedirectReaction = {
+export const GeneratedChart = {
   render: Template,
   parameters: {
     msw: {
       handlers: [
         mockStreamResponse([
-          `0:"Here is the [question link](${MOCK_AD_HOC_QUESTION_ID})"`,
-          `2:{"type":"navigate_to","version":1,"value":"${MOCK_AD_HOC_QUESTION_ID}"}
-`,
+          { type: "text-start", id: "t1" },
+          {
+            type: "text-delta",
+            id: "t1",
+            delta: `Here is the [question link](${MOCK_AD_HOC_QUESTION_ID})`,
+          },
+          { type: "text-end", id: "t1" },
+          mockGeneratedCardChunk(),
+          { type: "finish", finishReason: "stop" },
         ]),
       ],
     },

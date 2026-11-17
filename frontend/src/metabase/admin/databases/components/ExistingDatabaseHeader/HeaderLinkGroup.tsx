@@ -1,6 +1,6 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { Button, Flex, Icon } from "metabase/ui";
 import { browseDatabase } from "metabase/urls";
 import { isSyncInProgress } from "metabase/utils/syncing";
@@ -17,7 +17,6 @@ export const HeaderLinkGroup = ({ database }: Props) => {
     <Flex gap="0.5rem">
       <Button
         component={Link}
-        fw="bold"
         to={`/admin/permissions/data/database/${database.id}`}
         variant="subtle"
       >
@@ -26,7 +25,6 @@ export const HeaderLinkGroup = ({ database }: Props) => {
       <Button
         component={isSyncing ? undefined : Link}
         disabled={isSyncing}
-        fw="bold"
         rightSection={<Icon name="external" />}
         target="_blank"
         title={isSyncing ? t`Sync in progress` : undefined}

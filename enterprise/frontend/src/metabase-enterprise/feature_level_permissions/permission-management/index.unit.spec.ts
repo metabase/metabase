@@ -13,6 +13,7 @@ const groupType = null;
 const databaseId = 1;
 
 const getPermissionGraph = (): GroupsPermissions =>
+  // Unjustified type cast. FIXME
   ({
     [defaultGroupId]: {
       [databaseId]: {
@@ -36,6 +37,7 @@ const getPermissionGraph = (): GroupsPermissions =>
     },
   }) as any;
 
+// Unjustified type cast. FIXME
 const defaultGroup: Group = {
   id: defaultGroupId,
   name: "All Users",

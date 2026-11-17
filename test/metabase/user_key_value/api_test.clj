@@ -3,7 +3,8 @@
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [metabase.user-key-value.init]
-   [metabase.user-key-value.models.user-key-value.types :as user-kv.types]))
+   [metabase.user-key-value.models.user-key-value.types :as user-kv.types]
+   [ring.util.codec :as codec]))
 
 (comment metabase.user-key-value.init/keep-me)
 
@@ -85,3 +86,21 @@
               :b "b value"
               :c "c value"}
              (mt/user-http-request :rasta :get 200 "/user-key-value/namespace/other"))))))
+
+(deftest sql-looking-key-is-a-value-test
+  (testing "GHY-4586: a key that looks like SQL is compared as a value on every read, write and delete"
+    (mt/with-model-cleanup [:model/UserKeyValue]
+      (let [sql-key "a' OR '1'='1"
+            url     (str "/user-key-value/namespace/other/key/" (codec/url-encode sql-key))]
+        (mt/user-http-request :rasta :put 200 "/user-key-value/namespace/other/key/a" {:value "a value"})
+        (testing "reading the key matches no other row"
+          (is (= nil (mt/user-http-request :rasta :get 204 url))))
+        (testing "writing the key inserts, then updates, only its own row"
+          (is (= "first" (mt/user-http-request :rasta :put 200 url {:value "first"})))
+          (is (= "second" (mt/user-http-request :rasta :put 200 url {:value "second"})))
+          (is (= {:a "a value", (keyword sql-key) "second"}
+                 (mt/user-http-request :rasta :get 200 "/user-key-value/namespace/other"))))
+        (testing "deleting the key deletes only its own row"
+          (mt/user-http-request :rasta :delete 200 url)
+          (is (= {:a "a value"}
+                 (mt/user-http-request :rasta :get 200 "/user-key-value/namespace/other"))))))))

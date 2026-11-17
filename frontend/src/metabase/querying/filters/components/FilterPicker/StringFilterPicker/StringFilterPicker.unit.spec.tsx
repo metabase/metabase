@@ -1,9 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupDatabaseEndpoints,
   setupFieldSearchValuesEndpoint,
   setupFieldsValuesEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
@@ -12,13 +14,13 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
 import {
   PEOPLE,
+  PEOPLE_STATE_VALUES,
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
   createSampleDatabase,
@@ -31,6 +33,18 @@ import {
 } from "../test-utils";
 
 import { StringFilterPicker } from "./StringFilterPicker";
+
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock(
+  "metabase/querying/common/components/FieldValuePicker/SearchValuePicker/constants",
+  () => ({
+    ...jest.requireActual(
+      "metabase/querying/common/components/FieldValuePicker/SearchValuePicker/constants",
+    ),
+    SEARCH_DEBOUNCE: 0,
+  }),
+);
 
 const EXPECTED_OPERATORS = [
   "Is",
@@ -61,7 +75,12 @@ function setup({
   const onChange = jest.fn();
   const onBack = jest.fn();
 
-  setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES, PRODUCT_VENDOR_VALUES]);
+  setupFieldsValuesEndpoints([
+    PRODUCT_CATEGORY_VALUES,
+    PRODUCT_VENDOR_VALUES,
+    PEOPLE_STATE_VALUES,
+  ]);
+  setupDatabaseEndpoints(database);
 
   const state = createMockState({
     entities: createMockEntitiesState({ databases: [database] }),
@@ -128,18 +147,28 @@ describe("StringFilterPicker", () => {
       expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
     });
 
-    it("should list operators", async () => {
-      setup();
+    it.each([
+      ["a text", "PRODUCTS", "DESCRIPTION"],
+      ["a location", "PEOPLE", "STATE"],
+    ])(
+      "should list operators for %s column",
+      async (_, tableName, columnName) => {
+        const query = createQuery();
+        setup({
+          query,
+          column: findStringColumn(query, tableName, columnName),
+        });
 
-      await userEvent.click(screen.getByLabelText("Filter operator"));
-      const menu = await screen.findByRole("menu");
-      const menuItems = within(menu).getAllByRole("menuitem");
+        await userEvent.click(screen.getByLabelText("Filter operator"));
+        const menu = await screen.findByRole("menu");
+        const menuItems = within(menu).getAllByRole("menuitem");
 
-      expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
-      EXPECTED_OPERATORS.forEach((operatorName) =>
-        expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
-      );
-    });
+        expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
+        EXPECTED_OPERATORS.forEach((operatorName) =>
+          expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
+        );
+      },
+    );
 
     it("should handle fields with listable values", async () => {
       const query = createQuery();
@@ -254,7 +283,11 @@ describe("StringFilterPicker", () => {
       });
 
       await setOperator("Contains");
-      expect(screen.queryByLabelText("Case sensitive")).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(
+          screen.queryByLabelText("Case sensitive"),
+        ).not.toBeInTheDocument(),
+      );
     });
 
     it("should add a filter with multiple values", async () => {

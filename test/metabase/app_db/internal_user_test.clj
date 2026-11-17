@@ -9,7 +9,7 @@
 
 (deftest internal-user-is-in-all-users-test
   (testing "The internal user should be in the All Users group, just like any other user."
-    (let [memberships  (-> (t2/select-one :model/User config/internal-mb-user-id)
+    (let [memberships  (-> (t2/select-one :model/User :id config/internal-mb-user-id)
                            (t2/hydrate :user_group_memberships)
                            :user_group_memberships
                            (->> (map :id)))
@@ -20,7 +20,7 @@
   (testing "GET /api/user"
     ;; since the Internal user is inactive, we only need to check in the `:include_deactivated` `true`
     (let [{:keys [data total]} (mt/user-http-request :crowberto :get 200 "user", :include_deactivated true)
-          internal-user-email  (t2/select-one-fn :email :model/User config/internal-mb-user-id)]
+          internal-user-email  (t2/select-one-fn :email :model/User :id config/internal-mb-user-id)]
       (testing "does not return the internal user"
         (is (not-any? (comp #{internal-user-email} :email) data)))
       (testing "does not count the internal user"

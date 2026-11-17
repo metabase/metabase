@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import {
   getActionErrorMessage,
   getActionExecutionMessage,
@@ -55,6 +56,7 @@ export const executeRowAction = async ({
           );
 
     const message = getActionExecutionMessage(
+      // Unjustified type cast. FIXME
       dashcard.action as WritebackAction,
       result,
     );
@@ -62,7 +64,7 @@ export const executeRowAction = async ({
     if (shouldToast) {
       dispatch(
         addUndo({
-          toastColor: "success",
+          toastColor: "feedback-positive",
           message,
         }),
       );
@@ -75,8 +77,7 @@ export const executeRowAction = async ({
     if (shouldToast) {
       dispatch(
         addUndo({
-          icon: "warning",
-          toastColor: "error",
+          variant: "negative",
           message,
         }),
       );

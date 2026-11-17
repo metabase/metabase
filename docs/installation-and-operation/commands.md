@@ -17,6 +17,13 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help
 
 Metabase will print out the help text for available commands.
 
+## `ai-providers-documentation`
+
+Generates a markdown file listing the AI providers Metabase can connect to, the credentials each one needs, and the models each one offers. This is written to a file called `docs/ai/providers.md`.
+
+## `all-documentation`
+
+Runs every documentation command in one process.
 
 ## `api-documentation`
 
@@ -34,10 +41,6 @@ Generates a markdown file with some documentation and an example configuration f
 
 Print a list of all multimethods available for a driver to implement, optionally with their docstrings.
 
-## `drop-entity-ids`
-
-Drop entity IDs for instances of serializable models. Useful for migrating from v1 serialization (x.46 and earlier) to v2 (x.47+).
-
 ## `dump-to-h2 h2-filename opts`
 
 Transfer data from existing database to newly created H2 DB with specified filename. Target H2 file is deleted before dump, unless the --keep-existing flag is given.
@@ -46,6 +49,10 @@ Options:
 
 - `-k, --keep-existing` - Do not delete target H2 file if it exists.
 - `-p, --dump-plaintext` - Do not encrypt dumped contents.
+
+## `enable-encryption`
+
+Encrypts data in the metabase database with the key in the MB_ENCRYPTION_SECRET_KEY environment variable. Run this once, with Metabase stopped, after adding the key to an existing instance: Metabase refuses to start while the key is set but the database is not encrypted with it.
 
 ## `environment-variables-documentation`
 
@@ -62,7 +69,6 @@ Options:
 - `-S, --no-settings` - Do not export settings.yaml
 - `-D, --no-data-model` - Do not export any data model entities; useful for subsequent exports.
 - `-f, --include-field-values` - Include field values along with field metadata.
-- `-s, --include-database-secrets` - Include database connection details (in plain text; use caution).
 - `-e, --continue-on-error` - Do not break execution on errors.
 - `--full-stacktrace` - Output full stacktraces on errors.
 
@@ -87,6 +93,10 @@ Options:
 
 Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars.
 
+## `mcp-tools-documentation`
+
+Generates `docs/ai/mcp-tools.md`, the reference for the tools Metabase's MCP server exposes to AI clients.
+
 ## `migrate direction`
 
 Run database migrations. Valid options for `direction` are `up`, `force`, `down`, `down-force`, `print`, or `release-locks`.
@@ -103,10 +113,6 @@ Reset the password for a user with `email-address`.
 
 Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars.
 
-## `seed-entity-ids`
-
-Add entity IDs for instances of serializable models that don't already have them.
-
 ## `version`
 
 Print version information about Metabase and the current system.
@@ -120,4 +126,3 @@ Open an SQL shell for the Metabase H2 DB:
 ```sh
 java -cp metabase.jar org.h2.tools.Shell -url jdbc:h2:/path/to/metabase.db
 ```
-

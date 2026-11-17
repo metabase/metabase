@@ -3,33 +3,30 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 
 import { Box, Stack } from "metabase/ui";
-import { extractRemappings } from "metabase/visualizations";
+import { assignLazily } from "metabase/utils/merge-lazily";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
-import { getTreemapBreadcrumbModel } from "metabase/visualizations/echarts/graph/treemap/model/breadcrumb";
-import { getTreemapColors } from "metabase/visualizations/echarts/graph/treemap/model/colors";
-import {
-  getTreemapChartColumns,
-  getTreemapData,
-} from "metabase/visualizations/echarts/graph/treemap/model/data";
-import { getTreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
-import { shouldShowParentLabels } from "metabase/visualizations/echarts/graph/treemap/model/labels";
-import { getTreemapInlineValueIds } from "metabase/visualizations/echarts/graph/treemap/model/tooltip";
-import { isOverview } from "metabase/visualizations/echarts/graph/treemap/model/tree";
-import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/treemap/option/option";
-import {
-  getChartPadding,
-  groupHeader,
-} from "metabase/visualizations/echarts/graph/treemap/style";
-import {
-  useCloseTooltipOnScroll,
-  useInjectSeriesColorsClasses,
-} from "metabase/visualizations/echarts/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import {
+  extractRemappings,
+  getTreemapBreadcrumbModel,
+  getTreemapChartColumns,
+  getTreemapChartOption,
+  getTreemapColors,
+  getTreemapContainerPadding,
+  getTreemapData,
+  getTreemapFormatters,
+  getTreemapInlineValueIds,
+  groupHeader,
+  isOverview,
+  shouldShowParentLabels,
+  useCloseTooltipOnScroll,
+  useInjectSeriesColorsClasses,
+} from "metabase/viz-core";
 
 import { TreemapBreadcrumb } from "./TreemapBreadcrumb";
 import S from "./TreemapChart.module.css";
-import { TREEMAP_CHART_DEFINITION } from "./chart-definition";
+import { TREEMAP_CHART_DEFINITION } from "./definition";
 import { dispatchTreemapViewRoot, useChartEvents } from "./events";
 import { type TreemapHoverOverlay, hideTreemapHoverOverlay } from "./overlay";
 import { getTreemapTooltipOption } from "./tooltip";
@@ -37,11 +34,12 @@ import { useLabelMeasurement } from "./use-label-measurement";
 import { usePointerTracking } from "./use-pointer-tracking";
 import { useTreemapNavigation } from "./use-treemap-navigation";
 
-export const TreemapChart = ({
+const TreemapChartComponent = ({
   rawSeries,
   settings,
   fontFamily,
   onVisualizationClick,
+  onRender,
   clicked,
   isDashboard,
   isDocument,
@@ -52,8 +50,13 @@ export const TreemapChart = ({
     [rawSeries],
   );
 
+  const showWarning = useCallback(
+    (warning: string) => onRender({ warnings: [warning] }),
+    [onRender],
+  );
+
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<EChartsType>();
+  const chartRef = useRef<EChartsType>(undefined);
   const overlayRef = useRef<TreemapHoverOverlay | null>(null);
   const isAnimatingRef = useRef(false);
   const clickedRef = useLatest(clicked);
@@ -72,10 +75,11 @@ export const TreemapChart = ({
       treemapColumns,
       treemapRows,
       settings,
+      showWarning,
     );
     const colors = getTreemapColors(tree, treemapRows);
     return { tree, colors, treemapColumns };
-  }, [rawSeriesWithRemappings, settings]);
+  }, [rawSeriesWithRemappings, settings, showWarning]);
 
   const { viewRootId, viewRootIdRef, setViewRoot } = useTreemapNavigation(
     chartData?.tree ?? null,
@@ -86,7 +90,11 @@ export const TreemapChart = ({
   const formatters = useMemo(
     () =>
       chartData
-        ? getTreemapFormatters(chartData.treemapColumns, settings)
+        ? getTreemapFormatters(
+            chartData.treemapColumns,
+            settings,
+            chartData.tree,
+          )
         : null,
     [chartData, settings],
   );
@@ -250,10 +258,10 @@ export const TreemapChart = ({
       h="100%"
       display="flex"
       style={{ flexDirection: "column" }}
-      gap={isCompact ? "md" : 28}
+      gap={isCompact ? "lg" : 28}
     >
       {breadcrumb && formatters && (
-        <Box px={isDashboard ? "md" : "xl"} pt={isDashboard ? 12 : 24}>
+        <Box px={isDashboard ? "lg" : "xxl"} pt={isDashboard ? 12 : 24}>
           <TreemapBreadcrumb
             groupLabel={breadcrumb.groupLabel}
             value={formatters.value(breadcrumb.value)}
@@ -263,7 +271,7 @@ export const TreemapChart = ({
       )}
       <Box
         className={S.root}
-        p={getChartPadding(isDashboard)}
+        p={getTreemapContainerPadding(isDashboard)}
         w="100%"
         style={{ flex: 1, minHeight: 0 }}
       >
@@ -281,4 +289,7 @@ export const TreemapChart = ({
   );
 };
 
-Object.assign(TreemapChart, TREEMAP_CHART_DEFINITION);
+export const TreemapChart = assignLazily(
+  TreemapChartComponent,
+  TREEMAP_CHART_DEFINITION,
+);

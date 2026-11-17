@@ -1,7 +1,24 @@
 import type { DimensionMetadata } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
+import type { CardDisplayType } from "metabase-types/api";
 
 export type DimensionType = "time" | "geo" | "category" | "boolean" | "numeric";
+
+export type DefaultDimensionDisplayType = Extract<
+  CardDisplayType,
+  "line" | "map" | "bar"
+>;
+
+export const DEFAULT_DISPLAY_TYPE_BY_DIMENSION: Record<
+  DimensionType,
+  DefaultDimensionDisplayType
+> = {
+  time: "line",
+  geo: "map",
+  category: "bar",
+  boolean: "bar",
+  numeric: "bar",
+};
 
 export type GeoSubtype = "country" | "state";
 

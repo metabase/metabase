@@ -3,8 +3,9 @@
 Construct a Metabase MBQL 5 query as a JSON object describing the query shape. Metabase validates, repairs, and resolves it.
 
 Return:
-- `query`: a JSON **object** (never a quoted string). The target database is inferred from the first stage's `source-table` (or `source-card`) — use the **exact** database name reported by `entity_details` / metadata tools.
+- `query`: a JSON **object** (never a quoted string). The target database is inferred from the first stage's `source-table` (or `source-card`) — use the **exact** database name reported by search / `read_resource` / metadata tools.
 - `title`: required short, human-friendly title for the resulting chart, shown above it (e.g. `"Orders by month"`).
+- `description`: required concise one- or two-sentence description of what the chart shows (the metric, the grouping, and any notable filter); if the chart is saved, it becomes the description of the saved question.
 - `visualization`: optional `{"chart_type": "bar"}` (sibling of `query`, never embedded inside it).
 
 ## Minimal example — count of orders by month
@@ -12,10 +13,10 @@ Return:
 ```json
 {"lib/type": "mbql/query",
  "stages": [{"lib/type": "mbql.stage/mbql",
-             "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+             "source-table": ["Sample Database", null, "ORDERS"],
              "aggregation": [["count", {}]],
              "breakout": [["field", {"temporal-unit": "month"},
-                           ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]}]}
+                           ["Sample Database", null, "ORDERS", "CREATED_AT"]]]}]}
 ```
 
 Every clause is `["op", {}, ...args]` with a mandatory `{}` options map at position 1; every field reference uses a 4-segment portable FK in the last slot. These are the two most-violated rules.
@@ -44,10 +45,10 @@ There is no top-level `database:` field in the LLM contract — the database is 
 ## Field references
 
 ```json
-["field", {}, ["<db-name>", "<schema-or-null>", "<table-name>", "<field-name>"]]
+["field", {}, ["<db-name>", "<schema>", "<table-name>", "<field-name>"]]
 ```
 
-The third slot is the **portable field FK** — a 4+ element string array. Schemaless databases (MongoDB, etc.) use `null` in the schema slot: `["Mongo", null, "orders", "created_at"]`. JSON-unfolded fields append extra segments: `["DB", "SCH", "TBL", "PARENT", "CHILD"]`.
+The third slot is the **portable field FK** — a 4+ element string array. Schemaless databases (the Sample Database, MongoDB, etc.) use `null` in the schema slot: `["Mongo", null, "orders", "created_at"]`. JSON-unfolded fields append extra segments: `["DB", "SCH", "TBL", "PARENT", "CHILD"]`.
 
 Inside later stages, refer to a column produced by the previous stage by **string name** instead of a portable FK: `["field", {}, "count"]`, `["field", {}, "PRODUCT_ID"]`.
 
@@ -63,18 +64,25 @@ Field options (all optional):
 
 ## Per-clause examples
 
-Filter (comparison + boolean combination):
+Use one entry per filter condition. Metabase combines the entries with `and`.
 
 ```json
-"filters": [["and", {},
-  [">", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]], 100],
-  ["=", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "STATUS"]], "paid"]]]
+"filters": [[">", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]], 100],
+            ["<=", {}, ["field", {}, ["Sample Database", null, "ORDERS", "QUANTITY"]], 5]]
+```
+
+Use one entry for conditions combined with `or` or negated together by `not`; nest `and` inside them when needed. For example, "total over 100, or quantity at most 5":
+
+```json
+"filters": [["or", {},
+  [">", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]], 100],
+  ["<=", {}, ["field", {}, ["Sample Database", null, "ORDERS", "QUANTITY"]], 5]]]
 ```
 
 Aggregation (on a field, plus `count`):
 
 ```json
-"aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]],
+"aggregation": [["sum", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]]],
                 ["count", {}]]
 ```
 
@@ -82,13 +90,13 @@ Breakout with temporal bucket:
 
 ```json
 "breakout": [["field", {"temporal-unit": "month"},
-              ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]
+              ["Sample Database", null, "ORDERS", "CREATED_AT"]]]
 ```
 
 Order by — direction wraps a ref; works on field refs or aggregation refs:
 
 ```json
-"order-by": [["desc", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]],
+"order-by": [["desc", {}, ["field", {}, ["Sample Database", null, "ORDERS", "CREATED_AT"]]],
              ["desc", {}, ["aggregation", {}, 0]]]
 ```
 
@@ -109,8 +117,8 @@ Define custom columns inside a stage using `expressions` and reference by name w
 ```json
 "expressions": {
   "Subtotal": ["+", {},
-               ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]],
-               ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TAX"]]]
+               ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]],
+               ["field", {}, ["Sample Database", null, "ORDERS", "TAX"]]]
 },
 "aggregation": [["sum", {}, ["expression", {}, "Subtotal"]]]
 ```
@@ -124,14 +132,14 @@ The sequential form `[["expression", {}, "Name", expr], ...]` is also accepted a
   "alias": "Products",
   "strategy": "left-join",
   "stages": [{"lib/type": "mbql.stage/mbql",
-              "source-table": ["Sample Database", "PUBLIC", "PRODUCTS"]}],
+              "source-table": ["Sample Database", null, "PRODUCTS"]}],
   "conditions": [["=", {},
-    ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "PRODUCT_ID"]],
+    ["field", {}, ["Sample Database", null, "ORDERS", "PRODUCT_ID"]],
     ["field", {"join-alias": "Products"},
-     ["Sample Database", "PUBLIC", "PRODUCTS", "ID"]]]]
+     ["Sample Database", null, "PRODUCTS", "ID"]]]]
 }],
 "breakout": [["field", {"join-alias": "Products"},
-              ["Sample Database", "PUBLIC", "PRODUCTS", "CATEGORY"]]]
+              ["Sample Database", null, "PRODUCTS", "CATEGORY"]]]
 ```
 
 - `alias` is a free-choice string; use it consistently in conditions, breakout, aggregation, order-by.
@@ -144,18 +152,18 @@ The sequential form `[["expression", {}, "Name", expr], ...]` is also accepted a
 Reference a field on a related table directly — when the source has exactly one FK to that target, the tool auto-fills `source-field` and performs the implicit join:
 
 ```json
-"source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+"source-table": ["Sample Database", null, "ORDERS"],
 "aggregation": [["count", {}]],
-"breakout": [["field", {}, ["Sample Database", "PUBLIC", "PRODUCTS", "CATEGORY"]]]
+"breakout": [["field", {}, ["Sample Database", null, "PRODUCTS", "CATEGORY"]]]
 ```
 
-- **Multiple FKs** to the target → `:ambiguous-fk` lists them. Retry with explicit `{"source-field": ["DB", "SCH", "SRC", "FK_COL"]}` on the field.
+- If the error says the field is reachable through several foreign keys, list the source table's fields and retry with explicit `{"source-field": ["DB", "SCH", "SRC", "FK_COL"]}` on the field to select the intended FK.
 - **No FK path** → `:no-fk-path`. Switch to an explicit `joins` entry, or pick a field on the source table.
 - Inside an explicit `joins` block, joined-side field refs still need `{"join-alias": ...}` — implicit-join repair does not rewrite those.
 - If the FK column lives on a previous stage's output, write `{"source-field-name": "<col>"}` (not auto-filled).
 - If multiple explicit joins all expose the target FK, `:ambiguous-fk-via-join` lists them — set `{"source-field-join-alias": "<alias>"}` to pick one.
 
-**Tip:** discover FKs with `entity_details` / `read_resource metabase://table/<id>/fields`. FK columns are tagged `fk_target_fully_qualified_name="schema.table.field"` — always look for one before assuming a column lives on the current table.
+**Tip:** discover FKs with `read_resource metabase://table/<id>/fields`. FK columns are tagged `fk_target_fully_qualified_name="schema.table.field"` — always look for one before assuming a column lives on the current table.
 
 ## Multi-stage queries
 
@@ -166,9 +174,9 @@ Post-aggregation filter — count orders per product, keep only those with > 10:
 ```json
 "stages": [
   {"lib/type": "mbql.stage/mbql",
-   "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+   "source-table": ["Sample Database", null, "ORDERS"],
    "aggregation": [["count", {}]],
-   "breakout": [["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "PRODUCT_ID"]]]},
+   "breakout": [["field", {}, ["Sample Database", null, "ORDERS", "PRODUCT_ID"]]]},
   {"lib/type": "mbql.stage/mbql",
    "filters": [[">", {}, ["field", {}, "count"], 10]]}
 ]
@@ -179,27 +187,31 @@ Re-aggregate — average daily total by month:
 ```json
 "stages": [
   {"lib/type": "mbql.stage/mbql",
-   "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
-   "aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]]],
+   "source-table": ["Sample Database", null, "ORDERS"],
+   "aggregation": [["sum", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]]]],
    "breakout": [["field", {"temporal-unit": "day"},
-                 ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]},
+                 ["Sample Database", null, "ORDERS", "CREATED_AT"]]]},
   {"lib/type": "mbql.stage/mbql",
    "aggregation": [["avg", {}, ["field", {}, "sum"]]],
    "breakout": [["field", {"temporal-unit": "month"}, ["field", {}, "CREATED_AT"]]]}
 ]
 ```
 
-- Cross-stage refs use a **string name** in slot 3 (e.g. `["field", {}, "count"]`). The name is whatever the previous stage's aggregation/breakout/field produced (`count`, `sum`, or the source field's name).
+- Cross-stage refs use a **string name** in slot 3 (e.g. `["field", {}, "count"]`). The name is the previous stage column's **machine name**, never its UI display label:
+  - An aggregation's output name is the **bare function**: `max`, `min`, `avg`, `sum`, `count`, `median` — the operand is dropped. `["max", {}, ["expression", {}, "Instance Has SC"]]` produces a column named **`max`** (display label "Max of Instance Has SC"). Reference it as `["field", {}, "max"]`, **not** `["field", {}, "Max of Instance Has SC"]`.
+  - A breakout keeps the source field's machine name even when its label is bucketed: a month breakout of `CREATED_AT` is still named `CREATED_AT` (display "Created At: Month").
+  - If a stage has several aggregations of the same function, the outputs are suffixed in order: `max`, `max_2`, `max_3`. So the second `max` is referenced as `["field", {}, "max_2"]`.
+- A `["field", {}, "<name>"]` cross-stage ref whose name matches no column the previous stage produced is an error — name it exactly.
 - Within the **same stage**, refer to your own aggregation with `["aggregation", {}, <idx>]` (see §Aggregation references). In a **later** stage, use the cross-stage string-name form against the previous stage's output.
 - Joins, expressions, filters, aggregation, breakout, order-by, limit are all valid in later stages.
 
 ## Saved questions and models (`source-card`)
 
-Instead of `source-table`, use `source-card` to query an existing question or model. The value is the card's **portable entity id** — a 21-char opaque string reported by `entity_details` and search tools as `portable_entity_id`.
+Instead of `source-table`, use `source-card` to query an existing question or model. The value is the card's **portable entity id** — a 21-char opaque string reported by search and `read_resource` as `portable_entity_id`.
 
 1. Get the `portable_entity_id` from a tool response. `search` and `read_resource` (`metabase://question/<id>`, `metabase://model/<id>`) include it on the result tag — reuse what's already in context, no extra call needed.
 2. Copy it **verbatim** into `source-card`. The id is opaque — never guess, construct, or abbreviate.
-3. Reference the card's columns by output **name** (string in slot 3), not portable FK. If you don't know the names, call `read_resource metabase://question/<numeric-id>/fields` (or `.../model/...`).
+3. Reference the card's columns by output **machine name** (string in slot 3), not portable FK and not the UI display label. If you don't know the names, call `read_resource metabase://question/<numeric-id>/fields` (or `.../model/...`) — a ref whose name matches no column the card produces is an error.
 
 ```json
 {"lib/type": "mbql.stage/mbql",
@@ -212,11 +224,24 @@ A stage has either `source-table` **or** `source-card`, never both. The card mus
 
 ## Metrics
 
-A metric is a pre-defined aggregation attached to a base table. To use one:
+A metric is a predefined aggregation. Its `<metric>` tag identifies the source to use: a base table, saved question or model. Build the stage on that source. The tag carries at most one of these attributes:
 
-1. Put the metric's **base table** in `source-table`. Read it from the `base_table_fully_qualified_name` attribute on the `<metric>` tag (combine with `database_name` to form the portable FK). Never invent schema/table names.
+- `base_table_fully_qualified_name` names a base table. Combine it with `database_name` to form the portable FK for `source-table`.
+- `source_card_portable_entity_id` names a saved question or model. Copy the ID verbatim into `source-card`.
+- `source_unavailable="true"` means that the metric has no source available to you. Do not use it.
+
+To use a metric:
+
+1. Copy the source attribute into the stage. Never invent schema or table names, or substitute a base table for the source card. If the tag carries `source_unavailable="true"`, or carries neither source attribute, do not use the metric or guess its source. Say that the metric is not available to you and express the aggregation directly instead, or ask which source to use.
 2. Reference the metric as `["metric", {}, "<portable_entity_id>"]` in `aggregation`.
-3. Filters/breakouts on the same stage use portable FKs on the metric's base table.
+3. Use dimensions from the metric's **Dimensions** table for filters and breakouts on the same stage. Read the `Source table` column first. Names such as `id` and `created_at` can appear on several tables, and the table determines how to reference a dimension:
+   - Copy `Reference` verbatim for a dimension on the metric's own source. Its portable FK works on card and table stages.
+   - A renamed copy of a joined column, with an output name such as `NAME_2`, has no portable FK. Its `Reference` is that output name as a string. Copy it as given.
+   - A `Reference` that starts with `["field"` is a full field clause. Copy it as is. A table that a card reaches through two FK columns gets such a clause in each of its rows, for example `PUBLIC.CATEGORIES (via Peer → Category)`.
+   - A dimension on an FK-related table can be used in `breakout:` when one foreign key reaches that table. This works on a `source-table` and a `source-card` stage alike. Otherwise, if its `Reference` is not a full field clause, follow the tool's error. Add an explicit `joins` entry (see "Joins (explicit)") on the same stage. Keep the metric's source, and break out on the field with the join alias.
+   - Use the output machine name for an expression or aggregation column computed by the card. These columns have no portable FK.
+
+A table metric with `base_table_fully_qualified_name="brex_enriched.fct_cards"`:
 
 ```json
 {"lib/type": "mbql.stage/mbql",
@@ -226,7 +251,19 @@ A metric is a pre-defined aggregation attached to a base table. To use one:
  "aggregation": [["metric", {}, "aB3cD4eF5gH6iJ7kL8mN9"]]}
 ```
 
-Metrics are aggregations, **not sources** — never put a metric in `source-table` or `source-card`. The `metabase://metric/<id>` URIs are for reading metadata via `read_resource`, not for embedding in queries.
+A card metric with `source_card_portable_entity_id="T4wA_GPFwGb6R4FxIDGTo"`:
+
+```json
+{"lib/type": "mbql.stage/mbql",
+ "source-card": "T4wA_GPFwGb6R4FxIDGTo",
+ "filters": [["!=", {}, ["field", {},
+                         ["Analytics", "brex_enriched", "fct_cards", "card_status"]], "inactive"]],
+ "aggregation": [["metric", {}, "aB3cD4eF5gH6iJ7kL8mN9"]]}
+```
+
+A metric with `source_card_portable_entity_id` requires that exact card. Substituting its base table causes an `Incompatible metric` error. Some metrics whose definition starts from a card require a base table instead; their tags carry `base_table_fully_qualified_name`. Use the attribute provided by the tag.
+
+Metrics are aggregations. Put the metric's own `portable_entity_id` in its `aggregation` clause, never in `source-table` or `source-card`. The `source_card_portable_entity_id` identifies its source card and belongs in `source-card`. Use `metabase://metric/<id>` URIs to read metadata via `read_resource`; do not embed them in queries.
 
 ## Using measures and segments
 
@@ -266,11 +303,15 @@ Before the shape rules: map the user's wording to the right clause. These mismat
 Shape rules:
 - **Always include `{}` options in every clause**, even when empty. `["count"]` is wrong — it must be `["count", {}]`.
 - **The query is a JSON object**, not a string. Send it directly as the `"query"` field of the call.
-- **Use the exact database name** reported by `entity_details` (e.g. `"Sample Database"`, not `"Sample"`) as the first element of every portable FK. Near-misses surface `Unknown database` instead of silently picking one. Cross-database queries are not supported.
+- **Use the exact database name** reported by search / `read_resource` (e.g. `"Sample Database"`, not `"Sample"`) as the first element of every portable FK. Near-misses surface `Unknown database` instead of silently picking one. Cross-database queries are not supported.
 - **Use portable FKs**, not numeric IDs. Schemaless databases use `null` in the schema slot. JSON-unfolded fields append path segments.
 - **Clause heads are lowercase, hyphenated**: `"count"`, `"sum-where"`, `"time-interval"`, `"get-day-of-week"`. Not underscores, not camelCase.
-- **Never invent a `source-card` entity_id.** It must be a 21-char string copied verbatim from `entity_details` / search — no patterns, no numeric ids, no `card__<id>`.
+- **Never invent a `source-card` entity_id.** It must be a 21-char string copied verbatim from search / `read_resource` — no patterns, no numeric ids, no `card__<id>`.
 - **`source-card` columns are referenced by output name** (string in slot 3), not portable FK.
+
+Editing an existing query (the user asks to change, add, or remove part of the question they're viewing):
+- Start from the query shown in context and change only what the user asked for. Copy every other clause unchanged, including filters, breakouts, aggregations, and their order.
+- Keep each existing filter as its own `filters:` entry. To change one filter, replace just that entry. Never merge it with another filter into an `and`. The notebook shows a combined filter as one custom expression, so the user sees their untouched filters rewritten.
 
 Anti-hallucination:
 - **Don't subtract dates** with `-`. Use `["datetime-diff", {}, <left>, <right>, "<unit>"]` for the integer count of units between two temporal values.
@@ -305,7 +346,7 @@ Anti-hallucination:
 - `["share", {}, <bool-pred>]` — fraction of rows where pred is true.
 - `["stddev", {}, <num-expr>]`
 - `["var", {}, <num-expr>]`
-- `["metric", {}, "<portable_entity_id>"]` — reference a defined metric. The metric's base table must be the stage's `source-table`.
+- `["metric", {}, "<portable_entity_id>"]` references a defined metric. Use the source specified by its `<metric>` tag: `base_table_fully_qualified_name` as `source-table`, or `source_card_portable_entity_id` as `source-card`.
 - `["measure", {}, "<portable_entity_id>"]` — reference a defined measure (preferred over inlining its definition). The measure's table must be the stage's `source-table`.
 
 ### Order-by direction
@@ -315,7 +356,7 @@ Anti-hallucination:
 ### Filters
 
 Boolean:
-- `["and", {}, <pred>, <pred>, ...]` — min 2 args.
+- `["and", {}, <pred>, <pred>, ...]` – requires at least 2 arguments. Write plain "A and B" as two `filters:` entries; nest `and` under `or` or `not`.
 - `["or", {}, <pred>, <pred>, ...]` — min 2 args.
 - `["not", {}, <pred>]`
 
@@ -388,6 +429,9 @@ Temporal:
 - `["absolute-datetime", {}, "<iso-string>", "<unit?>"]`
 - `["date", {}, <expr>]` / `["datetime", {}, <expr>]` / `["time", {}, <expr>]`
 - `["now", {}]` / `["today", {}]`
+
+Window:
+- `["offset", {}, <expr>, <n>]` — value of `<expr>` from `<n>` rows back (negative `<n>`) or ahead (positive). Valid **only** inside an `aggregation:` or `order-by:` clause — **never** in a custom column (`expressions:`) or a filter.
 
 ### Temporal units (for `{"temporal-unit": ...}` on field refs and as `<unit>` args)
 

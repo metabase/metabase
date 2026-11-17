@@ -45,6 +45,7 @@ describe("scenarios > embedding-sdk > guest-embed-theming", () => {
 
       cy.get("@questionId").then(async (questionId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: questionId as unknown as number,
           resourceType: "question",
         });
@@ -68,7 +69,7 @@ describe("scenarios > embedding-sdk > guest-embed-theming", () => {
           cy.findByTestId("table-root").should(
             "have.css",
             "background-color",
-            "rgb(7, 23, 34)",
+            "rgb(12, 28, 39)",
           );
 
           cy.findByText("Question for Guest Embed SDK").should(

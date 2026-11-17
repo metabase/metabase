@@ -1,12 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 
-import type { LinkProps } from "metabase/common/components/Link";
-import type {
-  MetabotAgentId,
-  SlashCommand,
-} from "metabase/metabot/state/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { Dispatch, GetState } from "metabase/redux/store";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -15,14 +9,9 @@ import type {
   IconName,
 } from "metabase-types/api";
 
-export type MetabotSlashCommandHandler = (args: {
-  command: SlashCommand;
-  agentId: MetabotAgentId;
-  dispatch: Dispatch;
-  getState: GetState;
-}) => boolean;
+import { definePluginSlot } from "../slot";
 
-export type InsightsLinkProps = (
+export type InsightsLinkProps =
   | {
       question: Pick<Question, "id" | "collection">;
       dashboard?: never;
@@ -30,9 +19,7 @@ export type InsightsLinkProps = (
   | {
       question?: never;
       dashboard: Pick<Dashboard, "id" | "collection">;
-    }
-) &
-  Omit<LinkProps, "to">;
+    };
 
 export interface InsightsMenuItemProps {
   card: Pick<Card, "id" | "collection">;
@@ -41,21 +28,26 @@ export interface InsightsMenuItemProps {
   withDivider?: boolean;
 }
 
-const getDefaultPluginAudit = () => ({
+type AuditPlugin = {
+  isEnabled: boolean;
+  isAuditDb: (db: DatabaseType) => boolean;
+  InsightsLink: ComponentType<InsightsLinkProps>;
+  InsightsMenuItem: ComponentType<InsightsMenuItemProps>;
+  AnalyticsExportStatus: ComponentType;
+  CollectionExportAnalytics: ComponentType;
+  isAiAuditingEnabled: boolean;
+  getAiAuditingRoutes: () => ReactNode;
+};
+
+const getDefaultPluginAudit = (): AuditPlugin => ({
   isEnabled: false,
-  isAuditDb: (_db: DatabaseType) => false,
-  InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
-  InsightsMenuItem: PluginPlaceholder as ComponentType<InsightsMenuItemProps>,
-  getMetabotAnalyticsNavItems: (): ReactNode => null,
-  getAiAnalyticsRoutes: (): ReactNode => null,
-  handleMetabotSlashCommand: ((_args) => false) as MetabotSlashCommandHandler,
+  isAuditDb: (_db) => false,
+  InsightsLink: PluginPlaceholder,
+  InsightsMenuItem: PluginPlaceholder,
+  AnalyticsExportStatus: PluginPlaceholder,
+  CollectionExportAnalytics: PluginPlaceholder,
+  isAiAuditingEnabled: false,
+  getAiAuditingRoutes: () => null,
 });
 
-export const PLUGIN_AUDIT = getDefaultPluginAudit();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_AUDIT, getDefaultPluginAudit());
-}
+export const PLUGIN_AUDIT = definePluginSlot(getDefaultPluginAudit);

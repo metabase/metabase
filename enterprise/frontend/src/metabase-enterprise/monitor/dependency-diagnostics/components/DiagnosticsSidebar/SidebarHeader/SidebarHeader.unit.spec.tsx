@@ -1,6 +1,5 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { DependencyNode } from "metabase-types/api";
 import {
   createMockCardDependencyNode,
@@ -20,9 +19,9 @@ function setup({ node = createMockCardDependencyNode() }: SetupOpts = {}) {
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <SidebarHeader node={node} onClose={onClose} mode="unreferenced" />
-      )}
+      }
     />,
     { withRouter: true, initialRoute: "/" },
   );

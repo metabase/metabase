@@ -1,5 +1,5 @@
-import { Link, type LinkProps } from "react-router";
-
+import type { ImageSource } from "metabase/common/components/EmptyState";
+import { Link, type LinkProps } from "metabase/common/components/Link";
 import { Box, Flex, Text, Title } from "metabase/ui";
 
 import S from "./NewModelOption.module.css";
@@ -7,7 +7,7 @@ import S from "./NewModelOption.module.css";
 const DEFAULT_IMAGE_WIDTH = 210;
 
 type NewModelOptionProps = LinkProps & {
-  image: string;
+  image: ImageSource;
   title: string;
   description: string;
   width?: number;
@@ -23,9 +23,9 @@ export function NewModelOption({
   return (
     <Link {...props} className={S.linkWrapper}>
       <Flex align="center" justify="center" h="10rem">
-        <img src={`${image}.png`} srcSet={`${image}@2x.png 2x`} width={width} />
+        <img src={image.src} srcSet={image.srcSet} width={width} />
       </Flex>
-      <Box my="md">
+      <Box my="lg">
         <Title order={2} className={S.modelTitle}>
           {title}
         </Title>

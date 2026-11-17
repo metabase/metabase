@@ -22,7 +22,7 @@ import {
   frenchNames,
   germanFieldNames,
   germanFieldValues,
-} from "./constants";
+} from "./helpers/constants";
 
 const { H } = cy;
 
@@ -73,7 +73,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
       });
     });
 
-    it("should assign the proper colors to a pie", () => {
+    it("should translate the renamed column title of a pivot table", () => {
       H.createDashboard({
         name: "the_dashboard",
       }).then(({ body: { id: dashboardId } }) => {
@@ -93,6 +93,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
         H.visitEmbeddedPage(
           {
+            // Unjustified type cast. FIXME
             resource: { dashboard: dashboardId as number },
             params: {},
           },
@@ -176,6 +177,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
         H.visitEmbeddedPage(
           {
+            // Unjustified type cast. FIXME
             resource: { dashboard: dashboardId as number },
             params: {},
           },
@@ -273,6 +275,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
         H.visitEmbeddedPage(
           {
+            // Unjustified type cast. FIXME
             resource: { dashboard: dashboardId as number },
             params: {},
           },
@@ -294,17 +297,19 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
           // Verify colors
           cy.findByTestId("chart-legend").within(() => {
-            cy.get("button [color]").then(($elements) => {
-              const actualColors = Array.from($elements).map((el) =>
-                el.getAttribute("color"),
-              );
-              expect(actualColors).to.deep.equal([
-                "#69C8C8",
-                "#C7EAEA",
-                "#98D9D9",
-                "#F3F3F4",
-              ]);
-            });
+            cy.findAllByTestId("legend-item")
+              .find("button")
+              .then(($elements) => {
+                const actualColors = Array.from($elements).map((element) =>
+                  element.style.getPropertyValue("--legend-dot-color"),
+                );
+                expect(actualColors).to.deep.equal([
+                  "#69C8C8",
+                  "#C7EAEA",
+                  "#98D9D9",
+                  "#F3F3F4",
+                ]);
+              });
           });
         });
       });
@@ -338,7 +343,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
       H.visitEmbeddedPage(
         {
-          resource: { dashboard: ORDERS_DASHBOARD_ID as number },
+          resource: { dashboard: ORDERS_DASHBOARD_ID },
           params: {},
         },
         {
@@ -391,6 +396,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
       cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
       cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
       cy.intercept("GET", "/api/embed/dashboard/**/search/*").as("searchQuery");
+      // Unjustified type cast. FIXME
       H.restore("with-translations" as any);
     });
 
@@ -408,6 +414,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
         display: "pivot",
         visualization_settings: {
           "pivot_table.column_split": {
+            // Unjustified type cast. FIXME
             rows: [ORDERS.CREATED_AT, ORDERS.QUANTITY] as any,
             columns: [],
             values: ["count"],
@@ -430,6 +437,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
       }).then(({ body: { dashboard_id } }) => {
         H.visitEmbeddedPage(
           {
+            // Unjustified type cast. FIXME
             resource: { dashboard: dashboard_id as number },
             params: {},
           },
@@ -476,6 +484,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
         cy.intercept("GET", "/api/embed/dashboard/**/search/*").as(
           "searchQuery",
         );
+        // Unjustified type cast. FIXME
         H.restore("with-translations" as any);
       });
 
@@ -531,6 +540,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
               });
               H.visitEmbeddedPage(
                 {
+                  // Unjustified type cast. FIXME
                   resource: { dashboard: dashboard_id as number },
                   params: {},
                 },
@@ -669,6 +679,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
           });
           H.visitEmbeddedPage(
             {
+              // Unjustified type cast. FIXME
               resource: { dashboard: dashboard_id as number },
               params: {},
             },
@@ -748,6 +759,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
           });
           H.visitEmbeddedPage(
             {
+              // Unjustified type cast. FIXME
               resource: { dashboard: dashboard_id as number },
               params: {},
             },
@@ -831,6 +843,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
             },
           },
           dashboardDetails: {
+            // Unjustified type cast. FIXME
             parameters: [staticListFilter as any], // current API isn't set to accept string[][] as values
             enable_embedding: true,
             embedding_params: {
@@ -867,6 +880,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
           H.visitEmbeddedPage(
             {
+              // Unjustified type cast. FIXME
               resource: { dashboard: dashboard_id as number },
               params: {},
             },
@@ -904,6 +918,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
             },
           },
           dashboardDetails: {
+            // Unjustified type cast. FIXME
             parameters: [staticListFilter as any], // current API isn't set to accept string[][] as values
             enable_embedding: true,
             embedding_params: {
@@ -940,6 +955,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
           H.visitEmbeddedPage(
             {
+              // Unjustified type cast. FIXME
               resource: { dashboard: dashboard_id as number },
               params: {},
             },
@@ -965,7 +981,9 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
       { locale: "de", msgid: "Sample Text", msgstr: "Beispieltext" },
     ];
     type VisitWithLocale = (options?: { locale?: string }) => void;
+    // Unjustified type cast. FIXME
     let visitEmbeddedDashboard = null as unknown as VisitWithLocale,
+      // Unjustified type cast. FIXME
       visitNormalDashboard = null as unknown as VisitWithLocale;
 
     before(() => {
@@ -1005,6 +1023,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
       cy.intercept("POST", "api/ee/content-translation/upload-dictionary").as(
         "uploadDictionary",
       );
+      // Unjustified type cast. FIXME
       H.restore("tab-names-and-text-cards" as any);
       cy.signInAsAdmin();
       visitEmbeddedDashboard = ({ locale = "de" } = {}) => {
@@ -1027,21 +1046,19 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
       };
     });
 
-    it("should translate text in dashboard tab names", () => {
+    it("should translate dashboard tab names, heading cards and text cards", () => {
       visitEmbeddedDashboard();
+
+      cy.log("tab names");
       cy.findByRole("tab", { name: "Reiter 1" }).should("be.visible");
       cy.findByRole("tab", { name: "Reiter 2" }).should("be.visible");
-    });
 
-    it("should translate content in heading cards", () => {
-      visitEmbeddedDashboard();
+      cy.log("heading cards");
       H.getDashboardCard(0)
         .findByText(/Beispielüberschrift/)
         .should("be.visible");
-    });
 
-    it("should translate content in text cards", () => {
-      visitEmbeddedDashboard();
+      cy.log("text cards");
       H.getDashboardCard(1)
         .findByText(/Beispieltext/)
         .should("be.visible");
@@ -1059,8 +1076,6 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
         .should("be.visible");
     });
   });
-
-  describe("Boolean content", () => {});
 
   describe("funnel chart with translated dimension values (metabase#71488)", () => {
     beforeEach(() => {
@@ -1112,6 +1127,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
           H.publishChanges("dashboard", () => {});
           H.visitEmbeddedPage(
             {
+              // Unjustified type cast. FIXME
               resource: { dashboard: dashboardId as number },
               params: {},
             },

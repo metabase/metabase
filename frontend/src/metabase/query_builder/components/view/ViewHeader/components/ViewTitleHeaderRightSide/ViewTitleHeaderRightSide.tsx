@@ -3,17 +3,18 @@ import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { AIQuestionAnalysisButton } from "metabase/metabot/components/AIQuestionAnalysisButton";
-import { canAnalyzeQuestion } from "metabase/metabot/utils/chart-analysis";
+import { getUserCanWriteToCollections } from "metabase/current-user";
 import { isNewQuerySqlIdle } from "metabase/nav/containers/ProtoNavbar/newQuery";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
-import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
+import { MODAL_TYPES } from "metabase/querying/constants";
 import { useSelector } from "metabase/redux";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
-import { getLocation } from "metabase/selectors/routing";
-import { getUserCanWriteToCollections } from "metabase/selectors/user";
+import type {
+  DatasetEditorTab,
+  QueryBuilderMode,
+  QueryModalType,
+} from "metabase/redux/store";
+import { useLocation } from "metabase/router";
 import { Box, Button, Flex, Tooltip } from "metabase/ui";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import MetabaseSettings from "metabase/utils/settings";
@@ -22,6 +23,7 @@ import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
+import { canExploreResults } from "../../utils";
 import { ExploreResultsLink } from "../ExploreResultsLink";
 import { FilterHeaderButton } from "../FilterHeaderButton";
 import { QuestionActions } from "../QuestionActions";
@@ -33,7 +35,7 @@ import { QuestionSharingMenu } from "./QuestionSharingMenu/QuestionSharingMenu";
 
 interface ViewTitleHeaderRightSideProps {
   question: Question;
-  result: Dataset;
+  result?: Dataset;
   queryBuilderMode: QueryBuilderMode;
   isBookmarked: boolean;
   isModelOrMetric: boolean;
@@ -102,7 +104,7 @@ export function ViewTitleHeaderRightSide({
 }: ViewTitleHeaderRightSideProps): React.JSX.Element {
   const isShowingNotebook = queryBuilderMode === "notebook";
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
-  const { pathname } = useSelector(getLocation);
+  const { pathname } = useLocation();
   const hideNewQuerySqlChrome = isNewQuerySqlIdle(pathname, question);
 
   const hasExploreResultsLink =
@@ -155,11 +157,12 @@ export function ViewTitleHeaderRightSide({
           {
             id: "query-builder-data-refresh",
             perform: () =>
-              isRunning ? cancelQuery : runQuestionQuery({ ignoreCache: true }),
+              isRunning
+                ? cancelQuery()
+                : runQuestionQuery({ ignoreCache: true }),
           },
         ]
       : [],
-    [isRunning, isShowingNotebook, hasRunButton],
   );
 
   return (
@@ -231,14 +234,10 @@ export function ViewTitleHeaderRightSide({
       {!isShowingNotebook && (hasSaveButton || isSaved) && (
         <QuestionSharingMenu question={question} />
       )}
-      {!isShowingNotebook && canAnalyzeQuestion(question.card().display) ? (
-        <AIQuestionAnalysisButton />
-      ) : null}
       {isSaved && (
         <QuestionActions
           question={question}
           isBookmarked={isBookmarked}
-          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
           onOpenModal={onOpenModal}
           onToggleBookmark={toggleBookmark}
           onSetQueryBuilderMode={setQueryBuilderMode}
@@ -250,8 +249,6 @@ export function ViewTitleHeaderRightSide({
           <Button
             className={ViewTitleHeaderS.SaveButton}
             data-testid="qb-save-button"
-            px="md"
-            py="sm"
             variant="subtle"
             aria-disabled={isSaveDisabled || undefined}
             data-disabled={isSaveDisabled || undefined}

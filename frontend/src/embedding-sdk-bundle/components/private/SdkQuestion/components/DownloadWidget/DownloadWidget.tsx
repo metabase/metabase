@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useMemo } from "react";
 
 import { getGuestEmbedFilteredParameters } from "embedding-sdk-bundle/lib/get-guest-embed-filtered-parameters";
@@ -8,7 +9,7 @@ import {
 } from "metabase/common/components/QuestionDownloadWidget";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import type { StackProps } from "metabase/ui";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { getComputedSettingsForSeries } from "metabase/viz-core";
 
 import { useSdkQuestionContext } from "../../context";
 
@@ -57,7 +58,7 @@ const DownloadWidgetInner = ({
       question={question}
       result={result}
       onDownload={handleDownload}
-      p="md"
+      p="lg"
       disabled={!withDownloads}
       {...rest}
     />

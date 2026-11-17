@@ -1,10 +1,11 @@
-import { dissoc } from "icepick";
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
+import { CopyCardForm } from "metabase/common/components/CopyCardForm/CopyCardForm";
 import { CopyDashboardFormConnected } from "metabase/common/components/CopyDashboardForm";
 import { DocumentCopyForm } from "metabase/common/components/DocumentCopyForm/DocumentCopyForm";
-import { CopyCardForm } from "metabase/questions/components/CopyCardForm/CopyCardForm";
 import { Modal } from "metabase/ui";
 
 import type { CopyModalProps } from "./types";
@@ -33,12 +34,13 @@ export function CopyModal(props: CopyModalProps) {
     : resolvedObject;
 
   const initialValues = {
-    ...dissoc(resolvedObjectWithDefaultCollection, "id"),
+    ..._.omit(resolvedObjectWithDefaultCollection, "id"),
     name: resolvedObjectWithDefaultCollection.name + " - " + t`Duplicate`,
   };
 
   return (
     <Modal
+      density="relaxed"
       title={
         title || t`Duplicate "${resolvedObjectWithDefaultCollection.name}"`
       }

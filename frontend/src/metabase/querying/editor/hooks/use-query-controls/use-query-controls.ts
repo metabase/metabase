@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 
+import type { QueryModalType } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
-import type { QueryModalType } from "../../../constants";
 import type {
   Location,
   QueryEditorModalType,

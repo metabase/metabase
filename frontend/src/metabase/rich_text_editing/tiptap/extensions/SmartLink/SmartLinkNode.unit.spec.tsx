@@ -1,6 +1,4 @@
 import type { NodeViewProps } from "@tiptap/react";
-import { createMemoryHistory } from "history";
-import { Route, Router, useRouterHistory } from "react-router";
 
 import {
   setupCardEndpoints,
@@ -9,8 +7,10 @@ import {
   setupDatabaseEndpoints,
   setupDocumentEndpoints,
   setupTableEndpoints,
+  setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { RouterProviderMemory } from "metabase/router";
 import {
   createMockCard,
   createMockCollection,
@@ -31,6 +31,7 @@ function createProps(
   updateAttributes?: NodeViewProps["updateAttributes"],
 ) {
   const node = { attrs: { entityId: entity.id, model, label } };
+  // Unjustified type cast. FIXME
   return {
     node,
     updateAttributes: updateAttributes ?? jest.fn(),
@@ -49,7 +50,7 @@ function setup({
   updateAttributes?: NodeViewProps["updateAttributes"];
 }) {
   const props = createProps(model, entity, label, updateAttributes);
-  renderWithProviders(<SmartLinkComponent {...props} />);
+  renderWithProviders(<SmartLinkComponent {...props} />, { withRouter: true });
 }
 
 describe("SmartLink", () => {
@@ -89,6 +90,31 @@ describe("SmartLink", () => {
   });
 
   describe("for Card", () => {
+    it("should link to the card with its current name instead of the cached label", async () => {
+      const card = createMockCard({ name: "Current Card Name" });
+      setupCardEndpoints(card);
+      setup({ model: "card", entity: card, label: "cached name" });
+
+      expect(
+        await screen.findByRole("link", { name: /Current Card Name/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: /cached name/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should render 'No access' when the user cannot see the card", async () => {
+      const card = createMockCard({ name: "Secret Card" });
+      setupUnauthorizedCardEndpoints(card);
+      setup({ model: "card", entity: card, label: "cached name" });
+
+      expect(await screen.findByText("No access")).toBeInTheDocument();
+      expect(
+        screen.getByRole("img", { name: /eye_crossed_out/ }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    });
+
     it("should render the name of a card", async () => {
       const card = createMockCard({
         name: "My Card",
@@ -203,16 +229,13 @@ describe("SmartLink", () => {
 
       setupDashboardEndpoints(dashboard);
 
-      const historyWithBasename = useRouterHistory(createMemoryHistory)({
-        basename: "/subpath",
-        entries: ["/"],
-      });
-
       const props = createProps("dashboard", dashboard);
       renderWithProviders(
-        <Router history={historyWithBasename}>
-          <Route path="*" component={() => <SmartLinkComponent {...props} />} />
-        </Router>,
+        <RouterProviderMemory
+          initialRoute="/subpath"
+          basename="/subpath"
+          routes={[{ path: "*", element: <SmartLinkComponent {...props} /> }]}
+        />,
       );
 
       await waitFor(() => {
@@ -234,15 +257,12 @@ describe("SmartLink", () => {
 
       setupDashboardEndpoints(dashboard);
 
-      const historyNoBasename = useRouterHistory(createMemoryHistory)({
-        entries: ["/"],
-      });
-
       const props = createProps("dashboard", dashboard);
       renderWithProviders(
-        <Router history={historyNoBasename}>
-          <Route path="*" component={() => <SmartLinkComponent {...props} />} />
-        </Router>,
+        <RouterProviderMemory
+          initialRoute="/"
+          routes={[{ path: "*", element: <SmartLinkComponent {...props} /> }]}
+        />,
       );
 
       await waitFor(() => {

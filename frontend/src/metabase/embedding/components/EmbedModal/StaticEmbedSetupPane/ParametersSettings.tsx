@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
-import { useMemo } from "react";
+import { type JSX, useMemo } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -49,6 +50,7 @@ export const ParametersSettings = ({
 }: ParametersSettingsProps): JSX.Element => {
   const valuePopulatedEditableParameters = useMemo(
     () =>
+      // Unjustified type cast. FIXME
       getValuePopulatedParameters({
         parameters: resourceParameters,
         values: parameterValues,
@@ -61,6 +63,7 @@ export const ParametersSettings = ({
   );
   const valuePopulatedLockedParameters = useMemo(
     () =>
+      // Unjustified type cast. FIXME
       getValuePopulatedParameters({
         parameters: lockedParameters,
         values: parameterValues,
@@ -94,7 +97,7 @@ export const ParametersSettings = ({
                 <h3>
                   {parameter.name}
                   {parameter.required && (
-                    <Text color="error" component="span">
+                    <Text color="feedback-negative" component="span">
                       &nbsp;*
                     </Text>
                   )}
@@ -166,6 +169,7 @@ export const ParametersSettings = ({
                     onChangeParameterValue({
                       id: parameter.id,
                       slug: parameter.slug,
+                      // Unjustified type cast. FIXME
                       value: parameter.default as any,
                     });
                   }}
@@ -208,6 +212,7 @@ export const ParametersSettings = ({
                     onChangeParameterValue({
                       id: parameter.id,
                       slug: parameter.slug,
+                      // Unjustified type cast. FIXME
                       value: parameter.default as any,
                     });
                   }}

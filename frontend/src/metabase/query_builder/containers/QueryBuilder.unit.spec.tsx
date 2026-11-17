@@ -7,12 +7,14 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import {
+  renderHook,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { usePageTitle } from "metabase/hooks/use-page-title";
+import { registerVisualizations } from "metabase/visualizations/register";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
 import {
@@ -21,6 +23,7 @@ import {
   TEST_MODEL_DATASET,
   TEST_NATIVE_CARD,
   TEST_NATIVE_CARD_DATASET,
+  TEST_STRUCTURED_CARD,
   TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD,
   TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
   setup,
@@ -119,6 +122,16 @@ describe("QueryBuilder", () => {
       );
     });
 
+    it("uses the question name as the document title (metabase#42165)", async () => {
+      // AppComponent sets the application name as the base of the title stack
+      renderHook(() => usePageTitle("Metabase", { titleIndex: 0 }));
+      await setup({ card: TEST_STRUCTURED_CARD });
+
+      await waitFor(() =>
+        expect(document.title).toBe(`${TEST_STRUCTURED_CARD.name} · Metabase`),
+      );
+    });
+
     describe("query execution time", () => {
       it("renders query execution time for mbql questions", async () => {
         await setup({
@@ -149,6 +162,82 @@ describe("QueryBuilder", () => {
         expect(executionTime).toBeInTheDocument();
         expect(executionTime).toHaveTextContent("123ms");
       });
+    });
+
+    it("renders the database error of a failed native query", async () => {
+      const message = 'Table "NOT_A_TABLE" not found';
+      await setup({
+        card: TEST_NATIVE_CARD,
+        dataset: createMockDataset({ status: "failed", error: message }),
+      });
+
+      const visualization = await screen.findByTestId(
+        "query-visualization-root",
+      );
+      expect(
+        await within(visualization).findByText(
+          "An error occurred in your query",
+        ),
+      ).toBeInTheDocument();
+      expect(within(visualization).getByText(message)).toBeInTheDocument();
+    });
+  });
+
+  describe("archived question", () => {
+    const getHeaderActionPanel = () =>
+      screen.getByTestId("qb-header-action-panel");
+
+    it("shows the editing actions of a question that is not archived", async () => {
+      await setup({ card: { ...TEST_STRUCTURED_CARD, archived: false } });
+
+      expect(screen.queryByTestId("archive-banner")).not.toBeInTheDocument();
+      const actionPanel = getHeaderActionPanel();
+      expect(within(actionPanel).getByText("Filter")).toBeInTheDocument();
+      expect(within(actionPanel).getByText("Summarize")).toBeInTheDocument();
+      expect(
+        within(actionPanel).getByTestId("notebook-button"),
+      ).toBeInTheDocument();
+      expect(
+        within(actionPanel).getByLabelText("bookmark icon"),
+      ).toBeInTheDocument();
+      expect(
+        within(actionPanel).getByLabelText("ellipsis icon"),
+      ).toBeInTheDocument();
+      expect(
+        within(actionPanel).getByTestId("sharing-menu-button"),
+      ).toBeInTheDocument();
+      expect(
+        within(screen.getByTestId("view-footer")).getByText("Visualization"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the archive banner and hides the editing actions of an archived question", async () => {
+      await setup({ card: { ...TEST_STRUCTURED_CARD, archived: true } });
+
+      expect(screen.getByTestId("archive-banner")).toBeInTheDocument();
+      expect(
+        screen.getByText("This question is in the trash."),
+      ).toBeInTheDocument();
+      const actionPanel = getHeaderActionPanel();
+      expect(within(actionPanel).queryByText("Filter")).not.toBeInTheDocument();
+      expect(
+        within(actionPanel).queryByText("Summarize"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(actionPanel).queryByTestId("notebook-button"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(actionPanel).queryByLabelText("bookmark icon"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(actionPanel).queryByLabelText("ellipsis icon"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(actionPanel).queryByTestId("sharing-menu-button"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(screen.getByTestId("view-footer")).queryByText("Visualization"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -223,6 +312,7 @@ describe("QueryBuilder", () => {
       const calls = fetchMock.callHistory.calls("path:/api/dataset/csv");
       const lastCall = calls[calls.length - 1];
       const body = await Promise.resolve(lastCall.options?.body);
+      // Unjustified type cast. FIXME
       const urlSearchParams = new URLSearchParams(body as string);
       expect(lastCall.url).toEqual(expect.stringContaining("/api/dataset/csv"));
       const query =

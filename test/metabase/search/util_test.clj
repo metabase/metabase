@@ -19,7 +19,17 @@
   (is (impossible? [:and [:= 1 :this.id] [:!= "card" "card"]]))
   (is (not (impossible? [:and [:= 1 :this.id] [:!= "card" "dashboard"]])))
   (is (not (impossible? [:or [:= 1 :this.id] [:!= "card" "dashboard"]])))
-  (is (impossible? [:or [:= "oh" "no"] [:= "card" "dashboard"]])))
+  (is (impossible? [:or [:= "oh" "no"] [:= "card" "dashboard"]]))
+  (testing "booleans fold like strings, e.g. the most_recent flag of a superseded revision"
+    (is (impossible? [:and [:= "card" "card"] [:= 1 :this.id] [:= false true]]))
+    (is (not (impossible? [:and [:= "card" "card"] [:= 1 :this.id] [:= true true]]))))
+  (testing "0 and 1 compare as booleans, as a MySQL app database can represent them"
+    (is (impossible? [:= 0 true]))
+    (is (not (impossible? [:= 1 true]))))
+  (testing "other numbers never fold, since Clojure equality can disagree with SQL about them"
+    (is (not (impossible? [:= 1 2])))
+    (is (not (impossible? [:= 1M 1])))
+    (is (not (impossible? [:!= 1 1])))))
 
 ;;; ============================================================================
 ;;; Postgres-specific utility tests
@@ -71,7 +81,7 @@
 
 (deftest available-tsv-languages-test
   (when (= :postgres (mdb/db-type))
-    (let [available @#'search.util/available-tsv-languages]
+    (let [available (#'search.util/available-tsv-languages)]
       (is (= :english (:en available)))
       (is (= :german (:de available)))
       (is (nil? (:ko available))))))

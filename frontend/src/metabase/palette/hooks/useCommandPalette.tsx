@@ -1,4 +1,4 @@
-import type { Query } from "history";
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { Priority, VisualState, useKBar, useRegisterActions } from "kbar";
 import { type PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { useDebounce } from "react-use";
@@ -8,16 +8,22 @@ import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { getCollection } from "metabase/common/collections/utils";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import { useSetting } from "metabase/common/hooks";
 import { trackSearchClick } from "metabase/common/search/analytics";
+import {
+  canAccessSettings,
+  getUserIsAdmin,
+  isSettingsManagerPath,
+} from "metabase/current-user";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useSelector } from "metabase/redux";
-import { getDocsUrl, getSettings } from "metabase/selectors/settings";
-import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
+import { queryToSearch } from "metabase/router";
+import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { getSettings, useSetting } from "metabase/settings";
 import { Icon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { modelToUrl } from "metabase/urls";
+import type { SearchQuery } from "metabase/utils/browser";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { getName } from "metabase/utils/name";
 import {
@@ -35,7 +41,7 @@ export const useCommandPalette = ({
   locationQuery,
 }: {
   disabled: boolean;
-  locationQuery: Query;
+  locationQuery: SearchQuery;
 }) => {
   const getIcon = useGetIcon();
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
@@ -144,10 +150,10 @@ export const useCommandPalette = ({
 
     const searchLocation = {
       pathname: "search",
-      query: {
+      search: queryToSearch({
         ...locationQuery,
         q: debouncedSearchText,
-      },
+      }),
     };
     if (!isSearchTypeaheadEnabled) {
       return [
@@ -282,12 +288,12 @@ export const useCommandPalette = ({
     }
 
     return Object.entries(getAdminSettingsSections(settingValues))
-      .filter(([_slug, section]) => {
+      .filter(([slug, section]) => {
         if (section.hidden) {
           return false;
         }
 
-        if (section.adminOnly && !isAdmin) {
+        if (!isAdmin && !isSettingsManagerPath(slug)) {
           return false;
         }
 
@@ -360,6 +366,9 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
         <SubtitleText>{wrappedSearchResult.dashboard.name}</SubtitleText>
       </>
     );
+  } else if (wrappedSearchResult.model === "data-app") {
+    // A data app is in no collection, which getCollection would name as the root one.
+    return <SubtitleText>{t`Data app`}</SubtitleText>;
   } else {
     return (
       <SubtitleText>{getCollection(wrappedSearchResult)?.name}</SubtitleText>

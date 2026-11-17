@@ -16,7 +16,6 @@
         "graph.dimensions": ["CREATED_AT", "CATEGORY"],
         "graph.metrics": ["count"]
       },
-      "collection_preview": true,
       "entity_id": "8FWnMjUv0QIq-9hBWoKZk",
       "display": "bar",
       "parameter_mappings": [],

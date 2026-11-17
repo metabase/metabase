@@ -1,18 +1,17 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
+import { isEqual } from "underscore";
 
 import {
   setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
-  setupDashboardQuestionCandidatesEndpoint,
   setupDatabasesEndpoints,
   setupNullGetUserKeyValueEndpoints,
-  setupSearchEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import {
   act,
   renderWithProviders,
@@ -20,15 +19,16 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { collectionApi } from "metabase/api";
+import { Route } from "metabase/router";
 import { FileUploadStatus } from "metabase/status/components/FileUploadStatus/FileUploadStatus";
+import type { Collection, CollectionId } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
+  createMockLastEditInfo,
+  createMockTable,
 } from "metabase-types/api/mocks";
 
 import { CollectionContent } from "./CollectionContent";
@@ -66,13 +66,52 @@ const uploadedModel2 = createMockCollectionItem({
   based_on_upload: 124,
 });
 
-async function setupCollectionContent(overrides = {}) {
+const multipleModelsCollection = createMockCollection({
+  id: 4,
+  name: "Uploads Collection",
+});
+
+// Listed in an order where the default (most recently edited) model is neither
+// the first nor the last item, and the model picked below is neither the default
+// nor the first item.
+const multipleUploadedModels = [
+  createMockCollectionItem({
+    id: 11,
+    name: "Dog Breeds",
+    model: "dataset",
+    based_on_upload: 201,
+    "last-edit-info": createMockLastEditInfo({
+      timestamp: "2024-01-01T00:00:00Z",
+    }),
+  }),
+  createMockCollectionItem({
+    id: 12,
+    name: "Star Wars Characters",
+    model: "dataset",
+    based_on_upload: 202,
+    "last-edit-info": createMockLastEditInfo({
+      timestamp: "2024-03-01T00:00:00Z",
+    }),
+  }),
+  createMockCollectionItem({
+    id: 13,
+    name: "Cat Breeds",
+    model: "dataset",
+    based_on_upload: 203,
+    "last-edit-info": createMockLastEditInfo({
+      timestamp: "2024-02-01T00:00:00Z",
+    }),
+  }),
+];
+
+async function setupCollectionContent({
+  canUpload = true,
+  ...overrides
+}: { canUpload?: boolean; collectionId?: CollectionId } = {}) {
   setupUserMetabotPermissionsEndpoint();
-  setupDatabasesEndpoints([createMockDatabase({ can_upload: true })]);
-  setupSearchEndpoints([]);
+  setupDatabasesEndpoints([createMockDatabase({ can_upload: canUpload })]);
   setupBookmarksEndpoints([]);
   setupNullGetUserKeyValueEndpoints();
-  setupDashboardQuestionCandidatesEndpoint([]);
 
   const settings = createMockSettingsState({
     "uploads-settings": {
@@ -80,22 +119,21 @@ async function setupCollectionContent(overrides = {}) {
       schema_name: null,
       table_prefix: null,
     },
+    // The new-item menu loads metabot permissions in the background, and under
+    // React 19 that query resolves after the fast tests finish, tripping the
+    // act() warning guard. These tests do not exercise metabot, so keep it off.
+    "metabot-enabled?": false,
   });
 
-  renderWithProviders(
+  const view = renderWithProviders(
     <Route
       path="/"
-      component={() => {
-        return (
-          <>
-            <CollectionContent
-              collectionId={firstCollectionId}
-              {...overrides}
-            />
-            <FileUploadStatus />
-          </>
-        );
-      }}
+      element={
+        <>
+          <CollectionContent collectionId={firstCollectionId} {...overrides} />
+          <FileUploadStatus />
+        </>
+      }
     />,
     {
       withRouter: true,
@@ -107,14 +145,29 @@ async function setupCollectionContent(overrides = {}) {
   );
 
   // wait for loading to complete
-  await screen.findByTestId("upload-input");
+  if (canUpload) {
+    await screen.findByTestId("upload-input");
+  } else {
+    await screen.findByTestId("collection-menu");
+    await waitFor(() =>
+      expect(fetchMock.callHistory.called("path:/api/database")).toBe(true),
+    );
+  }
+
+  return view;
 }
 
 describe("CollectionContent file uploads", () => {
+  let collections: Collection[];
+
   beforeEach(() => {
-    setupCollectionByIdEndpoint({
-      collections: [firstCollection, secondCollection, thirdCollection],
-    });
+    collections = [
+      firstCollection,
+      secondCollection,
+      thirdCollection,
+      multipleModelsCollection,
+    ];
+    setupCollectionByIdEndpoint({ collections });
     setupCollectionsEndpoints({
       collections: [firstCollection, secondCollection, thirdCollection],
     });
@@ -130,6 +183,10 @@ describe("CollectionContent file uploads", () => {
       collection: thirdCollection,
       collectionItems: [uploadedModel, uploadedModel2],
     });
+    setupCollectionItemsEndpoint({
+      collection: multipleModelsCollection,
+      collectionItems: multipleUploadedModels,
+    });
     fetchMock.get(
       "path:/api/table/123",
       createMockCollection({
@@ -141,6 +198,18 @@ describe("CollectionContent file uploads", () => {
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  it("should show the upload button when the upload database allows uploads", async () => {
+    await setupCollectionContent();
+
+    expect(screen.getByLabelText("Upload data")).toBeInTheDocument();
+  });
+
+  it("should not show the upload button when the upload database does not allow uploads", async () => {
+    await setupCollectionContent({ canUpload: false });
+
+    expect(screen.queryByLabelText("Upload data")).not.toBeInTheDocument();
   });
 
   it("Should show a start exploring link on completion", async () => {
@@ -298,6 +367,58 @@ describe("CollectionContent file uploads", () => {
     await screen.findByText("Data added to Fancy Table");
   });
 
+  it("should keep the model picked to append to when there are multiple (metabase#53824)", async () => {
+    fetchMock.get(
+      "path:/api/table/203",
+      createMockTable({ id: 203, name: "cat_breeds_20240201" }),
+    );
+    fetchMock.post("path:/api/table/203/append-csv", "13");
+
+    await setupCollectionContent({ collectionId: multipleModelsCollection.id });
+
+    await userEvent.upload(
+      screen.getByTestId("upload-input"),
+      new File(["name,legs\nTom,4\nGarfield,4"], "more_breeds.csv", {
+        type: "text/csv",
+      }),
+    );
+
+    await userEvent.click(
+      await screen.findByRole("radio", { name: /Append to a model/ }),
+    );
+
+    const modelSelect = await screen.findByRole("textbox", {
+      name: "Select a model",
+    });
+    await waitFor(() =>
+      expect(modelSelect).toHaveValue("Star Wars Characters"),
+    );
+
+    await userEvent.click(modelSelect);
+    await userEvent.click(
+      await within(await screen.findByRole("listbox")).findByText("Cat Breeds"),
+    );
+
+    expect(screen.getByRole("textbox", { name: "Select a model" })).toHaveValue(
+      "Cat Breeds",
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Append to model" }),
+    );
+
+    expect(
+      await screen.findByText("Data added to cat_breeds_20240201"),
+    ).toBeInTheDocument();
+
+    const appendCalls = fetchMock.callHistory.calls(/\/append-csv$/, {
+      method: "POST",
+    });
+    expect(appendCalls.map(({ url }) => new URL(url).pathname)).toEqual([
+      "/api/table/203/append-csv",
+    ]);
+  });
+
   it("Should allow replacing data in a model", async () => {
     jest.useFakeTimers({ advanceTimers: true });
     fetchMock.post("path:/api/table/123/replace-csv", "3", { delay: 1000 });
@@ -386,6 +507,69 @@ describe("CollectionContent file uploads", () => {
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
     expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
+  });
+
+  it("should not reopen the closed upload error details after the collection is trashed (metabase#55382)", async () => {
+    fetchMock.post("path:/api/upload/csv", {
+      status: 422,
+      body: { message: "The CSV file contains duplicate column names." },
+    });
+    fetchMock.put(
+      `path:/api/collection/${firstCollectionId}`,
+      ({ options }) => {
+        const body: unknown = JSON.parse(String(options.body));
+        if (!isEqual(body, { archived: true })) {
+          return { status: 400 };
+        }
+        collections[0] = { ...firstCollection, archived: true };
+        return collections[0];
+      },
+    );
+
+    const { store } = await setupCollectionContent();
+
+    await userEvent.upload(
+      screen.getByTestId("upload-input"),
+      new File(["a,a\n1,2\n3,4"], "invalid.csv", { type: "text/csv" }),
+    );
+
+    expect(
+      await screen.findByText("Error uploading your file"),
+    ).toBeInTheDocument();
+    const errorDetails = await screen.findByRole("dialog", {
+      name: "Upload error details",
+    });
+    expect(
+      within(errorDetails).getByText(
+        "The CSV file contains duplicate column names.",
+      ),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      within(errorDetails).getByRole("button", { name: "Close" }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Upload error details" }),
+      ).not.toBeInTheDocument(),
+    );
+
+    await act(async () => {
+      await store.dispatch(
+        collectionApi.endpoints.updateCollection.initiate({
+          id: firstCollectionId,
+          archived: true,
+        }),
+      );
+    });
+
+    expect(
+      await screen.findByText("This collection is in the trash."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Error uploading your file")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: "Upload error details" }),
+    ).not.toBeInTheDocument();
   });
 
   describe("loading state", () => {

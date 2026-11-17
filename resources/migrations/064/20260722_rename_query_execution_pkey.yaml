@@ -1,0 +1,32 @@
+# The query_execution_partitioned migration failed on stats because the primary key
+# constraint had an inconsistent name; it originally came from h2 so it didn't match
+# the constraint name we saw in development. This migration should do nothing unless
+# the DB is in the same situation as stats where it has a bad constraint name.
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-22T08:55:15
+      author: technomancy
+      comment: Ensure query execution primary key has a consistent name
+      dbms: postgresql
+      changes:
+        - sql:
+            splitStatements: false
+            sql: >-
+              DO $$
+              DECLARE
+              existing_pkey varchar;
+              BEGIN
+              existing_pkey = (SELECT conname
+                                FROM pg_catalog.pg_constraint con
+                               INNER JOIN pg_catalog.pg_class rel ON rel.oid = con.conrelid
+                               INNER JOIN pg_catalog.pg_namespace nsp ON nsp.oid = connamespace
+                               WHERE rel.relname = 'query_execution' AND con.contype = 'p');
+              IF existing_pkey <> 'query_execution_pkey' THEN
+                EXECUTE format('ALTER TABLE query_execution RENAME CONSTRAINT %s TO query_execution_pkey',
+                               existing_pkey);
+              END IF;
+              END
+              $$ language plpgsql;
+      rollback:
+        - sql:
+            sql: SELECT true;

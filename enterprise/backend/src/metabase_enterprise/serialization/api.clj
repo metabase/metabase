@@ -3,9 +3,6 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase-enterprise.serialization.export :as export]
-   [metabase-enterprise.serialization.metadata-file-import :as metadata-file-import]
-   [metabase-enterprise.serialization.schema :as schema]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
@@ -18,22 +15,23 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.appearance.core :as appearance]
    [metabase.logger.core :as logger]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.server.streaming-response :as sr]
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.random :as u.random]
-   [ring.core.protocols :as ring.protocols]
-   [ring.util.response :as response])
+   [ring.core.protocols :as ring.protocols])
   (:import
-   (java.io ByteArrayOutputStream File InputStream)))
+   (java.io ByteArrayOutputStream File)))
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *additive-logging*
   "If custom loggers should pass logs to parent loggers (to system Metabase logs), used to clean up test output."
   true)
@@ -77,7 +75,7 @@
   These are not loaded namespaces; each prefix captures every logger nested under it (e.g.
   `metabase-enterprise.serialization` captures `metabase-enterprise.serialization.v2.extract`)."
   ['metabase-enterprise.serialization
-   'metabase.models.serialization])
+   'metabase.serialization])
 
 (defn- log-export-error!
   "Log a serialization export error, honoring `full-stacktrace` (full trace vs stripped one-liner)."
@@ -114,7 +112,7 @@
         report (with-open [_logger (logger/for-ns log-output serialization-logger-prefixes
                                                   {:additive *additive-logging*})]
                  (try
-                   (serdes/with-cache
+                   (serialization/with-export-transaction
                      (v2.storage/store! entities writer))
                    (catch Exception e
                      (reset! error e)
@@ -164,11 +162,10 @@
                                           :dst    (.getPath dst)
                                           :count  cnt
                                           :files  (.listFiles dst)})))
-                       (log/infof "In total %s entries unpacked, detected source dir: %s" cnt (.getName path))
-                       (serdes/with-cache
-                         (-> (v2.ingest/ingest-yaml (.getPath path))
-                             (v2.load/load-metabase! {:continue-on-error continue-on-error
-                                                      :reindex?          reindex?}))))
+                       (log/infof "In total %s entries unpacked, source dir detected" cnt)
+                       (v2.load/load-metabase! (v2.ingest/ingest-yaml (.getPath path))
+                                               {:continue-on-error continue-on-error
+                                                :reindex?          reindex?}))
                      (catch Exception e
                        (reset! err e)
                        (if full-stacktrace
@@ -196,7 +193,7 @@
                            :data_model      (not (:no-data-model opts))
                            :settings        (not (:no-settings opts))
                            :field_values    (:include-field-values opts)
-                           :secrets         (:include-database-secrets opts)
+                           :secrets         false
                            :success         (boolean success)
                            :error_message   error-message}))
 
@@ -218,17 +215,20 @@
   [_route-params
    {:keys                     [collection dirname]
     include-field-values?     :field_values
-    include-database-secrets? :database_secrets
     all-collections?          :all_collections
     data-model?               :data_model
     settings?                 :settings
     continue-on-error?        :continue_on_error
     full-stacktrace?          :full_stacktrace
     :as                       _query-params}
-   :- [:map
+   :- [:map {:closed true}
        [:dirname           {:optional true} [:maybe
-                                             {:description "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"}
-                                             string?]]
+                                             {:description (deferred-tru "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -")}
+                                             (mu/with-api-error-message
+                                              ;; `%`: the default name is a slug, which percent-encodes non-ASCII
+                                              [:re #"^[A-Za-z0-9_%][A-Za-z0-9._%-]{0,254}$"]
+                                              (deferred-tru "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -")
+                                              (deferred-tru "1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -"))]]
        [:collection        {:optional true} [:maybe
                                              {:description "collections' db ids/entity-ids to serialize"}
                                              (ms/QueryVectorOf
@@ -242,32 +242,33 @@
        [:settings          {:default true}  (mu/with ms/BooleanValue {:description "Serialize Metabase settings"})]
        [:data_model        {:default true}  (mu/with ms/BooleanValue {:description "Serialize Metabase data model"})]
        [:field_values      {:default false} (mu/with ms/BooleanValue {:description "Serialize cached field values"})]
-       [:database_secrets  {:default false} (mu/with ms/BooleanValue {:description "Serialize details how to connect to each db"})]
        [:continue_on_error {:default false} (mu/with ms/BooleanValue {:description "Do not break execution on errors"})]
        [:full_stacktrace   {:default false} (mu/with ms/BooleanValue {:description "Show full stacktraces in the logs"})]]]
   (api/check-superuser)
-  (let [opts               {:targets                  (mapv #(vector "Collection" %)
+  (let [opts               {:targets                  (mapv #(vector :model/Collection
+                                                                     (cond-> % (string? %) (str/replace #"^eid:" "")))
                                                             collection)
                             :no-collections           (and (empty? collection)
                                                            (not all-collections?))
                             :no-data-model            (not data-model?)
                             :no-settings              (not settings?)
                             :include-field-values     include-field-values?
-                            :include-database-secrets include-database-secrets?
                             :continue-on-error        continue-on-error?
                             :full-stacktrace          full-stacktrace?}
         export-dirname (or dirname
                            (format "%s-%s"
-                                   (u/slugify (appearance/site-name))
+                                   ;; + 17 for the timestamp = 255, so the default passes the `dirname` schema
+                                   (u/slugify (appearance/site-name) {:max-length 238})
                                    (u.date/format "YYYY-MM-dd_HH-mm" (t/local-date-time))))
         ;; Eager setup (target resolution, escape analysis) must run before the streaming response opens
         ;; so a failure can still set a non-200 status. extract-entities! captures its logs into log-output
         ;; (so escape-analysis warnings land in export.log) and honors full_stacktrace for genuine failures.
         log-output (ByteArrayOutputStream.)
         entities   (extract-entities! opts log-output full-stacktrace?)]
-    (sr/streaming-response {:content-type "application/gzip" :status 200} [output _cancel-chan]
-      (sr/set-header! "Content-Disposition"
-                      (format "attachment; filename=\"%s.tar.gz\"" export-dirname))
+    (sr/streaming-response {:content-type "application/gzip"
+                            :status       200
+                            :headers      {"Content-Disposition" (format "attachment; filename=\"%s.tar.gz\""
+                                                                         export-dirname)}} [output _cancel-chan]
       (let [start  (System/nanoTime)
             result (serialize-to-stream! output export-dirname entities log-output opts)]
         (track-export-event! collection opts start result)))))
@@ -293,18 +294,15 @@
     full-stacktrace?   :full_stacktrace
     reindex-search?    :reindex
     :as                _query-params}
-   :- [:map
+   :- [:map {:closed true}
        [:continue_on_error {:default false} (mu/with ms/BooleanValue {:description "Do not break execution on errors"})]
        [:full_stacktrace   {:default false} (mu/with ms/BooleanValue {:description "Show full stacktraces in the logs"})]
        ;; TODO this parameter is a kludge to fix https://linear.app/metabase/issue/GDGT-573
        ;;      ideally we'd fix the underlying issue (by delaying realtime indexing updates until the tx closes)
        ;;      for now, we let users opt out, in case they're indexing a lot, so they can only reindex on the last step
        [:reindex           {:default true}  (mu/with ms/BooleanValue {:description "Rebuild the search index afterwards"})]]
-   _body
-   {{:strs [file]} :multipart-params, :as _request} :- [:map
-                                                        [:multipart-params
-                                                         [:map
-                                                          ["file" (mu/with ms/File {:description ".tgz with serialization data"})]]]]]
+   {:keys [file]} :- [:map {:closed true}
+                      [:file (mu/with ms/File {:description ".tgz with serialization data"})]]]
   (api/check-superuser)
   (try
     (let [start              (System/nanoTime)
@@ -317,7 +315,7 @@
                                              :continue-on-error continue-on-error?
                                              :full-stacktrace   full-stacktrace?
                                              :reindex?          reindex-search?})
-          imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
+          imported           (into (sorted-set) (map (comp name first)) (:seen report))]
       (analytics/track-event! :snowplow/serialization
                               {:event         :serialization
                                :direction     "import"
@@ -325,7 +323,7 @@
                                :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
                                :models        (str/join "," imported)
                                :count         (if (contains? imported "Setting")
-                                                (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
+                                                (inc (count (remove #(= :model/Setting (first %)) (:seen report))))
                                                 (count (:seen report)))
                                :error_count   (count (:errors report))
                                :success       (not error-message)
@@ -339,107 +337,6 @@
          :body    (on-response! log-file callback)}))
     (finally
       (io/delete-file (:tempfile file)))))
-
-;;; ----------------------------------- POST /api/ee/serialization/metadata/export -----------------------------------
-
-(api.macros/defendpoint :post "/metadata/export"
-  :- (sr/streaming-response-schema ::schema/export-metadata-response)
-  "Get warehouse metadata (databases, tables, and fields) for all databases visible to the
-  current user. References between rows are emitted as raw numeric ids (`db_id`,
-  `table_id`, `parent_id`, `fk_target_field_id`).
-
-  Sections must be opted into with the `with-databases`, `with-tables`, and `with-fields`
-  query parameters — they all default to `false`. The response is streamed for efficiency
-  with large schemas.
-
-  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or
-  `Query builder and native`) permissions on each database and table."
-  [_route-params
-   query-params :- [:map
-                    [:with-databases {:default false} [:maybe :boolean]]
-                    [:with-tables    {:default false} [:maybe :boolean]]
-                    [:with-fields    {:default false} [:maybe :boolean]]]]
-  (let [opts (assoc query-params :user-info {:user-id       api/*current-user-id*
-                                             :is-superuser? api/*is-superuser?*})]
-    (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]
-      (export/export-metadata! os opts))))
-
-;;; ----------------------------------- POST /api/ee/serialization/metadata/import -----------------------------------
-
-(defn- spool-to-temp-file!
-  "Stream `is` to a freshly-created temp file in 64 KB chunks. Returns the
-  `File`. If streaming fails the temp file is removed before the throw
-  propagates."
-  ^File [^InputStream is]
-  (let [tmp (File/createTempFile "metadata-import-" ".json")]
-    (try
-      (with-open [os (io/output-stream tmp)]
-        (io/copy is os :buffer-size (* 64 1024)))
-      tmp
-      (catch Throwable t
-        (.delete tmp)
-        (throw t)))))
-
-(api.macros/defendpoint :post "/metadata/import"
-  :- [:map
-      [:status [:= 202]]
-      [:body [:map {:closed true}
-              [:queued :boolean]
-              [:import-id :string]]]]
-  "Import warehouse metadata previously emitted by `POST /metadata/export`. The
-  request body is the JSON document `{databases, tables, fields}`; sections are
-  parsed incrementally so memory stays bounded regardless of payload size.
-
-  To bypass the JSON-parsing request middleware, send with `Content-Type:
-  application/octet-stream`. Restricted to superusers.
-
-  Returns `202` immediately with an `:import-id`; the import runs
-  asynchronously. Poll `GET /metadata/import/:id` for its outcome."
-  [_route-params
-   _query-params
-   _body
-   {:keys [body], :as _request}]
-  (api/check-superuser)
-  (cond
-    (nil? body)
-    (throw (ex-info "Empty request body" {:status-code 400}))
-
-    (not (instance? InputStream body))
-    (throw (ex-info (str "Expected a raw stream body. Send the request with "
-                         "Content-Type: application/octet-stream so the JSON "
-                         "middleware does not pre-parse the payload.")
-                    {:status-code 415}))
-
-    :else
-    (let [tmp (spool-to-temp-file! body)
-          id  (metadata-file-import/enqueue-import! tmp {:delete-after? true})]
-      (-> (response/response {:queued true :import-id id})
-          (assoc :status 202)))))
-
-;;; ------------------------------- GET /api/ee/serialization/metadata/import/:id -------------------------------
-
-(defn- present-import-status
-  "Project an internal registry record onto the public wire shape. Deliberately
-  omits the server-side `:file` path; stringifies the status keyword and the
-  timestamps."
-  [record]
-  {:id          (:id record)
-   :status      (name (:status record))
-   :enqueued-at (str (:enqueued-at record))
-   :started-at  (some-> (:started-at record) str)
-   :finished-at (some-> (:finished-at record) str)
-   :wall-ms     (:wall-ms record)
-   :error       (:error record)})
-
-(api.macros/defendpoint :get "/metadata/import/:id"
-  :- ::schema/import-status-response
-  "Status of a metadata import previously started by `POST /metadata/import`.
-  Status is retained in-memory and is not durable across server restarts.
-  Restricted to superusers."
-  [{:keys [id]} :- [:map [:id ms/UUIDString]]]
-  (api/check-superuser)
-  (or (some-> (metadata-file-import/import-status id) present-import-status)
-      (throw (ex-info "Unknown or expired import id" {:status-code 404}))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/serialization` routes."

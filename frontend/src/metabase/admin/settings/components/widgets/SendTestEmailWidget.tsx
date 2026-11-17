@@ -1,9 +1,11 @@
 import { t } from "ttag";
 
-import { useSendTestEmailMutation } from "metabase/api/email";
 import { getErrorMessage } from "metabase/api/utils";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Button, Text } from "metabase/ui";
+
+import { useSendTestEmailMutation } from "../../api/email";
 
 export function SendTestEmailWidget() {
   const [sendTestEmail, sendTestEmailResult] = useSendTestEmailMutation();
@@ -20,12 +22,11 @@ export function SendTestEmailWidget() {
       await sendTestEmail().unwrap();
       sendToast({
         message: t`Email sent!`,
-        toastColor: "success",
+        toastColor: "feedback-positive",
       });
     } catch (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "error",
+        variant: "negative",
         message: getTestEmailErrorMessage(error),
       });
     }
@@ -37,7 +38,7 @@ export function SendTestEmailWidget() {
         <Text
           role="alert"
           aria-label={getTestEmailErrorMessage(sendTestEmailResult.error)}
-          color="error"
+          color="feedback-negative"
           mb="1rem"
         >
           {getTestEmailErrorMessage(sendTestEmailResult.error)}

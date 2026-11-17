@@ -1,5 +1,6 @@
 ---
 title: Caching query results
+summary: Store question results and serve them from the cache instead of querying your database again, with duration, schedule, and adaptive invalidation policies.
 redirect_from:
   - /docs/latest/administration-guide/14-caching
   - /docs/latest/enterprise-guide/cache
@@ -38,7 +39,7 @@ These policies determine how long cached results will remain valid.
 
 {% include plans-blockquote.html feature="Duration caching policy" %}
 
-Invalidate and clear the cache after a certain number of hours. When someone runs a query, Metabase will first check whether it has cached the results, and whether those results are still valid. If not, Metabase runs the query against the database and caches the results. These cached results will remain valid for the duration you've set.
+Invalidate and clear the cache after a certain amount of time (seconds, minutes, hours, or days). When someone runs a query, Metabase will first check whether it has cached the results, and whether those results are still valid. If not, Metabase runs the query against the database and caches the results. These cached results will remain valid for the duration you've set.
 
 ### Schedule caching policy
 
@@ -174,8 +175,8 @@ To clear the cache and refresh the results:
 
 If you're self-hosting Metabase, cached question results will be saved to your [application database](../installation-and-operation/configuring-application-database.md).
 
-If you're using Metabase Cloud, cached question results will be saved to Metabase's servers in the United States (as our Cloud service manages your application database for you.)
+If you're using Metabase Cloud, cached question results will be saved to Metabase's servers and remain in the region your instance is hosted in (as our Cloud service manages your application database for you.)
 
 ## Further reading
 
-- [Model persistence](../data-modeling/model-persistence.md)
+- [Model persistence](../data-modeling/models/model-persistence.md)

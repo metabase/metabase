@@ -1,25 +1,14 @@
-import { useCallback } from "react";
-
 import {
-  useCreateBookmarkMutation,
-  useDeleteBookmarkMutation,
   useGetCollectionQuery,
   useListBookmarksQuery,
   useListCollectionsTreeQuery,
+  useListDatabasesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDatabaseListQuery } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/redux";
-import type { UploadFileProps } from "metabase/redux/uploads";
-import { uploadFile as uploadFileAction } from "metabase/redux/uploads";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import type {
-  BookmarkId,
-  BookmarkType,
-  CollectionId,
-} from "metabase-types/api";
+import { getUserIsAdmin } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
+import { getSetting } from "metabase/settings";
+import type { CollectionId } from "metabase-types/api";
 
 import { CollectionContentView } from "./CollectionContentView";
 
@@ -29,7 +18,9 @@ export function CollectionContent({
   collectionId: CollectionId;
 }) {
   const { data: bookmarks, error: bookmarksError } = useListBookmarksQuery();
-  const { data: databases, error: databasesError } = useDatabaseListQuery();
+  const { data: databasesResponse, error: databasesError } =
+    useListDatabasesQuery();
+  const databases = databasesResponse?.data;
 
   const { data: collections, error: collectionsError } =
     useListCollectionsTreeQuery({
@@ -46,31 +37,10 @@ export function CollectionContent({
   );
   const uploadsEnabled = !!uploadDbId;
 
-  const canCreateUploadInDb = useSelector(
-    (state) =>
-      uploadDbId != null &&
-      !!getMetadata(state).database(uploadDbId)?.canUpload(),
-  );
+  const canCreateUploadInDb = !!databases?.find(({ id }) => id === uploadDbId)
+    ?.can_upload;
 
   const isAdmin = useSelector(getUserIsAdmin);
-
-  const dispatch = useDispatch();
-
-  const [createBookmarkMutation] = useCreateBookmarkMutation();
-  const [deleteBookmarkMutation] = useDeleteBookmarkMutation();
-
-  const createBookmark = (id: BookmarkId, type: BookmarkType) =>
-    createBookmarkMutation({ id, type });
-  const deleteBookmark = (id: BookmarkId, type: BookmarkType) =>
-    deleteBookmarkMutation({ id, type });
-
-  const uploadFile = useCallback(
-    ({ file, modelId, collectionId, tableId, uploadMode }: UploadFileProps) =>
-      dispatch(
-        uploadFileAction({ file, modelId, collectionId, tableId, uploadMode }),
-      ),
-    [dispatch],
-  );
 
   const error =
     bookmarksError || databasesError || collectionsError || collectionError;
@@ -89,10 +59,7 @@ export function CollectionContent({
       bookmarks={bookmarks}
       collection={collection}
       collectionId={collectionId}
-      createBookmark={createBookmark}
-      deleteBookmark={deleteBookmark}
       isAdmin={isAdmin}
-      uploadFile={uploadFile}
       uploadsEnabled={uploadsEnabled}
       canCreateUploadInDb={canCreateUploadInDb}
     />

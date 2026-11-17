@@ -1,50 +1,101 @@
-import type { WidgetMount } from "custom-viz";
+import type { BaseWidgetProps, WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 
-import type { CustomVizPluginId } from "metabase-types/api";
+import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
+import type { CustomVizPluginRuntime } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
+
+import { copyPluginValue } from "./copy-plugin-value";
+import { toHostSettings } from "./plugin-view";
+
+// What the plugin's setting widget receives: the SDK base props + whatever setting definition's `getProps` adds.
+export type PluginWidgetProps = BaseWidgetProps<
+  unknown,
+  Record<string, unknown>
+> &
+  Record<string, unknown>;
 
 /**
- * A host-allocated `WidgetMount` tagged with the id of the plugin it renders.
+ * A host-allocated `WidgetMount` tagged with the plugin it renders.
  */
-type WidgetMountWithPlugin = WidgetMount & {
-  pluginId: CustomVizPluginId;
+type WidgetMountWithPlugin = WidgetMount<CustomVizSettingWidgetProps> & {
+  plugin: CustomVizPluginRuntime;
 };
 
 /**
  * Wrap a plugin-supplied function-shaped widget in a host-allocated
- * `WidgetMount` tagged with its plugin id.
+ * `WidgetMount` tagged with its plugin. Props are translated on the way in,
+ * and what the widget writes is copied so the host never holds sandbox objects.
  */
 export function wrapPluginWidget(
-  pluginWidget: WidgetMount,
-  pluginId: CustomVizPluginId,
+  pluginWidget: WidgetMount<PluginWidgetProps>,
+  plugin: CustomVizPluginRuntime,
+  prefix: string,
 ): WidgetMountWithPlugin {
-  const mount: WidgetMount = (container, initialProps) =>
-    pluginWidget(container, initialProps);
+  const mount: WidgetMount<CustomVizSettingWidgetProps> = (
+    container,
+    initialProps,
+  ) => {
+    const handle = pluginWidget(
+      container,
+      toPluginWidgetProps(initialProps, prefix),
+    );
+    return {
+      update: (props) => handle.update(toPluginWidgetProps(props, prefix)),
+      unmount: () => handle.unmount(),
+    };
+  };
 
-  return Object.assign(mount, { pluginId });
+  return Object.assign(mount, { plugin });
+}
+
+function toPluginWidgetProps(
+  {
+    id,
+    value,
+    onChange,
+    onChangeSettings,
+    ...extraProps
+  }: CustomVizSettingWidgetProps,
+  prefix: string,
+): PluginWidgetProps {
+  return {
+    ...extraProps,
+    id,
+    value: structuredClone(value),
+    onChange: (value) => onChange(copyPluginValue(value)),
+    onChangeSettings: (settings) =>
+      onChangeSettings(
+        toHostSettings(
+          copyPluginValue(isObject(settings) ? settings : {}),
+          prefix,
+        ),
+      ),
+  };
 }
 
 export function isWidgetMount(
   value:
     | string
-    | WidgetMount
+    | WidgetMount<CustomVizSettingWidgetProps>
     | ComponentType<{
         id: string;
-      }>,
+      }>
+    | undefined,
 ): value is WidgetMountWithPlugin {
-  return typeof value === "function" && "pluginId" in value;
+  return typeof value === "function" && "plugin" in value;
 }
 
 /**
- * Recover the plugin id tagged onto a host-allocated mount by
+ * Recover the plugin tagged onto a host-allocated mount by
  * `wrapPluginWidget`.
  */
-export function getWidgetMountPluginId(
-  maybeWidgetMount: WidgetMount,
-): CustomVizPluginId | undefined {
+export function getWidgetMountPlugin(
+  maybeWidgetMount: WidgetMount<CustomVizSettingWidgetProps>,
+): CustomVizPluginRuntime | undefined {
   if (!isWidgetMount(maybeWidgetMount)) {
     return undefined;
   }
 
-  return maybeWidgetMount.pluginId;
+  return maybeWidgetMount.plugin;
 }

@@ -15,6 +15,7 @@ export async function loadCard(
   { dispatch }: { dispatch: Dispatch; getState: GetState },
 ) {
   try {
+    // Unjustified type cast. FIXME
     const result = (await dispatch(
       cardApi.endpoints.getCard.initiate({ id: token ?? cardId }),
     )) as { data?: Card; error?: unknown };

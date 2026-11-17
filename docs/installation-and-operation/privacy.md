@@ -1,5 +1,6 @@
 ---
 title: Privacy
+summary: Whether you need a Data Processing Agreement with Metabase for GDPR, depending on how you run Metabase.
 redirect_from:
   - /docs/latest/privacy
 ---
@@ -14,7 +15,7 @@ If you self-host your Metabase instance, we have no access to any of your data, 
 
 ### Metabase Cloud
 
-If you're a [Metabase Cloud](https://www.metabase.com/pricing/) customer, your [Terms of Service](https://www.metabase.com/license/hosting) include a Data Processing Agreement (DPA).
+If you're a [Metabase Cloud](https://www.metabase.com/pricing) customer, your [Terms of Service](https://www.metabase.com/license/hosting) include a Data Processing Agreement (DPA).
 
 ## Further reading
 

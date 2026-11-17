@@ -6,7 +6,7 @@ export function assignUserColors(
   colors = [
     color("core-brand"),
     color("accent2"),
-    color("error"),
+    color("feedback-negative"),
     color("accent1"),
     color("accent4"),
     color("background_page-tertiary"),

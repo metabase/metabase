@@ -114,3 +114,25 @@
     (is (= :none
            (lib/normalize ::lib.schema.parameter/widget-type "broken/=")
            (lib/normalize ::lib.schema.parameter/widget-type "broken")))))
+
+(deftest ^:parallel normalize-invalid-parameter-default-test
+  (testing "A parameter with no value falls back to its `:default`, so a default is normalized like a value"
+    (are [parameter normalized] (= normalized
+                                   (lib/normalize ::lib.schema.parameter/parameter parameter))
+      {:type :category, :default {:k "v"}}   {:type :category, :default nil}
+      {:type :category, :default [{:k "v"}]} {:type :category, :default [nil]}
+      {:type :category, :default "A"}        {:type :category, :default "A"}
+      {:type :category, :default ["A" "B"]}  {:type :category, :default ["A" "B"]})))
+
+(deftest ^:parallel parameter-options-test
+  (testing ":options are spliced into the filter clause the parameter becomes, so a known option is typed"
+    (are [options valid?] (= valid?
+                             (mr/validate ::lib.schema.parameter/parameter
+                                          {:type :string/contains, :value ["A"], :options options}))
+      {:case-sensitive false}  true
+      {:include-current true}  true
+      {}                       true
+      {:case-sensitive "yes"}  false
+      ;; the options map is closed: an option this version does not know is not valid, and request decoding strips
+      ;; it -- see `decode-strips-undeclared-keys-test` in [[metabase.api.macros-test]].
+      {:lib/uuid "not-yours"}  false)))

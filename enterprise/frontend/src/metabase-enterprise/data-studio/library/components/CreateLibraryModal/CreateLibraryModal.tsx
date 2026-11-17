@@ -1,16 +1,15 @@
 import { t } from "ttag";
 
 import { trackDataStudioLibraryCreated } from "metabase/common/data-studio/analytics";
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { CreateLibraryModalProps } from "metabase/plugins";
 import {
-  Box,
   Button,
   Center,
   FixedSizeIcon,
@@ -26,7 +25,7 @@ import { useCreateLibraryMutation } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
 export function CreateLibraryModal({
-  title = t`Create your Library`,
+  title = t`Create your semantic layer`,
   explanatorySentence,
   isOpened,
   onCreate,
@@ -60,7 +59,7 @@ function ModalTitle({ title }: ModalTitleProps) {
         h="2rem"
         c="core-brand"
         bg="background_surface-brand-subtle"
-        bdrs="md"
+        bdrs="sm"
       >
         <FixedSizeIcon name="repository" />
       </Center>
@@ -81,7 +80,7 @@ function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
 
   const handleSubmit = async () => {
     const collection = await createLibrary().unwrap();
-    sendSuccessToast(t`Library created`);
+    sendSuccessToast(t`Semantic layer created`);
     trackDataStudioLibraryCreated(collection.id);
     onCreate?.(collection);
   };
@@ -93,7 +92,7 @@ function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
         <Stack gap="sm">
           {explanatorySentence && <Text>{explanatorySentence}</Text>}
           <Text>
-            {t`The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
+            {t`The semantic layer helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
           </Text>
           <List spacing="sm">
             <ListItem
@@ -106,7 +105,7 @@ function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
             />
             <ListItem
               title={t`Version control`}
-              description={t`Sync your Library to Git`}
+              description={t`Sync your semantic layer to git`}
             />
             <ListItem
               title={t`High trust`}
@@ -114,13 +113,18 @@ function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
             />
           </List>
         </Stack>
-        <Group mt="xl" gap="sm">
-          <Box flex={1}>
-            <FormErrorMessage />
-          </Box>
-          <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
-          <FormSubmitButton label={t`Create my Library`} variant="filled" />
-        </Group>
+        <Modal.Footer>
+          <FormErrorMessage flex={1} />
+          <Button
+            variant="subtle"
+            color="neutral"
+            onClick={onClose}
+          >{t`Cancel`}</Button>
+          <FormSubmitButton
+            label={t`Create my semantic layer`}
+            variant="filled"
+          />
+        </Modal.Footer>
       </Form>
     </FormProvider>
   );

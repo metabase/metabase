@@ -1,0 +1,1 @@
+export { MonitorPageContent } from "./MonitorPageContent";

@@ -7,13 +7,17 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest ^:parallel base-type-inference-test
   (is (= :type/Text
@@ -73,11 +77,11 @@
 
 (deftest ^:parallel json-unfolding-default-test
   (testing "JSON Unfolding database support details behave as they're supposed to"
-    #_{:clj-kondo/ignore [:equals-true]}
     (are [details expected] (= expected
                                (driver.common/json-unfolding-default
                                 {:lib/type :metadata/database
-                                 :details details}))
+                                 :id       1
+                                 :details  details}))
       {}                      true
       {:json-unfolding nil}   true
       {:json-unfolding true}  true
@@ -134,8 +138,8 @@
                                                    :columns columns}
                                                   data-source)]
                 (when-let [inserted-rows (and (not (#{:bigquery-cloud-sdk :snowflake :mongo} driver)) ;table-rows-seq not implemented
-                                              (driver/table-rows-seq driver/*driver* (mt/db) {:name table-name
-                                                                                              :schema schema-name}))]
+                                              (driver/table-rows-seq driver/*driver* (lib.metadata/database (mt/metadata-provider)) {:name table-name
+                                                                                                                                     :schema schema-name}))]
                   (is (= (count data) (count inserted-rows)) "Should insert all test rows including nulls"))))
             (finally
               (driver/drop-table! driver db-id qualified-table-name))))))))
@@ -175,8 +179,8 @@
                                                        :columns columns}
                                                       data-source)]
                     (when-let [inserted-rows (and (not (#{:bigquery-cloud-sdk :snowflake :mongo} driver)) ;table-rows-seq not implemented
-                                                  (driver/table-rows-seq driver/*driver* (mt/db) {:name table-name
-                                                                                                  :schema schema-name}))]
+                                                  (driver/table-rows-seq driver/*driver* (lib.metadata/database (mt/metadata-provider)) {:name table-name
+                                                                                                                                         :schema schema-name}))]
                       (is (= (count data) (count inserted-rows))
                           "Should insert all test rows from JSONL file including nulls")))
                   (finally

@@ -4,13 +4,13 @@ import { t } from "ttag";
 import { useGetMostRecentlyViewedDashboardQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { canPlaceEntityInCollectionOrDescendants } from "metabase/common/data-studio/collection-utils";
+import { getUserPersonalCollectionId } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
 import type { Card, Dashboard } from "metabase-types/api";
 
 import { DashboardPickerModal } from "../DashboardPicker";
-import { type OmniPickerItem, isInDbTree } from "../EntityPicker";
+import { type OmniPickerItem, isInCollectionTree } from "../EntityPicker";
 import { getCollectionType } from "../EntityPicker/utils";
 
 import { isInPersonalCollection } from "./utils";
@@ -87,7 +87,7 @@ export const AddToDashSelectDashModal = ({
 
   const shouldDisable = useCallback(
     (item: OmniPickerItem) => {
-      if (isInDbTree(item)) {
+      if (!isInCollectionTree(item)) {
         return true;
       }
 

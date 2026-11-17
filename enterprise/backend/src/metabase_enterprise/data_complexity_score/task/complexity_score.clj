@@ -13,9 +13,7 @@
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.config.core :as config]
    [metabase.task.core :as task]
-   [metabase.util.log :as log])
-  (:import
-   (org.quartz DisallowConcurrentExecution)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -66,10 +64,10 @@
           (data-complexity-score/record-score! claim-fingerprint "appdb" result)
           (maybe-advance-last-fingerprint! claim-fingerprint result)
           (catch Throwable t
-            (log/warn t "Data Complexity Score: failed to persist score snapshot; leaving fingerprint unchanged so the next boot or cron retries")))
+            (log/warnf "Data Complexity Score: failed to persist score snapshot; leaving fingerprint unchanged so the next boot or cron retries: %s" (ex-message t))))
         result)
       (catch Throwable t
-        (log/warn t "Data Complexity Score run failed")
+        (log/warnf "Data Complexity Score run failed: %s" (ex-message t))
         nil))
     (log/debug "Data Complexity Score run skipped — scoring-active? is false")))
 
@@ -184,7 +182,7 @@
             (settings/data-complexity-scoring-claim! "")
             (log/info "Data Complexity Score: skipping claim release — persisted claim no longer belongs to this node (sibling takeover after TTL)")))))
     (catch Throwable t
-      (log/warn t "Data Complexity Score: failed to clear scoring claim; it will expire via TTL"))))
+      (log/warnf "Data Complexity Score: failed to clear scoring claim; it will expire via TTL: %s" (ex-message t)))))
 
 (defn- with-scoring-claim!
   "Acquire a scoring claim, invoke `f` with the claim map, then release the claim via
@@ -222,9 +220,11 @@
     :skip      nil
     (run-scoring! fingerprint)))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Compute and publish the Data Complexity Score."}
-  DataComplexityScoring [_ctx]
+(task/defjob DataComplexityScoring
+  "Compute and publish the Data Complexity Score."
+  {:saved-class "metabase_enterprise.data_complexity_score.task.complexity_score.DataComplexityScoring"
+   :concurrent? false}
+  [_ctx]
   (with-scoring-claim! {:cooldown-hours cron-cooldown-hours} run-claim!))
 
 (defn maybe-emit-boot-score!
@@ -246,7 +246,7 @@
         (log/info "Data Complexity Score: fingerprint changed, emitting boot-time score")
         (run-scoring! fingerprint)))
     (catch Throwable t
-      (log/warn t "Data Complexity Score: boot-time emission failed"))))
+      (log/warnf "Data Complexity Score: boot-time emission failed: %s" (ex-message t)))))
 
 (defmethod task/init! ::DataComplexityScoring [_]
   (let [job     (jobs/build

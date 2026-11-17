@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import { getCollection } from "metabase/common/collections/utils";
@@ -10,7 +11,7 @@ import {
   collection as collectionUrl,
   dashboard as dashboardUrl,
 } from "metabase/urls";
-import type { Collection, SearchResult } from "metabase-types/api";
+import type { SearchResult } from "metabase-types/api";
 
 export type InfoTextData = {
   link?: string | null;
@@ -24,6 +25,8 @@ export const getInfoText = (result: SearchResult): InfoTextData => {
       return getCollectionInfoText(result);
     case "database":
       return getDatabaseInfoText();
+    case "data-app":
+      return { label: t`Data app` };
     case "action":
     case "indexed-entity":
       return getActionInfoText(result);
@@ -80,7 +83,7 @@ const getCollectionInfoText = (result: SearchResult): InfoTextData => {
 
 const getCollectionResult = (result: SearchResult): InfoTextData => {
   const collection = getCollection(result);
-  const colUrl = collectionUrl(collection as Collection);
+  const colUrl = collectionUrl(collection);
   const collectionName = collection.name;
   return collectionName
     ? {

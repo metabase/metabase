@@ -5,19 +5,17 @@ import {
   useGetAdhocQueryMetadataQuery,
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
+import { useMetadataProviderFactory } from "metabase/metadata-store";
 import { getLibQuery, isMbqlQuery } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
 import type { TransformSource } from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api/table";
 
 import { getSourceFieldOptions } from "./KeysetColumnSelect";
 import { useNativeHasCheckpointFieldOptions } from "./useNativeCheckpointFieldOptions";
 
 export const useHasCheckpointOptions = (source: TransformSource) => {
-  const metadata = useSelector(getMetadata);
-  const libQuery = getLibQuery(source, metadata);
+  const getMetadataProvider = useMetadataProviderFactory();
+  const libQuery = getLibQuery(source, getMetadataProvider);
 
   // Trigger query metadata fetch for MBQL/native query sources so metadata is populated
   // before we compute hasCheckpointOptions. Without this, getSourceFieldOptions(libQuery)
@@ -28,7 +26,7 @@ export const useHasCheckpointOptions = (source: TransformSource) => {
 
   const isPythonTransform = source.type === "python";
   const transformType = match({
-    isMbqlQuery: isMbqlQuery(source, metadata),
+    isMbqlQuery: isMbqlQuery(source, getMetadataProvider),
     isPythonTransform,
   })
     .with({ isMbqlQuery: true }, () => "mbql" as const)
@@ -39,8 +37,8 @@ export const useHasCheckpointOptions = (source: TransformSource) => {
     useNativeHasCheckpointFieldOptions(libQuery);
 
   const pythonTableId = isPythonTransform
-    ? Object.values(source["source-tables"]).find(({ table_id }) =>
-        isConcreteTableId(table_id),
+    ? Object.values(source["source-tables"]).find(
+        ({ table_id }) => table_id != null,
       )?.table_id
     : null;
   const { data: pythonTable } = useGetTableQueryMetadataQuery(
@@ -58,10 +56,7 @@ export const useHasCheckpointOptions = (source: TransformSource) => {
             return false;
           }
 
-          const metadataProvider = Lib.metadataProvider(
-            pythonTable.db_id,
-            metadata,
-          );
+          const metadataProvider = getMetadataProvider(pythonTable.db_id);
           const tableMetadata = Lib.tableOrCardMetadata(
             metadataProvider,
             pythonTable.id,

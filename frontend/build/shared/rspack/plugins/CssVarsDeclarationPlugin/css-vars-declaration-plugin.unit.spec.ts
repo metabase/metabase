@@ -64,6 +64,7 @@ function runPlugin({
     },
   };
 
+  // Unjustified type cast. FIXME
   plugin.apply(mockCompiler as any);
   tapCallback();
 
@@ -495,6 +496,7 @@ describe("CssVarsDeclarationPlugin", () => {
         hooks: { environment: { tap: tapFn } },
       };
 
+      // Unjustified type cast. FIXME
       plugin.apply(mockCompiler as any);
       expect(tapFn).toHaveBeenCalledWith(
         "CssVarsDeclarationPlugin",

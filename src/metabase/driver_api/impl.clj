@@ -81,6 +81,7 @@
   [lib-query-or-legacy-inner-query]
   (if (:lib/type lib-query-or-legacy-inner-query)
     (nest-query/nest-expressions lib-query-or-legacy-inner-query)
+    ;; legacy-MBQL branch for drivers not yet on MBQL 5; the deprecated bridge is the only conversion path
     #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
     (-> lib-query-or-legacy-inner-query
         (->> (lib/query-from-legacy-inner-query (qp.store/metadata-provider)

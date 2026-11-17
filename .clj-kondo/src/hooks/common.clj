@@ -488,6 +488,35 @@
                 body))]
     {:node node*}))
 
+(defn ns-analysis
+  "Like `hooks/ns-analysis`, but nil when kondo can't read the namespace's cache entry."
+  [ns-sym]
+  ;; kondo throws on the cache of a cljc namespace with `:deprecated` metadata, e.g. `metabase.legacy-mbql.util`.
+  (try
+    (hooks/ns-analysis ns-sym)
+    (catch Exception _ nil)))
+
+(defn proxied-analyses
+  "Map each namespace that `analysis`, a [[ns-analysis]] result, re-exports from with potemkin to its `:clj`
+   analysis, or to nil when kondo can't read it. Leaves out the namespaces in `skip`."
+  ([analysis]
+   (proxied-analyses analysis #{}))
+  ([analysis skip]
+   (into {} (for [ns-sym (get-in analysis [:clj :proxied-namespaces])
+                  :when  (not (skip ns-sym))]
+              [ns-sym (:clj (ns-analysis ns-sym))]))))
+
+(defn reexport-sources
+  "The namespaces in `proxied`, a [[proxied-analyses]] result, that define a public var named `var-sym`.
+   Any of them could be the one a re-export of `var-sym` was imported from."
+  [proxied var-sym]
+  ;; Kondo's `hooks/ns-analysis` strips each var's `:imported-ns`, so the source can only be found by name.
+  ;; Skip private vars: a renamed import can share its name with an unrelated private var in a source.
+  (for [[ns-sym vars] proxied
+        :let  [v (get vars var-sym)]
+        :when (and v (not (:private v)))]
+    ns-sym))
+
 (defn node->qualified-symbol
   "If the node is a symbol, return it as a qualified symbol if it's not already. Otherwise return nil."
   [node]
@@ -526,12 +555,3 @@
 
   ;; should be 1
   (format-string-specifier-count "%-02d"))
-
-(defn add-lsp-ignore-unused-public-var-metadata
-  "Add
-
-    ^{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
-
-  metadata to a node to suppress LSP warnings."
-  [node]
-  (update-ignored-linters node conj :clojure-lsp/unused-public-var))

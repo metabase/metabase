@@ -15,13 +15,16 @@ export const selectOverrides = {
         <DefaultSelectItem {...item.option} selected={item.checked} />
       ),
       clearButtonProps: {
-        // eslint-disable-next-line ttag/no-module-declaration
-        "aria-label": t`Clear`,
+        get "aria-label"() {
+          return t`Clear`;
+        },
         color: "text-primary",
         className: S.SelectClearButton,
       },
       comboboxProps: {
         withinPortal: true,
+        // a closed list that stays in the page keeps a stale highlight; a Select
+        // passing its own comboboxProps replaces this object, so it must set this again
         keepMounted: false,
       },
     },

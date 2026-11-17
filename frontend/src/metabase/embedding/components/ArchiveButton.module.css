@@ -1,8 +1,8 @@
 .archiveMenuItem {
-  color: var(--mb-color-danger);
+  color: var(--mb-color-feedback-negative);
 
   &:hover:not([data-css-specificity-hack]) {
-    color: var(--mb-color-danger);
+    color: var(--mb-color-feedback-negative);
     background-color: var(--mb-color-background_surface-error);
   }
 }

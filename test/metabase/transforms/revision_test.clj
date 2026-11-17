@@ -1,7 +1,13 @@
 (ns metabase.transforms.revision-test
   (:require
    [clojure.test :refer :all]
-   [metabase.revisions.models.revision :as revision]))
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.revisions.impl.transform]
+   [metabase.revisions.models.revision :as revision]
+   [metabase.test :as mt]))
+
+(comment metabase.revisions.impl.transform/keep-me)
 
 (deftest transform-serialize-instance-test
   (testing "serialize-instance for :model/Transform excludes the correct columns"
@@ -12,9 +18,8 @@
                      :name "Test Transform"
                      :description "A test transform"
                      :source {:type :query
-                              :query {:database 1
-                                      :type :query
-                                      :query {:source-table 2}}}
+                              :query (lib/query (mt/metadata-provider)
+                                                (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}
                      :target {:type :table
                               :name "transformed_table"
                               :schema "public"

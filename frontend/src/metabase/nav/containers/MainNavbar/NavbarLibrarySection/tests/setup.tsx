@@ -1,16 +1,17 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
+  setupCollectionsEndpoints,
   setupPropertiesEndpoints,
+  setupRemoteSyncEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
-import type { Collection } from "metabase-types/api";
+import { Route } from "metabase/router";
+import type { Collection, RemoteSyncDirtyItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockSettings,
@@ -48,9 +49,11 @@ export const createLibraryCollection = (
 export const setup = ({
   collections = [createLibraryCollection()],
   isEnterprise = false,
+  dirty = [],
 }: {
   collections?: Collection[];
   isEnterprise?: boolean;
+  dirty?: RemoteSyncDirtyItem[];
 } = {}) => {
   let state: State;
   if (isEnterprise) {
@@ -86,17 +89,19 @@ export const setup = ({
   }
 
   setupSettingsEndpoints([]);
+  setupRemoteSyncEndpoints({ dirty });
+  setupCollectionsEndpoints({ collections });
 
   return renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <NavbarLibrarySection
           collections={collections}
           selectedId={undefined}
           onItemSelect={jest.fn()}
         />
-      )}
+      }
     />,
     {
       storeInitialState: state,

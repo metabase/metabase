@@ -1,11 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useField, useFormikContext } from "formik";
 import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
+import { CopyButton } from "metabase/common/components/CopyButton";
 import type { TextInputProps } from "metabase/ui";
 import { TextInput } from "metabase/ui";
 
-import { CopyWidgetButton } from "./FormTextInput.styled";
+import S from "./FormTextInput.module.css";
 
 export interface FormTextInputProps extends Omit<
   TextInputProps,
@@ -54,7 +56,7 @@ export const FormTextInput = forwardRef(function FormTextInput(
   );
 
   const rightSection = hasCopyButton ? (
-    <CopyWidgetButton value={value} />
+    <CopyButton className={S.copyButton} value={value} />
   ) : (
     props.rightSection
   );

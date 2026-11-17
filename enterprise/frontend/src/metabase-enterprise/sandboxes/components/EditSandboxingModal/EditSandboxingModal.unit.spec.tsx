@@ -17,6 +17,8 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   DatabaseFeature,
   GroupTableAccessPolicy,
@@ -31,7 +33,6 @@ import {
 import {
   PEOPLE,
   PEOPLE_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -53,13 +54,11 @@ const TEST_CARD = createMockCard({
   name: "sandbox question",
   can_write: true,
   collection_id: null,
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": PEOPLE_ID,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: PEOPLE_ID } }],
+    }),
+  ),
 });
 
 const setup = async ({
@@ -136,10 +135,6 @@ describe("EditSandboxingModal", () => {
         const { onSave } = await setup();
 
         expect(
-          screen.getByText("Configure row and column security for this table"),
-        ).toBeInTheDocument();
-
-        expect(
           screen.getByText("Filter by a column in the table"),
         ).toBeInTheDocument();
 
@@ -181,10 +176,6 @@ describe("EditSandboxingModal", () => {
         const { onSave } = await setup({ features: [] });
 
         expect(
-          screen.getByText("Configure row and column security for this table"),
-        ).toBeInTheDocument();
-
-        expect(
           screen.queryByText("Filter by a column in the table"),
         ).not.toBeInTheDocument();
 
@@ -224,10 +215,6 @@ describe("EditSandboxingModal", () => {
 
       it("should allow creating a new policy based on a card", async () => {
         const { onSave } = await setup({ shouldMockQuestions: true });
-
-        expect(
-          screen.getByText("Configure row and column security for this table"),
-        ).toBeInTheDocument();
 
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
@@ -280,10 +267,6 @@ describe("EditSandboxingModal", () => {
         },
       });
 
-      expect(
-        screen.getByText("Configure row and column security for this table"),
-      ).toBeInTheDocument();
-
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
       await userEvent.click(
@@ -316,6 +299,56 @@ describe("EditSandboxingModal", () => {
         card_id: 1,
         group_id: 1,
         table_id: 1,
+      });
+    });
+
+    describe("selected question menu", () => {
+      const policyWithCard: GroupTableAccessPolicy = {
+        id: 1,
+        table_id: 1,
+        group_id: 1,
+        card_id: TEST_CARD.id,
+        permission_id: 50,
+        attribute_remappings: {
+          foo: ["dimension", ["field", 13, null]],
+        },
+      };
+
+      it("should allow opening the selected question in a new tab", async () => {
+        await setup({ shouldMockQuestions: true, policy: policyWithCard });
+
+        await userEvent.click(screen.getByLabelText("Question options"));
+
+        const link = await screen.findByRole("menuitem", {
+          name: /Go to question/,
+        });
+        expect(link).toHaveAttribute("href", "/question/1-sandbox-question");
+        expect(link).toHaveAttribute("target", "_blank");
+      });
+
+      it("should allow choosing a different question from the menu", async () => {
+        await setup({ shouldMockQuestions: true, policy: policyWithCard });
+
+        await userEvent.click(screen.getByLabelText("Question options"));
+        await userEvent.click(
+          await screen.findByRole("menuitem", {
+            name: /Replace/,
+          }),
+        );
+
+        expect(
+          await screen.findByTestId("entity-picker-modal"),
+        ).toBeInTheDocument();
+      });
+
+      it("should open the question picker when clicking the button outside the menu trigger", async () => {
+        await setup({ shouldMockQuestions: true, policy: policyWithCard });
+
+        await userEvent.click(screen.getByTestId("custom-view-picker-button"));
+
+        expect(
+          await screen.findByTestId("entity-picker-modal"),
+        ).toBeInTheDocument();
       });
     });
   });

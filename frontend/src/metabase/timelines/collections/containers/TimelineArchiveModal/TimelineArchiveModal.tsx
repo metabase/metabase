@@ -1,20 +1,18 @@
-import { push } from "react-router-redux";
+import { t } from "ttag";
 
 import { skipToken, useGetTimelineQuery } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
-import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
-import { useDispatch } from "metabase/redux";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-import TimelineDetailsModal from "../../components/TimelineDetailsModal";
+import TimelineDetailsContent from "../../components/TimelineDetailsContent";
+import { TimelineQueryModal } from "../../components/TimelineQueryModal";
+import { getTimelineDetailsHeaderProps } from "../../utils/timeline-details-header";
 
-function TimelineArchiveModalContainer({
-  params,
-  ...props
-}: ModalComponentProps) {
-  const dispatch = useDispatch();
+function TimelineArchiveModal({ params, onClose }: ModalComponentProps) {
+  const navigate = useNavigate();
   const archive = useSetArchive();
   const id = Urls.extractEntityId(params.timelineId);
   const {
@@ -25,29 +23,37 @@ function TimelineArchiveModalContainer({
     id != null ? { id, include: "events", archived: true } : skipToken,
   );
 
-  if (isLoading || error || !timeline) {
-    return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
-    );
-  }
-
   const handleUnarchive = (event: TimelineEvent) =>
     archive({ id: event.id, model: "timeline-event" }, false);
 
   const handleGoBack = (timeline: Timeline) => {
-    dispatch(push(Urls.timelineInCollection(timeline)));
+    navigate(Urls.timelineInCollection(timeline));
   };
 
   return (
-    <TimelineDetailsModal
-      {...props}
-      timeline={timeline}
-      isArchive
-      onUnarchive={handleUnarchive}
-      onGoBack={handleGoBack}
-    />
+    <TimelineQueryModal
+      data={timeline}
+      isLoading={isLoading}
+      error={error}
+      loadingTitle={t`Archived events`}
+      getHeaderProps={(timeline) =>
+        getTimelineDetailsHeaderProps(timeline, {
+          isArchive: true,
+          onGoBack: handleGoBack,
+        })
+      }
+      onClose={onClose}
+    >
+      {(timeline) => (
+        <TimelineDetailsContent
+          timeline={timeline}
+          isArchive
+          onUnarchive={handleUnarchive}
+        />
+      )}
+    </TimelineQueryModal>
   );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TimelineArchiveModalContainer;
+export default TimelineArchiveModal;

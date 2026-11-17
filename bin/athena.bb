@@ -25,7 +25,9 @@
 
 (def s3-bucket "s3://metabase-maven-downloads/")
 (def maven-base-url "https://s3.amazonaws.com/metabase-maven-downloads/")
-(def athena-downloads-url "https://s3.amazonaws.com/athena-downloads/")
+;; AWS moved the driver downloads here as of 3.8.2; the old athena-downloads bucket
+;; stops at 3.8.1. The new bucket does not allow listing, so URLs are built by hand.
+(def athena-downloads-url "https://aws-analytics-downloads-us-east-1.s3.us-east-1.amazonaws.com/athena/JDBC/")
 
 (defn find-pred [z p?]
   (->> (iterate z/next z)
@@ -107,41 +109,32 @@
   [artifact-id version]
   (let [pom-name (pom-file-name artifact-id version)
         xml      (x/element :project {}
-                             (x/element :modelVersion {} "4.0.0")
-                             (x/element :groupId {} "com.metabase")
-                             (x/element :artifactId {} artifact-id)
-                             (x/element :version {} version)
-                             (x/element :packaging {} "jar"))]
+                            (x/element :modelVersion {} "4.0.0")
+                            (x/element :groupId {} "com.metabase")
+                            (x/element :artifactId {} artifact-id)
+                            (x/element :version {} version)
+                            (x/element :packaging {} "jar"))]
     (println "pom =>" pom-name)
     (with-open [w (io/writer pom-name)]
       (x/emit xml w))
     (create-sha1 pom-name)))
 
 (defn download-uber-jar [version]
-  (let [base-url  athena-downloads-url
-        downloads (x/parse (io/reader base-url))
-        z         (z/xml-zip downloads)
-        jar-file  (-> z
-                      (find-pred (every-pred
-                                  (tag= (keyword "xmlns.http%3A%2F%2Fs3.amazonaws.com%2Fdoc%2F2006-03-01%2F" "Key"))
-                                  (content= #(str/ends-with? % (str version "-with-dependencies.jar")))))
-                      z/node
-                      :content
-                      str/join)
+  (let [jar-url    (str athena-downloads-url version "/athena-jdbc-" version "-with-dependencies.jar")
         local-name (jar-file-name "athena-jdbc" version)]
-    (println jar-file "=>" local-name)
-    (p/shell "curl --progress-bar -o " local-name (str base-url jar-file))
+    (println jar-url "=>" local-name)
+    (p/shell "curl --progress-bar --fail -o" local-name jar-url)
     (generate-pom "athena-jdbc" version)
     local-name))
 
 (defn download-lean-zip
   "Downloads and extracts the lean zip, returning the zip-file path for cleanup."
   [version]
-  (let [zip-url  (str athena-downloads-url "drivers/JDBC/" version
+  (let [zip-url  (str athena-downloads-url version
                       "/athena-jdbc-" version "-lean-jar-and-separate-dependencies-jars.zip")
         zip-file (str "athena-jdbc-thin-" version ".zip")]
     (println zip-url "=>" zip-file)
-    (p/shell "curl --progress-bar -o" zip-file zip-url)
+    (p/shell "curl --progress-bar --fail -o" zip-file zip-url)
     zip-file))
 
 (defn download-thin-jar [version]

@@ -14,19 +14,12 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button, Radio, Stack, rem } from "metabase/ui";
+import { Button, Radio, Stack, useIsInModal } from "metabase/ui";
 
 import type { OmniPickerItem } from "../Pickers";
 
 import S from "./SaveQuestionForm.module.css";
 import { useSaveQuestionContext } from "./context";
-
-const labelStyles = {
-  fontWeight: 900,
-  fontSize: "0.77rem",
-  color: "var(--mb-color-text-secondary)",
-  marginBottom: rem("7px"),
-};
 
 export const SaveQuestionForm = ({
   onCancel,
@@ -43,6 +36,8 @@ export const SaveQuestionForm = ({
     targetCollection,
     saveToDashboard,
   } = useSaveQuestionContext();
+
+  const isInModal = useIsInModal();
 
   const nameInputPlaceholder = getPlaceholder(question.type());
   const isDashboardQuestion = !!question.dashboardId();
@@ -64,62 +59,47 @@ export const SaveQuestionForm = ({
 
   return (
     <Form>
-      {showSaveType && (
-        <FormRadioGroup
-          name="saveType"
-          label={title}
-          styles={{
-            label: {
-              fontWeight: 900,
-              fontSize: "0.77rem",
-              color: "var(--mb-color-text-secondary)",
-              marginBottom: rem("7px"),
-            },
-          }}
-        >
-          <Stack gap="sm" mb="md">
-            <Radio
-              name={overwriteOptionName}
-              value="overwrite"
-              label={overwriteOptionName}
-              classNames={{
-                labelWrapper: S.labelWrapper,
-                label: cx(S.label, {
-                  [S.labelActive]: values.saveType === "overwrite",
-                }),
-              }}
+      <Stack gap={isInModal ? "xl" : "lg"}>
+        {showSaveType && (
+          <FormRadioGroup name="saveType" label={title}>
+            <Stack gap="sm">
+              <Radio
+                name={overwriteOptionName}
+                value="overwrite"
+                label={overwriteOptionName}
+                classNames={{
+                  labelWrapper: S.labelWrapper,
+                  label: cx(S.label, {
+                    [S.labelActive]: values.saveType === "overwrite",
+                  }),
+                }}
+              />
+              <Radio
+                name={t`Save as new question`}
+                value="create"
+                classNames={{
+                  label: cx(S.label, {
+                    [S.labelActive]: values.saveType === "create",
+                  }),
+                }}
+                label={t`Save as new question`}
+              />
+            </Stack>
+          </FormRadioGroup>
+        )}
+        {values.saveType === "create" && (
+          <>
+            <FormTextInput
+              name="name"
+              label={t`Name`}
+              placeholder={nameInputPlaceholder}
             />
-            <Radio
-              name={t`Save as new question`}
-              value="create"
-              classNames={{
-                label: cx(S.label, {
-                  [S.labelActive]: values.saveType === "create",
-                }),
-              }}
-              label={t`Save as new question`}
+            <FormTextarea
+              name="description"
+              label={t`Description`}
+              minRows={4}
+              placeholder={t`It's optional but oh, so helpful`}
             />
-          </Stack>
-        </FormRadioGroup>
-      )}
-      {values.saveType === "create" && (
-        <Stack gap="md" mb="md">
-          <FormTextInput
-            name="name"
-            label={t`Name`}
-            placeholder={nameInputPlaceholder}
-            styles={{ label: labelStyles }}
-          />
-
-          <FormTextarea
-            name="description"
-            label={t`Description`}
-            minRows={4}
-            placeholder={t`It's optional but oh, so helpful`}
-            styles={{ label: labelStyles }}
-          />
-
-          <div>
             {showPickerInput && (
               <FormCollectionAndDashboardPicker
                 collectionIdFieldName="collection_id"
@@ -131,23 +111,16 @@ export const SaveQuestionForm = ({
                 }}
               />
             )}
-
             <FormDashboardTabSelect
               name="dashboard_tab_id"
               label={c("'this' refers to the question that's being saved")
                 .t`Which tab should this go on?`}
               dashboardId={values.dashboard_id}
-              styles={{
-                label: {
-                  ...labelStyles,
-                  marginBottom: rem("3px"),
-                },
-              }}
             />
-          </div>
-        </Stack>
-      )}
-      <FormFooter>
+          </>
+        )}
+      </Stack>
+      <FormFooter pageProps={{ mt: "lg" }}>
         <FormErrorMessage inline />
         <Button onClick={onCancel}>{t`Cancel`}</Button>
         <FormSubmitButton

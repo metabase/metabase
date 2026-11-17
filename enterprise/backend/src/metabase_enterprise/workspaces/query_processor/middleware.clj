@@ -71,6 +71,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
+   ;; the remapping middleware swaps a remapping metadata provider into the QP store mid-preprocess
    ^{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.query-processor.store :as qp.store]))
 
@@ -163,7 +164,7 @@
    (see `metabase-enterprise.advanced-config.file/initialize!`). A child whose remap rows
    exist but whose `:workspaces` token isn't yet active must still rewrite reads — otherwise
    the child silently leaks production data. The same rationale documented on
-   [[metabase-enterprise.workspaces.transform-hooks/resolve-transform-target]] applies here:
+   [[metabase-enterprise.workspaces.transform-hooks/workspace-transform-target]] applies here:
    if remap rows exist, isolation must engage regardless of token state. The internal
    `(ws.remapping/enabled-for-db? db-id)` check is the actual gate."
   :feature :none

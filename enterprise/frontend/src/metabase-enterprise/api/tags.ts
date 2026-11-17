@@ -10,9 +10,12 @@ import {
   provideUserTags,
 } from "metabase/api/tags";
 import {
+  type ActionDependencyNode,
   type CardDependencyNode,
   DEPENDENCY_TYPES,
   type DashboardDependencyNode,
+  type DataAppDependencyNode,
+  type DataTestRun,
   type DependencyGraph,
   type DependencyNode,
   type DocumentDependencyNode,
@@ -20,12 +23,13 @@ import {
   type PythonLibrary,
   type SandboxDependencyNode,
   type SegmentDependencyNode,
+  type Session,
   type SnippetDependencyNode,
   type SourceReplacementRun,
   type SupportAccessGrant,
   type TableDependencyNode,
   type TransformDependencyNode,
-  type Workspace,
+  type TransformTest,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -36,22 +40,25 @@ export const ENTERPRISE_TAG_TYPES = [
   "sandbox",
   "git-tree",
   "git-file-content",
-  "collection-dirty-entities",
-  "collection-is-dirty",
   "remote-sync-branches",
+  "remote-sync-changes",
   "remote-sync-current-task",
-  "remote-sync-has-remote-changes",
+  "remote-sync-remote-changes",
   "source-replacement-run",
   "python-transform-library",
   "support-access-grant",
   "support-access-grant-current",
   "library-collection",
   "ai-controls-permissions",
+  "ai-controls-mcp-permissions",
   "ai-controls-usage-instance-limit",
   "ai-controls-usage-group-limits",
   "ai-controls-usage-tenant-limits",
   "data-complexity-scores",
-  "workspace",
+  "security-advisory",
+  "session",
+  "transform-test",
+  "data-test-run",
 ] as const;
 
 export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -80,6 +87,10 @@ export function invalidateTags(
   tags: TagDescription<EnterpriseTagType>[],
 ): TagDescription<EnterpriseTagType>[] {
   return !error ? tags : [];
+}
+
+export function provideMfaStatusTags(): TagDescription<EnterpriseTagType>[] {
+  return [tag("mfa-status")];
 }
 
 export function providePythonLibraryTags(
@@ -187,6 +198,25 @@ function provideMeasureDependencyNodeTags(
   ];
 }
 
+function provideActionDependencyNodeTags(
+  node: ActionDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("action", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data.collection != null
+      ? provideCollectionTags(node.data.collection)
+      : []),
+  ];
+}
+
+function provideDataAppDependencyNodeTags(
+  node: DataAppDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  // the data app endpoints tag apps by their slug, not their id
+  return [idTag("data-app", node.data.name)];
+}
+
 export function provideDependencyNodeTags(
   node: DependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
@@ -209,6 +239,10 @@ export function provideDependencyNodeTags(
       return provideSegmentDependencyNodeTags(node);
     case "measure":
       return provideMeasureDependencyNodeTags(node);
+    case "action":
+      return provideActionDependencyNodeTags(node);
+    case "data-app":
+      return provideDataAppDependencyNodeTags(node);
   }
 }
 
@@ -240,6 +274,18 @@ export function provideSupportAccessGrantListTags(
   ];
 }
 
+export function provideSessionTags(
+  session: Session,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("session", session.id), ...provideUserTags(session.user)];
+}
+
+export function provideSessionListTags(
+  sessions: Session[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("session"), ...sessions.flatMap(provideSessionTags)];
+}
+
 export function provideSourceReplacementRunTags(
   run: SourceReplacementRun,
 ): TagDescription<EnterpriseTagType>[] {
@@ -255,14 +301,29 @@ export function provideSourceReplacementRunListTags(
   ];
 }
 
-export function provideWorkspaceTags(
-  workspace: Workspace,
+export function provideTransformTestTags(
+  test: TransformTest,
 ): TagDescription<EnterpriseTagType>[] {
-  return [idTag("workspace", workspace.id)];
+  return [idTag("transform-test", test.id)];
 }
 
-export function provideWorkspaceListTags(
-  workspaces: Workspace[],
+export function provideTransformTestListTags(
+  tests: TransformTest[],
 ): TagDescription<EnterpriseTagType>[] {
-  return [listTag("workspace"), ...workspaces.flatMap(provideWorkspaceTags)];
+  return [
+    listTag("transform-test"),
+    ...tests.flatMap(provideTransformTestTags),
+  ];
+}
+
+export function provideDataTestRunTags(
+  run: DataTestRun,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("data-test-run", run.id)];
+}
+
+export function provideDataTestRunListTags(
+  runs: DataTestRun[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("data-test-run"), ...runs.flatMap(provideDataTestRunTags)];
 }

@@ -2,10 +2,10 @@ import type { DatabaseId, GroupId, Impersonation } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 
-interface GetImpersonationRequest {
+type GetImpersonationRequest = {
   db_id: DatabaseId;
   group_id: GroupId;
-}
+};
 
 export const advancedPermissionsApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({

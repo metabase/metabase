@@ -1,13 +1,19 @@
-export { useAction } from "./use-action";
-export type { UseActionResult } from "./use-action";
+export { useAction, useDataAppAction } from "./use-action";
 export type {
   ActionExecuteError,
   ActionKind,
-  ActionResultForBulk,
+  ActionDefinition,
+  ActionKindFromDefinition,
+  ActionParametersFromDefinition,
   ActionResultForCreate,
   ActionResultForDelete,
   ActionResultForKind,
   ActionResultForSql,
   ActionResultForUpdate,
   AnyActionResult,
+  DefinedAction,
+  ImplicitActionDefinition,
+  ImplicitActionKind,
+  TableActionParameters,
+  UseActionResult,
 } from "./types";

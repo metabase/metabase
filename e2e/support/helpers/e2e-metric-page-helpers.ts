@@ -1,11 +1,13 @@
 const metricAboutPage = () => cy.findByTestId("metric-about-page");
 const metricOverviewPage = () => cy.findByTestId("metric-overview-page");
 const metricQueryEditor = () => cy.findByTestId("metric-query-editor");
+const metricDimensionsPage = () => cy.findByTestId("metric-dimensions-page");
 
 export const MetricPage = {
   aboutPage: metricAboutPage,
   overviewPage: metricOverviewPage,
   queryEditor: metricQueryEditor,
+  dimensionsPage: metricDimensionsPage,
   nameInput: () => metricQueryEditor().findByPlaceholderText("New metric"),
   saveButton: () => metricQueryEditor().findByRole("button", { name: "Save" }),
   cancelButton: () =>
@@ -15,6 +17,7 @@ export const MetricPage = {
   aboutTab: () => MetricPage.header().findByText("About"),
   overviewTab: () => MetricPage.header().findByText("Overview"),
   definitionTab: () => MetricPage.header().findByText("Definition"),
+  dimensionsTab: () => MetricPage.header().findByText("Dimensions"),
   dependenciesTab: () => MetricPage.header().findByText("Dependencies"),
   historyTab: () => MetricPage.header().findByText("History"),
   aboutPageDescriptionSidebar: () =>

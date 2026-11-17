@@ -1,8 +1,12 @@
 import type React from "react";
 
-import { Button, Flex, Icon, type ModalOverlayProps, Title } from "metabase/ui";
+import { Button, Icon, type ModalOverlayProps } from "metabase/ui";
 
-import { Sidesheet, type SidesheetSize } from "./Sidesheet";
+import {
+  type ConfirmSidesheetClose,
+  Sidesheet,
+  type SidesheetSize,
+} from "./Sidesheet";
 
 interface SidesheetSubPageTitleProps {
   title: React.ReactNode;
@@ -13,7 +17,10 @@ interface SidesheetSubPageProps {
   title: React.ReactNode;
   isOpen: boolean;
   onClose: () => void;
+  confirmClose?: ConfirmSidesheetClose;
   onBack: () => void;
+  /** When false, the title is plain text instead of a button that calls `onBack` */
+  withBackButton?: boolean;
   children: React.ReactNode;
   size?: SidesheetSize;
   /** Whether to show a translucent backdrop */
@@ -26,11 +33,16 @@ export const SidesheetSubPageTitle = ({
   onClick,
 }: SidesheetSubPageTitleProps) => {
   return (
-    <Button variant="subtle" onClick={onClick} p={0}>
-      <Flex align="center" justify="center" gap="md">
-        <Icon name="chevronleft" />
-        <Title order={3}>{title}</Title>
-      </Flex>
+    <Button
+      variant="transparent"
+      size="compact-md"
+      h="auto"
+      fz="inherit"
+      lh="inherit"
+      leftSection={<Icon name="chevronleft" />}
+      onClick={onClick}
+    >
+      {title}
     </Button>
   );
 };
@@ -38,7 +50,9 @@ export const SidesheetSubPageTitle = ({
 export const SidesheetSubPage = ({
   title,
   onClose,
+  confirmClose,
   onBack,
+  withBackButton = true,
   children,
   isOpen,
   size,
@@ -47,8 +61,15 @@ export const SidesheetSubPage = ({
 }: SidesheetSubPageProps) => (
   <Sidesheet
     isOpen={isOpen}
-    title={<SidesheetSubPageTitle title={title} onClick={onBack} />}
+    title={
+      withBackButton ? (
+        <SidesheetSubPageTitle title={title} onClick={onBack} />
+      ) : (
+        title
+      )
+    }
     onClose={onClose}
+    confirmClose={confirmClose}
     size={size}
     withOverlay={withOverlay}
     overlayProps={overlayProps}

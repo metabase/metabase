@@ -1,11 +1,10 @@
 import { arrayMove } from "@dnd-kit/sortable";
-import { updateIn } from "icepick";
 import { useCallback } from "react";
 import { t } from "ttag";
 
 import type { DragEndEvent } from "metabase/common/components/Sortable";
 import { Box } from "metabase/ui";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { isEmpty } from "metabase/utils/validate";
 import type { Series } from "metabase-types/api";
 
@@ -33,7 +32,11 @@ interface ChartSettingOrderedSimpleProps {
   ) => void;
   series: Series;
   hasEditSettings: boolean;
-  onChangeSeriesColor: (seriesKey: string, color: string) => void;
+  onChangeSeriesColor: (
+    seriesKey: string,
+    hexValue: string,
+    colorName?: string,
+  ) => void;
   onSortEnd: (newItems: SortableItem[]) => void;
 }
 
@@ -51,7 +54,9 @@ export const ChartSettingOrderedSimple = ({
         (item) => item.key === selectedItem.key,
       );
       onChange(
-        updateIn(orderedItems, [index, "enabled"], (enabled) => !enabled),
+        orderedItems.map((item, i) =>
+          i === index ? { ...item, enabled: !item.enabled } : item,
+        ),
       );
     },
     [orderedItems, onChange],
@@ -72,7 +77,7 @@ export const ChartSettingOrderedSimple = ({
 
   const getItemTitle = useCallback((item: SortableItem) => {
     if (isEmpty(item.name)) {
-      return NULL_DISPLAY_VALUE;
+      return getNullDisplayValue();
     }
 
     return item.name;
@@ -93,8 +98,8 @@ export const ChartSettingOrderedSimple = ({
   );
 
   const handleColorChange = useCallback(
-    (item: SortableItem, color: string) => {
-      onChangeSeriesColor(item.key, color);
+    (item: SortableItem, hexValue: string, colorName?: string) => {
+      onChangeSeriesColor(item.key, hexValue, colorName);
     },
     [onChangeSeriesColor],
   );
@@ -104,7 +109,7 @@ export const ChartSettingOrderedSimple = ({
   const nonHiddenItems = orderedItems.filter((item) => !item.hidden);
 
   return (
-    <Box pl="md" pb="sm">
+    <Box pl="lg" pb="sm">
       {orderedItems.length > 0 ? (
         <ChartSettingOrderedItems
           items={nonHiddenItems}

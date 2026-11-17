@@ -13,22 +13,26 @@
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.init]
    [metabase.core.perf :as perf]
-   [metabase.driver.h2]
    [metabase.driver.mysql]
    [metabase.driver.postgres]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
+   [metabase.global-system.system :as global-system]
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
+   [metabase.mcp.http-handler :as mcp.http-handler]
+   [metabase.metrics.core :as metrics]
    [metabase.notification.core :as notification]
-   [metabase.permissions.core :as perms]
+   [metabase.oauth-server.api :as oauth-server.api]
    [metabase.plugins.core :as plugins]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.sample-data.core :as sample-data]
+   [metabase.search.embeddings.startup :as embeddings.startup]
    [metabase.server.core :as server]
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
+   [metabase.sso.auth-wrapper :as auth-wrapper]
    [metabase.startup.core :as startup]
    [metabase.system.core :as system]
    [metabase.task.core :as task]
@@ -46,8 +50,8 @@
 
 (comment
   metabase.core.init/keep-me
-  ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
-  metabase.driver.h2/keep-me
+  ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types.
+  ;; H2 is intentionally omitted: lazy-loaded on demand so the H2 library can be absent from the classpath.
   metabase.driver.mysql/keep-me
   metabase.driver.postgres/keep-me
   ;; Make sure the custom Metabase logger code gets loaded up so we use our custom logger for performance reasons.
@@ -62,7 +66,7 @@
         (str "Metabase Enterprise Edition extensions are PRESENT."
              "\n\n"
              "Usage of Metabase Enterprise Edition features are subject to the Metabase Commercial License."
-             "See https://www.metabase.com/license/commercial/ for details.")
+             "See https://www.metabase.com/license/commercial for details.")
         "Metabase Enterprise Edition extensions are NOT PRESENT.")))
 
 ;;; --------------------------------------------------- Info Metric---------------------------------------------------
@@ -100,22 +104,61 @@
   (setup/create-token!)   ; we need this here to create the initial token
   (print-setup-url))
 
+;; Named here because no one module can see both sides: the web server's requests run queries on warehouse pools and
+;; record traces.
+;; For now the explicit steps in [[destroy!]] stop the server and tracing before this halt runs, so these edges take
+;; effect as those steps move into the halt.
+(def ^:private system-dependencies
+  "Component key -> the keys of the components it uses, each of which [[global-system/halt!]] stops after it."
+  {:metabase.server.instance/server #{:metabase.driver.sql-jdbc.connection/pools
+                                      :metabase.tracing.core/otel-sdk}})
+
+;; TODO (Chris 2026-11-13) -- Move these stops into the halt one component at a time, until the halt stops them all.
+;; A component can move once it is started through the global system and what it uses is in [[system-dependencies]],
+;; since the halt takes its order from those edges and not from this list.
+;; Two limits of the halt matter more as steps move in.
+;; It does not wait for a stop already running on another thread.
+;; It waits for a start in flight with no timeout, while the process has about 30 seconds to shut down.
+(defn- shutdown-steps
+  "The steps [[destroy!]] runs, in order, as `[label thunk]` pairs."
+  []
+  [["stop queue listeners"        #(queue/stop-listeners!)]
+   ["stop the token refresher"    #(premium-features/stop-refresher!)]
+   ["run shutdown logic"          #(startup/run-shutdown-logic!)]
+   ["stop the scheduler"          #(task/stop-scheduler!)]
+   ["stop the web server"         #(server/stop-web-server!)]
+   ["shut down tracing"           #(tracing/shutdown!)]
+   ["shut down analytics"         #(analytics.core/shutdown!)]
+   ["shut down notifications"     #(notification/shutdown!)]
+   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
+   ["release migration locks"     #(mdb/release-migration-locks! 20)]
+   ;; whatever else the global system started, such as warehouse connection pools, each before the components it uses;
+   ;; after the migration locks are released, since a component this halts could be one that release needs
+   ["halt the global system"      #(global-system/halt! system-dependencies)]
+   ["stop performance monitoring" #(perf/stop-monitoring!)]
+   ["shut down agents"            shutdown-agents]])
+
+;; Every step runs even when an earlier one throws, so one failed stop skips neither the web server nor the locks.
+;; Each failure is logged as it happens, so a later step that outlasts the shutdown time cannot lose it.
+;;
+;; No test runs these steps or a real halt, since a halt stops what the test JVM shares, like its web server.
+;; Check a change to them by sending SIGTERM to a running server that has a warehouse pool open.
+;; TODO (Chris 2026-11-13) -- Make that check a CI step that fails unless the log shows a complete shutdown with no
+;; failed step.
 (defn- destroy!
   "General application shutdown function which should be called once at application shutdown."
   []
   (log/info "Metabase Shutting Down ...")
-  (queue/stop-listeners!)
-  (task/stop-scheduler!)
-  (server/stop-web-server!)
-  (tracing/shutdown!)
-  (analytics.core/shutdown!)
-  (notification/shutdown!)
-  ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
-  (let [timeout-seconds 20]
-    (mdb/release-migration-locks! timeout-seconds))
-  (perf/stop-monitoring!)
-  (shutdown-agents)
-  (log/info "Metabase Shutdown COMPLETE"))
+  (let [failures (u/run-each! (for [[step thunk] (shutdown-steps)]
+                                [step (fn []
+                                        (try
+                                          (thunk)
+                                          (catch Throwable e
+                                            (log/errorf e "Shutdown step failed: %s" step)
+                                            (throw e))))]))]
+    (if (seq failures)
+      (log/warnf "Metabase Shutdown COMPLETE, with %d failed steps" (count failures))
+      (log/info "Metabase Shutdown COMPLETE"))))
 
 (defenterprise ensure-audit-db-installed!
   "OSS implementation of `audit-db/ensure-db-installed!`, which is an enterprise feature, so does nothing in the OSS
@@ -134,7 +177,7 @@
         (try
           (.handle original-handler sig)
           (catch Exception e
-            (log/errorf e "Error calling original signal handler for SIG%s" signal-name)))))))
+            (log/errorf "Error calling original signal handler for SIG%s: %s" signal-name (ex-message e))))))))
 
 (defn- init-signal-logging!
   "Set up signal handlers to log system signals like SIGTERM, SIGINT, etc."
@@ -155,13 +198,26 @@
         (catch IllegalArgumentException e
           (log/debugf "Ignoring invalid signal SIG%s: %s" signal-name (.getMessage e)))
         (catch Exception e
-          (log/warnf e "Failed to register signal handler for SIG%s" signal-name))))))
+          (log/warnf "Failed to register signal handler for SIG%s: %s" signal-name (ex-message e)))))))
+
+(defn- reconcile-sample-database!
+  "Bring the sample database into line with the bundled one, adding it if there is none.
+
+  Keyed on whether a sample database row is present rather than on whether this is a new install: the
+  `CreateSampleContentV2` migration seeds that row before this runs, and an instance with no users reports a
+  new install on every boot, so keying on the install leaves a seeded sample database unreconciled forever -
+  including across a change of bundled engine."
+  []
+  (if (sample-data/sample-database-id)
+    (sample-data/update-sample-database-if-needed!)
+    (when (config/load-sample-content?)
+      (sample-data/extract-and-sync-sample-database!))))
 
 (defn- init!*
   "General application initialization function which should be run once at application startup."
   []
   (log/infof "Starting Metabase version %s ..." config/mb-version-string)
-  (log/infof "System info:\n %s" (u/pprint-to-str (u.system-info/system-info)))
+  (log/infof "System info:\n %s" (pr-str (u.system-info/system-info)))
   (perf/maybe-enable-monitoring!)
   (init-signal-logging!)
   (init-status/set-progress! 0.1)
@@ -177,6 +233,7 @@
   (tracing/init!)
   ;; load any plugins as needed
   (plugins/load-plugins!)
+  (embeddings.startup/ensure-in-process-provider!)
   (init-status/set-progress! 0.3)
   (setting/validate-settings-formatting!)
   ;; startup database.  validates connection & runs any necessary migrations
@@ -186,8 +243,10 @@
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
   ;; negatives, but for now there's not much we can do
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
-  ;; In OSS, convert any Data Analysts group with members to a normal visible group
-  (perms/sync-data-analyst-group-for-oss!)
+  (mdb/encrypt-plaintext-columns!)
+  ;; fetch the premium token status now, so that everything below sees this instance's features
+  (premium-features/refresh-at-startup!)
+  (premium-features/start-refresher!)
   ;; Disable read-only mode if its on during startup.
   ;; This can happen if a cloud migration process dies during h2 dump.
   (when (cloud-migration/read-only-mode)
@@ -200,8 +259,7 @@
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (setup/has-user-setup))]
-    ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
-    (config-from-file/init-from-file-if-code-available!)
+    (config-from-file/boot-initialize!)
     (init-status/set-progress! 0.6)
     (if new-install?
       (do
@@ -213,15 +271,14 @@
       ;; The instance is already set up. Clear out any stale setup token.
       (setup/clear-token!))
     (init-status/set-progress! 0.7)
-    ;; deal with our sample database as needed
-    (if new-install?
-      ;; add the sample database DB for fresh installs (only when sample content is enabled)
-      (when (config/load-sample-content?)
-        (sample-data/extract-and-sync-sample-database!))
-      ;; On existing installs always reconcile: if the bundled engine changed (H2 <-> SQLite) the old
-      ;; sample database must be cleaned up and replaced regardless of whether sample content is
-      ;; currently enabled. Otherwise just refresh its connection details.
-      (sample-data/update-sample-database-if-needed!))
+    (reconcile-sample-database!)
+    ;; Sample-content metrics are inserted via raw SQL and so never trigger Card after-insert hooks.
+    ;; Not critical to startup: log and carry on if it fails rather than aborting initialization.
+    (when-let [sample-db-id (sample-data/sample-database-id)]
+      (try
+        (metrics/sync-metric-dimensions-for-database! sample-db-id)
+        (catch Throwable e
+          (log/error e "Error syncing metric dimensions for the Sample Database"))))
     (init-status/set-progress! 0.8))
   (ensure-audit-db-installed!)
   (notification/seed-notification!)
@@ -230,7 +287,6 @@
   (embed.settings/check-and-sync-settings-on-startup! env/env)
   (llm.startup/check-and-sync-settings-on-startup!)
   (init-status/set-progress! 0.9)
-  (setting/migrate-encrypted-settings!)
   (database/check-health!)
   (startup/run-startup-logic!)
   (setting/log-deprecated-env-var-usage!)
@@ -262,8 +318,11 @@
   (log/info "Starting Metabase in STANDALONE mode")
   (try
     ;; launch embedded webserver
-    (let [server-routes (server/make-routes #'api-routes/routes)
-          handler       (server/make-handler server-routes)]
+    (let [server-routes (server/make-routes {:api        #'api-routes/routes
+                                             :auth       #'auth-wrapper/routes
+                                             :oauth      #'oauth-server.api/oauth-routes
+                                             :well-known #'oauth-server.api/well-known-routes})
+          handler       (server/make-handler server-routes #'mcp.http-handler/options)]
       (server/start-web-server! handler))
     ;; run our initialization process
     (init!)
@@ -285,6 +344,8 @@
     (when (not-empty mb-trace-str)
       (log/warn "WARNING: You have enabled namespace tracing, which could log sensitive information like db passwords.")
       (doseq [namespace (map symbol (str/split mb-trace-str #",\s*"))]
+        ;; tracing namespaces are supplied by the user at runtime
+        #_{:clj-kondo/ignore [:metabase/modules]}
         (try (require namespace)
              (catch Throwable _
                (throw (ex-info "A namespace you specified with MB_NS_TRACE could not be required" {:namespace namespace}))))

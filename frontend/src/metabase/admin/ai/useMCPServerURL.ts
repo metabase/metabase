@@ -1,4 +1,4 @@
-import { useAdminSetting } from "metabase/api/utils";
+import { useAdminSetting } from "metabase/settings";
 
 export function useMCPServerURL() {
   const { value: siteUrl } = useAdminSetting("site-url");

@@ -21,10 +21,11 @@
   (:refer-clojure :exclude [compile])
   (:require
    [clojure.string :as str]
-   [honey.sql :as sql]
+   [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.db :as app-db.db]
    [metabase.app-db.format :as app-db.format]
+   [metabase.funnysql.core :as funnysql]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
@@ -104,21 +105,14 @@
   sql-args)
 
 (defmethod compile clojure.lang.IPersistentMap
-  [honey-sql]
-  (let [sql-args (try
-                   (sql/format honey-sql {:quoted true, :dialect :metabase.app-db.setup/application-db, :quoted-snake false})
-                   (catch Throwable e
-                     ;; this is not i18n'ed because it (hopefully) shouldn't be user-facing -- we shouldn't be running
-                     ;; in to unexpected Honey SQL compilation errors at run time -- if we are it means we're not being
-                     ;; careful enough with the Honey SQL forms we create which is a bug in the Metabase code we should
-                     ;; have caught in tests.
-                     (throw (ex-info (str "Error compiling Honey SQL: " (ex-message e))
-                                     {:honey-sql honey-sql}
-                                     e))))]
-    (log/tracef "Compiled SQL:\n%s\nparameters: %s"
-                (app-db.format/format-sql (first sql-args))
-                (pr-str (rest sql-args)))
-    sql-args))
+  [honeysql]
+  (funnysql/format honeysql (mdb.connection/db-type)))
+
+(defn current-timestamp-string
+  "The application DB's own current timestamp, as a string. Read from the DB rather than from this machine's clock,
+  for the `settings-last-updated` marker that instances compare against each other."
+  ^String [db-type]
+  (app-db.db/current-timestamp-string db-type))
 
 ;;; TODO -- we should mark this deprecated and tell people to use [[toucan2.core/query]] directly instead
 (defn query
@@ -146,6 +140,40 @@
                            :args       (rest sql-args)
                            :uncompiled sql-args-or-honey-sql-map}
                           e)))))))
+
+(defn streaming-reducible
+  "Returns a reducible that, when reduced, opens a transaction (autoCommit=false) with a
+  fetch-size set to enable server-side cursor streaming on PostgreSQL app databases.
+
+  `make-reducible-fn` is a 1-arg function called with the transaction `java.sql.Connection`.
+  Pass it explicitly to `t2/reducible-select` via `:conn` or to `t2/reducible-query` so the
+  query runs on the transaction connection — otherwise PostgreSQL ignores fetch-size.
+
+  WARNING: Because this opens a transaction, do not wrap any long-running logic in this which will hold the transaction open too long.
+
+  Example:
+    (streaming-reducible
+     (fn [conn]
+       (eduction (map t2.realize/realize)
+                 (t2/reducible-select :conn conn :model/Table :active true))))"
+  ([make-reducible-fn]
+   (streaming-reducible make-reducible-fn 500))
+  ([make-reducible-fn fetch-size]
+   (reify clojure.lang.IReduceInit
+     (reduce [_ f init]
+       (t2/with-transaction [conn]
+         (binding [t2.jdbc.options/*options* (merge t2.jdbc.options/*options*
+                                                    {:fetch-size fetch-size})]
+           (reduce f init (make-reducible-fn conn))))))))
+
+(defn streaming-reducible-query
+  "Like `t2/reducible-query` but uses a transaction (autoCommit=false) and a fetch-size
+  to enable server-side cursor streaming on PostgreSQL. Returns a reducible of raw maps."
+  ([sql-args-or-honey-sql-map]
+   (streaming-reducible-query sql-args-or-honey-sql-map 500))
+  ([sql-args-or-honey-sql-map fetch-size]
+   (let [compiled (compile sql-args-or-honey-sql-map)]
+     (streaming-reducible (fn [conn] (t2/reducible-query conn compiled)) fetch-size))))
 
 (defmacro with-conflict-retry
   "Retry a database mutation a single time if it fails due to concurrent insertions.
@@ -235,7 +263,8 @@
       (if-let [existing (apply t2/select-one model select-kvs)]
         (let [pk (pk-of existing)]
           (if-let [updated (update-fn existing)]
-            (do (t2/update! model pk updated)
+            ;; `model` is any model, so match on its own primary key, which may not be `:id` or may be composite.
+            (do (t2/update! model :toucan/pk pk updated)
                 ;; the primary key may have been changed by the update, and this is OK.
                 (pk-of (merge existing updated)))
             ;; update-fn returned nil — no update needed, return existing pk.

@@ -15,6 +15,7 @@ import {
 import { useOmniPickerContext } from "../../context";
 import { useCurrentSearchScope } from "../../hooks/use-current-search-scope";
 import type { OmniPickerItem } from "../../types";
+import { shouldShowDataApps } from "../../utils";
 
 import { SearchResults, SearchScopeSelector } from "./SearchResults";
 
@@ -32,10 +33,12 @@ const makeIntoPickerItem = (
       ...pick(item, ["id", "name", "collection", "database_id"]),
       model: "table",
       database_name: item.database_name ?? undefined,
+      // Unjustified type cast. FIXME
       schema: item.table_schema as SchemaName,
     };
   }
 
+  // Unjustified type cast. FIXME
   return {
     ...item,
     type: "type" in item ? item.type : item.collection_type,
@@ -65,7 +68,9 @@ const useApiSearch = ({
         searchModels: ["table" as const],
       };
     }
+    // Unjustified type cast. FIXME
     const searchModels = models.filter((model) =>
+      // Unjustified type cast. FIXME
       SEARCH_MODELS.includes(model as SearchModel),
     ) as SearchModel[];
     if (searchScope === "all") {
@@ -99,6 +104,7 @@ const useApiSearch = ({
 export const SearchResultsItemList = () => {
   const {
     models,
+    options,
     searchQuery,
     isHiddenItem,
     isDisabledItem,
@@ -106,12 +112,20 @@ export const SearchResultsItemList = () => {
     searchParams,
   } = useOmniPickerContext();
 
+  const searchableModels = useMemo(
+    () =>
+      shouldShowDataApps({ options, models })
+        ? models
+        : models.filter((model) => model !== "data-app"),
+    [options, models],
+  );
+
   const {
     data: results,
     error,
     isFetching,
   } = useApiSearch({
-    models,
+    models: searchableModels,
     searchQuery,
     searchParams,
   });

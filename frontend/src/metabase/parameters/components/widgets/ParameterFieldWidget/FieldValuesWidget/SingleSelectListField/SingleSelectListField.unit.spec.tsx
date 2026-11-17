@@ -2,12 +2,17 @@ import { waitForElementToBeRemoved } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
-import type Field from "metabase-lib/v1/metadata/Field";
-import type { ColumnSettings, FieldValue, RowValue } from "metabase-types/api";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import type {
+  ColumnSettings,
+  Field,
+  FieldValue,
+  RowValue,
+} from "metabase-types/api";
 
 import { Value as ValueComponent } from "../../Value";
 
-import SingleSelectListField from "./index";
+import { SingleSelectListField } from "./index";
 
 const value: RowValue[] = [];
 const firstOption = "AK";
@@ -28,7 +33,7 @@ function renderValue(
   return (
     <ValueComponent
       value={value}
-      column={fields[0]}
+      field={fields[0] != null ? getParameterFieldInfo(fields[0]) : undefined}
       maximumFractionDigits={20}
       remap={showRemapping(fields)}
       {...formatOptions}

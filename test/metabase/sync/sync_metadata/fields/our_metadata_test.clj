@@ -1,19 +1,19 @@
 (ns metabase.sync.sync-metadata.fields.our-metadata-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
    [metabase.test :as mt]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 ;; `our-metadata` should match up with what we have in the DB
 (deftest does-metadata-match-test
   (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
-    (sync-metadata/sync-db-metadata! db)
+    (sync-metadata/sync-db-metadata! (:id db))
     (is (= #{{:name              "id"
               :database-type     "SERIAL"
               :base-type         :type/Integer
@@ -108,10 +108,9 @@
                                                           :database-is-auto-increment false
                                                           :preview-display   true}}}}}}
            (let [transactions-table-id   (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
-                 remove-ids-and-nil-vals (partial walk/postwalk #(if-not (map? %)
-                                                                   %
-                                                                   ;; database-position isn't stable since they are
-                                                                   ;; defined in sets. changing keys will change the
-                                                                   ;; order in the set implementation. (and position depends on database-position)
-                                                                   (m/filter-vals some? (dissoc % :id :database-position :position))))]
+                 remove-ids-and-nil-vals #(match/replace-all %
+                                            ;; database-position isn't stable since they are
+                                            ;; defined in sets. changing keys will change the
+                                            ;; order in the set implementation. (and position depends on database-position)
+                                            #'map? (m/filter-vals some? (dissoc &match :id :database-position :position)))]
              (remove-ids-and-nil-vals (#'fields.our-metadata/our-metadata (t2/select-one :model/Table :id transactions-table-id))))))))

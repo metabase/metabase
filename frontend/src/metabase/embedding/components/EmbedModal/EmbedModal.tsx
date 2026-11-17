@@ -9,7 +9,7 @@ import type {
 import { Modal } from "metabase/ui";
 import type { EmbeddingParameters } from "metabase-types/api";
 
-import { EmbedModalHeader } from "./EmbedModal.styled";
+import S from "./EmbedModal.module.css";
 
 interface EmbedModalProps {
   opened: boolean;
@@ -35,15 +35,12 @@ export const EmbedModal = ({
 }: EmbedModalProps) => (
   <Modal
     opened={opened}
-    onClose={onClose}
+    title={t`Static embedding`}
     size="auto"
-    withCloseButton={false}
-    padding={0}
+    classNames={{ content: S.content, header: S.header, body: S.body }}
+    onBack={onBack}
+    onClose={onClose}
   >
-    <EmbedModalHeader onClose={onClose} onBack={onBack}>
-      {t`Static embedding`}
-    </EmbedModalHeader>
-
     <StaticEmbedSetupPane
       resource={resource}
       resourceType={resourceType}

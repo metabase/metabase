@@ -18,9 +18,11 @@
 ;; populated before a trigger can fire locally.
 (defonce ^:private reapers (atom {}))
 
-(task/defjob ^{:doc "Reap orphaned (stale-heartbeat) runs for a registered run model."
-               org.quartz.DisallowConcurrentExecution true}
-  RunTrackingReaper [ctx]
+(task/defjob RunTrackingReaper
+  "Reap orphaned (stale-heartbeat) runs for a registered run model."
+  {:saved-class "metabase.run_tracking.task.RunTrackingReaper"
+   :concurrent? false}
+  [ctx]
   (let [job-key (.. ^JobExecutionContext ctx getJobDetail getKey getName)
         {:keys [reap-fn label]} (@reapers job-key)]
     (when-let [reaped (and reap-fn (not-empty (reap-fn)))]
@@ -56,7 +58,7 @@
          (heartbeat-fn)
          (catch InterruptedException e (throw e))
          (catch Throwable t
-           (log/error t "Error sending run-tracking heartbeat")))
+           (log/errorf "Error sending run-tracking heartbeat: %s" (ex-message t))))
        (Thread/sleep (long (u/minutes->ms interval-minutes)))
        (recur))
      (catch InterruptedException _ nil))))

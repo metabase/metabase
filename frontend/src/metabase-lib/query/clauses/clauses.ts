@@ -1,6 +1,7 @@
-import dayjs from "dayjs";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { t } from "ttag";
 
+import { dayjs } from "metabase/dayjs";
 import type * as Lib from "metabase-lib";
 
 import { defineClauses, dimension, op } from "./define";

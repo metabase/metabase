@@ -18,6 +18,7 @@ export const dateInputOverrides = {
       monthsList: Styles.monthsList,
       monthsListRow: Styles.row,
       monthsListCell: Styles.cell,
+      monthsListControl: Styles.monthsListControl,
       yearsList: Styles.yearsList,
       yearsListRow: Styles.row,
       yearsListCell: Styles.cell,
@@ -26,6 +27,11 @@ export const dateInputOverrides = {
       calendarHeaderControl: Styles.calendarHeaderControl,
       input: Styles.input,
       error: Styles.error,
+    },
+    styles: {
+      levelsGroup: {
+        gap: "var(--mantine-spacing-lg)",
+      },
     },
   }),
 };

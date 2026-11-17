@@ -38,9 +38,10 @@ export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"]
           data-testid="type-filter-checkbox-group"
           w="100%"
           value={selectedTypes}
+          // Unjustified type cast. FIXME
           onChange={(value) => setSelectedTypes(value as EnabledSearchModel[])}
         >
-          <Stack gap="md" p="md" justify="center" align="flex-start">
+          <Stack gap="lg" p="lg" justify="center" align="flex-start">
             {typeFilters.map((model) => (
               <Checkbox
                 wrapperProps={{

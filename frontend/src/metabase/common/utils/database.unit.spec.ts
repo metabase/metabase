@@ -1,7 +1,9 @@
 import type { Card, Dashboard, Database } from "metabase-types/api";
+import { createMockDatabase } from "metabase-types/api/mocks";
 
 import {
   dashboardUsesRoutingEnabledDatabases,
+  findDatabaseByName,
   hasDbRoutingEnabled,
   questionUsesRoutingEnabledDatabase,
 } from "./database";
@@ -47,7 +49,9 @@ describe("database routing utility functions", () => {
         "with cards using non-routing databases",
         {
           dashcards: [
+            // Unjustified type cast. FIXME
             {
+              // Unjustified type cast. FIXME
               card: { database_id: 1 } as Card,
             } as any,
           ],
@@ -57,6 +61,7 @@ describe("database routing utility functions", () => {
       [
         "with main card using routing-enabled database",
         {
+          // Unjustified type cast. FIXME
           dashcards: [{ card: { database_id: 2 } as Card }],
         },
         true,
@@ -65,8 +70,11 @@ describe("database routing utility functions", () => {
         "with series card using routing-enabled database",
         {
           dashcards: [
+            // Unjustified type cast. FIXME
             {
+              // Unjustified type cast. FIXME
               card: { database_id: 1 } as Card,
+              // Unjustified type cast. FIXME
               series: [{ database_id: 2 } as Card],
             } as any,
           ],
@@ -77,7 +85,9 @@ describe("database routing utility functions", () => {
         "with mixed cards where some use routing",
         {
           dashcards: [
+            // Unjustified type cast. FIXME
             { card: { database_id: 1 } as Card },
+            // Unjustified type cast. FIXME
             { card: { database_id: 2 } as Card },
           ],
         },
@@ -86,10 +96,43 @@ describe("database routing utility functions", () => {
     ])("returns %s for dashboard %s", (_, dashboard, expected) => {
       expect(
         dashboardUsesRoutingEnabledDatabases(
+          // Unjustified type cast. FIXME
           dashboard as Pick<Dashboard, "dashcards">,
           mockDatabases,
         ),
       ).toBe(expected);
     });
+  });
+});
+
+describe("findDatabaseByName", () => {
+  const databases = [
+    createMockDatabase({ id: 1, name: "Sample Database" }),
+    createMockDatabase({ id: 7, name: "Sales" }),
+  ];
+
+  it("finds a database by its exact name", () => {
+    expect(findDatabaseByName(databases, "Sales").id).toBe(databases[1].id);
+  });
+
+  it("matches case-sensitively", () => {
+    expect(findDatabaseByName(databases, "sales")).toBeUndefined();
+    expect(findDatabaseByName(databases, "SALES")).toBeUndefined();
+  });
+
+  it("returns undefined for an unknown name", () => {
+    expect(findDatabaseByName(databases, "Nonexistent")).toBeUndefined();
+  });
+
+  it("returns the database with the lowest id on a name collision", () => {
+    const collisions = [
+      createMockDatabase({ id: 9, name: "Production" }),
+      createMockDatabase({ id: 4, name: "Production" }),
+      createMockDatabase({ id: 12, name: "Production" }),
+    ];
+
+    expect(findDatabaseByName(collisions, "Production").id).toBe(
+      collisions[1].id,
+    );
   });
 });

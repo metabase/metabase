@@ -1,5 +1,5 @@
-import dayjs from "dayjs";
-
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
+import { dayjs } from "metabase/dayjs";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 

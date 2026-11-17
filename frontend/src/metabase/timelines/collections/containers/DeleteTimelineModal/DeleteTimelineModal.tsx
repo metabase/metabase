@@ -1,22 +1,23 @@
-import { push } from "react-router-redux";
+import { t } from "ttag";
 
 import {
   skipToken,
   useDeleteTimelineMutation,
   useGetTimelineQuery,
 } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
-import { useDispatch } from "metabase/redux";
-import DeleteTimelineModal from "metabase/timelines/common/components/DeleteTimelineModal";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { DeleteConfirmationFooter } from "metabase/timelines/common/components/DeleteConfirmationFooter";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";
 
 function DeleteTimelineModalContainer({
   params,
-  ...props
+  onClose,
 }: ModalComponentProps) {
-  const dispatch = useDispatch();
   const [deleteTimeline] = useDeleteTimelineMutation();
   const id = Urls.extractEntityId(params.timelineId);
   const {
@@ -25,23 +26,27 @@ function DeleteTimelineModalContainer({
     error,
   } = useGetTimelineQuery(id != null ? { id, include: "events" } : skipToken);
 
-  if (isLoading || error || !timeline) {
-    return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
-    );
-  }
-
   const handleSubmit = async (timeline: Timeline) => {
     await deleteTimeline(timeline.id).unwrap();
-    dispatch(push(Urls.timelinesArchiveInCollection(timeline.collection)));
+    onClose();
   };
 
   return (
-    <DeleteTimelineModal
-      {...props}
-      timeline={timeline}
-      onSubmit={handleSubmit}
-    />
+    <TimelineModal
+      title={timeline ? t`Delete ${timeline.name}?` : undefined}
+      onClose={onClose}
+      animated={false}
+      tall={isLoading || !!error || !timeline}
+    >
+      {isLoading || error || !timeline ? (
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      ) : (
+        <DeleteConfirmationFooter
+          onDelete={() => handleSubmit(timeline)}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 

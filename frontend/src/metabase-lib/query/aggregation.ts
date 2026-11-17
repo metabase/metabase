@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import * as ML from "cljs/metabase.lib.js";
 
 import { displayInfo } from "./metadata";
@@ -57,6 +58,14 @@ export function aggregations(
   stageIndex: number,
 ): AggregationClause[] {
   return ML.aggregations(query, stageIndex);
+}
+
+export function aggregationColumn(
+  query: Query,
+  stageIndex: number,
+  aggregation: AggregationClause,
+): ColumnMetadata {
+  return ML.aggregation_column(query, stageIndex, aggregation);
 }
 
 export function aggregationClause(

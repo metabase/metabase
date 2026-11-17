@@ -1,9 +1,21 @@
 import type { CustomVisualization } from "custom-viz";
+import type { ComponentType } from "react";
 
-import type { Visualization } from "metabase/visualizations/types/visualization";
-import type { CustomVizPluginId } from "metabase-types/api";
+import type {
+  Visualization,
+  VisualizationPassThroughProps,
+  VisualizationProps,
+} from "metabase/visualizations/types/visualization";
+import { columnSettings } from "metabase/viz-core";
+import type {
+  CustomVizDisplayType,
+  CustomVizPluginRuntime,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import { sanitizePluginSettings } from "./custom-viz-settings";
+import { toPluginSeries, toPluginSettings } from "./plugin-view";
 
 /**
  * Assign properties derived from a vizDef onto a Visualization component
@@ -18,30 +30,53 @@ import { sanitizePluginSettings } from "./custom-viz-settings";
  * components.
  */
 export function applyDefaultVisualizationProps(
-  Component: Visualization,
+  Component: ComponentType<VisualizationProps & VisualizationPassThroughProps>,
   vizDef: CustomVisualization<Record<string, unknown>>,
   settings: {
-    identifier: string;
-    pluginId: CustomVizPluginId;
-    getUiName: () => string;
+    identifier: CustomVizDisplayType;
+    plugin: CustomVizPluginRuntime;
+    prefix: string;
     iconUrl?: string | undefined;
     isDev?: boolean;
   },
-) {
-  Object.assign(Component, {
-    settings:
-      sanitizePluginSettings(
-        vizDef.settings,
-        vizDef.mount,
-        settings.pluginId,
-      ) ?? {},
-    checkRenderable: vizDef.checkRenderable,
+): Visualization {
+  const { plugin, prefix, ...componentSettings } = settings;
+  const uiName = resolveUiName(vizDef, plugin);
+  return Object.assign(Component, {
+    settings: {
+      ...columnSettings({ getHidden: () => true }),
+      ...sanitizePluginSettings(vizDef.settings, {
+        prefix,
+        mount: vizDef.mount,
+        plugin,
+      }),
+    },
+    checkRenderable: (series: Series, vizSettings: VisualizationSettings) => {
+      if (typeof vizDef.checkRenderable === "function") {
+        vizDef.checkRenderable(
+          toPluginSeries(series, prefix),
+          toPluginSettings(vizSettings, prefix),
+        );
+      }
+    },
     noHeader: vizDef.noHeader ?? false,
     canSavePng: vizDef.canSavePng ?? false,
     hidden: false,
     minSize: vizDef.minSize,
     defaultSize: vizDef.defaultSize,
     isDev: settings.isDev,
-    ...settings,
-  } satisfies Partial<Record<keyof Visualization, unknown>>);
+    pluginId: plugin.id,
+    getUiName: () => uiName,
+    ...componentSettings,
+  });
+}
+
+function resolveUiName(
+  vizDef: CustomVisualization<Record<string, unknown>>,
+  plugin: CustomVizPluginRuntime,
+): string {
+  const name = vizDef.getName?.();
+  return typeof name === "string" && name.trim() !== ""
+    ? name
+    : plugin.display_name;
 }

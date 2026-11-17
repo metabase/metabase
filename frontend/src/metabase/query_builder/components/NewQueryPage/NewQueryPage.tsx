@@ -1,19 +1,11 @@
-import type { Location } from "history";
 import cx from "classnames";
-import {
-  type ComponentProps,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { push } from "react-router-redux";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import type { MetabotConfig } from "metabase/metabot/components/Metabot";
 import { MetabotChat } from "metabase/metabot/components/MetabotChat";
 import { useMetabotAgent } from "metabase/metabot/hooks";
-import { resetConversation } from "metabase/metabot/state";
+import { startNewConversation } from "metabase/metabot/state";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import {
   type NewQueryMode,
   newQueryUrl,
@@ -22,27 +14,26 @@ import {
   setNewQuerySqlExpandListener,
   setNewQuerySqlFullPage,
 } from "metabase/nav/containers/ProtoNavbar/newQuery";
-import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
+import { useDispatch, useSelector } from "metabase/redux";
+import { setUIControls } from "metabase/redux/query-builder";
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
+import { useLocation, useNavigate } from "metabase/router";
+import { getSetting } from "metabase/settings";
+import { SegmentedControl, Title } from "metabase/ui";
+
+import { QueryBuilder } from "../../containers/QueryBuilder";
+import { resetQB } from "../../store/actions";
+import { getQuestion } from "../../store/question-selectors";
 import {
   getFirstQueryResult,
   getIsNative,
   getIsRunning,
-  getQuestion,
-} from "metabase/query_builder/selectors";
-import { useDispatch, useSelector } from "metabase/redux";
-import { resetQB, setUIControls } from "metabase/redux/query-builder";
-import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import { getSetting } from "metabase/selectors/settings";
-import { SegmentedControl, Title } from "metabase/ui";
+} from "../../store/selectors";
 
 import { NewQueryAiPrompt } from "./NewQueryAiPrompt";
 import { NewQueryNotebookPrompt } from "./NewQueryNotebookPrompt";
 import S from "./NewQueryPage.module.css";
 import { useFlipAnimation } from "./useFlipAnimation";
-
-type Props = ComponentProps<typeof QueryBuilder> & {
-  location: Location;
-};
 
 const SUGGESTION_MODELS: SuggestionModel[] = [
   "dataset",
@@ -53,8 +44,7 @@ const SUGGESTION_MODELS: SuggestionModel[] = [
   "dashboard",
 ];
 
-const askConfig: MetabotConfig = {
-  agentId: "ask",
+const askConfig = {
   suggestionModels: SUGGESTION_MODELS,
 };
 
@@ -100,14 +90,17 @@ function useIsEngaged(
   ]);
 }
 
-export function NewQueryPage(props: Props) {
-  const { location } = props;
+export function NewQueryPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const buildQuestion = useQuestionFromOptsBuilder();
   const dispatch = useDispatch();
   const mode = parseNewQueryMode(location.pathname) ?? "ai";
   const [notebookStarted, setNotebookStarted] = useState(false);
   const [sqlExpanded, setSqlExpanded] = useState(false);
   const isEngaged = useIsEngaged(mode, notebookStarted, sqlExpanded);
   const { setVisible: setSidebarVisible } = useMetabotAgent("omnibot");
+  const { conversationId: askConversationId } = useMetabotAgent("ask");
   const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
   );
@@ -142,7 +135,7 @@ export function NewQueryPage(props: Props) {
     setNotebookStarted(false);
     setSqlExpanded(false);
     if (mode === "ai") {
-      dispatch(resetConversation({ agentId: "ask" }));
+      dispatch(startNewConversation({ agentId: "ask" }));
     }
     if (mode === "notebook") {
       dispatch(resetQB());
@@ -170,19 +163,18 @@ export function NewQueryPage(props: Props) {
       setNotebookStarted(false);
       setSqlExpanded(false);
       setLastNewQueryMode(nextMode);
-      dispatch(
-        push(
-          newQueryUrl(nextMode, {
-            databaseId: lastUsedDatabaseId ?? undefined,
-          }),
-        ),
+      navigate(
+        newQueryUrl(nextMode, {
+          buildQuestion,
+          databaseId: lastUsedDatabaseId ?? undefined,
+        }),
       );
     }
   };
 
   const handleNotebookSelect = (url: string) => {
     setNotebookStarted(true);
-    dispatch(push(url));
+    navigate(url);
   };
 
   return (
@@ -208,11 +200,11 @@ export function NewQueryPage(props: Props) {
 
       {mode === "ai" && (
         <div className={S.aiStage}>
-          <div
-            className={cx(S.aiMessages, isEngaged && S.aiMessagesVisible)}
-          >
+          <div className={cx(S.aiMessages, isEngaged && S.aiMessagesVisible)}>
             {isEngaged && (
               <MetabotChat
+                conversationId={askConversationId}
+                agentId="ask"
                 config={askConfig}
                 hideInput
                 hideEmptyState
@@ -244,23 +236,17 @@ export function NewQueryPage(props: Props) {
           <div
             className={cx(S.notebookFull, isEngaged && S.notebookFullVisible)}
           >
-            {isEngaged && (
-              <QueryBuilder {...props} key={queryBuilderKey} />
-            )}
+            {isEngaged && <QueryBuilder key={queryBuilderKey} />}
           </div>
         </div>
       )}
 
       {mode === "sql" && (
         <div
-          className={cx(
-            S.content,
-            S.contentSql,
-            isSqlIdle && S.contentSqlIdle,
-          )}
+          className={cx(S.content, S.contentSql, isSqlIdle && S.contentSqlIdle)}
         >
           <div className={cx(S.sqlPrompt, isEngaged && S.sqlPromptEngaged)}>
-            <QueryBuilder {...props} key={queryBuilderKey} />
+            <QueryBuilder key={queryBuilderKey} />
           </div>
         </div>
       )}

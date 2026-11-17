@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { c, t } from "ttag";
 
 import EmptySnippet from "assets/img/empty-states/snippet.svg";
@@ -11,8 +12,8 @@ export const SnippetSidebarEmptyState = ({
   areSnippetsReadOnly?: boolean;
 }) => {
   return (
-    <Box p="lg" mt="5rem">
-      <Stack align="center" ta="center" gap="lg">
+    <Box p="xl" mt="5rem">
+      <Stack align="center" ta="center" gap="xl">
         <Box maw="6rem">
           <img src={EmptySnippet} alt={t`Code snippet bot illustration`} />
         </Box>

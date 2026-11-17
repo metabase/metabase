@@ -18,5 +18,5 @@ export type CardAutocompleteSuggestion = {
   id: number;
   name: string;
   type: CardType;
-  collection_name: string;
+  collection_name: string | null;
 };

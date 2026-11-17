@@ -1,5 +1,10 @@
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import type { DatasetQuery } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockMeasure,
+  createMockSegment,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   PEOPLE_ID,
@@ -14,13 +19,8 @@ import {
   SAMPLE_PROVIDER,
 } from "./test-helpers";
 
-const DEFAULT_QUERY: DatasetQuery = {
-  database: SAMPLE_DATABASE.id,
-  type: "query",
-  query: {
-    "source-table": ORDERS_ID,
-  },
-};
+const METRIC_ID = 42;
+const QUESTION_ID = 43;
 
 describe("fromJsQuery", () => {
   // this is a very important optimization that the FE heavily relies upon
@@ -29,8 +29,9 @@ describe("fromJsQuery", () => {
       SAMPLE_DATABASE.id,
       SAMPLE_METADATA,
     );
-    const query1 = Lib.fromJsQuery(metadataProvider, DEFAULT_QUERY);
-    const query2 = Lib.fromJsQuery(metadataProvider, DEFAULT_QUERY);
+    const jsQuery = Lib.createTestJsQuery(metadataProvider, DEFAULT_TEST_QUERY);
+    const query1 = Lib.fromJsQuery(metadataProvider, jsQuery);
+    const query2 = Lib.fromJsQuery(metadataProvider, jsQuery);
     expect(query1 === query2).toBe(true);
   });
 });
@@ -38,7 +39,10 @@ describe("fromJsQuery", () => {
 describe("toLegacyQuery", () => {
   it("should serialize a query", () => {
     const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
-    expect(Lib.toLegacyQuery(query)).toEqual(DEFAULT_QUERY);
+    const legacyQuery = Lib.toLegacyQuery(query);
+    const restoredQuery = Lib.fromJsQuery(SAMPLE_PROVIDER, legacyQuery);
+    expect(legacyQuery.database).toBe(SAMPLE_DATABASE.id);
+    expect(Lib.primarySourceTableId(restoredQuery)).toBe(ORDERS_ID);
   });
 });
 
@@ -85,7 +89,81 @@ describe("createTestQuery", () => {
           },
         ],
       });
-      expect(Lib.sourceTableOrCardId(query)).toBe(PRODUCTS_ID);
+      expect(Lib.primarySourceTableId(query)).toBe(PRODUCTS_ID);
+    });
+
+    it("should create a query with a card source", () => {
+      const provider = Lib.metadataProvider(
+        SAMPLE_DATABASE.id,
+        createMockMetadata({
+          databases: [SAMPLE_DATABASE],
+          questions: [
+            createMockCard({
+              id: QUESTION_ID,
+              name: "Orders question",
+              dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+                stages: [{ source: { type: "table", id: ORDERS_ID } }],
+              }),
+            }),
+          ],
+        }),
+      );
+
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: {
+              type: "card",
+              id: QUESTION_ID,
+            },
+          },
+        ],
+      });
+
+      expect(Lib.primarySourceCardId(query)).toBe(QUESTION_ID);
+    });
+
+    it("should create a query with a metric aggregation", () => {
+      const provider = Lib.metadataProvider(
+        SAMPLE_DATABASE.id,
+        createMockMetadata({
+          databases: [SAMPLE_DATABASE],
+          questions: [
+            createMockCard({
+              id: METRIC_ID,
+              name: "Revenue",
+              type: "metric",
+              dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+                stages: [
+                  {
+                    source: { type: "table", id: ORDERS_ID },
+                    aggregations: [{ type: "operator", operator: "count" }],
+                  },
+                ],
+              }),
+            }),
+          ],
+        }),
+      );
+
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+            aggregations: [{ type: "metric", id: METRIC_ID }],
+          },
+        ],
+      });
+
+      expect(Lib.primarySourceTableId(query)).toBe(ORDERS_ID);
+      expect(
+        Lib.displayInfo(query, 0, Lib.aggregations(query, 0)[0]),
+      ).toMatchObject({
+        displayName: "Revenue",
+      });
     });
   });
 
@@ -212,7 +290,7 @@ describe("createTestQuery", () => {
               {
                 type: "column",
                 name: "RATING",
-                bins: 10,
+                binning: { strategy: "num-bins", numBins: 10 },
               },
             ],
           },
@@ -238,8 +316,7 @@ describe("createTestQuery", () => {
               {
                 type: "column",
                 name: "LATITUDE",
-                sourceName: "PEOPLE",
-                binWidth: 10,
+                binning: { strategy: "bin-width", binWidth: 10 },
               },
             ],
           },
@@ -391,6 +468,54 @@ describe("createTestQuery", () => {
   });
 
   describe("filters", () => {
+    it("should create a query with a segment filter", () => {
+      const SEGMENT_ID = 12;
+      const provider = Lib.metadataProvider(
+        SAMPLE_DATABASE.id,
+        createMockMetadata({
+          databases: [SAMPLE_DATABASE],
+          segments: [
+            createMockSegment({
+              id: SEGMENT_ID,
+              table_id: PRODUCTS_ID,
+              definition: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+                stages: [
+                  {
+                    source: { type: "table", id: PRODUCTS_ID },
+                    filters: [
+                      {
+                        type: "operator",
+                        operator: "=",
+                        args: [
+                          { type: "column", fieldId: PRODUCTS.CATEGORY },
+                          { type: "literal", value: "Widget" },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              }),
+            }),
+          ],
+        }),
+      );
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PRODUCTS_ID,
+            },
+            filters: [{ type: "segment", id: SEGMENT_ID }],
+          },
+        ],
+      });
+
+      const filters = Lib.filters(query, 0);
+      expect(filters).toHaveLength(1);
+      expect(Lib.displayInfo(query, 0, filters[0]).displayName).toBe("Segment");
+    });
+
     it("should create a query with filters", () => {
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
@@ -423,6 +548,49 @@ describe("createTestQuery", () => {
   });
 
   describe("aggregations", () => {
+    it("should create a query with a measure aggregation", () => {
+      const MEASURE_ID = 34;
+
+      const provider = Lib.metadataProvider(
+        SAMPLE_DATABASE.id,
+        createMockMetadata({
+          databases: [SAMPLE_DATABASE],
+          measures: [
+            createMockMeasure({
+              id: MEASURE_ID,
+              table_id: PRODUCTS_ID,
+              definition: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+                stages: [
+                  {
+                    source: { type: "table", id: PRODUCTS_ID },
+                    aggregations: [{ type: "operator", operator: "count" }],
+                  },
+                ],
+              }),
+            }),
+          ],
+        }),
+      );
+
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PRODUCTS_ID,
+            },
+            aggregations: [{ type: "measure", id: MEASURE_ID }],
+          },
+        ],
+      });
+
+      const aggregations = Lib.aggregations(query, 0);
+      expect(aggregations).toHaveLength(1);
+      expect(Lib.displayInfo(query, 0, aggregations[0]).displayName).toBe(
+        "Measure",
+      );
+    });
+
     it("should create a query with aggregations", () => {
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
@@ -511,14 +679,14 @@ describe("createTestNativeQuery", () => {
       });
 
       expect(Lib.rawNativeQuery(query)).toBe(queryText);
-      expect(Lib.templateTags(query)).toEqual({
-        x: {
+      expect(Lib.templateTags(query)).toEqual([
+        {
           id: expect.any(String),
           type,
           name: "x",
           "display-name": "X",
         },
-      });
+      ]);
     },
   );
 
@@ -529,22 +697,22 @@ describe("createTestNativeQuery", () => {
       templateTags: {
         x: {
           type: "dimension",
-          dimension: PRODUCTS.CATEGORY,
+          "field-id": PRODUCTS.CATEGORY,
         },
       },
     });
 
     expect(Lib.rawNativeQuery(query)).toBe(queryText);
-    expect(Lib.templateTags(query)).toEqual({
-      x: {
+    expect(Lib.templateTags(query)).toEqual([
+      {
         id: expect.any(String),
         type: "dimension",
         name: "x",
         "display-name": "X",
-        dimension: ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+        "field-id": PRODUCTS.CATEGORY,
         "widget-type": "text",
       },
-    });
+    ]);
   });
 
   it("should create a native query with a temporal unit template tag", () => {
@@ -554,25 +722,21 @@ describe("createTestNativeQuery", () => {
       templateTags: {
         x: {
           type: "temporal-unit",
-          dimension: PRODUCTS.CREATED_AT,
+          "field-id": PRODUCTS.CREATED_AT,
         },
       },
     });
 
     expect(Lib.rawNativeQuery(query)).toBe(queryText);
-    expect(Lib.templateTags(query)).toEqual({
-      x: {
+    expect(Lib.templateTags(query)).toEqual([
+      {
         id: expect.any(String),
         type: "temporal-unit",
         name: "x",
         "display-name": "X",
-        dimension: [
-          "field",
-          PRODUCTS.CREATED_AT,
-          { "base-type": "type/DateTime" },
-        ],
+        "field-id": PRODUCTS.CREATED_AT,
       },
-    });
+    ]);
   });
 
   it("should create a native query with a snippet tag", () => {
@@ -588,8 +752,8 @@ describe("createTestNativeQuery", () => {
     });
 
     expect(Lib.rawNativeQuery(query)).toBe(queryText);
-    expect(Lib.templateTags(query)).toEqual({
-      "snippet: foo": {
+    expect(Lib.templateTags(query)).toEqual([
+      {
         id: expect.any(String),
         type: "snippet",
         name: "snippet: foo",
@@ -597,7 +761,7 @@ describe("createTestNativeQuery", () => {
         "snippet-name": "foo",
         "display-name": "Snippet: Foo",
       },
-    });
+    ]);
   });
 
   it("should create a native query with a card tag", () => {
@@ -612,15 +776,15 @@ describe("createTestNativeQuery", () => {
     });
 
     expect(Lib.rawNativeQuery(query)).toBe(queryText);
-    expect(Lib.templateTags(query)).toEqual({
-      "#1-users": {
+    expect(Lib.templateTags(query)).toEqual([
+      {
         id: expect.any(String),
         type: "card",
         name: "#1-users",
         "display-name": "#1 Users",
         "card-id": 1,
       },
-    });
+    ]);
   });
 
   it("should add default, required properties", () => {
@@ -638,8 +802,8 @@ describe("createTestNativeQuery", () => {
     });
 
     expect(Lib.rawNativeQuery(query)).toBe(queryText);
-    expect(Lib.templateTags(query)).toEqual({
-      x: {
+    expect(Lib.templateTags(query)).toEqual([
+      {
         id: expect.any(String),
         type: "text",
         name: "x",
@@ -648,6 +812,6 @@ describe("createTestNativeQuery", () => {
         "widget-type": "string/contains",
         "display-name": "X",
       },
-    });
+    ]);
   });
 });

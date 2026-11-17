@@ -72,28 +72,36 @@
     its argument** — it normalizes *within* an equivalence class (pool the contents, reorder a
     map) without changing equality. The zero-arg arity uses `identity` (intern values as-is).
   - Concurrent callers converge on a single canonical instance even on a simultaneous miss.
+  - `nil` is returned unchanged without calling `canon-fn` or adding an entry to the cache.
 
   In CLJ this is backed by a `ConcurrentHashMap`, so it is thread-safe; `canon-fn` may run more
   than once for the same value under contention (extra results are discarded), so it must be pure.
-  Keys and values must be non-nil with a good `Object.hashCode` (Clojure values qualify). Like
+  Non-nil values must have a good `Object.hashCode` (Clojure values qualify). Like
   [[fast-memo]] it doesn't support the memoization API (`memo-swap!`, `memoized?`, etc.).
 
   In CLJS (single-threaded) this is a plain atom-backed map with the same contract."
   ([] (fast-interner identity))
   ([canon-fn]
+   ;; `if-some` rather than `or` on the lookups so that a cached `false` counts as a hit
    #?(:clj  (let [cache (java.util.concurrent.ConcurrentHashMap.)]
               (fn [x]
-                (or (.get cache x)
+                (when (some? x)
+                  (if-some [cached (.get cache x)]
+                    cached
                     (let [canon (canon-fn x)]
                       ;; key by `canon`, not `x`: `canon` = `x`, so this lookup/insert hits the
                       ;; same bin a later equal input would, while retaining the canonical object.
-                      (or (.putIfAbsent cache canon canon) canon)))))
+                      (if-some [existing (.putIfAbsent cache canon canon)]
+                        existing
+                        canon))))))
       :cljs (let [cache (atom {})]
               (fn [x]
-                (or (get @cache x)
+                (when (some? x)
+                  (if-some [cached (get @cache x)]
+                    cached
                     (let [canon (canon-fn x)]
                       (swap! cache assoc canon canon)
-                      canon)))))))
+                      canon))))))))
 
 (defn fast-bounded
   "Variant of [[bounded]] that optimizes a common special case: a function with only a single argument, where that

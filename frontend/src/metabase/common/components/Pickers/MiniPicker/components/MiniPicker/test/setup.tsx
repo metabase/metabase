@@ -25,6 +25,7 @@ import {
 
 import { MiniPicker, type MiniPickerProps } from "..";
 
+// Unjustified type cast. FIXME
 const collectionItemModels = [
   "dataset",
   "metric",
@@ -261,6 +262,7 @@ export const setup = async (
         name: null,
       },
     }),
+    createMockSearchResult({ id: 501, model: "database", name: "Pemberley" }),
   ]);
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"], {}, true);

@@ -30,6 +30,19 @@
 
 (driver/register! :athena, :parent #{:sql-jdbc})
 
+(defmethod driver/host-carrying-parameters :athena
+  [_driver]
+  ["AthenaEndpoint" "AthenaStreamingEndpoint" "S3Endpoint" "StsEndpoint" "LakeFormationEndpoint"
+   "SsoAdminEndpoint" "SsoOidcEndpoint" "SsoLoginUrl" "IdentityCenterIssuerUrl" "IdpHostName"
+   "IdpWellKnownConfigurationUrl" "DataZoneEndpointOverride" "ProxyHost"
+   ;; added by the 3.8.2 client
+   "GlueEndpoint" "SsoEndpoint" "SsoStartUrl"])
+
+(defmethod driver/non-host-parameters :athena
+  [_driver]
+  ["DataZoneDomainId" "DataZoneDomainRegion" "OutputLocation" "PingPartnerSpId" "ProxyEnabledForIdP"
+   "ProxyExemptHosts" "ProxyPassword" "ProxyPort" "ProxyUsername"])
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          metabase.driver method impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -37,18 +50,21 @@
 (doseq [[feature supported?] {:connection/multiple-databases    true
                               :database-routing                 true
                               :datetime-diff                    true
+                              :describe-fields                  true
                               :expression-literals              true
                               :identifiers-with-spaces          false
                               :metadata/key-constraints         false
+                              :native-pivot-tables              true
                               :nested-fields                    false
                               :regex/lookaheads-and-lookbehinds false
+                              :stage-ctes                       true
                               :test/jvm-timezone-setting        false
                               :uuid-type                        true}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:athena :schemas]
   [_driver _feature db]
-  (not (seq (:dbname (driver.conn/effective-details db)))))
+  (not (seq (:dbname (:details db)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     metabase.driver.sql-jdbc method impls                                      |
@@ -60,6 +76,19 @@
   "Returns the endpoint URL for a specific region"
   [region]
   (str "//athena." region ".amazonaws.com" (when (str/starts-with? region "cn-") ".cn") ":443"))
+
+;; the URL is built from the hostname, or from the region when there is none; everything else is a property
+(defmethod driver/url-building-detail-keys :athena
+  [_driver]
+  [:hostname :region])
+
+(defmethod driver/connection-hosts :athena
+  [_driver {:keys [hostname region]}]
+  (driver/hosts-from-details
+   {:host (if (str/blank? hostname)
+            (str "athena." region ".amazonaws.com" (when (str/starts-with? region "cn-") ".cn"))
+            hostname)}
+   [:host]))
 
 (defmethod sql-jdbc.conn/connection-details->spec :athena
   [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog dbname hostname], :as details}]
@@ -151,8 +180,8 @@
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/OTHER]) driver rs rsmeta i)))
 
 (defmethod sql.qp/->honeysql [:athena ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar"]))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP_WITH_TIMEZONE]
   [_driver ^ResultSet rs _rs-meta ^Long i]
@@ -165,8 +194,7 @@
         (try
           (u.date/with-time-zone-same-instant t results-timezone)
           (catch Throwable _
-            (log/warnf "Failed to construct ZonedDateTime from `%s` using `%s` timezone."
-                       (pr-str t)
+            (log/warnf "Failed to construct ZonedDateTime using `%s` timezone."
                        (pr-str results-timezone))
             t))))))
 
@@ -187,6 +215,7 @@
 
 ;;; ------------------------------------------------- date functions -------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *loading-data*
   "HACK! Whether we're loading data (e.g. in [[metabase.test.data.athena]]). We can't use `timestamp with time zone`
   literals when loading data because Athena doesn't let you use a `timestamp with time zone` value for a `timestamp`
@@ -332,7 +361,7 @@
   [:date_parse expr (h2x/literal "%Y%m%d%H%i%S")])
 
 (defmethod sql.qp/->honeysql [:athena :datetime-diff]
-  [driver [_ x y unit]]
+  [driver [_ _opts x y unit]]
   (let [x (sql.qp/->honeysql driver x)
         y (sql.qp/->honeysql driver y)]
     (case unit
@@ -343,26 +372,26 @@
 
 ;; Support for median/percentile functions
 (defmethod sql.qp/->honeysql [:athena :median]
-  [driver [_ arg]]
+  [driver [_ _opts arg]]
   [:approx_percentile (sql.qp/->honeysql driver arg) 0.5])
 
 (defmethod sql.qp/->honeysql [:athena :percentile]
-  [driver [_ arg p]]
+  [driver [_ _opts arg p]]
   [:approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)])
 
 (defmethod sql.qp/->honeysql [:athena :regex-match-first]
-  [driver [_ arg pattern]]
-  [:regexp_extract (sql.qp/->honeysql driver arg) pattern])
+  [driver [_ _opts arg pattern]]
+  [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
    Such as prepare statement"
   [database query]
-  (log/infof "Running Athena query : '%s'..." query)
+  (log/info "Running Athena query...")
   (try
     (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database) (str/replace query ";" " ") {:raw? true})
     (catch Exception e
-      (log/error (u/format-color 'red "Failed to execute query: %s %s" query (.getMessage e))))))
+      (log/error (u/format-color 'red "Failed to execute query: %s" (.getMessage e))))))
 
 (defn- describe-database->clj
   "Workaround for wrong getColumnCount response by the driver (huh?)"
@@ -438,41 +467,59 @@
 (defn- table-has-nested-fields? [columns]
   (some #(= "struct" (:type_name %)) columns))
 
+(defn- escape-metadata-pattern
+  "Escape a literal schema or table name for JDBC metadata pattern arguments."
+  [^DatabaseMetaData metadata entity-name]
+  (when entity-name
+    (let [escape (.getSearchStringEscape metadata)]
+      (-> entity-name
+          (str/replace escape (str escape escape))
+          (str/replace "_" (str escape "_"))
+          (str/replace "%" (str escape "%"))))))
+
 (defn- get-columns
   [^DatabaseMetaData metadata catalog schema table-name]
   (try
-    (with-open [rs (.getColumns metadata catalog schema table-name nil)]
+    (with-open [rs (.getColumns metadata catalog
+                                (escape-metadata-pattern metadata schema)
+                                (escape-metadata-pattern metadata table-name)
+                                nil)]
       (jdbc/metadata-result rs))
     (catch Throwable e
       (log/warnf "`.getColumns` failed for catalog `%s`, schema `%s`, table name `%s` with message: `%s`"
                  catalog schema table-name (ex-message e))
       #{})))
 
+(defn- columns->fields
+  "Returns a set of column metadata for `table-name` from its `.getColumns` rows. Uses DESCRIBE when there are no rows,
+  duplicate column names, or struct columns."
+  [database driver schema table-name columns]
+  (let [duplicates? (and (seq columns)
+                         (not (apply distinct? (map :column_name columns))))]
+    (when (empty? columns)
+      (log/trace "Falling back to DESCRIBE due to #43980"))
+    (when duplicates?
+      (log/trace "Falling back to DESCRIBE due to duplicate column names (#58441)"
+                 (into {} (keep (fn [[col-name cols]]
+                                  (when (next cols)
+                                    [col-name (mapv :type_name cols)])))
+                       (group-by :column_name columns))))
+    (if (or (table-has-nested-fields? columns)
+              ; If `.getColumns` returns an empty result, try to use DESCRIBE, which is slower
+              ; but doesn't suffer from the bug in the JDBC driver as metabase#43980
+            (empty? columns)
+            duplicates?)
+      (describe-table-fields-with-nested-fields database schema table-name)
+      (describe-table-fields-without-nested-fields driver schema table-name columns))))
+
 (defn describe-table-fields
   "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "
   [^DatabaseMetaData metadata database driver {^String schema :schema, ^String table-name :name} catalog dbname]
   (let [schema (or schema dbname)]
     (try
-      (let [columns (get-columns metadata catalog schema table-name)
-            duplicates? (and (seq columns)
-                             (not (apply distinct? (map :column_name columns))))]
-        (when (empty? columns)
-          (log/trace "Falling back to DESCRIBE due to #43980"))
-        (when duplicates?
-          (log/trace "Falling back to DESCRIBE due to duplicate column names (#58441)"
-                     (into {} (keep (fn [[col-name cols]]
-                                      (when (next cols)
-                                        [col-name (mapv :type_name cols)])))
-                           (group-by :column_name columns))))
-        (if (or (table-has-nested-fields? columns)
-                  ; If `.getColumns` returns an empty result, try to use DESCRIBE, which is slower
-                  ; but doesn't suffer from the bug in the JDBC driver as metabase#43980
-                (empty? columns)
-                duplicates?)
-          (describe-table-fields-with-nested-fields database schema table-name)
-          (describe-table-fields-without-nested-fields driver schema table-name columns)))
+      (columns->fields database driver schema table-name (get-columns metadata catalog schema table-name))
       (catch Throwable e
-        (log/errorf e "Error retrieving fields for DB %s.%s" schema table-name)
+        (log/errorf "Error retrieving fields for DB %s.%s: %s" schema table-name (ex-message e))
         (throw e)))))
 
 ;; Because describe-table-fields might fail, we catch the error here and return an empty set of columns
@@ -485,7 +532,10 @@
      database
      nil
      (fn [^Connection conn]
-       (let [metadata (.getMetaData conn)]
+       (let [metadata (.getMetaData conn)
+             catalog  (if (and (str/blank? catalog) (not (str/blank? dbname)))
+                        (.getCatalog conn)
+                        catalog)]
          (assoc (select-keys table [:name :schema])
                 :fields (try
                           (describe-table-fields metadata database driver table catalog dbname)
@@ -495,15 +545,165 @@
 (defn- get-tables
   [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables
-  (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
+  (with-open [rs (.getTables metadata db-name-or-nil
+                             (escape-metadata-pattern metadata schema-or-nil) "%"
                              (into-array String ["TABLE"
                                                  "VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
-#_:clj-kondo/ignore
+(defn- sync-tables
+  "Returns the tables that table sync saved, as `{:name :schema}` maps."
+  [database schema-names table-names]
+  ;; Realize everything in a vector to close the connection.
+  (into []
+        (map #(select-keys % [:name :schema]))
+        (driver-api/reducible-sync-tables database
+                                          :schema-names (not-empty (remove nil? schema-names))
+                                          :table-names  (not-empty table-names))))
+
+(defn- reduce-columns-by-table
+  "Reads the columns of the tables in `schema` that match `table-pattern` with one `.getColumns` call, and calls
+  `(send-columns sync-state-acc table-name columns)` for each table. Holds the columns of one table at a time. If
+  reading fails, it logs a warning and stops. The table that it was reading is then not sent to `send-columns`.
+  `sync-state-acc` is the value that sync reduces the fields into. This function only passes it along."
+  [^DatabaseMetaData metadata catalog schema table-pattern send-columns init-sync-state]
+  (letfn [(log-error [e]
+            (log/warnf e "Cannot read the columns of schema %s with one `.getColumns` call, reading each table instead"
+                       schema))]
+    (if-let [rs (try
+                  (.getColumns metadata catalog (escape-metadata-pattern metadata schema) table-pattern nil)
+                  (catch Exception e
+                    (log-error e)))]
+      (with-open [^ResultSet rs rs]
+        (loop [sync-state-acc init-sync-state
+               table-name     nil
+               columns        (transient [])]
+          (let [row (try
+                      (when (.next rs)
+                        {:table_name  (.getString rs "TABLE_NAME")
+                         :column_name (.getString rs "COLUMN_NAME")
+                         :type_name   (.getString rs "TYPE_NAME")
+                         :remarks     (.getString rs "REMARKS")})
+                      (catch Exception e
+                        (log-error e)
+                        ::error))]
+            (cond
+              (= ::error row)
+              sync-state-acc
+
+              (and row (= table-name (:table_name row)))
+              (recur sync-state-acc table-name (conj! columns row))
+
+              :else
+              (let [sync-state-acc (cond-> sync-state-acc
+                                     table-name (send-columns table-name (persistent! columns)))]
+                (if (or (nil? row) (reduced? sync-state-acc))
+                  sync-state-acc
+                  (recur sync-state-acc (:table_name row) (transient [row]))))))))
+      init-sync-state)))
+
+(defn- reduce-schema-fields
+  "Reduces the fields of the tables in `glue-schema` with `sync-fields-rf`, one table at a time. Reads the columns of
+  all tables with one `.getColumns` call. Tables that this call does not return (no columns, or the call failed) get
+  their fields with [[describe-table-fields]] and `describe-table-catalog`, the same as [[driver/describe-table]].
+
+  `glue-schema` is the actual schema name that the tables are in, it is always set.
+  `mb-schema` is the schema value that we set for the field. It is nil if the user has set `dbname` in the connection
+  details, otherwise it is the same as `glue-schema`."
+  [driver database ^DatabaseMetaData metadata catalog describe-table-catalog glue-schema mb-schema table-names
+   sync-fields-rf init-sync-state]
+  (let [tables         (or (not-empty table-names)
+                           (into #{} (map :name) (sync-tables database [mb-schema] nil)))
+        table-pattern  (if (= 1 (count table-names))
+                         (escape-metadata-pattern metadata (first table-names))
+                         "%")
+        done           (volatile! #{})
+        send-table     (fn [sync-state-acc table-name get-fields]
+                         (vswap! done conj table-name)
+                         (reduce (fn [sync-state-acc field]
+                                   (let [sync-state-acc (sync-fields-rf sync-state-acc
+                                                                        (assoc field
+                                                                               :table-schema mb-schema
+                                                                               :table-name   table-name))]
+                                     ;; wrap again, because `reduce` unwraps it
+                                     (cond-> sync-state-acc (reduced? sync-state-acc) reduced)))
+                                 sync-state-acc
+                                 (try
+                                   (sort-by :database-position (get-fields))
+                                   (catch Exception e
+                                     (log/warnf e "Cannot get fields for table %s.%s, skipping field sync for it"
+                                                glue-schema table-name)
+                                     nil))))
+        sync-state-acc (reduce-columns-by-table
+                        metadata catalog glue-schema table-pattern
+                        (fn [sync-state-acc table-name columns]
+                          (cond
+                            (contains? @done table-name)
+                            (do (log/warnf "`.getColumns` returned table %s.%s out of order, skipping the rest of it"
+                                           glue-schema table-name)
+                                sync-state-acc)
+
+                            (contains? tables table-name)
+                            (send-table sync-state-acc table-name
+                                        #(columns->fields database driver glue-schema table-name columns))
+
+                            :else
+                            sync-state-acc))
+                        init-sync-state)]
+    (if (reduced? sync-state-acc)
+      sync-state-acc
+      (reduce (fn [sync-state-acc table-name]
+                (let [sync-state-acc (send-table sync-state-acc table-name
+                                                 #(describe-table-fields metadata database driver
+                                                                         {:schema glue-schema, :name table-name}
+                                                                         describe-table-catalog nil))]
+                  ;; wrap again, so that the caller stops too
+                  (cond-> sync-state-acc (reduced? sync-state-acc) reduced)))
+              sync-state-acc
+              (sort (remove @done tables))))))
+
+(defmethod driver/describe-fields :athena
+  [driver database & {:keys [schema-names table-names]}]
+  (let [{:keys [catalog dbname]} (driver.conn/effective-details database)]
+    (reify clojure.lang.IReduceInit
+      (reduce [_ sync-fields-rf init-sync-state]
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver
+         database
+         nil
+         (fn [^Connection conn]
+           (let [metadata               (.getMetaData conn)
+                 ;; same as `describe-table`: a blank catalog without `dbname` does not filter by catalog
+                 describe-table-catalog (if (and (str/blank? catalog) (not (str/blank? dbname)))
+                                          (.getCatalog conn)
+                                          catalog)
+                 catalog                (if (str/blank? catalog) (.getCatalog conn) catalog)]
+             ;; Tables have no schema when `dbname` is set, so we pass 2 schema values here.
+             ;; The first is the actual schema name, used for reading from Athena. The second
+             ;; is the schema value to set for the field. So it is nil when `dbname` is set.
+             (reduce (fn [sync-state-acc schema]
+                       (reduce-schema-fields driver database metadata catalog describe-table-catalog
+                                             schema                        ;; the actual schema name
+                                             (when (empty? dbname) schema) ;; the schema value to set for the field
+                                             (set table-names)
+                                             sync-fields-rf
+                                             sync-state-acc))
+                     init-sync-state
+                     (cond
+                       (seq dbname)       [dbname]
+                       (seq schema-names) (remove nil? schema-names)
+                       :else              (into (sorted-set)
+                                                (keep :schema)
+                                                (sync-tables database nil table-names)))))))))))
+
+;; one-off REPL script kept for reference
+#_{:clj-kondo/ignore [:discouraged-var]}
 (comment
+  (require
+   '[metabase.test.data.dataset-definitions]
+   '[metabase.test.data.interface])
   ;; Script on following lines was used to get available table types, used in the `get-tables` implementation.
-  (with-open [conn (clojure.java.jdbc/get-connection
+  (with-open [conn (jdbc/get-connection
                     (sql-jdbc.conn/connection-details->spec
                      :athena
                      (metabase.test.data.interface/dbdef->connection-details

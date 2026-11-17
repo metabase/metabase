@@ -1,16 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
-import { usePrevious } from "react-use";
-import _ from "underscore";
-
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { BoxProps } from "metabase/ui";
 
 import { TreeNode as DefaultTreeNode } from "./TreeNode";
 import { TreeNodeList } from "./TreeNodeList";
 import type { ITreeNodeItem } from "./types";
-import { getInitialExpandedIds } from "./utils";
+import type { TreeController } from "./useTree";
+import { useTree } from "./useTree";
 
-interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
-  data: ITreeNodeItem<TData>[];
+export interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
+  data?: ITreeNodeItem<TData>[];
   selectedId?: ITreeNodeItem<TData>["id"];
   emptyState?: React.ReactNode;
   initialExpandedIds?: ITreeNodeItem<TData>["id"][];
@@ -20,21 +18,13 @@ interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
   TreeNode?: any;
-}
-
-function withPinnedIds<TData>(
-  ids: Set<ITreeNodeItem<TData>["id"]>,
-  pinnedExpandedIds?: ITreeNodeItem<TData>["id"][],
-) {
-  if (!pinnedExpandedIds?.length) {
-    return ids;
-  }
-  return new Set([...ids, ...pinnedExpandedIds]);
+  tree?: TreeController<TData>;
+  wrapNodesInListItem?: boolean;
 }
 
 function BaseTree<TData = unknown>({
-  data,
-  selectedId,
+  data: dataProp,
+  selectedId: selectedIdProp,
   role = "menu",
   emptyState = null,
   initialExpandedIds,
@@ -42,86 +32,20 @@ function BaseTree<TData = unknown>({
   onSelect,
   TreeNode = DefaultTreeNode,
   rightSection,
+  tree,
+  wrapNodesInListItem,
   ...boxProps
 }: TreeProps<TData>) {
-  const [expandedIds, setExpandedIds] = useState(() => {
-    if (initialExpandedIds) {
-      return withPinnedIds(new Set(initialExpandedIds), pinnedExpandedIds);
-    }
-    return withPinnedIds(
-      new Set(
-        selectedId != null ? getInitialExpandedIds(selectedId, data) : [],
-      ),
-      pinnedExpandedIds,
-    );
-  });
-  const previousSelectedId = usePrevious(selectedId);
-  const prevData = usePrevious(data);
-
-  useEffect(() => {
-    if (!selectedId) {
-      return;
-    }
-    const dataHasChanged = !_.isEqual(data, prevData);
-    const selectedItemChanged =
-      previousSelectedId !== selectedId && !expandedIds.has(selectedId);
-
-    if (selectedItemChanged || dataHasChanged) {
-      setExpandedIds((prev) =>
-        withPinnedIds(
-          new Set([...prev, ...getInitialExpandedIds(selectedId, data)]),
-          pinnedExpandedIds,
-        ),
-      );
-    }
-  }, [
-    prevData,
-    data,
-    selectedId,
-    previousSelectedId,
-    expandedIds,
+  const defaultController = useTree({
+    data: dataProp,
+    selectedId: selectedIdProp,
+    initialExpandedIds,
     pinnedExpandedIds,
-  ]);
-
-  useEffect(() => {
-    if (!pinnedExpandedIds?.length) {
-      return;
-    }
-    setExpandedIds((prev) => withPinnedIds(prev, pinnedExpandedIds));
-  }, [pinnedExpandedIds, data]);
-
-  useEffect(() => {
-    if (!initialExpandedIds?.length) {
-      return;
-    }
-    setExpandedIds((prev) =>
-      withPinnedIds(
-        new Set([...prev, ...initialExpandedIds]),
-        pinnedExpandedIds,
-      ),
-    );
-  }, [initialExpandedIds, data, pinnedExpandedIds]);
-
-  const handleToggleExpand = useCallback(
-    (itemId: string | number) => {
-      if (expandedIds.has(itemId) && pinnedExpandedIds?.includes(itemId)) {
-        return;
-      }
-      if (expandedIds.has(itemId)) {
-        setExpandedIds((prev) =>
-          withPinnedIds(
-            new Set([...prev].filter((id) => id !== itemId)),
-            pinnedExpandedIds,
-          ),
-        );
-      } else {
-        setExpandedIds((prev) =>
-          withPinnedIds(new Set([...prev, itemId]), pinnedExpandedIds),
-        );
-      }
-    },
-    [expandedIds, pinnedExpandedIds],
-  );
+  });
+  const controller = tree ?? defaultController;
+  const data = controller.data ?? dataProp;
+  const selectedId = controller.selectedId ?? selectedIdProp;
+  const { expandedIds, handleToggleExpand } = controller;
 
   if (data.length === 0) {
     return <>{emptyState}</>;
@@ -138,6 +62,7 @@ function BaseTree<TData = unknown>({
       onSelect={onSelect}
       onToggleExpand={handleToggleExpand}
       rightSection={rightSection}
+      wrapNodes={wrapNodesInListItem}
       {...boxProps}
     />
   );

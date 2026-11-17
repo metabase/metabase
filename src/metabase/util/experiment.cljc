@@ -25,7 +25,7 @@
   (atom (constantly false)))
 
 (defn experiments-enabled?
-  "Returns true if experiments are globally enabled. Checks the setting on every call."
+  "Returns true if experiments are enabled, according to the global [[experiments-enabled-fn]]."
   []
   (@experiments-enabled-fn))
 
@@ -44,6 +44,7 @@
   [f]
   (reset! default-report-fn f))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *sync?*
   "When true, forces synchronous candidate execution on JVM. For testing only."
   false)
@@ -116,7 +117,7 @@
                   match?            (outcomes-match? comparator-fn control-outcome candidate-outcome)]
               (when-not match?
                 (if (contains? candidate-outcome :error)
-                  (log/warnf "Experiment %s: candidate threw %s" name (str (:error candidate-outcome)))
+                  (log/warnf "Experiment %s: candidate threw %s" name (ex-message (:error candidate-outcome)))
                   (log/warnf "Experiment %s: result MISMATCH" name)))
               (when report-fn
                 (report-fn {:name                  name

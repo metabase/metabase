@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { cardApi, dashboardApi, parametersApi } from "metabase/api";
 import type {
   CardParameterValuesRequest,
@@ -160,10 +161,9 @@ const loadCardParameterValues = async (
   // a refetch after that reset actually hits the network.
   const queryAction = dispatch(
     isSearch
-      ? cardApi.endpoints.searchCardParameterValues.initiate(
-          request as SearchCardParameterValuesRequest,
-          { forceRefetch: true },
-        )
+      ? cardApi.endpoints.searchCardParameterValues.initiate(request, {
+          forceRefetch: true,
+        })
       : cardApi.endpoints.getCardParameterValues.initiate(request, {
           forceRefetch: true,
         }),
@@ -191,7 +191,7 @@ const loadDashboardParameterValues = async (
   const queryAction = dispatch(
     isSearch
       ? dashboardApi.endpoints.searchDashboardParameterValues.initiate(
-          request as SearchDashboardParameterValuesRequest,
+          request,
           { forceRefetch: true },
         )
       : dashboardApi.endpoints.getDashboardParameterValues.initiate(request, {

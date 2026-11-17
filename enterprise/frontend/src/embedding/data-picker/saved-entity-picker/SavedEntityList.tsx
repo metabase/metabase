@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, type JSX } from "react";
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
@@ -7,25 +7,27 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SelectList } from "metabase/common/components/SelectList";
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { CardType, CollectionId, DatabaseId } from "metabase-types/api";
+import type { CollectionId, DatabaseId } from "metabase-types/api";
+
+import type { SavedEntityType } from "../types";
 
 import SavedEntityListS from "./SavedEntityList.module.css";
 import { CARD_INFO } from "./constants";
 
 interface SavedEntityListProps {
-  type: Extract<CardType, "model" | "question">;
-  selectedId?: string;
-  databaseId?: DatabaseId;
+  type: SavedEntityType;
+  selectedSource?: DataSource;
+  databaseId?: DatabaseId | null;
   collectionId?: CollectionId;
-  onSelect: (tableOrModelId: string) => void;
+  onSelect: (source: DataSource) => void;
 }
 
-const SavedEntityList = ({
+export const SavedEntityList = ({
   type,
-  selectedId,
+  selectedSource,
   databaseId,
   collectionId,
   onSelect,
@@ -44,8 +46,8 @@ const SavedEntityList = ({
       ? {
           id: collectionId,
           models: [CARD_INFO[type].model],
-          sort_column: "name",
-          sort_direction: "asc",
+          "sort-column": "name",
+          "sort-direction": "asc",
         }
       : skipToken,
   );
@@ -66,7 +68,8 @@ const SavedEntityList = ({
           <Fragment>
             {filteredList.map((collectionItem) => {
               const { id, name, moderated_status } = collectionItem;
-              const virtualTableId = getQuestionVirtualTableId(id);
+              const source: DataSource =
+                type === "table" ? { type: "table", id } : { type: "card", id };
 
               return (
                 <SelectList.Item
@@ -76,14 +79,17 @@ const SavedEntityList = ({
                   }}
                   key={id}
                   id={id}
-                  isSelected={selectedId === virtualTableId}
+                  isSelected={
+                    selectedSource?.type === source.type &&
+                    selectedSource.id === source.id
+                  }
                   size="small"
                   name={tc(name)}
                   icon={{
                     name: CARD_INFO[type].icon,
                     size: 16,
                   }}
-                  onSelect={() => onSelect(virtualTableId)}
+                  onSelect={() => onSelect(source)}
                   rightIcon={PLUGIN_MODERATION.getStatusIcon(
                     moderated_status ?? undefined,
                   )}
@@ -98,6 +104,3 @@ const SavedEntityList = ({
     </Box>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SavedEntityList;

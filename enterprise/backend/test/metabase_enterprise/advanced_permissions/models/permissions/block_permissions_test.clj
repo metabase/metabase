@@ -9,7 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.test :as qp]
@@ -138,7 +138,7 @@
               new-graph     (assoc-in current-graph
                                       [:groups group-id (mt/id)]
                                       {:view-data :blocked :create-queries :query-builder-and-native})]
-          (is (=? #"Cannot parse permissions graph because it is invalid.*"
+          (is (=? {:specific-errors {:groups [#"Invalid DB permissions: If you have write access for native queries.*"]}}
                   (mt/with-premium-features #{:advanced-permissions}
                     (mt/user-http-request :crowberto :put 400 "permissions/graph" new-graph)))))))))
 
@@ -268,15 +268,15 @@
               (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"
                 (testing "Should not be able to run the parent Card"
                   (mt/with-test-user :rasta
-                    (is (not (mi/can-read? disallowed-collection)))
-                    (is (not (mi/can-read? parent-card))))
+                    (is (not (mi/can-read? (t2/hydrate disallowed-collection :can_read))))
+                    (is (not (mi/can-read? (t2/hydrate parent-card :can_read)))))
                   (is (= "You don't have permissions to do that."
                          (process-query-for-card parent-card))))
                 (testing "Should not be able to run the child Card due to Block permissions"
                   (mt/with-test-user :rasta
-                    (is (not (mi/can-read? parent-card)))
-                    (is (mi/can-read? allowed-collection))
-                    (is (mi/can-read? child-card)))
+                    (is (not (mi/can-read? (t2/hydrate parent-card :can_read))))
+                    (is (mi/can-read? (t2/hydrate allowed-collection :can_read)))
+                    (is (mi/can-read? (t2/hydrate child-card :can_read))))
                   (rasta-view-data-perm= :blocked)
                   (testing "Data perms prohibit running queries"
                     (is (thrown-with-msg?
@@ -284,12 +284,15 @@
                          #"You do not have permissions to run this query"
                          (mt/rows (process-query-for-card child-card)))
                         "Even if the user has can-write? on a Card, they should not be able to run it because they are blocked on Card's db"))))
-              (testing "view-data = unrestricted is required to allow running the query (#15131)"
+              (testing "view-data alone is not enough: the child reads a Card in a Collection the user cannot read"
                 (mt/with-restored-data-perms!
                   (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
                   (rasta-view-data-perm= :unrestricted)
-                  (is (= [[1] [2]] (mt/rows (process-query-for-card child-card)))
-                      "view-data = unrestricted is sufficient to allow running the query"))))))))))
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"You do not have permissions to view Card"
+                       (mt/rows (process-query-for-card child-card)))
+                      "reading the child still requires reading the parent it sources, which is in a blocked Collection"))))))))))
 
 ;; Similar to the above test, but with table-level block in place for the nested query
 (deftest nested-query-table-level-block-permissions-test
@@ -317,16 +320,16 @@
               (mt/with-test-user :rasta
                 (rasta-view-data-perm= :blocked)
                 (testing "Should not be able to run the parent Card due to Block permissions"
-                  (is (mi/can-read? parent-card))
+                  (is (mi/can-read? (t2/hydrate parent-card :can_read)))
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
                        #"You do not have permissions to run this query"
                        (mt/rows (process-query-for-card child-card)))))
                 (testing "Should not be able to run the child Card due to Block permissions"
                   (mt/with-test-user :rasta
-                    (is (mi/can-read? parent-card))
-                    (is (mi/can-read? collection))
-                    (is (mi/can-read? child-card)))
+                    (is (mi/can-read? (t2/hydrate parent-card :can_read)))
+                    (is (mi/can-read? (t2/hydrate collection :can_read)))
+                    (is (mi/can-read? (t2/hydrate child-card :can_read))))
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
                        #"You do not have permissions to run this query"
@@ -363,9 +366,9 @@
                 (rasta-view-data-perm= :blocked)
                 (testing "Should STILL not be able to do it even without token"
                   (mt/with-test-user :rasta
-                    (is (mi/can-read? parent-card))
-                    (is (mi/can-read? collection))
-                    (is (mi/can-read? child-card)))
+                    (is (mi/can-read? (t2/hydrate parent-card :can_read)))
+                    (is (mi/can-read? (t2/hydrate collection :can_read)))
+                    (is (mi/can-read? (t2/hydrate child-card :can_read))))
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
                        #"You do not have permissions to run this query"
@@ -426,7 +429,7 @@
         (is (= [[1]]
                (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))))
         ;; block a single table on the db:
-        (let [tables-in-db (map :id (:tables (t2/hydrate (t2/select-one :model/Database db-id) :tables)))
+        (let [tables-in-db (map :id (:tables (t2/hydrate (t2/select-one :model/Database :id db-id) :tables)))
               table-id (rand-nth tables-in-db)]
           (data-perms/set-table-permissions! (perms-group/all-users) :perms/view-data {table-id :blocked}))
         (is (thrown-with-msg?

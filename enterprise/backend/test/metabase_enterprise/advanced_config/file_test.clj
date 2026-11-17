@@ -2,11 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.match :as match]
    [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
@@ -30,6 +30,12 @@
       (binding [advanced-config.file/*env* (assoc @#'advanced-config.file/*env* :mb-config-file-path filename)]
         (is (= mock-yaml
                (#'advanced-config.file/config-from-disk)))))))
+
+(deftest ^:parallel blank-config-file-path-test
+  (testing "A blank MB_CONFIG_FILE_PATH counts as unset (on JDK 25+ the empty path 'exists' as the current directory)"
+    (doseq [blank ["" "   "]]
+      (binding [advanced-config.file/*env* (assoc @#'advanced-config.file/*env* :mb-config-file-path blank)]
+        (is (nil? (#'advanced-config.file/path)))))))
 
 (deftest ^:parallel validate-config-test
   (testing "Config should throw an error"
@@ -186,15 +192,8 @@
           (#'advanced-config.file/config bad-config {:expand-templates? true})
           (catch Throwable e
             (letfn [(contains-password? [form]
-                      (let [seen-password? (atom false)]
-                        (walk/postwalk
-                         (fn [form]
-                           (when (and (string? form)
-                                      (str/includes? form "~~~SeCrEt123~~~"))
-                             (reset! seen-password? true))
-                           form)
-                         form)
-                        @seen-password?))]
+                      (match/match-one form
+                        (s :guard (and (string? s) (str/includes? s "~~~SeCrEt123~~~"))) true))]
               (is (not (contains-password? (ex-message e))))
               (is (not (contains-password? (ex-data e)))))))))))
 

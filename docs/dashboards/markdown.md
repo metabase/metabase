@@ -79,7 +79,7 @@ To nest a bulleted item under another bulleted item, indent the nested item with
 To add a link, put the link text in square brackets, followed by the URL in parentheses:
 
 ```text
-[the internet's finest webpage](https://www.metabase.com)
+[the internet's finest webpage](https://www.example.com)
 ```
 
 This renders as a clickable link: [the internet's finest webpage](https://www.metabase.com).
@@ -96,7 +96,7 @@ To add an image, type an exclamation point (`!`), then a description of the imag
 ![A cat wearing a tiny hat](https://example.com/cat-in-hat.png)
 ```
 
-You can't upload an image to Metabase. Link to an image that's already online, using a URL your Metabase can access. Your admin can also [restrict which domains images load from](../configuring-metabase/settings.md#allowed-domains-for-images).
+You can't upload an image to Metabase. Link to an image that's already online, using a URL your Metabase can access. Your admin can also [restrict which domains images load from](../configuring-metabase/domains.md#restrict-where-images-can-load-from).
 
 The same syntax works for GIFs. Just use the URL of a GIF instead of an image.
 

@@ -2,6 +2,8 @@ import type { UserId } from "./user";
 
 export type GroupId = number;
 
+export type GroupMappings = Record<string, GroupId[]>;
+
 export type Membership = {
   user_id: UserId;
   group_id: GroupId;
@@ -43,6 +45,11 @@ export type BaseGroupInfo = {
   id: GroupId;
   name: string;
   is_tenant_group?: boolean;
+};
+
+export type ListInviteGroupIdsRequest = {
+  type: "dashboard" | "question";
+  id: number;
 };
 
 export type ListUserMembershipsResponse = Record<UserId, Membership[]>;

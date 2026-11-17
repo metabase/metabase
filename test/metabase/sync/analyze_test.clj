@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analyze.classifiers.category :as classifiers.category]
+   [metabase.analyze.classifiers.data-sensitivity :as classifiers.data-sensitivity]
    [metabase.analyze.classifiers.name :as classifiers.name]
    [metabase.analyze.classifiers.no-preview-display
     :as classifiers.no-preview-display]
@@ -14,10 +15,12 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [metabase.test.sync :refer [sync-survives-crash?!]]
+   [metabase.test.sync :refer [sync-survives-crash?! cache-normal-sync-steps-fixture]]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
+
+(use-fixtures :once #'cache-normal-sync-steps-fixture)
 
 (deftest skip-analysis-of-fields-with-current-fingerprint-version-test
   (testing "Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current"
@@ -96,6 +99,11 @@
 (deftest survive-classify-table-errors
   (testing "Make sure we survive table classification failing"
     (sync-survives-crash?! classifiers.name/infer-entity-type-by-name)))
+
+(deftest survive-data-sensitivity-errors
+  (testing "sync survives the data sensitivity rules failing; the setting must be on for the rules to be reached"
+    (mt/with-temporary-setting-values [data-sensitivity-scan-enabled true]
+      (sync-survives-crash?! classifiers.data-sensitivity/infer-data-sensitivity))))
 
 (defn- classified-semantic-type [values]
   (let [field (mi/instance :model/Field {:base_type :type/Text})]
@@ -184,12 +192,12 @@
 (defn- analyze-table! [table]
   ;; we're calling `analyze-db!` instead of `analyze-table!` because the latter doesn't care if you try to sync a
   ;; hidden table and will allow that. TODO - Does that behavior make sense?
-  (analyze/analyze-db! (t2/select-one :model/Database :id (:db_id table))))
+  (analyze/analyze-db! (:id (t2/select-one :model/Database :id (:db_id table)))))
 
 (deftest dont-analyze-hidden-tables-test
   (testing "expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing"
     (letfn [(tests [sync!*]
-              (mt/with-temp [:model/Table table (assoc (fake-table) :visibility_type "hidden")
+              (mt/with-temp [:model/Table table (fake-table)
                              :model/Field field (fake-field table)]
                 (letfn [(set-visibility! [visibility]
                           (set-table-visibility-type-via-api! table visibility)
@@ -219,13 +227,23 @@
       (testing "\nsame test but with sync triggered programatically rather than via the API"
         (tests analyze-table!)))))
 
+(deftest dont-analyze-data-layer-hidden-tables-test
+  (testing "a table hidden through the Data Studio data layer stays un-analyzed"
+    (mt/with-temp [:model/Table table (fake-table)
+                   :model/Field field (fake-field table)]
+      (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
+                            {:table_ids [(u/the-id table)] :data_layer "hidden"})
+      (analyze-table! table)
+      (is (false? (fake-field-was-analyzed? field))))))
+
 (deftest analyze-db!-return-value-test
   (testing "Returns values"
     (mt/with-temp [:model/Table table (fake-table)
                    :model/Field _     (fake-field table)]
       (let [results (analyze-table! table)]
         (testing "has the steps performed"
-          (is (= ["fingerprint-fields" "classify-fields" "classify-tables" "score-interestingness"]
+          (is (= ["fingerprint-fields" "classify-fields" "classify-tables" "score-interestingness"
+                  "classify-data-sensitivity"]
                  (->> results :steps (map first)))))
         (testing "has start and finish times"
           (is (seq (select-keys results [:start-time :end-time]))))))))

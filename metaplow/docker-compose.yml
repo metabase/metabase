@@ -1,0 +1,11 @@
+services:
+  metaplow-sink:
+    ## Recording stand-in for the Metabase Track collector; see sink.js. Zero dependencies, so a
+    ## stock node image running the mounted script is the whole service.
+    ## Pinned, like snowplow-micro next door: CI should not pick up a new runtime on its own.
+    image: node:22.23.2-alpine
+    ports:
+      - "9091:9091"
+    volumes:
+      - .:/sink:ro
+    command: node /sink/sink.js

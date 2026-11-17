@@ -1,4 +1,5 @@
 name: Create Backend Dep Bump PRs
+description: Opens a pull request for each backend dependency that has a newer version available.
 
 inputs:
   github-token:

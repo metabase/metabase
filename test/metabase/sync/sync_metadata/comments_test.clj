@@ -1,19 +1,23 @@
 (ns ^:mb/driver-tests metabase.sync.sync-metadata.comments-test
   "Test for the logic that syncs Table column descriptions with the comments fetched from a DB."
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc.execute :as sql-jdbc.tx.execute]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
-(defn- db->fields [db]
+(defn- db->fields
+  "The name and description sync itself recorded for each Field of `db`, ignoring any description a user set."
+  [db]
   (let [table-ids (t2/select-pks-set :model/Table :db_id (u/the-id db))]
     (set (map (partial into {}) (t2/select ['Field :name :description] :table_id [:in table-ids])))))
 
@@ -47,18 +51,19 @@
     [["foo"]]]])
 
 (deftest comment-should-not-overwrite-custom-description-test
-  (testing (str "test changing the description in metabase db so we can check it is not overwritten by comment in "
-                "source db when resyncing")
+  (testing "user-set description is never overwritten by resyncing comment from source db"
     (mt/test-drivers (mt/normal-driver-select {:+features [::field-comments-sync]})
       (mt/dataset update-desc
         (mt/with-temp-copy-of-db
-          ;; change the description in metabase while the source table comment remains the same
-          (t2/update! :model/Field {:id (mt/id "update_desc" "updated_desc")}, {:description "updated description"})
-          ;; now sync the DB again, this should NOT overwrite the manually updated description
-          (sync/sync-table! (t2/select-one :model/Table :id (mt/id "update_desc")))
-          (is (= #{{:name (mt/format-name "id"), :description nil}
-                   {:name (mt/format-name "updated_desc"), :description "updated description"}}
-                 (db->fields (mt/db)))))))))
+          (let [field-id (mt/id "update_desc" "updated_desc")]
+            (t2/update! :model/Field :id field-id {:description nil})
+            (field-user-settings/upsert-field-user-settings! {:id field-id} {:description "updated description"})
+            (sync/sync-table! (t2/select-one :model/Table :id (mt/id "update_desc")))
+            (is (= #{{:name (mt/format-name "id"), :description nil}
+                     {:name (mt/format-name "updated_desc"), :description "updated description"}}
+                   (db->fields (mt/db))))
+            (is (=? {:description "updated description" :description_set true}
+                    (t2/select-one :model/FieldUserSettings :field_id field-id)))))))))
 
 (tx/defdataset ^:private comment-after-sync
   [["comment_after_sync"
@@ -72,7 +77,7 @@
       ;; and re-create a modified version. As such, let the SQL JDBC driver know the DB is being "modified" so it can
       ;; destroy its current connection pool
       (mt/dataset comment-after-sync
-        (driver/notify-database-updated driver/*driver* (mt/db))
+        (driver/notify-database-updated driver/*driver* (lib.metadata/database (mt/metadata-provider)))
         (let [modified-dbdef (update
                               comment-after-sync
                               :table-definitions
@@ -130,7 +135,7 @@
           ;; change the description in metabase while the source table comment remains the same
           (t2/update! :model/Table {:id (mt/id "table_with_updated_desc")} {:description "updated table description"})
           ;; now sync the DB again, this should NOT overwrite the manually updated description
-          (sync-tables/sync-tables-and-database! (mt/db))
+          (sync-tables/sync-tables-and-database! (lib.metadata/database (mt/metadata-provider)))
           (is (= #{{:name (get-table-name driver/*driver* "table_with_updated_desc")
                     :description "updated table description"}}
                  (db->tables (mt/db)))))))))
@@ -142,13 +147,18 @@
             added-comment (mt/random-name)
             dbdef (basic-table table-name nil)]
         (mt/dataset dbdef
-          ;; create the comment
-          (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                         [(sql.tx/standalone-table-comment-sql
-                           driver/*driver*
-                           dbdef
-                           (tx/map->TableDefinition {:table-name table-name
-                                                     :table-comment added-comment}))]
-                         {:transaction? false}) ;; trino needs transactions off
-          (sync-tables/sync-tables-and-database! (mt/db))
+          ;; Use the same execute-sql! extension as the test data loader so driver-specific DDL
+          ;; handling applies here too. The default disables transactions, as Trino requires.
+          (sql-jdbc.execute/do-with-connection-with-options
+           driver/*driver* (mt/id) {:write? true}
+           (fn [conn]
+             (sql-jdbc.tx.execute/execute-sql!
+              driver/*driver*
+              conn
+              (sql.tx/standalone-table-comment-sql
+               driver/*driver*
+               dbdef
+               (tx/map->TableDefinition {:table-name table-name
+                                         :table-comment added-comment})))))
+          (sync-tables/sync-tables-and-database! (lib.metadata/database (mt/metadata-provider)))
           (is (true? (t2/exists? :model/Table :db_id (mt/id) :description added-comment))))))))

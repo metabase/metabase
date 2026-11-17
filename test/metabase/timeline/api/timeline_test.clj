@@ -66,6 +66,32 @@
         (is (= '()
                (->> (collection-timelines-request coll-c true) first :events)))))))
 
+(deftest timeline-events-archived-test
+  (testing "GET /api/timeline/:id?include=events"
+    (mt/with-temp [:model/Timeline      tl        {:name "Timeline"}
+                   :model/TimelineEvent _event    {:name "event" :timeline_id (u/the-id tl)}
+                   :model/TimelineEvent _event-old {:name "event-old" :timeline_id (u/the-id tl) :archived true}]
+      (testing "without `archived` returns only un-archived events"
+        (is (= #{"event"}
+               (event-names [(mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id tl))
+                                                   :include "events")]))))
+      (testing "with `archived=true` returns archived and un-archived events"
+        (is (= #{"event" "event-old"}
+               (event-names [(mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id tl))
+                                                   :include "events" :archived true)])))))))
+
+(deftest collection-archived-timelines-test
+  (testing "GET /api/timeline/collection/:id?archived=true returns only archived timelines"
+    (mt/with-temp [:model/Collection coll-b {:name "Collection B"}
+                   :model/Timeline _tl-b     {:name          "Timeline B"
+                                              :collection_id (u/the-id coll-b)}
+                   :model/Timeline _tl-b-old {:name          "Timeline B-old"
+                                              :collection_id (u/the-id coll-b)
+                                              :archived      true}]
+      (is (= #{"Timeline B-old"}
+             (timeline-names (mt/user-http-request :rasta :get 200
+                                                   (str "timeline/collection/" (u/the-id coll-b)) :archived true)))))))
+
 (deftest collection-timelines-permissions-test
   (testing "GET /api/timeline/collection/:id"
     (mt/with-temp [:model/Collection coll-a {:name "Collection A"}

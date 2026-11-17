@@ -14,8 +14,11 @@
   (:refer-clojure :exclude [require])
   (:require
    [clojure.string :as str]
-   [dynapath.util :as dynapath]
-   [metabase.util.log :as log])
+   ;; classloader sits below `util` in the module graph (util's i18n and quick-task need `the-classloader`),
+   ;; so using `metabase.util.log` here would create a module cycle; plain tools.logging hits the same log4j2
+   ;; backend, we just lose test log capture for these handful of trace messages.
+   [clojure.tools.logging :as log]
+   [dynapath.util :as dynapath])
   (:import
    (clojure.lang DynamicClassLoader RT)
    (java.net URL)))
@@ -135,6 +138,8 @@
                          :system-classpath (sort (str/split (System/getProperty "java.class.path") #"[:;]"))}
                         e))))))
 
+(defonce ^:private fully-loaded (atom #{}))
+
 (defn require
   "Just like vanilla `require`, but ensures we're using our shared classloader to do it. Always use this over vanilla
   `require` -- otherwise namespaces might get loaded by the wrong ClassLoader, resulting in weird, hard-to-debug
@@ -142,13 +147,15 @@
 
   Added benefit -- this is also thread-safe, unlike vanilla require."
   ([x]
-   ;; Check whether the lib is already loaded (we only do this in simple cases where with just one arg -- this is
-   ;; most of the calls anyway). If the lib is already loaded we can skip acquiring the lock and expensive stuff like
-   ;; bindings and the try-catch
-   (let [already-loaded? (and (symbol? x)
-                              ((loaded-libs) x))]
-     (when-not already-loaded?
-       (require* x))))
+   ;; Check whether this function already finished loading the lib (we only do this in simple cases where with just
+   ;; one arg -- this is most of the calls anyway). If so we can skip acquiring the lock and expensive stuff like
+   ;; bindings and the try-catch. `loaded-libs` can't answer this: a namespace joins it as soon as its `ns` form runs,
+   ;; while another thread may still be loading the rest of the file.
+   (when-not (and (symbol? x) (@fully-loaded x))
+     (require* x)
+     (when (and (symbol? x) (not *compile-files*))
+       (swap! fully-loaded conj x))
+     nil))
   ([x & more]
    (apply require* x more)))
 

@@ -40,12 +40,8 @@
    :noto-bold-italic "fonts/pdf/NotoSans-BoldItalic.ttf"
    :noto-mono        "fonts/pdf/NotoSansMono-Regular.ttf"
 
-   ;; TODO: (bshepherdson 2026-06-11) We reuse the FE's bundled Lato asset directly rather than duplicating it into a
-   ;; BE-owned path (it has full Latin/Cyrillic/Greek/Vietnamese coverage and is already shipped). This couples us to
-   ;; the `frontend_client` asset layout. These files should be moved to a BE-owned part of `resources/` and the static
-   ;; asset serving adjusted to preserve the FE URLs.
-   :brand-regular    "frontend_client/app/fonts/Lato/Lato-Regular.ttf"
-   :brand-bold       "frontend_client/app/fonts/Lato/lato-v16-latin-700.ttf"
+   :brand-regular    "fonts/pdf/Lato-Regular.ttf"
+   :brand-bold       "fonts/pdf/Lato-Bold.ttf"
 
    :arabic-regular   "fonts/pdf/NotoSansArabic-Regular.ttf"
    :arabic-bold      "fonts/pdf/NotoSansArabic-Bold.ttf"
@@ -56,8 +52,16 @@
    :kr-regular       "fonts/pdf/NotoSansKR-Regular.ttf"
    :kr-bold          "fonts/pdf/NotoSansKR-Bold.ttf"
    :sc-regular       "fonts/pdf/NotoSansSC-Regular.ttf"
-   :sc-bold          "fonts/pdf/NotoSansSC-Bold.ttf"})
+   :sc-bold          "fonts/pdf/NotoSansSC-Bold.ttf"
 
+   ;; Monochrome (black outline) emoji -- PDFBox's showText can only draw glyph outlines, so we use Noto's outline
+   ;; emoji font rather than the colour (COLR/CBDT) one, which it can't render. This is the Noto Emoji variable font;
+   ;; PDFBox embeds its default (Regular) instance, subset to the emoji actually used. One face serves both regular
+   ;; and bold text (emoji have no weight). See [[metabase.channel.render.pdf.font/normalize-ws]] re: variation
+   ;; selectors, and note that ZWJ/skin-tone sequences render as their component glyphs (no GSUB shaping).
+   :emoji            "fonts/pdf/NotoEmoji-Regular.ttf"})
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *fonts*
   "Per-document map of `{face-keyword {:fallbacks [<phys> ...]} ...}`, where each `<phys>` is
   `{:font <PDType0Font> :cmap <CmapLookup>}`. Bound while a document is being rendered, because `PDType0Fonts` are
@@ -90,8 +94,10 @@
         face* (fn [id & fallbacks]
                 {:id        id
                  :fallbacks (mapv phys (flatten fallbacks))})
-        regulars [:hebrew-regular :arabic-regular :jp-regular :kr-regular :sc-regular]
-        bolds    [:hebrew-bold    :arabic-bold    :jp-bold    :kr-bold    :sc-bold]]
+        ;; `:emoji` is last so it only catches codepoints no text/CJK font covers (a dual-use char like U+2764 keeps
+        ;; its text-font glyph); it serves both weights since emoji have no bold.
+        regulars [:hebrew-regular :arabic-regular :jp-regular :kr-regular :sc-regular :emoji]
+        bolds    [:hebrew-bold    :arabic-bold    :jp-bold    :kr-bold    :sc-bold    :emoji]]
     ;; The fallback order for each style is important: first ordering by preference in case they overlap; and then
     ;; where there's no overlap (especially CJK) to put the heaviest fonts last.
     {:regular     (face* :regular     :brand-regular :noto-regular regulars)
@@ -115,8 +121,18 @@
 ;; Script utilities -- RTL shaping/reordering and whitespace normalisation
 ;; --------------------------------------------------------------------------------------------
 
+(defn- variation-selector?
+  "True for a Unicode variation selector: the VS1-16 block (U+FE00-FE0F, incl. the emoji/text presentation
+  selectors VS15/VS16) or the supplementary VS17-256 block (U+E0100-E01EF). These are zero-width presentation
+  hints with no printable glyph, so we drop them rather than let them fall back to `?`."
+  [cp]
+  (or (<= 0xFE00 cp 0xFE0F)
+      (<= 0xE0100 cp 0xE01EF)))
+
 (defn normalize-ws
-  "Turn tabs, newlines and other control chars into spaces. PDFBox `showText` doesn't handle them."
+  "Turn tabs, newlines and other control chars into spaces, and drop variation selectors (see
+  [[variation-selector?]]). PDFBox `showText` doesn't handle control chars, and no font has printable glyphs for the
+  selectors."
   ^String [s]
   (let [s  (str s)
         n  (.length s)
@@ -124,7 +140,10 @@
     (loop [i 0]
       (when (< i n)
         (let [cp (.codePointAt s i)]
-          (.appendCodePoint sb (if (< cp 32) (int \space) cp))
+          (cond
+            (variation-selector? cp) nil                      ; drop
+            (< cp 32)                (.append sb \space)
+            :else                    (.appendCodePoint sb cp))
           (recur (+ i (Character/charCount cp))))))
     (.toString sb)))
 
@@ -253,6 +272,7 @@
              + 0.0
              (font-runs face (visual-order (normalize-ws s)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^{:dynamic true
        :arglists '([face ^String s])}
   *em-width*

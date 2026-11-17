@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { Ellipsified } from "metabase/ui";
 import {
   Box,
   Card,
+  Ellipsified,
   SimpleGrid,
   Stack,
   Text,
@@ -14,10 +14,10 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import type {
-  ConcreteTableId,
   InspectorCard,
   InspectorSource,
   InspectorTarget,
+  TableId,
 } from "metabase-types/api";
 
 import { FieldInfoSection } from "./components/FieldInfoSection/FieldInfoSection";
@@ -104,9 +104,9 @@ export const GenericSummarySection = ({
   const inputCount = inputData.length;
 
   return (
-    <Stack gap="xl">
-      <Stack gap="md" data-testid="generic-summary-tables">
-        <SimpleGrid cols={2} spacing="lg">
+    <Stack gap="xxl">
+      <Stack gap="lg" data-testid="generic-summary-tables">
+        <SimpleGrid cols={2} spacing="xl">
           <Title order={4}>
             {ngettext(
               msgid`${inputCount} input table`,
@@ -119,12 +119,20 @@ export const GenericSummarySection = ({
         </SimpleGrid>
 
         <Box>
-          <SimpleGrid cols={2} spacing="lg">
+          <SimpleGrid cols={2} spacing="xl">
             <Card p={0} shadow="none" withBorder>
-              <TreeTable instance={inputInstance} styles={treeTableStyles} />
+              <TreeTable
+                instance={inputInstance}
+                static
+                styles={treeTableStyles}
+              />
             </Card>
             <Card p={0} shadow="none" withBorder>
-              <TreeTable instance={outputInstance} styles={treeTableStyles} />
+              <TreeTable
+                instance={outputInstance}
+                static
+                styles={treeTableStyles}
+              />
             </Card>
           </SimpleGrid>
         </Box>
@@ -135,7 +143,7 @@ export const GenericSummarySection = ({
 };
 
 function getTableName(
-  tableId: ConcreteTableId | undefined,
+  tableId: TableId | undefined,
   tables: Array<InspectorSource | InspectorTarget>,
 ): string | undefined {
   if (!tableId) {

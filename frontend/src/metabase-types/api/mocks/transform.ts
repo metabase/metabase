@@ -2,10 +2,12 @@ import type {
   DatabaseId,
   InspectorCard,
   InspectorSource,
+  ListTransformGraphRunsResponse,
   ListTransformJobRunsResponse,
   ListTransformRunsResponse,
   PythonTransformTableAliases,
   Transform,
+  TransformGraphRun,
   TransformJob,
   TransformJobRun,
   TransformOwner,
@@ -17,10 +19,7 @@ import type {
   UpdateTransformRequest,
 } from "metabase-types/api";
 
-import {
-  createMockNativeDatasetQuery,
-  createMockStructuredDatasetQuery,
-} from "./query";
+import { EMPTY_NATIVE_QUERY, EMPTY_STRUCTURED_QUERY } from "./query";
 
 export function createMockTransformOwner(
   opts?: Partial<TransformOwner>,
@@ -37,7 +36,7 @@ export function createMockTransformOwner(
 export function createMockTransformSource(): TransformSource {
   return {
     type: "query",
-    query: createMockStructuredDatasetQuery(),
+    query: EMPTY_STRUCTURED_QUERY,
   };
 }
 
@@ -185,6 +184,39 @@ export function createMockTransformRunForJobRun(
   };
 }
 
+export function createMockTransformGraphRun(
+  opts?: Partial<TransformGraphRun>,
+): TransformGraphRun {
+  return {
+    run_type: "job",
+    id: 1,
+    entity_id: 1,
+    name: "Graph run",
+    direction: null,
+    transform_count: null,
+    run_method: "manual",
+    status: "succeeded",
+    is_active: false,
+    start_time: "2024-01-01T00:00:00Z",
+    end_time: "2024-01-01T00:01:00Z",
+    message: null,
+    user_id: null,
+    ...opts,
+  };
+}
+
+export function createMockListTransformGraphRunsResponse(
+  opts?: Partial<ListTransformGraphRunsResponse>,
+): ListTransformGraphRunsResponse {
+  return {
+    data: [],
+    total: 0,
+    limit: null,
+    offset: null,
+    ...opts,
+  };
+}
+
 export function createMockTransformTag(
   opts?: Partial<TransformTag>,
 ): TransformTag {
@@ -241,7 +273,7 @@ export function createMockInspectorCard(
     id: "card-1",
     title: "Card",
     display: "scalar",
-    dataset_query: createMockNativeDatasetQuery(),
+    dataset_query: EMPTY_NATIVE_QUERY,
     metadata: {
       card_type: "table_count",
       dedup_key: ["table-1"],

@@ -26,10 +26,9 @@
   permissions matching an path or path using `LIKE`; see [[metabase.warehouses.models.database/pre-delete]] for
   an example of the sort of efficient queries the prefix system facilitates.
 
-  The union of all permissions the current User's gets from all groups of which they are a member are automatically
-  bound to [[metabase.api.common/*current-user-permissions-set*]] by
-  [[metabase.server.middleware.session/bind-current-user]] for every REST API request, and in other places when
-  queries are ran in a non-API thread (e.g. for scheduled Dashboard Subscriptions).
+  A User's permissions are answered by the bulk functions of [[metabase.permissions.collection-permissions]],
+  [[metabase.permissions.application-permissions]] and the data permission namespaces, which read the rows of the
+  groups they are a member of every time they are asked.
 
   ### Different types of permissions
 
@@ -100,9 +99,8 @@
   newer [[metabase.models.interface/can-create?]] and [[metabase.models.interface/can-update?]] methods.
   Implementations for these methods live in `metabase.models.*` namespaces.
 
-  The implementation of these methods is up to individual models. The majority of implementations check whether
-  [[metabase.api.common/*current-user-permissions-set*]] includes permissions for a given path (action)
-  using [[set-has-full-permissions?]], or for a set of paths using [[set-has-full-permissions-for-set?]].
+  The implementation of these methods is up to individual models, which hydrate `:can_read` and `:can_write` in
+  batches from the bulk permission functions.
 
   ### Determining query permissions
 
@@ -159,25 +157,19 @@
     /block/db/:id/                                  ; disallow queries against this DB unless User has data perms.
     /                                               ; full root perms"
   (:require
-   [clojure.string :as str]
-   [metabase.api.common :as api]
-   [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
+   [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.path :as permissions.path]
-   [metabase.permissions.user :as permissions.user]
    [metabase.permissions.util :as perms.u]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.remote-sync.core :as remote-sync]
-   [metabase.settings.core :as setting]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :as perf]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -189,11 +181,13 @@
 
 ;;; -------------------------------------------------- Dynamic Vars --------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Boolean *allow-root-entries*
   "Should we allow permissions entries like `/`? By default, this is disallowed, but you can temporarily disable it here
    when creating the default entry for `Admin`."
   false)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Boolean *allow-admin-permissions-changes*
   "Should we allow changes to be made to permissions belonging to the Admin group? By default this is disabled to
    prevent accidental tragedy, but you can enable it here when creating the default entry for `Admin`."
@@ -229,78 +223,19 @@
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
-(defn is-permissions-for-object?
-  "Does `permissions-path` grant *full* access for `path`?"
-  [permissions-path path]
-  (str/starts-with? path permissions-path))
-
-(defn set-has-full-permissions?
-  "Does `permissions-set` grant *full* access to object with `path`?"
-  ^Boolean [permissions-set path]
-  (boolean (perf/some #(is-permissions-for-object? % path) permissions-set)))
-
-(mu/defn set-has-full-permissions-for-set? :- :boolean
-  "Do the permissions paths in `permissions-set` grant *full* access to all the object paths in `paths-set`?"
-  [permissions-set paths-set]
-  (let [permissions (or (:as-vec (meta permissions-set))
-                        permissions-set)]
-    (every? (partial set-has-full-permissions? permissions) paths-set)))
-
-(mu/defn set-has-application-permission-of-type? :- :boolean
-  "Does `permissions-set` grant *full* access to a application permission of type `perm-type`?"
-  [permissions-set perm-type]
-  (set-has-full-permissions? permissions-set (permissions.path/application-perms-path perm-type)))
-
-(mu/defn perms-objects-set-for-parent-collection :- [:set perms.u/PathSchema]
-  "Implementation of `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
-  This simply returns the `perms-objects-set` of the parent Collection (based on `collection_id`) or for the Root
-  Collection if `collection_id` is `nil`."
-  ([this read-or-write]
-   (perms-objects-set-for-parent-collection nil this read-or-write))
-
-  ([collection-namespace :- [:maybe ms/KeywordOrString]
-    this                 :- [:map
-                             [:collection_id [:maybe ms/PositiveInt]]]
-    read-or-write        :- [:enum :read :write]]
-   ;; based on value of read-or-write determine the appropriate function used to calculate the perms path
-   (let [path-fn (case read-or-write
-                   :read  permissions.path/collection-read-path
-                   :write permissions.path/collection-readwrite-path)
-         collection-id (:collection_id this)]
-     ;; now pass that function our collection_id if we have one, or if not, pass it an object representing the Root
-     ;; Collection
-     #{(path-fn (or collection-id
-                    {:metabase.collections.models.collection.root/is-root? true
-                     :namespace                                collection-namespace}))})))
-
-(doto :perms/use-parent-collection-perms
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
-
-(defmethod mi/perms-objects-set :perms/use-parent-collection-perms
-  [instance read-or-write]
-  (if (or (= read-or-write :read)
-          (remote-sync/collection-editable? (or (:collection instance) (:collection_id instance))))
-    (perms-objects-set-for-parent-collection instance read-or-write)
-    ;; We need to return a dummy permissions string that cannot possibly belong to a user in
-    ;; the case where an instance is not syncable due to remote-sync being in ':production' mode
-    #{"___no-remote-sync-access"}))
-
-(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
-  [_model k models]
-  (mi/instances-with-hydrated-data
-   models k
-   #(into {}
-          (map (juxt :id mi/can-write?))
-          (t2/hydrate (remove nil? models) :collection))
-   :id
-   {:default false}))
-
-(defmethod mi/can-create? :perms/use-parent-collection-perms
-  [_model m]
-  (if-let [collection-id (:collection_id m)]
-    (mi/can-write? (t2/select-one :model/Collection :id collection-id))
-    (mi/can-write? (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection)))))
+(mu/defn collection-read-access-group-ids :- [:set ms/PositiveInt]
+  "Set of `PermissionsGroup` ids holding a stored read (or read-write) permission row for the collection with
+  `collection-id`, or for the Root Collection when `collection-id` is `nil`. Reflects explicit grant rows only, so
+  groups whose access is implicit don't appear: the Administrators group never does (it has no stored collection
+  rows in normal operation), and collections that don't use grant rows at all (personal collections and their
+  descendants, trash) return an empty set."
+  [collection-id :- [:maybe ms/PositiveInt]]
+  (let [collection-or-root (or collection-id
+                               {:metabase.collections.models.collection.root/is-root? true})]
+    (or (permissions.db/group-ids-with-permission-objects
+         [(permissions.path/collection-read-path collection-or-root)
+          (permissions.path/collection-readwrite-path collection-or-root)])
+        #{})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               ENTITY + LIFECYCLE                                               |
@@ -342,18 +277,6 @@
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
-(defn- clear-current-user-cached-permissions!
-  "If [[metabase.api.common/*current-user-permissions-set*]] is bound, reset it so it gets recalculated on next use.
-  Called by [[metabase.permissions.models.permissions/delete-related-permissions!]]
-  and [[metabase.permissions.models.permissions/grant-permissions!]], mostly as a convenience for tests that bind a
-  current user and then grant or revoke permissions for that user without rebinding it."
-  []
-  (when-let [current-user-id api/*current-user-id*]
-    ;; [[api/*current-user-permissions-set*]] is dynamically bound
-    (when (get (get-thread-bindings) #'api/*current-user-permissions-set*)
-      (.set #'api/*current-user-permissions-set* (delay (permissions.user/user-permissions-set current-user-id)))))
-  nil)
-
 (mu/defn delete-related-permissions!
   "Delete all 'related' permissions for `group-or-id` (i.e., perms that grant you full or partial access to `path`).
   This includes *both* ancestor and descendant paths. For example:
@@ -367,38 +290,26 @@
   In short, it will delete any permissions that contain `/db/1/schema/` as a prefix, or that themeselves are prefixes
   for `/db/1/schema/`.
 
-  You can optionally include `other-conditions`, which are anded into the filter clause, to further restrict what is
-  deleted.
-
   NOTE: This function is meant for internal usage in this namespace only; use one of the other functions like
   `revoke-data-perms!` elsewhere instead of calling this directly."
-  [group-or-id :- [:or :map ms/PositiveInt] path :- perms.u/PathSchema & other-conditions]
-  (let [paths (conj (perms.u/->v2-path path) path)
-        where {:where (apply list
-                             :and
-                             [:= :group_id (u/the-id group-or-id)]
-                             (into [:or
-                                    [:like path (h2x/concat :object (h2x/literal "%"))]]
-                                   (map (fn [path-form] [:like :object (str path-form "%")])
-                                        paths))
-                             other-conditions)}]
-    (when-let [revoked (t2/select-fn-set :object :model/Permissions where)]
-      (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
-      (t2/delete! :model/Permissions where)
-      (clear-current-user-cached-permissions!))))
+  [group-or-id :- permissions.path/GroupOrID path :- perms.u/PathSchema]
+  (let [group-id (u/the-id group-or-id)
+        paths    (conj (perms.u/->v2-path path) path)]
+    (when-let [revoked (permissions.db/related-permission-objects group-id path paths)]
+      (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" group-id revoked))
+      (permissions.db/delete-related-permissions! group-id path paths))))
 
 (defn grant-permissions!
-  "Grant permissions for `group-or-id` and return the inserted permissions. Two-arity grants any arbitrary Permissions `path`."
+  "Grant the permissions `path` gives to `group-or-id`, returning nil."
   [group-or-id path]
   (try
-    (t2/insert! :model/Permissions
-                (map (fn [path-object]
-                       {:group_id (u/the-id group-or-id) :object path-object})
-                     (distinct (conj (perms.u/->v2-path path) path))))
-    (clear-current-user-cached-permissions!)
+    (permissions.db/insert-permissions! (map (fn [path-object]
+                                               {:group_id (u/the-id group-or-id) :object path-object})
+                                             (distinct (conj (perms.u/->v2-path path) path))))
+    nil
     ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
     (catch Throwable e
-      (log/error e (u/format-color 'red "Failed to grant permissions"))
+      (log/error (u/format-color 'red "Failed to grant permissions: %s" (ex-message e)))
       ;; if we're running tests, we're doing something wrong here if duplicate permissions are getting assigned,
       ;; mostly likely because tests aren't properly cleaning up after themselves, and possibly causing other tests
       ;; to pass when they shouldn't. Don't allow this during tests
@@ -407,118 +318,9 @@
 
 ;;;; Audit Permissions helper fns
 
-(defn namespace-clause
+(def namespace-clause
   "SQL clause to filter namespaces depending on if audit app is enabled or not, and if the namespace is the default one."
-  [namespace-keyword namespace-val & [include-tenant-namespaces?]]
-  [:or
-   [:= namespace-keyword namespace-val]
-   (when (and (nil? namespace-val)
-              (premium-features/enable-audit-app?))
-     [:= namespace-keyword "analytics"])
-   (when (and include-tenant-namespaces? (nil? namespace-val) (setting/get :use-tenants))
-     [:= namespace-keyword "shared-tenant-collection"])
-   (when (and include-tenant-namespaces? (nil? namespace-val) (setting/get :use-tenants))
-     [:= namespace-keyword "tenant-specific"])])
-
-(defn can-read-via-parent-collection?
-  "Read permission for rows whose read policy is a pure function of `:collection_id` and current user perms.
-  Used by models that opt into the collection-id-only contract via [[define-collection-based-visibility!]],
-  and by semantic search's fast path; sharing this helper keeps the two paths structurally in sync.
-  Takes `coll-id` (not an instance) so the logic cannot grow a dependency on other instance fields."
-  [coll-id]
-  (and (or (premium-features/enable-audit-app?)
-           (not (and (some? coll-id) (audit/is-collection-id-audit? coll-id))))
-       (mi/current-user-has-full-permissions?
-        #{(permissions.path/collection-read-path
-           (or coll-id
-               {:metabase.collections.models.collection.root/is-root? true
-                :namespace                                            nil}))})))
-
-;;; TODO -- this is a predicate function that returns truthy or falsey, it should end in a `?` -- Cam
-(mu/defn can-read-audit-helper
-  "Audit instances should only be readable if audit app is enabled."
-  [model    :- :keyword
-   instance :- :map]
-  (if (and (not (premium-features/enable-audit-app?))
-           (case model
-             :model/Collection (audit/is-collection-id-audit? (:id instance))
-             (audit/is-parent-collection-audit? instance)))
-    false
-    (case model
-      :model/Collection (mi/current-user-has-full-permissions? :read instance)
-      (mi/current-user-has-full-permissions? (perms-objects-set-for-parent-collection instance :read)))))
-
-;;; ---- Collection-based visibility registration ----
-
-(defonce ^:private collection-based-visibility-registry
-  ;; Registrations from `define-collection-based-visibility!`.
-  ;; `:t2-methods` maps t2-model-kw → the installed `mi/can-read?` fn (identity-check test uses the value).
-  ;; `:search-models` maps search-model-string → claimed parent t2-model the `:collection_id` is denormalized
-  ;; from at index time. The claim is verified against the spec's joins by a contract test; see
-  ;; `metabase-enterprise.semantic-search.index-test`.
-  (atom {:t2-methods {} :search-models {}}))
-
-(defn collection-id-only-read-models
-  "Set of t2 model keywords whose `mi/can-read?` was installed via [[define-collection-based-visibility!]]."
-  []
-  (set (keys (:t2-methods @collection-based-visibility-registry))))
-
-(defn collection-id-only-read-method
-  "The `mi/can-read?` fn [[define-collection-based-visibility!]] installed for `t2-model`, or nil.
-  Exposed so identity-check tests can detect later overrides."
-  [t2-model]
-  (get-in @collection-based-visibility-registry [:t2-methods t2-model]))
-
-(defn collection-based-visibility-search-models
-  "Map of search-model-string → the claimed parent t2-model the `:collection_id` is denormalized from.
-  Registrations come from the string form of [[define-collection-based-visibility!]]."
-  []
-  (:search-models @collection-based-visibility-registry))
-
-(defn register-collection-id-only-read-method!
-  "Implementation detail of [[define-collection-based-visibility!]]. Do not call directly."
-  [t2-model method]
-  (swap! collection-based-visibility-registry assoc-in [:t2-methods t2-model] method))
-
-(defn register-collection-based-visibility-search-model!
-  "Implementation detail of [[define-collection-based-visibility!]]. Do not call directly."
-  [search-model denormalized-from]
-  (swap! collection-based-visibility-registry assoc-in [:search-models search-model] denormalized-from))
-
-(defmacro define-collection-based-visibility!
-  "Register read perms as determined fully by `:collection_id`.
-
-  Normal form — `target` is a t2-model keyword: installs `mi/can-read?` as a delegate to
-  [[can-read-via-parent-collection?]] and registers the model.
-  If a model later needs richer read perms, remove the macro call and write a plain `defmethod`.
-  The identity-check test in `metabase.permissions.models.permissions-test` will flag silent overrides.
-
-  Alternate form — `target` is a search-model string whose index-row `:collection_id` is denormalized
-  from a parent model at index time (e.g. `\"indexed-entity\"` from its parent Card).
-  No `mi/can-read?` is installed; the registration only flags the search-model for the semantic-search
-  fast path. `:denormalized-from` is required and names the parent t2-model for documentation."
-  [target & {:keys [denormalized-from]}]
-  (cond
-    (keyword? target)
-    `(do
-       (defmethod mi/can-read? ~target
-         ([instance#] (can-read-via-parent-collection? (:collection_id instance#)))
-         ([_# pk#]    (mi/can-read? (t2/select-one ~target :id pk#))))
-       (register-collection-id-only-read-method! ~target (get-method mi/can-read? ~target)))
-
-    (string? target)
-    ;; Throw unconditionally rather than `assert` — assertions are elided when `*assert*` is false (AOT
-    ;; release builds), and a nil `:denormalized-from` would silently break fast-path derivation.
-    (if denormalized-from
-      `(register-collection-based-visibility-search-model! ~target ~denormalized-from)
-      (throw (IllegalArgumentException.
-              "string form of define-collection-based-visibility! requires :denormalized-from")))
-
-    :else
-    (throw (IllegalArgumentException.
-            "define-collection-based-visibility! target must be a t2-model keyword or search-model string"))))
-
-; Audit permissions helper fns end
+  permissions.db/namespace-clause)
 
 (defn revoke-application-permissions!
   "Remove all permissions entries for a Group to access a Application permissions"
@@ -548,12 +350,12 @@
   [collection-or-id]
   (if (map? collection-or-id)
     collection-or-id
-    (t2/select-one :model/Collection :id (u/the-id collection-or-id))))
+    (permissions.db/collection (u/the-id collection-or-id))))
 
 (mu/defn- check-is-modifiable-collection
   "Check whether `collection-or-id` refers to a collection that can have permissions modified. Personal collections, the
   Trash, and descendants of those can't have their permissions modified."
-  [collection-or-id :- permissions.path/MapOrID]
+  [collection-or-id :- permissions.path/CollectionOrID]
   ;; skip the whole thing for the root collection, we know it's not a personal collection, trash, or descendant of one
   ;; of them.
   (when-not (:metabase.collections.models.collection.root/is-root? collection-or-id)
@@ -571,13 +373,13 @@
 
 (mu/defn revoke-collection-permissions!
   "Revoke all access for `group-or-id` to a Collection."
-  [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
+  [group-or-id :- permissions.path/GroupOrID collection-or-id :- permissions.path/CollectionOrID]
   (check-is-modifiable-collection collection-or-id)
   (delete-related-permissions! group-or-id (permissions.path/collection-readwrite-path collection-or-id)))
 
 (mu/defn grant-collection-readwrite-permissions!
   "Grant full access to a Collection, which means a user can view all Cards in the Collection and add/remove Cards."
-  [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
+  [group-or-id :- permissions.path/GroupOrID collection-or-id :- permissions.path/CollectionOrID]
   (check-is-modifiable-collection collection-or-id)
   (when (perms-group/is-tenant-group? group-or-id)
     (throw (ex-info (tru "Tenant groups cannot have write access to any collections.") {})))
@@ -585,11 +387,14 @@
 
 (mu/defn grant-collection-read-permissions!
   "Grant read access to a Collection, which means a user can view all Cards in the Collection."
-  [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
+  [group-or-id :- permissions.path/GroupOrID collection-or-id :- permissions.path/CollectionOrID]
   (check-is-modifiable-collection collection-or-id)
   (let [collection (collection-or-id->collection collection-or-id)]
     (when (perms-group/is-tenant-group? group-or-id)
-      (when-not (shared-tenant-collection? collection)
+      (when-not (or (shared-tenant-collection? collection)
+                    ;; Tenant groups access data apps through read grants on its resource collection.
+                    (and (pos-int? (:id collection))
+                         (data-perms/collection-owned-by-data-app? (:id collection))))
         (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {})))))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
 

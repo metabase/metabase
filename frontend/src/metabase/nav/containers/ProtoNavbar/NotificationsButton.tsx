@@ -14,7 +14,7 @@ import type { IconName } from "metabase-types/api";
 
 type FakeNotification = {
   icon: IconName;
-  iconColor: "brand" | "error" | "success";
+  iconColor: "icon-brand" | "feedback-negative" | "feedback-positive";
   title: string;
   body: string;
   time: string;
@@ -24,28 +24,28 @@ function getFakeNotifications(): FakeNotification[] {
   return [
     {
       icon: "document",
-      iconColor: "brand",
+      iconColor: "icon-brand",
       title: t`New comment`,
       body: t`Dana commented on your document “Q3 Planning”`,
       time: t`2m ago`,
     },
     {
       icon: "document",
-      iconColor: "brand",
+      iconColor: "icon-brand",
       title: t`You were mentioned`,
       body: t`Miguel mentioned you in “Revenue Review”`,
       time: t`25m ago`,
     },
     {
       icon: "warning",
-      iconColor: "error",
+      iconColor: "feedback-negative",
       title: t`Transform failed`,
       body: t`Your transform “Daily orders rollup” failed to run`,
       time: t`1h ago`,
     },
     {
       icon: "check_filled",
-      iconColor: "success",
+      iconColor: "feedback-positive",
       title: t`Goal reached`,
       body: t`“Weekly active users” hit its goal of 10,000`,
       time: t`3h ago`,

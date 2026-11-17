@@ -1,4 +1,4 @@
-import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 
 import { getCommonEmbedSettings } from "./get-common-embed-settings";
@@ -10,6 +10,7 @@ jest.mock("metabase/plugins", () => ({
 }));
 
 const mockIsPluginEnabled = (enabled: boolean) => {
+  // Unjustified type cast. FIXME
   (PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled as jest.Mock).mockReturnValue(
     enabled,
   );

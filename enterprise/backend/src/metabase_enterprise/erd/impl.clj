@@ -3,13 +3,13 @@
    one-layer FK expansion, and response building."
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.erd.db :as erd.db]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.table :as schema.table]
    [toucan2.core :as t2]))
 
 ;;; -------------------------------------------------- Schema --------------------------------------------------
@@ -67,7 +67,7 @@
    [:edges [:sequential ::erd-edge]]])
 
 (mr/def ::erd-request
-  [:map
+  [:map {:closed true}
    [:database-id ms/PositiveInt]
    [:table-ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
    [:schema {:optional true} [:maybe :string]]])
@@ -81,16 +81,6 @@
   [:id :db_id :name :display_name :schema :is_published :collection_id
    :description :owner_user_id :owner_email :visibility_type])
 
-(defn- schema-clause
-  "The rest of the database API treats a blank schema name as the union of nil
-   and empty-string schemas. Keep that convention here too."
-  [schema]
-  (if (= schema "")
-    [:or
-     [:= :schema nil]
-     [:= :schema ""]]
-    [:= :schema schema]))
-
 (defn- index-by-id [xs]
   (into {} (map (juxt :id identity)) xs))
 
@@ -98,18 +88,11 @@
   "Fetch readable, active tables in `database-id`.
    Optional `table-ids` restricts by IDs; optional `schema` restricts by schema.
    `schema=\"\"` matches both nil and empty-string schemas."
-  [database-id & {:keys [table-ids schema] :as opts}]
+  [database-id & {:keys [table-ids] :as opts}]
   (if (and (contains? opts :table-ids) (empty? table-ids))
     []
-    (let [where (cond-> [:and
-                         [:= :db_id database-id]
-                         [:= :active true]]
-                  (contains? opts :table-ids) (conj [:in :id table-ids])
-                  (contains? opts :schema)    (conj (schema-clause schema)))]
-      (->> (t2/select :model/Table
-                      {:select table-select-columns
-                       :where  where})
-           (filter mi/can-read?)))))
+    (filter mi/can-read? (t2/hydrate (erd.db/active-tables-in-database table-select-columns database-id opts)
+                                     :can_read))))
 
 (defn- readable-table-ids
   [database-id & opts]
@@ -123,20 +106,13 @@
    as table metadata view (`/api/table/:id/query_metadata`)."
   [table-ids]
   (when (seq table-ids)
-    (t2/select :model/Field
-               {:where    [:and
-                           [:in :table_id table-ids]
-                           [:= :active true]]
-                :order-by schema.table/field-order-rule})))
+    (erd.db/active-fields-for-tables table-ids)))
 
 (defn- fetch-fields-by-ids
   "Fetch active fields by ID."
   [field-ids]
   (when (seq field-ids)
-    (t2/select :model/Field
-               {:where [:and
-                        [:in :id field-ids]
-                        [:= :active true]]})))
+    (erd.db/active-fields field-ids)))
 
 (defn- discover-fk-targets
   "Given a collection of fields, find FK target field IDs that point to tables

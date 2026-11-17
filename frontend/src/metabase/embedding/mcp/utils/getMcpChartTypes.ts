@@ -1,4 +1,4 @@
-import visualizations from "metabase/visualizations";
+import { visualizations } from "metabase/viz-core";
 import type { CardDisplayType, IconName } from "metabase-types/api";
 
 // Default visualization can be any sensible visualization, so the

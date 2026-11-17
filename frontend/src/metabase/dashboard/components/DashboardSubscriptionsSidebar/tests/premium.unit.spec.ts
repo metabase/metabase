@@ -4,6 +4,7 @@ import { screen, within } from "__support__/ui";
 import {
   createMockCard,
   createMockDashboardCard,
+  createMockDashboardTab,
   createMockParameter,
 } from "metabase-types/api/mocks";
 
@@ -197,6 +198,95 @@ describe("DashboardSubscriptionsSidebar Premium Features", () => {
       expect(
         within(subscriptionParametersSection).queryByLabelText("Title"),
       ).not.toBeInTheDocument();
+    });
+
+    it(`${channel} channel: should show parameters connected on other tabs, since a subscription renders every tab`, async () => {
+      const firstTab = createMockDashboardTab({ id: 1, name: "Tab 1" });
+      const secondTab = createMockDashboardTab({ id: 2, name: "Tab 2" });
+
+      const totalParameter = createMockParameter({
+        id: "1",
+        type: "number/=",
+        slug: "total",
+        name: "Total",
+      });
+      const titleParameter = createMockParameter({
+        id: "2",
+        type: "string/contains",
+        slug: "title",
+        name: "Title",
+      });
+      const mockCardNumeric = createMockCard({
+        id: 1,
+        name: "Numeric Question",
+        display: "table",
+        parameters: [totalParameter],
+      });
+      const mockCardString = createMockCard({
+        id: 2,
+        name: "String Question",
+        display: "pie",
+        parameters: [titleParameter],
+      });
+
+      setup({
+        isAdmin: true,
+        [channel]: true,
+        tokenFeatures,
+        enterprisePlugins: ["sharing"],
+        parameters: [totalParameter, titleParameter],
+        tabs: [firstTab, secondTab],
+        // Viewing the first tab, while "Title" is only wired to a card on the second tab.
+        selectedTabId: firstTab.id,
+        dashcards: [
+          createMockDashboardCard({
+            id: mockCardNumeric.id,
+            dashboard_tab_id: firstTab.id,
+            card: mockCardNumeric,
+            card_id: mockCardNumeric.id,
+            parameter_mappings: [
+              {
+                card_id: mockCardNumeric.id,
+                parameter_id: totalParameter.id,
+                target: ["variable", ["template-tag", totalParameter.slug]],
+              },
+            ],
+          }),
+          createMockDashboardCard({
+            id: mockCardString.id,
+            dashboard_tab_id: secondTab.id,
+            card: mockCardString,
+            card_id: mockCardString.id,
+            parameter_mappings: [
+              {
+                card_id: mockCardString.id,
+                parameter_id: titleParameter.id,
+                target: [
+                  "dimension",
+                  ["field", titleParameter.slug, { "base-type": "type/Text" }],
+                ],
+              },
+            ],
+          }),
+        ],
+      });
+
+      await userEvent.click(await screen.findByText(buttonText));
+
+      screen.getByText(headerText);
+
+      const subscriptionParametersSection = screen.getByTestId(
+        "subscription-parameters-section",
+      );
+
+      expect(subscriptionParametersSection).toBeInTheDocument();
+
+      expect(
+        await within(subscriptionParametersSection).findByLabelText("Total"),
+      ).toBeInTheDocument();
+      expect(
+        await within(subscriptionParametersSection).findByLabelText("Title"),
+      ).toBeInTheDocument();
     });
   });
 });

@@ -20,7 +20,6 @@
    [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.core :as analytics]
    [metabase.audit-app.impl :as audit-app.impl]
-   [metabase.collections.models.collection :as collection]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
@@ -41,8 +40,6 @@
    #'driver.u/memoized-supports?*
    #'driver.u/memoized-features*
    #'mi/cached-encrypted-json-out
-   #'collection/can-access-root-collection?
-   #'collection/visible-collection-ids*
    #'serialization.dump/serialization-sorted-map])
 
 (defn- cache-object
@@ -63,7 +60,8 @@
         {:cache      (str (symbol cache-var))
          :entries    entries}))
     (catch Exception e
-      (log/warn e "Error measuring memoization cache size" {:cache (str (symbol cache-var))}))))
+      (log/warn "Error measuring memoization cache size" {:cache (str (symbol cache-var))
+                                                          :error (ex-message e)}))))
 
 (defn- all-cache-stats
   []

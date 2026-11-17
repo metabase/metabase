@@ -1,14 +1,14 @@
 (ns metabase.lib.schema.metadata-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [clojure.walk :as walk]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]))
 
 (deftest ^:parallel normalize-column-metadata-test
   (let [col {"active"                                          true
@@ -80,11 +80,7 @@
 (deftest ^:parallel normalize-column-metadata-from-json-test
   (let [cols      (for [field (meta/fields :venues)]
                     (meta/field-metadata :venues field))
-        json-cols (walk/postwalk
-                   (fn [x]
-                     (cond-> x
-                       (keyword? x) u/qualified-name))
-                   cols)]
+        json-cols (match/replace-all cols #'keyword? (u/qualified-name &match))]
     (is (= cols
            (lib/normalize [:sequential ::lib.schema.metadata/column] json-cols)))))
 
@@ -170,3 +166,43 @@
           :metabase.lib.field/original-effective-type        :type/Text
           :metabase.lib.field/simple-display-name            "Category: Name"
           :metabase.lib.query/transformation-added-base-type true)))))
+
+(deftest ^:parallel column-data-sensitivity-test
+  (testing "every member of the severity-ordered vector validates and the vector has no duplicates"
+    (is (= 10 (count lib.schema.metadata/column-data-sensitivity-types)))
+    (is (apply distinct? lib.schema.metadata/column-data-sensitivity-types))
+    (doseq [member lib.schema.metadata/column-data-sensitivity-types]
+      (is (mr/validate ::lib.schema.metadata/column.data-sensitivity member))))
+  (testing "the most severe member comes first and PUBLIC comes last"
+    (is (= :SEC_KEY (first lib.schema.metadata/column-data-sensitivity-types)))
+    (is (= :PUBLIC (last lib.schema.metadata/column-data-sensitivity-types))))
+  (testing "normalization keywordizes a string member"
+    (is (= :PII (lib/normalize ::lib.schema.metadata/column.data-sensitivity "PII"))))
+  (testing "values outside the enum are rejected"
+    (are [value] (not (mr/validate ::lib.schema.metadata/column.data-sensitivity value))
+      :pii
+      :NOT_A_MEMBER
+      "PII"
+      nil)))
+
+(deftest ^:parallel normalize-column-remapping-test
+  (is (= {:lib/type :metadata.column.remapping/external
+          :id       72
+          :name     "Category ID"
+          :field-id 67}
+         (lib/normalize ::lib.schema.metadata/column.remapping.external
+                        {"lib/type" "metadata.column.remapping/external"
+                         "id"       72
+                         "name"     "Category ID"
+                         "field-id" 67})))
+  (is (= {:lib/type              :metadata.column.remapping/internal
+          :id                    66
+          :name                  "ID"
+          :values                [1 2]
+          :human-readable-values ["One" "Two"]}
+         (lib/normalize ::lib.schema.metadata/column.remapping.internal
+                        {"lib/type"              "metadata.column.remapping/internal"
+                         "id"                    66
+                         "name"                  "ID"
+                         "values"                [1 2]
+                         "human_readable_values" ["One" "Two"]}))))

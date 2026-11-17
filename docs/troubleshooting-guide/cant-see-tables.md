@@ -1,13 +1,14 @@
 ---
 title: I can't see my tables
+summary: Track down why tables are missing from the query builder, the data browser, or table metadata.
 ---
 
 # I can't see my tables
 
 You've connected Metabase to a database, but:
 
-- you don't see the tables in the [Table Metadata](../data-modeling/metadata-editing.md) section of the Admin Panel,
-- the tables don't appear in the [Data Browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser),
+- you don't see the tables in the [Table Metadata](../data-modeling/metadata/metadata-editing.md) section of the Admin Panel,
+- the tables don't appear in the [Data Browser](../exploration-and-organization/data-model-reference.md),
 - the tables don't show up as possible data sources when you create a query using the Query Builder, or
 - you can no longer see tables that you used to be able to see.
 
@@ -57,7 +58,7 @@ For less common errors, try searching or asking the [Metabase community](https:/
 
 **Explanation**
 
-Something might have changed on database side: your table could've been renamed or dropped, or the permissions revoked.
+Something might have changed on the database side: your table could've been renamed or dropped, or the permissions revoked.
 
 ## Metabase permissions
 
@@ -85,7 +86,7 @@ MongoDB lets you "successfully connect" to any collection name, even if the coll
 
 ## Related topics
 
-- [Table visibility](../data-modeling/metadata-editing.md#table-visibility).
+- [Table visibility](../data-modeling/metadata/metadata-editing.md#table-visibility).
 - [Row and column security isn't working](./row-and-column-security.md)
 - [I can't view or edit a question or dashboard](./cant-view-or-edit.md).
 - [My visualizations are wrong](./visualization.md).

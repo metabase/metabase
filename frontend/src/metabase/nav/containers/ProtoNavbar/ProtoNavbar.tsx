@@ -1,9 +1,7 @@
 import cx from "classnames";
-import type { Location } from "history";
 import { VisualState, useKBar } from "kbar";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -13,11 +11,13 @@ import {
 } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
 import type { StoreDashboard } from "metabase/redux/store";
-import { getSetting } from "metabase/selectors/settings";
+import { type Location, useNavigate } from "metabase/router";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { getSetting } from "metabase/settings";
 import {
   ActionIcon,
   Box,
@@ -29,7 +29,7 @@ import {
 import * as Urls from "metabase/urls";
 import type { IconName } from "metabase-types/api";
 
-import { Sidebar } from "../MainNavbar/MainNavbar.styled";
+import { Sidebar } from "../MainNavbar/Sidebar";
 
 import { NotificationsButton } from "./NotificationsButton";
 import S from "./ProtoNavbar.module.css";
@@ -59,7 +59,8 @@ const WIDTH_STORAGE_KEY = "proto-nav-width";
 
 export function ProtoNavbar({ isOpen, location, params }: Props) {
   const applicationName = useSelector(getApplicationName);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const buildQuestion = useQuestionFromOptsBuilder();
   const { query: kbarQuery } = useKBar();
   const openSearch = useCallback(() => {
     kbarQuery.setVisualState(VisualState.showing);
@@ -100,6 +101,7 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
       ? `/dashboard/${firstDashboard.id}`
       : "/collection/root",
     explore: newQueryUrl(getLastNewQueryMode(), {
+      buildQuestion,
       databaseId: lastUsedDatabaseId ?? undefined,
     }),
     library: Urls.dataStudioLibrary({ library: "tables" }),
@@ -261,7 +263,7 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
                     const target = defaultPaths[section.id];
                     if (target) {
                       pinSection(section.id);
-                      dispatch(push(target));
+                      navigate(target);
                     }
                   }}
                 >

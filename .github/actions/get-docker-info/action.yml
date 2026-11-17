@@ -1,7 +1,19 @@
 name: Get Docker Info
-description: Determines Docker repository and tag based on branch and edition
+description: Determines the registry, repository, and tag a container image is pushed to.
 
 inputs:
+  registry:
+    description: Registry the image is pushed to, either "docker" or "ecr".
+    required: false
+    default: docker
+  repo:
+    description: Repository name, e.g. "metabase-enterprise". Overrides a branch derived repo.
+    required: false
+    default: ''
+  tag:
+    description:  Image tag, e.g. v1.87.2. Overrides a branch derived tag.
+    required: false
+    default: ''
   branch:
     description: Branch name (defaults to current branch)
     required: false
@@ -10,14 +22,22 @@ inputs:
     description: Edition (ee or oss)
     required: false
     default: ee
-  owner:
-    description: Repository owner (defaults to current repo owner)
+  aws-account-id:
+    description: AWS account id hosting the ECR registry. Required for the ecr registry.
     required: false
-    default: ${{ github.repository_owner }}
+    default: ''
+  aws-region:
+    description: Region of the ECR registry.
+    required: false
+    default: us-east-1
+  dockerhub-owner:
+    description: DockerHub owner.
+    required: false
+    default: metabase
 
 outputs:
   repo:
-    description: Docker repository name
+    description: Docker repository, including the registry host (ecr) or the owner (docker)
     value: ${{ steps.docker-info.outputs.repo }}
   tag:
     description: Docker tag
@@ -25,9 +45,6 @@ outputs:
   full_image:
     description: Full Docker image name (repo:tag)
     value: ${{ steps.docker-info.outputs.full_image }}
-  editions:
-    description: JSON array of editions to build
-    value: ${{ steps.docker-info.outputs.editions }}
 
 runs:
   using: "composite"
@@ -35,40 +52,49 @@ runs:
     - name: Determine Docker info
       id: docker-info
       uses: actions/github-script@v9
+      env:
+        REGISTRY: ${{ inputs.registry }}
+        REPO: ${{ inputs.repo }}
+        TAG: ${{ inputs.tag }}
+        BRANCH: ${{ inputs.branch }}
+        EDITION: ${{ inputs.edition }}
+        AWS_ACCOUNT_ID: ${{ inputs.aws-account-id }}
+        AWS_REGION: ${{ inputs.aws-region }}
+        DOCKERHUB_OWNER: ${{ inputs.dockerhub-owner }}
       with:
         script: | # js
-          const branch = '${{ inputs.branch }}';
-          const edition = '${{ inputs.edition }}';
-          const owner = '${{ inputs.owner }}';
+          const { REGISTRY, OWNER, BRANCH, EDITION, AWS_ACCOUNT_ID, AWS_REGION, DOCKERHUB_OWNER } = process.env;
 
-          console.log(`Determining Docker info for branch: ${branch}, edition: ${edition}`);
-
-          let repo, tag, editions;
-
-          if (branch === 'master') {
-            // Master builds both editions with specific repos
-            editions = ['ee', 'oss'];
-            tag = 'latest';
-
-            if (edition === 'ee') {
-              repo = `${owner}/metabase-enterprise-head`;
-            } else {
-              repo = `${owner}/metabase-head`;
-            }
-          } else {
-            // All other branches only build EE to metabase-dev
-            editions = ['ee'];
-            tag = branch.replaceAll('/', '-'); // slashes make docker sad
-            repo = `${owner}/metabase-dev`;
+          let tag = process.env.TAG;
+          if (!tag) {
+            tag = BRANCH === 'master' ? 'latest' : `${BRANCH.replaceAll('/', '-')}-${EDITION}`;
           }
 
-          const fullImage = `${repo}:${tag}`;
+          let name = process.env.REPO;
+          if (!name) {
+            if (BRANCH === 'master') {
+              name = EDITION === 'ee' ? 'metabase-enterprise-head' : 'metabase-head';
+            } else {
+              name = 'metabase-dev';
+            }
+          }
 
-          // Set outputs
+          let repo;
+          if (REGISTRY === 'ecr') {
+            if (!AWS_ACCOUNT_ID) {
+              core.setFailed('Pushing to AWS ECR requires aws-account-id to be set.');
+              return;
+            }
+            repo = `${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${name}`;
+          } else if (REGISTRY === 'docker') {
+            repo = `${DOCKERHUB_OWNER}/${name}`;
+          } else {
+            core.setFailed(`Unknown registry "${REGISTRY}", expected "docker" or "ecr".`);
+            return;
+          }
+
           core.setOutput('repo', repo);
           core.setOutput('tag', tag);
-          core.setOutput('full_image', fullImage);
-          core.setOutput('editions', JSON.stringify(editions));
+          core.setOutput('full_image', `${repo}:${tag}`);
 
-          console.log(`Docker image: ${fullImage}`);
-          console.log(`Editions: ${JSON.stringify(editions)}`);
+          console.log(`Resolved: registry = ${REGISTRY}, repo = ${repo}, tag = ${tag}`);

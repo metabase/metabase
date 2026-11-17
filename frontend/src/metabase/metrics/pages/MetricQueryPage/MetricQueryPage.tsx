@@ -1,5 +1,4 @@
 import { useLayoutEffect, useMemo, useState } from "react";
-import type { Route } from "react-router";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -8,17 +7,17 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { getResultMetadata } from "metabase/common/data-studio/utils/get-result-metadata";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type {
+  MetricPageParams,
   MetricPageProps,
   MetricUrls,
 } from "metabase/common/metrics/types";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
+import { useParams } from "metabase/router";
 import { Card } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type { Card as CardApiType } from "metabase-types/api";
 
 import { MetricPageCard } from "../../components/MetricPageCard";
@@ -27,24 +26,19 @@ import { MetricQueryEditor } from "../../components/MetricQueryEditor";
 import { metricUrls as defaultUrls } from "../../urls";
 import { getValidationResult } from "../../utils/validation";
 
-interface MetricQueryPageProps extends MetricPageProps {
-  route: Route;
-}
-
 export function MetricQueryPage({
-  params,
-  route,
   urls = defaultUrls,
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink = true,
-}: MetricQueryPageProps) {
+}: MetricPageProps) {
+  const { cardId } = useParams<MetricPageParams>();
+
   return (
-    <MetricPageCard cardId={params.cardId}>
+    <MetricPageCard cardId={cardId}>
       {(card) => (
         <MetricQueryPageBody
           card={card}
-          route={route}
           urls={urls}
           renderBreadcrumbs={renderBreadcrumbs}
           showAppSwitcher={showAppSwitcher}
@@ -55,31 +49,28 @@ export function MetricQueryPage({
   );
 }
 
-interface MetricQueryPageBodyProps extends Omit<
-  MetricQueryPageProps,
-  "params"
-> {
+interface MetricQueryPageBodyProps extends MetricPageProps {
   card: CardApiType;
   urls: MetricUrls;
 }
 
 function MetricQueryPageBody({
   card,
-  route,
   urls,
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink,
 }: MetricQueryPageBodyProps) {
-  const metadata = useSelector(getMetadata);
+  const cardQuestion = useQuestionFromCard(card);
   const [datasetQuery, setDatasetQuery] = useState(card.dataset_query);
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateCard, { isLoading: isSaving }] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const question = useMemo(() => {
-    return new Question(card, metadata).setDatasetQuery(datasetQuery);
-  }, [card, metadata, datasetQuery]);
+  const question = useMemo(
+    () => cardQuestion.setDatasetQuery(datasetQuery),
+    [cardQuestion, datasetQuery],
+  );
 
   const resultMetadata = useMemo(() => {
     return getResultMetadata(
@@ -138,7 +129,7 @@ function MetricQueryPageBody({
 
   return (
     <>
-      <PageContainer pos="relative" data-testid="metric-query-editor" gap="xl">
+      <PageContainer pos="relative" data-testid="metric-query-editor" gap="xxl">
         <MetricPageShell
           card={card}
           urls={urls}
@@ -156,7 +147,7 @@ function MetricQueryPageBody({
             />
           }
         />
-        <Card withBorder flex={1} p={0}>
+        <Card withBorder shadow="none" flex={1} p={0}>
           <MetricQueryEditor
             query={question.query()}
             uiState={uiState}
@@ -166,7 +157,7 @@ function MetricQueryPageBody({
           />
         </Card>
       </PageContainer>
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </>
   );
 }

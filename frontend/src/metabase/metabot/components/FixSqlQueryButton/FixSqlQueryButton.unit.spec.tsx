@@ -55,12 +55,14 @@ function setup(options?: {
     hasOtherToolsAccess: hasSqlGenerationAccess,
     canUseOtherTools: canUseSqlGeneration,
   });
+  // Unjustified type cast. FIXME
   jest.mocked(useMetabotAgent).mockReturnValue({
     submitInput: mockSubmitInput,
     isDoingScience,
   } as any);
   jest
     .mocked(setIsNativeEditorOpen)
+    // Unjustified type cast. FIXME
     .mockImplementation(mockSetIsNativeEditorOpen as any);
 
   return renderWithProviders(<FixSqlQueryButton />, { withUndos: true });

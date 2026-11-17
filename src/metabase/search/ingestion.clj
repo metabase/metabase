@@ -1,21 +1,23 @@
 (ns metabase.search.ingestion
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
-   [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.collections.curation :as collections.curation]
    [metabase.lib-be.core :as lib-be]
+   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
+   [metabase.search.ingestion.query :as search.ingestion.query]
    [metabase.search.spec :as search.spec]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]
    [metabase.util.queue :as queue]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
    (java.util.concurrent DelayQueue)))
@@ -25,32 +27,20 @@
 ;; Currently we use a single queue, even if multiple engines are enabled, but may want to revisit this.
 (defonce ^:private ^DelayQueue queue (queue/delay-queue))
 
+(defonce ^:private pending-updates (atom 0))
+
 ;; Perhaps this config move up somewhere more visible? Conversely, we may want to specialize it per engine.
 
 (def ^:private message-delay-ms
-  "The time a message should wait before coming off the queue.
-  This delay exists to ensure the data is fully committed before indexing."
+  "The time a message waits before coming off the queue.
+  Updates made in a transaction are queued when it commits, see [[ingest-maybe-async!]].
+  The delay is a head start for a write in a transaction `mdb/do-after-commit` cannot see, such as a raw JDBC one.
+  Such a write is still missed if its transaction stays open longer than the delay."
   100)
 
 (def ^:private listener-name
   "The name of the listener that consumes the queue"
   "search-index-update")
-
-(def max-searchable-value-length
-  "The maximum length of a searchable value. This is mostly driven by postgresql max-lengths on tsvector columns.
-  And is about half of postgresql's max, since we concat two values together often. That is likely aggressive, but being safe until we can better understand normal data shapes"
-  500000)
-
-(defn searchable-value-trim-sql
-  "Returns the honeysql expression to trim a searchable value to the max length.
-  The passed column should be a keyword that is qualified as needed.
-  Uses a slightly larger value that what will be stored in the db so we can better use word boundaries on the actual end"
-  [column]
-  (if (#{:postgres :h2} (mdb/db-type))
-    [:left
-     column
-     [:cast (+ max-searchable-value-length 100) :integer]]
-    column))
 
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
@@ -93,16 +83,12 @@
                             field-keys)]
     (str header "\n" (str/join "\n" fields))))
 
-(defn- search-term-columns
-  "Extract column names from search-terms spec for SQL query generation"
-  [search-terms]
-  (if (map? search-terms) (keys search-terms) search-terms))
-
 (defn- display-data [m]
   (perf/select-keys m [:name :display_name :description :collection_name]))
 
 (defn- execute-function-attr
-  "Execute a single function attribute and return the result"
+  "Execute a single function attribute and return the result, or nil if the function throws.
+  nil is valid for every column type, so a failure can never poison the document's insert batch."
   [attr-key attr-def record]
   (try
     (let [f (:fn attr-def)
@@ -112,28 +98,19 @@
                   record)]
       (f input))
     (catch Exception e
-      (log/warn e "Function execution failed for attribute" attr-key)
-      false)))
+      (log/warn "Function execution failed for attribute" attr-key ":" (ex-message e))
+      nil)))
 
 (defn- execute-all-function-attrs
   "Execute all function attributes for a given spec and return computed values.
-  If a function returns a map, its entries are merged directly into the result —
-  this allows a single function to populate multiple document keys (e.g. :temporal-info
-  returns both :has_temporal_dim and :non_temporal_dim_ids in one call).
-
-  When a function attr declares `:provides`, the attr-key itself is not a column in
-  the index — it's a logical grouping whose `:provides` keys are the real columns.
-  In that case, on non-map results (e.g. when the function threw and `false` was
-  returned), skip writing instead of poisoning the document with an unknown column."
+  Each function's result is written under the attr key (snake_case) — the attr's index column."
   [spec record]
   (reduce-kv
    (fn [acc attr-key attr-def]
      (if (search.spec/function-attr? attr-def)
-       (let [result (execute-function-attr attr-key attr-def record)]
-         (cond
-           (map? result)                          (merge acc result)
-           (seq (search.spec/function-attr-provides attr-def)) acc
-           :else                                  (assoc acc (keyword (u/->snake_case_en (name attr-key))) result)))
+       (assoc acc
+              (keyword (u/->snake_case_en (name attr-key)))
+              (execute-function-attr attr-key attr-def record))
        acc))
    {}
    (:attrs spec)))
@@ -159,58 +136,11 @@
            :legacy_input (json/encode (assoc (apply dissoc m search.spec/legacy-input-excluded-keys)
                                              :curated curated)))))
 
-(defn- attrs->select-items [attrs]
-  (for [[k v] attrs
-        :when (and v (not (search.spec/function-attr? v)))]
-    (let [as (keyword (u/->snake_case_en (name k)))]
-      (if (true? v) as [v as]))))
-
-(defn- spec-index-query*
-  [_db-type search-model]
-  (let [spec         (search.spec/spec search-model)
-        fn-deps      (search.spec/collect-fn-attr-req-fields spec)
-        fn-selects   (map (fn [field]
-                            [(keyword (str "this." (name field))) field])
-                          fn-deps)
-        search-terms (set (search-term-columns (:search-terms spec)))]
-    (u/remove-nils
-     {:select    (search.spec/qualify-columns :this
-                                              (concat
-                                               (map (fn [term] [(searchable-value-trim-sql (keyword (str "this." (name term))))
-                                                                term])
-                                                    search-terms)
-                                               (mapcat (fn [k] (attrs->select-items
-                                                                (->> (get spec k)
-                                                                     (remove (comp search-terms key)))))
-                                                       [:attrs :render-terms])
-                                               fn-selects))
-      :from      [[(t2/table-name (:model spec)) :this]]
-      :where     (:where spec [:inline [:= 1 1]])
-      :left-join (when (:joins spec)
-                   (into []
-                         cat
-                         (for [[join-alias [join-model join-condition]] (:joins spec)]
-                           [[(t2/table-name join-model) join-alias]
-                            join-condition])))})))
-
-(def ^:private spec-index-query-memo (memoize spec-index-query*))
-
-(defn- spec-index-query
-  ;; Memoized per db-type since the generated HoneySQL varies by database engine
-  ;; (e.g. searchable-value-trim-sql emits LEFT/CAST only for postgres and h2).
-  [search-model]
-  (spec-index-query-memo (mdb/db-type) search-model))
-
-(defn- spec-index-query-where [search-model where-clause]
-  (-> (spec-index-query search-model)
-      (sql.helpers/where where-clause)))
-
 (defn- spec-index-reducible [search-model & [where-clause]]
   ;; Joins in the spec (e.g. card → revision on most_recent = true) can produce duplicate rows when the
   ;; joined side has its own integrity violations. Downstream upserts hit a unique constraint on
   ;; (model, model_id), so dedup here at the streaming boundary — bounded by per-model row count.
-  (->> (spec-index-query-where search-model where-clause)
-       t2/reducible-query
+  (->> (search.db/spec-index-reducible-rows search-model where-clause)
        (eduction (comp (map #(assoc % :model search-model))
                        (m/distinct-by (juxt :id :model))))))
 
@@ -229,14 +159,10 @@
   (if-not (contains? (set search.spec/search-models) search-model)
     :no-spec
     (let [spec      (search.spec/spec search-model)
-          indexed?  (-> (spec-index-query-where search-model [:= :this.id id])
-                        (assoc :select [[[:inline 1] :one]] :limit 1)
-                        t2/query
-                        seq
-                        boolean)]
+          indexed?  (some? (search.db/spec-index-row search-model id))]
       (cond
         indexed?                              :indexable
-        (t2/exists? (:model spec) :id id)     :excluded
+        (search.db/entity-exists? (:model spec) id)     :excluded
         :else                                 :not-found))))
 
 (def ^:private max-document-error-logs 10)
@@ -265,7 +191,7 @@
                                  (let [n (vswap! failures inc)]
                                    (cond
                                      (<= n max-document-error-logs)
-                                     (log/warnf t "Error building search document for %s %s; skipping" (:model m) (:id m))
+                                     (log/warnf "Error building search document for %s %s; skipping: %s" (:model m) (:id m) (ex-message t))
                                      (= n (inc max-document-error-logs))
                                      (log/warnf "Suppressing further per-document error logs after %d failures" max-document-error-logs)))
                                  nil))]
@@ -281,18 +207,16 @@
   "Returns a count of all searchable items in the database."
   []
   (->> (for [model search.spec/search-models]
-         (-> (spec-index-query-where model nil)
-             (assoc :select [[:%count.* :count]])
-             t2/query
-             first
-             :count))
+         (search.db/spec-index-count model))
        (filter some?)
        (reduce + 0)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *force-sync*
   "Force ingestion to happen immediately, on the same thread."
   false)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *disable-updates*
   "Used by tests to disable updates, for example when testing migrations, where the schema is wrong."
   false)
@@ -306,8 +230,11 @@
     ;; Individual engines may also partition the documents further if they prefer
     (tracing/with-span :search "search.ingestion.update" {:search/engine (name e)}
       (let [timer (u/start-timer)
-            update-report (reduce (fn [_ batch] (search.engine/update! e batch)) nil
-                                  (eduction (partition-all 150) documents-reducible))
+            update-report (transduce (comp (partition-all 150)
+                                           (map #(search.engine/update! e %)))
+                                     (partial merge-with +)
+                                     {}
+                                     documents-reducible)
             delete-report (reduce (fn [acc batch]
                                     (->> batch
                                          (remove nil?)
@@ -340,31 +267,184 @@
               [model id]
               nil))
 
-       :and (first (keep (partial extract-model-and-id model) values))))))
+       :and (first (keep (partial extract-model-and-id model) values))
+
+       ;; Any other operator yields no single document id, so ingestion purges nothing for it, not even the `:in` of
+       ;; [[doc-id-selector]], which names documents by their ids. Returning nil rather than throwing lets callers
+       ;; enqueue re-derivations under such selectors.
+       nil))))
+
+;; Only `:this.id` yields a document id, so a search-model reached through a join on another column, or one whose
+;; `:id` attr is compound, has to have its documents enumerated before they are deleted.
+(defn purgeable-selector?
+  "Whether a hook's where-clause names a document [[bulk-ingest!]] could purge if it stopped resolving."
+  [where-clause]
+  (some? (extract-model-and-id ::probe where-clause)))
+
+;; A single delete, or a batched one such as a Database's cards, can fan out to arbitrarily many dependent documents,
+;; and this enumeration happens on the caller's thread inside its transaction, so past the ceiling the documents are
+;; left to the convergence backstop rather than held in heap.
+(def max-enumerated-documents
+  "Ceiling on how many documents one statement may enumerate for each search-model before it runs.
+  A batched delete also stops enumerating further batches once it holds this many across all search-models."
+  10000)
+
+(defn doc-ids
+  "The ids of the documents `search-model` currently produces under `where-clause`, or nil past
+  [[max-enumerated-documents]]."
+  [search-model where-clause]
+  ;; Narrows the spec's indexing query to its `:id` attr, so enumerating documents costs an id scan rather than a
+  ;; full document build.
+  ;; The LIMIT stops the database sending ids past the ceiling; buffering JDBC drivers otherwise read them all first.
+  (let [fetch-limit (inc max-enumerated-documents)
+        ids         (into [] (map :id) (search.db/spec-index-doc-ids-reducible search-model where-clause fetch-limit))]
+    (if (< max-enumerated-documents (count ids))
+      (do (log/warnf "Skipping cascade enumeration for %s: statement reaches more than %d documents"
+                     search-model max-enumerated-documents)
+          nil)
+      (set ids))))
+
+;; TODO (Chris 2026-11-05) -- match a compound id on its component columns. Comparing the `concat_ws` expression
+;; cannot use an index, so each indexed-entity check scans model_index_value.
+(defn doc-id-selector
+  "A where-clause matching `search-model`'s documents by their own ids, whatever their relationships now are."
+  [search-model ids]
+  [:in (search.ingestion.query/doc-id-expression search-model) (vec ids)])
+
+;; Asks about the documents themselves rather than the relationship that found them: a row whose foreign key was
+;; nulled rather than deleted still has a document, and must not be purged.
+(defn existing-doc-ids
+  "Which of `ids` `search-model` still produces a document for, or nil past [[max-enumerated-documents]]."
+  [search-model ids]
+  (if (seq ids)
+    (doc-ids search-model (doc-id-selector search-model ids))
+    #{}))
+
+;; Tombstones share ingestion's single worker with re-index messages, so an update that read a row before its delete
+;; committed is applied before, never after, the removal.
+(defn tombstone
+  "A queue message that removes `search-model`'s documents with these `ids`, in queue order with re-index messages."
+  [search-model ids]
+  {:op :delete, :search-model search-model, :ids (set (map str ids))})
+
+;; The survivor check queries the app DB, so it runs on the worker, one message at a time, instead of on the thread
+;; that committed the delete.
+;; Running it when the message comes off the queue also decides survival after every earlier message has applied.
+(defn reconcile
+  "A queue message that settles `search-model`'s documents with these `ids`, enumerated before a delete.
+  When it comes off the queue, documents that still resolve are re-derived and the rest are removed."
+  [search-model ids]
+  {:op :reconcile, :search-model search-model, :ids (set ids)})
+
+(defn- message-kind
+  "The kind of a queued `message`: `:reindex` for a selector, `:delete` for a [[tombstone]], or `:reconcile`."
+  [message]
+  (if (map? message)
+    (:op message)
+    :reindex))
+
+(defn- apply-tombstones!
+  "Remove the documents a run of [[tombstone]] messages names from every active engine."
+  [tombstones]
+  (update! [] (mapcat (fn [{:keys [search-model ids]}]
+                        (map (fn [id] [search-model id]) ids))
+                      tombstones)))
+
+(defn- ingest-updates!
+  "Re-index the documents a run of re-index messages selects, and purge the ones that no longer resolve."
+  [updates]
+  (let [documents        (->> (for [[search-model where-clauses] (u/group-by first second updates)]
+                                (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
+                              ;; init collection is only for clj-kondo, as we know that the list is non-empty
+                              (reduce u/rconcat [])
+                              query->documents)
+        passed-documents (map extract-model-and-id updates)
+        ;; Keep only [model id] pairs, not whole documents; the eduction replays the streaming query when update!
+        ;; consumes it.
+        indexed-pairs    (into #{} (map (juxt :model (comp str :id))) documents)
+        ;; Only `:this.id` selectors name a document here, so this diff never purges documents reached through a
+        ;; relationship or keyed by a compound id.
+        ;; Deletes enumerate those up front instead, see [[metabase.search.core/cascading-documents]] and [[tombstone]].
+        to-delete        (remove indexed-pairs passed-documents)]
+    (update! documents to-delete)))
+
+;; Each chunk's survivor check and re-index are statements of their own, so their `IN` lists stay this size however
+;; many documents the delete reached.
+(def ^:private reconcile-batch-size
+  "Ids checked and re-derived per statement when settling a [[reconcile]] message."
+  100)
+
+;; Survival is decided per document, not by the relationship that found it: a row whose foreign key was nulled
+;; rather than deleted still produces a document, and the relationship that changed is usually indexed on it.
+(defn- apply-reconcile!
+  "Settle one [[reconcile]] message: re-derive its documents that still resolve, and remove the rest."
+  [{:keys [search-model ids]}]
+  ;; Each chunk's tombstone applies as soon as the chunk is checked, and the re-index waits until every check is done.
+  ;; A failing check or re-index then costs no tombstone already known, so it leaves survivors stale rather than
+  ;; deleted documents searchable.
+  ;; The gone and alive ids never overlap, so the order matters for nothing else.
+  (let [survivors (into []
+                        (keep (fn [chunk]
+                                ;; Nil is unreachable while a chunk stays under [[max-enumerated-documents]], but
+                                ;; reading it as "none survived" would purge live documents.
+                                (when-some [alive (existing-doc-ids search-model chunk)]
+                                  (when-let [gone (not-empty (set/difference (set chunk) alive))]
+                                    (apply-tombstones! [(tombstone search-model gone)]))
+                                  alive)))
+                        (partition-all reconcile-batch-size ids))]
+    (doseq [alive survivors
+            :when (seq alive)]
+      (ingest-updates! [[search-model (doc-id-selector search-model alive)]]))))
+
+(defn- apply-run!
+  "Apply a run of queued messages of one kind."
+  [messages]
+  (case (message-kind (first messages))
+    :reindex   (ingest-updates! messages)
+    :delete    (apply-tombstones! messages)
+    :reconcile (run! apply-reconcile! messages)))
+
+(defn- message-runs
+  "Split queued `messages` into runs to apply in order.
+  Contiguous re-index messages share a run, as do contiguous tombstones.
+  Each [[reconcile]] is a run of its own, so one search-model's failure does not cost another's."
+  [messages]
+  (into []
+        (mapcat (fn [run]
+                  (if (= :reconcile (message-kind (first run)))
+                    (map vector run)
+                    [run])))
+        (partition-by message-kind messages)))
 
 (defn bulk-ingest!
-  "Process the given search model updates."
-  [updates]
-  (tracing/with-span :search "search.ingestion.bulk-ingest" {:search/update-count (count updates)}
+  "Process the given search model updates, tombstones and reconciles, in queue order.
+  A run of messages that fails is logged and the later runs still apply; the first failure is then rethrown."
+  [messages]
+  (tracing/with-span :search "search.ingestion.bulk-ingest" {:search/update-count (count messages)}
     (lib-be/with-metadata-provider-cache
-      (if (seq (search.engine/active-engines))
-        (let [documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
-                               (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
-                             ;; init collection is only for clj-kondo, as we know that the list is non-empty
-                             (reduce u/rconcat [])
-                             query->documents)
-              passed-documents (map extract-model-and-id updates)
-              ;; Collect just [model, id] pairs — tiny memory footprint vs materializing full document maps.
-              ;; The eduction will replay the streaming query when passed to update!.
-              indexed-pairs (into #{} (map (juxt :model (comp str :id))) documents)
-              ;; TODO: The list of documents to delete is not completely accurate.
-              ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.
-              ;; This will not work for cases like indexed-entries with compound PKs,
-              ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
-              ;; Long-term, we should find a better approach to knowing what to purge.
-              to-delete (remove indexed-pairs passed-documents)]
-          (update! documents to-delete))
-        {}))))
+      (when (seq (search.engine/active-engines))
+        ;; Preserve the queue's relative ordering: an update after a tombstone is authoritative, while a prior update
+        ;; must finish before the delete. Only contiguous re-index messages are coalesced.
+        ;; Nothing retries a failed batch, so a failing run must not cost the runs after it, a tombstone above all.
+        ;; The first failure is rethrown once every run has had its turn, so the caller still sees it.
+        (when-some [e (reduce (fn [first-error run]
+                                (try
+                                  (apply-run! run)
+                                  first-error
+                                  ;; The interrupt stops the batch, and its status stays set for the caller to see.
+                                  (catch InterruptedException e
+                                    (.interrupt (Thread/currentThread))
+                                    (throw e))
+                                  ;; A failed `assert` or `:pre` check is the run's own failure, like an exception.
+                                  ;; Any other Error is fatal, so it stops the batch at once.
+                                  (catch Throwable e
+                                    (if (or (instance? Exception e) (instance? AssertionError e))
+                                      (do (log/errorf e "Failed to ingest %d search index messages" (count run))
+                                          (or first-error e))
+                                      (throw e)))))
+                              nil
+                              (message-runs messages))]
+          (throw e))))))
 
 (defn- track-queue-size! []
   (analytics/set-gauge! :metabase-search/queue-size (.size queue)))
@@ -372,10 +452,26 @@
 (defn- index-worker-exists? []
   (queue/listener-exists? listener-name))
 
+(mu/defn await-pending-updates! :- :boolean
+  "Wait up to `timeout-ms` for queued and running index updates to finish. Return whether none remain."
+  [timeout-ms :- nat-int?]
+  (boolean (u/poll {:thunk       #(deref pending-updates)
+                    :done?       zero?
+                    :timeout-ms  timeout-ms
+                    :interval-ms 100})))
+
+(mu/defn clear-queue! :- :nil
+  "Discard queued updates without interrupting updates already being indexed."
+  []
+  (doseq [message (.toArray queue)]
+    (when (.remove queue message)
+      (swap! pending-updates dec))))
+
 (defn ingest-maybe-async!
   "Update or create any search index entries related to the given updates.
   Will be async if the worker exists, otherwise it will be done synchronously on the calling thread.
-  Can also be forced to run synchronously for testing."
+  Can also be forced to run synchronously for testing.
+  Async updates are queued when the outermost transaction commits, and dropped if it rolls back."
   ([updates]
    (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
   ([updates sync?]
@@ -383,16 +479,19 @@
      (if sync?
        (bulk-ingest! updates)
        (do
-         (doseq [update updates]
-           (log/trace "Queuing update" update)
-           (queue/put-with-delay! queue message-delay-ms update))
-         (track-queue-size!)
+         ;; The worker reads rows back on its own connection, so it cannot see them before the commit.
+         (mdb/do-after-commit
+          (fn []
+            (doseq [update updates]
+              (log/trace "Queuing update" update)
+              (swap! pending-updates inc)
+              (queue/put-with-delay! queue message-delay-ms update))
+            (track-queue-size!)))
          true)))))
 
 (defn wait-for-idle!
-  "Block until the ingestion queue has been drained and no more items arrive.
-   Polls the queue and considers it idle when it has been empty for `settle-ms`
-   (default 500ms). Gives up after `timeout-ms` (default 30s)."
+  "Block until no index updates are queued or being processed for `settle-ms` (default 500ms).
+   Log a warning and return after `timeout-ms` (default 30s)."
   [& {:keys [settle-ms timeout-ms poll-ms]
       :or   {settle-ms 500, timeout-ms 30000, poll-ms 50}}]
   (let [deadline-ns (+ (System/nanoTime) (* (long timeout-ms) 1000000))
@@ -400,14 +499,14 @@
         poll-ms     (long poll-ms)
         empty-since (atom nil)]
     (loop []
-      (let [now-ns       (System/nanoTime)
-            sz           (.size queue)
-            remaining-ns (- settle-ns (- now-ns (or @empty-since now-ns)))]
+      (let [now-ns        (System/nanoTime)
+            pending-count @pending-updates
+            remaining-ns  (- settle-ns (- now-ns (or @empty-since now-ns)))]
         (cond
           (>= now-ns deadline-ns)
-          (log/warnf "wait-for-idle! timed out with %d items still in the queue" sz)
+          (log/warnf "wait-for-idle! timed out with %d pending index updates" pending-count)
 
-          (pos? sz)
+          (pos? pending-count)
           (do (reset! empty-since nil)
               (Thread/sleep poll-ms)
               (recur))
@@ -417,15 +516,21 @@
               (Thread/sleep (long (max poll-ms (quot remaining-ns 1000000))))
               (recur)))))))
 
+(defn- ingest-batch! [updates]
+  (try
+    (bulk-ingest! updates)
+    (finally
+      (swap! pending-updates - (count updates)))))
+
 (defn start-listener!
   "Starts the ingestion listener on the queue"
   []
   (when (seq (search.engine/active-engines))
-    (queue/listen! listener-name queue bulk-ingest!
+    (queue/listen! listener-name queue ingest-batch!
                    {:success-handler     (fn [_result _duration _]
                                            (track-queue-size!))
                     :err-handler        (fn [err _]
-                                          (log/error err "Error indexing search entries")
+                                          (log/errorf "Error indexing search entries: %s" (ex-message err))
                                           (analytics/inc! :metabase-search/index-error)
                                           (track-queue-size!))
                     ;; Note that each message can correspond to multiple documents,

@@ -15,6 +15,7 @@ const groupId = 2;
 const databaseId = 1;
 
 const getPermissionGraph = (value = "yes"): GroupsPermissions =>
+  // Unjustified type cast. FIXME
   ({
     [defaultGroupId]: {
       [databaseId]: {
@@ -32,6 +33,7 @@ const isAdmin = true;
 const isNotAdmin = false;
 const isNotExternal = false;
 
+// Unjustified type cast. FIXME
 const defaultGroup: Group = {
   id: defaultGroupId,
   name: "All Users",

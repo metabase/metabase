@@ -1,5 +1,6 @@
 ---
 title: Running Metabase on AWS Elastic Beanstalk
+summary: Metabase no longer recommends Elastic Beanstalk. Find an alternative, decouple your RDS application database, or upgrade your existing deployment.
 redirect_from:
   - /docs/latest/operations-guide/running-metabase-on-elastic-beanstalk
   - /docs/latest/installation-and-operation/advanced-topics-for-running-Metabase-in-AWS-ElasticBeanstalk
@@ -16,7 +17,7 @@ If you're running Metabase on Elastic Beanstalk, we recommend you switch to a di
 
 ### Metabase Cloud
 
-We recommend [Metabase Cloud](https://www.metabase.com/pricing/) (obviously).
+We recommend [Metabase Cloud](https://www.metabase.com/pricing) (obviously).
 
 ### Self-hosted setups
 
@@ -65,7 +66,7 @@ Return to RDS and select the **Snapshots** option on the left of the page. You s
 
 Select that snapshot and click on **Actions** > **Restore Snapshot**.
 
-From this step on, you can follow the same steps as the [Configuring RDS for Metabase](./creating-RDS-database-on-AWS.md).
+From this step on, you can follow the same steps as in [Configuring RDS for Metabase](./creating-RDS-database-on-AWS.md).
 
 ## Upgrade your Elastic Beanstalk deployment
 
@@ -73,7 +74,7 @@ If you want to stay in Elastic Beanstalk, you can keep upgrading it by following
 
 1. Download the [last published Beanstalk artifact file](https://downloads.metabase.com/v0.47.2/metabase-aws-eb.zip).
 2. Unzip the file.
-3. Edit the Dockerrun.aws.json file and change the image tag to the latest available version. Always Avoid using `:latest`, instead, use the latest version number.
+3. Edit the Dockerrun.aws.json file and change the image tag to the latest available version. Avoid using `:latest`; instead, use the latest version number.
 4. Compress the file.
 5. Upload the file to AWS as a new Beanstalk version.
 6. Upgrade your environment.

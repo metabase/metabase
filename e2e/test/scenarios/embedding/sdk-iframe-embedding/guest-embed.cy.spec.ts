@@ -4,65 +4,50 @@ import { createQuestion, getSignedJwtForResource } from "e2e/support/helpers";
 const { H } = cy;
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
-const IS_OSS = !IS_ENTERPRISE;
-const MB_EDITION = IS_ENTERPRISE ? "ee" : "oss";
-
-describe(
-  `scenarios > embedding > sdk iframe embedding > guest-embed > ${MB_EDITION}`,
-  { ...(IS_OSS && { tags: "@OSS" }) },
-  () => {
-    beforeEach(() => {
-      H.prepareGuestEmbedSdkIframeEmbedTest({
-        onPrepare: () => {
-          createQuestion({
-            name: "47563",
-            enable_embedding: true,
-            embedding_type: "guest-embed",
-            query: {
-              "source-table": ORDERS_ID,
-              aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
-              breakout: [["field", ORDERS.PRODUCT_ID, null]],
-              limit: 2,
-            },
-          }).then(({ body: question }) => {
-            cy.wrap(question.id).as("questionId");
-          });
-        },
-      });
+function guestEmbedSuite() {
+  beforeEach(() => {
+    H.prepareGuestEmbedSdkIframeEmbedTest({
+      onPrepare: () => {
+        createQuestion({
+          name: "47563",
+          enable_embedding: true,
+          embedding_type: "guest-embed",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
+            breakout: [["field", ORDERS.PRODUCT_ID, null]],
+            limit: 2,
+          },
+        }).then(({ body: question }) => {
+          cy.wrap(question.id).as("questionId");
+        });
+      },
     });
+  });
 
-    it("shows a static question", () => {
+  it(
+    "shows an error for a component without guest embed support, and shows and downloads a static question",
+    { tags: "@prerelease" },
+    () => {
+      cy.log("component without guest embed support shows an error");
+      H.loadSdkIframeEmbedTestPage({
+        metabaseConfig: { isGuest: true },
+        elements: [
+          {
+            component: "metabase-browser",
+            attributes: {},
+          },
+        ],
+      }).within(() => {
+        cy.findByText("This component does not support guest embeds").should(
+          "be.visible",
+        );
+      });
+
+      cy.log("static question shows and downloads as CSV");
       cy.get("@questionId").then(async (questionId) => {
         const token = await getSignedJwtForResource({
-          resourceId: questionId as unknown as number,
-          resourceType: "question",
-        });
-
-        const frame = H.loadSdkIframeEmbedTestPage({
-          metabaseConfig: { isGuest: true },
-          elements: [
-            {
-              component: "metabase-question",
-              attributes: {
-                token,
-              },
-            },
-          ],
-        });
-
-        cy.wait("@getCardQuery");
-
-        frame.within(() => {
-          cy.findByText("Product ID").should("be.visible");
-          cy.findByText("Max of Quantity").should("be.visible");
-        });
-      });
-    });
-
-    it("allows to download a static question as CSV", () => {
-      cy.get("@questionId").then(async (questionId) => {
-        const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: questionId as unknown as number,
           resourceType: "question",
         });
@@ -83,6 +68,9 @@ describe(
         cy.wait("@getCardQuery");
 
         frame.within(() => {
+          cy.findByText("Product ID").should("be.visible");
+          cy.findByText("Max of Quantity").should("be.visible");
+
           H.downloadAndAssert({
             isDashboard: false,
             isEmbed: true,
@@ -95,24 +83,17 @@ describe(
           });
         });
       });
-    });
+    },
+  );
+}
 
-    it("shows an error for a component without guest embed support", () => {
-      const frame = H.loadSdkIframeEmbedTestPage({
-        metabaseConfig: { isGuest: true },
-        elements: [
-          {
-            component: "metabase-browser",
-            attributes: {},
-          },
-        ],
-      });
+describe(
+  "scenarios > embedding > sdk iframe embedding > guest-embed > ee",
+  guestEmbedSuite,
+);
 
-      frame.within(() => {
-        cy.findByText("This component does not support guest embeds").should(
-          "be.visible",
-        );
-      });
-    });
-  },
+describe(
+  "scenarios > embedding > sdk iframe embedding > guest-embed > oss",
+  { tags: "@OSS" },
+  guestEmbedSuite,
 );

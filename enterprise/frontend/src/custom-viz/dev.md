@@ -62,18 +62,28 @@ Convention:
    ```bash
    cd enterprise/frontend/src/custom-viz
 
-   # canary → next canary  (e.g. 0.0.1-canary.17 → 0.0.1-canary.18)
+   # canary → next canary  (e.g. 2.0.0-canary.0 → 2.0.0-canary.1)
    npm version prerelease --preid=canary --no-git-tag-version
 
-   # canary → stable patch (e.g. 0.0.1-canary.17 → 0.0.1)
-   #   or stable → next patch (e.g. 0.0.1 → 0.0.2). Use minor/major as needed.
+   # canary → stable patch (e.g. 2.0.0-canary.1 → 2.0.0)
+   #   or stable → next patch (e.g. 2.0.0 → 2.0.1). Use minor/major as needed.
    npm version patch --no-git-tag-version
 
-   # stable → first canary of next patch  (e.g. 0.0.1 → 0.0.2-canary.0)
+   # stable → first canary of next patch  (e.g. 2.0.0 → 2.0.1-canary.0)
    npm version prerelease --preid=canary --no-git-tag-version
+
+   # stable → first canary of next minor/major  (e.g. 2.0.0 → 2.1.0-canary.0 / 3.0.0-canary.0)
+   npm version preminor --preid=canary --no-git-tag-version
+   npm version premajor --preid=canary --no-git-tag-version
    ```
 
+   Prefer `npm version` over editing the field by hand — it keeps the version in one of the two accepted shapes and picks the right component to bump.
+
    `--no-git-tag-version` stops npm from making a commit or git tag — the release workflow creates the git tag after the version-bump PR lands. The package is bun-managed (no `package-lock.json`), so `npm version` only edits `package.json`.
+
+   For a stable release, add a section for the new version to [CHANGELOG.md](CHANGELOG.md) in the same PR. The changelog is maintained by hand. Canary releases don't get changelog sections.
+
+   In the same PR, make sure `tested-sdk-version-range` in [manifest.clj](../../backend/src/metabase_enterprise/custom_viz_plugin/manifest.clj) includes the new version — `manifest-test` fails when it doesn't. Plugins built with SDK versions outside that range get a soft warning in Metabase. Any npm semver range syntax works (e.g. `2.0`, `2.0 - 2.1`, `>=2.0.0 <3.0.0`); keep the range to versions that were actually tested.
 
 2. (Optional) Preview what the workflow will resolve, from the repo root:
 

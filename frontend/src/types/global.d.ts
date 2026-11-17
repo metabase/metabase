@@ -19,9 +19,19 @@ interface Window {
   MetabaseUserColorScheme?: string;
   MetabaseSiteLocalization?: MetabaseLocalization;
   MetabaseUserLocalization?: MetabaseLocalization;
+  /** The locales the document loaded catalogues for, set by index_bootstrap.js. */
+  MetabaseLocales?: { user: string; site: string };
 
   overrideIsWithinIframe?: boolean; // Mock that we're embedding, so we could test embed components
   METABASE?: boolean; // Add a global so we can check if the parent iframe is Metabase
+
+  Metabase?: {
+    // Set by the inline asset_loading_error script, before the bundle runs
+    AssetErrorLoad?: (tag: HTMLScriptElement) => void;
+    // Console debugging handles, set on app boot
+    store?: unknown;
+    settings?: unknown;
+  };
 
   // Dev-only helpers for inspecting the current query from CLJS REPLs
   __lib_metadata?: unknown;
@@ -57,14 +67,14 @@ interface Window {
 // This allows importing static SVGs from TypeScript files
 declare module "*.svg" {
   const content: any;
-  // eslint-disable-next-line import/no-default-export -- deprecated usage
+  // Default-importing this is the deprecated pattern.
   export default content;
 }
 
 // This allows importing CSS from TypeScript files
 declare module "*.css" {
   const classes: { [key: string]: string };
-  // eslint-disable-next-line import/no-default-export -- deprecated usage
+  // Default-importing this is the deprecated pattern.
   export default classes;
 }
 
@@ -74,7 +84,6 @@ declare module "simple-statistics" {
   const ss: {
     ckmeans: (data: number[], nClusters: number) => number[][];
   };
-  // eslint-disable-next-line import/no-default-export -- third-party module declaration
   export default ss;
 }
 

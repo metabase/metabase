@@ -16,7 +16,6 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.request.core :as request]
    [metabase.sso.core :as sso]
-   [metabase.sso.providers.slack-connect :as slack-connect.provider]
    [metabase.sso.settings :as sso-settings]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
@@ -46,8 +45,11 @@
                      (not api/*current-user-id*))
             (throw (ex-info (tru "Account linking requires an authenticated session")
                             {:status-code 401})))
+        ;; Validate the redirect with the same predicate `create-oidc-state` uses when it builds the state cookie,
+        ;; so an unacceptable value is rejected before we contact the identity provider.
         redirect-url (if redirect
-                       (slack-connect.provider/check-sso-redirect redirect)
+                       (do (sso/validate-redirect-url! redirect)
+                           redirect)
                        "/")
         auth-result (auth-identity/authenticate :provider/slack-connect
                                                 (assoc request
@@ -87,8 +89,7 @@
         (let [final-redirect (or (:redirect-url login-result) "/")
               base-response (-> (response/redirect final-redirect)
                                 (sso/clear-oidc-state-cookie))]
-          (log/infof "Slack authentication successful for user %s"
-                     (get-in login-result [:user-data :email]))
+          (log/info "Slack authentication successful")
           (if-let [session (:session login-result)]
             (request/set-session-cookies request
                                          base-response

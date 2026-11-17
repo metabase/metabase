@@ -1,12 +1,14 @@
 import { hasAuthToSelect } from "metabase/embedding/embedding-iframe-sdk-setup/utils/has-auth-to-select";
+import type {
+  SdkIframeDashboardEmbedSettings,
+  SdkIframeQuestionEmbedSettings,
+} from "metabase/embedding/embedding-iframe-sdk/types/embed";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 
 import type {
-  SdkIframeDashboardEmbedSettings,
-  SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupGuestEmbedSettings,
   SdkIframeEmbedSetupSettings,
-  SdkIframeQuestionEmbedSettings,
 } from "../types";
 
 const GET_ENABLE_GUEST_EMBED_SETTINGS: (data: {
@@ -94,6 +96,10 @@ export const getCommonEmbedSettings = ({
 }) => {
   const isSimpleEmbedFeatureAvailable =
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled();
+
+  if (experience === "data-app") {
+    return { isGuest: false, isSso: true, useExistingUserSession: false };
+  }
 
   if (isSimpleEmbedFeatureAvailable) {
     return isGuest

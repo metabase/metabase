@@ -1,15 +1,14 @@
-import { registerVisualization } from "metabase/visualizations";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
+import { registerVisualization } from "metabase/viz-core";
 import {
   createMockCard,
   createMockColumn,
+  createMockDashCardDataSeries,
   createMockDatasetData,
-  createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
 import { getInitialStateForMultipleSeries } from "./get-initial-state-for-multiple-series";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(LineChart);
 
 describe("getInitialVisualizerStateForMultipleSeries", () => {
@@ -37,7 +36,7 @@ describe("getInitialVisualizerStateForMultipleSeries", () => {
     });
 
     const rawSeries = [
-      createMockSingleSeries(firstCard, {
+      createMockDashCardDataSeries(firstCard, {
         data: createMockDatasetData({
           cols: [
             createMockColumn({ name: "Date" }),
@@ -45,7 +44,7 @@ describe("getInitialVisualizerStateForMultipleSeries", () => {
           ],
         }),
       }),
-      createMockSingleSeries(secondCard, {
+      createMockDashCardDataSeries(secondCard, {
         data: createMockDatasetData({
           cols: [
             createMockColumn({ name: "Date" }),

@@ -1,11 +1,10 @@
-import { Route } from "react-router";
-
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Transform } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -50,14 +49,14 @@ function setup({
 
   renderWithProviders(
     <Route
-      component={() => (
+      element={
         <PythonTransformTopBar
           databaseId={databaseId}
           isEditMode={isEditMode}
           transform={transform}
           onDatabaseChange={onDatabaseChange}
         />
-      )}
+      }
       path="/"
     />,
     {
@@ -97,8 +96,9 @@ describe("PythonTransformTopBar", () => {
   });
 
   describe("edit mode", () => {
-    it("should not render edit button in edit mode", () => {
+    it("should not render edit button in edit mode", async () => {
       setup({ isEditMode: true, transform: mockPythonTransform });
+      expect(await screen.findByText("Test Database")).toBeInTheDocument();
       expect(
         screen.queryByRole("link", { name: /edit definition/i }),
       ).not.toBeInTheDocument();
@@ -107,9 +107,11 @@ describe("PythonTransformTopBar", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should render database selector in edit mode", () => {
+    it("should render database selector in edit mode", async () => {
       setup({ isEditMode: true });
-      expect(screen.getByTestId("selected-database")).toBeInTheDocument();
+      expect(await screen.findByTestId("trigger")).toHaveTextContent(
+        "Test Database",
+      );
     });
   });
 });

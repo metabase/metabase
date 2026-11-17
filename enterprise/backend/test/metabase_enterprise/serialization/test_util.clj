@@ -2,16 +2,18 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.serialization :as serdes]
-   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.lib.core :as lib]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [metabase.util :as u]
+   [metabase.test.data.impl :as data.impl]
    [metabase.util.files :as u.files]
+   [metabase.util.json :as json]
    [next.jdbc]
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
@@ -49,7 +51,6 @@
   "Wraps with-temp*, but binding `*allow-deleting-personal-collections*` to true so that temporary personal collections
   can still be deleted."
   [model-bindings & body]
-  #_{:clj-kondo/ignore [:discouraged-var]}
   `(binding [collection/*allow-deleting-personal-collections* true]
      (mt/with-temp ~model-bindings ~@body)))
 
@@ -63,8 +64,8 @@
 (defmacro with-db
   "Execute `body` with the current app DB bound to an H2 `data-source`."
   [data-source & body]
-  `(binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 ~data-source)]
-     (with-open [conn# (.getConnection mdb.connection/*application-db*)]
+  `(mdb/with-application-db (mdb.connection/application-db :h2 ~data-source)
+     (with-open [conn# (.getConnection (mdb.connection/current-application-db))]
        (binding [t2.conn/*current-connectable* conn#]
          ;; TODO mt/with-empty-h2-app-db! also rebinds some perms-group/* - do we want to do that too?
          ;;   redefs not great for parallelism
@@ -77,9 +78,12 @@
    (fn [^javax.sql.DataSource data-source]
      ;; DB should stay open as long as `conn` is held open.
      (with-open [_conn (.getConnection data-source)]
-       (next.jdbc/execute! data-source ["RUNSCRIPT FROM ?" (str @data/h2-app-db-script)])
+       (next.jdbc/execute! data-source ["RUNSCRIPT FROM ?" (str @data/h2-app-db-script-empty)])
        (with-db data-source (mdb/finish-db-setup!))
-       (f data-source)))))
+       ;; These app DBs should contain only data loaded by the test. Prevent `with-temp` from prewarming the
+       ;; test-data Database, which would add an unexpected Database to serialization extracts.
+       (binding [data.impl/*skip-dataset-prewarm?* true]
+         (f data-source))))))
 
 (defn do-with-dbs
   "Given a function with the given arity, create an in-memory db for each argument and then call the fn with these dbs"
@@ -250,8 +254,8 @@
                                                                                 :card_id card-id-nested
                                                                                 ;; this is how click actions on a non-table card work (ex: a chart)
                                                                                 :visualization_settings {:click_behavior {:targetId card-id-nested-query
-                                                                                                                          :linkType :question
-                                                                                                                          :type     :link}}}
+                                                                                                                          :linkType "question"
+                                                                                                                          :type     "link"}}}
                   :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id
                                                 :card_id card-id
                                                 :position 0}
@@ -260,27 +264,23 @@
                                                 :position 1}
                   :model/DashboardCard       {dashcard-with-click-actions :id} {:dashboard_id           dashboard-id
                                                                                 :card_id                card-id-root
-                                                                                :visualization_settings (-> (mb.viz/visualization-settings)
-                                                                                                            (mb.viz/with-entity-click-action
-                                                                                                              numeric-field-id
-                                                                                                              ::mb.viz/card
-                                                                                                              card-id
-                                                                                                              (mb.viz/fk-parameter-mapping
-                                                                                                               "Category"
-                                                                                                               category-field-id
-                                                                                                               numeric-field-id))
-                                                                                                            (mb.viz/with-entity-click-action
-                                                                                                              name-field-id
-                                                                                                              ::mb.viz/dashboard
-                                                                                                              root-dashboard-id
-                                                                                                              nil)
-                                                                                                            (mb.viz/with-click-action
-                                                                                                              (mb.viz/column-name->column-ref "Price Known")
-                                                                                                              (mb.viz/url-click-action "/price-info"))
-                                                                                                            (mb.viz/with-click-action
-                                                                                                              (mb.viz/field-id->column-ref latitude-field-id)
-                                                                                                              (mb.viz/crossfilter-click-action {}))
-                                                                                                            mb.viz/norm->db)}
+                                                                                :visualization_settings {:column_settings
+                                                                                                         {(lib/field-id->column-settings-key numeric-field-id)
+                                                                                                          {:click_behavior {:type             "link"
+                                                                                                                            :linkType         "question"
+                                                                                                                            :targetId         card-id
+                                                                                                                            :parameterMapping (let [id (json/encode ["dimension" ["fk->" ["field" category-field-id nil] ["field" numeric-field-id nil]]])]
+                                                                                                                                                {id {:id     id
+                                                                                                                                                     :source {:type "column" :id "Category" :name "Category"}
+                                                                                                                                                     :target {:type      "dimension"
+                                                                                                                                                              :id        id
+                                                                                                                                                              :dimension ["dimension" [:field numeric-field-id {:source-field category-field-id}]]}}})}}
+                                                                                                          (lib/field-id->column-settings-key name-field-id)
+                                                                                                          {:click_behavior {:type "link" :linkType "dashboard" :targetId root-dashboard-id}}
+                                                                                                          (lib/column-name->column-settings-key "Price Known")
+                                                                                                          {:click_behavior {:type "link" :linkType "url" :linkTemplate "/price-info"}}
+                                                                                                          (lib/field-id->column-settings-key latitude-field-id)
+                                                                                                          {:click_behavior {:type "crossfilter" :parameterMapping {}}}}}}
                   :model/DashboardCardSeries _ {:dashboardcard_id   dashcard-with-click-actions
                                                 :card_id            card-id-root
                                                 :position           2}
@@ -317,7 +317,7 @@
                                                                                                     :name         "category-id"
                                                                                                     :display-name "Category ID"
                                                                                                     :type         "dimension"
-                                                                                                    :dimension    [:field category-field-id nil]
+                                                                                                    :field-id     category-field-id
                                                                                                     :widget-type  "id"
                                                                                                     :required     true
                                                                                                     :default      40}}}}}
@@ -528,10 +528,25 @@
                    venues-pk-field-id]}]
       ~@body)))
 
-(defn extract-one [model-name where]
-  (let [where (cond
-                (nil? where)    true
-                (number? where) [:= :id where]
-                (string? where) [:= :entity_id where]
-                :else           where)]
-    (u/rfirst (serdes/extract-all model-name {:where where}))))
+(defn extract-one
+  "The first exported `model-name` entity matching `where`: its primary key, its entity id, a Honey SQL clause, or nil."
+  [model-name where]
+  (let [model (keyword "model" model-name)
+        pk    (first (t2/primary-keys model))
+        rows  (t2/select model {:where    (cond
+                                            (nil? where)    nil
+                                            (number? where) [:= pk where]
+                                            (string? where) [:= :entity_id where]
+                                            :else           where)
+                                :order-by [[pk :asc]]
+                                :limit    1})]
+    (first (into [] (serialization/export model rows)))))
+
+(defn ingestion-in-memory
+  "An Ingestable serving the exported `entities` under their keys."
+  [entities]
+  (let [by-key (into {} (map (juxt serialization/key-of identity)) entities)]
+    (reify serdes.ingest/Ingestable
+      (ingest-list [_] (map serialization/key-of entities))
+      (ingest-many [_ ks] (mapv by-key ks))
+      (ingest-errors [_] []))))

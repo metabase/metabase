@@ -1,16 +1,10 @@
 import { t } from "ttag";
 
+import { skipToken, useGetDatabaseQuery, useGetTableQuery } from "metabase/api";
 import { SearchResultLink } from "metabase/common/components/SearchResultLink";
-import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
 import { Box, Icon, Text } from "metabase/ui";
-import {
-  browseDatabase,
-  browseSchema,
-  tableRowsQuery,
-  table as tableUrl,
-} from "metabase/urls";
-import type Database from "metabase-lib/v1/metadata/Database";
-import { type SearchResult, isConcreteTableId } from "metabase-types/api";
+import { browseDatabase, browseSchema, table as tableUrl } from "metabase/urls";
+import type { Database, SearchResult } from "metabase-types/api";
 
 import type { InfoTextData } from "./get-info-text";
 import { getInfoText } from "./get-info-text";
@@ -44,9 +38,9 @@ export const InfoTextTableLink = ({
     data: table,
     isLoading,
     error,
-  } = useTableQuery({
-    id: result.table_id,
-  });
+  } = useGetTableQuery(
+    result.table_id != null ? { id: result.table_id } : skipToken,
+  );
 
   if (error) {
     return null;
@@ -56,9 +50,7 @@ export const InfoTextTableLink = ({
     return <LoadingText />;
   }
 
-  const link = isConcreteTableId(result.table_id)
-    ? tableUrl({ id: result.table_id, name: table?.display_name })
-    : tableRowsQuery(result.database_id, result.table_id);
+  const link = tableUrl({ id: result.table_id, name: table?.display_name });
   const label = table?.display_name ?? null;
 
   return (
@@ -101,9 +93,9 @@ export const InfoTextTablePath = ({
     data: database,
     isLoading: isDatabaseLoading,
     error: databaseError,
-  } = useDatabaseQuery({
-    id: result.database_id,
-  });
+  } = useGetDatabaseQuery(
+    result.database_id != null ? { id: result.database_id } : skipToken,
+  );
 
   if (databaseError) {
     return null;

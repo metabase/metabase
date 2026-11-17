@@ -66,12 +66,12 @@ export const openNextMilestones = async ({
   repo,
   version,
 }: ReleaseProps) => {
-  const nextMilestones = getNextVersions(version).map(versionString =>
+  const nextMilestones = getNextVersions(version).map((versionString) =>
     getMilestoneName(versionString),
   );
 
   await Promise.all(
-    nextMilestones.map(milestoneName =>
+    nextMilestones.map((milestoneName) =>
       github.rest.issues
         .createMilestone({
           owner,
@@ -81,40 +81,6 @@ export const openNextMilestones = async ({
         .catch(console.error),
     ),
   );
-};
-
-export const getMilestoneIssues = async ({
-  version,
-  github,
-  owner,
-  repo,
-  state = "closed",
-  milestoneStatus,
-}: ReleaseProps & {
-  state?: "closed" | "open";
-  milestoneStatus?: MilestoneState;
-}): Promise<Issue[]> => {
-  const milestone = await findMilestone({
-    version,
-    github,
-    owner,
-    repo,
-    state: milestoneStatus,
-  });
-
-  if (!milestone) {
-    return [];
-  }
-
-  // we have to use paginate function or the issues will be truncated to 100
-  const issues = await github.paginate(github.rest.issues.listForRepo, {
-    owner,
-    repo,
-    milestone: String(milestone.number),
-    state,
-  });
-
-  return (issues ?? []) as Issue[];
 };
 
 export const hasBeenReleased = async ({
@@ -196,10 +162,12 @@ function checksPassed(checks: GithubCheck[]) {
   const MIN_TOTAL_CHECKS = 95; // v49 has 96 checks, v50 has 99 checks
 
   const failedChecks = checks.filter(
-    check => !["success", "skipped"].includes(check.conclusion ?? ""),
+    (check) => !["success", "skipped"].includes(check.conclusion ?? ""),
   );
 
-  const pendingChecks = checks.filter(check => check.status === "in_progress");
+  const pendingChecks = checks.filter(
+    (check) => check.status === "in_progress",
+  );
   const totalChecks = checks.length;
 
   const sha = checks[0]?.head_sha;
@@ -318,7 +286,7 @@ export async function hasCommitBeenReleased({
     basehead: `${lastTagSha}...refs/heads/release-x.${majorVersion}.x`,
   });
 
-  const isAheadOfLastRelease = data.commits.some(c => c.sha === ref);
+  const isAheadOfLastRelease = data.commits.some((c) => c.sha === ref);
 
   console.log({ lastTag, lastTagSha, ref, isAheadOfLastRelease });
 
@@ -343,4 +311,3 @@ export async function getOpenBackportPrs({
 
   return prs;
 }
-

@@ -1,10 +1,11 @@
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { waitForRequestsToSettle } from "__support__/utils";
+import { Route } from "metabase/router";
 import type { Advisory } from "metabase-types/api";
 import {
   createMockTokenFeatures,
@@ -34,8 +35,8 @@ function setup({
   );
 
   setupNotificationChannelsEndpoints({
-    email: { configured: emailConfigured } as any,
-    slack: { configured: slackConfigured } as any,
+    email: { configured: emailConfigured },
+    slack: { configured: slackConfigured },
   });
 
   fetchMock.get("path:/api/ee/security-center", {
@@ -50,7 +51,7 @@ function setup({
     }),
   });
 
-  renderWithProviders(<Route path="*" component={SecurityCenterBanner} />, {
+  renderWithProviders(<Route path="*" element={<SecurityCenterBanner />} />, {
     initialRoute: "/",
     storeInitialState: state,
     withRouter: true,
@@ -61,28 +62,28 @@ describe("SecurityCenterBanner", () => {
   it("does not render when there is no active advisory", async () => {
     setup();
 
-    await screen.findByText(() => false).catch(() => {});
+    await waitForRequestsToSettle();
     expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
 
   it("does not render when email is configured", async () => {
     setup({ emailConfigured: true });
 
-    await screen.findByText(() => false).catch(() => {});
+    await waitForRequestsToSettle();
     expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
 
   it("does not render when slack is configured", async () => {
     setup({ slackConfigured: true });
 
-    await screen.findByText(() => false).catch(() => {});
+    await waitForRequestsToSettle();
     expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
 
   it("does not render for non-pro-self-hosted plans", async () => {
     setup({ isProSelfHosted: false });
 
-    await screen.findByText(() => false).catch(() => {});
+    await waitForRequestsToSettle();
     expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
 

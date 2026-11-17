@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { ParameterFieldWidgetValue } from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
+import { useSetting } from "metabase/settings";
 import { Ellipsified } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
@@ -55,7 +55,8 @@ function FormattedParameterValue({
 
   const first = getValue(value);
   const label = isBooleanParameter(parameter)
-    ? getBooleanLabel(first as boolean)
+    ? // Unjustified type cast. FIXME
+      getBooleanLabel(first as boolean)
     : undefined;
 
   const renderContent = () => {

@@ -98,6 +98,7 @@ describe("scenarios > embedding-sdk > touch chart drill popover", () => {
 
       cy.window().then((win) => {
         if (!("ontouchstart" in win)) {
+          // Unjustified type cast. FIXME
           (win as any).ontouchstart = null;
         }
       });

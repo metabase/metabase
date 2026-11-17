@@ -1,11 +1,17 @@
 (ns metabase.lib.drill-thru.summarize-column-test
   (:require
-   [clojure.test :refer [deftest testing use-fixtures]]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [clojure.test :refer [deftest is testing use-fixtures]]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
@@ -83,6 +89,24 @@
         :custom-row   {"PRODUCT_ID" 3
                        "count"      77}
         :column-name column-name}))))
+
+(deftest ^:parallel distinct-drill-preserves-model-source-test
+  (testing "a Distinct values drill on a model column keeps the model as the query's source-card (#50915)"
+    (let [model-id 1
+          mp       (lib.tu/metadata-provider-with-card-from-query
+                    meta/metadata-provider model-id
+                    (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    {:type :model :name "Orders Model"})
+          query    (lib/query mp (lib.metadata/card mp model-id))
+          col      (m/find-first #(= (:name %) "DISCOUNT") (lib/returned-columns query))
+          _        (is (some? col))
+          drill    (m/find-first #(= (:type %) :drill-thru/summarize-column)
+                                 (lib/available-drill-thrus query -1 {:column     col
+                                                                      :column-ref (lib/ref col)
+                                                                      :value      nil}))]
+      (is (some? drill))
+      (is (=? {:stages [{:source-card model-id}]}
+              (lib/drill-thru query -1 nil drill "distinct"))))))
 
 (deftest ^:parallel custom-column-test
   (testing "#34957"

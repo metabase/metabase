@@ -4,6 +4,7 @@ import { Box, type PopoverProps } from "metabase/ui";
 
 import { DownloadWidget, type DownloadWidgetProps } from "./DownloadWidget";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
@@ -21,7 +22,7 @@ export default {
 export const Default = {
   render(args: DownloadWidgetProps) {
     return (
-      <Box p="lg">
+      <Box p="xl">
         <SdkQuestion questionId={QUESTION_ID}>
           <SdkQuestion.DownloadWidget {...args} />
         </SdkQuestion>
@@ -33,7 +34,7 @@ export const Default = {
 export const Dropdown = {
   render(args: PopoverProps) {
     return (
-      <Box p="lg">
+      <Box p="xl">
         <SdkQuestion withDownloads questionId={QUESTION_ID}>
           <SdkQuestion.DownloadWidgetDropdown {...args} />
         </SdkQuestion>

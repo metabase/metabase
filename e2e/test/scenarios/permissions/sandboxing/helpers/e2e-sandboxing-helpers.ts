@@ -6,11 +6,9 @@ import type {
   CollectionItem,
   Dashboard,
   FieldValue,
-  Filter,
   GetFieldValuesResponse,
   ParameterValue,
   ParameterValues,
-  StructuredQuery,
   User,
 } from "metabase-types/api";
 
@@ -44,6 +42,7 @@ type SandboxPolicy = {
 
 const customColumnTypeToFormula: Record<CustomColumnType, string> =
   customColumnTypeToFormulaUntyped;
+// Unjustified type cast. FIXME
 const customColumnTypes = Object.keys(
   customColumnTypeToFormula,
 ) as CustomColumnType[];
@@ -63,7 +62,7 @@ const baseQuery = {
   limit: 20,
 };
 
-const gizmoFilter: Filter = ["=", ["field", PRODUCTS.CATEGORY, null], "Gizmo"];
+const gizmoFilter = ["=", ["field", PRODUCTS.CATEGORY, null], "Gizmo"];
 
 export const questionCustomView: StructuredQuestionDetails = {
   name: "Question showing the products whose category is Gizmo (custom view)",
@@ -115,7 +114,7 @@ const ordersJoinedToProducts: StructuredQuestionDetails = {
     aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
     breakout: [["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }]],
     "source-table": ORDERS_ID,
-  } as StructuredQuery,
+  },
 };
 
 const ordersImplicitlyJoinedToProducts: StructuredQuestionDetails = {
@@ -423,6 +422,7 @@ const getQuestionDescription = (
 ) => {
   // Extract the card ID from the response URL
   const cardId = Number(response?.url?.match(/\/card\/(\d+)/)?.[1]);
+  // Unjustified type cast. FIXME
   const questionName = (questions.find((q) => q.id === cardId) as any)?.name as
     | string
     | undefined;
@@ -539,6 +539,7 @@ export const getDashcardResponses = (
     .wait(new Array(questions.length).fill("@dashcardQuery"))
     .then((interceptions) => {
       const responses = interceptions.map(
+        // Unjustified type cast. FIXME
         (i) => i.response as unknown as DashcardQueryResponse,
       );
       return { questions, responses };
@@ -547,6 +548,7 @@ export const getDashcardResponses = (
 
 export const getCardResponses = (questions: SimpleCollectionItem[]) => {
   expect(questions.length).to.be.greaterThan(0);
+  // Unjustified type cast. FIXME
   return H.cypressWaitAll(
     questions.map((question) =>
       cy.request<DatasetResponse>({
@@ -596,6 +598,7 @@ export const assertNoResultsOrValuesAreSandboxed = (
   H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
     rowsShouldContainGizmosAndWidgets({
       responses: [response],
+      // Unjustified type cast. FIXME
       questions: [adhocQuestionData as unknown as SimpleCollectionItem],
     }),
   );
@@ -625,6 +628,7 @@ export const assertAllResultsAndValuesAreSandboxed = (
   H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
     rowsShouldContainOnlyOneCategory({
       responses: [response],
+      // Unjustified type cast. FIXME
       questions: [adhocQuestionData as unknown as SimpleCollectionItem],
       productCategory,
     }),

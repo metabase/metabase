@@ -7,6 +7,7 @@ import {
   mapExplicitNullToEmpty,
 } from "./controlled-parameters";
 
+// Unjustified type cast. FIXME
 const STATE_PARAM = {
   id: "p1",
   slug: "state",
@@ -16,6 +17,7 @@ const STATE_PARAM = {
   target: ["variable", ["template-tag", "state"]],
 } as unknown as UiParameter;
 
+// Unjustified type cast. FIXME
 const CATEGORY_PARAM = {
   id: "p2",
   slug: "category",

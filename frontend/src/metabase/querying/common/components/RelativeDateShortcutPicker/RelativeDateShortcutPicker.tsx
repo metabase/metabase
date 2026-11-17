@@ -18,7 +18,7 @@ export function RelativeDateShortcutPicker({
   const groups = getShortcutGroups();
 
   return (
-    <Stack p="md" gap="md">
+    <Stack p="lg" gap="lg">
       {groups.map((group, groupIndex) => (
         <section key={groupIndex}>
           {group.label && (
@@ -60,7 +60,6 @@ function ShortcutButton({ value, shortcut, onChange }: ShortcutButtonProps) {
   return (
     <Button
       variant={isSelected ? "filled" : "default"}
-      fw="normal"
       aria-selected={isSelected}
       onClick={() => onChange(shortcut.value)}
     >

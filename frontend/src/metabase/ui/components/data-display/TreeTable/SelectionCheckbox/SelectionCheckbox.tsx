@@ -24,7 +24,6 @@ export function SelectionCheckbox({
 }: SelectionCheckboxProps) {
   return (
     <Checkbox
-      size="sm"
       checked={isSelected}
       indeterminate={isSomeSelected && !isSelected}
       disabled={disabled}

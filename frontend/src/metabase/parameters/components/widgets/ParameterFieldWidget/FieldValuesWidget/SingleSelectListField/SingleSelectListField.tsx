@@ -1,47 +1,29 @@
+import type { ChangeEventHandler } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import type { InputProps } from "metabase/common/components/Input";
-import { Input } from "metabase/common/components/Input";
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import { Flex } from "metabase/ui";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
+import { Box, Input, TextInput } from "metabase/ui";
 import { delay } from "metabase/utils/delay";
 import type { RowValue } from "metabase-types/api";
 
 import {
+  createOptionsFromValuesWithoutOptions,
   getOptionDisplayName,
   normalizeValuesToOptionKeys,
+  optionItemEqualsFilter,
   optionMatchesFilter,
 } from "../ListField/utils";
 
-import {
-  EmptyStateContainer,
-  FilterInputContainer,
-  OptionContainer,
-  OptionItem,
-  OptionsList,
-} from "./SingleSelectListField.styled";
+import S from "./SingleSelectListField.module.css";
 import type { Option, SingleSelectListFieldProps } from "./types";
-import { optionItemEqualsFilter } from "./utils";
 
 const DEBOUNCE_FILTER_TIME = delay(100);
 
-function createOptionsFromValuesWithoutOptions(
-  values: RowValue[],
-  options: Option[],
-): Option[] {
-  const optionsMap = new Map(options.map((option) => [option[0], option]));
-  return values
-    .filter((value) => !optionsMap.has(value))
-    .map((value) => [value]);
-}
-
-const SingleSelectListField = ({
+export const SingleSelectListField = ({
   onChange,
   value,
   options,
@@ -49,14 +31,12 @@ const SingleSelectListField = ({
   placeholder = t`Find...`,
   onSearchChange,
   isDashboardFilter,
-  isLoading,
-  checkedColor,
 }: SingleSelectListFieldProps) => {
   const normalizedValue = useMemo(
     () => normalizeValuesToOptionKeys(value, options),
     [value, options],
   );
-  const [selectedValue, setSelectedValue] = useState(normalizedValue?.[0]);
+  const [selectedValue, setSelectedValue] = useState(normalizedValue[0]);
   const [addedOptions, setAddedOptions] = useState<Option[]>(() =>
     createOptionsFromValuesWithoutOptions(normalizedValue, options),
   );
@@ -119,15 +99,15 @@ const SingleSelectListField = ({
   }, [debouncedFilter, sortedOptions, isFilterInValues, tc]);
 
   const shouldShowEmptyState =
-    filter.length > 0 && !isLoading && filteredOptions.length === 0;
+    filter.length > 0 && filteredOptions.length === 0;
 
-  const onClickOption = (option: any) => {
+  const onClickOption = (option: RowValue) => {
     if (selectedValue !== option) {
       setSelectedValue(option);
       const maybeTranslatedOption =
         typeof option === "string" ? tc(option) : String(option);
       setFilter(maybeTranslatedOption);
-      onChange?.([option]);
+      onChange([option]);
     }
   };
 
@@ -138,22 +118,24 @@ const SingleSelectListField = ({
     if (
       event.key === "Enter" &&
       filter.trim().length > 0 &&
-      !_.find(augmentedOptions, (option) =>
-        optionItemEqualsFilter(option, filter),
-      )
+      !augmentedOptions.some((option) => optionItemEqualsFilter(option, filter))
     ) {
       event.preventDefault();
       setAddedOptions([...addedOptions, [filter]]);
     }
   };
 
-  const handleFilterChange: InputProps["onChange"] = (evt) => {
+  const handleFilterChange: ChangeEventHandler<HTMLInputElement> = (evt) => {
     const value = evt.target.value;
     setFilter(value);
     onChange([]);
     setSelectedValue(null);
     onSearchChange?.(value);
   };
+
+  const selectedBackground = isDashboardFilter
+    ? "background_surface-selected"
+    : "core-filter";
 
   const handleResetClick = () => {
     setFilter("");
@@ -164,55 +146,57 @@ const SingleSelectListField = ({
 
   return (
     <>
-      <FilterInputContainer isDashboardFilter={isDashboardFilter}>
-        <Input
-          fullWidth
-          autoFocus
-          placeholder={placeholder}
-          value={filter}
-          onChange={handleFilterChange}
-          onKeyDown={handleKeyDown}
-          onResetClick={handleResetClick}
-          data-testid="single-select-list-field"
-        />
-      </FilterInputContainer>
+      <TextInput
+        autoFocus
+        placeholder={placeholder}
+        value={filter}
+        onChange={handleFilterChange}
+        onKeyDown={handleKeyDown}
+        rightSectionPointerEvents="all"
+        rightSection={
+          filter.length > 0 ? (
+            <Input.ClearButton c="text-secondary" onClick={handleResetClick} />
+          ) : null
+        }
+        mb={isDashboardFilter ? 0 : "sm"}
+        data-testid="single-select-list-field"
+      />
 
       {shouldShowEmptyState && (
-        <EmptyStateContainer>
+        <Box pt="xxl" px="xxl">
           <EmptyState message={t`Didn't find anything`} icon="search" />
-        </EmptyStateContainer>
+        </Box>
       )}
 
-      {isLoading && (
-        <Flex p="md" align="center" justify="center">
-          <LoadingSpinner size={24} />
-        </Flex>
-      )}
+      <Box
+        component="ul"
+        className={S.optionsList}
+        mah={isDashboardFilter ? 300 : undefined}
+        pt="sm"
+      >
+        {filteredOptions.map((option) => {
+          const isSelected = selectedValue === option[0];
 
-      {!isLoading && (
-        <OptionsList isDashboardFilter={isDashboardFilter}>
-          {filteredOptions.map((option) => (
-            <OptionContainer key={String(option[0])}>
-              <OptionItem
+          return (
+            <li key={String(option[0])}>
+              <Box
+                className={S.optionItem}
                 data-testid={`${option[0]}-filter-value`}
-                selectedColor={
-                  (checkedColor ?? isDashboardFilter)
-                    ? "var(--mb-color-background_surface-selected)"
-                    : "var(--mb-color-core-filter)"
-                }
-                selected={selectedValue === option[0]}
+                display="inline-block"
+                w="100%"
+                p="sm"
+                bdrs="xxs"
+                c={isSelected ? "text-selected" : undefined}
+                bg={isSelected ? selectedBackground : undefined}
                 onClick={() => onClickOption(option[0])}
                 onMouseDown={(e) => e.preventDefault()}
               >
                 {optionRenderer(option)}
-              </OptionItem>
-            </OptionContainer>
-          ))}
-        </OptionsList>
-      )}
+              </Box>
+            </li>
+          );
+        })}
+      </Box>
     </>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SingleSelectListField;

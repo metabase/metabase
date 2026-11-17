@@ -9,13 +9,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  uberjar:
-    if: ${{ github.event.label.name == 'Run-perf' }}
-    uses: ./.github/workflows/uberjar.yml
-    secrets: inherit
-
   run-perf-test:
-    needs: [uberjar]
     if: ${{ github.event.label.name == 'Run-perf' }}
+    # A reusable workflow can't get more than its caller grants, so grant what perf-test.yml's jobs request:
+    # `actions: write` reaches uberjar.yml, which deletes an uploaded JAR that turns out not to start.
+    permissions:
+      id-token: write
+      contents: read
+      actions: write
     uses: ./.github/workflows/perf-test.yml
     secrets: inherit

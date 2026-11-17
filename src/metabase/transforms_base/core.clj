@@ -12,9 +12,11 @@
    [metabase.transforms-base.interface :as transforms-base.i]
    ;; Load query implementation - registers multimethods
    [metabase.transforms-base.query]
-   [metabase.transforms-base.util :as transforms-base.u]))
+   [metabase.transforms-base.schema :as transforms-base.schema]
+   [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util.malli :as mu]))
 
-(defn execute!
+(mu/defn execute! :- ::transforms-base.schema/execute-base-result
   "Execute transform and return result map without writing transform_run rows.
 
    This is the main entry point for base transform execution. Use this when you
@@ -37,9 +39,10 @@
 
    Target table sync (metabase_table writes) still occurs - this is necessary
    for the table to be usable after execution."
-  ([transform]
+  ([transform :- ::transforms-base.schema/transform]
    (execute! transform nil))
-  ([transform opts]
+  ([transform :- ::transforms-base.schema/transform
+    opts      :- [:maybe ::transforms-base.schema/execute-base-options]]
    (let [result (transforms-base.i/execute-base! transform opts)]
      (when (= :succeeded (:status result))
        (transforms-base.u/complete-execution! transform opts))

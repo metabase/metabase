@@ -1,28 +1,37 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import {
+  useLazyGetCardQuery,
+  useLazyGetCardQueryMetadataQuery,
+  useLazyGetTableQueryMetadataQuery,
+} from "metabase/api";
+import type {
+  OmniPickerItem,
+  OmniPickerQuestionItem,
+  OmniPickerTableItem,
+} from "metabase/common/components/Pickers";
 import {
   DataPickerModal,
   getDataPickerValue,
   shouldDisableItemNotInDb,
 } from "metabase/common/components/Pickers/DataPicker";
 import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
+import type { MiniPickerSearchParams } from "metabase/common/components/Pickers/MiniPicker/context";
 import type {
   MiniPickerItem,
   MiniPickerPickableItem,
 } from "metabase/common/components/Pickers/MiniPicker/types";
+import { getIsTenantUser } from "metabase/current-user";
+import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import { isEmbedding } from "metabase/embedding/config";
-import { loadMetadataForTable } from "metabase/questions/actions";
-import { useDispatch, useSelector, useStore } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getIsTenantUser } from "metabase/selectors/user";
+import { selectMetadataProvider } from "metabase/metadata-store";
+import { useSelector, useStore } from "metabase/redux";
 import { Icon, TextInput } from "metabase/ui";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { TableId } from "metabase-types/api";
+import type { CardId, TableId } from "metabase-types/api";
 
 import type { QueryEditorDatabasePickerItem } from "../../../editor/types";
 import {
@@ -32,7 +41,11 @@ import {
 import { NotebookCellItem } from "../NotebookCell";
 
 import { EmbeddingDataPicker } from "./EmbeddingDataPicker";
-import { isObjectWithModel } from "./utils";
+import { getMiniPickerDataSource, isObjectWithModel } from "./utils";
+
+const DATA_SOURCE_SEARCH_PARAMS: MiniPickerSearchParams = {
+  filter_items_in_personal_collection: "exclude-others",
+};
 
 export interface NotebookDataPickerProps {
   title: string;
@@ -42,6 +55,7 @@ export interface NotebookDataPickerProps {
   placeholder?: string;
   canChangeDatabase: boolean;
   hasMetrics: boolean;
+  hasMetricsInMiniPicker?: boolean;
   isDisabled: boolean;
   isOpened: boolean;
   setIsOpened: (isOpened: boolean) => void;
@@ -63,6 +77,7 @@ export function NotebookDataPicker({
   placeholder = title,
   canChangeDatabase,
   hasMetrics,
+  hasMetricsInMiniPicker,
   isDisabled,
   isOpened,
   setIsOpened,
@@ -73,21 +88,51 @@ export function NotebookDataPicker({
   columnPicker,
 }: NotebookDataPickerProps) {
   const store = useStore();
-  const dispatch = useDispatch();
   const onChangeRef = useLatest(onChange);
   const isEmbed = isEmbedding();
   const isTenantUser = useSelector(getIsTenantUser);
 
-  const handleChange = async (tableId: TableId) => {
-    await dispatch(loadMetadataForTable(tableId));
-    const metadata = getMetadata(store.getState());
-    const databaseId = checkNotNull(metadata.table(tableId)).db_id;
-    const metadataProvider = Lib.metadataProvider(databaseId, metadata);
-    const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+  const [fetchTable] = useLazyGetTableQueryMetadataQuery();
+  const [fetchCard] = useLazyGetCardQuery();
+  const [fetchCardQueryMetadata] = useLazyGetCardQueryMetadataQuery();
+
+  const loadTable = async (tableId: TableId) => {
+    const table = await fetchTable({ id: tableId }, true).unwrap();
+    const metadataProvider = selectMetadataProvider(
+      store.getState(),
+      table.db_id,
+    );
+    return {
+      metadataProvider,
+      table: Lib.tableOrCardMetadata(metadataProvider, tableId),
+    };
+  };
+
+  const loadCard = async (cardId: CardId) => {
+    const [card] = await Promise.all([
+      fetchCard({ id: cardId }, true).unwrap(),
+      fetchCardQueryMetadata(cardId, true).unwrap(),
+    ]);
+    const metadataProvider = selectMetadataProvider(
+      store.getState(),
+      card.database_id ?? null,
+    );
+    return {
+      metadataProvider,
+      table: Lib.cardMetadata(metadataProvider, cardId),
+    };
+  };
+
+  const handleChange = async (source: DataSource) => {
+    const { metadataProvider, table } =
+      source.type === "table"
+        ? await loadTable(source.id)
+        : await loadCard(source.id);
     if (table) {
       onChangeRef.current?.(table, metadataProvider);
     }
   };
+
   const isRaw = useMemo(() => {
     return (
       Lib.aggregations(query, stageIndex).length === 0 &&
@@ -101,7 +146,7 @@ export function NotebookDataPicker({
     const canSelectTableColumns = table && isRaw && !isDisabled;
     return (
       <NotebookCellItem
-        color="core-brand"
+        color="background_surface-brand-strong"
         inactive={!table}
         right={canSelectTableColumns && columnPicker}
         containerStyle={{ padding: 0 }}
@@ -131,6 +176,7 @@ export function NotebookDataPicker({
         placeholder={placeholder}
         canChangeDatabase={canChangeDatabase}
         hasMetrics={hasMetrics}
+        hasMetricsInMiniPicker={hasMetricsInMiniPicker}
         isOpened={isOpened}
         setIsOpened={setIsOpened}
         isDisabled={isDisabled}
@@ -153,8 +199,9 @@ type ModernDataPickerProps = {
   setIsOpened: (isOpened: boolean) => void;
   canChangeDatabase: boolean;
   hasMetrics: boolean;
+  hasMetricsInMiniPicker?: boolean;
   isDisabled: boolean;
-  onChange: (tableId: TableId) => void;
+  onChange: (source: DataSource) => void;
   shouldDisableItem?: (item: OmniPickerItem) => boolean;
   shouldDisableDatabase?: (database: QueryEditorDatabasePickerItem) => boolean;
   shouldShowLibrary?: boolean;
@@ -169,6 +216,7 @@ function ModernDataPicker({
   setIsOpened,
   canChangeDatabase,
   hasMetrics,
+  hasMetricsInMiniPicker = hasMetrics,
   isDisabled,
   onChange,
   shouldDisableItem,
@@ -177,7 +225,11 @@ function ModernDataPicker({
 }: ModernDataPickerProps) {
   const context = useNotebookContext();
   const getItemTooltip = context.dataPickerOptions?.getItemTooltip;
-  const modelList = getModelFilterList(context, hasMetrics);
+  const modalModelList = getModelFilterList(context, hasMetrics);
+  const miniPickerModelList = getModelFilterList(
+    context,
+    hasMetrics && hasMetricsInMiniPicker,
+  );
 
   const databaseId = Lib.databaseID(query) ?? undefined;
 
@@ -200,13 +252,34 @@ function ModernDataPicker({
       return Boolean(
         // @ts-expect-error - Please fix 🥺
         shouldDisableBasedOnDb({ ...item, database_id: dbId }) ||
+        // Unjustified type cast. FIXME
         shouldDisableItem?.(item as OmniPickerItem) ||
         (isObjectWithModel(item) &&
           item.model === "database" &&
+          // Unjustified type cast. FIXME
           shouldDisableDatabase?.(item as QueryEditorDatabasePickerItem)),
       );
     };
   }, [databaseId, canChangeDatabase, shouldDisableItem, shouldDisableDatabase]);
+
+  const handleMiniPickerChange = (item: MiniPickerPickableItem) => {
+    const source = getMiniPickerDataSource(item);
+    if (source != null) {
+      onChange(source);
+    }
+    setDataSourceSearchQuery("");
+    setIsOpened(false);
+  };
+
+  const handleModalChange = (
+    item: OmniPickerTableItem | OmniPickerQuestionItem,
+  ) => {
+    onChange(
+      item.model === "table"
+        ? { type: "table", id: item.id }
+        : { type: "card", id: item.id },
+    );
+  };
 
   // when you can't change databases, let's default to
   // selecting that database in the picker
@@ -225,23 +298,16 @@ function ModernDataPicker({
         opened={isOpened && !isBrowsing}
         onClose={() => setIsOpened(false)}
         // minipicker doesn't support picking a database
-        models={modelList.filter((model) => model !== "database")}
+        models={miniPickerModelList.filter((model) => model !== "database")}
         searchQuery={dataSourceSearchQuery}
+        searchParams={DATA_SOURCE_SEARCH_PARAMS}
         onBrowseAll={() => setIsBrowsing(true)}
         trapFocus={focusPicker}
-        onChange={(value: MiniPickerPickableItem) => {
-          const id =
-            value.model === "table"
-              ? value.id
-              : getQuestionVirtualTableId(value.id);
-          onChange(id);
-          setDataSourceSearchQuery("");
-          setIsOpened(false);
-        }}
+        onChange={handleMiniPickerChange}
         shouldHide={shouldHide}
         shouldShowLibrary={shouldShowLibrary}
         menuDropdownProps={{
-          mt: "xl",
+          mt: "xxl",
           ml: "-1rem",
         }}
       />
@@ -250,8 +316,8 @@ function ModernDataPicker({
           title={title}
           value={tableValue ?? defaultDbValue}
           onlyDatabaseId={canChangeDatabase ? undefined : databaseId}
-          models={modelList}
-          onChange={onChange}
+          models={modalModelList}
+          onChange={handleModalChange}
           onClose={() => {
             setIsBrowsing(false);
             setIsOpened(false);

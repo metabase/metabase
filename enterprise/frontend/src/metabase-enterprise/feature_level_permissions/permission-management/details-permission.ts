@@ -1,18 +1,15 @@
-import { getIn } from "icepick";
 import { t } from "ttag";
 
-import { Messages } from "metabase/admin/permissions/constants/messages";
 import {
-  getPermissionWarning,
-  getPermissionWarningModal,
-} from "metabase/admin/permissions/selectors/confirmations";
-import {
-  DataPermissionType,
+  Messages,
   type PermissionOption,
   type PermissionSectionConfig,
-} from "metabase/admin/permissions/types";
+  getPermissionWarning,
+  getPermissionWarningModal,
+} from "metabase/permissions";
 import {
   DataPermission,
+  DataPermissionType,
   DataPermissionValue,
   type Group,
   type GroupsPermissions,
@@ -22,18 +19,20 @@ import {
 
 export const DETAILS_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   no: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`No`,
+    get label() {
+      return t`No`;
+    },
     value: DataPermissionValue.NO,
     icon: "close",
-    iconColor: "danger",
+    iconColor: "feedback-negative",
   },
   yes: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`Yes`,
+    get label() {
+      return t`Yes`;
+    },
     value: DataPermissionValue.YES,
     icon: "check",
-    iconColor: "success",
+    iconColor: "feedback-positive",
   },
 };
 
@@ -47,7 +46,7 @@ const getDetailsPermission = (
   groupId: number,
   databaseId: number,
 ) =>
-  getIn(permissions, [groupId, databaseId, DataPermission.DETAILS]) ??
+  permissions[groupId]?.[databaseId]?.[DataPermission.DETAILS] ??
   DETAILS_PERMISSION_OPTIONS.no.value;
 
 export const buildDetailsPermission = (

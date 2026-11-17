@@ -11,7 +11,7 @@
   the documented path no longer works on the shipped sample data."
   (:require
    [clojure.test :refer :all]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.query-processor :as qp]
    [metabase.request.core :as request]
    [metabase.sample-data.impl :as sample-data]
@@ -27,7 +27,7 @@
     (mt/with-temp [:model/Database db {:details (#'sample-data/try-to-extract-sample-database! :sqlite)
                                        :engine  :sqlite
                                        :name    "Sample Database"}]
-      (sync/sync-database! db)
+      (sync/sync-database! (:id db))
       (thunk db))))
 
 (defn- table-id [db table-name]

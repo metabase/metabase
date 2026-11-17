@@ -15,7 +15,10 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- substitute-params
   ([query]
@@ -307,12 +310,10 @@
             meta/metadata-provider
             {:native-query-snippets [{:id          1
                                       :content     "name, price"
-                                      :creator-id  (mt/user->id :rasta)
                                       :description "Fields to SELECT"
                                       :name        "Venue fields"}
                                      {:id          2
                                       :content     "price > 2"
-                                      :creator-id  (mt/user->id :rasta)
                                       :description "Meant for use in WHERE clause"
                                       :name        "Filter: expensive venues"}]
              :cards                 [{:id            1
@@ -415,33 +416,21 @@
                                                            :name         "equal"
                                                            :display-name "Equal to"
                                                            :type         :dimension
-                                                           :dimension    [:field
-                                                                          {:lib/uuid       "1b435d67-0cb2-4f4d-bac5-d06b60be4eca"
-                                                                           :base-type      :type/Float
-                                                                           :effective-type :type/Float}
-                                                                          (meta/id :products :rating)]
+                                                           :field-id     (meta/id :products :rating)
                                                            :widget-type  :number/=
                                                            :default      nil}
                                                "notEqual" {:id           "827ca517-e493-397f-971c-1a2d2f12d5f1"
                                                            :name         "notEqual"
                                                            :display-name "Not equal to"
                                                            :type         :dimension
-                                                           :dimension    [:field
-                                                                          {:lib/uuid       "c0ff814c-e0df-4e50-9e29-0c61f0bd2b3b"
-                                                                           :base-type      :type/Float
-                                                                           :effective-type :type/Float}
-                                                                          (meta/id :products :rating)]
+                                                           :field-id     (meta/id :products :rating)
                                                            :widget-type  :number/!=
                                                            :default      nil}
                                                "between"  {:id           "6a3d9a46-671b-dee3-2971-fc180d27adfd"
                                                            :name         "between"
                                                            :display-name "Between"
                                                            :type         :dimension
-                                                           :dimension    [:field
-                                                                          {:lib/uuid       "c752de3e-e528-45ee-a8cc-687ce9329019"
-                                                                           :base-type      :type/Float
-                                                                           :effective-type :type/Float}
-                                                                          (meta/id :products :rating)]
+                                                           :field-id     (meta/id :products :rating)
                                                            :widget-type  :number/between
                                                            :default      nil}}
                                :native        (str/join \space ["select PRODUCTS.TITLE, PRODUCTS.RATING from PRODUCTS where true"
@@ -502,3 +491,21 @@
                                   [:expression {} "Quantity_2"]
                                   14]]}]}
             (substitute-params query)))))
+
+(deftest ^:parallel temporal-expression-parameter-test
+  (testing "a temporal (date) param mapped to an [:expression] custom column compiles to a temporal filter (#17775, #34955)"
+    (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                  (lib/expression q "CC Date" (meta/field-metadata :orders :created-at))
+                  (assoc q :parameters
+                         [{:id     "c77842b9"
+                           :target [:dimension
+                                    (lib/->legacy-MBQL (lib/expression-ref q "CC Date"))
+                                    {:stage-number 0}]
+                           :type   :date/range
+                           :value  "2026-01-01~2026-03-31"}]))]
+      (is (=? {:stages [{:filters [[:between
+                                    {}
+                                    [:expression {} "CC Date"]
+                                    "2026-01-01"
+                                    "2026-03-31"]]}]}
+              (substitute-params query))))))

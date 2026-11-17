@@ -1,0 +1,106 @@
+## Clear the explorations columns that held Clojure data as EDN, now that they hold JSON
+##
+## The rollback is deliberately empty: explorations is unreleased, so no build that reads these
+## columns as EDN is in anyone's hands, and the values are gone either way.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.expljsona
+      author: nvoxland
+      comment: Clear exploration_thread.query_plan_transcript, now that it holds JSON
+      changes:
+        - update:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: query_plan_transcript
+                  value: "NULL"
+      rollback: # the EDN this held is gone; there is nothing to restore
+
+  - changeSet:
+      id: v64.expljsonb
+      author: nvoxland
+      comment: Clear exploration_thread.data_access_token, now that it holds JSON
+      changes:
+        - update:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: data_access_token
+                  value: "NULL"
+      rollback: # the EDN this held is gone; there is nothing to restore
+
+  - changeSet:
+      id: v64.expljsonc
+      author: nvoxland
+      comment: Clear exploration_query.data_access_token, now that it holds JSON
+      changes:
+        - update:
+            tableName: exploration_query
+            columns:
+              - column:
+                  name: data_access_token
+                  value: "NULL"
+      rollback: # the EDN this held is gone; there is nothing to restore
+
+  - changeSet:
+      id: v64.expljsond
+      author: nvoxland
+      comment: Clear stored_result.data_access_token, now that it holds JSON
+      changes:
+        - update:
+            tableName: stored_result
+            columns:
+              - column:
+                  name: data_access_token
+                  value: "NULL"
+      rollback: # the EDN this held is gone; there is nothing to restore
+
+  - changeSet:
+      id: v64.expljsone
+      author: nvoxland
+      comment: Clear exploration_query_result.chart_stats, now that it holds JSON
+      changes:
+        - update:
+            tableName: exploration_query_result
+            columns:
+              - column:
+                  name: chart_stats
+                  value: "NULL"
+      rollback: # the EDN this held is gone; there is nothing to restore
+
+  - changeSet:
+      id: v64.expljsonf
+      author: nvoxland
+      comment: Correct the exploration_query_result.chart_stats remarks, which still said EDN
+      changes:
+        - setColumnRemarks:
+            tableName: exploration_query_result
+            columnName: chart_stats
+            columnDataType: ${text.type}
+            remarks: JSON-encoded raw stats on the chart
+      rollback: # a column comment; there is nothing to restore
+
+  - changeSet:
+      id: v64.expljsong
+      author: nvoxland
+      comment: Correct the stored_result.data_access_token remarks, which still said EDN
+      changes:
+        - setColumnRemarks:
+            tableName: stored_result
+            columnName: data_access_token
+            columnDataType: ${text.type}
+            remarks: JSON-encoded effective-data-access token (sandbox/impersonation/routing fingerprint) for the creator's lens this snapshot was computed under. Compared against a viewer's token to gate cached reads. NULL means creator+admin only.
+      rollback: # a column comment; there is nothing to restore
+
+  - changeSet:
+      id: v64.expljsonh
+      author: nvoxland
+      comment: Correct the exploration_thread.query_plan_transcript remarks, which still said EDN
+      changes:
+        - setColumnRemarks:
+            tableName: exploration_thread
+            columnName: query_plan_transcript
+            columnDataType: ${text.type}
+            remarks: JSON-encoded transcript of the planning run (planner, outcome, validation errors, final plan) used to materialize this thread's exploration_query rows. Debug-only — not surfaced to the user.
+      rollback: # a column comment; there is nothing to restore

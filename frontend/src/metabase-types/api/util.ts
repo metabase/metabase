@@ -4,7 +4,7 @@ export interface Log {
   fqns: string;
   msg: string;
   level: string;
-  exception: any;
+  exception: string[] | null;
 }
 
 export interface MetabaseInfo {

@@ -2,8 +2,9 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
-import { DelayedLoadingSpinner } from "metabase/common/components/Pickers/EntityPicker/components/LoadingSpinner";
+import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading";
 import { getEngineNativeType } from "metabase/databases/utils/engine";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -36,7 +37,6 @@ type NotebookNativePreviewProps = {
   buttonTitle?: string;
   onConvertClick: (newQuestion: Question) => void;
   readOnly?: boolean;
-  disableDefaultLimit?: boolean;
   disableConvert?: boolean;
 };
 
@@ -46,19 +46,15 @@ export const NotebookNativePreview = ({
   buttonTitle,
   onConvertClick,
   readOnly,
-  disableDefaultLimit,
   disableConvert,
 }: NotebookNativePreviewProps) => {
-  const database = question.database();
-  const engine = database?.engine;
+  const sourceQuery = question.query();
+  const metadataProvider = useMetadataProvider(Lib.databaseID(sourceQuery));
+  const engine = Lib.databaseDisplayInfo(sourceQuery)?.engine ?? undefined;
   const engineType = getEngineNativeType(engine);
 
-  const sourceQuery = question.query();
   const canRun = Lib.canRun(sourceQuery, question.type());
-  const queryForPayload = disableDefaultLimit
-    ? Lib.disableDefaultLimit(sourceQuery)
-    : sourceQuery;
-  const payload = Lib.toJsQuery(queryForPayload);
+  const payload = Lib.toJsQuery(sourceQuery);
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
 
   const showLoader = isFetching;
@@ -66,7 +62,7 @@ export const NotebookNativePreview = ({
   const showQuery = !isFetching && canRun && !error;
   const showEmptySidebar = !canRun;
 
-  const newQuestion = createNativeQuestion(question, data);
+  const newQuestion = createNativeQuestion(question, data, metadataProvider);
   const newQuery = newQuestion?.query();
 
   const getErrorMessage = (error: unknown) =>
@@ -114,7 +110,7 @@ export const NotebookNativePreview = ({
         {showEmptySidebar}
         {showError && (
           <Flex align="center" justify="center" h="100%" direction="column">
-            <Icon name="warning" size="2rem" c="error" />
+            <Icon name="warning" size="2rem" c="feedback-negative" />
             {t`Error generating the query.`}
             <Box mt="sm">{getErrorMessage(error)}</Box>
           </Flex>
@@ -124,8 +120,8 @@ export const NotebookNativePreview = ({
       {!readOnly && (
         <Box ta="end" p="1.5rem">
           <Button
-            variant="subtle"
-            p={0}
+            variant="transparent"
+            size="compact-md"
             onClick={handleConvertClick}
             disabled={!showQuery || disableConvert}
           >

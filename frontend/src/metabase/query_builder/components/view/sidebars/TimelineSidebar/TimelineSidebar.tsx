@@ -1,93 +1,76 @@
-import type { Dayjs } from "dayjs";
-import { useCallback } from "react";
-import { t } from "ttag";
+import { useCallback, useMemo } from "react";
 
-import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
-import TimelinePanel from "metabase/timelines/questions/containers/TimelinePanel";
-import type Question from "metabase-lib/v1/Question";
-import type { Timeline, TimelineEvent } from "metabase-types/api";
+import { useListTimelinesQuery } from "metabase/api";
+import { useDispatch, useSelector } from "metabase/redux";
+import { TimelineSidebar as SharedTimelineSidebar } from "metabase/timelines/panel/components/TimelineSidebar";
+import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
+import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
+import type { TimelineEvent } from "metabase-types/api";
 
-export interface TimelineSidebarProps {
-  question: Question;
-  timelines: Timeline[];
-  visibleTimelineEventIds: number[];
-  selectedTimelineEventIds: number[];
-  xDomain?: [Dayjs, Dayjs];
-  onShowTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
-  onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
-  onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
-  onDeselectTimelineEvents?: () => void;
-  onOpenModal?: (modal: QueryModalType, modalContext?: unknown) => void;
-  onClose?: () => void;
-}
+import {
+  deselectTimelineEvents,
+  selectTimelineEvents,
+  updateTimelineEventsVisibility,
+} from "../../../../actions/timelines";
+import { onCloseTimelines, onOpenTimelines } from "../../../../store/actions";
+import {
+  getFocusedTimelineEventIds,
+  getQuestion,
+  getSelectedTimelineEventIds,
+  getTimeseriesXAxis,
+  getVisibleTimelineEventIds,
+} from "../../../../store/selectors";
 
-export const TimelineSidebar = ({
-  question,
-  timelines,
-  visibleTimelineEventIds,
-  selectedTimelineEventIds,
-  xDomain,
-  onOpenModal,
-  onShowTimelineEvents,
-  onHideTimelineEvents,
-  onSelectTimelineEvents,
-  onDeselectTimelineEvents,
-  onClose,
-}: TimelineSidebarProps) => {
-  const handleNewEvent = useCallback(() => {
-    onOpenModal?.(MODAL_TYPES.NEW_EVENT);
-  }, [onOpenModal]);
-
-  const handleEditEvent = useCallback(
-    (event: TimelineEvent) => {
-      onOpenModal?.(MODAL_TYPES.EDIT_EVENT, event.id);
-    },
-    [onOpenModal],
+export const TimelineSidebar = () => {
+  const dispatch = useDispatch();
+  const collectionId = useSelector((state) =>
+    getQuestion(state)?.collectionId(),
   );
+  const timelines = useSelector(getTransformedTimelines);
+  const visibleEventIds = useSelector(getVisibleTimelineEventIds);
+  const selectedEventIds = useSelector(getSelectedTimelineEventIds);
+  const focusedEventIds = useSelector(getFocusedTimelineEventIds);
+  const xAxis = useSelector(getTimeseriesXAxis);
+  const xAxes = useMemo(() => (xAxis ? [xAxis] : null), [xAxis]);
+  const { isLoading, error } = useListTimelinesQuery({ include: "events" });
 
-  const handleMoveEvent = useCallback(
-    (event: TimelineEvent) => {
-      onOpenModal?.(MODAL_TYPES.MOVE_EVENT, event.id);
-    },
-    [onOpenModal],
+  const handleUpdateVisibility = useCallback(
+    (update: TimelineEventsVisibilityUpdate) =>
+      dispatch(updateTimelineEventsVisibility(update)),
+    [dispatch],
   );
-
-  const handleToggleEventSelected = useCallback(
-    (event: TimelineEvent, isSelected: boolean) => {
-      if (isSelected) {
-        onSelectTimelineEvents?.([event]);
-      } else {
-        onDeselectTimelineEvents?.();
-      }
-    },
-    [onSelectTimelineEvents, onDeselectTimelineEvents],
+  const handleSelectEvents = useCallback(
+    (events: TimelineEvent[]) => dispatch(selectTimelineEvents(events)),
+    [dispatch],
+  );
+  const handleDeselectEvents = useCallback(
+    () => dispatch(deselectTimelineEvents()),
+    [dispatch],
+  );
+  const handleShowAllEvents = useCallback(
+    () => dispatch(onOpenTimelines()),
+    [dispatch],
+  );
+  const handleClose = useCallback(
+    () => dispatch(onCloseTimelines()),
+    [dispatch],
   );
 
   return (
-    <SidebarContent title={formatTitle(xDomain)} onClose={onClose}>
-      <TimelinePanel
-        timelines={timelines}
-        collectionId={question.collectionId()}
-        visibleEventIds={visibleTimelineEventIds}
-        selectedEventIds={selectedTimelineEventIds}
-        onNewEvent={handleNewEvent}
-        onEditEvent={handleEditEvent}
-        onMoveEvent={handleMoveEvent}
-        onToggleEventSelected={handleToggleEventSelected}
-        onShowTimelineEvents={onShowTimelineEvents}
-        onHideTimelineEvents={onHideTimelineEvents}
-      />
-    </SidebarContent>
+    <SharedTimelineSidebar
+      collectionId={collectionId}
+      timelines={timelines}
+      visibleEventIds={visibleEventIds}
+      selectedEventIds={selectedEventIds}
+      focusedEventIds={focusedEventIds}
+      xAxes={xAxes}
+      isLoading={isLoading}
+      error={error}
+      onUpdateVisibility={handleUpdateVisibility}
+      onSelectEvents={handleSelectEvents}
+      onDeselectEvents={handleDeselectEvents}
+      onShowAllEvents={handleShowAllEvents}
+      onClose={handleClose}
+    />
   );
-};
-
-const formatTitle = (xDomain?: [Dayjs, Dayjs]) => {
-  return xDomain
-    ? t`Events between ${formatDate(xDomain[0])} and ${formatDate(xDomain[1])}`
-    : t`Events`;
-};
-
-const formatDate = (date: Dayjs) => {
-  return date.format("ll");
 };

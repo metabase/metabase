@@ -1,7 +1,9 @@
 (ns metabase-enterprise.workspaces.models.workspace-database
   (:require
+   [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.api.common :as api]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -16,7 +18,7 @@
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/WorkspaceDatabase
-  {:database_details mi/transform-encrypted-json
+  {:database_details (mi/transform-encrypted-json "workspace_database.database_details")
    :input_schemas    mi/transform-json
    :status           mi/transform-keyword})
 
@@ -24,15 +26,13 @@
 ;;;
 ;;; WorkspaceDatabases are superuser-only: read, write, and create all require admin.
 
-(defmethod mi/can-read? :model/WorkspaceDatabase
-  ([_instance] api/*is-superuser?*)
-  ([_model _pk] api/*is-superuser?*))
+(methodical/defmethod t2/simple-hydrate [:model/WorkspaceDatabase :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean api/*is-superuser?*)))
 
-(defmethod mi/can-write? :model/WorkspaceDatabase
-  ([_instance]
-   api/*is-superuser?*)
-  ([_model _pk]
-   api/*is-superuser?*))
+(methodical/defmethod t2/simple-hydrate [:model/WorkspaceDatabase :can_write]
+  [_model k instance]
+  (assoc instance k (boolean api/*is-superuser?*)))
 
 (defmethod mi/can-create? :model/WorkspaceDatabase
   [_model _instance]
@@ -44,17 +44,21 @@
    workspace-databases k
    (fn []
      (when-let [ids (seq (distinct (keep :database_id workspace-databases)))]
-       (t2/select-pk->fn identity :model/Database :id [:in ids])))
+       (ws.db/database-id->database ids)))
    :database_id
    {:default nil}))
 
 ;;; --------------------------------------- Database eligibility ---------------------------------------
 
 (defn database-eligible-for-workspaces?
-  "True iff `database`'s driver supports the `:workspace` feature and the
-   `database-enable-workspaces` database-local setting is enabled for it."
+  "True iff `database`'s driver supports the `:workspace` feature, the
+   `database-enable-workspaces` database-local setting is enabled for it, and it is
+   neither a router nor a destination database. Every connection to a router resolves
+   to the current user's destination, so provisioning DDL would land wherever the
+   provisioning admin happens to be routed, and teardown wherever the deleting admin is."
   [database]
   (and (driver.u/supports? (:engine database) :workspace database)
+       (not (database-routing/db-routing-enabled? (driver.u/lib-database (:id database))))
        (boolean (setting/with-database database
                   (ws.settings/database-enable-workspaces)))))
 
@@ -62,7 +66,7 @@
   "The distinct non-blank schema names of `database`'s active tables, sorted.
    Empty for schemaless drivers (e.g. MySQL)."
   [database]
-  (->> (t2/select-fn-set :schema :model/Table :db_id (:id database) :active true)
+  (->> (ws.db/active-table-schemas (:id database))
        (remove #(or (nil? %) (= % "")))
        sort
        vec))
@@ -79,10 +83,8 @@
    feature state."
   :feature :none
   [db-id]
-  (when (t2/exists? :model/WorkspaceDatabase
-                    :database_id db-id
-                    :status [:not= :unprovisioned])
+  (when (ws.db/database-has-active-workspace-databases? db-id)
     (throw (ex-info "Cannot delete a Database with active workspace_database rows; deprovision them first"
                     {:status-code 409
                      :database_id db-id})))
-  (t2/delete! :model/WorkspaceDatabase :database_id db-id :status :unprovisioned))
+  (ws.db/delete-unprovisioned-workspace-databases-of-database! db-id))

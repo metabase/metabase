@@ -3,6 +3,7 @@ import type { ComponentType, ReactNode } from "react";
 import type { Database } from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
+import { definePluginSlot } from "../slot";
 
 export type WritableConnectionInfoSectionProps = {
   database: Database;
@@ -14,11 +15,6 @@ const getDefaultWritableConnection = () => ({
     PluginPlaceholder<WritableConnectionInfoSectionProps>,
 });
 
-export const PLUGIN_WRITABLE_CONNECTION = getDefaultWritableConnection();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_WRITABLE_CONNECTION, getDefaultWritableConnection());
-}
+export const PLUGIN_WRITABLE_CONNECTION = definePluginSlot(
+  getDefaultWritableConnection,
+);

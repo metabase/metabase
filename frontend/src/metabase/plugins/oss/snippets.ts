@@ -9,6 +9,7 @@ import type {
 } from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
+import { definePluginSlot } from "../slot";
 
 export type SnippetSidebarMenuOption = {
   icon: IconName;
@@ -38,12 +39,6 @@ export type SnippetCollectionPickerModalProps = {
   onClose: () => void;
 };
 
-export type SnippetCollectionPermissionsModalProps = {
-  opened: boolean;
-  collectionId: CollectionId;
-  onClose: () => void;
-};
-
 export type MoveSnippetModalProps = {
   snippet: NativeQuerySnippet;
   onClose: () => void;
@@ -52,21 +47,18 @@ export type MoveSnippetModalProps = {
 export type SnippetFoldersPlugin = {
   isEnabled: boolean;
   CollectionPickerModal: ComponentType<SnippetCollectionPickerModalProps>;
-  CollectionPermissionsModal: ComponentType<SnippetCollectionPermissionsModalProps>;
   MoveSnippetModal: ComponentType<MoveSnippetModalProps>;
 };
 
 export const getDefaultPluginSnippetFolders = () => ({
   isEnabled: false,
   CollectionPickerModal:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<SnippetCollectionPickerModalProps>,
-  CollectionPermissionsModal:
-    PluginPlaceholder as ComponentType<SnippetCollectionPermissionsModalProps>,
+  // Unjustified type cast. FIXME
   MoveSnippetModal: PluginPlaceholder as ComponentType<MoveSnippetModalProps>,
 });
 
-export const PLUGIN_SNIPPET_FOLDERS = getDefaultPluginSnippetFolders();
-
-export function reinitialize() {
-  Object.assign(PLUGIN_SNIPPET_FOLDERS, getDefaultPluginSnippetFolders());
-}
+export const PLUGIN_SNIPPET_FOLDERS = definePluginSlot(
+  getDefaultPluginSnippetFolders,
+);

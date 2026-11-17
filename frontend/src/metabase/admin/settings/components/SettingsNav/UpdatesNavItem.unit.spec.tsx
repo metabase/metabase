@@ -3,12 +3,14 @@ import {
   setupSettingEndpoint,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { UpdatesNavItem } from "./UpdatesNavItem";
@@ -39,12 +41,15 @@ const setup = async (props: { versionTag: string }) => {
 
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
+      // Unjustified type cast. FIXME
       createMockSettingDefinition({ key: key as SettingKey, value }),
     ),
   );
 
-  renderWithProviders(<UpdatesNavItem />, {
+  renderWithProviders(<Route path="*" element={<UpdatesNavItem />} />, {
+    withRouter: true,
     storeInitialState: {
+      currentUser: createMockUser({ is_superuser: true }),
       settings: createMockSettingsState(settings),
     },
   });

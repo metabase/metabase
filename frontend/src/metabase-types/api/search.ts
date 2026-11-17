@@ -9,6 +9,7 @@ import type {
 } from "./collection";
 import type { Dashboard, DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
+import type { ExplorationId } from "./exploration";
 import type { Field } from "./field";
 import type { MeasureId } from "./measure";
 import type { ModerationReviewStatus } from "./moderation";
@@ -29,7 +30,9 @@ const ENABLED_SEARCH_MODELS = [
   "action",
   "indexed-entity",
   "document",
+  "exploration",
   "transform",
+  "data-app",
 ] as const;
 
 export const SEARCH_MODELS = [...ENABLED_SEARCH_MODELS, "segment"] as const;
@@ -71,7 +74,8 @@ export type SearchResultId =
   | DatabaseId
   | TableId
   | DashboardId
-  | MeasureId;
+  | MeasureId
+  | ExplorationId;
 
 export interface SearchResult<
   Id extends SearchResultId = SearchResultId,
@@ -120,6 +124,7 @@ export interface SearchResult<
   "last-edit-info"?: LastEditInfo;
   result_metadata?: Field[];
   collection_id?: CollectionId;
+  data_app_slug?: string | null;
 }
 
 /**
@@ -150,7 +155,12 @@ export type SearchRequest = {
   table_db_id?: DatabaseId;
   models?: SearchModel[];
   ids?: SearchResultId[];
-  filter_items_in_personal_collection?: "only" | "exclude";
+  filter_items_in_personal_collection?:
+    | "all"
+    | "only"
+    | "only-mine"
+    | "exclude"
+    | "exclude-others";
   context: SearchContext;
   created_at?: string | null;
   created_by?: UserId[] | null;
@@ -161,8 +171,6 @@ export type SearchRequest = {
   model_ancestors?: boolean | null;
   include_dashboard_questions?: boolean | null;
   include_metadata?: boolean | null;
-  non_temporal_dim_ids?: string | null;
-  has_temporal_dim?: boolean | null;
   search_engine?: "appdb" | "in-place" | "semantic" | null;
   display_type?: string[] | null;
 

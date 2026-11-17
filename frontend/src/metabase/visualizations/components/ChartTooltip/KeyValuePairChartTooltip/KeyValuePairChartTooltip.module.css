@@ -1,6 +1,6 @@
 .tooltipTable {
   border-collapse: collapse;
-  margin: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  margin: var(--mantine-spacing-sm) var(--mantine-spacing-lg);
 }
 
 .tableBody.hasBottomSpacing::after {

@@ -8,16 +8,17 @@ import {
   useUpdateTransformMutation,
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
+import {
+  TablePath,
+  TablePathItem,
+} from "metabase/common/data-studio/components/TablePath";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
-import CS from "metabase/css/core/index.css";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { UserInput } from "metabase/metadata/components";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
 import { TransformOwnerAvatar } from "metabase/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
 import { Button, Divider, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { IconName, Transform, UserId } from "metabase-types/api";
+import type { Transform, UserId } from "metabase-types/api";
 
 import { isTransformRunning, sourceDatabaseId } from "../../../utils";
 
@@ -27,16 +28,16 @@ import { UpdateTargetModal } from "./UpdateTargetModal";
 type TransformSettingsSectionProps = {
   transform: Transform;
   readOnly?: boolean;
+  permissionsReadOnly?: boolean;
+  remoteSyncReadOnly?: boolean;
 };
 
 export const TransformSettingsSection = ({
   transform,
   readOnly,
+  permissionsReadOnly,
+  remoteSyncReadOnly,
 }: TransformSettingsSectionProps) => {
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
-
   return (
     <Stack gap="2.5rem">
       <OwnerSection transform={transform} readOnly={readOnly} />
@@ -44,22 +45,24 @@ export const TransformSettingsSection = ({
         label={t`Transform target`}
         description={t`Change what this transform generates and where.`}
       >
-        <Group p="lg">
+        <Group p="xl">
           <TargetInfo transform={transform} />
         </Group>
-        {!readOnly && (
+        {!permissionsReadOnly && (
           <>
             <Divider />
-            <Group p="lg">
-              {!isRemoteSyncReadOnly && (
-                <EditTargetButton transform={transform} />
-              )}
+            <Group p="xl">
+              {!readOnly && <EditTargetButton transform={transform} />}
               <EditMetadataButton transform={transform} />
             </Group>
           </>
         )}
       </TitleSection>
-      <UpdateIncrementalSettings transform={transform} readOnly={readOnly} />
+      <UpdateIncrementalSettings
+        transform={transform}
+        readOnly={readOnly}
+        remoteSyncReadOnly={remoteSyncReadOnly}
+      />
     </Stack>
   );
 };
@@ -99,86 +102,43 @@ function TargetInfo({ transform }: TargetInfoProps) {
   );
 
   return (
-    <Group gap="sm">
+    <TablePath>
       {database != null && (
-        <>
-          <TargetItemLink
-            label={database.name}
-            icon="database"
-            to={Urls.dataModel({ databaseId: database.id })}
-            data-testid="database-link"
-          />
-          <TargetItemDivider />
-        </>
+        <TablePathItem
+          label={database.name}
+          icon="database"
+          to={Urls.dataModel({ databaseId: database.id })}
+          data-testid="database-link"
+        />
       )}
       {database != null && target.schema !== null && (
-        <>
-          <TargetItemLink
-            label={target.schema}
-            icon="folder"
-            to={
-              table || targetSchemaExists
-                ? Urls.dataModel({
-                    databaseId: database.id,
-                    schemaName: target.schema,
-                  })
-                : undefined
-            }
-            tooltip={
-              table?.schema != null || targetSchemaExists
-                ? undefined
-                : t`This schema will be created when the transform runs`
-            }
-            data-testid="schema-link"
-          />
-          <TargetItemDivider />
-        </>
-      )}
-      <Group gap="xs">
-        <TargetItemLink
-          label={target.name}
-          icon="table2"
-          to={table ? Urls.queryBuilderTable(table.id, table.db_id) : undefined}
-          data-testid="table-link"
+        <TablePathItem
+          label={target.schema}
+          icon="folder"
+          to={
+            table || targetSchemaExists
+              ? Urls.dataModel({
+                  databaseId: database.id,
+                  schemaName: target.schema,
+                })
+              : undefined
+          }
+          tooltip={
+            table?.schema != null || targetSchemaExists
+              ? undefined
+              : t`This schema will be created when the transform runs`
+          }
+          data-testid="schema-link"
         />
-      </Group>
-    </Group>
+      )}
+      <TablePathItem
+        label={target.name}
+        icon="table2"
+        to={table ? Urls.queryBuilderTable(table.id, table.db_id) : undefined}
+        data-testid="table-link"
+      />
+    </TablePath>
   );
-}
-
-type TargetItemLinkProps = {
-  label: string;
-  icon: IconName;
-  to?: string;
-  tooltip?: string;
-  "data-testid"?: string;
-};
-
-function TargetItemLink({
-  label,
-  icon,
-  to,
-  tooltip,
-  "data-testid": dataTestId,
-}: TargetItemLinkProps) {
-  return (
-    <Link
-      className={CS.link}
-      to={to ?? ""}
-      disabled={to == null}
-      data-testid={dataTestId}
-      tooltip={tooltip}
-    >
-      <Group gap="xs">
-        <Icon name={icon} />
-        <Text c="inherit">{label}</Text>
-      </Group>
-    </Link>
-  );
-}
-
-function TargetItemDivider() {
-  return <Icon name="chevronright" size={8} />;
 }
 
 type EditTargetButtonProps = {
@@ -281,7 +241,7 @@ function OwnerSection({ transform, readOnly }: OwnerSectionProps) {
       label={t`Ownership`}
       description={t`Specify who is responsible for this transform.`}
     >
-      <Group p="lg">
+      <Group p="xl">
         {readOnly ? (
           <>
             <Text fw="bold">{t`Owner`}</Text>

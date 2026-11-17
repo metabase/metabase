@@ -1,24 +1,17 @@
-import { Route } from "react-router";
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
   setupDatabaseEndpoints,
+  setupUpdateTransformEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type {
-  EnterpriseSettings,
-  TokenFeatures,
-  Transform,
-} from "metabase-types/api";
+import type { Transform, TransformId } from "metabase-types/api";
 import {
   createMockDatabase,
-  createMockTokenFeatures,
   createMockTransform,
   createMockTransformOwner,
   createMockTransformRun,
@@ -28,7 +21,7 @@ import {
 import { TransformSettingsSection } from "./TransformSettingsSection";
 
 type SetupOpts = {
-  remoteSyncType?: EnterpriseSettings["remote-sync-type"];
+  remoteSyncReadOnly?: boolean;
   transform?: Transform;
 };
 
@@ -45,7 +38,7 @@ jest.mock(
 
 function setup({
   transform = createMockTransform(),
-  remoteSyncType,
+  remoteSyncReadOnly = false,
 }: SetupOpts) {
   setupDatabaseEndpoints(createMockDatabase({ id: 1 }));
   setupUsersEndpoints([
@@ -61,42 +54,31 @@ function setup({
     }),
   ]);
 
-  let state: State;
-  if (remoteSyncType) {
-    const tokenFeatures: Partial<TokenFeatures> = {
-      remote_sync: !!remoteSyncType,
-    };
-    const settings = mockSettings({
-      "remote-sync-type": remoteSyncType,
-      "remote-sync-enabled": !!remoteSyncType,
-      "token-features": createMockTokenFeatures(tokenFeatures),
-    });
-    state = createMockState({
-      settings,
-    });
-
-    const enterprisePlugins: ENTERPRISE_PLUGIN_NAME[] = ["remote_sync"];
-    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
-  } else {
-    state = createMockState({
-      settings: mockSettings({
-        "remote-sync-type": remoteSyncType,
-        "remote-sync-enabled": !!remoteSyncType,
-      }),
-    });
-  }
-
   renderWithProviders(
     <Route
       path={Urls.transform(transform.id)}
-      component={() => <TransformSettingsSection transform={transform} />}
+      element={
+        <TransformSettingsSection
+          transform={transform}
+          readOnly={remoteSyncReadOnly}
+          remoteSyncReadOnly={remoteSyncReadOnly}
+        />
+      }
     />,
     {
       withRouter: true,
+      withUndos: true,
       initialRoute: Urls.transform(transform.id),
-      storeInitialState: state,
     },
   );
+}
+
+function getLastOwnerUpdateBody(transformId: TransformId) {
+  const call = fetchMock.callHistory.lastCall(
+    `path:/api/transform/${transformId}`,
+    { method: "PUT" },
+  );
+  return JSON.parse(String(call?.options.body));
 }
 
 describe("TransformSettingsSection", () => {
@@ -121,8 +103,9 @@ describe("TransformSettingsSection", () => {
   });
 
   describe("when remote sync is read-only", () => {
-    beforeEach(() => {
-      setup({ remoteSyncType: "read-only" });
+    beforeEach(async () => {
+      setup({ remoteSyncReadOnly: true });
+      await screen.findByRole("switch", { name: /Only process new data/ });
     });
 
     it("does not show the change target button", () => {
@@ -174,5 +157,84 @@ describe("OwnerSection", () => {
       }),
     });
     expect(screen.getByText("Ownership")).toBeInTheDocument();
+  });
+
+  it("should change the owner to another user", async () => {
+    const transform = createMockTransform();
+    setupUpdateTransformEndpoint(transform.id, transform);
+    setup({ transform });
+
+    await userEvent.click(screen.getByRole("textbox", { name: "Owner" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Another User/ }),
+    );
+
+    expect(
+      await screen.findByText("Transform owner updated"),
+    ).toBeInTheDocument();
+    expect(getLastOwnerUpdateBody(transform.id)).toEqual({
+      owner_email: null,
+      owner_user_id: 2,
+    });
+  });
+
+  it("should change the owner to an external email", async () => {
+    const transform = createMockTransform();
+    setupUpdateTransformEndpoint(transform.id, transform);
+    setup({ transform });
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Owner" }),
+      "external@example.com",
+    );
+    await userEvent.click(await screen.findByText("external@example.com"));
+
+    expect(
+      await screen.findByText("Transform owner updated"),
+    ).toBeInTheDocument();
+    expect(getLastOwnerUpdateBody(transform.id)).toEqual({
+      owner_email: "external@example.com",
+      owner_user_id: null,
+    });
+  });
+
+  it("should clear the owner", async () => {
+    const transform = createMockTransform({
+      owner_user_id: 1,
+      owner: createMockTransformOwner({ id: 1 }),
+    });
+    setupUpdateTransformEndpoint(transform.id, transform);
+    setup({ transform });
+
+    await userEvent.click(screen.getByRole("textbox", { name: "Owner" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: /No owner/ }),
+    );
+
+    expect(
+      await screen.findByText("Transform owner updated"),
+    ).toBeInTheDocument();
+    expect(getLastOwnerUpdateBody(transform.id)).toEqual({
+      owner_email: null,
+      owner_user_id: null,
+    });
+  });
+
+  it("should show an error toast when the owner update fails", async () => {
+    const transform = createMockTransform();
+    setupUpdateTransformEndpoint(transform.id, { status: 500 });
+    setup({ transform });
+
+    await userEvent.click(screen.getByRole("textbox", { name: "Owner" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Another User/ }),
+    );
+
+    expect(
+      await screen.findByText("Failed to update transform owner"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Transform owner updated"),
+    ).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import { createSelector, weakMapMemoize } from "@reduxjs/toolkit";
+import { createSelector } from "@reduxjs/toolkit";
 
 import * as LibMetric from "metabase-lib/metric";
 import type { JsMetricDefinition } from "metabase-types/api";
@@ -83,19 +83,11 @@ export const getModifiedDefinition = createSelector(
 
     return executableDefinition;
   },
-  {
-    memoize: weakMapMemoize,
-    argsMemoize: weakMapMemoize,
-  },
 );
 
 export const toJsDefinition = createSelector(
   (definition: LibMetric.MetricDefinition) => definition,
   (definition): JsMetricDefinition => {
     return LibMetric.toJsMetricDefinition(definition);
-  },
-  {
-    memoize: weakMapMemoize,
-    argsMemoize: weakMapMemoize,
   },
 );

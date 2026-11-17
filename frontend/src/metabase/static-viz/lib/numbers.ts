@@ -1,14 +1,28 @@
-import type { CurrencyStyle } from "metabase/utils/formatting";
-import { formatNumber as appFormatNumber } from "metabase/utils/formatting/numbers";
+import { formatNumber as appFormatNumber } from "metabase/utils/formatting";
+import type {
+  CurrencyPosition,
+  CurrencyStyle,
+  DurationStyle,
+  DurationUnit,
+} from "metabase-types/api";
 
-export type NumberStyle = "currency" | "decimal" | "scientific" | "percent";
+export type NumberStyle =
+  | "currency"
+  | "decimal"
+  | "scientific"
+  | "percent"
+  | "duration";
 
 export type NumberFormatOptions = {
   number_style?: NumberStyle;
   currency?: string;
   currency_style?: CurrencyStyle;
+  currency_position?: CurrencyPosition;
   number_separators?: string;
   decimals?: number;
+  duration_precision?: DurationUnit;
+  duration_style?: DurationStyle;
+  duration_unit?: DurationUnit;
   scale?: number;
   prefix?: string;
   suffix?: string;
@@ -35,6 +49,3 @@ export const formatNumber = (number: number, options?: NumberFormatOptions) => {
 
   return `${prefix}${appFormatNumber(number, optionsWithDefault)}${suffix}`;
 };
-
-export const formatPercent = (percent: number) =>
-  `${(100 * percent).toFixed(Math.abs(percent) === 1 ? 0 : 2)} %`;

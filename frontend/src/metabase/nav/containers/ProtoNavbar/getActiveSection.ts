@@ -26,15 +26,13 @@ export function getActiveSection(pathname: string): SectionId | null {
   if (
     pathname.startsWith("/data-studio/data") ||
     pathname.startsWith("/data-studio/transforms") ||
-    pathname.startsWith("/data-studio/schema-viewer") ||
-    pathname.startsWith("/data-studio/workspaces")
+    pathname.startsWith("/data-studio/schema-viewer")
   ) {
     return "data";
   }
   if (
     pathname.startsWith("/data-studio/dependencies") ||
-    pathname.startsWith("/data-studio/dependency-diagnostics") ||
-    pathname.startsWith("/admin/tools")
+    pathname.startsWith("/monitor")
   ) {
     return "monitor";
   }

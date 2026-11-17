@@ -1,11 +1,19 @@
 import userEvent from "@testing-library/user-event";
-import dayjs from "dayjs";
+import fetchMock from "fetch-mock";
 
-import { screen, within } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import * as Urls from "metabase/urls";
 import {
+  setupCreateCollectionEndpoint,
+  setupUnauthorizedCollectionEndpoints,
+} from "__support__/server-mocks";
+import { screen, waitFor, within } from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { dayjs } from "metabase/dayjs";
+import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
+import {
+  createMockBookmark,
   createMockCard,
+  createMockCollection,
   createMockDashboard,
   createMockModelResult,
   createMockUser,
@@ -190,6 +198,61 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
+  describe("bookmarks", () => {
+    it.each([
+      { route: "/metric/:cardId", pathname: "/metric/9-revenue" },
+      {
+        route: "/metric/:cardId/query",
+        pathname: "/metric/9-revenue/query",
+      },
+    ])(
+      "highlights a metric bookmark on $pathname",
+      async ({ route, pathname }) => {
+        const card = createMockCard({ id: 9, name: "Revenue", type: "metric" });
+        const bookmark = createMockBookmark({
+          id: "card-9",
+          item_id: card.id,
+          type: "card",
+          card_type: "metric",
+          name: card.name,
+        });
+
+        await setup({
+          bookmarks: [bookmark],
+          openQuestionCard: card,
+          route,
+          pathname,
+        });
+
+        expect(
+          screen.getByRole("listitem", { name: "Revenue" }),
+        ).toHaveAttribute("aria-selected", "true");
+      },
+    );
+
+    it("highlights a question bookmark on the question page", async () => {
+      const card = createMockCard({ id: 37, name: "Question" });
+      const bookmark = createMockBookmark({
+        id: "card-37",
+        item_id: card.id,
+        type: "card",
+        card_type: "question",
+        name: card.name,
+      });
+
+      await setup({
+        bookmarks: [bookmark],
+        openQuestionCard: card,
+        route: "/question/:slug",
+        pathname: "/question/37-question",
+      });
+
+      expect(
+        screen.getByRole("listitem", { name: "Question" }),
+      ).toHaveAttribute("aria-selected", "true");
+    });
+  });
+
   describe("collection tree", () => {
     it("should show collections", async () => {
       const {
@@ -307,6 +370,7 @@ describe("nav > containers > MainNavbar", () => {
 
     it("should highlight question's collection if selected", async () => {
       const card = createMockCard({
+        // Unjustified type cast. FIXME
         collection_id: TEST_COLLECTION.id as number,
       });
       await setup({
@@ -325,6 +389,7 @@ describe("nav > containers > MainNavbar", () => {
 
     it("should highlight dashboard's collection if selected", async () => {
       const dashboard = createMockDashboard({
+        // Unjustified type cast. FIXME
         collection_id: TEST_COLLECTION.id as number,
       });
       await setup({
@@ -343,6 +408,7 @@ describe("nav > containers > MainNavbar", () => {
 
     it("should highlight model's collection when on model detail page", async () => {
       const model = createMockCard({
+        // Unjustified type cast. FIXME
         collection_id: TEST_COLLECTION.id as number,
         type: "model",
       });
@@ -376,6 +442,67 @@ describe("nav > containers > MainNavbar", () => {
       expect(
         screen.queryByRole("button", { name: "Create a new collection" }),
       ).not.toBeInTheDocument();
+    });
+
+    it("should create a collection in the personal collection for a user without collection access", async () => {
+      // Registered before `setup` so it wins: the API 403s the root collection
+      // for a user without any collection access.
+      setupUnauthorizedCollectionEndpoints(
+        createMockCollection(ROOT_COLLECTION),
+      );
+      setupCreateCollectionEndpoint(
+        createMockCollection({ id: 42, name: "Foo" }),
+      );
+      const { router } = await setup({
+        route: "*",
+        canCurateRootCollection: false,
+      });
+
+      const button = screen.getByRole("button", {
+        name: "Create a new collection",
+      });
+      expect(button).toBeInTheDocument();
+      await userEvent.click(button);
+
+      const modal = await screen.findByTestId("new-collection-modal");
+      await userEvent.type(within(modal).getByLabelText("Name"), "Foo");
+      await waitFor(() =>
+        expect(
+          within(modal).getByTestId("collection-picker-button"),
+        ).toHaveTextContent(PERSONAL_COLLECTION_BASE.name),
+      );
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Create" }),
+      );
+
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe("/collection/42-foo"),
+      );
+      const request = fetchMock.callHistory.lastCall("create-collection");
+      expect(
+        await new Request(request?.url ?? "", request?.options).json(),
+      ).toMatchObject({
+        name: "Foo",
+        parent_id: PERSONAL_COLLECTION_BASE.id,
+      });
+    });
+
+    it("should move focus through the new collection modal with Tab (#83338)", async () => {
+      await setup();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Create a new collection" }),
+      );
+
+      const modal = await screen.findByRole("dialog", {
+        name: "New collection",
+      });
+      await waitFor(() => {
+        expect(within(modal).getByLabelText("Name")).toHaveFocus();
+      });
+
+      await userEvent.tab();
+      expect(within(modal).getByLabelText("Description")).toHaveFocus();
     });
 
     it("should toggle active collection on click", async () => {
@@ -447,6 +574,114 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
+  describe("trash", () => {
+    const TRASH_COLLECTION = createMockCollection({
+      id: 20000000,
+      name: "Trash",
+      type: "trash",
+      // The trash link must not become expandable, even if the API returns
+      // children for it.
+      children: [
+        createMockCollection({ id: 30, name: "Trashed child", archived: true }),
+      ],
+    });
+
+    const TRASHED_COLLECTION = createMockCollection({
+      id: 5,
+      name: "Trashed collection",
+      archived: true,
+    });
+
+    const getTrashItem = () => screen.getByRole("treeitem", { name: /Trash/i });
+    const getRegularCollectionItem = () =>
+      screen.getByRole("treeitem", { name: /Test collection/i });
+
+    it("should show the trash as the last collection link, without an expand toggle", async () => {
+      await setup({ trashCollection: TRASH_COLLECTION });
+
+      const collectionLinks = screen.getAllByTestId(
+        "sidebar-collection-link-root",
+      );
+      const trashLink = collectionLinks.at(-1);
+      expect(trashLink).toHaveTextContent("Trash");
+      expect(collectionLinks.at(0)).not.toHaveTextContent("Trash");
+      expect(
+        within(checkNotNull(trashLink)).getByLabelText("chevronright icon"),
+      ).not.toBeVisible();
+      expect(screen.queryByText("Trashed child")).not.toBeInTheDocument();
+    });
+
+    it("should highlight the trash when viewing the trash", async () => {
+      await setup({
+        trashCollection: TRASH_COLLECTION,
+        route: "/trash",
+        pathname: "/trash",
+      });
+
+      expect(getTrashItem()).toHaveAttribute("aria-selected", "true");
+      expect(
+        screen.getByRole("treeitem", { name: /Our analytics/i }),
+      ).toHaveAttribute("aria-selected", "false");
+    });
+
+    it("should highlight the trash when viewing a trashed collection", async () => {
+      await setup({
+        trashCollection: TRASH_COLLECTION,
+        extraCollections: [TRASHED_COLLECTION],
+        route: "/collection/:slug",
+        pathname: Urls.collection(TRASHED_COLLECTION),
+      });
+
+      await waitFor(() => {
+        expect(getTrashItem()).toHaveAttribute("aria-selected", "true");
+      });
+      expect(getRegularCollectionItem()).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+    });
+
+    it("should highlight the trash instead of the collection of a trashed dashboard", async () => {
+      const dashboard = createMockDashboard({
+        collection_id: Number(TEST_COLLECTION.id),
+        archived: true,
+      });
+      await setup({
+        trashCollection: TRASH_COLLECTION,
+        openDashboard: dashboard,
+        route: "/dashboard/:slug",
+        pathname: `/dashboard/${dashboard.id}`,
+      });
+
+      expect(getTrashItem()).toHaveAttribute("aria-selected", "true");
+      expect(getRegularCollectionItem()).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+    });
+
+    it("should highlight the trash instead of the collection of a trashed question", async () => {
+      const card = createMockCard({
+        collection_id: Number(TEST_COLLECTION.id),
+        archived: true,
+      });
+      await setup({
+        trashCollection: TRASH_COLLECTION,
+        openQuestionCard: card,
+        route: "/question/:slug",
+        pathname: `/question/${card.id}`,
+      });
+
+      await waitFor(() => {
+        expect(getTrashItem()).toHaveAttribute("aria-selected", "true");
+      });
+      expect(getRegularCollectionItem()).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+    });
+  });
+
   describe("Personal Collections", () => {
     it("non-admin should see not other users personal collections", async () => {
       await setup({});
@@ -465,11 +700,42 @@ describe("nav > containers > MainNavbar", () => {
       ).toBeInTheDocument();
     });
 
+    it("should select other users' personal collections when viewing them (#79967)", async () => {
+      await setup({
+        pathname: Urls.otherUsersPersonalCollections(),
+        route: "/collection/:slug",
+        user: createMockUser({ is_superuser: true }),
+      });
+
+      const listItem = screen.getByRole("listitem", {
+        name: /Other users' personal collections/i,
+      });
+      expect(listItem).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("should not select other users' personal collections when viewing another collection (#79967)", async () => {
+      await setup({
+        pathname: Urls.collection(TEST_COLLECTION),
+        route: "/collection/:slug",
+        user: createMockUser({ is_superuser: true }),
+      });
+
+      const listItem = screen.getByRole("listitem", {
+        name: /Other users' personal collections/i,
+      });
+      expect(listItem).toHaveAttribute("aria-selected", "false");
+    });
+
     it("admin not should see other users personal collections if there no other users", async () => {
       await setup({
         user: createMockUser({ is_superuser: true }),
         activeUsersCount: 1,
       });
+      expect(
+        await screen.findByRole("treeitem", {
+          name: /Your personal collection/i,
+        }),
+      ).toBeVisible();
       expect(
         screen.queryByText(/Other users' personal collections/i),
       ).not.toBeInTheDocument();

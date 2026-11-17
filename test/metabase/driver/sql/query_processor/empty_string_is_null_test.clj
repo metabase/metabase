@@ -11,7 +11,7 @@
 
 (deftest ^:parallel empty-string-is-null-test
   (are [s expected] (= expected
-                       (sql.qp/->honeysql ::test-driver [:value s {}]))
+                       (sql.qp/->honeysql ::test-driver [:value {} s]))
     nil nil
     ""  nil
     ;; BLANK string = not nil

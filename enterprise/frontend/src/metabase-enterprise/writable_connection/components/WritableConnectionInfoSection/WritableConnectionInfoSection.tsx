@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { DatabaseConnectionHealthInfo } from "metabase/admin/databases/components/DatabaseConnectionHealthInfo";
@@ -7,6 +6,7 @@ import {
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { useUpdateDatabaseMutation } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
   hasDbRoutingEnabled,
@@ -48,7 +48,7 @@ export function WritableConnectionInfoSection({
       description={t`You can add a separate writable connection to use with features like transforms and editable tables.`}
       data-testid="writable-connection-info-section"
     >
-      <Group justify="space-between" gap="lg">
+      <Group justify="space-between" gap="xl">
         {hasWritableConnection && (
           <DatabaseConnectionHealthInfo
             databaseId={database.id}
@@ -70,10 +70,10 @@ export function WritableConnectionInfoSection({
         <>
           <DatabaseInfoSectionDivider />
           <Alert
+            size="compact"
             variant="light"
-            color="info"
             icon={<Icon name="info" />}
-            mb="md"
+            mb="lg"
           >
             {t`Writable connection can't be enabled when Database Routing is enabled.`}
           </Alert>
@@ -84,7 +84,7 @@ export function WritableConnectionInfoSection({
         <>
           <DatabaseInfoSectionDivider condensed />
           <Group>
-            <Button variant="filled" color="error" onClick={handleRemove}>
+            <Button variant="filled" color="negative" onClick={handleRemove}>
               {t`Remove writable connection`}
             </Button>
           </Group>

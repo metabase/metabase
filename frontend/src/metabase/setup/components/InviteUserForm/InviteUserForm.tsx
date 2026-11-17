@@ -1,27 +1,33 @@
-import { useMemo } from "react";
+import { type JSX, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { FormInput } from "metabase/common/components/FormInput";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import {
+  Form,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
 import type { InviteInfo, UserInfo } from "metabase/redux/store";
+import { SimpleGrid, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 
-import S from "./InviteUserForm.module.css";
-
-const INVITE_USER_SCHEMA = Yup.object({
-  first_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
-  last_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
-  email: Yup.string()
-    .default("")
-    .required(Errors.required)
-    .email(Errors.email)
-    .notOneOf(
-      [Yup.ref("$email")],
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      t`must be different from the email address you used in setup`,
-    ),
-});
+const getInviteUserSchema = () =>
+  Yup.object({
+    first_name: Yup.string()
+      .nullable()
+      .default(null)
+      .max(100, Errors.maxLength),
+    last_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
+    email: Yup.string()
+      .default("")
+      .required(Errors.required)
+      .email(Errors.email)
+      .notOneOf(
+        [Yup.ref("$email")],
+        t`must be different from the email address you used in setup`,
+      ),
+  });
 
 interface InviteUserFormProps {
   user?: UserInfo;
@@ -35,35 +41,35 @@ export const InviteUserForm = ({
   onSubmit,
 }: InviteUserFormProps): JSX.Element => {
   const initialValues = useMemo(() => {
-    return invite ?? INVITE_USER_SCHEMA.getDefault();
+    return invite ?? getInviteUserSchema().getDefault();
   }, [invite]);
 
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={INVITE_USER_SCHEMA}
+      validationSchema={getInviteUserSchema()}
       validationContext={user}
       onSubmit={onSubmit}
     >
-      <Form data-testid="invite-user-form">
-        <div className={S.UserFieldGroup}>
-          <FormInput
+      <Form as={Stack} gap="lg" data-testid="invite-user-form">
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+          <FormTextInput
             name="first_name"
-            title={t`First name`}
+            label={t`First name`}
             placeholder={t`Johnny`}
             nullable
             autoFocus
           />
-          <FormInput
+          <FormTextInput
             name="last_name"
-            title={t`Last name`}
+            label={t`Last name`}
             placeholder={t`Appleseed`}
             nullable
           />
-        </div>
-        <FormInput
+        </SimpleGrid>
+        <FormTextInput
           name="email"
-          title={t`Email`}
+          label={t`Email`}
           placeholder={"nicetoseeyou@email.com"}
         />
         <FormSubmitButton label={t`Send invitation`} variant="filled" />

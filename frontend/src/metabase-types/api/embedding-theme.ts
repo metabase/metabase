@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
 
-import type { MetabaseFontFamily } from "metabase/utils/fonts";
-import type { DeepPartial } from "metabase/utils/types";
+import type { DeepPartial } from "metabase-types/utils/types";
+
+import type { MetabaseFontFamily } from "./fonts";
 
 export type MetabaseThemePreset = "light" | "dark";
 
@@ -46,13 +47,13 @@ export interface MetabaseColors {
   /** Lightest variation of the brand color. Used for hover and accented elements. */
   "brand-hover-light"?: string;
 
-  /** Text color on dark elements. Should be a lighter color for readability. */
+  /** Main text color. Should have the most contrast with the background. */
   "text-primary"?: string;
 
   /** Lighter variation of dark text on light elements. */
   "text-secondary"?: string;
 
-  /** Text color on light elements. Should be a darker color for readability. */
+  /** Muted text color for placeholders and disabled elements. */
   "text-tertiary"?: string;
 
   /** Default background color. */
@@ -154,6 +155,9 @@ export type MetabaseComponentTheme = {
     /** Background color of the table header that stays fixed while scrolling. Defaults to `white` if no cell background color is set */
     stickyBackgroundColor?: string;
 
+    /** Background color of every other row when the "Striped rows" table setting is enabled. Defaults to a subtle tint of the cell background color */
+    stripedBackgroundColor?: string;
+
     cell: {
       /** Text color of cells, defaults to `text-primary`. */
       textColor: string;
@@ -212,7 +216,10 @@ export type MetabaseComponentTheme = {
 
     goalLine: {
       label: {
-        /** Font size of goal line labels */
+        /**
+         * Font size of goal line labels
+         * @deprecated Has no effect, goal line labels are not shown on interactive charts.
+         */
         fontSize: string;
       };
     };

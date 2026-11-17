@@ -16,7 +16,7 @@
       (lib/all-referenced-entity-ids [(lib/card->underlying-query metadata-provider card)]))
     (catch Throwable e
       ;; prefetching is an optimization: a Card we cannot make sense of here will be dealt with when it is resolved
-      (log/debugf e "Error getting referenced entity ids for Card %s" (:id card)))))
+      (log/debugf "Error getting referenced entity ids for Card %s: %s" (:id card) (ex-message e)))))
 
 (defn- all-referenced-entity-ids
   "Collect the ids of all the entities referenced by `query`, following Card references (source cards and

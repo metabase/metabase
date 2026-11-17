@@ -1,9 +1,16 @@
-import type { State } from "metabase/redux/store";
+import type { RegularCollectionId, RemoteSyncType } from "metabase-types/api";
 
-import type { SyncTaskState } from "./sync-task-slice";
+export type SettingsFormValues = {
+  url: string;
+  token: string;
+  type: RemoteSyncType;
+  branch: string;
+  autoImport: boolean;
+  collections: Record<RegularCollectionId, boolean>;
+};
 
-export interface RemoteSyncStoreState extends State {
-  plugins?: {
-    remoteSyncPlugin?: SyncTaskState;
-  };
-}
+export type SyncableCollection = {
+  id: RegularCollectionId;
+  name: string;
+  isRemoteSynced: boolean;
+};

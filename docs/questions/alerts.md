@@ -42,7 +42,7 @@ To create an alert:
 
 ## Send a one-time alert
 
-When setting up an alert, if you select the option to **Only send the alert once**, Metabase will send that alert once, then delete itself, never to alert anyone ever again. These "disposable" alerts are handy for things like letting you know when you reach a one-time milestone.
+When setting up an alert, if you select the option to **Only send the alert once**, Metabase will send that alert once, then delete the alert, never to alert anyone ever again. These "disposable" alerts are handy for things like letting you know when you reach a one-time milestone.
 
 ## Testing alerts
 
@@ -73,7 +73,7 @@ To create an alert when a time series crosses a goal line:
 3. In the **Display** tab, turn on the **Show goal** setting.
 4. Choose a value for your goal (and optionally a label) and click Done.
 5. Save the question.
-6. Click the **three dots** icon in top and select "Create alert"
+6. Click the **three dots** icon in the top right and select "Create alert"
 
    You can choose:
 
@@ -93,7 +93,7 @@ If you want to set up an alert when a single number reaches a goal, you can use 
 2. Choose the Progress Bar chart type.
 3. In Visualization settings, select a goal value.
 4. Save your question.
-5. Create an alert by clicking the **three dots** in top right.
+5. Create an alert by clicking the **three dots** in the top right.
 
 You'll see the options for when you want to get alerts about this progress bar:
 
@@ -116,7 +116,7 @@ Admins:
 - Admins can add or remove recipients on any alert, even ones that they didn't create themselves.
 - Admins can bulk manage alerts per person from the [People menu in Admin settings](../people-and-groups/managing.md#unsubscribe-from-all-subscriptions-and-alerts).
 
-- Admins can bulk manage all alerts in the instance in [Admin > Tools > Alert management](../installation-and-operation/alert-management.md).
+- Admins can bulk manage all alerts in the instance in [Monitor > Alerts management](../monitor/alerts-management.md).
 
 Metabase will email you when:
 
@@ -162,9 +162,14 @@ See [Remove Metabase branding from exports](./exporting-results.md#remove-metaba
 
 Since people viewing embedded questions likely don't have direct access to your Metabase, Metabase omits links to Metabase items in alerts sent from embedded questions. That way people don't get broken links in their email.
 
+## Custom visualizations fall back to the default chart
+
+Nobody's signed in when Metabase renders an alert, so a question that uses a [custom visualization](./visualizations/custom.md) falls back to the default visualization for its results.
+
 ## Further reading
 
 - [Dashboard subscriptions](../dashboards/subscriptions.md)
 - [Setting up email](../configuring-metabase/email.md)
 - [Setting up Slack](../configuring-metabase/slack.md)
 - [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
+- [Custom visualizations](./visualizations/custom.md)

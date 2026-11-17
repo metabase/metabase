@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { DashboardChartSettings } from "metabase/dashboard/components/DashboardChartSettings";
 import { Modal } from "metabase/ui";
 import type {
+  DashCardSeries,
   DashboardCard,
   Series,
   VisualizationSettings,
@@ -12,7 +13,7 @@ import type {
 import { DashCardActionButton } from "../DashCardActionButton";
 
 interface Props {
-  series: Series;
+  series: DashCardSeries;
   dashcard?: DashboardCard;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
 }
@@ -51,7 +52,9 @@ export function ChartSettingsButton({
         }}
       >
         <DashboardChartSettings
-          series={series}
+          // TODO: all of the settings code assumes we have a Series with a non-optional `data` property
+          // but that's not true - virtual dashcards don't have data, so this needs to be fixed
+          series={series as Series}
           onChange={onReplaceAllVisualizationSettings}
           dashcard={dashcard}
           onClose={close}

@@ -30,7 +30,7 @@ const createMockHoveredItem = (
   column: DatasetColumn,
   dataSource: VisualizerDataSource,
 ): DraggedColumn => ({
-  id: column.name!,
+  id: column.name,
   data: {
     current: {
       type: "COLUMN" as const,

@@ -24,6 +24,7 @@
    [metabase.driver :as driver]
    [metabase.metabot.capabilities :as capabilities]
    [metabase.metabot.scope :as scope]
+   [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -157,8 +158,8 @@
   ;; The reset! also means re-initializing drops removed or renamed skills.
   ;; `vec` realizes the (lazy) skill seq once so resources aren't slurped+parsed once per index.
   (let [skills (vec (concat (markdown-skills) (dialect-skills)))]
-    (reset! *skills {:by-id     (into {} (map (juxt :id identity)) skills)
-                     :by-id-str (into {} (map (juxt (comp name :id) identity)) skills)})))
+    (reset! *skills {:by-id     (u/index-by :id skills)
+                     :by-id-str (u/index-by (comp name :id) skills)})))
 
 (load-skills!)
 
@@ -247,26 +248,33 @@
   Whether a skill is *always-on* (body inlined in the system prompt) vs *on-demand* (advertised in the
   catalog, loaded via `load_skill`) is decided **per profile**, by the profile's `:always-on-skills`
   set — not by the skill itself — so the same skill can be inlined for one profile and on-demand for
-  another (e.g. the SQL skills are always-on for `:sql` but on-demand for `:internal`)."
+  another (e.g. the SQL skills are always-on for `:sql` but on-demand for `:internal`).
+
+  Profiles with `:skills? false` opt out entirely: empty catalog and always-on, and an empty loadable
+  set (so `load_skill` is not injected and cannot resolve guessed ids)."
   [profile active-tool-names capabilities]
-  (let [cap-set       (capabilities/capability-set capabilities)
-        always-on-ids (set (:always-on-skills profile))
-        always-on?    (comp always-on-ids :id)
-        visible       (->> (skills-for-profile profile active-tool-names)
-                           (filter #(skill-visible? % cap-set))
-                           (sort-by (juxt (comp - :priority) (comp str :id))))
-        ;; Always-on skill bodies are already inlined in the system prompt, so they are neither
-        ;; advertised in the catalog nor loadable on demand — only the on-demand skills are.
-        ;; Recording only the loadable ids also stops `load_skill` from re-fetching an always-on
-        ;; skill (a wasted iteration the model would otherwise spend).
-        loadable      (remove always-on? visible)]
-    (record-loadable-skill-ids! loadable)
-    {:always-on (filter always-on? visible)
-     :catalog   (mapv (fn [s]
-                        {:id          (name (:id s))
-                         :title       (:title s)
-                         :description (:description s)})
-                      loadable)}))
+  (if (false? (:skills? profile))
+    (do
+      (record-loadable-skill-ids! [])
+      {:always-on [] :catalog []})
+    (let [cap-set       (capabilities/capability-set capabilities)
+          always-on-ids (set (:always-on-skills profile))
+          always-on?    (comp always-on-ids :id)
+          visible       (->> (skills-for-profile profile active-tool-names)
+                             (filter #(skill-visible? % cap-set))
+                             (sort-by (juxt (comp - :priority) (comp str :id))))
+          ;; Always-on skill bodies are already inlined in the system prompt, so they are neither
+          ;; advertised in the catalog nor loadable on demand — only the on-demand skills are.
+          ;; Recording only the loadable ids also stops `load_skill` from re-fetching an always-on
+          ;; skill (a wasted iteration the model would otherwise spend).
+          loadable      (remove always-on? visible)]
+      (record-loadable-skill-ids! loadable)
+      {:always-on (filter always-on? visible)
+       :catalog   (mapv (fn [s]
+                          {:id          (name (:id s))
+                           :title       (:title s)
+                           :description (:description s)})
+                        loadable)})))
 
 ;;; Dialect preload
 
@@ -298,7 +306,9 @@
   databases.
 
   Returns [] when `engine` is nil or has no matching dialect skill.
-  Dialect context only arises in SQL-editor sessions, so its presence is itself the gate.
+  Dialect context arises in SQL-editor sessions, but the editor can be open under a profile without
+  SQL tools (a full-app embed's Metabot sidebar), so the caller
+  ([[metabase.metabot.agent.messages/build-message-history]]) also gates on the active tools.
 
   Invariant: the emitted pair references the `load_skill` tool, which
   [[metabase.metabot.agent.profiles/get-tools-for-profile]] registers whenever the skill manifest is

@@ -5,19 +5,19 @@
    `:model/Workspace` and `:model/WorkspaceDatabase` (see `mi/can-read?`/`can-write?`/`can-create?`)."
   (:require
    [medley.core :as m]
-   [metabase-enterprise.serialization.core :as serialization]
-   [metabase-enterprise.serialization.schema :as serialization.schema]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase.api-scope.workspace-manager :as api-scope.workspace-manager]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.macros.scope :as scope]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.server.streaming-response :as sr]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(comment serialization.schema/keep-me)
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
@@ -25,14 +25,24 @@
   [:enum {:decode/api keyword}
    :unprovisioned :provisioning :provisioned :deprovisioning])
 
+(def ^:private WorkspaceName
+  "A workspace name that fits the `workspace.name` column, a `varchar(254)`. Postgres and MySQL count that limit in
+  code points and H2 in UTF-16 code units. `:max` counts UTF-16 code units, the larger count, so a name this schema
+  accepts fits on each of them. The message names the unit, because a reader counts an emoji as one character."
+  [:and
+   ms/NonBlankString
+   (mu/with-api-error-message
+    [:string {:max 254}]
+    (deferred-tru "value must be at most 254 UTF-16 code units; an emoji counts as two."))])
+
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
-   [:name         ms/NonBlankString]
+   [:name         WorkspaceName]
    [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]])
 
 (def ^:private UpdateWorkspaceParams
   [:map {:closed true}
-   [:name {:optional true} ms/NonBlankString]])
+   [:name {:optional true} WorkspaceName]])
 
 (def ^:private WorkspaceDatabaseResponse
   [:map {:closed true}
@@ -64,8 +74,8 @@
    [:creator     [:maybe CreatorResponse]]
    [:created_at  DateTimeWithTimeZone]
    [:updated_at  DateTimeWithTimeZone]
-   ;; `:databases` is only included when hydrated (i.e. the GET /:id endpoint).
-   ;; The list endpoint omits it — clients should treat a missing array as `[]`.
+   ;; Both the list and GET /:id endpoints hydrate `:databases`; it stays
+   ;; optional so clients treat a missing array as `[]`.
    [:databases   {:optional true} [:sequential WorkspaceDatabaseResponse]]])
 
 ;;; -------------------------------------------- Presentation --------------------------------------------------
@@ -90,21 +100,27 @@
 
 (api.macros/defendpoint :get "/" :- [:sequential WorkspaceResponse]
   "List all Workspaces."
+  {:scope api-scope.workspace-manager/workspace-manager}
   []
   (api/check-superuser)
   (into [] (comp (filter mi/can-read?)
                  (map present-workspace))
-        (ws/list-workspaces)))
+        (t2/hydrate (ws/list-workspaces) :can_read)))
 
 (api.macros/defendpoint :get "/:id" :- WorkspaceResponse
   "Get a single Workspace by id."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  {:scope api-scope.workspace-manager/workspace-manager}
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/read-check :model/Workspace id)
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
-   for workspaces) and provision it (blocking)."
+   for workspaces) and provision it (blocking). A failed provisioning is an error,
+   never a 200: the database's status code, or 500, with `message` and
+   `cleanup_required`, true when the workspace was kept and must be deleted to
+   finish the teardown."
+  {:scope api-scope.workspace-manager/workspace-manager}
   [_route-params _query-params params :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
   (present-workspace
@@ -113,85 +129,56 @@
 
 (api.macros/defendpoint :put "/:id" :- WorkspaceResponse
   "Update a workspace's name."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  {:scope api-scope.workspace-manager/workspace-manager}
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    params :- UpdateWorkspaceParams]
   (api/write-check :model/Workspace id)
   (when (:name params)
-    (t2/update! :model/Workspace :id id {:name (:name params)}))
+    (ws.db/update-workspace-name! id (:name params)))
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
-(api.macros/defendpoint :delete "/:id"
-  :- [:map
-      [:id ms/PositiveInt]
-      [:deleted :boolean]
-      [:message {:optional true} :string]
-      [:orphaned_resources {:optional true}
-       [:sequential [:map
-                     [:workspace_database_id ms/PositiveInt]
-                     [:database_id ms/PositiveInt]
-                     [:driver :keyword]
-                     [:schema :string]
-                     [:user :string]
-                     [:reason {:optional true} [:maybe :string]]]]]]
-  "Delete a Workspace. Tears down each `:provisioned` database's warehouse isolation
-  first (blocking). Refuses with a 409 if any database is still `:provisioning`/
-  `:deprovisioning` unless `ignore_pending=true`, in which case those databases are
-  left in the warehouse and only their app-DB rows are removed. If the warehouse was
-  unreachable for some `:provisioned` databases, the response includes
-  `:orphaned_resources` and a `:message` describing the inert schema/user objects
-  left behind for manual cleanup."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {ignore-pending? :ignore-pending} :- [:map [:ignore-pending {:default false} [:maybe ms/BooleanValue]]]]
+(api.macros/defendpoint :delete "/:id" :- :nil
+  "Delete a Workspace: tear down each database's warehouse isolation (blocking),
+  then delete the workspace. 409 (error code `workspace_busy`, nothing changed)
+  while a create or deprovision is running on any of its databases, meaning a row
+  is `:provisioning` or `:deprovisioning` and any row of the workspace was last
+  updated within the last 15 minutes. Once every row is older, such a row is
+  treated as left by a crashed instance and is torn down. A row whose teardown
+  succeeds is deleted. A row whose teardown fails is kept, the workspace is kept
+  with it, and the combined failure is the error, so the delete can be retried.
+  204 on success, no response body."
+  {:scope api-scope.workspace-manager/workspace-manager}
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
-  (assoc (ws/delete-workspace! id (boolean ignore-pending?)) :id id))
+  (ws/delete-workspace! id)
+  nil)
 
 ;;; ------------------------------------------- Config download --------------------------------------------------
 
 (api.macros/defendpoint :get "/:id/config"
-  :- [:map
+  :- [:map {:closed true}
       [:status  [:= 200]]
       [:headers [:map-of :string :string]]
       [:body    :string]]
   "Download the workspace's developer-instance config as a YAML file. 409 if any
-  of the workspace's databases is not `:provisioned`."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  of the workspace's databases is not `:provisioned`; retry later. 422 if a
+  database's connection settings need an admin to fix them, if any emitted
+  value contains `{{` or `[[`, or if the workspace has no databases; retrying
+  does not help.
+  A scoped credential (an `mb:workspace-manager` API key or token) gets 422 when any
+  of the workspace's databases uses an SSH tunnel, because the config would need the
+  parent's tunnel secrets; an unscoped admin credential gets them."
+  {:scope api-scope.workspace-manager/workspace-manager}
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   _query-params
+   _body
+   {:keys [token-scopes]}]
   (api/write-check :model/Workspace id)
   (let [config (api/check-404 (ws.config/build-workspace-config id))]
+    (when (and (seq token-scopes) (not (contains? token-scopes ::scope/unrestricted)))
+      (ws.config/check-no-tunnelled-databases id))
     {:status  200
      :headers {"Content-Type"        "application/x-yaml"
                "Content-Disposition" "attachment; filename=\"config.yml\""}
      :body    (ws.config/config->yaml config)}))
-
-;;; ----------------------------------------- Metadata export --------------------------------------------------
-
-(defn- workspace-metadata-filters
-  "Derive the `:database-ids` and `:schema-ids` filter values from a hydrated workspace.
-   `:schema-ids` is a `{db-id [\"schema\" ...]}` map matching the metadata export schema."
-  [{:keys [databases]}]
-  {:database-ids (mapv :database_id databases)
-   :schema-ids   (into {}
-                       (map (fn [{:keys [database_id input_schemas]}]
-                              [database_id (vec input_schemas)]))
-                       databases)})
-
-(api.macros/defendpoint :get "/:id/metadata/export"
-  :- (sr/streaming-response-schema ::serialization.schema/export-metadata-response)
-  "Stream the warehouse metadata (databases, tables, fields) for the workspace's databases,
-  scoped to each database's `:input` namespaces. Same flag semantics as
-  `/api/ee/serialization/metadata/export` — sections must be opted into via the
-  `with-databases` / `with-tables` / `with-fields` query parameters."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   query-params
-   :- [:map
-       [:with-databases {:default false} [:maybe :boolean]]
-       [:with-tables    {:default false} [:maybe :boolean]]
-       [:with-fields    {:default false} [:maybe :boolean]]]]
-  (api/read-check :model/Workspace id)
-  (let [workspace (api/check-404 (ws/get-workspace id))
-        opts      (merge query-params
-                         (workspace-metadata-filters workspace)
-                         {:user-info {:user-id       api/*current-user-id*
-                                      :is-superuser? api/*is-superuser?*}})]
-    (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]
-      (serialization/export-metadata! os opts))))

@@ -1,7 +1,6 @@
 import { isValidCronExpression } from "cron-expression-validator";
 import cronstrue from "cronstrue";
 import { t } from "ttag";
-import { memoize } from "underscore";
 
 import MetabaseSettings from "metabase/utils/settings";
 import { has24HourModeSetting } from "metabase/utils/time-dayjs";
@@ -73,18 +72,13 @@ function lowerCaseFirstLetter(str: string) {
   return str.charAt(0).toLowerCase() + str.slice(1);
 }
 
-export const getScheduleExplanation = memoize(
-  (cronExpression: string): string | null => {
-    try {
-      const readableSchedule = lowerCaseFirstLetter(
-        explainCronExpression(cronExpression),
-      );
-      return readableSchedule;
-    } catch {
-      return null;
-    }
-  },
-);
+export function getScheduleExplanation(cronExpression: string): string | null {
+  try {
+    return lowerCaseFirstLetter(explainCronExpression(cronExpression));
+  } catch {
+    return null;
+  }
+}
 
 // Remove seconds and years
 export function formatCronExpressionForUI(cronExpression: string): string {

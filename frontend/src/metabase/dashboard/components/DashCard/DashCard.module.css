@@ -15,8 +15,20 @@
 }
 
 .DashCardRoot {
+  --scalar-description-opacity: 0;
+
   background-color: var(--mb-color-bg-dashboard-card);
   scroll-margin: 6px 0;
+  border-radius: 0.75rem;
+  border: 1px solid var(--mb-color-border-neutral);
+
+  &:hover {
+    --scalar-description-opacity: 1;
+  }
+
+  &.isAction {
+    border: none !important;
+  }
 
   &.hasHiddenBackground {
     border: 0 !important;
@@ -30,5 +42,57 @@
     &.isEmbeddingSdk {
       background: var(--mb-color-bg-dashboard);
     }
+  }
+}
+
+.DashCardMenuButton {
+  flex: none;
+  opacity: 0;
+}
+
+.DashCardMenuButton.DashCardMenuButton[data-variant="subtle"] {
+  width: 1.5rem;
+  min-width: 1.5rem;
+  height: 1rem;
+  min-height: 1rem;
+  border-radius: var(--mantine-radius-xs);
+  color: var(--mb-color-text-primary);
+  background: var(--mb-color-background_surface-primary);
+  box-shadow:
+    0 0 0 0.5px var(--mb-color-border-neutral-subtle),
+    0 1px 3px 0 var(--mb-color-border-neutral-subtle);
+
+  &:hover {
+    color: var(--mb-color-text-primary);
+    /* Equal gradient stops make a solid tint over the opaque surface below. */
+    background:
+      linear-gradient(
+        var(--mb-color-background_surface-primary-hover),
+        var(--mb-color-background_surface-primary-hover)
+      ),
+      var(--mb-color-background_surface-primary);
+  }
+
+  &:active {
+    background:
+      linear-gradient(
+        var(--mb-color-background_surface-primary-pressed),
+        var(--mb-color-background_surface-primary-pressed)
+      ),
+      var(--mb-color-background_surface-primary);
+    box-shadow: none;
+    transform: none;
+  }
+}
+
+.DashCardRoot:hover .DashCardMenuButton,
+.DashCardMenuButton:focus-visible,
+.DashCardMenuButton[aria-expanded="true"] {
+  opacity: 1;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .DashCardMenuButton {
+    opacity: 1;
   }
 }

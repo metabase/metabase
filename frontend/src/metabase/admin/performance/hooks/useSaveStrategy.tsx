@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useCallback } from "react";
 import _ from "underscore";
 
@@ -51,6 +52,7 @@ export const useSaveStrategy = (
         // for fields that are not in the new strategy,
         // so let's remove these fields
         const validFields = getFieldsForStrategyType(values.type);
+        // Unjustified type cast. FIXME
         const newStrategy = _.pick(values, validFields) as CacheStrategy;
 
         const strategyData = strategies[values.type];

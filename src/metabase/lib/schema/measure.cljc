@@ -6,26 +6,24 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [prewalk]]))
+   [metabase.util.match :as match]))
 
 (defn- contains-metric-reference?
   "Walk a clause and return true if it contains any `:metric` reference."
   [clause]
-  (let [found? (volatile! false)]
-    (prewalk
-     (fn [x]
-       (when (lib.util/clause-of-type? x :metric)
-         (vreset! found? true))
-       x)
-     clause)
-    @found?))
+  (match/match-one clause
+    (x :guard (lib.util/clause-of-type? x :metric)) true))
 
 (mr/def ::stage
   "Schema for a single stage in a measure definition.
    A measure stage must have exactly one aggregation and no other query clauses."
   [:and
    ::lib.schema/stage.mbql
-   [:map [:source-table ::lib.schema.id/table]]
+   ;; checked with `:fn` rather than a `[:map [:source-table ...]]` conjunct: a map conjunct declares only the keys it
+   ;; names, so it would strip every other key of the stage before the sibling `::lib.schema/stage.mbql` saw it
+   [:fn
+    {:error/message "A measure stage must have a :source-table"}
+    #(mr/validate ::lib.schema.id/table (:source-table %))]
    [:fn
     {:error/message "A measure stage must have exactly one aggregation"}
     #(= (count (:aggregation %)) 1)]
@@ -51,5 +49,7 @@
    [:fn
     {:error/message "A measure must have exactly one stage"}
     #(= (-> % :stages count) 1)]
-   [:map
-    [:stages [:sequential [:ref ::stage]]]]])
+   ;; likewise `:fn` rather than a `[:map [:stages ...]]` conjunct, which would strip every other key of the query
+   [:fn
+    {:error/message "A measure definition's stages must be measure stages"}
+    #(mr/validate [:sequential [:ref ::stage]] (:stages %))]])

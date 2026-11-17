@@ -38,7 +38,7 @@
 (defn- constraint->column-names
   "Given a constraint with `constraint-name` fetch the column names associated with that constraint."
   [database constraint-name]
-  (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database))
+  (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database)
         sql-args  ["select table_catalog, table_schema, column_name from information_schema.key_column_usage where constraint_name = ?" constraint-name]]
     (first
      (reduce
@@ -221,7 +221,7 @@
     (sql.qp/format-honeysql driver select-hsql)))
 
 (defmethod sql-jdbc.actions/select-created-row :mysql
-  [driver create-hsql conn {:strs [insert_id] :as results}]
+  [driver create-hsql conn {:strs [insert_id]}]
   (let [jdbc-spec        {:connection conn}
         table-components (-> create-hsql :insert-into :components)
         pks              (primary-keys driver jdbc-spec table-components)
@@ -230,5 +230,5 @@
                                      select-sql-args
                                      {:transaction? false, :keywordize? false})]
     (if (next query-results)
-      (log/warn "cannot identify row inserted by" create-hsql "using results" results)
+      (log/warn "cannot identify row inserted: select by primary key returned multiple rows")
       (first query-results))))

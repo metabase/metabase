@@ -4,7 +4,7 @@ import { msgid, ngettext, t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { Box, Stack, Text, Title } from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
-import type { ConcreteTableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 import { useSchemaViewerContext } from "../../../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../../../types";
@@ -20,7 +20,7 @@ type PanelBodyProps = {
 
 export function PanelBody({ node, nodes }: PanelBodyProps) {
   return (
-    <Stack className={S.body} p="lg" gap="lg">
+    <Stack className={S.body} p="xl" gap="xl">
       <DescriptionSection node={node} />
       <OwnerSection node={node} />
       <FieldsSection node={node} nodes={nodes} />
@@ -46,7 +46,7 @@ function DescriptionSection({ node }: SectionProps) {
 function OwnerSection({ node }: SectionProps) {
   const owner = node.data.owner;
   return (
-    <Stack gap="xs" lh="1rem">
+    <Stack gap="xxs" lh="1rem">
       <Title order={6}>{t`Owner`}</Title>
       {owner != null ? (
         <Text lh="h4">{getUserName(owner)}</Text>
@@ -62,7 +62,7 @@ function FieldsSection({ node, nodes }: PanelBodyProps) {
     useSchemaViewerContext();
 
   const nodesByTableId = useMemo(() => {
-    const map = new Map<ConcreteTableId, SchemaViewerFlowNode>();
+    const map = new Map<TableId, SchemaViewerFlowNode>();
     for (const n of nodes) {
       map.set(n.data.table_id, n);
     }
@@ -72,7 +72,7 @@ function FieldsSection({ node, nodes }: PanelBodyProps) {
   const fields = node.data.fields;
   const count = fields.length;
   return (
-    <Stack gap="md" lh="1rem">
+    <Stack gap="lg" lh="1rem">
       <Title className={CS.textWrap} order={6}>
         {ngettext(msgid`${count} field`, `${count} fields`, count)}
       </Title>

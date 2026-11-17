@@ -1,20 +1,29 @@
 import { getMainStore } from "__support__/entities-store";
-import { getParameters } from "metabase/dashboard/selectors";
-import type { State } from "metabase/redux/store";
+import { setupFieldEndpoints } from "__support__/server-mocks";
 import {
   createMockDashboardState,
   createMockState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { getParameters } from "metabase/dashboard/selectors";
+import type { State } from "metabase/redux/store";
+import { performUndo } from "metabase/redux/undo";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockDashboardCard,
-  createMockNativeDatasetQuery,
+  createMockField,
   createMockParameter,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
-import { createMockNormalizedField } from "metabase-types/api/mocks/schema";
 
+import {
+  MATCHING_TARGET,
+  PARAMETER,
+  createAutoWireState,
+  createOrdersDashcard,
+  getAutoConnectToasts,
+} from "./auto-wire-parameters/tests/setup";
 import {
   REMOVE_PARAMETER,
   removeParameter,
@@ -23,6 +32,14 @@ import {
   setParameterMapping,
   setParameterType,
 } from "./parameters";
+
+const NATIVE_QUERY = Lib.toJsQuery(
+  Lib.createTestNativeQuery(SAMPLE_PROVIDER, { query: "SELECT 1" }),
+);
+
+const STRUCTURED_QUERY = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+);
 
 function setup(initialState: State) {
   return getMainStore(initialState);
@@ -56,20 +73,20 @@ describe("setParameterType", () => {
           card_id: 1,
           card: createMockCard({
             id: 1,
-            dataset_query: createMockNativeDatasetQuery(),
+            dataset_query: NATIVE_QUERY,
           }),
           series: [
             createMockCard({
               id: 2,
-              dataset_query: createMockNativeDatasetQuery(),
+              dataset_query: NATIVE_QUERY,
             }),
             createMockCard({
               id: 3,
-              dataset_query: createMockStructuredDatasetQuery(),
+              dataset_query: STRUCTURED_QUERY,
             }),
             createMockCard({
               id: 4,
-              dataset_query: createMockNativeDatasetQuery(),
+              dataset_query: NATIVE_QUERY,
             }),
           ],
           parameter_mappings: [
@@ -214,9 +231,84 @@ describe("removeParameter", () => {
       payload: { id: "123" },
     });
   });
+
+  it("should unlink the removed parameter from the parameters it filtered (metabase#49556)", async () => {
+    const store = setup(
+      createMockState({
+        dashboard: createMockDashboardState({
+          dashboardId: 1,
+          dashboards: {
+            "1": createMockStoreDashboard({
+              id: 1,
+              parameters: [
+                createMockParameter({
+                  id: "target",
+                  filteringParameters: ["source", "other"],
+                }),
+                createMockParameter({ id: "source" }),
+                createMockParameter({ id: "other" }),
+              ],
+            }),
+          },
+        }),
+      }),
+    );
+
+    await store.dispatch(removeParameter("source"));
+
+    const parameters = getParameters(store.getState());
+    expect(parameters.map(({ id }) => id)).toEqual(["target", "other"]);
+    expect(parameters[0].filteringParameters).toEqual(["other"]);
+  });
 });
 
 describe("setParameterMapping", () => {
+  it("snapshots the mapping just set so auto-wire undo does not clear it", async () => {
+    const dashcard = createOrdersDashcard({ seriesCardIds: [2] });
+    const store = setup(createAutoWireState([dashcard]));
+    const userMapping = {
+      parameter_id: PARAMETER.id,
+      card_id: dashcard.card.id,
+      target: MATCHING_TARGET,
+    };
+
+    await store.dispatch(
+      setParameterMapping(
+        PARAMETER.id,
+        dashcard.id,
+        dashcard.card.id,
+        MATCHING_TARGET,
+      ),
+    );
+
+    expect(
+      store.getState().dashboard.dashcards[dashcard.id].parameter_mappings,
+    ).toEqual([userMapping]);
+
+    const autoWireToast = getAutoConnectToasts(store.getState())[0];
+    await store.dispatch(performUndo(autoWireToast.id));
+
+    expect(
+      store.getState().dashboard.dashcards[dashcard.id].parameter_mappings,
+    ).toEqual([
+      userMapping,
+      {
+        parameter_id: PARAMETER.id,
+        card_id: 2,
+        target: MATCHING_TARGET,
+      },
+    ]);
+
+    const undoToast = store
+      .getState()
+      .undo.find(({ type }) => type === "filterAutoConnectDone");
+    await store.dispatch(performUndo(undoToast!.id));
+
+    expect(
+      store.getState().dashboard.dashcards[dashcard.id].parameter_mappings,
+    ).toEqual([userMapping]);
+  });
+
   describe("QUE2-326: updates ID parameter type when mapped to a field", () => {
     function setupIdMapping({
       fieldId,
@@ -247,34 +339,19 @@ describe("setParameterMapping", () => {
               card_id: 1,
               card: createMockCard({
                 id: 1,
-                dataset_query: createMockStructuredDatasetQuery(),
+                dataset_query: STRUCTURED_QUERY,
               }),
             }),
           },
         }),
-        entities: {
-          collections: {},
-          dashboards: {},
-          databases: {},
-          schemas: {},
-          tables: {},
-          fields:
-            fieldId != null
-              ? {
-                  [String(fieldId)]: createMockNormalizedField({
-                    id: fieldId,
-                    uniqueId: String(fieldId),
-                    base_type: fieldBaseType,
-                  }),
-                }
-              : {},
-          segments: {},
-          measures: {},
-          metrics: {},
-          snippets: {},
-          questions: {},
-        },
       });
+
+      if (fieldId != null) {
+        setupFieldEndpoints(
+          createMockField({ id: fieldId, base_type: fieldBaseType }),
+        );
+      }
+
       const store = setup(state);
       return { store };
     }
@@ -363,30 +440,11 @@ describe("setParameterMapping", () => {
               card_id: 1,
               card: createMockCard({
                 id: 1,
-                dataset_query: createMockStructuredDatasetQuery(),
+                dataset_query: STRUCTURED_QUERY,
               }),
             }),
           },
         }),
-        entities: {
-          collections: {},
-          dashboards: {},
-          databases: {},
-          schemas: {},
-          tables: {},
-          fields: {
-            "42": createMockNormalizedField({
-              id: 42,
-              uniqueId: "42",
-              base_type: "type/Integer",
-            }),
-          },
-          segments: {},
-          measures: {},
-          metrics: {},
-          snippets: {},
-          questions: {},
-        },
       });
       const store = setup(state);
       await store.dispatch(

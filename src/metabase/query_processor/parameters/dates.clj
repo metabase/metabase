@@ -10,12 +10,14 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.query-processor.error-type :as qp.error-type]
+   ;; probes whether the ambient store is bound so qp.timezone/now can use the query's timezone
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.date-2 :as u.date]
@@ -75,10 +77,12 @@
    (comparison-range start end unit :day))
 
   ([start end unit resolution]
-   (merge
-    (u.date/comparison-range start unit :>= {:resolution resolution})
-    (u.date/comparison-range end   unit :<= {:resolution resolution, :end :inclusive})
-    {:unit unit})))
+   (let [time-config (lib-be/time-config)
+         options     {:resolution resolution}]
+     (merge
+      (u.date/comparison-range time-config start unit :>= options)
+      (u.date/comparison-range time-config end unit :<= (assoc options :end :inclusive))
+      {:unit unit}))))
 
 (defn- second-range
   [start end]
@@ -164,7 +168,8 @@
       :unit – finds a matching date unit and merges date unit operations to the result
       :int-value, :int-value-1 – converts the group value to integer
       :date, :date1, date2 – converts the group value to absolute date"
-  [regex :- [:fn {:error/message "regular expression"} m/regexp?] group-labels]
+  [regex        :- [:fn {:error/message "regular expression"} m/regexp?]
+   group-labels :- [:sequential :keyword]]
   (fn [param-value]
     (when-let [regex-result (re-matches regex param-value)]
       (into {} (mapcat expand-parser-groups group-labels (rest regex-result))))))
@@ -272,10 +277,14 @@
 (defn- ->iso-8601-date-time [t]
   (t/format :iso-local-date-time t))
 
+(mr/def ::temporal-unit
+  (into [:enum] u.date/add-units))
+
 (mu/defn- range->filter :- :mbql.clause/between
-  [{:keys [start end]} :- [:map
-                           [:start :any]
-                           [:end   :any]]
+  [{:keys [start end]} :- [:map {:closed true}
+                           [:start (lib.schema.common/instance-of-class Temporal)]
+                           [:end   (lib.schema.common/instance-of-class Temporal)]
+                           [:unit  {:optional true} ::temporal-unit]]
    field-clause        :- :mbql.clause/field]
   (lib/between (with-temporal-unit-if-field field-clause :day) (->iso-8601-date start) (->iso-8601-date end)))
 
@@ -332,6 +341,15 @@
     :minute
     :day))
 
+(defn- absolute-date-filter
+  "Compares `field-clause` to `date` with `compare-fn`, bucketing by minute when `date` includes a time."
+  [compare-fn date field-clause]
+  (let [unit (absolute-date->unit date)]
+    (compare-fn (with-temporal-unit-if-field field-clause unit)
+                (case unit
+                  :day    (->iso-8601-date date)
+                  :minute (->iso-8601-date-time date)))))
+
 (def ^:private absolute-date-string-decoders
   ;; year and month
   [{:parser (regex->parser #"([0-9]{4}-[0-9]{2})" [:date])
@@ -351,11 +369,7 @@
     :range  (fn [{:keys [date]} _]
               {:start date :end date :unit (absolute-date->unit date)})
     :filter (fn [{:keys [date]} field-clause]
-              (let [unit        (absolute-date->unit date)
-                    iso8601str  (case unit
-                                  :day    (->iso-8601-date date)
-                                  :minute (->iso-8601-date-time date))]
-                (lib/= (with-temporal-unit-if-field field-clause unit) iso8601str)))}
+              (absolute-date-filter lib/= date field-clause))}
    ;; day range
    {:parser (regex->parser #"([0-9-T]+)~([0-9-T]+)" [:date-1 :date-2])
     :range  (fn [{:keys [date-1 date-2]} _]
@@ -376,13 +390,13 @@
     :range  (fn [{:keys [date]} _]
               {:end date :unit (absolute-date->unit date)})
     :filter (fn [{:keys [date]} field-clause]
-              (lib/< (with-temporal-unit-if-field field-clause :day) (->iso-8601-date date)))}
+              (absolute-date-filter lib/< date field-clause))}
    ;; after day
    {:parser (regex->parser #"([0-9-T:]+)~" [:date])
     :range  (fn [{:keys [date]} _]
               {:start date :unit (absolute-date->unit date)})
     :filter (fn [{:keys [date]} field-clause]
-              (lib/> (with-temporal-unit-if-field field-clause :day) (->iso-8601-date date)))}
+              (absolute-date-filter lib/> date field-clause))}
    ;; exclusions
    {:parser (regex->parser date-exclude-regex [:unit :exclusions])
     :filter (fn [{:keys [unit exclusions]} field-clause]
@@ -399,27 +413,33 @@
   "Returns the first successfully decoded value, run through both parser and a range/filter decoder depending on
   `decoder-type`. This generates an *inclusive* range by default. The range is adjusted to be exclusive as needed: see
   dox for [[date-string->range]] for more details."
-  [decoders
-   decoder-type :- [:enum :range :filter]
-   decoder-param
-   date-string :- :string]
+  [decoders      :- [:sequential [:map {:closed true}
+                                  [:parser fn?]
+                                  [:range  {:optional true} fn?]
+                                  [:filter {:optional true} fn?]]]
+   decoder-type   :- [:enum :range :filter]
+   decoder-param  :- [:or [:maybe (lib.schema.common/instance-of-class java.time.LocalDateTime)] :mbql.clause/field :mbql.clause/expression]
+   date-string    :- :string]
   (some (fn [{parser :parser, parser-result-decoder decoder-type}]
           (when-let [parser-result (and parser-result-decoder (parser date-string))]
             (parser-result-decoder parser-result decoder-param)))
         decoders))
 
-(mr/def ::temporal-unit
-  (into [:enum] u.date/add-units))
-
 (mr/def ::temporal-range
-  [:map
+  [:map {:closed true}
    [:start {:optional true} (lib.schema.common/instance-of-class Temporal)]
    [:end   {:optional true} (lib.schema.common/instance-of-class Temporal)]
    [:unit                   ::temporal-unit]])
 
+(mr/def ::inclusive-options
+  [:map {:closed true}
+   [:inclusive-start? {:optional true} [:maybe :boolean]]
+   [:inclusive-end?   {:optional true} [:maybe :boolean]]])
+
 (mu/defn- adjust-inclusive-range-if-needed :- [:maybe ::temporal-range]
   "Make an inclusive date range exclusive as needed."
-  [temporal-range :- [:maybe ::temporal-range] {:keys [inclusive-start? inclusive-end?]}]
+  [temporal-range :- [:maybe ::temporal-range]
+   {:keys [inclusive-start? inclusive-end?]} :- ::inclusive-options]
   (-> temporal-range
       (m/update-existing :start #(if inclusive-start?
                                    %
@@ -487,12 +507,12 @@
 
   Note that some ranges are open-ended on one side, and will have only a `:start` or an `:end`."
   ;; 1-arg version returns inclusive start/end; 2-arg version can adjust as needed
-  ([date-string]
+  ([date-string :- ::lib.schema.common/non-blank-string]
    (date-string->range date-string nil))
 
   ([date-string  :- ::lib.schema.common/non-blank-string
     {:keys [inclusive-start? inclusive-end?]
-     :or   {inclusive-start? true inclusive-end? true}}]
+     :or   {inclusive-start? true inclusive-end? true}} :- [:maybe ::inclusive-options]]
    (let [options {:inclusive-start? inclusive-start?, :inclusive-end? inclusive-end?}]
      (-> (date-string->raw-range date-string)
          (adjust-inclusive-range-if-needed options)
@@ -561,7 +581,8 @@
   This function is meant to be used for generating inclusive intervals for `:type/DateTime` field filters.
 
   * End-exclusive gte lt filters are generated for `:type/DateTime` fields."
-  [raw-date-str field-type]
+  [raw-date-str :- ::lib.schema.common/non-blank-string
+   field-type   :- ::lib.schema.common/base-type]
   (let [;; `raw-date-str` is sanitized in case it contains millis and timezone which are incompatible
         ;; with [[date-string->range]]. `substitute-field-filter-test` expects that to happen.
         [range-raw unit] (try (let [r (date-string->raw-range raw-date-str)]

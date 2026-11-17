@@ -8,8 +8,13 @@ import {
   SAMPLE_PROVIDER,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
+import type { TestBreakoutSpec } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS_ID,
+} from "metabase-types/api/mocks/presets";
 
 import { TimeseriesChrome } from "./TimeseriesChrome";
 
@@ -55,13 +60,70 @@ describe("TimeseriesChrome", () => {
             type: "table",
             id: ORDERS_ID,
           },
-          breakouts: [{ type: "column", name: "CATEGORY" }],
+          breakouts: [
+            {
+              type: "column",
+              name: "CATEGORY",
+              sourceFieldId: ORDERS.PRODUCT_ID,
+            },
+          ],
         },
       ],
     });
     setup({ query });
     expect(screen.queryByText("View")).not.toBeInTheDocument();
   });
+
+  it.each<{ title: string; breakouts: TestBreakoutSpec[] }>([
+    {
+      title: "before",
+      breakouts: [
+        { type: "column", name: "Custom column" },
+        { type: "column", name: "CREATED_AT", unit: "month" },
+      ],
+    },
+    {
+      title: "after",
+      breakouts: [
+        { type: "column", name: "CREATED_AT", unit: "month" },
+        { type: "column", name: "Custom column" },
+      ],
+    },
+  ])(
+    "should render the chrome with a custom column breakout $title the temporal one (metabase#34688, metabase#34690)",
+    ({ breakouts }) => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            expressions: [
+              {
+                name: "Custom column",
+                value: {
+                  type: "operator",
+                  operator: "concat",
+                  args: [
+                    { type: "column", name: "TITLE" },
+                    { type: "literal", value: "!" },
+                  ],
+                },
+              },
+            ],
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+            breakouts,
+          },
+        ],
+      });
+      setup({ query });
+
+      expect(
+        screen.getByTestId("timeseries-filter-button"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("timeseries-bucket-button")).toHaveTextContent(
+        "Month",
+      );
+    },
+  );
 
   it("should allow to change the temporal unit for a breakout", async () => {
     const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
@@ -74,7 +136,6 @@ describe("TimeseriesChrome", () => {
           breakouts: [
             {
               type: "column",
-              sourceName: "ORDERS",
               name: "CREATED_AT",
               unit: "month",
             },
@@ -103,13 +164,11 @@ describe("TimeseriesChrome", () => {
           breakouts: [
             {
               type: "column",
-              sourceName: "ORDERS",
               name: "CREATED_AT",
               unit: "month",
             },
             {
               type: "column",
-              sourceName: "ORDERS",
               name: "CREATED_AT",
               unit: "year",
             },

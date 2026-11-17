@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { parse as parseUrl } from "url";
 
-import type { LocationDescriptor } from "history";
-import { push, replace } from "react-router-redux";
-
 import { isEqualCard } from "metabase/common/utils/card";
+import { selectQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { createThunkAction } from "metabase/redux";
+import type { Path } from "metabase/router";
+import { getPendingNavigationPath, navigate } from "metabase/router";
 import { getBasename } from "metabase/utils/basename";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -17,7 +18,7 @@ import {
   getQueryBuilderMode,
   getQuestion,
   getUiControls,
-} from "../selectors";
+} from "../store/selectors";
 import { getQueryBuilderModeFromLocation } from "../typed-utils";
 import {
   getCurrentQueryParams,
@@ -103,13 +104,16 @@ export const updateUrl = createThunkAction(
       );
       const tableUrl =
         isOnTableRoute && objectId == null && queryBuilderMode === "view"
-          ? getTableUrlForPristineQuestion(question)
+          ? getTableUrlForPristineQuestion(
+              question,
+              selectQuestionFromOptsBuilder(getState()),
+            )
           : null;
       const url =
         tableUrl ?? getURLForCardState(newState, dirty, queryParams, objectId);
 
       const urlParsed = parseUrl(url);
-      const locationDescriptor: LocationDescriptor = {
+      const to: Partial<Path> = {
         pathname: getPathNameFromQueryBuilderMode({
           pathname: urlParsed.pathname || "",
           queryBuilderMode,
@@ -117,13 +121,12 @@ export const updateUrl = createThunkAction(
         }),
         search: urlParsed.search ?? undefined,
         hash: urlParsed.hash ?? undefined,
-        state: newState,
       };
 
       const isSameURL =
-        locationDescriptor.pathname === window.location.pathname &&
-        (locationDescriptor.search || "") === (window.location.search || "") &&
-        (locationDescriptor.hash || "") === (window.location.hash || "");
+        to.pathname === window.location.pathname &&
+        (to.search || "") === (window.location.search || "") &&
+        (to.hash || "") === (window.location.hash || "");
       const isSameCard =
         currentState && isEqualCard(currentState.card, newState.card);
 
@@ -131,10 +134,25 @@ export const updateUrl = createThunkAction(
         return;
       }
 
+      // Saving a card finishes asynchronously, so this can run after the user
+      // has already been sent somewhere else, for instance to the dashboard the
+      // question was just saved into. A `route.lazy` destination keeps the query
+      // builder mounted until its chunk resolves, and this navigation would
+      // replace that pending one. The URL only mirrors the card, so there is
+      // nothing to write if we are leaving to a different destination.
+      //
+      // Only a pending navigation to a *different* path is someone else's, so
+      // sit out for that one alone. Under React 19 the lazy destination keeps
+      // the navigation pending a render longer, so a blanket check here dropped
+      // the post-save URL sync to the card's own page (metabase#51020).
+      const pendingPath = getPendingNavigationPath();
+      if (pendingPath != null && pendingPath !== to.pathname) {
+        return;
+      }
+
       if (replaceState == null) {
         const isSameMode =
-          getQueryBuilderModeFromLocation(locationDescriptor)
-            .queryBuilderMode ===
+          getQueryBuilderModeFromLocation(to).queryBuilderMode ===
           getQueryBuilderModeFromLocation(window.location).queryBuilderMode;
 
         // if the serialized card is identical replace the previous state instead of adding a new one
@@ -148,25 +166,22 @@ export const updateUrl = createThunkAction(
       // Keep the New Query page mounted while the hash updates, so the mode
       // chrome (heading + segmented control) stays visible until engagement.
       const isOnNewQueryRoute = window.location.pathname.startsWith(
-        `${api.basename}/question/new`,
+        `${getBasename()}/question/new`,
       );
       if (isOnNewQueryRoute) {
-        locationDescriptor.pathname = window.location.pathname.slice(
-          api.basename.length,
-        );
+        to.pathname = window.location.pathname.slice(getBasename().length);
       }
 
       try {
         if (replaceState) {
-          const replaceDescriptor = preserveNavbarState
-            ? {
-                ...locationDescriptor,
-                state: { ...locationDescriptor.state, preserveNavbarState },
-              }
-            : locationDescriptor;
-          dispatch(replace(replaceDescriptor));
+          navigate(to, {
+            replace: true,
+            state: preserveNavbarState
+              ? { ...newState, preserveNavbarState }
+              : newState,
+          });
         } else {
-          dispatch(push(locationDescriptor));
+          navigate(to, { state: newState });
         }
       } catch (e) {
         // saving the location state can exceed the session storage quota (metabase#25312)

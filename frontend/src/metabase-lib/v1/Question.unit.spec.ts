@@ -1,0 +1,567 @@
+import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import {
+  createMockColumn,
+  createMockDatasetData,
+  createMockParameter,
+} from "metabase-types/api/mocks";
+import {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+
+import Question from "./Question";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+
+const card = {
+  display: "table",
+  visualization_settings: {},
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  }),
+};
+const base_question = new Question(card, metadata);
+
+const orders_raw_card = {
+  id: 1,
+  name: "Raw orders data",
+  display: "table",
+  visualization_settings: {},
+  can_write: true,
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  }),
+};
+const orders_raw_question = new Question(orders_raw_card, metadata);
+
+const orders_count_card = {
+  id: 2,
+  name: "# orders data",
+  display: "table",
+  visualization_settings: {},
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count" }],
+      },
+    ],
+  }),
+};
+const orders_count_question = new Question(orders_count_card, metadata);
+const ordersCountData = createMockDatasetData({
+  cols: [
+    createMockColumn({
+      name: "count",
+      display_name: "Count",
+      base_type: "type/BigInteger",
+      semantic_type: "type/Quantity",
+      effective_type: "type/BigInteger",
+    }),
+  ],
+  rows: [[1]],
+});
+
+const multipleRowsData = createMockDatasetData({
+  cols: [
+    createMockColumn({ display_name: "foo" }),
+    createMockColumn({ display_name: "bar" }),
+  ],
+  rows: [
+    [10, 20],
+    [100, 200],
+  ],
+});
+
+const native_orders_count_card = {
+  id: 3,
+  name: "# orders data",
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "native",
+    database: SAMPLE_DB_ID,
+    native: {
+      query: "SELECT count(*) FROM orders",
+    },
+  },
+};
+const native_orders_count_question = new Question(
+  native_orders_count_card,
+  metadata,
+);
+
+const orders_count_by_id_card = {
+  id: 2,
+  name: "# orders data",
+  can_write: false,
+  display: "table",
+  visualization_settings: {},
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count" }],
+        breakouts: [{ type: "column", fieldId: ORDERS.ID }],
+      },
+    ],
+  }),
+};
+
+const orders_count_by_id_question = new Question(
+  orders_count_by_id_card,
+  metadata,
+);
+
+describe("Question", () => {
+  describe("CREATED WITH", () => {
+    describe("new Question(alreadyDefinedCard, metadata)", () => {
+      it("has an id", () => {
+        expect(orders_raw_question.id()).toBe(orders_raw_card.id);
+      });
+
+      it("has a name", () => {
+        expect(orders_raw_question.displayName()).toBe(orders_raw_card.name);
+      });
+
+      it("is runnable", () => {
+        expect(orders_raw_question.canRun()).toBe(true);
+      });
+
+      it("has correct display settings", () => {
+        expect(orders_raw_question.display()).toBe("table");
+      });
+    });
+
+    describe("Question.create(...)", () => {
+      const question = Question.create({
+        metadata,
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+        DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
+      });
+
+      it("defaults to table display", () => {
+        expect(question.display()).toEqual("table");
+      });
+    });
+  });
+
+  describe("STATUS METHODS", () => {
+    describe("canRun()", () => {
+      it("You should be able to run a newly created query", () => {
+        expect(orders_raw_question.canRun()).toBe(true);
+      });
+    });
+
+    describe("canWrite()", () => {
+      it("You should be able to write to a question you have permissions to", () => {
+        expect(orders_raw_question.canWrite()).toBe(true);
+      });
+
+      it("You should not be able to write to a question you don't have permissions to", () => {
+        expect(orders_count_by_id_question.canWrite()).toBe(false);
+      });
+    });
+
+    describe("isSaved()", () => {
+      it("A newly created query doesn't have an id and shouldn't be marked as isSaved()", () => {
+        expect(base_question.isSaved()).toBe(false);
+      });
+
+      it("A saved question does have an id and should be marked as isSaved()", () => {
+        expect(orders_raw_question.isSaved()).toBe(true);
+      });
+    });
+  });
+
+  describe("At the heart of a question is an MBQL query.", () => {
+    describe("setQuery(query)", () => {
+      it("updates the dataset_query of card", () => {
+        const newRawQuestion = orders_raw_question.setQuery(
+          native_orders_count_question.query(),
+        );
+        expect(Lib.queryDisplayInfo(newRawQuestion.query()).isNative).toBe(
+          true,
+        );
+      });
+    });
+
+    describe("setDatasetQuery(datasetQuery)", () => {
+      it("updates the dataset_query of card", () => {
+        const rawQuestion = orders_raw_question.setDatasetQuery(
+          native_orders_count_question.datasetQuery(),
+        );
+
+        expect(Lib.queryDisplayInfo(rawQuestion.query()).isNative).toBe(true);
+      });
+    });
+  });
+
+  describe("RESETTING METHODS", () => {
+    describe("withoutNameAndId()", () => {
+      it("unsets the name and id", () => {
+        const newQuestion = orders_raw_question.withoutNameAndId();
+
+        expect(newQuestion.id()).toBeUndefined();
+        expect(newQuestion.displayName()).toBeUndefined();
+      });
+
+      it("does not change the original", () => {
+        expect(orders_raw_question.id()).toBeDefined();
+        expect(orders_raw_question.displayName()).toBeDefined();
+      });
+    });
+  });
+
+  describe("VISUALIZATION METHODS", () => {
+    describe("display()", () => {
+      it("returns the card's visualization type", () => {
+        // This forces a table view.
+        const tableQuestion = orders_raw_question.setDisplay("table");
+        // Not sure I'm a huge fan of magic strings here.
+        expect(tableQuestion.display()).toBe("table");
+      });
+    });
+
+    describe("setDisplay(display)", () => {
+      it("sets the card's visualization type", () => {
+        // Not sure I'm a huge fan of magic strings here.
+        const scalarQuestion = orders_raw_question.setDisplay("scalar");
+        expect(scalarQuestion.display()).toBe("scalar");
+        expect(orders_raw_question.display()).not.toBe("scalar");
+      });
+    });
+
+    describe("setDefaultDisplay", () => {
+      it("sets display to 'scalar' for order count", () => {
+        const question = orders_count_question.setDefaultDisplay();
+        expect(question.display()).toBe("scalar");
+      });
+
+      it("should not set the display to scalar if table was selected and display is locked", () => {
+        const question = orders_count_question
+          .setDisplay("table")
+          .lockDisplay()
+          .maybeResetDisplay(ordersCountData, ["table", "scalar"], undefined);
+
+        expect(question.display()).toBe("table");
+      });
+
+      it("should set the display to scalar if a non-scalar was selected and display is locked", () => {
+        const question = base_question
+          .setDisplay("table")
+          .maybeResetDisplay(ordersCountData, ["table", "scalar"], undefined);
+
+        expect(question.display()).toBe("scalar");
+      });
+
+      it("should not set the display to scalar if another scalar display was selected and display is locked", () => {
+        const question = base_question
+          .setDisplay("gauge")
+          .maybeResetDisplay(
+            ordersCountData,
+            ["table", "scalar", "gauge"],
+            undefined,
+          );
+
+        expect(question.display()).toBe("gauge");
+      });
+
+      it("switch to table view if we had a scalar and now have more than 1x1 data", () => {
+        const question = base_question
+          .setDisplay("scalar")
+          .maybeResetDisplay(multipleRowsData, ["table"], undefined);
+
+        expect(question.display()).toBe("table");
+      });
+
+      it("should set the display to scalar if funnel was selected", () => {
+        const question = orders_count_question
+          .setDisplay("funnel")
+          .lockDisplay()
+          .maybeResetDisplay(ordersCountData, ["table", "scalar"], undefined);
+
+        expect(question.display()).toBe("scalar");
+      });
+    });
+
+    describe("maybeResetDisplay", () => {
+      it("should do nothing when it was locked with sensible display", () => {
+        const sensibleDisplays = ["table", "scalar"];
+        const previousSensibleDisplays = sensibleDisplays;
+        const question = new Question(orders_count_card, metadata)
+          .setDisplay("scalar")
+          .lockDisplay()
+          .maybeResetDisplay(
+            ordersCountData,
+            sensibleDisplays,
+            previousSensibleDisplays,
+          );
+
+        expect(question.displayIsLocked()).toBe(true);
+        expect(question.display()).toBe("scalar");
+      });
+
+      it("should do nothing when it was locked with nonsense display", () => {
+        const sensibleDisplays = ["table", "scalar"];
+        const previousSensibleDisplays = sensibleDisplays;
+        const question = new Question(orders_count_card, metadata)
+          .setDisplay("funnel")
+          .lockDisplay()
+          .maybeResetDisplay(
+            ordersCountData,
+            sensibleDisplays,
+            previousSensibleDisplays,
+          );
+
+        expect(question.displayIsLocked()).toBe(true);
+        expect(question.display()).toBe("funnel");
+      });
+
+      it("should use default display when nonsense display is used and was not locked", () => {
+        const sensibleDisplays = ["table", "scalar"];
+        const question = base_question
+          .setDisplay("funnel")
+          .maybeResetDisplay(
+            multipleRowsData,
+            sensibleDisplays,
+            sensibleDisplays,
+          );
+
+        expect(question.display()).not.toBe("funnel");
+        expect(question.display()).toBe("table");
+      });
+
+      it("should unlock and use new sensible display when it was locked with sensible display which has become not sensible", () => {
+        const previousSensibleDisplays = ["funnel"];
+        const sensibleDisplays = ["table", "scalar"];
+        const question = orders_count_question
+          .setDisplay("funnel")
+          .lockDisplay()
+          .maybeResetDisplay(
+            ordersCountData,
+            sensibleDisplays,
+            previousSensibleDisplays,
+          );
+
+        expect(question.displayIsLocked()).toBe(false);
+        expect(question.display()).not.toBe("funnel");
+        expect(sensibleDisplays).toContain(question.display());
+      });
+
+      it("should keep any sensible display when display was locked", () => {
+        const sensibleDisplays = ["table", "scalar"];
+        const question = base_question
+          .setDisplay("scalar")
+          .lockDisplay()
+          .maybeResetDisplay(multipleRowsData, sensibleDisplays, undefined);
+
+        expect(question.display()).not.toBe("table");
+        expect(question.display()).toBe("scalar");
+      });
+
+      it("should keep any sensible display when display was not locked (metabase#32075)", () => {
+        const sensibleDisplays = ["table", "scalar"];
+        const question = base_question
+          .setDisplay("scalar")
+          .maybeResetDisplay(multipleRowsData, sensibleDisplays, undefined);
+
+        expect(question.display()).not.toBe("table");
+        expect(question.display()).toBe("scalar");
+      });
+
+      it("should switch to scalar display for 1x1 data", () => {
+        const sensibleDisplays = ["table", "scalar"];
+        const question = orders_count_question
+          .setDisplay("table")
+          .maybeResetDisplay(ordersCountData, sensibleDisplays, undefined);
+
+        expect(question.display()).not.toBe("table");
+        expect(question.display()).toBe("scalar");
+      });
+    });
+  });
+
+  describe("COMPARISON TO OTHER QUESTIONS", () => {
+    describe("isDirtyComparedTo(question)", () => {
+      it("New questions are automatically dirty", () => {
+        const newQuestion = orders_raw_question.withoutNameAndId();
+        expect(newQuestion.isDirtyComparedTo(orders_raw_question)).toBe(true);
+      });
+
+      it("Changing vis settings makes the question dirty", () => {
+        const underlyingDataQuestion = orders_count_question.setSettings({
+          "table.pivot": false,
+        });
+        expect(
+          underlyingDataQuestion.isDirtyComparedTo(orders_count_question),
+        ).toBe(true);
+      });
+
+      it("questions that differ only by randomized idents are considered equal", () => {
+        const question1 = Question.create({
+          metadata: createMockMetadata(),
+          DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+          DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
+        });
+        const question2 = Question.create({
+          metadata: createMockMetadata(),
+          DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+          DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
+        });
+        expect(question1.isDirtyComparedTo(question2)).toBe(false);
+      });
+
+      it("questions that differ by query only are not considered equal", () => {
+        const question1 = Question.create({
+          metadata: createMockMetadata(),
+          DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+          DEPRECATED_RAW_MBQL_tableId: PRODUCTS_ID,
+        });
+        const question2 = Question.create({
+          metadata: createMockMetadata(),
+          DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+          DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
+        });
+        expect(question1.isDirtyComparedTo(question2)).toBe(true);
+      });
+    });
+  });
+
+  describe("Question.prototype.getResultMetadata", () => {
+    it("should return the `result_metadata` property off the underlying card", () => {
+      const columns = [
+        createMockColumn({ id: 1 }),
+        createMockColumn({ id: 2 }),
+      ];
+      const question = base_question.setResultsMetadata({ columns });
+      expect(question.getResultMetadata()).toEqual(columns);
+    });
+
+    it("should default to an array", () => {
+      const question = base_question.setResultsMetadata(null);
+      expect(question.getResultMetadata()).toEqual([]);
+    });
+  });
+
+  describe("Question.prototype.setDashboardProps", () => {
+    it("should set a `dashboardId` property and a `dashcardId` property on the question's card", () => {
+      const questionWithDashboardId = base_question.setDashboardProps({
+        dashboardId: 123,
+        dashcardId: 456,
+      });
+
+      expect(base_question).not.toBe(questionWithDashboardId);
+      expect(
+        questionWithDashboardId._doNotCallSerializableCard().dashboardId,
+      ).toEqual(123);
+      expect(
+        questionWithDashboardId._doNotCallSerializableCard().dashcardId,
+      ).toEqual(456);
+    });
+  });
+
+  describe("Question.prototype.setParameters", () => {
+    it("should set a `parameters` property on the question's card", () => {
+      const parameters = [createMockParameter({ type: "category" })];
+      const questionWithParameters = base_question.setParameters(parameters);
+
+      expect(base_question).not.toBe(questionWithParameters);
+      expect(
+        questionWithParameters._doNotCallSerializableCard().parameters,
+      ).toEqual(parameters);
+    });
+  });
+
+  describe("Question.prototype.setParameterValues", () => {
+    it("should set a `_parameterValues` property on the question", () => {
+      const parameterValues = { foo: "bar" };
+      const questionWithParameterValues =
+        base_question.setParameterValues(parameterValues);
+
+      expect(base_question).not.toBe(questionWithParameterValues);
+      expect(questionWithParameterValues._parameterValues).toEqual(
+        parameterValues,
+      );
+    });
+  });
+
+  describe("Question.prototype.parameters", () => {
+    it("should return an empty array if no parameters are set on the structured question", () => {
+      expect(base_question.parameters()).toEqual([]);
+    });
+
+    it("should return a question's parameters + metadata and the parameter's value if present", () => {
+      // slugs differ from names so parameters() deriving a slug would be caught
+      const fooParameter = createMockParameter({
+        type: "category",
+        name: "foo",
+        slug: "foo_slug",
+        id: "foo_id",
+        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+      });
+      const barParameter = createMockParameter({
+        type: "category",
+        name: "bar",
+        slug: "bar_slug",
+        id: "bar_id",
+      });
+      const question = base_question
+        .setParameters([fooParameter, barParameter])
+        .setParameterValues({
+          foo_id: "abc",
+        });
+
+      expect(question.parameters()).toEqual([
+        {
+          ...fooParameter,
+          value: "abc",
+          fields: [
+            expect.objectContaining({
+              id: PRODUCTS.CATEGORY,
+            }),
+          ],
+          hasVariableTemplateTagTarget: false,
+        },
+        {
+          ...barParameter,
+          hasVariableTemplateTagTarget: true,
+          value: null,
+        },
+      ]);
+    });
+  });
+
+  describe("Question.generateQueryDescription", () => {
+    it("should work with multiple aggregations", () => {
+      const question = base_question.setDatasetQuery(
+        Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                { type: "operator", operator: "count" },
+                {
+                  type: "operator",
+                  operator: "sum",
+                  args: [{ type: "column", fieldId: ORDERS.TOTAL }],
+                },
+              ],
+            },
+          ],
+        }),
+      );
+      expect(question.generateQueryDescription()).toEqual(
+        "Orders, Count and Sum of Total",
+      );
+    });
+  });
+});

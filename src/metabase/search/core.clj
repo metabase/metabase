@@ -1,16 +1,21 @@
 (ns metabase.search.core
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
+   [environ.core :as env]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.config :as search.config]
    [metabase.search.debug :as search.debug]
    [metabase.search.engine :as search.engine]
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.ingestion.query :as search.ingestion.query]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
+   [metabase.settings.core :as setting]
+   [metabase.startup.core :as startup]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -32,10 +37,13 @@
   model-set]
  [search.impl
   search
+  ranked-results
+  search-results
   ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
   search-context]
  [search.ingestion
-  bulk-ingest!
+  bulk-ingest!]
+ [search.ingestion.query
   max-searchable-value-length
   searchable-value-trim-sql]
  [search.spec
@@ -84,17 +92,71 @@
 
 (defmethod analytics.core/initial-value :metabase-search/engine-active
   [_ {:keys [engine]}]
-  (if (search.engine/supported-engine? (keyword "search.engine" engine)) 1 0))
+  ;; Can the engine serve queries: in-place always can, indexed engines only while their index is maintained.
+  (if (= :ok (search.engine/engine-status (keyword "search.engine" engine)))
+    1
+    0))
 
 (defn supports-index?
   "Does this instance support a search index, of any sort?"
   []
   (seq (search.engine/active-engines)))
 
+(defn check-for-removed-env-vars!
+  "Fail startup when the removed MB_SEMANTIC_SEARCH_ENABLED kill switch is false, and would have been
+  required to disable the engine, naming the exact configuration change that keeps semantic search off.
+  Otherwise log a warning, with migration guidance when a true value does not match the active engines."
+  []
+  (when-some [legacy-value (env/env :mb-semantic-search-enabled)]
+    (let [base-msg      "MB_SEMANTIC_SEARCH_ENABLED is no longer supported."
+          remove-detail "Remove it from your configuration."]
+      ;; An empty value has no boolean meaning, but its presence still warrants removing the obsolete variable.
+      (if (empty? legacy-value)
+        (log/warn (str base-msg " " remove-detail))
+        (let [enabled?             (setting/string->boolean legacy-value)
+              engines              (search.engine/supported-engines)
+              semantic-default?    (= :search.engine/semantic (first engines))
+              semantic-additional? (contains? (set (search.engine/additional-engines))
+                                              :search.engine/semantic)
+              semantic-supported?  (contains? (set engines) :search.engine/semantic)
+              semantic-active?     (or semantic-default? semantic-additional?)
+              fallback             (when semantic-default? (second engines))
+              ;; Each case is a complete sentence so the remediation remains actionable.
+              error-detail         (when-not enabled?
+                                     (cond
+                                       (and semantic-default? (not fallback))
+                                       "Semantic search is the only supported engine and cannot be disabled; remove MB_SEMANTIC_SEARCH_ENABLED."
+
+                                       (and fallback semantic-additional?)
+                                       (format "To keep semantic search off, set MB_SEARCH_ENGINE=%s and remove semantic from additional-search-engines, then remove MB_SEMANTIC_SEARCH_ENABLED."
+                                               (name fallback))
+
+                                       fallback
+                                       (format "To keep semantic search off, set MB_SEARCH_ENGINE=%s, then remove MB_SEMANTIC_SEARCH_ENABLED."
+                                               (name fallback))
+
+                                       semantic-additional?
+                                       "To keep semantic search off, remove semantic from additional-search-engines, then remove MB_SEMANTIC_SEARCH_ENABLED."))
+              warning-detail       (when (and enabled? (not semantic-active?))
+                                     (if semantic-supported?
+                                       "To enable semantic search, set MB_SEARCH_ENGINE=semantic, then remove MB_SEMANTIC_SEARCH_ENABLED."
+                                       "Semantic search is not supported by this instance; remove MB_SEMANTIC_SEARCH_ENABLED."))
+              msg                  (str base-msg " "
+                                        (or error-detail
+                                            warning-detail
+                                            remove-detail))]
+          (if error-detail
+            (throw (ex-info msg {:env-var "MB_SEMANTIC_SEARCH_ENABLED"}))
+            (log/warn msg)))))))
+
+(defmethod startup/def-startup-validation! ::check-for-removed-env-vars [_]
+  (check-for-removed-env-vars!))
+
 (defn init-index!
   "Ensure there is an index ready to be populated."
   [& {:as opts}]
-  (when (supports-index?)
+  (search.engine/log-resolution!)
+  (when-let [engines (seq (search.engine/active-engines))]
     (log/info "Initializing search indexes")
     (tracing/with-span :search "search.init-index" {}
       (lib-be/with-metadata-provider-cache
@@ -103,7 +165,7 @@
           (let [timer    (u/start-timer)
                 report   (reduce (partial merge-with max)
                                  nil
-                                 (for [e (search.engine/active-engines)]
+                                 (for [e engines]
                                    (search.engine/init! e opts)))
                 duration (u/since-ms timer)]
             (if (seq report)
@@ -120,7 +182,7 @@
             (throw e)))))))
 
 (defn- reindex-logic! [opts]
-  (when (supports-index?)
+  (when-let [engines (seq (search.engine/active-engines))]
     (tracing/with-span :search "search.reindex" {}
       (lib-be/with-metadata-provider-cache
         (try
@@ -128,7 +190,7 @@
           (let [timer    (u/start-timer)
                 report   (reduce (partial merge-with max)
                                  nil
-                                 (for [e (search.engine/active-engines)]
+                                 (for [e engines]
                                    (search.engine/reindex! e opts)))
                 duration (u/since-ms timer)]
             (analytics/inc! :metabase-search/index-reindex-ms duration)
@@ -142,16 +204,19 @@
             (throw e)))))))
 
 (defn reindex!
-  "Populate a new index, and make it active. Simultaneously updates the current index.
-  Returns a future that will complete when the reindexing is done.
-  Respects `search.ingestion/*force-sync*` and waits for the future if it's true.
-  Alternately, if `:async?` is false, it will also run synchronously."
+  "Rebuild the search index.
+  By default, stages a new index and activates it once populated.
+  The active index keeps receiving updates meanwhile.
+  With `:in-place? true`, empties and repopulates the active index instead.
+  Runs asynchronously and returns a future.
+  Runs synchronously and returns a delivered promise when `:async?` is false or
+  [[search.ingestion/*force-sync*]] is true."
   [& {:keys [async?] :or {async? true} :as opts}]
   (let [f (fn []
             (try
               (reindex-logic! opts)
               (catch Exception e
-                (log/error e "Reindex failed")
+                (log/errorf "Reindex failed: %s" (ex-message e))
                 (analytics/inc! :metabase-search/index-error)
                 (throw e))))]
     (if (or search.ingestion/*force-sync* (not async?))
@@ -173,22 +238,136 @@
     (doseq [e (search.engine/active-engines)]
       (search.engine/sync-from-restored-db! e))))
 
+(defn- hook-selectors
+  "The `[search-model where-clause]` pairs that `instances` feed, without conditions that can never match.
+  With `always?` false, an instance contributes only to hooks whose indexed fields its changes touch."
+  [instances always?]
+  (into #{}
+        (comp (mapcat #(search.spec/search-models-to-update % always?))
+              (remove (comp search.util/impossible-condition? second)))
+        instances))
+
+(defn- enqueue-hook-selectors!
+  "Queue the [[hook-selectors]] of `instances` for ingestion, when the index is supported."
+  [instances always?]
+  (when (supports-index?)
+    (when-let [updates (seq (hook-selectors instances always?))]
+      (search.ingestion/ingest-maybe-async! updates))))
+
 (defn update!
   "Given a new or updated instance, put all the corresponding search entries if needed in the queue."
   [instance & [always?]]
+  (enqueue-hook-selectors! [instance] always?))
+
+;; Steps run on the committing thread while its connection is still checked out, so each one only queues work.
+;; Without an ingestion worker the queued work runs at once, which is the synchronous DB I/O that
+;; `mdb/do-after-commit` warns against.
+;; There is no worker under `*force-sync*`, nor on a node whose first indexed engine was turned on after startup,
+;; because the worker starts only at boot.
+(defn after-commit!
+  "Run each of `steps` in order once the enclosing transaction commits; a rollback discards them.
+  A step that throws is logged, naming the work by `description`, and the steps after it still run.
+  An interrupt stops the remaining steps."
+  [description & steps]
+  (mdb/do-after-commit
+   (fn []
+     (reduce (fn [_ step]
+               (try
+                 (step)
+                 nil
+                 ;; Later steps are skipped: on an interrupted thread their queries fail at once and log a second error.
+                 (catch InterruptedException e
+                   (.interrupt (Thread/currentThread))
+                   (log/errorf e "Interrupted; skipping the rest of the search-index handoff: %s" description)
+                   (reduced nil))
+                 (catch Throwable e
+                   (log/errorf e "Failed search-index handoff: %s" description))))
+             nil
+             steps))))
+
+;; Ingestion re-derives what these messages name, and purges a document named by its own id once its row is gone.
+(defn bulk-update!
+  "Enqueue re-indexing derived from `instances` unconditionally, e.g. the pre-images of deleted rows."
+  [instances]
+  (enqueue-hook-selectors! instances true))
+
+(defn feeds-documents?
+  "Whether [[bulk-update!]] would enqueue anything for `instances`.
+  A superseded revision or review, for one, feeds no document: every hook it would trigger requires `most_recent`."
+  [instances]
+  (boolean (seq (hook-selectors instances true))))
+
+(defn- cascading-selectors
+  "Hook selectors for `instances` naming documents ingestion could not purge on its own, by search-model."
+  [instances]
+  (->> (hook-selectors instances true)
+       (remove (comp search.ingestion/purgeable-selector? second))
+       (u/group-by first second)))
+
+;; Ingestion recovers a document id only from a `:this.id` selector, so anything reached through a join on another
+;; column, or keyed by a compound id, has to be enumerated while it still exists.
+;; TODO (Chris 2026-11-05) -- collapse same-shape `[:= v col]` selectors into one `[:in col vs]` per column. A wide
+;; delete ORs one selector per row into this query, inside the caller's transaction.
+(defn cascading-documents
+  "Document ids that `instances` feed which would become unpurgeable once those rows are gone, by search-model.
+  Resolve this before the delete and hand the result to [[reconcile-cascading-documents!]] after it commits.
+  A search-model whose enumeration fails, or reaches past the enumeration ceiling, is logged and left out."
+  [instances]
   (when (supports-index?)
-    (when-let [updates (->> (search.spec/search-models-to-update instance always?)
-                            (remove (comp search.util/impossible-condition? second))
-                            seq)]
-      ;; We need to delay execution to handle deletes, which alert us *before* updating the database.
-      (search.ingestion/ingest-maybe-async! updates))))
+    (not-empty
+     (u/for-map [[search-model selectors] (cascading-selectors instances)
+                 :let  [ids (try
+                              (search.ingestion/doc-ids search-model (into [:or] selectors))
+                              ;; The id query runs in its own nested transaction, so a failure leaves the
+                              ;; caller's usable; see [[search.db/spec-index-doc-ids-reducible]].
+                              ;; Skipping is ours to decide, but the caller's interrupt is not ours to clear.
+                              (catch InterruptedException e
+                                (.interrupt (Thread/currentThread))
+                                (log/errorf e "Interrupted; skipping cascade enumeration for %s" search-model)
+                                nil)
+                              (catch Exception e
+                                (log/errorf e "Skipping cascade enumeration for %s" search-model)
+                                nil))]
+                 :when (seq ids)]
+       [search-model ids]))))
+
+(defn- document-count
+  [cascading]
+  (transduce (map count) + 0 (vals cascading)))
+
+;; A delete issued in batches, such as a Database's cards, would otherwise hold one ceiling's worth of ids per batch
+;; until it commits.
+(defn add-cascading-documents
+  "Merge what [[cascading-documents]] enumerates for `instances` into `cascading`, an earlier result or nil.
+  Once `cascading` holds [[search.ingestion/max-enumerated-documents]] documents, `instances` are not enumerated, and
+  the documents they cascade to are left to the reindex.
+  The batch that reaches the ceiling is kept whole, so the result can pass it by up to one batch's worth."
+  [cascading instances]
+  (if (<= search.ingestion/max-enumerated-documents (document-count cascading))
+    cascading
+    (let [merged (merge-with into cascading (cascading-documents instances))]
+      (when (<= search.ingestion/max-enumerated-documents (document-count merged))
+        (log/warnf "Cascade enumeration reached %d documents; later batches' cascades are left to the reindex"
+                   search.ingestion/max-enumerated-documents))
+      merged)))
+
+(defn reconcile-cascading-documents!
+  "Queue a check of the documents [[cascading-documents]] enumerated, now that the statement has run.
+  The ingestion worker re-derives the ones that still resolve and removes the rest, one search-model per message;
+  see [[search.ingestion/reconcile]]."
+  [cascading]
+  (when (and (seq cascading) (supports-index?))
+    (search.ingestion/ingest-maybe-async!
+     (for [[search-model ids] cascading]
+       (search.ingestion/reconcile search-model ids)))))
 
 (defn delete!
-  "Given a model and a list of model's ids, remove corresponding search entries."
+  "Queue removal of a model's corresponding search entries after all earlier re-index messages.
+  Runs at once when ingestion is synchronous."
   [model ids]
   (when (supports-index?)
-    (doseq [e            (search.engine/active-engines)
-            search-model (->> (vals (search.spec/specifications))
-                              (filter (comp #{model} :model))
-                              (map :name))]
-      (search.engine/delete! e search-model ids))))
+    (search.ingestion/ingest-maybe-async!
+     (for [search-model (->> (vals (search.spec/specifications))
+                             (filter (comp #{model} :model))
+                             (map :name))]
+       (search.ingestion/tombstone search-model ids)))))

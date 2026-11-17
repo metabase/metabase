@@ -1,25 +1,23 @@
+import micromatch from "micromatch";
+
 export type ModuleDef = { type: string; pattern: string };
-export type Rule = { from: string[]; allow: string[] };
+
+export type Rule = {
+  from: string[];
+  allow?: string[];
+  disallow?: string[];
+};
 
 export type ModuleNode = { type: string; regex: RegExp };
 
 export type FileDependency = { source: string; dependencies: string[] };
 
-/**
- * Compiles a glob pattern to an anchored RegExp.
- */
-function globToRegex(glob: string): RegExp {
-  const escapeSegment = (seg: string) =>
-    seg.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*");
-  const body = glob.split("**").map(escapeSegment).join(".*");
-  return new RegExp(`^${body}$`);
-}
-
 /** First match wins, so element order matters for nested patterns. */
 export function buildNodes(elements: ModuleDef[]): ModuleNode[] {
   return elements.map((el) => ({
     type: el.type,
-    regex: globToRegex(el.pattern),
+    // dot:true so files in dot-directories (e.g. .storybook) still match.
+    regex: micromatch.makeRe(el.pattern, { dot: true }),
   }));
 }
 
@@ -105,6 +103,28 @@ export function getAffectedFiles(
     }
   }
   return affected;
+}
+
+/** The file plus every file it transitively imports. */
+export function getTransitiveDependencies(
+  fileDependencies: FileDependency[],
+  file: string,
+): Set<string> {
+  const dependenciesOf = new Map(
+    fileDependencies.map(({ source, dependencies }) => [source, dependencies]),
+  );
+  const reached = new Set([file]);
+  const queue = [file];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const dependency of dependenciesOf.get(current) ?? []) {
+      if (!reached.has(dependency)) {
+        reached.add(dependency);
+        queue.push(dependency);
+      }
+    }
+  }
+  return reached;
 }
 
 export type ModuleGraph = {
@@ -210,8 +230,11 @@ export function buildModuleGraph(
     allTypes.map((type) => [type, new Set()]),
   );
   for (const rule of rules) {
+    // Grandfathered imports that break the disallow rules still exist in the code,
+    // and selection must cover every import that actually exists.
+    // So disallow rules are ignored, at the cost of a looser graph.
     const fromTypes = rule.from.flatMap(expandPattern);
-    const allowTypes = rule.allow.flatMap(expandPattern);
+    const allowTypes = (rule.allow ?? []).flatMap(expandPattern);
     for (const target of allowTypes) {
       for (const importer of fromTypes) {
         if (importer !== target) {

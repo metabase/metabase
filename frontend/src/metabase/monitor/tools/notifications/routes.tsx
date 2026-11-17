@@ -1,10 +1,15 @@
-import { IndexRoute, Route } from "react-router";
+import { Route } from "metabase/router";
 
-import { NotificationsAdminPage } from "./NotificationsAdminPage";
+const notificationsAdminPage = () =>
+  import(
+    /* webpackChunkName: "monitor-notifications" */ "./NotificationsAdminPage"
+  ).then(({ NotificationsAdminPage }) => ({
+    Component: NotificationsAdminPage,
+  }));
 
 export const getRoutes = () => (
   <>
-    <IndexRoute component={NotificationsAdminPage} />
-    <Route path=":notificationId" component={NotificationsAdminPage} />
+    <Route index lazy={notificationsAdminPage} />
+    <Route path=":notificationId" lazy={notificationsAdminPage} />
   </>
 );

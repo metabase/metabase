@@ -1,17 +1,19 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupSchemaEndpoints,
   setupSegmentEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
 import { DataModelSegmentBreadcrumbs } from "metabase/data-studio/segments/components/SegmentBreadcrumbs";
 import { SegmentDetailPage } from "metabase/data-studio/segments/pages/SegmentDetailPage";
-import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import type {
   EnterpriseSettings,
   Segment,
@@ -22,7 +24,6 @@ import {
   createMockDatabase,
   createMockField,
   createMockSegment,
-  createMockStructuredDatasetQuery,
   createMockTable,
   createMockTokenFeatures,
   createMockUser,
@@ -60,18 +61,37 @@ export const TEST_DATABASE = createMockDatabase({
 TEST_TABLE.db_id = TEST_DATABASE.id;
 TEST_TABLE.db = TEST_DATABASE;
 
+const TEST_PROVIDER = createMetadataProvider({
+  databaseId: TEST_DATABASE.id,
+  metadata: createMockMetadata({
+    databases: [createMockDatabase({ ...TEST_DATABASE, tables: [TEST_TABLE] })],
+  }),
+});
+
 export const TEST_SEGMENT = createMockSegment({
   id: 1,
   name: "High Value Orders",
   description: "Orders with total > 100",
   table_id: TEST_TABLE.id,
-  definition: createMockStructuredDatasetQuery({
-    database: TEST_DATABASE.id,
-    query: {
-      "source-table": TEST_TABLE.id,
-      filter: [">", ["field", 2, null], 100],
-    },
-  }),
+  definition: Lib.toLegacyQuery(
+    Lib.createTestQuery(TEST_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: TEST_TABLE.id },
+          filters: [
+            {
+              type: "operator",
+              operator: ">",
+              args: [
+                { type: "column", fieldId: 2 },
+                { type: "literal", value: 100 },
+              ],
+            },
+          ],
+        },
+      ],
+    }),
+  ),
 });
 
 type SetupOpts = {
@@ -125,17 +145,18 @@ export function setup({
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <SegmentDetailPage
-          route={{ path: "/" } as never}
+          // Unjustified type cast. FIXME
           segment={segment}
+          table={table}
           tabUrls={tabUrls}
           breadcrumbs={
             <DataModelSegmentBreadcrumbs table={table} segment={segment} />
           }
           onRemove={onRemove}
         />
-      )}
+      }
     />,
     {
       withRouter: true,

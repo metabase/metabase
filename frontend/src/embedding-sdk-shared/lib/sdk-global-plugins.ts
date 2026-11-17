@@ -11,13 +11,20 @@ type SdkGlobalPlugins = {
   handleLink?: HandleLinkFn;
 };
 
+// The store payload is opaque in this module; this is the slice of the
+// provider props that the global plugins need.
+type SdkGlobalPluginsProps = {
+  pluginsConfig?: SdkGlobalPlugins;
+};
+
 // `MetabaseProvider` and most of the sdk code are in two different bundles,
 // this means we can't use an exported object as singleton to share the global
 // plugins between them. This function uses `ensureMetabaseProviderPropsStore`
 // to access the provider props across bundles
 export const getSdkGlobalPlugins = (): SdkGlobalPlugins => {
   return (
-    ensureMetabaseProviderPropsStore().getState().props?.pluginsConfig || {}
+    ensureMetabaseProviderPropsStore<SdkGlobalPluginsProps>().getState().props
+      ?.pluginsConfig || {}
   );
 };
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { t } from "ttag";
 
 import DisconnectImage from "assets/img/disconnect.svg";
@@ -11,7 +12,7 @@ type ListErrorStateProps = {
 
 export function ListErrorState({ error }: ListErrorStateProps) {
   return (
-    <Box p="xl">
+    <Box p="xxl">
       <EmptyState
         message={getErrorMessage(error, t`An error occurred`)}
         spacing="sm"

@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-23T09:00:00
+      author: johnswanson
+      comment: Make stored_result.dataset_query NOT NULL
+      changes:
+        - addNotNullConstraint:
+            tableName: stored_result
+            columnName: dataset_query
+            columnDataType: ${text.type}

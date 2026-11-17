@@ -19,7 +19,6 @@ interface QueryWithBreakoutOpts {
 function createQueryWithBreakout({
   column = {
     type: "column",
-    sourceName: "ORDERS",
     name: "CREATED_AT",
   },
   bucket = "month",
@@ -70,7 +69,11 @@ function setup({ query, breakout, column, stageIndex = -1 }: SetupOpts) {
   const getNextBucketName = () => {
     const [column] = onChange.mock.lastCall;
     const breakout = Lib.temporalBucket(column);
-    return breakout ? Lib.displayInfo(query, 0, breakout).displayName : null;
+    if (breakout == null) {
+      return null;
+    }
+    const info = Lib.displayInfo(query, 0, breakout);
+    return info.shortName === "default" ? null : info.displayName;
   };
 
   return { onChange, getNextBucketName };
@@ -121,9 +124,26 @@ describe("TimeseriesBucketPicker", () => {
     expect(getNextBucketName()).toBeNull();
   });
 
+  it("should highlight the current temporal bucket", async () => {
+    const { query, breakout, column } = createQueryWithBreakout({
+      bucket: "quarter",
+    });
+    setup({ query, breakout, column });
+
+    await userEvent.click(screen.getByText("Quarter"));
+
+    expect(
+      await screen.findByRole("option", { name: "Quarter" }),
+    ).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("option", { name: "Month" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+  });
+
   it("should show all options when the current bucket is below the More button", async () => {
     const { query, breakout, column } = createQueryWithBreakout({
-      column: { type: "column", sourceName: "ORDERS", name: "CREATED_AT" },
+      column: { type: "column", name: "CREATED_AT" },
       bucket: "quarter-of-year",
     });
 

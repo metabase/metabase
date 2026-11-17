@@ -1,3 +1,7 @@
+// Deliberate import-time side effect: xyflow's stylesheet must load with this
+// chunk. If this module is ever declared side-effect free, the bundler would
+// drop this import and the graph would render unstyled.
+import "@xyflow/react/dist/style.css";
 import {
   Background,
   Panel,
@@ -23,10 +27,10 @@ import {
   useColorScheme,
 } from "metabase/ui";
 import type {
-  ConcreteTableId,
   DatabaseId,
   ErdResponse,
   SchemaName,
+  TableId,
 } from "metabase-types/api";
 
 import S from "./SchemaViewer.module.css";
@@ -64,8 +68,8 @@ type SchemaViewerProps = {
   isFetching: boolean;
   error: unknown;
   contextKey: `${DatabaseId}__${SchemaName}` | null;
-  focalTableId: ConcreteTableId | null;
-  onExtraTableIdAdd: (tableId: ConcreteTableId) => void;
+  focalTableId: TableId | null;
+  onExtraTableIdAdd: (tableId: TableId) => void;
 };
 
 export function SchemaViewer({
@@ -95,14 +99,14 @@ export function SchemaViewer({
     useSchemaViewerZoomMethods(reactFlowInstance);
 
   // Target table IDs whose FK-expansion fetch is still in flight.
-  const [expandingTableIds, setExpandingTableIds] = useState<
-    Set<ConcreteTableId>
-  >(() => new Set());
+  const [expandingTableIds, setExpandingTableIds] = useState<Set<TableId>>(
+    () => new Set(),
+  );
 
   // Without this, dragging a node (which produces a new `nodes` array on
   // every animation frame) would force every TableNode + FieldRow to
   // re-render through `useContext`.
-  const visibleTableIdsRef = useRef<Set<ConcreteTableId>>(new Set());
+  const visibleTableIdsRef = useRef<Set<TableId>>(new Set());
   const visibleTableIds = useMemo(() => {
     const prev = visibleTableIdsRef.current;
     if (prev.size === nodes.length) {
@@ -111,7 +115,7 @@ export function SchemaViewer({
         return prev;
       }
     }
-    const next = new Set<ConcreteTableId>();
+    const next = new Set<TableId>();
     for (const n of nodes) {
       next.add(n.data.table_id);
     }
@@ -158,7 +162,7 @@ export function SchemaViewer({
   // zoom onto that table once ReactFlow has actually drawn it.
   const focalZoomRef = useRef<{
     contextKey: string;
-    focalTableId: ConcreteTableId;
+    focalTableId: TableId;
   } | null>(null);
 
   useEffect(() => {
@@ -204,10 +208,7 @@ export function SchemaViewer({
   // FK click registers a pending expansion target so graph sync can auto-select the FK
   // edge AND zoom to the new table once the next ERD response merges.
   const handleExpandToTable = useCallback(
-    (
-      tableId: ConcreteTableId,
-      candidateEdgeIdsToSelect?: readonly string[],
-    ) => {
+    (tableId: TableId, candidateEdgeIdsToSelect?: readonly string[]) => {
       if (databaseId == null) {
         return;
       }
@@ -313,7 +314,6 @@ export function SchemaViewer({
             <Group gap="sm">
               <Button
                 bg="background_page-primary"
-                variant="default"
                 leftSection={<Icon name="sparkles" />}
                 onClick={resetLayout}
               >
@@ -322,7 +322,6 @@ export function SchemaViewer({
               {selectedNodeId != null && (
                 <Button
                   bg="background_page-primary"
-                  variant="default"
                   onClick={() => focusOnNode(selectedNodeId)}
                 >
                   {t`Focus node`}
@@ -348,7 +347,7 @@ export function SchemaViewer({
             <Stack
               align="center"
               justify="center"
-              mb="xl"
+              mb="xxl"
               data-testid="schema-viewer-error"
             >
               <Text c="text-secondary">
@@ -362,10 +361,10 @@ export function SchemaViewer({
             <Stack
               align="center"
               justify="center"
-              pt="xl"
+              pt="xxl"
               data-testid="schema-viewer-empty-state"
             >
-              <Text c="text-disabled">{t`No schema selected`}</Text>
+              <Text c="text-secondary">{t`No schema selected`}</Text>
             </Stack>
           </Panel>
         )}

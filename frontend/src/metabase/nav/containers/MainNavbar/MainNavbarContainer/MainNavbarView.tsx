@@ -4,7 +4,6 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
@@ -16,11 +15,16 @@ import {
   isRootTrashCollection,
 } from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { Tree } from "metabase/common/components/tree";
-import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
+import {
+  getIsTenantUser,
+  getUser,
+  getUserCanWriteToCollections,
+} from "metabase/current-user";
 import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
 import PN from "metabase/nav/containers/ProtoNavbar/ProtoNavbar.module.css";
 import {
@@ -28,31 +32,25 @@ import {
   SubNavSection,
 } from "metabase/nav/containers/ProtoNavbar/SubNav";
 import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
+import {
+  PLUGIN_DATA_APPS,
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_TENANTS,
+} from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setOpenModal } from "metabase/redux/ui";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
 } from "metabase/selectors/onboarding";
-import {
-  getIsTenantUser,
-  getUser,
-  getUserCanWriteToCollections,
-} from "metabase/selectors/user";
-import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
+import { useSetting, useUserSetting } from "metabase/settings";
+import { ActionIcon, Flex, Icon, Menu, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
 import type { Bookmark, Collection } from "metabase-types/api";
 
-import {
-  PaddedSidebarLink,
-  SidebarContentRoot,
-  SidebarHeading,
-  SidebarSection,
-  TrashSidebarSection,
-} from "../MainNavbar.styled";
-import { SidebarCollectionLink } from "../SidebarItems";
+import { SidebarHeading, SidebarSection } from "../Sidebar";
+import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 import {
   trackAddDataModalOpened,
   trackNewCollectionFromNavInitiated,
@@ -204,18 +202,9 @@ export function MainNavbarView({
     protoInitialExpandedIds,
     protoPinnedExpandedIds,
   } = useMemo(() => {
-    if (!PROTO_NAV_ENABLED) {
-      return {
-        protoCollectionsTree: regularCollections,
-        protoInitialExpandedIds: undefined,
-        protoPinnedExpandedIds: undefined,
-      };
-    }
-
-    const root = regularCollections.find(isRootCollection);
-    const children = regularCollections.filter(
-      (collection) => !isRootCollection(collection),
-    );
+    const root = PROTO_NAV_ENABLED
+      ? regularCollections.find(isRootCollection)
+      : undefined;
 
     if (!root) {
       return {
@@ -225,6 +214,9 @@ export function MainNavbarView({
       };
     }
 
+    const children = regularCollections.filter(
+      (collection) => !isRootCollection(collection),
+    );
     const rootId = root.id ?? ROOT_COLLECTION.id;
 
     return {
@@ -237,6 +229,13 @@ export function MainNavbarView({
   const collectionsHeading = showExternalCollectionsSection
     ? t`Internal Collections`
     : t`Collections`;
+
+  const collectionChangesBadge = (item: { id: string | number }) =>
+    typeof item.id === "number" && (
+      <PLUGIN_REMOTE_SYNC.ChangesBadge
+        target={{ type: "collection", id: item.id }}
+      />
+    );
 
   const protoCollectionsBlock = (
     <SubNavSection>
@@ -282,30 +281,25 @@ export function MainNavbarView({
           </Menu>
         )}
         <SubNavHeading>{t`Collections`}</SubNavHeading>
-        {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
-          <PLUGIN_REMOTE_SYNC.CollectionsNavTree
-            collections={protoCollectionsTree}
-            selectedId={collectionItem?.id}
-            onSelect={onItemSelect}
-            initialExpandedIds={protoInitialExpandedIds}
-            pinnedExpandedIds={protoPinnedExpandedIds}
-          />
-        ) : (
-          <Tree
-            data={protoCollectionsTree}
-            selectedId={collectionItem?.id}
-            initialExpandedIds={protoInitialExpandedIds}
-            pinnedExpandedIds={protoPinnedExpandedIds}
-            onSelect={onItemSelect}
-            TreeNode={SidebarCollectionLink}
-            role="tree"
-            aria-label="collection-tree"
-          />
-        )}
+        <Tree
+          data={protoCollectionsTree}
+          selectedId={collectionItem?.id}
+          initialExpandedIds={protoInitialExpandedIds}
+          pinnedExpandedIds={protoPinnedExpandedIds}
+          onSelect={onItemSelect}
+          TreeNode={SidebarCollectionLink}
+          role="tree"
+          aria-label="collection-tree"
+          rightSection={collectionChangesBadge}
+        />
         {showOtherUsersCollections && (
-          <PaddedSidebarLink icon="group" url={OTHER_USERS_COLLECTIONS_URL}>
+          <SidebarLink
+            icon="group"
+            url={OTHER_USERS_COLLECTIONS_URL}
+            isSelected={collectionItem?.id === "users"}
+          >
             {t`Other users' personal collections`}
-          </PaddedSidebarLink>
+          </SidebarLink>
         )}
       </ErrorBoundary>
     </SubNavSection>
@@ -313,7 +307,7 @@ export function MainNavbarView({
 
   return (
     <ErrorBoundary>
-      <SidebarContentRoot>
+      <Flex direction="column" justify="space-between" flex={1}>
         <div>
           {/* Keep Create at the top of the proto Home tab so its spacing
               matches Query's New query button when switching rails. */}
@@ -321,14 +315,14 @@ export function MainNavbarView({
 
           {!PROTO_NAV_ENABLED && (
             <SidebarSection>
-              <PaddedSidebarLink
+              <SidebarLink
                 isSelected={nonEntityItem?.url === "/"}
                 icon="home"
                 onClick={handleHomeClick}
                 url="/"
               >
                 {t`Home`}
-              </PaddedSidebarLink>
+              </SidebarLink>
             </SidebarSection>
           )}
 
@@ -404,8 +398,8 @@ export function MainNavbarView({
                     canWriteToCollections && !isTenantUser ? (
                       <Tooltip label={t`Create a new collection`}>
                         <ActionIcon
+                          variant="subtle"
                           aria-label={t`Create a new collection`}
-                          color="text-secondary"
                           onClick={() => {
                             trackNewCollectionFromNavInitiated();
                             handleCreateNewCollection();
@@ -419,33 +413,31 @@ export function MainNavbarView({
                   role="section"
                   aria-label={t`Collections`}
                 >
-                  {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
-                    <PLUGIN_REMOTE_SYNC.CollectionsNavTree
-                      collections={regularCollections}
-                      selectedId={collectionItem?.id}
-                      onSelect={onItemSelect}
-                    />
-                  ) : (
-                    <Tree
-                      data={regularCollections}
-                      selectedId={collectionItem?.id}
-                      onSelect={onItemSelect}
-                      TreeNode={SidebarCollectionLink}
-                      role="tree"
-                      aria-label="collection-tree"
-                    />
-                  )}
+                  <Tree
+                    data={regularCollections}
+                    selectedId={collectionItem?.id}
+                    onSelect={onItemSelect}
+                    TreeNode={SidebarCollectionLink}
+                    role="tree"
+                    aria-label="collection-tree"
+                    rightSection={collectionChangesBadge}
+                  />
                   {showOtherUsersCollections && (
-                    <PaddedSidebarLink
+                    <SidebarLink
                       icon="group"
                       url={OTHER_USERS_COLLECTIONS_URL}
+                      isSelected={collectionItem?.id === "users"}
                     >
                       {t`Other users' personal collections`}
-                    </PaddedSidebarLink>
+                    </SidebarLink>
                   )}
                 </CollapseSection>
               </ErrorBoundary>
             </SidebarSection>
+          )}
+
+          {PLUGIN_DATA_APPS.isEnabled && (
+            <PLUGIN_DATA_APPS.MainNavbarSection onItemSelect={onItemSelect} />
           )}
 
           {!PROTO_NAV_ENABLED && (
@@ -462,7 +454,7 @@ export function MainNavbarView({
           )}
 
           {!PROTO_NAV_ENABLED && trashCollection && (
-            <TrashSidebarSection>
+            <SidebarSection>
               <ErrorBoundary>
                 <Tree
                   data={[trashCollection]}
@@ -472,10 +464,10 @@ export function MainNavbarView({
                   role="tree"
                 />
               </ErrorBoundary>
-            </TrashSidebarSection>
+            </SidebarSection>
           )}
         </div>
-      </SidebarContentRoot>
+      </Flex>
 
       <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />
     </ErrorBoundary>

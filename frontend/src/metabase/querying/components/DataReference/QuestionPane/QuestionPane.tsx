@@ -4,8 +4,8 @@ import { jt, t } from "ttag";
 import {
   skipToken,
   useGetCardQuery,
+  useGetCardQueryMetadataQuery,
   useGetCollectionQuery,
-  useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -14,26 +14,23 @@ import {
   EmptyDescription,
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type Question from "metabase-lib/v1/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { IconName } from "metabase-types/api";
+import type { Card, IconName } from "metabase-types/api";
 
 import { FieldList } from "../FieldList";
 import { NodeListTitleText } from "../NodeList";
 import type {
   DataReferencePaneProps,
   DataReferenceQuestionItem,
-  UniqueFieldId,
 } from "../types";
+import { getCardColumnListInfo } from "../utils";
 
 import S from "./QuestionPane.module.css";
 
-const getIcon = (question: Question): IconName => {
-  return match(question.type())
+const getIcon = (card: Card): IconName => {
+  return match(card.type)
     .returnType<IconName>()
     .with("question", () => "table")
     .with("model", () => "model")
@@ -54,10 +51,12 @@ export const QuestionPane = ({
   } = useGetCardQuery({
     id,
   });
-  const { isLoading: isLoadingTable, error: tableError } =
-    useGetTableQueryMetadataQuery({
-      id: getQuestionVirtualTableId(id),
-    });
+  const {
+    data: cardMetadata,
+    isLoading: isLoadingCardMetadata,
+    error: cardMetadataError,
+  } = useGetCardQueryMetadataQuery(id);
+  const metadataProvider = useMetadataProvider(card?.database_id ?? null);
   const {
     data: collection,
     isLoading: isLoadingCollection,
@@ -65,33 +64,37 @@ export const QuestionPane = ({
   } = useGetCollectionQuery(
     card ? { id: card.collection_id ?? "root" } : skipToken,
   );
-  const isLoading = isLoadingCard || isLoadingTable || isLoadingCollection;
-  const error = cardError ?? tableError ?? collectionError;
-  const metadata = useSelector(getMetadata);
+  const isLoading =
+    isLoadingCard || isLoadingCardMetadata || isLoadingCollection;
+  const error = cardError ?? cardMetadataError ?? collectionError;
 
-  if (isLoading || error != null) {
+  if (card == null || cardMetadata == null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const question = metadata.question(id);
-  const table = metadata.table(getQuestionVirtualTableId(id));
-  if (question == null || table == null) {
-    return <LoadingAndErrorWrapper loading />;
-  }
+  const columnListInfo = getCardColumnListInfo(metadataProvider, card.id);
+  const lastEditInfo = card["last-edit-info"];
 
-  const lastEditInfo = question.lastEditInfo();
+  const handleColumnClick = (columnIndex: number) => {
+    onItemClick({
+      type: "field",
+      kind: "card",
+      cardId: card.id,
+      columnIndex,
+    });
+  };
 
   return (
     <SidebarContent
-      title={question.displayName() || undefined}
-      icon={getIcon(question)}
+      title={card.name || undefined}
+      icon={getIcon(card)}
       onBack={onBack}
       onClose={onClose}
     >
-      <Box pl="lg" pr="lg">
+      <Box pl="xl" pr="xl">
         <Box p="0 0.5rem 1rem 0.5rem">
-          {question.description() ? (
-            <Description>{question.description()}</Description>
+          {card.description ? (
+            <Description>{card.description}</Description>
           ) : (
             <EmptyDescription>{t`No description`}</EmptyDescription>
           )}
@@ -99,7 +102,7 @@ export const QuestionPane = ({
         <Flex color="text-secondary" align="center" p="0.25rem 0.5rem" fw={700}>
           <a
             className={S.QuestionPaneDetailLink}
-            href={Urls.question(question)}
+            href={Urls.card(card)}
             target="_blank"
             rel="noreferrer"
           >
@@ -109,11 +112,7 @@ export const QuestionPane = ({
         </Flex>
         <Flex color="text-secondary" align="center" p="0.25rem 0.5rem" fw={700}>
           <Icon className={S.QuestionPaneIcon} name="label" />
-          <Box
-            component="span"
-            ml="sm"
-            fw="normal"
-          >{t`ID #${question.id()}`}</Box>
+          <Box component="span" ml="sm" fw="normal">{t`ID #${card.id}`}</Box>
         </Flex>
         <Flex color="text-secondary" align="center" p="0.25rem 0.5rem" fw={700}>
           <Icon className={S.QuestionPaneIcon} name="collection" />
@@ -136,18 +135,12 @@ export const QuestionPane = ({
             </Box>
           </Flex>
         )}
-        {table.fields && (
+        {columnListInfo && (
           <FieldList
-            fields={table.fields}
-            onFieldClick={(field) => {
-              onItemClick({
-                type: "field",
-                id:
-                  typeof field.id === "number"
-                    ? field.id
-                    : (field.getUniqueId() as UniqueFieldId),
-              });
-            }}
+            query={columnListInfo.query}
+            stageIndex={columnListInfo.stageIndex}
+            columns={columnListInfo.columns}
+            onColumnClick={handleColumnClick}
           />
         )}
       </Box>

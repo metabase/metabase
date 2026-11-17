@@ -2,16 +2,28 @@
   (:require
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
+
+(defn hydrate-target-with-data-model-perms
+  "Hydrate the FK target of `field` as `:target`, or nil when `field` is not an FK or the current user cannot edit the
+  data model of the target's table."
+  [field]
+  (let [target-field-id (when (isa? (:semantic_type field) :type/FK)
+                          (:fk_target_field_id field))
+        target-field    (when-let [target-field (and target-field-id (warehouse-schema.db/field target-field-id))]
+                          (when (seq (schema.table/filter-tables-by-data-model-perms [(:table (t2/hydrate target-field :table))]))
+                            target-field))]
+    (assoc field :target target-field)))
 
 (defn get-field
   "Get `Field` with ID."
   [id {:keys [include-editable-data-model?]}]
-  (let [field (-> (api/check-404 (t2/select-one :model/Field :id id))
+  (let [field (-> (api/check-404 (warehouse-schema.db/field id))
                   (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
         field (if include-editable-data-model?
-                (field/hydrate-target-with-write-perms field)
+                (hydrate-target-with-data-model-perms field)
                 (t2/hydrate field :target))]
     ;; Normal read perms = normal access.
     ;;
@@ -22,8 +34,8 @@
     ;;
     ;; Check for permissions and throw 403 if we don't have them...
     (if include-editable-data-model?
-      (api/write-check :model/Table (:table_id field))
-      (api/check-403 (mi/can-read? field)))
+      (schema.table/check-data-model-perms (:table field))
+      (api/check-403 (mi/can-read? (t2/hydrate field :can_read))))
     ;; ...but if we do, return the Field <3
     field))
 
@@ -31,15 +43,15 @@
   "Get `Field`s with IDs in `ids`."
   [ids]
   (when (seq ids)
-    (-> (filter mi/can-read? (t2/select :model/Field :id [:in ids]))
-        (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field))))
+    (let [fields (warehouse-schema.db/fields ids)]
+      (-> (filter mi/can-read? (t2/hydrate fields :can_read))
+          (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field)))))
 
 (defn field-ids->table-ids
   "Get sorted unique table IDs for readable Fields with IDs in `ids`."
   [ids]
   (->> (when (seq ids)
-         (t2/hydrate (t2/select [:model/Field :id :table_id] :id [:in ids])
-                     :table))
+         (t2/hydrate (warehouse-schema.db/field-table-id-rows ids) :table :can_read))
        (filter mi/can-read?)
        (keep :table_id)
        set

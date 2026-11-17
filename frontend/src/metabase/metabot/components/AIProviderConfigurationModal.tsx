@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { Modal, type ModalProps } from "metabase/ui";
 
-import { AIProviderConfigurationForm } from "./AIProviderConfigurationForm";
+import { AIProviderSetup } from "./AIProviderConfigurationForm";
 
 export function AIProviderConfigurationModal({
   opened,
@@ -10,13 +10,14 @@ export function AIProviderConfigurationModal({
 }: Pick<ModalProps, "opened" | "onClose">) {
   return (
     <Modal
+      density="relaxed"
       opened={opened}
       onClose={onClose}
       title={t`Connect to an AI provider`}
       size="lg"
       data-testid="ai-provider-configuration-modal"
     >
-      <AIProviderConfigurationForm isModal onClose={onClose} />
+      <AIProviderSetup onDone={onClose} />
     </Modal>
   );
 }

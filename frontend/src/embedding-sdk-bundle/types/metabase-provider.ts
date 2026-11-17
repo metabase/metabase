@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { MetabaseEmbeddingTheme } from "metabase/embedding-sdk/theme";
 
-import type { MetabaseAuthConfig } from "./auth-config";
 import type { SdkEventHandlersConfig } from "./events";
 import type { MetabaseGlobalPluginsConfig } from "./plugins";
 import type { SdkErrorComponent } from "./ui";
@@ -30,7 +30,7 @@ export interface MetabaseProviderProps {
   authConfig: MetabaseAuthConfig;
 
   /**
-   * See [Appearance](https://www.metabase.com/docs/latest/embedding/sdk/appearance).
+   * See [Appearance](https://www.metabase.com/docs/latest/embedding/appearance).
    */
   theme?: MetabaseEmbeddingTheme;
 
@@ -40,7 +40,7 @@ export interface MetabaseProviderProps {
   pluginsConfig?: MetabaseGlobalPluginsConfig;
 
   /**
-   * See [Global event handlers](https://www.metabase.com/docs/latest/embedding/sdk/config#global-event-handlers).
+   * See [Handle embed events](https://www.metabase.com/docs/latest/embedding/config#handle-embed-events-react-sdk-only).
    */
   eventHandlers?: SdkEventHandlersConfig;
 
@@ -78,8 +78,6 @@ export interface MetabaseProviderProps {
 
   /**
    * Opt-in support for EE custom visualization plugins inside the SDK.
-   * When set, the SDK loads custom-viz bundles into an `about:blank`
-   * sandbox (no hosted-sandbox endpoint required).
    *
    * Pass an allowlist of `custom:`-prefixed plugin identifiers (manifest
    * `name`), e.g. `["custom:Thumbs", "custom:Calendar"]`. Only
@@ -88,4 +86,13 @@ export interface MetabaseProviderProps {
    * Requires the `custom-viz` premium feature.
    **/
   allowedCustomVisualizations?: `custom:${string}`[];
+
+  /**
+   * URL of an empty HTML page that custom visualizations run in. Use it when
+   * your page's Content Security Policy does not allow `'unsafe-eval'`.
+   *
+   * The page must be served from the same origin as your app, with its own
+   * `Content-Security-Policy: default-src 'none'; script-src 'unsafe-eval'`.
+   **/
+  customVisualizationsSandboxUrl?: string;
 }

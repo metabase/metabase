@@ -1,7 +1,7 @@
-import { Route } from "react-router";
+import { Route } from "metabase/router";
 
 import { EventsPage } from "./pages/EventsPage";
 
 export function getDataStudioEventsRoutes() {
-  return <Route path="events" component={EventsPage} />;
+  return <Route path="events" element={<EventsPage />} />;
 }

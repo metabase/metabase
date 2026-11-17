@@ -10,24 +10,30 @@ import type { CollectionId } from "metabase-types/api";
  */
 export const useGetDefaultCollectionId = (
   sourceCollectionId?: CollectionId | null,
+  { disabled = false }: { disabled?: boolean } = {},
 ): CollectionId | null => {
   const { data: auditInfo } = useGetAuditInfoQuery(
-    sourceCollectionId ? undefined : skipToken,
+    !disabled && sourceCollectionId ? undefined : skipToken,
   );
 
   const { data: collectionInfo } = useGetCollectionQuery(
-    sourceCollectionId ? { id: sourceCollectionId } : skipToken,
+    !disabled && sourceCollectionId ? { id: sourceCollectionId } : skipToken,
   );
 
   const { data: customReportsCollectionInfo } = useGetCollectionQuery(
-    auditInfo?.custom_reports ? { id: auditInfo?.custom_reports } : skipToken,
+    !disabled && auditInfo?.custom_reports
+      ? { id: auditInfo?.custom_reports }
+      : skipToken,
   );
 
   const isIAcollection = isInstanceAnalyticsCollection(collectionInfo);
 
-  const initialCollectionId = useOSSGetDefaultCollectionId(sourceCollectionId);
+  const initialCollectionId = useOSSGetDefaultCollectionId(sourceCollectionId, {
+    disabled,
+  });
 
   if (
+    !disabled &&
     isIAcollection &&
     auditInfo?.custom_reports &&
     customReportsCollectionInfo?.can_write

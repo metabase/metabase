@@ -47,6 +47,10 @@
             (is (= "Looks like someone else edited the permissions and your data is out of date. Please fetch new data and try again."
                    (mt/user-http-request :crowberto :put 409 "ee/advanced-permissions/application/graph"
                                          (assoc new-graph :revision (inc (:revision new-graph)))))))
+          (testing "a missing revision is a 409, not a 400 -- the request is well formed, it's just out of date"
+            (is (= "Looks like someone else edited the permissions and your data is out of date. Please fetch new data and try again."
+                   (mt/user-http-request :crowberto :put 409 "ee/advanced-permissions/application/graph"
+                                         (dissoc new-graph :revision)))))
           (testing "successfully update application permissions"
             (is (partial= {(:id (perms-group/admin))
                            {:monitoring   "yes"
@@ -57,6 +61,11 @@
                             :setting      "yes"
                             :subscription "no"}}
                           (:groups (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/application/graph" new-graph)))))
+          (testing "force=true skips the revision check, so no revision is needed"
+            (is (partial= {group-id {:setting "yes"}}
+                          (:groups (mt/user-http-request :crowberto :put 200
+                                                         "ee/advanced-permissions/application/graph?force=true"
+                                                         (dissoc new-graph :revision))))))
           (testing "omits graph in response when skip-graph=true"
             (let [result (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/application/graph?skip-graph=true"
                                                (a-perms/graph))]
@@ -71,4 +80,15 @@
                              {:monitoring   "yes"
                               :setting      "yes"
                               :subscription "no"}}
+                            (:groups result)))))
+          (testing "omits revision ID check when body :force is true"
+            (let [result (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/application/graph"
+                                               (-> (a-perms/graph)
+                                                   (update :revision dec)
+                                                   (assoc :force true)
+                                                   (assoc-in [:groups group-id :subscription] "yes")))]
+              (is (partial= {group-id
+                             {:monitoring   "yes"
+                              :setting      "yes"
+                              :subscription "yes"}}
                             (:groups result))))))))))

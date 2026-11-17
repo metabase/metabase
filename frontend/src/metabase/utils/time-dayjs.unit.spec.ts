@@ -1,12 +1,29 @@
-import dayjs from "dayjs";
-
+import { dayjs } from "metabase/dayjs";
 import {
+  hasExplicitTimezone,
   parseTime,
   parseTimestamp,
   timezoneToUTCOffset,
 } from "metabase/utils/time-dayjs";
 
 describe("time-dayjs", () => {
+  describe("hasExplicitTimezone", () => {
+    it.each([
+      ["2015-01-01T00:00:00Z", true],
+      ["2015-01-01T00:00:00.000Z", true],
+      ["2015-01-01T00:00:00+09:00", true],
+      ["2015-01-01T00:00:00+0900", true],
+      ["2015-01-01T00:00:00-08:00", true],
+      ["2015-01-01T00:00:00-0800", true],
+      ["2015-01-01", false],
+      ["2015-01-01 00:00:00", false],
+      ["2015-01-01T00:00:00", false],
+      ["2019-W33", false],
+    ])("%s → %s", (value, expected) => {
+      expect(hasExplicitTimezone(value)).toBe(expected);
+    });
+  });
+
   describe("parseTimestamp", () => {
     afterEach(() => {
       dayjs.updateLocale(dayjs.locale(), { weekStart: 0 });
@@ -78,6 +95,24 @@ describe("time-dayjs", () => {
         expect(parseTimestamp(52, "week-of-year").isoWeek()).toBe(52);
         expect(parseTimestamp(53, "week-of-year").isoWeek()).toBe(53);
       });
+    });
+
+    it("should parse numeric temporal extraction units", () => {
+      expect(parseTimestamp(7, "minute-of-hour").minute()).toBe(7);
+      expect(parseTimestamp(5, "day-of-month").date()).toBe(5);
+      expect(parseTimestamp(1, "month-of-year").month()).toBe(0);
+      expect(parseTimestamp(12, "month-of-year").month()).toBe(11);
+      expect(parseTimestamp(1, "quarter-of-year").quarter()).toBe(1);
+      expect(parseTimestamp(4, "quarter-of-year").quarter()).toBe(4);
+    });
+
+    it("should parse day of week relative to the first day of the week", () => {
+      expect(parseTimestamp(1, "day-of-week").day()).toBe(0);
+      expect(parseTimestamp(7, "day-of-week").day()).toBe(6);
+
+      dayjs.updateLocale(dayjs.locale(), { weekStart: 1 });
+      expect(parseTimestamp(1, "day-of-week").day()).toBe(1);
+      expect(parseTimestamp(7, "day-of-week").day()).toBe(0);
     });
   });
 

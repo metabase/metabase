@@ -1,5 +1,6 @@
+import { PLUGIN_API } from "metabase/api/client";
 import { isEmbedPreview } from "metabase/embedding/config";
-import { PLUGIN_API, reinitialize } from "metabase/plugins";
+import { reinitialize } from "metabase/plugins";
 
 import {
   matchUrlPattern,

@@ -17,14 +17,7 @@ import type {
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
-import {
-  type Card,
-  type CollectionId,
-  type SchemaName,
-  type SearchResult,
-  type Table,
-  isConcreteTableId,
-} from "metabase-types/api";
+import type { Card, SearchResult, Table } from "metabase-types/api";
 
 import {
   NodeListContainer,
@@ -43,14 +36,11 @@ import type {
 } from "./types";
 
 const groupModelsByCollection = (models: SearchResult[]) => {
-  const grouped = _.groupBy(
-    models,
-    (model) => model.collection?.id ?? ("root" as CollectionId),
-  );
+  const grouped = _.groupBy(models, (model) => model.collection?.id ?? "root");
 
   return _.pairs(grouped).map(
     ([id, models = []]): ITreeNodeItem => ({
-      id: id as CollectionId,
+      id: id,
       name: getCollectionName(models[0]?.collection),
       icon: "folder",
       children: models.map((model: SearchResult) => ({
@@ -64,10 +54,7 @@ const groupModelsByCollection = (models: SearchResult[]) => {
 };
 
 const groupTablesBySchema = (tables: SearchResult[]) => {
-  const grouped = _.groupBy(
-    tables,
-    (table) => table.table_schema ?? ("" as SchemaName),
-  );
+  const grouped = _.groupBy(tables, (table) => table.table_schema ?? "");
 
   return _.pairs(grouped).map(
     ([id, tables = []]): ITreeNodeItem => ({
@@ -121,7 +108,7 @@ const TablesList = ({ schemas, tables, onItemClick }: TablesListProps) => {
               {...props}
               onItemClick={() => {
                 const { id } = props.item.data ?? {};
-                if (isConcreteTableId(id)) {
+                if (id != null) {
                   onItemClick({ type: "table", id });
                 }
               }}
@@ -150,7 +137,7 @@ const TablesList = ({ schemas, tables, onItemClick }: TablesListProps) => {
             <NodeListItemLink
               disabled={table.initial_sync_status !== "complete"}
               onClick={() => {
-                if (isConcreteTableId(table.id)) {
+                if (typeof table.id === "number") {
                   onItemClick({ type: "table", id: table.id });
                 }
               }}

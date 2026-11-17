@@ -1,9 +1,9 @@
-import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
+import { getDataFromClicked } from "metabase/value-formatting";
+import type { EChartsSeriesMouseEvent } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import {
-  createMockCard,
-  createMockNativeCard,
-} from "metabase-types/api/mocks/card";
+import { createMockCard } from "metabase-types/api/mocks/card";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -16,21 +16,25 @@ describe("createSankeyClickData", () => {
     createMockColumn({
       name: "Source",
       display_name: "Source",
+      source: "breakout",
       base_type: "type/Text",
     }),
     createMockColumn({
       name: "Target",
       display_name: "Target",
+      source: "breakout",
       base_type: "type/Text",
     }),
     createMockColumn({
       name: "Amount",
       display_name: "Amount",
+      source: "aggregation",
       base_type: "type/Number",
     }),
     createMockColumn({
       name: "Raw Vendor",
       display_name: "Raw Vendor",
+      source: "fields",
       base_type: "type/Text",
     }),
   ];
@@ -52,6 +56,7 @@ describe("createSankeyClickData", () => {
   };
 
   const settings = {};
+  // Unjustified type cast. FIXME
   const mockEvent = {
     event: {
       event: new MouseEvent("click"),
@@ -96,7 +101,7 @@ describe("createSankeyClickData", () => {
       value: "A",
       data: expect.arrayContaining([
         expect.objectContaining({ col: columns[0], value: "A" }),
-        expect.objectContaining({ col: columns[1], value: "B" }),
+        expect.objectContaining({ col: columns[1], value: "A" }),
         expect.objectContaining({ col: columns[2], value: 10 }),
         expect.objectContaining({ col: columns[3], value: "Vendor 1" }),
       ]),
@@ -141,7 +146,7 @@ describe("createSankeyClickData", () => {
       column: columns[1],
       value: "B",
       data: expect.arrayContaining([
-        expect.objectContaining({ col: columns[0], value: "A" }),
+        expect.objectContaining({ col: columns[0], value: "B" }),
         expect.objectContaining({ col: columns[1], value: "B" }),
         expect.objectContaining({ col: columns[2], value: 10 }),
         expect.objectContaining({ col: columns[3], value: "Vendor 1" }),
@@ -260,10 +265,23 @@ describe("createSankeyClickData", () => {
       seriesType: "sankey",
     };
 
+    const nativeColumns = columns.map((column) => ({
+      ...column,
+      source: "native",
+    }));
     const nativeRawSeries = [
       {
         ...rawSeries[0],
-        card: createMockNativeCard(),
+        card: createMockCard({
+          dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+            query: "",
+          }),
+          query_type: "native",
+        }),
+        data: createMockDatasetData({
+          rows: rawSeries[0].data.rows,
+          cols: nativeColumns,
+        }),
       },
     ];
 
@@ -278,12 +296,104 @@ describe("createSankeyClickData", () => {
       event: mockEvent.event,
       settings,
       data: expect.arrayContaining([
-        expect.objectContaining({ col: columns[0], value: "A" }),
-        expect.objectContaining({ col: columns[1], value: "B" }),
-        expect.objectContaining({ col: columns[2], value: 10 }),
-        expect.objectContaining({ col: columns[3], value: "Vendor 1" }),
+        expect.objectContaining({ col: nativeColumns[0], value: "A" }),
+        expect.objectContaining({ col: nativeColumns[1], value: "B" }),
+        expect.objectContaining({ col: nativeColumns[2], value: 10 }),
+        expect.objectContaining({ col: nativeColumns[3], value: "Vendor 1" }),
       ]),
     });
     expect(clickData?.data).toHaveLength(columns.length);
+  });
+
+  // Node column values are accumulated per role (source rows -> outputColumnValues,
+  // target rows -> inputColumnValues), so a click-behavior lookup by column name
+  // must not fall through to them — it would return a neighbour's name.
+  describe("node click resolves to the clicked node for both mapped columns (#78113)", () => {
+    const SOURCE_KEY = getColumnKey(columns[0]);
+    const TARGET_KEY = getColumnKey(columns[1]);
+    const AMOUNT_KEY = getColumnKey(columns[2]);
+
+    const lookupValue = (
+      clickData: ReturnType<typeof createSankeyClickData>,
+      columnName: string,
+    ) => {
+      const { column } = getDataFromClicked({
+        dimensions: clickData?.dimensions,
+        data: clickData?.data,
+      });
+      return column[columnName.toLowerCase()]?.value;
+    };
+
+    it("start-node click mapped to the Target column returns the clicked node, not its downstream neighbour", () => {
+      const startANode = {
+        dataType: "node",
+        data: {
+          rawName: "Start A",
+          displayName: "Start A",
+          level: 0,
+          hasInputs: false,
+          hasOutputs: true,
+          origin: "source" as const,
+          inputColumnValues: {},
+          outputColumnValues: {
+            [SOURCE_KEY]: "Start A",
+            [TARGET_KEY]: "Middle X",
+            [AMOUNT_KEY]: 1,
+          },
+          outputLinkByTarget: new Map(),
+        },
+        event: mockEvent,
+        value: "Start A",
+        seriesType: "sankey",
+      };
+
+      const clickData = createSankeyClickData(
+        startANode,
+        sankeyColumns,
+        rawSeries,
+        settings,
+      );
+
+      expect(lookupValue(clickData, "Source")).toBe("Start A");
+      expect(lookupValue(clickData, "Target")).toBe("Start A");
+    });
+
+    it("receiving-node click mapped to the Source column returns the clicked node, not an upstream neighbour", () => {
+      const middleXNode = {
+        dataType: "node",
+        data: {
+          rawName: "Middle X",
+          displayName: "Middle X",
+          level: 1,
+          hasInputs: true,
+          hasOutputs: true,
+          origin: "both" as const,
+          inputColumnValues: {
+            [SOURCE_KEY]: "Start B",
+            [TARGET_KEY]: "Middle X",
+            [AMOUNT_KEY]: 3,
+          },
+          outputColumnValues: {
+            [SOURCE_KEY]: "Middle X",
+            [TARGET_KEY]: "End",
+            [AMOUNT_KEY]: 3,
+          },
+          outputLinkByTarget: new Map(),
+        },
+        event: mockEvent,
+        value: "Middle X",
+        seriesType: "sankey",
+      };
+
+      const clickData = createSankeyClickData(
+        middleXNode,
+        sankeyColumns,
+        rawSeries,
+        settings,
+      );
+
+      expect(lookupValue(clickData, "Target")).toBe("Middle X");
+      expect(lookupValue(clickData, "Source")).toBe("Middle X");
+    });
   });
 });

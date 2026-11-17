@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { trackSchemaEvent } from "metabase/analytics";
-import type { ExportFormat } from "metabase/common/types/export";
 import type {
   EmbedResourceDownloadOptions,
   EmbeddingParameterVisibility,
+  ExportFormat,
 } from "metabase-types/api";
 
 import type {
@@ -136,6 +137,7 @@ export const trackPublicLinkCopied = ({
   trackSchemaEvent(SCHEMA_NAME, {
     event: "public_link_copied",
     artifact,
+    // Unjustified type cast. FIXME
     format: format as any, // ExportFormatType is untyped
   });
 };

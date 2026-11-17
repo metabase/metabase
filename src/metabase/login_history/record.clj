@@ -27,15 +27,12 @@
           (let [[info] (login-history/human-friendly-infos [history-record])]
             (messages/send-login-from-new-device-email! info))
           (catch Throwable e
-            (log/error e "Error sending 'login from new device' notification email")))))))
+            (log/errorf "Error sending 'login from new device' notification email: %s" (ex-message e))))))))
 
 (mu/defn record-login-history!
   "Record login history for a user, and send them an email if this is their first time logging in from this device."
   [session-id  :- string?
-   user        :- [:map
-                   {:description ":model/User"}
-                   [:id pos-int?]
-                   [:last_login {:optional true} :any]]
+   user        :- :metabase.users.schema/user
    device-info :- request/DeviceInfo]
   (let [history-entry (login-history/record-login-history! session-id (u/the-id user) device-info)]
     (when-not (or (:embedded device-info) (:token_exchange device-info))

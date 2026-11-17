@@ -1,24 +1,19 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { Messages } from "metabase/admin/permissions/constants/messages";
 import {
-  getPermissionWarning,
-  getPermissionWarningModal,
-} from "metabase/admin/permissions/selectors/confirmations";
-import {
-  DataPermissionType,
+  Messages,
   type PermissionOption,
   type PermissionSectionConfig,
-} from "metabase/admin/permissions/types";
-import {
   getFieldsPermission,
+  getPermissionWarning,
+  getPermissionWarningModal,
   getSchemasPermission,
   getTablesPermission,
-} from "metabase/admin/permissions/utils/graph";
-import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
+  navigateToGranularPermissions,
+} from "metabase/permissions";
 import {
   DataPermission,
+  DataPermissionType,
   DataPermissionValue,
   type Group,
   type GroupsPermissions,
@@ -42,32 +37,36 @@ const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {
 
 export const DOWNLOAD_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   none: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`No`,
+    get label() {
+      return t`No`;
+    },
     value: DataPermissionValue.NONE,
     icon: "close",
-    iconColor: "danger",
+    iconColor: "feedback-negative",
   },
   limited: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`10 thousand rows`,
+    get label() {
+      return t`10 thousand rows`;
+    },
     value: DataPermissionValue.LIMITED,
     icon: "10k",
     iconColor: "accent7",
   },
   full: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`1 million rows`,
+    get label() {
+      return t`1 million rows`;
+    },
     value: DataPermissionValue.FULL,
     icon: "1m",
     iconColor: "accent7",
   },
   controlled: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`Granular`,
+    get label() {
+      return t`Granular`;
+    },
     value: DataPermissionValue.CONTROLLED,
     icon: "permissions_limited",
-    iconColor: "warning",
+    iconColor: "feedback-warning",
   },
 };
 
@@ -90,6 +89,7 @@ const getPermissionValue = (
       return getFieldsPermission(
         permissions,
         groupId,
+        // Unjustified type cast. FIXME
         entityId as TableEntityId,
         permission,
       );
@@ -97,6 +97,7 @@ const getPermissionValue = (
       return getTablesPermission(
         permissions,
         groupId,
+        // Unjustified type cast. FIXME
         entityId as SchemaEntityId,
         permission,
       );
@@ -203,8 +204,7 @@ export const buildDownloadPermission = (
     ],
     postActions: hasChildEntities
       ? {
-          controlled: () =>
-            push(getGroupFocusPermissionsUrl(groupId, entityId)),
+          controlled: () => navigateToGranularPermissions(groupId, entityId),
         }
       : undefined,
   };

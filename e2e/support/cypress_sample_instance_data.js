@@ -28,6 +28,11 @@ export const ORDERS_COUNT_QUESTION_ID = _.findWhere(
   { name: "Orders, Count" },
 ).id;
 
+export const ORDERS_COUNT_QUESTION_ENTITY_ID = _.findWhere(
+  SAMPLE_INSTANCE_DATA.questions,
+  { name: "Orders, Count" },
+).entity_id;
+
 export const ORDERS_BY_YEAR_QUESTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.questions,
   { name: "Orders, Count, Grouped by Created At (year)" },
@@ -55,14 +60,6 @@ export const NORMAL_PERSONAL_COLLECTION_ID = _.findWhere(
 export const READ_ONLY_PERSONAL_COLLECTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.collections,
   { name: "Read Only Tableton's Personal Collection" },
-).id;
-
-/**
- * @type number
- */
-export const NO_DATA_PERSONAL_COLLECTION_ID = _.findWhere(
-  SAMPLE_INSTANCE_DATA.collections,
-  { name: "No Data Tableton's Personal Collection" },
 ).id;
 
 /**

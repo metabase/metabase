@@ -12,7 +12,7 @@ export async function startContainers({
   healthcheckPorts,
 }: {
   cwd: string;
-  env: Record<string, string | number>;
+  env: Record<string, string | number | undefined>;
   appName: string;
   dockerUpCommand: string;
   dockerDownCommand: string;

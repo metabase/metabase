@@ -6,6 +6,7 @@ import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
@@ -22,6 +23,7 @@ import {
   createMockDashboardCard,
   createMockDatabase,
   createMockQueryAction,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { ActionSidebar } from "./ActionSidebar";
@@ -64,12 +66,18 @@ const setup = ({
       sidebar={{
         props: { dashcardId },
       }}
+      // Unjustified type cast. FIXME
       onUpdateDashCardVisualizationSettings={vizUpdateSpy as any}
       closeSidebar={closeSpy}
       navigateToNewCardFromDashboard={null}
     >
       <ActionSidebar />
     </MockDashboardContext>,
+    {
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: true }),
+      }),
+    },
   );
 
   return { vizUpdateSpy, closeSpy };
@@ -99,7 +107,7 @@ describe("Dashboard > ActionSidebar", () => {
     const textInput = screen.getByLabelText("Button text");
 
     expect(textInput).toHaveValue(
-      actionDashcard.visualization_settings["button.label"] as string,
+      actionDashcard.visualization_settings["button.label"],
     );
     await userEvent.clear(textInput);
     await userEvent.type(textInput, "xyz");

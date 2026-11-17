@@ -100,12 +100,13 @@ function JoinTableColumnPicker({ columnPicker }: JoinTableColumnPickerProps) {
   const [isOpened, setIsOpened] = useState(false);
 
   return (
-    <Popover opened={isOpened} onChange={setIsOpened}>
+    <Popover opened={isOpened} onChange={setIsOpened} trapFocus returnFocus>
       <Popover.Target>
         <Tooltip label={t`Pick columns`}>
           <IconButtonWrapper
             className={S.ColumnPickerButton}
             style={
+              // Unjustified type cast. FIXME
               {
                 "--notebook-cell-container-padding": CONTAINER_PADDING,
               } as CSSProperties

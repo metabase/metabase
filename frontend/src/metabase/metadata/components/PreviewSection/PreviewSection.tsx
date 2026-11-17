@@ -1,7 +1,6 @@
 import { memo, useMemo } from "react";
 import { t } from "ttag";
 
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,
   Box,
@@ -39,7 +38,7 @@ const PreviewSectionBase = ({
   onPreviewTypeChange,
   onClose,
 }: PreviewSectionBaseProps) => {
-  const fieldId = getRawTableFieldId(field);
+  const fieldId = field.id;
   const tableId = table.id;
   const databaseId = table.db_id;
   const data = useMemo(() => getPreviewTypeData(), []);
@@ -53,18 +52,14 @@ const PreviewSectionBase = ({
       className={className}
       data-testid="preview-section"
       h="100%"
-      px="lg"
-      py="md"
+      px="xl"
+      py="lg"
       withBorder
     >
       <Group justify="space-between">
         <Text fw="bold">{t`Field preview`}</Text>
 
-        <ActionIcon
-          color="text-primary"
-          variant="transparent"
-          onClick={onClose}
-        >
+        <ActionIcon variant="subtle" onClick={onClose}>
           <Icon name="close" />
         </ActionIcon>
       </Group>

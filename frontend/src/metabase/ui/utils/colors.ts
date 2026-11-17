@@ -38,11 +38,20 @@ export function getColorShades(colorName: string): MantineColorsTuple {
   ];
 }
 
-export function getMantineThemeColors(
-  colorScheme: ResolvedColorScheme,
-  whitelabelColors?: ColorSettings | null,
-): Record<string, MantineColorsTuple> {
-  const { colors } = deriveFullMetabaseTheme({ colorScheme, whitelabelColors });
+export function getMantineThemeColors({
+  colorScheme,
+  whitelabelColors,
+  forceDynamicBrandRamp,
+}: {
+  colorScheme: ResolvedColorScheme;
+  whitelabelColors?: ColorSettings | null;
+  forceDynamicBrandRamp?: boolean;
+}): Record<string, MantineColorsTuple> {
+  const { colors } = deriveFullMetabaseTheme({
+    colorScheme,
+    whitelabelColors,
+    forceDynamicBrandRamp,
+  });
 
   return {
     ...Object.fromEntries(
@@ -67,6 +76,7 @@ export function color(colorName: ColorName): string {
 }
 
 export const isColorName = (name?: string | null): name is ColorName => {
+  // Unjustified type cast. FIXME
   return !!name && ALL_COLOR_NAMES.includes(name as MetabaseColorKey);
 };
 

@@ -1,16 +1,19 @@
 (ns metabase.sso.ldap
   (:require
    [clj-ldap.client :as ldap]
+   [clojure.string :as str]
    [diehard.core :as dh]
    [metabase.settings.core :as setting]
    [metabase.sso.ldap.default-implementation :as default-impl]
    [metabase.sso.settings :as sso.settings]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
-   (com.unboundid.ldap.sdk LDAPConnectionPool LDAPException)))
+   (com.unboundid.ldap.sdk LDAPConnection LDAPConnectionOptions LDAPConnectionPool LDAPException
+                           SimpleBindRequest StartTLSPostConnectProcessor)
+   (com.unboundid.ldap.sdk.extensions StartTLSExtendedRequest)
+   (com.unboundid.util.ssl HostNameSSLSocketVerifier SSLUtil TrustAllTrustManager TrustStoreTrustManager)))
 
 (set! *warn-on-reflection* true)
 
@@ -29,19 +32,33 @@
    :ldap-group-sync          :group-sync
    :ldap-group-base          :group-base})
 
+(defn- default-trust-store-path
+  "Path to the JVM's default CA trust store, honoring the standard
+  `javax.net.ssl.trustStore` system property and otherwise falling back to
+  `$JAVA_HOME/lib/security/cacerts`."
+  []
+  (or (not-empty (System/getProperty "javax.net.ssl.trustStore"))
+      (str/join java.io.File/separator
+                [(System/getProperty "java.home") "lib" "security" "cacerts"])))
+
 (defn- details->ldap-options [{:keys [host port bind-dn password security]}]
   (let [security (keyword security)
         port     (if (string? port)
                    (Integer/parseInt port)
-                   port)]
+                   port)
+        tls?     (contains? #{:ssl :starttls} security)]
     ;; Connecting via IPv6 requires us to use this form for :host, otherwise
     ;; clj-ldap will find the first : and treat it as an IPv4 and port number
-    {:host      {:address host
-                 :port    port}
-     :bind-dn   bind-dn
-     :password  password
-     :ssl?      (= security :ssl)
-     :startTLS? (= security :starttls)}))
+    (cond-> {:host      {:address host
+                         :port    port}
+             :bind-dn   bind-dn
+             :password  password
+             :ssl?      (= security :ssl)
+             :startTLS? (= security :starttls)}
+      ;; Validate the server certificate against the operator-configured CA
+      ;; store when set, otherwise the JVM default trust store.
+      tls? (assoc :trust-store (or (sso.settings/ldap-trust-store)
+                                   (default-trust-store-path))))))
 
 (defn- settings->ldap-options []
   (details->ldap-options {:host      (sso.settings/ldap-host)
@@ -50,14 +67,56 @@
                           :password  (sso.settings/ldap-password)
                           :security  (sso.settings/ldap-security)}))
 
+(defn- trust-manager
+  ^javax.net.ssl.X509TrustManager [trust-store]
+  (if trust-store
+    (TrustStoreTrustManager. ^String trust-store)
+    (TrustAllTrustManager.)))
+
+(defn- ldap-connection-options
+  "`LDAPConnectionOptions` configured to verify that the server certificate matches the host we
+   connected to."
+  ^LDAPConnectionOptions []
+  (doto (LDAPConnectionOptions.)
+    (.setSSLSocketVerifier (HostNameSSLSocketVerifier. true))))
+
+(defn- connect-tls
+  "Build a single-connection `LDAPConnectionPool` over SSL or StartTLS. Sets a hostname-verifying
+   connection option so the server certificate is checked against the connected host in addition to
+   being validated against the trust store."
+  ^LDAPConnectionPool [{:keys [host bind-dn password ssl? startTLS? trust-store]}]
+  (let [{:keys [address port]} host
+        opt      (ldap-connection-options)
+        conn     (if ssl?
+                   (LDAPConnection. (.createSSLSocketFactory (SSLUtil. (trust-manager trust-store)))
+                                    opt ^String address (int (or port 636)))
+                   (doto (LDAPConnection. opt ^String address (int (or port 389)))
+                     (.processExtendedOperation
+                      (StartTLSExtendedRequest. (.createSSLContext (SSLUtil. (trust-manager trust-store)))))))
+        bind-req (if bind-dn
+                   (SimpleBindRequest. ^String bind-dn ^String password)
+                   (SimpleBindRequest.))
+        pcp      (when startTLS?
+                   (StartTLSPostConnectProcessor. (.createSSLContext (SSLUtil. (trust-manager trust-store)))))]
+    (.bind conn bind-req)
+    (LDAPConnectionPool. conn 1 1 pcp)))
+
+(defn- connect
+  "Open an `LDAPConnectionPool` from an options map. TLS connections are built here so the server
+   hostname is verified; plaintext connections are delegated to clj-ldap unchanged."
+  ^LDAPConnectionPool [{:keys [ssl? startTLS?] :as options}]
+  (if (or ssl? startTLS?)
+    (connect-tls options)
+    (ldap/connect options)))
+
 (defn- get-connection
   "Connects to LDAP with the currently set settings and returns the connection."
   ^LDAPConnectionPool
   []
   (let [options (settings->ldap-options)]
-    (log/debugf "Opening LDAP connection with options %s" (u/pprint-to-str options))
+    (log/debug "Opening LDAP connection")
     (try
-      (ldap/connect options)
+      (connect options)
       (catch LDAPException e
         (log/errorf "Failed to obtain LDAP connection: %s" (.getMessage e))
         (throw e)))))
@@ -93,7 +152,7 @@
      :group-base \"ou=Groups,dc=metabase,dc=com\"}"
   [{:keys [user-base group-base], :as details}]
   (try
-    (with-open [^LDAPConnectionPool conn (ldap/connect (details->ldap-options details))]
+    (with-open [^LDAPConnectionPool conn (connect (details->ldap-options details))]
       (or
        (try
          (when-not (ldap/get conn user-base)

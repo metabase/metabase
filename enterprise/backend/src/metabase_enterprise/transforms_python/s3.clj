@@ -63,6 +63,9 @@
 (defn- delete-object-request ^DeleteObjectRequest [^String bucket-name ^String key]
   (-> (DeleteObjectRequest/builder) (.bucket bucket-name) (.key key) .build))
 
+(defonce ^:private default-credentials-provider
+  (delay (.build (DefaultCredentialsProvider/builder))))
+
 (defn- maybe-with-credentials*
   [credentials-provider]
   (let [access-key (transforms-python.settings/python-storage-s-3-access-key)
@@ -72,11 +75,11 @@
         (do (log/warnf "Ignoring %s because %s is not defined"
                        (if access-key "access-key" "secret-key")
                        (if (not access-key) "access-key" "secret-key"))
-            (credentials-provider (DefaultCredentialsProvider/create)))
+            (credentials-provider @default-credentials-provider))
         (credentials-provider
          (StaticCredentialsProvider/create
           (AwsBasicCredentials/create access-key secret-key))))
-      (credentials-provider (DefaultCredentialsProvider/create)))))
+      (credentials-provider @default-credentials-provider))))
 
 (defn- maybe-with-credentials-s3-client [^S3ClientBuilder builder]
   (maybe-with-credentials* #(.credentialsProvider builder ^AwsCredentialsProvider %)))
@@ -214,7 +217,7 @@
   (try
     (.deleteObject s3-client (delete-object-request bucket-name key))
     (catch Exception e
-      (log/debugf e "Error deleting s3 object %s" key)
+      (log/debugf "Error deleting s3 object %s: %s" key (ex-message e))
       ;; Ignore deletion errors - object might not exist, or we might not have permissions
       ;; NOTE: we plan to put general retention on the bucket so that objects will eventually be deleted
       nil)))

@@ -1,4 +1,4 @@
-import { push } from "react-router-redux";
+import { t } from "ttag";
 
 import {
   skipToken,
@@ -7,31 +7,30 @@ import {
   useGetCollectionQuery,
 } from "metabase/api";
 import { getDefaultTimeline } from "metabase/common/utils/timelines";
-import { useDispatch } from "metabase/redux";
-import NewEventModal from "metabase/timelines/common/components/NewEventModal";
+import { useNavigate } from "metabase/router";
+import NewEventForm from "metabase/timelines/common/components/NewEventForm";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
-import type {
-  Collection,
-  CreateTimelineEventRequest,
-  CreateTimelineRequest,
-  TimelineEvent,
-} from "metabase-types/api";
+import type { Collection, TimelineEventData } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";
 
 interface NewEventWithTimelineModalContainerProps {
   params: ModalParams;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
-function NewEventWithTimelineModalContainer(
-  props: NewEventWithTimelineModalContainerProps,
-) {
-  const dispatch = useDispatch();
+function NewEventWithTimelineModalContainer({
+  params,
+  onClose,
+}: NewEventWithTimelineModalContainerProps) {
+  const navigate = useNavigate();
   const [createTimeline] = useCreateTimelineMutation();
   const [createTimelineEvent] = useCreateTimelineEventMutation();
-  const collectionId = Urls.extractCollectionId(props.params.slug);
+  const collectionId = Urls.extractCollectionId(params.slug);
   const {
     data: collection,
     isLoading,
@@ -41,33 +40,41 @@ function NewEventWithTimelineModalContainer(
   );
 
   const onSubmit = async (
-    values: Partial<TimelineEvent>,
+    values: TimelineEventData,
     collection?: Collection,
   ) => {
     if (!collection) {
       return;
     }
     const timeline = await createTimeline(
-      getDefaultTimeline(collection) as CreateTimelineRequest,
+      getDefaultTimeline(collection),
     ).unwrap();
     await createTimelineEvent({
       ...values,
       timeline_id: timeline.id,
-    } as CreateTimelineEventRequest).unwrap();
-    dispatch(push(Urls.timelinesInCollection(collection)));
+    }).unwrap();
+    navigate(Urls.timelinesInCollection(collection));
   };
 
-  if (isLoading || error || !collection) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
   return (
-    <NewEventModal
-      {...props}
-      source="collections"
-      collection={collection}
-      onSubmit={onSubmit}
-    />
+    <TimelineModal
+      title={t`New event`}
+      onClose={onClose}
+      animated={false}
+      density="relaxed"
+      tall={isLoading || !!error || !collection}
+    >
+      {isLoading || error || !collection ? (
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      ) : (
+        <NewEventForm
+          source="collections"
+          collection={collection}
+          onSubmit={onSubmit}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 

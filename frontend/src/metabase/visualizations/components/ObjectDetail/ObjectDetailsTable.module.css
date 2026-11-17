@@ -1,3 +1,23 @@
 .fitImage {
   object-fit: contain;
 }
+
+.columnName {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xxs);
+}
+
+.descriptionIcon {
+  visibility: hidden;
+}
+
+.columnName:hover .descriptionIcon {
+  visibility: visible;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .descriptionIcon {
+    visibility: visible;
+  }
+}

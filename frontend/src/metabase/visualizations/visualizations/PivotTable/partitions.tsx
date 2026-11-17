@@ -1,9 +1,19 @@
 import { t } from "ttag";
 
+import { Box } from "metabase/ui";
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
-import { PivotTableSettingLabel } from "./PivotTable.styled";
+const SettingLabel = ({ children }: { children: React.ReactNode }) => (
+  <Box
+    component="span"
+    c="text-primary"
+    fw={700}
+    data-testid="pivot-table-setting"
+  >
+    {children}
+  </Box>
+);
 
 export interface Partition {
   name: "rows" | "columns" | "values";
@@ -11,29 +21,20 @@ export interface Partition {
   title: React.ReactNode;
 }
 
-export const partitions: Partition[] = [
+export const getPartitions = (): Partition[] => [
   {
     name: "rows",
     columnFilter: isDimension,
-    title: (
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Rows`}</PivotTableSettingLabel>
-    ),
+    title: <SettingLabel>{t`Rows`}</SettingLabel>,
   },
   {
     name: "columns",
     columnFilter: isDimension,
-    title: (
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Columns`}</PivotTableSettingLabel>
-    ),
+    title: <SettingLabel>{t`Columns`}</SettingLabel>,
   },
   {
     name: "values",
     columnFilter: (col) => !isDimension(col),
-    title: (
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Measures`}</PivotTableSettingLabel>
-    ),
+    title: <SettingLabel>{t`Measures`}</SettingLabel>,
   },
 ];

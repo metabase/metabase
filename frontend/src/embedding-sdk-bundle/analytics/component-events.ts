@@ -2,11 +2,13 @@ import { useEffect } from "react";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
-import { useSetting } from "metabase/common/hooks";
 import { isEmbeddingEajs, isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { useSetting } from "metabase/settings";
 
 import {
+  getHostReactVersion,
   getSdkAuthMethod,
+  getSdkClient,
   getSdkLocaleUsed,
   trackSdkSimpleEvent,
 } from "./snowplow";
@@ -161,10 +163,12 @@ export function useTrackSdkComponentMount<C extends SdkComponentName>(
     const sdkVersion = getSdkPackageVersion();
 
     const definedProperties = Object.fromEntries(
+      // Unjustified type cast. FIXME
       Object.entries(properties as Record<string, unknown>).filter(
         ([, value]) => value !== undefined,
       ),
     );
+    // Unjustified type cast. FIXME
     const mergedProperties = {
       ...SDK_COMPONENT_DEFAULT_PROPERTIES[componentName],
       ...definedProperties,
@@ -172,6 +176,7 @@ export function useTrackSdkComponentMount<C extends SdkComponentName>(
 
     const serializedProperties = Object.fromEntries(
       Object.entries(
+        // Unjustified type cast. FIXME
         mergedProperties as Record<string, boolean | string | null | undefined>,
       ).map(([key, value]) => [key, value == null ? null : String(value)]),
     );
@@ -185,6 +190,8 @@ export function useTrackSdkComponentMount<C extends SdkComponentName>(
           auth_method: getSdkAuthMethod(),
           sdk_version: sdkVersion,
           locale_used: getSdkLocaleUsed(),
+          react_version: getHostReactVersion(),
+          client: getSdkClient(),
         },
       }),
     });

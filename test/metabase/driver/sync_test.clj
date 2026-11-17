@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.driver.postgres]
    [metabase.driver.sync :as driver.s]
+   [metabase.test :as mt]
    [metabase.workspaces.core :as workspaces])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -36,12 +37,14 @@
   (testing "Schema filter function should not NPE if you pass in a `nil` schema (#38156)"
     (testing "inclusion -- don't include nil schemas"
       (let [db {:lib/type :metadata/database
+                :id       1
                 :details  {:schema-filters-type     "inclusion"
                            :schema-filters-patterns "x"}
                 :engine   :postgres}]
         (is (not (driver.s/include-schema? db nil)))))
     (testing "exclusion -- don't exclude nil schemas"
       (let [db {:lib/type :metadata/database
+                :id       1
                 :details  {:schema-filters-type     "exclusion"
                            :schema-filters-patterns "x"}
                 :engine   :postgres}]
@@ -80,7 +83,7 @@
   ;; `with-redefs` to flip workspace-mode? to true -- not :parallel-safe.
   ;; Wrapping ns ^:synchronous would be cleaner but this single test stays local.
   (testing "On child (workspace-mode) instances, include-schema? DOES sync mb__isolation_* (GHY-3489)"
-    (with-redefs [workspaces/workspace-mode? (constantly true)]
+    (mt/with-dynamic-fn-redefs [workspaces/workspace-mode? (constantly true)]
       (is (driver.s/include-schema? nil nil "mb__isolation_abc_42")
           "iso schemas must be synced on child -- table remapping needs them")
       (is (driver.s/include-schema? "mb*" nil "mb__isolation_abc_42")

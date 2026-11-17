@@ -3,7 +3,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.util :as lib.util]
    [metabase.query-processor.middleware.add-rows-truncated :as add-rows-truncated]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.test :as qp]
@@ -11,7 +13,7 @@
 
 (defn- add-rows-truncated [query rows]
   (let [rff (add-rows-truncated/add-rows-truncated (assoc query :lib/type :mbql/query) qp.reducible/default-rff)
-        rf  (rff nil)]
+        rf  (rff {})]
     (transduce identity rf rows)))
 
 (deftest ^:parallel add-rows-truncated-test
@@ -58,12 +60,26 @@
                 (assoc :constraints {:max-results 10, :max-results-bare-rows 5}))
             [[1] [1] [1] [1] [1]])))))
 
+(deftest ^:parallel pivot-query-emits-pivot_rows_truncated-test
+  (testing "a query that carries a :pivot clause on its last stage emits :pivot_rows_truncated, not :rows_truncated"
+    (let [base    (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (meta/field-metadata :venues :category-id)))
+          [u1]    (mapv lib.options/uuid (lib/breakouts base))
+          pivot-q (-> base
+                      (lib.util/update-query-stage -1 assoc :pivot
+                                                   {:rows [u1] :columns []
+                                                    :show-row-totals true :show-column-totals true})
+                      (assoc :constraints {:max-results 5 :max-results-bare-rows 5}))]
+      (is (=? {:data {:pivot_rows_truncated 5}}
+              (add-rows-truncated pivot-q [[1] [1] [1] [1] [1]]))))))
+
 (deftest ^:parallel e2e-test
   (let [result         (qp/process-query
                         (-> (mt/mbql-query venues {:order-by [[:asc $id]]})
                             qp/userland-query
                             (assoc :constraints {:max-results-bare-rows 5
-                                                 :max-result            10})))
+                                                 :max-results           10})))
         rows-truncated-info (select-keys (:data result) [:rows_truncated])]
     (is (= {:rows_truncated 5}
            (if (seq rows-truncated-info)

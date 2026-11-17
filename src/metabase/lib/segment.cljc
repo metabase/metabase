@@ -70,7 +70,7 @@
 (mu/defn available-segments :- [:maybe [:sequential {:min 1} ::lib.schema.metadata/segment]]
   "Get a list of Segments that you may consider using as filter for a query. Only Segments that have the same
   `table-id` as the `source-table` for this query will be suggested."
-  ([query]
+  ([query :- ::lib.schema/query]
    (available-segments query -1))
   ([query :- ::lib.schema/query
     stage-number :- :int]

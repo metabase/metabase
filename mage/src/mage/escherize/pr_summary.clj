@@ -2,7 +2,6 @@
   (:require
    [babashka.json :as json]
    [babashka.process :as p]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.pprint :as pprint]
    [clojure.string :as str]
    [mage.util :as u]

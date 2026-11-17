@@ -89,7 +89,7 @@
                        (try
                          (end-span-with-status! span span-ctx (:status response))
                          (catch Throwable t
-                           (log/error t "Error ending trace span")))
+                           (log/errorf "Error ending trace span: %s" (ex-message t))))
                        (respond response))
                      (fn trace-raise [exception]
                        (try
@@ -97,7 +97,7 @@
                          (.recordException span exception)
                          (span/end-span! {:context span-ctx})
                          (catch Throwable t
-                           (log/error t "Error ending trace span on exception")))
+                           (log/errorf "Error ending trace span on exception: %s" (ex-message t))))
                        (raise exception)))
             (catch Throwable t
               ;; Handler itself threw synchronously — end span and re-raise

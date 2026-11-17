@@ -1,5 +1,6 @@
 (ns metabase.lib.js.metadata
   (:require
+   ;; the :clj branch normalizes legacy :field-ref metadata values; cljs leaves them as JS arrays
    #?@(:clj  (#_{:clj-kondo/ignore [:discouraged-namespace]}
               [metabase.legacy-mbql.normalize :as legacy-mbql.normalize])
        :cljs ([goog]
@@ -11,9 +12,12 @@
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [metabase.util.performance :as perf]))
 
 ;;; metabase-lib/metadata/Metadata comes in an object like
@@ -146,10 +150,10 @@
     (fn [object]
       (try
         (let [parsed (assoc (obj->clj xform object opts) :lib/type lib-type-name)]
-          (log/debugf "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
+          (log/debugf "Parsed metadata %s %s" object-type (:id parsed))
           parsed)
         (catch #?(:cljs js/Error :clj Exception) e
-          (log/errorf e "Error parsing %s %s: %s" object-type (pr-str object) (ex-message e))
+          (log/errorf "Error parsing %s: %s" object-type (ex-message e))
           nil)))))
 
 (defmulti ^:private parse-objects
@@ -213,9 +217,16 @@
       :visibility-type     (keyword v)
       v)))
 
+(defn- use-schema-name
+  "The FE store keeps a table's schema ID under `schema` and its name under `schema_name`; Lib expects the name."
+  [table]
+  (cond-> table
+    (contains? table :schema-name) (-> (assoc :schema (:schema-name table))
+                                       (dissoc :schema-name))))
+
 (defmethod parse-objects :table
   [object-type metadata]
-  (let [parse-table (parse-object-fn object-type)]
+  (let [parse-table (comp #(some-> % use-schema-name) (parse-object-fn object-type))]
     (obj->clj (comp (remove (fn [[k _v]]
                               (str/starts-with? k "card__")))
                     (map (fn [[k v]]
@@ -267,6 +278,16 @@
     {:values                (#?(:cljs js->clj :clj identity) (object-get field-values "values"))
      :human-readable-values (#?(:cljs js->clj :clj identity) (object-get field-values "human_readable_values"))}))
 
+(defn- parse-external-remap [remap]
+  (lib.normalize/normalize ::lib.schema.metadata/column.remapping.external
+                           #?(:cljs (js->clj remap)
+                              :clj  remap)))
+
+(defn- parse-internal-remap [remap]
+  (lib.normalize/normalize ::lib.schema.metadata/column.remapping.internal
+                           #?(:cljs (js->clj remap)
+                              :clj  remap)))
+
 (defn- parse-dimension
   "`:dimensions` comes in as an array for historical reasons, even tho a Field can only have one. So it should never
   have more than one element. See #27054. Anyways just to be safe let's make sure it's either `:external` or
@@ -274,7 +295,7 @@
   [dimensions]
   (when-let [dimension (m/find-first (fn [dimension]
                                        (#{"external" "internal"} (get dimension "type")))
-                                     dimensions)]
+                                     #?(:cljs (js->clj dimensions) :clj dimensions))]
     (let [dimension-type (keyword (get dimension "type"))]
       (merge
        {:id   (get dimension "id")
@@ -330,6 +351,8 @@
       :semantic-type                    (keyword v)
       :visibility-type                  (keyword v)
       :id                               (parse-field-id v)
+      :lib/external-remap               (parse-external-remap v)
+      :lib/internal-remap               (parse-internal-remap v)
       :lib/binning       (parse-binning-info v)
       :lib/original-binning             (parse-binning-info v)
       ::field-values                    (parse-field-values v)
@@ -519,13 +542,18 @@
   [_object-type]
   "snippets")
 
+(defn- parse-template-tags [template-tags]
+  (lib.normalize/normalize ::lib.schema.template-tag/template-tag-map
+                           #?(:cljs (js->clj template-tags)
+                              :clj  template-tags)))
+
 (defmethod parse-field-fn :snippet
   [_object-type]
   (fn [k v]
     (case k
-      :template-tags (lib.normalize/normalize :metabase.lib.schema.template-tag/template-tag-map
-                                              #?(:cljs (js->clj v)
-                                                 :clj  v))
+      ;; TODO (Cam 2026-07-06) not sure this is needed since this should be done automatically as part of normalizing
+      ;; a `:metabase.lib.schema.metadata/native-query-snippet` these days
+      :template-tags (parse-template-tags v)
       v)))
 
 (defn- parse-objects-delay [object-type metadata]
@@ -533,7 +561,7 @@
     (try
       (parse-objects object-type metadata)
       (catch #?(:cljs js/Error :clj Exception) e
-        (log/errorf e "Error parsing %s objects: %s" object-type (ex-message e))
+        (log/errorf "Error parsing %s objects: %s" object-type (ex-message e))
         nil))))
 
 (defn- card->metric-card
@@ -620,12 +648,8 @@
        ;; thing at once.
        clojure.core.protocols/Datafiable
        (datafy [_this]
-         (perf/postwalk
-          (fn [form]
-            (if (delay? form)
-              (deref form)
-              form))
-          metadata))))))
+         (match/replace-all metadata
+           #'delay? (deref &match)))))))
 
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."

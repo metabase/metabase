@@ -15,9 +15,10 @@ import {
   SyncOptionsModal,
   TableSection,
 } from "metabase/metadata/components";
+import { useParams } from "metabase/router";
 import {
+  ActionIcon,
   Box,
-  Button,
   Center,
   Flex,
   Group,
@@ -37,11 +38,8 @@ type TableFieldsPageParams = {
   fieldId?: string;
 };
 
-type TableFieldsPageProps = {
-  params: TableFieldsPageParams;
-};
-
-export function TableFieldsPage({ params }: TableFieldsPageProps) {
+export function TableFieldsPage() {
+  const params = useParams<TableFieldsPageParams>();
   const tableId = Urls.extractEntityId(params.tableId);
   const fieldId = Urls.extractEntityId(params.fieldId);
   const { table, isLoading, error } = useLoadTableWithMetadata(tableId);
@@ -65,7 +63,7 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
   }
 
   return (
-    <PageContainer data-testid="table-fields-page" gap="md" px={0} pb={0}>
+    <PageContainer data-testid="table-fields-page" gap="lg" px={0} pb={0}>
       <TableHeader table={table} px="3.5rem" />
       <Flex
         className={S.body}
@@ -86,7 +84,7 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
             }
             onSyncOptionsClick={openSyncModal}
             pl="3.5rem"
-            pr="lg"
+            pr="xl"
           />
         </Stack>
         {field != null && (
@@ -96,14 +94,14 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
             miw={320}
             maw={680}
             mih={0}
-            px="lg"
+            px="xl"
             gap="0"
             pos="relative"
           >
             <Group
               justify="space-between"
-              pt="lg"
-              pb="md"
+              pt="xl"
+              pb="lg"
               data-testid="field-section-header"
               pos="sticky"
               top={0}
@@ -111,15 +109,16 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
               bg="background_page-secondary"
             >
               <Text fw="bold">{t`Field Details`}</Text>
-              <Button
+              <ActionIcon
+                variant="subtle"
+                size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioTableFields(table.id)}
                 onClick={closePreview}
-                leftSection={<Icon name="close" c="text-secondary" />}
-                variant="subtle"
-                size="compact-sm"
-                p="sm"
-              />
+                aria-label={t`Close`}
+              >
+                <Icon name="close" />
+              </ActionIcon>
             </Group>
             <FieldSection
               /**
@@ -139,7 +138,7 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
           </Stack>
         )}
         {isPreviewOpen && field != null && (
-          <Box flex="10 1 0" miw={504} maw={734} p="lg">
+          <Box flex="10 1 0" miw={504} maw={734} p="xl">
             <PreviewSection
               className={S.preview}
               field={field}

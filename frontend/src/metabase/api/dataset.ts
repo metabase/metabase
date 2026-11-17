@@ -1,29 +1,20 @@
-import { updateMetadata } from "metabase/redux/metadata";
-import { QueryMetadataSchema } from "metabase/schema";
 import type {
   CardQueryMetadata,
   Dataset,
   DatasetQuery,
   FieldValue,
   GetRemappedParameterValueRequest,
+  InternalDatasetQuery,
+  JsonQuery,
   NativeDatasetResponse,
 } from "metabase-types/api";
 
-import { Api } from "./api";
+import { Api, type RtkCacheKeyed } from "./api";
 import {
   provideAdhocDatasetTags,
   provideAdhocQueryMetadataTags,
   provideParameterValuesTags,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
-
-interface RefetchDeps {
-  /**
-   * This attribute won't be a part of the API request and can be used to invalidate
-   * the cache of a given RTK query using its built-in caching mechanism.
-   */
-  _refetchDeps?: unknown;
-}
 
 interface IgnorableError {
   ignore_error?: boolean;
@@ -63,9 +54,9 @@ export const datasetApi = Api.injectEndpoints({
     }),
     getAdhocQuery: builder.query<
       Dataset,
-      DatasetQuery & RefetchDeps & IgnorableError
+      (JsonQuery | InternalDatasetQuery) & RtkCacheKeyed & IgnorableError
     >({
-      query: ({ _refetchDeps, ignore_error, ...body }) => ({
+      query: ({ ignore_error, ...body }) => ({
         method: "POST",
         url: "/api/dataset",
         body,
@@ -80,15 +71,15 @@ export const datasetApi = Api.injectEndpoints({
     }),
     getAdhocPivotQuery: builder.query<
       Dataset,
-      DatasetQuery & {
+      JsonQuery & {
         pivot_rows?: number[];
         pivot_cols?: number[];
         show_row_totals?: boolean;
         show_column_totals?: boolean;
-      } & RefetchDeps &
+      } & RtkCacheKeyed &
         IgnorableError
     >({
-      query: ({ _refetchDeps, ignore_error, ...body }) => ({
+      query: ({ ignore_error, ...body }) => ({
         method: "POST",
         url: "/api/dataset/pivot",
         body,
@@ -105,12 +96,8 @@ export const datasetApi = Api.injectEndpoints({
       }),
       providesTags: (metadata) =>
         metadata ? provideAdhocQueryMetadataTags(metadata) : [],
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, QueryMetadataSchema)),
-        ),
     }),
-    getNativeDataset: builder.query<NativeDatasetResponse, DatasetQuery>({
+    getNativeDataset: builder.query<NativeDatasetResponse, JsonQuery>({
       query: (body) => ({
         method: "POST",
         url: "/api/dataset/native",

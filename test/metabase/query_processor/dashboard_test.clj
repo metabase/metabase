@@ -7,12 +7,17 @@
    [clojure.test :refer :all]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.driver.common :as driver.common]
+   [metabase.lib-metric.core :as lib-metric]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metrics.core :as metrics]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.test :as qp]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
+   [metabase.users.models.user-parameter-value :as user-parameter-value]
    [toucan2.core :as t2]))
 
 (defn- run-query-for-dashcard [dashboard-id card-id dashcard-id & options]
@@ -33,6 +38,33 @@
                                            (t2/select-one :model/DashboardCard :id dashcard-id)
                                            card-id
                                            params))
+
+(defn- count-of-orders-by-created-at-query []
+  (let [mp         (mt/metadata-provider)
+        orders     (lib.metadata/table mp (mt/id :orders))
+        created-at (lib.metadata/field mp (mt/id :orders :created_at))]
+    (-> (lib/query mp orders)
+        (lib/aggregate (lib/count))
+        (lib/breakout (lib/with-temporal-bucket created-at :month)))))
+
+(defn- set-default-metric-dimension! [metric-id display-name]
+  (metrics/sync-dimensions! :metadata/metric metric-id)
+  (let [metric    (t2/select-one :model/Card :id metric-id)
+        dimension (some #(when (= display-name (:display-name %)) %) (:dimensions metric))
+        dimensions (mapv #(if (= (:id dimension) (:id %))
+                            (assoc % :default true)
+                            (dissoc % :default))
+                         (:dimensions metric))]
+    (is (some? dimension) (str "Missing metric dimension " display-name))
+    (when dimension
+      (t2/update! :model/Card :id metric-id {:dimensions dimensions}))))
+
+(defn- default-metric-dimension [metric]
+  (let [provider (lib-metric/metadata-provider)]
+    (#'qp.dashboard/default-metric-dimension
+     provider
+     (lib/query provider (:dataset_query metric))
+     metric)))
 
 (deftest ^:parallel resolve-parameters-validation-test
   (api.dashboard-test/with-chain-filter-fixtures [{{dashboard-id :id} :dashboard
@@ -56,6 +88,29 @@
              clojure.lang.ExceptionInfo
              #"Invalid parameter value type :number/!= for parameter \"_PRICE_\".*"
              (resolve-params [{:id "_PRICE_", :value 4, :type :number/!=}])))))))
+
+(deftest unknown-parameters-are-not-stored-test
+  (testing "request parameters the dashboard does not have never reach the last-used-parameter store (their ids are
+            unbounded, and `user_parameter_value.parameter_id` is varchar(36); one rejected row would discard the whole
+            batch of every user's saved parameters)"
+    (api.dashboard-test/with-chain-filter-fixtures [{{dashboard-id :id} :dashboard
+                                                     {card-id :id}      :card
+                                                     {dashcard-id :id}  :dashcard}]
+      (let [stored (atom [])]
+        (mt/with-dynamic-fn-redefs [user-parameter-value/store! (fn [_user-id _dashboard-id params] (swap! stored into params))]
+          (mt/with-current-user (mt/user->id :rasta)
+            (testing "an unknown id is rejected without being stored"
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"Dashboard does not have a parameter with ID"
+                   (resolve-params-for-query dashboard-id card-id dashcard-id
+                                             [{:id "_PRICE_", :value 4}
+                                              {:id (apply str (repeat 40 "z")), :value 3}])))
+              (is (empty? (filter #(= (apply str (repeat 40 "z")) (:id %)) @stored))))
+            (testing "known ids are still stored"
+              (reset! stored [])
+              (resolve-params-for-query dashboard-id card-id dashcard-id [{:id "_PRICE_", :value 4}])
+              (is (= ["_PRICE_"] (map :id @stored))))))))))
 
 (deftest ^:parallel resolve-parameters-validation-test-2
   (testing "Resolves new operator type arguments without error (#25031)"
@@ -124,6 +179,110 @@
                             #"Not found"
                             (run-query-for-dashcard dashboard-id card-id-2 dashcard-id-3))))))
 
+(deftest dashboard-metric-uses-default-curated-dimension-test
+  (testing "A dashboard metric uses its active curated default dimension (UXW-4769)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {metric-id :id} {:name                   "Orders metric"
+                                                  :type                   :metric
+                                                  :display                :line
+                                                  :database_id            (mt/id)
+                                                  :table_id               (mt/id :orders)
+                                                  :dataset_query          (count-of-orders-by-created-at-query)
+                                                  :visualization_settings {:graph.dimensions ["CREATED_AT"]}}
+                     :model/Dashboard {dashboard-id :id} {:parameters []}
+                     :model/DashboardCard {dashcard-id :id} {:card_id                metric-id
+                                                             :dashboard_id           dashboard-id
+                                                             :visualization_settings {:card.title "Dashboard metric"}}]
+        (testing "without a curated default, the saved breakout is unchanged"
+          (let [result (run-query-for-dashcard dashboard-id metric-id dashcard-id)]
+            (is (= "CREATED_AT" (-> result mt/cols first :name)))))
+        (let [stored-metadata (t2/select-one-fn :result_metadata :model/Card :id metric-id)]
+          (set-default-metric-dimension! metric-id "Product ID")
+          (let [metric     (t2/select-one :model/Card :id metric-id)
+                dimensions (mapv #(cond-> %
+                                    (:default %) (dissoc :sources))
+                                 (:dimensions metric))]
+            (t2/update! :model/Card :id metric-id {:dimensions dimensions}))
+          (testing "missing dimension sources are derived from the mapping"
+            (let [metric    (t2/select-one :model/Card :id metric-id)
+                  dimension (mt/as-admin (default-metric-dimension metric))]
+              (is (= [{:type :field, :field-id (mt/id :orders :product_id)}]
+                     (:sources dimension)))))
+          (let [result (run-query-for-dashcard dashboard-id metric-id dashcard-id)]
+            (is (= "PRODUCT_ID" (-> result mt/cols first :name)))
+            (is (= 200 (count (mt/rows result)))))
+          (testing "the rewritten query does not replace the metric's saved result metadata"
+            (is (= stored-metadata
+                   (t2/select-one-fn :result_metadata :model/Card :id metric-id))))
+          (let [metric     (t2/select-one :model/Card :id metric-id)
+                dimensions (mapv #(cond-> %
+                                    (:default %)
+                                    (assoc :sources [{:type :field, :field-id (mt/id :orders :tax)}]))
+                                 (:dimensions metric))]
+            (t2/update! :model/Card :id metric-id {:dimensions dimensions}))
+          (testing "a curated default hidden from the current user is ignored"
+            (mt/with-temp-vals-in-db :model/Field (mt/id :orders :product_id) {:visibility_type :sensitive}
+              (mt/with-test-user :rasta
+                (let [metric (t2/select-one :model/Card :id metric-id)]
+                  (is (nil? (default-metric-dimension metric)))))))
+          (testing "a curated default that is no longer projectable is ignored"
+            (let [metric     (t2/select-one :model/Card :id metric-id)
+                  default-id (some (fn [dimension]
+                                     (when (:default dimension)
+                                       (:id dimension)))
+                                   (:dimensions metric))
+                  mappings   (mapv #(cond-> %
+                                      (= (:dimension-id %) default-id)
+                                      (assoc-in [:target 1 :source-field] (mt/id :orders :tax)))
+                                   (:dimension_mappings metric))]
+              (mt/with-temp-vals-in-db :model/Card metric-id {:dimension_mappings mappings}
+                (let [metric (t2/select-one :model/Card :id metric-id)]
+                  (is (nil? (mt/as-admin (default-metric-dimension metric))))))))
+          (testing "a curated default with a missing mapped field is ignored"
+            (let [metric     (t2/select-one :model/Card :id metric-id)
+                  default-id (some (fn [dimension]
+                                     (when (:default dimension)
+                                       (:id dimension)))
+                                   (:dimensions metric))
+                  mappings   (mapv #(cond-> %
+                                      (= (:dimension-id %) default-id)
+                                      (assoc :target [:field {} Integer/MAX_VALUE]))
+                                   (:dimension_mappings metric))]
+              (mt/with-temp-vals-in-db :model/Card metric-id {:dimension_mappings mappings}
+                (let [metric (t2/select-one :model/Card :id metric-id)]
+                  (is (nil? (mt/as-admin (default-metric-dimension metric))))))))
+          (let [metric     (t2/select-one :model/Card :id metric-id)
+                dimensions (mapv #(cond-> %
+                                    (:default %) (assoc :status :status/orphaned))
+                                 (:dimensions metric))]
+            (t2/update! :model/Card :id metric-id {:dimensions dimensions}))
+          (testing "an orphaned curated default falls back to the saved breakout"
+            (let [result (run-query-for-dashcard dashboard-id metric-id dashcard-id)]
+              (is (= "CREATED_AT" (-> result mt/cols first :name))))))))))
+
+(deftest native-dashboard-metric-keeps-saved-query-test
+  (testing "A native dashboard metric keeps its saved query because it cannot be reprojected (UXW-4769)"
+    (let [dimension-id (str (random-uuid))]
+      (mt/with-temp [:model/Card {metric-id :id}
+                     {:name               "Native metric"
+                      :type               :metric
+                      :database_id        (mt/id)
+                      :dataset_query      (mt/native-query {:query "SELECT COUNT(*) AS count FROM ORDERS"})
+                      :dimensions         [{:id             dimension-id
+                                            :display-name   "Count"
+                                            :effective-type :type/Integer
+                                            :status         :status/active
+                                            :default        true}]
+                      :dimension_mappings [{:type         :table
+                                            :dimension-id dimension-id
+                                            :target       [:field {:base-type :type/Integer
+                                                                   :lib/uuid  (str (random-uuid))}
+                                                           "count"]}]}]
+        (let [original (t2/select-one :model/Card :id metric-id)
+              card     (mt/as-admin
+                         (qp.dashboard/card-with-default-metric-dimension original))]
+          (is (= (:dataset_query original) (:dataset_query card))))))))
+
 (deftest default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
     (mt/dataset test-data
@@ -141,7 +300,7 @@
                                        :name         "filter"
                                        :display-name "Filter"
                                        :type         :dimension
-                                       :dimension    [:field (mt/id :products :category) nil]
+                                       :field-id     (mt/id :products :category)
                                        :widget-type  :category
                                        :default      ["Gizmo" "Gadget"]
                                        :required     false}}}}}
@@ -321,7 +480,7 @@
                                                            :name         "cat"
                                                            :display-name "Cat"
                                                            :type         :dimension
-                                                           :dimension    [:field (mt/id :products :category) nil]
+                                                           :field-id     (mt/id :products :category)
                                                            :widget-type  :string/=
                                                            :default      nil}}})]
         (mt/with-native-query-testing-context query
@@ -370,7 +529,7 @@
                                                            :name         "cat"
                                                            :display-name "Cat"
                                                            :type         :dimension
-                                                           :dimension    [:field (mt/id :products :category) nil]
+                                                           :field-id     (mt/id :products :category)
                                                            :widget-type  :string/=
                                                            :default      ["Gizmo"]}}})]
         (mt/with-native-query-testing-context query
@@ -467,7 +626,7 @@
                                                                  :template-tags {}})}
                      :model/DashboardCard {dashcard-id :id} {:card_id card-id
                                                              :dashboard_id dashboard-id}]
-        (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id)]
+        (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)]
           (mt/with-temporary-setting-values [synchronous-batch-updates true]
             (run-query-for-dashcard dashboard-id card-id dashcard-id)
             (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)))))))))
@@ -523,3 +682,124 @@
             ;; '2026-02-23 00:00:00' and extracts day-of-week from it, rather than
             ;; comparing with a numeric constant directly.
             (is (not (re-find #"'\d{4}-\d{2}-\d{2}" dashboard-sql)))))))))
+
+(deftest ignore-parameter-mapping-to-native-model-test
+  (testing "param mapped to a native model is ignored, but applied to a sibling MBQL card (#44288)"
+    (mt/dataset test-data
+      (let [mp         (mt/metadata-provider)
+            cat-target [:dimension (lib.convert/->legacy-MBQL
+                                    (lib/ref (lib.metadata/field mp (mt/id :products :category))))]]
+        (mt/with-temp
+          [:model/Card {mbql-card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
+           :model/Card {native-model-id :id} {:type          :model
+                                              :dataset_query (lib/native-query mp "SELECT * FROM PRODUCTS")}
+           :model/Dashboard {dashboard-id :id} {:parameters [{:name "Category"
+                                                              :slug "category"
+                                                              :id   "_CAT_"
+                                                              :type "string/="}]}
+           :model/DashboardCard {mbql-dashcard-id :id}
+           {:dashboard_id       dashboard-id
+            :card_id            mbql-card-id
+            :parameter_mappings [{:parameter_id "_CAT_"
+                                  :card_id      mbql-card-id
+                                  :target       cat-target}]}
+           :model/DashboardCard {native-dashcard-id :id}
+           {:dashboard_id       dashboard-id
+            :card_id            native-model-id
+            :parameter_mappings [{:parameter_id "_CAT_"
+                                  :card_id      native-model-id
+                                  :target       cat-target}]}]
+          (testing "MBQL card applies the mapping: strictly fewer rows with the param than without"
+            (let [with-param (count (mt/rows (run-query-for-dashcard dashboard-id mbql-card-id mbql-dashcard-id
+                                                                     :parameters [{:id "_CAT_" :value ["Gadget"]}])))
+                  without    (count (mt/rows (run-query-for-dashcard dashboard-id mbql-card-id mbql-dashcard-id)))]
+              (is (pos? with-param))
+              (is (< with-param without))))
+          (testing "native model ignores the mapping: same rows with and without the param, and no error"
+            (let [with-param (count (mt/rows (run-query-for-dashcard dashboard-id native-model-id native-dashcard-id
+                                                                     :parameters [{:id "_CAT_" :value ["Gadget"]}])))
+                  without    (count (mt/rows (run-query-for-dashcard dashboard-id native-model-id native-dashcard-id)))]
+              (is (pos? without))
+              (is (= without with-param)))))))))
+
+(deftest missing-param-column-does-not-crash-test
+  (testing "param mapped to a column missing from a model source card does not crash the dashcard (#32573)"
+    (mt/dataset test-data
+      (mt/with-temp
+        [:model/Card {model-id :id} (assoc (qp.test-util/card-with-source-metadata-for-query
+                                            (-> (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
+                                                (lib/with-fields [(lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :tax)))])))
+                                           :type :model)
+         :model/Card {question-id :id} {:dataset_query (lib/query (mt/metadata-provider)
+                                                                  (lib.metadata/card (mt/metadata-provider) model-id))}
+         :model/Dashboard {dashboard-id :id} {:parameters [{:name "ID"
+                                                            :slug "id"
+                                                            :id   "_ID_"
+                                                            :type "id"}]}
+         :model/DashboardCard {dashcard-id :id}
+         {:dashboard_id       dashboard-id
+          :card_id            question-id
+          ;; Intentionally a name-based ref to a column ("ID") that the model does NOT expose (only TAX);
+          ;; this is the whole point of #32573, so it cannot be derived from the source card's metadata.
+          :parameter_mappings [{:parameter_id "_ID_"
+                                :card_id      question-id
+                                :target       [:dimension [:field "ID" {:base-type :type/BigInteger}]]}]}]
+        (testing "parameter resolution does not throw (dashboard stays loadable)"
+          (is (=? [{:id "_ID_", :target [:dimension [:field "ID" {:base-type :type/BigInteger}]]}]
+                  (resolve-params-for-query dashboard-id question-id dashcard-id
+                                            [{:id "_ID_" :value 1}]))))
+        (testing "the broken dashcard surfaces a contained query-execution error, not a catastrophic crash"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Error executing query"
+               (run-query-for-dashcard dashboard-id question-id dashcard-id
+                                       :parameters [{:id "_ID_" :value 1}]))))))))
+
+(deftest dashboard-param-on-custom-column-in-later-stage-test
+  (testing "a dashboard param with {:stage-number 1} on a custom column filters the later stage (#48258)"
+    (mt/dataset test-data
+      (let [mp     (mt/metadata-provider)
+            query  (let [q0  (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                 (lib/aggregate (lib/count))
+                                 (lib/breakout (lib.metadata/field mp (mt/id :products :category))))
+                         q1  (lib/append-stage q0)
+                         cnt (first (filter #(= (:name %) "count") (lib/visible-columns q1)))
+                         q2  (lib/expression q1 "5xCount" (lib/* 5 cnt))]
+                     (lib/with-fields q2 [(lib/expression-ref q2 "5xCount")]))
+            cc-ref (lib.convert/->legacy-MBQL (lib/expression-ref query "5xCount"))]
+        (mt/with-temp
+          [:model/Card {card-id :id}
+           {:dataset_query query}
+           :model/Dashboard {dashboard-id :id}
+           {:parameters [{:slug "cc" :id "_CC_" :name "cc" :type "number/>="}]}
+           :model/DashboardCard {dashcard-id :id}
+           {:dashboard_id       dashboard-id
+            :card_id            card-id
+            :parameter_mappings [{:parameter_id "_CC_"
+                                  :card_id      card-id
+                                  :target       [:dimension cc-ref {:stage-number 1}]}]}]
+          (testing "no filter: one row per category"
+            (is (= 4 (count (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id))))))
+          (testing "filter on the stage-1 custom column narrows rows"
+            (is (= 2 (count (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id
+                                                             :parameters [{:id "_CC_" :value 260}])))))))))))
+
+(deftest dashcard-id-param-on-nested-card-test
+  (testing "an id param mapped to a field on an MBQL nested-card source filters the outer query to one row (#17213, #17212)"
+    (mt/dataset test-data
+      (mt/with-temp
+        [:model/Card {base-id :id} {:dataset_query (lib/query (mt/metadata-provider)
+                                                              (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}
+         :model/Card {nested-id :id} {:dataset_query (lib/query (mt/metadata-provider)
+                                                                (lib.metadata/card (mt/metadata-provider) base-id))}
+         :model/Dashboard {dashboard-id :id} {:parameters [{:id "_ID_" :name "ID" :slug "id" :type "id"}]}
+         :model/DashboardCard {dashcard-id :id}
+         {:dashboard_id       dashboard-id
+          :card_id            nested-id
+          :parameter_mappings [{:parameter_id "_ID_"
+                                :card_id      nested-id
+                                :target       [:dimension (lib.convert/->legacy-MBQL
+                                                           (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :products :id))))]}]}]
+        (is (= 1
+               (count (mt/rows (run-query-for-dashcard dashboard-id nested-id dashcard-id
+                                                       :parameters [{:id "_ID_" :value 3}])))))))))

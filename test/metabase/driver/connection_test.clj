@@ -6,7 +6,10 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.connection.workspaces :as driver.w]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (comment =?/keep-me)
 
@@ -15,6 +18,7 @@
     (let [details            {:host "read-host" :port 5432}
           write-data-details {:host "write-host" :port 5432}
           database           {:lib/type           :metadata/database
+                              :id                 1
                               :details            details
                               :write-data-details write-data-details}]
       (is (=? details
@@ -28,16 +32,9 @@
        (testing "effective-details returns write_data_details when :write-data and details exist"
          (testing "with kebab-case key (Lib metadata style)"
            (let [database {:lib/type           :metadata/database
+                           :id                 1
                            :details            details
                            :write-data-details write-data-details}]
-             (driver.conn/with-write-connection
-               (is (=? write-data-details
-                       (driver.conn/effective-details database))))))
-         (testing "with snake_case key (Toucan2 instance style)"
-           (let [database (t2/instance :model/Database
-                                       {:id                 1
-                                        :details            details
-                                        :write_data_details write-data-details})]
              (driver.conn/with-write-connection
                (is (=? write-data-details
                        (driver.conn/effective-details database)))))))))))
@@ -47,6 +44,7 @@
     (let [details {:host "read-host" :port 5432}]
       (testing "effective-details falls back to :details when :write-data but no write details"
         (let [database {:lib/type :metadata/database
+                        :id 1
                         :details details
                         :write-data-details nil}]
           (driver.conn/with-write-connection
@@ -54,6 +52,7 @@
                     (driver.conn/effective-details database)))))
         (testing "also when :write_data_details key is missing entirely"
           (let [database {:lib/type :metadata/database
+                          :id 1
                           :details details}]
             (driver.conn/with-write-connection
               (is (=? details
@@ -65,18 +64,17 @@
       (let [details            {:host "read-host" :port 5432}
             write-data-details {:host "write-host" :port 5432}
             database           {:lib/type           :metadata/database
+                                :id                 1
                                 :details            details
                                 :write-data-details write-data-details}]
         (driver.conn/with-write-connection
           (is (=? details
                   (driver.conn/effective-details database))))))))
 
-(deftest effective-details-nil-test
-  (testing "effective-details returns nil when database is nil"
-    (is (nil? (driver.conn/effective-details nil)))
-    (mt/with-premium-features #{:writable-connection}
-      (driver.conn/with-write-connection
-        (is (nil? (driver.conn/effective-details nil)))))))
+(deftest effective-details-refuses-database-instance-test
+  (testing "effective-details takes only the Lib metadata of a Database, so a Database instance fails fast"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (driver.conn/effective-details (t2/select-one :model/Database :id (mt/id)))))))
 
 (deftest connection-telemetry-info-test
   (testing "connection-telemetry-info describes the current connection context as prose, for logging only"
@@ -93,6 +91,7 @@
     (let [details       {:host "read-host" :port 5432}
           admin-details {:host "admin-host" :port 5432 :user "root"}
           database      {:lib/type      :metadata/database
+                         :id            1
                          :details       details
                          :admin-details admin-details}]
       (is (=? details
@@ -106,16 +105,9 @@
        (testing "effective-details returns admin_details when :admin and details exist"
          (testing "with kebab-case key (Lib metadata style)"
            (let [database {:lib/type      :metadata/database
+                           :id            1
                            :details       details
                            :admin-details admin-details}]
-             (driver.conn/with-admin-connection
-               (is (=? admin-details
-                       (driver.conn/effective-details database))))))
-         (testing "with snake_case key (Toucan2 instance style)"
-           (let [database (t2/instance :model/Database
-                                       {:id            1
-                                        :details       details
-                                        :admin_details admin-details})]
              (driver.conn/with-admin-connection
                (is (=? admin-details
                        (driver.conn/effective-details database)))))))))))
@@ -125,6 +117,7 @@
     (let [details {:host "read-host" :port 5432}]
       (testing "effective-details falls back to :details when :admin but no admin details"
         (let [database {:lib/type      :metadata/database
+                        :id            1
                         :details       details
                         :admin-details nil}]
           (driver.conn/with-admin-connection
@@ -132,6 +125,7 @@
                     (driver.conn/effective-details database)))))
         (testing "also when :admin_details key is missing entirely"
           (let [database {:lib/type :metadata/database
+                          :id       1
                           :details  details}]
             (driver.conn/with-admin-connection
               (is (=? details
@@ -143,6 +137,7 @@
       (let [details       {:host "read-host" :port 5432}
             admin-details {:host "admin-host" :port 5432 :user "root"}
             database      {:lib/type      :metadata/database
+                           :id            1
                            :details       details
                            :admin-details admin-details}]
         (driver.conn/with-admin-connection

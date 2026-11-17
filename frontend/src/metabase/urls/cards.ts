@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import slugg from "slugg";
 
 import {
@@ -64,7 +65,8 @@ export function card(
   if (!card || !card.id || isTransientCardId(card.id) || forceUnsaved) {
     const unsavedPath = path === "metric" ? "question" : path;
     const computedHash = card?.dataset_query
-      ? `#${serializeCardForUrl(card as SavedCard | UnsavedCard, {
+      ? // Unjustified type cast. FIXME
+        `#${serializeCardForUrl(card as SavedCard | UnsavedCard, {
           creationType,
           parameterValues,
           includeDisplayIsLocked,

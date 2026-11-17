@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -10,7 +11,7 @@ type FieldEmptyStateProps = {
 
 export function FieldEmptyState({ hasTable }: FieldEmptyStateProps) {
   return (
-    <Box maw={rem(320)} p="xl">
+    <Box maw={rem(320)} p="xxl">
       <EmptyState
         illustrationElement={<img src={EmptyDashboardBot} />}
         title={

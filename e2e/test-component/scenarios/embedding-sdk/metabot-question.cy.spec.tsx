@@ -13,37 +13,61 @@ import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-const metabot_id = "c61bf5f5-1025-47b6-9298-bf1827105bb6";
+const metabot_id = "embeddedmetabotmetabo";
 const query = {
   "source-table": ORDERS_ID,
   aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
   breakout: [["field", ORDERS.PRODUCT_ID, null]],
   limit: 2,
 };
+const generatedCard = {
+  type: "card",
+  id: "card-1",
+  title: "Question",
+  query: { id: "query-1", query: { database: 1, type: "query", query } },
+  display: "table",
+};
 const adHocQuestionPath = `/question#${btoa(
   JSON.stringify({
-    dataset_query: { database: 1, type: "query", query },
-    display: "table",
+    dataset_query: generatedCard.query.query,
+    display: generatedCard.display,
     displayIsLocked: true,
     visualization_settings: {},
   }),
 )}`;
 
-const metabotResponse = `0:"Here is the [question link](${adHocQuestionPath})"`;
-const metabotResponseWithNavigateTo = `${metabotResponse}
-2:{"type":"navigate_to","version":1,"value":"${adHocQuestionPath}"}`;
+const metabotResponse = H.createMetabotSSEBody(
+  H.metabotTextPart(`Here is the [question link](${adHocQuestionPath})`),
+);
+// Metabot surfaces a chart to the SDK via a `generated_entity` card data part.
+const metabotResponseWithChart = H.createMetabotSSEBody(
+  H.metabotTextPart(`Here is the [question link](${adHocQuestionPath})`),
+  H.metabotDataPart("generated_entity", generatedCard),
+);
 
-const metabotRetryResponse = `0:"Retry: Here is the [question link](${adHocQuestionPath})"`;
+const metabotResponseWithSqlEditor = H.createMetabotSSEBody(
+  H.metabotTextPart(
+    "I'll write a SQL query for the most popular products so you can tweak it in the SQL editor!",
+  ),
+  H.metabotDataPart("generated_entity", {
+    type: "card",
+    id: "card-sql",
+    title: "SQL query",
+    query: {
+      id: "query-sql",
+      query: { database: 1, type: "native", native: { query: "" } },
+    },
+  }),
+);
 
-// Captured navigate_to event verbatim from a real embedding Metabot response
-// (database id swapped from 2 to 1 to match this env's Sample Database).
-const metabotResponseWithSqlEditor = `0:"I'll direct you to the SQL editor for the Sample Database so you can write a query for the most popular products!"
-2:{"type":"navigate_to","version":1,"value":"/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJ0eXBlIjoibmF0aXZlIiwibmF0aXZlIjp7InF1ZXJ5IjoiIn19fQ=="}`;
+const metabotRetryResponse = H.createMetabotSSEBody(
+  H.metabotTextPart(`Retry: Here is the [question link](${adHocQuestionPath})`),
+);
 
 describe("scenarios > embedding-sdk > metabot-question", () => {
   const setup = (response: string) => {
     signInAsAdminAndEnableEmbeddingSdk();
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.setupAnthropicLlmProvider();
 
     H.mockMetabotResponse({
       statusCode: 200,
@@ -76,7 +100,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
     mockAuthProviderAndJwtSignIn();
   };
 
-  it("should show the SQL editor when Metabot navigates to the SQL editor page", () => {
+  it("should show the SQL editor when Metabot generates a native query", () => {
     setup(metabotResponseWithSqlEditor);
 
     mountSdkContent(<MetabotQuestion />);
@@ -88,7 +112,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
   });
 
   it("should show drill-through results after drilling from a metabot question", () => {
-    setup(metabotResponseWithNavigateTo);
+    setup(metabotResponseWithChart);
 
     mountSdkContent(<MetabotQuestion />);
 
@@ -112,7 +136,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
   });
 
   it("should automatically show the ad-hoc question for the last agent message containing ad-hoc question link", () => {
-    setup(metabotResponseWithNavigateTo);
+    setup(metabotResponseWithChart);
 
     mountSdkContent(<MetabotQuestion />);
 
@@ -126,7 +150,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
   it("should allow saving a question", () => {
     cy.intercept("POST", "/api/card").as("postCard");
 
-    setup(metabotResponseWithNavigateTo);
+    setup(metabotResponseWithChart);
 
     cy.get("@collectionId").then((collectionId) => {
       mountSdkContent(
@@ -357,7 +381,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
 describe("scenarios > embedding-sdk > metabot-question > enablement", () => {
   it("should show an error when embedded-metabot-enabled? is false", () => {
     signInAsAdminAndEnableEmbeddingSdk();
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.setupAnthropicLlmProvider();
 
     cy.log("Disable embedded metabot");
     H.updateEnterpriseSettings({ "embedded-metabot-enabled?": false });
@@ -379,7 +403,7 @@ describe("scenarios > embedding-sdk > metabot-question > enablement", () => {
 const mockSuggestedPrompts = () => {
   cy.intercept(
     "GET",
-    "/api/metabot/metabot/2/prompt-suggestions?limit=3&sample=true",
+    `/api/metabot/metabot/${metabot_id}/prompt-suggestions?limit=3&sample=true`,
     {
       statusCode: 200,
       body: {

@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 
 import {
   collectionApi,
@@ -7,18 +6,22 @@ import {
   useGetCollectionQuery,
   useGetTimelineQuery,
 } from "metabase/api";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useSetCollection } from "metabase/common/hooks";
 import { getDefaultTimelineName } from "metabase/common/utils/timelines";
-import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import MoveTimelineModal from "metabase/timelines/common/components/MoveTimelineModal";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { CollectionId, Timeline } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-
-function MoveTimelineModalContainer({ params, ...props }: ModalComponentProps) {
+function MoveTimelineModalContainer({ params, onClose }: ModalComponentProps) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const setCollection = useSetCollection();
   const id = Urls.extractEntityId(params.timelineId);
   const {
@@ -38,9 +41,9 @@ function MoveTimelineModalContainer({ params, ...props }: ModalComponentProps) {
           ? getDefaultTimelineName(sourceCollection)
           : timeline.name;
       // Fire-and-forget so the modal can close back to the parent path before
-      // we push the new timeline detail URL — otherwise ModalRoute's onClose
-      // would compute the parent off the post-navigation location and bounce
-      // us off the timeline page.
+      // we push the new timeline detail URL, otherwise the modal route's
+      // onClose would resolve the parent off the post-navigation location and
+      // bounce us off the timeline page.
       void (async () => {
         await setCollection(
           { model: "timeline", id: timeline.id, name },
@@ -49,29 +52,33 @@ function MoveTimelineModalContainer({ params, ...props }: ModalComponentProps) {
         const { data: collection } = await dispatch(
           collectionApi.endpoints.getCollection.initiate({ id: collectionId }),
         );
-        dispatch(
-          push(
-            Urls.timelineInCollection({
-              ...timeline,
-              collection_id:
-                typeof collectionId === "number" ? collectionId : null,
-              collection,
-            } as Timeline),
-          ),
+        navigate(
+          Urls.timelineInCollection({
+            ...timeline,
+            collection_id:
+              typeof collectionId === "number" ? collectionId : null,
+            collection,
+          }),
         );
       })();
     },
-    [dispatch, setCollection, sourceCollection],
+    [dispatch, setCollection, sourceCollection, navigate],
   );
 
   if (isLoading || error || !timeline) {
     return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+      <TimelineModal tall onClose={onClose} animated={false}>
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      </TimelineModal>
     );
   }
 
   return (
-    <MoveTimelineModal {...props} timeline={timeline} onSubmit={handleSubmit} />
+    <MoveTimelineModal
+      timeline={timeline}
+      onSubmit={handleSubmit}
+      onClose={onClose}
+    />
   );
 }
 

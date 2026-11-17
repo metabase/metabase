@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { AdminNavItem } from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/common/components/upsells/components";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 
 export function getAiControlsNavItems() {
   return <AiControlsNavItems />;
@@ -14,6 +14,7 @@ export function getAiControlsUpsellNavItems() {
 
 function AiControlsNavItems() {
   const isConfigured = useSetting("llm-metabot-configured?");
+  const isMcpEnabled = useSetting("mcp-enabled?");
   const areAiFeaturesEnabled = useSetting("ai-features-enabled?");
 
   if (!areAiFeaturesEnabled) {
@@ -26,17 +27,26 @@ function AiControlsNavItems() {
         icon="lock"
         label={t`Usage controls`}
         folderPattern="usage-controls"
-        disabled={!isConfigured}
+        disabled={!isConfigured && !isMcpEnabled}
       >
-        <AdminNavItem
-          label={t`Access`}
-          path="/admin/metabot/usage-controls/ai-feature-access"
-          disabled={!isConfigured}
-        />
-        <AdminNavItem
-          label={t`Limits`}
-          path="/admin/metabot/usage-controls/ai-usage-limits"
-        />
+        {isConfigured && (
+          <AdminNavItem
+            label={t`AI feature access`}
+            path="/admin/metabot/usage-controls/ai-feature-access"
+          />
+        )}
+        {isMcpEnabled && (
+          <AdminNavItem
+            label={t`MCP tools access`}
+            path="/admin/metabot/usage-controls/mcp-tools-access"
+          />
+        )}
+        {isConfigured && (
+          <AdminNavItem
+            label={t`Limits`}
+            path="/admin/metabot/usage-controls/ai-usage-limits"
+          />
+        )}
       </AdminNavItem>
       <AdminNavItem
         icon="palette"

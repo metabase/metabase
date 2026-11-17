@@ -90,7 +90,6 @@
       "include_csv": false,
       "display": "line",
       "entity_id": "a3On8ab6LX8nbtm35FNFy",
-      "collection_preview": true,
       "visualization_settings": {
         "series_settings": { "sum": { "color": "#69C8C8" } },
         "graph.dimensions": ["CREATED_AT"],

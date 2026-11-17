@@ -1,32 +1,24 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
-import type { Location } from "history";
 import { type ComponentType, type ReactNode, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken, useGetTableQuery } from "metabase/api";
 import { FieldSet } from "metabase/common/components/FieldSet";
 import CS from "metabase/css/core/index.css";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/querying/common/components/DataSelector";
-import { connect, useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
+import type { Location } from "metabase/router";
+import { queryToSearch, useNavigate } from "metabase/router";
 import { Icon } from "metabase/ui";
-import type { ConcreteTableId, Segment } from "metabase-types/api";
-
-type LocationWithQuery = Location<{
-  table?: string;
-}>;
+import type { Segment, TableId } from "metabase-types/api";
 
 type FilteredToUrlTableInnerProps = {
-  location: LocationWithQuery;
-  push: (location: LocationWithQuery) => void;
+  location: Location;
   segments: Segment[];
 };
 
-function getTableIdFromLocation(
-  location: LocationWithQuery,
-): ConcreteTableId | null {
-  const tableId = location.query?.table;
+function getTableIdFromLocation(location: Location): TableId | null {
+  const tableId = new URLSearchParams(location.search).get("table");
   return tableId != null ? parseInt(tableId, 10) : null;
 }
 
@@ -41,20 +33,25 @@ export function FilteredToUrlTable(
 ) {
   const Inner = ({
     location,
-    push,
     segments,
     ...props
   }: FilteredToUrlTableInnerProps) => {
-    const [tableId, setTableIdState] = useState<ConcreteTableId | null>(() =>
+    const navigate = useNavigate();
+    const [tableId, setTableIdState] = useState<TableId | null>(() =>
       getTableIdFromLocation(location),
     );
 
-    const setTableId = (newTableId: ConcreteTableId | null) => {
+    const setTableId = (newTableId: TableId | null) => {
       setTableIdState(newTableId);
-      push({
-        ...location,
-        query: newTableId == null ? {} : { table: String(newTableId) },
-      });
+      navigate(
+        {
+          ...location,
+          search: queryToSearch(
+            newTableId == null ? {} : { table: String(newTableId) },
+          ),
+        },
+        { state: location.state },
+      );
     };
 
     const filteredItems =
@@ -73,18 +70,17 @@ export function FilteredToUrlTable(
     return <ComposedComponent {...composedProps} />;
   };
 
-  return connect(null, { push })(Inner);
+  return Inner;
 }
 
 type TableSelectorProps = {
-  tableId: ConcreteTableId | null;
-  setTableId: (tableId: ConcreteTableId | null) => void;
+  tableId: TableId | null;
+  setTableId: (tableId: TableId | null) => void;
 };
 
 function TableSelector({ tableId, setTableId }: TableSelectorProps) {
-  useGetTableQuery(tableId != null ? { id: tableId } : skipToken);
-  const table = useSelector((state) =>
-    tableId != null ? getMetadata(state).table(tableId) : null,
+  const { data: table } = useGetTableQuery(
+    tableId != null ? { id: tableId } : skipToken,
   );
 
   return (
@@ -95,7 +91,9 @@ function TableSelector({ tableId, setTableId }: TableSelectorProps) {
       <div className={CS.p2} style={{ width: 200 }}>
         <DatabaseSchemaAndTableDataSelector
           selectedTableId={tableId}
-          setSourceTableFn={setTableId}
+          setSourceTableFn={(newTableId) =>
+            setTableId(typeof newTableId === "number" ? newTableId : null)
+          }
           triggerElement={
             <span
               className={cx(
@@ -108,7 +106,7 @@ function TableSelector({ tableId, setTableId }: TableSelectorProps) {
               )}
               data-testid="segment-list-table"
             >
-              {table ? table.displayName() : t`Filter by table`}
+              {table ? table.display_name : t`Filter by table`}
               <Icon
                 name={table ? "close" : "chevrondown"}
                 size={12}

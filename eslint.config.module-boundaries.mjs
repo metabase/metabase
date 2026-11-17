@@ -4,10 +4,11 @@
 
 import path from "path";
 import { fileURLToPath } from "url";
+
 import boundaries from "eslint-plugin-boundaries";
 import react from "eslint-plugin-react";
-import tseslint from "typescript-eslint";
 import { globalIgnores, defineConfig } from "eslint/config";
+import tseslint from "typescript-eslint";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -15,6 +16,7 @@ import {
   elements as boundaryElements,
   rules as boundaryRules,
 } from "./frontend/lint/module-boundaries.mjs";
+import { ruleAliases } from "./frontend/lint/oxlint/rule-aliases.mjs";
 
 // dummy plugins to keep eslint from complaining about missing plugins and settings
 const alwaysPassingRule = {
@@ -51,8 +53,8 @@ export default defineConfig([
       reportUnusedDisableDirectives: "off",
     },
     files: [
-      "frontend/src/**/*.{js,jsx,ts,tsx}",
-      "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}",
+      "frontend/src/**/*.{ts,tsx}",
+      "enterprise/frontend/src/**/*.{ts,tsx}",
     ],
     languageOptions: {
       parser: tseslint.parser,
@@ -63,6 +65,12 @@ export default defineConfig([
       },
     },
     plugins: {
+      ...Object.fromEntries(
+        Object.values(ruleAliases).map((rule) => [
+          rule.split("/")[0],
+          alwaysPassingPlugin,
+        ]),
+      ),
       ttag: alwaysPassingPlugin,
       metabase: alwaysPassingPlugin,
       import: alwaysPassingPlugin,
@@ -78,6 +86,7 @@ export default defineConfig([
     settings: {
       "boundaries/elements": boundaryElements,
       "boundaries/ignore": ["**/e2e/**", "test/**"],
+      "boundaries/dependency-nodes": ["import", "dynamic-import"],
       "import-x/resolver": {
         node: true,
         webpack: {

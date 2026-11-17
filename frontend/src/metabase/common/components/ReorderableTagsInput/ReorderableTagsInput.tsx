@@ -55,14 +55,12 @@ export function SortablePill({
   onRemove,
   containerId,
   style,
-  size,
 }: {
   id: string;
   label: string;
   onRemove?: () => void;
   containerId?: string;
   style?: CSSProperties;
-  size?: MantineSize;
 }) {
   const {
     attributes,
@@ -76,6 +74,7 @@ export function SortablePill({
     data: { containerId },
     strategy: horizontalListSortingStrategy,
   });
+  // Unjustified type cast. FIXME
   const sortableStyle = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -88,7 +87,7 @@ export function SortablePill({
 
   return (
     <Pill
-      size={size}
+      size="md"
       ref={setNodeRef}
       className={cx(S.pill, { [S.dragging]: isDragging })}
       withRemoveButton
@@ -98,16 +97,6 @@ export function SortablePill({
       {...attributes}
       {...listeners}
       style={combinedStyle}
-      styles={{
-        label: {
-          display: "flex",
-          alignItems: "center",
-        },
-        remove: {
-          marginRight: 0,
-        },
-      }}
-      radius="xl"
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", id);
@@ -209,6 +198,7 @@ export function ReorderableTagsInput({
         }}
         styles={styles}
         onMouseDownCapture={(e: React.MouseEvent<HTMLDivElement>) => {
+          // Unjustified type cast. FIXME
           const target = e.target as HTMLElement;
           // Do not open when interacting with a pill (likely starting a drag or clicking remove)
           if (
@@ -226,6 +216,7 @@ export function ReorderableTagsInput({
           e.stopPropagation();
         }}
         onDragEnter={(e) => {
+          // Unjustified type cast. FIXME
           const related = e.relatedTarget as Node | null;
           // Only set drag-over when entering from outside the top-level container
           if (related && e.currentTarget.contains(related)) {
@@ -236,6 +227,7 @@ export function ReorderableTagsInput({
           setIsDragOver(true);
         }}
         onDragLeave={(e) => {
+          // Unjustified type cast. FIXME
           const related = e.relatedTarget as Node | null;
           // Only clear drag-over when leaving to outside the top-level container
           if (related && e.currentTarget.contains(related)) {
@@ -270,7 +262,6 @@ export function ReorderableTagsInput({
 
           return (
             <SortablePill
-              size={size}
               key={v}
               id={v}
               label={data.find((o) => o.value === v)?.label ?? v}

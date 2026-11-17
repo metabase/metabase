@@ -14,9 +14,14 @@
 
 (comment metabase.revisions.init/keep-me)
 
+(defn- diff-strings
+  "The `revision/diff-strings` of `o1` and `o2`, naming the Collections and Dashboards they reference."
+  [model o1 o2]
+  (revision/diff-strings model o1 o2 (revision/readable-names (filterv some? [o1 o2]))))
+
 (deftest ^:parallel diff-cards-str-test
   (are [x y expected] (= expected
-                         (u/build-sentence (revision/diff-strings :model/Card x y)))
+                         (u/build-sentence (diff-strings :model/Card x y)))
     {:name        "Diff Test"
      :description nil}
     {:name        "Diff Test Changed"
@@ -43,7 +48,7 @@
   (testing "When a collection referenced in a revision has been deleted, the description should not show 'null'"
     (let [deleted-coll-id 99999]
       (are [x y expected] (= expected
-                             (u/build-sentence (revision/diff-strings :model/Card x y)))
+                             (u/build-sentence (diff-strings :model/Card x y)))
         ;; moved from nil (root) to a now-deleted collection
         {:name "Apple"}
         {:name          "Apple"
@@ -60,25 +65,26 @@
   (mt/with-temp
     [:model/Collection {coll-id-1 :id} {:name "Old collection"}
      :model/Collection {coll-id-2 :id} {:name "New collection"}]
-    (are [x y expected] (= expected
-                           (u/build-sentence (revision/diff-strings :model/Card x y)))
+    (mt/with-test-user :crowberto
+      (are [x y expected] (= expected
+                             (u/build-sentence (diff-strings :model/Card x y)))
 
-      {:name "Apple"}
-      {:name          "Apple"
-       :collection_id coll-id-2}
-      "moved this Card to New collection."
+        {:name "Apple"}
+        {:name          "Apple"
+         :collection_id coll-id-2}
+        "moved this Card to New collection."
 
-      {:name        "Diff Test"
-       :description nil}
-      {:name        "Diff Test changed"
-       :description "New description"}
-      "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."
+        {:name        "Diff Test"
+         :description nil}
+        {:name        "Diff Test changed"
+         :description "New description"}
+        "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."
 
-      {:name          "Apple"
-       :collection_id coll-id-1}
-      {:name          "Apple"
-       :collection_id coll-id-2}
-      "moved this Card from Old collection to New collection.")))
+        {:name          "Apple"
+         :collection_id coll-id-1}
+        {:name          "Apple"
+         :collection_id coll-id-2}
+        "moved this Card from Old collection to New collection."))))
 
 (defn- create-card-revision!
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
@@ -140,7 +146,7 @@
             ;; we'll automatically delete old revisions if we have more than [[revision/max-revisions]]
             ;; revisions for an instance, so let's clear everything to make it easier to test
             (t2/delete! :model/Revision :model "Card" :model_id (:id card))
-            (t2/update! :model/Card (:id card) changes)
+            (t2/update! :model/Card :id (:id card) changes)
             (create-card-revision! (:id card) false)
             (testing (format "we should track when %s changes" col)
               (is (= 1 (t2/count :model/Revision :model "Card" :model_id (:id card)))))
@@ -161,7 +167,7 @@
                          :dataset_query_metrics_v2_migration_backup}
                        col)
               (testing (format "we should have a revision description for %s" col)
-                (let [diff-strings (revision/diff-strings
+                (let [diff-strings (diff-strings
                                     ;; TODO -- huh? Shouldn't this be testing against `:model/Card` here???
                                     :model/Dashboard
                                     before
@@ -177,16 +183,23 @@
       [:model/Card card card-info]
       (let [before  (select-keys card [:result_metadata])
             changes (update before :result_metadata drop-last)]
-        (t2/update! :model/Card (:id card) changes)
+        (t2/update! :model/Card :id (:id card) changes)
         (create-card-revision! (:id card) false)
         (testing "we should track when :result_metadata changes on model"
           (is (= 1 (t2/count :model/Revision :model "Card" :model_id (:id card)))))
         (testing "we should have a revision description for :result_metadata on model"
           (is (some? (u/build-sentence
-                      (revision/diff-strings
+                      (diff-strings
                        :model/Dashboard
                        before
                        changes)))))))))
+
+(deftest card-revision-excludes-metabot-origin-test
+  (testing "the Metabot origin columns are not captured in revisions, so reverting can never write back a stale conversation id"
+    (mt/with-temp [:model/Card card {:metabot_chart_id "chart-1"}]
+      (let [serialized (revision/serialize-instance :model/Card (:id card) card)]
+        (is (not (contains? serialized :metabot_chart_id)))
+        (is (not (contains? serialized :metabot_conversation_id)))))))
 
 (deftest load-old-revision-without-card-schema-test
   (testing "Old revisions without :card_schema should be loadable (regression test for #61555)"

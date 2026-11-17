@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
-import { Link } from "react-router";
 
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";

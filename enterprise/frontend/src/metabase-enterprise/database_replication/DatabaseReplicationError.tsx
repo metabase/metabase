@@ -15,7 +15,7 @@ export const DatabaseReplicationError = ({
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   return (
-    <Stack gap="xl" mt="xl">
+    <Stack gap="xxl" mt="xxl">
       <Text c="text-secondary" fz="md" lh="1.25rem">
         {error || "Unknown error"}
       </Text>
@@ -25,9 +25,7 @@ export const DatabaseReplicationError = ({
           {showMetabaseLinks && (
             <Button
               component={ExternalLink}
-              variant="outline"
               rightSection={<Icon name="external" />}
-              size="md"
               role="link"
               href="https://www.metabase.com/docs/latest/"
             >
@@ -35,7 +33,7 @@ export const DatabaseReplicationError = ({
             </Button>
           )}
 
-          <Button variant="filled" size="md" onClick={onClose}>
+          <Button variant="filled" onClick={onClose}>
             {t`Close`}
           </Button>
         </Group>

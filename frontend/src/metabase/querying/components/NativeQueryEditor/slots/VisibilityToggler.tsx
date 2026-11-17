@@ -6,8 +6,8 @@ import {
   requestNewQuerySqlExpand,
   subscribeNewQuerySqlFullPage,
 } from "metabase/nav/containers/ProtoNavbar/newQuery";
-import { useSelector } from "metabase/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { useLocation } from "metabase/router";
+import * as Lib from "metabase-lib";
 
 import { VisibilityToggler as VisibilityTogglerControl } from "../VisibilityToggler/VisibilityToggler";
 import { useNativeQueryEditorContext } from "../context/NativeQueryEditorContext";
@@ -29,14 +29,14 @@ export function VisibilityToggler() {
     setIsNativeEditorOpen,
     toggleEditor,
   } = useNativeQueryEditorContext();
-  const { pathname } = useSelector(getLocation);
+  const { pathname } = useLocation();
   const isSqlFullPage = useSyncExternalStore(
     subscribeNewQuerySqlFullPage,
     getNewQuerySqlFullPage,
   );
 
   if (
-    !query.hasWritePermission() ||
+    !Lib.hasWritePermission(query) ||
     question.isArchived() ||
     !setIsNativeEditorOpen
   ) {

@@ -5,6 +5,6 @@
 
 .nativeSidebarToggle {
   position: absolute;
-  top: var(--mantine-spacing-lg);
-  right: var(--mantine-spacing-md);
+  top: var(--mantine-spacing-xl);
+  right: var(--mantine-spacing-lg);
 }

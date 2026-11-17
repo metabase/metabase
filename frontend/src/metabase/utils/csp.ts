@@ -1,12 +1,6 @@
-/**
- * Store the CSP nonce so that libraries using `get-nonce` (e.g. CodeMirror)
- * can read it when injecting dynamic styles. The nonce is generated server-side
- * and placed on the window by the HTML template.
- */
-import { getNonce, setNonce } from "get-nonce";
+import { getNonce } from "get-nonce";
 
-setNonce(window.MetabaseNonce ?? "");
-
+// The nonce is stored by metabase/utils/csp-setup, which every entry imports.
 export function getCspNonce() {
   return getNonce();
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { c } from "ttag";
 import _ from "underscore";
 
@@ -14,6 +15,7 @@ export const TRASHABLE_MODELS_ARRAY = [
   "dashboard",
   "collection",
   "document",
+  "exploration",
 ] as const;
 
 export type TrashableModel = (typeof TRASHABLE_MODELS_ARRAY)[number];
@@ -39,6 +41,7 @@ function isDashboardQuestion(entity: unknown): entity is {
   if (typeof entity !== "object" || entity === null) {
     return false;
   }
+  // Unjustified type cast. FIXME
   const { type, dashboard_id } = entity as {
     type?: unknown;
     dashboard_id?: unknown;

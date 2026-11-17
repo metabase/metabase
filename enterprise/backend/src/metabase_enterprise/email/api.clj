@@ -33,7 +33,7 @@
   Calling this automatically sets `cloud-smtp-enabled` to true if the settings are valid."
   [_route-params
    _query-params
-   settings :- [:map
+   settings :- [:map {:closed true}
                 [:email-smtp-host-override {:optional true} [:or string? nil?]]
                 [:email-smtp-password-override {:optional true} [:or string? nil?]]
                 [:email-smtp-port-override {:optional true} [:or int? nil?]]
@@ -52,11 +52,7 @@
   (u/prog1 (email/check-and-update-settings settings mb-to-smtp-override-settings (channel.settings/email-smtp-password-override))
     (when (nil? (:errors (:body <>))) (channel.settings/smtp-override-enabled! true))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/override"
+(api.macros/defendpoint :delete "/override" :- ::api/generic-204-no-content
   "Clear all cloud email related settings. You must be a superuser or have `setting` permission to do this."
   []
   (check-features)

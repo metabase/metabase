@@ -1,6 +1,7 @@
-import dayjs from "dayjs";
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { t } from "ttag";
 
+import { dayjs } from "metabase/dayjs";
 import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";

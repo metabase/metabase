@@ -6,6 +6,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { EnterpriseSettings } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
@@ -39,7 +40,9 @@ const setup = async (
   ]);
   setupUpdateSettingEndpoint();
 
-  renderWithProviders(<FontWidget />);
+  renderWithProviders(<FontWidget />, {
+    storeInitialState: { settings: createMockSettingsState(settings) },
+  });
   await screen.findByText("Font");
   return waitFor(async () => {
     const gets = await findRequests("GET");
@@ -179,6 +182,7 @@ describe("FontWidget", () => {
     });
 
     it("should remove a font file", async () => {
+      // Unjustified type cast. FIXME
       const customFonts = [
         {
           src: "https://myfonts.com/abc.png",

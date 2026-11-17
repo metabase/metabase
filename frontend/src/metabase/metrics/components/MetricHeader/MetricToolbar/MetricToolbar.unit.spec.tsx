@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupEnterpriseOnlyPlugin,
@@ -10,8 +9,9 @@ import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { CollectionType } from "metabase-types/api";
 import {
   createMockCard,
@@ -37,6 +37,7 @@ const mockUrls = {
   about: (id: number) => `/metric/${id}`,
   overview: (id: number) => `/metric/${id}/overview`,
   query: (id: number) => `/metric/${id}/query`,
+  dimensions: (id: number) => `/metric/${id}/dimensions`,
   dependencies: (id: number) => `/metric/${id}/dependencies`,
   history: (id: number) => `/metric/${id}/history`,
 };
@@ -111,7 +112,7 @@ function setup({
   );
 
   renderWithProviders(
-    withModal ? <Route path="/" component={() => toolbar} /> : toolbar,
+    withModal ? <Route path="/" element={toolbar} /> : toolbar,
     withModal
       ? { storeInitialState: state, withRouter: true, initialRoute: "/" }
       : { storeInitialState: state },
@@ -140,8 +141,7 @@ function expectNoConsecutiveOrTrailingDividers() {
 }
 
 describe("MetricToolbar", () => {
-  // Note: In OSS, canManageSubscriptions always returns true via the
-  // PLUGIN_APPLICATION_PERMISSIONS default, so the alert item is always visible.
+  // In OSS, canManageSubscriptions always returns true, so the alert item is always visible.
 
   beforeAll(() => {
     mockSettings({

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { Component, createRef } from "react";
 import { t } from "ttag";
 
@@ -92,6 +93,7 @@ export class TextWidget extends Component<TextWidgetProps, State> {
           if (e.nativeEvent.isComposing) {
             return;
           }
+          // Unjustified type cast. FIXME
           const target = e.target as HTMLInputElement;
           if (e.key === "Enter") {
             target.blur();

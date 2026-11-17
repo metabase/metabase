@@ -4,8 +4,8 @@ import { callMockEvent } from "__support__/events";
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
-import registerVisualizations from "metabase/visualizations/register";
+import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import {
   TEST_MODEL_CARD,
@@ -53,7 +53,7 @@ describe("QueryBuilder - beforeunload events", () => {
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).toHaveBeenCalled();
-        expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+        expect(mockEvent.returnValue).toBe(getBeforeUnloadUnsavedMessage());
       });
 
       it("should not trigger beforeunload event when leaving unedited query", async () => {
@@ -81,7 +81,7 @@ describe("QueryBuilder - beforeunload events", () => {
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).toHaveBeenCalled();
-        expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+        expect(mockEvent.returnValue).toBe(getBeforeUnloadUnsavedMessage());
       });
 
       it("should not trigger beforeunload event when model metadata is unedited", async () => {
@@ -116,7 +116,7 @@ describe("QueryBuilder - beforeunload events", () => {
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
       expect(mockEvent.preventDefault).toHaveBeenCalled();
-      expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+      expect(mockEvent.returnValue).toBe(getBeforeUnloadUnsavedMessage());
     });
 
     it("should not trigger beforeunload event when leaving new empty native question", async () => {
@@ -148,7 +148,7 @@ describe("QueryBuilder - beforeunload events", () => {
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
       expect(mockEvent.preventDefault).toHaveBeenCalled();
-      expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+      expect(mockEvent.returnValue).toEqual(getBeforeUnloadUnsavedMessage());
     });
 
     it("should trigger beforeunload event when user tries to leave an ad-hoc native query", async () => {
@@ -160,7 +160,7 @@ describe("QueryBuilder - beforeunload events", () => {
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
       expect(mockEvent.preventDefault).toHaveBeenCalled();
-      expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+      expect(mockEvent.returnValue).toEqual(getBeforeUnloadUnsavedMessage());
     });
 
     it("should not trigger beforeunload event when query is unedited", async () => {

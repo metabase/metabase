@@ -94,8 +94,8 @@
    [clojure.edn :as edn]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [environ.core :as env]
+   [medley.core :as m]
    [metabase-enterprise.advanced-config.file.api-keys]
    [metabase-enterprise.advanced-config.file.databases]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
@@ -104,12 +104,13 @@
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.lib.core :as lib]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.yaml :as yaml]))
 
 (comment
@@ -135,6 +136,7 @@
        (s/assert* spec section-config))
      true)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *supported-versions*
   "Range of config file versions (inclusive) that we'll support. If the version is out of this range, spec validation
   will fail and trigger an error. See ns documentation for [[metabase.config.file]] for more details."
@@ -150,6 +152,7 @@
   (s/keys :req-un [:metabase.config.file.config/version
                    :metabase.config.file.config/config]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *env*
   "Environment variables and system properties used in this namespace. This is a dynamic version
   of [[environ.core/env]]; it is dynamic for test mocking purposes.
@@ -161,15 +164,22 @@
 (defn- path
   "Path for the YAML config file Metabase should use for initialization and Settings values."
   ^java.nio.file.Path []
-  (let [path* (or (some-> (get *env* :mb-config-file-path) u.files/get-path)
-                  (u.files/get-path (System/getProperty "user.dir") "config.yml"))]
-    (if (u.files/exists? path*)
-      (log/info (u/format-color :magenta
-                                "Found config file at path %s; Metabase will be initialized with values from this file"
-                                (pr-str (str path*)))
-                (u/emoji "🗄️"))
-      (log/info (u/format-color :yellow "No config file found at path %s" (pr-str (str path*)))))
-    path*))
+  (let [configured-path     (get *env* :mb-config-file-path)
+        default-config-yml  (u.files/get-path (System/getProperty "user.dir") "config.yml")
+        default-config-yaml (u.files/get-path (System/getProperty "user.dir") "config.yaml")
+        paths-to-try       (if-not (str/blank? configured-path)
+                             [(u.files/get-path configured-path)]
+                             [default-config-yml
+                              default-config-yaml])]
+    (if-let [path* (m/find-first u.files/exists? paths-to-try)]
+      (u/prog1 path*
+        (log/info (u/format-color :magenta
+                                  "Found config file at path %s; Metabase will be initialized with values from this file"
+                                  (pr-str (str path*)))
+                  (u/emoji "🗄️")))
+      (log/info (u/format-color :yellow "No config file found at path %s" (str/join " or "
+                                                                                    (map #(pr-str (str %))
+                                                                                         paths-to-try)))))))
 
 (defmulti ^:private expand-parsed-template-form
   {:arglists '([form])}
@@ -225,16 +235,14 @@
     (str/join (map expand-template-str-part (lib/parse-parameters s)))))
 
 (defn- expand-templates [m]
-  (walk/postwalk
-   (fn [form]
-     (cond-> form
-       (string? form) expand-templates-in-str))
-   m))
+  (match/replace-all m
+    #'string? (expand-templates-in-str &match)))
 
 (defn- config-from-disk
   "Read the config file from disk."
   []
-  (yaml/from-file (str (path))))
+  (when-let [yaml-path (path)]
+    (yaml/from-file (str yaml-path))))
 
 (defn- config
   "Spec-validate `parsed-config` and (optionally) expand `{{env VAR}}` templates.
@@ -272,6 +280,7 @@
    ;; TODO -- this should only do anything if we have an appropriate token (we should get a token for testing this before
    ;; enabling that check tho)
    (when-let [m (config parsed-config opts)]
+     (advanced-config.file.workspace/check-schemas-agree! (:config m))
      (doseq [[section-name section-config] (sort-by-initialization-order (:config m))]
        ;; You can only use the config-from-file stuff with an EE/Pro token with the `:config-text-file` feature.
        ;; The `:settings` section is the lone carve-out — you may need it to *install* the token.
@@ -286,17 +295,12 @@
      (log/info (u/colorize :magenta "Done initializing from file.") (u/emoji "🗄️")))
    :ok))
 
-(defn boot-initialize!
-  "Boot-time entry point: read the config file from disk and run [[initialize!]]
-   with `{{env VAR}}` template expansion enabled. No-op when no file is present.
-   When the config contains a `:workspace` section, locks the workspace against
-   runtime mutation (see
-   [[metabase-enterprise.workspaces.core/workspace-locked-by-config?]])."
+(defenterprise boot-initialize!
+  "Read the config file from disk and run [[initialize!]] on it with `{{env VAR}}` templates expanded.
+  Does nothing when there is no config file, except the startup step for the removed `instance-workspace` setting
+  ([[ws/translate-instance-workspace-setting!]]). That step runs first, so that a `workspace` section naming the
+  schemas the old setting held finds them stored, and keeps their remap rows."
+  :feature :none
   []
-  (let [parsed (config-from-disk)
-        result (initialize! parsed {:expand-templates? true})]
-    ;; Only the boot path locks. Runtime config uploads (POST /api/ee/advanced-config)
-    ;; call `initialize!` directly, bypassing this wrapper, so they never lock.
-    (when (get-in parsed [:config :workspace])
-      (ws/mark-locked-by-config!))
-    result))
+  (ws/translate-instance-workspace-setting!)
+  (initialize! (config-from-disk) {:expand-templates? true}))

@@ -4,6 +4,7 @@ import {
   dataStudioDataModelSegment,
   dataStudioDataModelSegmentDependencies,
   dataStudioDataModelSegmentRevisions,
+  dataStudioGuide,
   dataStudioLibrary,
   dataStudioTable,
   dataStudioTableFields,
@@ -15,6 +16,12 @@ describe("urls > data-studio", () => {
   describe("dataStudio", () => {
     it("should return root URL", () => {
       expect(dataStudio()).toBe("/data-studio");
+    });
+  });
+
+  describe("dataStudioGuide", () => {
+    it("should return guide URL", () => {
+      expect(dataStudioGuide()).toBe("/data-studio/guide");
     });
   });
 

@@ -112,6 +112,7 @@ describe("migratePivotColumnSplitSetting", () => {
         field_ref: ["field", 1, null],
       });
       const setting: FieldRefColumnSplitSetting = {
+        // Unjustified type cast. FIXME
         rows: [["field", 1, { "base-type": "type/Text" }] as FieldReference],
         columns: [],
         values: [],
@@ -129,6 +130,7 @@ describe("migratePivotColumnSplitSetting", () => {
         field_ref: ["field", 1, {}],
       });
       const setting: FieldRefColumnSplitSetting = {
+        // Unjustified type cast. FIXME
         rows: [["field", 1, { "base-type": "type/Text" }] as FieldReference],
         columns: [],
         values: [],

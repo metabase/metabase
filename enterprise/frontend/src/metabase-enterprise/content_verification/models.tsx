@@ -5,9 +5,8 @@ import type {
   ModelFilterControlsProps,
   ModelFilterSettings,
 } from "metabase/browse/models";
-import { useUserSetting } from "metabase/common/hooks";
 import type { State } from "metabase/redux/store";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting, useUserSetting } from "metabase/settings";
 
 import { VerifiedToggle } from "./VerifiedFilter/VerifiedToggle";
 

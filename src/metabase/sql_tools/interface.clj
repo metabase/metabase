@@ -46,7 +46,7 @@
 
 (defmulti referenced-tables-raw-impl
   "Parser specific implementation of [[metabase.sql-tools.core/referenced-tables-raw]]. Do not use directly."
-  {:arglists '([parser driver sql-str])}
+  {:arglists '([parser driver sql-str opts])}
   parser-driver-dispatch)
 
 (defmulti simple-query?-impl
@@ -63,6 +63,13 @@
 
   Transforms a SELECT statement to include an INTO clause for SQL Server style
   SELECT INTO syntax."
+  {:arglists '([parser driver sql table-name])}
+  parser-driver-dispatch)
+
+(defmulti add-insert-clause-impl
+  "Parser specific implementation of [[metabase.sql-tools.core/add-insert-clause]]. Do not use directly.
+
+  Makes an INSERT INTO statement from a SELECT statement, with any WITH clause before INSERT INTO."
   {:arglists '([parser driver sql table-name])}
   parser-driver-dispatch)
 

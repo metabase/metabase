@@ -4,12 +4,14 @@ import type {
   ListTransformJobRunsRequest,
   ListTransformJobRunsResponse,
   ListTransformJobsRequest,
+  RunTransformJobResponse,
   Transform,
   TransformJob,
   TransformJobId,
   TransformRunForJobRun,
   UpdateTransformJobRequest,
 } from "metabase-types/api";
+import { PENDING_RUN_ID } from "metabase-types/api";
 
 import { Api } from "./api";
 import {
@@ -74,7 +76,7 @@ export const transformJobApi = Api.injectEndpoints({
         idTag("transform-job", jobId),
       ],
     }),
-    runTransformJob: builder.mutation<void, TransformJobId>({
+    runTransformJob: builder.mutation<RunTransformJobResponse, TransformJobId>({
       query: (id) => ({
         method: "POST",
         url: `/api/transform-job/${id}/run`,
@@ -82,9 +84,10 @@ export const transformJobApi = Api.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [
           idTag("transform-job", id),
+          listTag("transform-job"),
+          listTag("transform-run"),
           tag("transform"),
           tag("table"),
-          listTag("table-remapping"),
         ]),
       onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
         const patchResult = dispatch(
@@ -93,7 +96,7 @@ export const transformJobApi = Api.injectEndpoints({
             id,
             (draft) => {
               draft.last_run = {
-                id: -1,
+                id: PENDING_RUN_ID,
                 status: "started",
                 start_time: new Date().toISOString(),
                 end_time: null,

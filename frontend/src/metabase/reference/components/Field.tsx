@@ -1,11 +1,9 @@
 import cx from "classnames";
-import { getIn } from "icepick";
 import { memo } from "react";
-import { Link } from "react-router";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import S from "metabase/common/components/List/List.module.css";
+import { Link } from "metabase/common/components/Link";
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/common/utils/fields";
 import CS from "metabase/css/core/index.css";
 import {
@@ -13,6 +11,7 @@ import {
   SemanticTypePicker,
 } from "metabase/metadata/components";
 import { getFieldCurrency } from "metabase/metadata/utils/field";
+import S from "metabase/reference/components/List/List.module.css";
 import { Box, Icon } from "metabase/ui";
 import { isTypeCurrency, isTypeFK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -111,20 +110,9 @@ const Field = ({
                     <Icon className={S.chartIcon} name={icon} size={20} />
                   )}
                 </div>
-                <span
-                  className={
-                    getIn(FIELD_SEMANTIC_TYPES_MAP, [
-                      field.semantic_type ?? "",
-                      "name",
-                    ])
-                      ? CS.textMedium
-                      : CS.textLight
-                  }
-                >
-                  {getIn(FIELD_SEMANTIC_TYPES_MAP, [
-                    field.semantic_type ?? "",
-                    "name",
-                  ]) || t`No field type`}
+                <span className={CS.textSecondary}>
+                  {FIELD_SEMANTIC_TYPES_MAP[field.semantic_type ?? ""]?.name ||
+                    t`No field type`}
                 </span>
               </div>
             )}

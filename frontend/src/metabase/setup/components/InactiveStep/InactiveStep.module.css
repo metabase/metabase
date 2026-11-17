@@ -1,0 +1,16 @@
+.label {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+  width: 2.625rem;
+  height: 2.625rem;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 50%;
+  background-color: var(--mb-color-background_page-primary);
+}
+
+.labelCompleted {
+  border-color: var(--mb-color-feedback-positive);
+  background-color: var(--mb-color-feedback-positive);
+}

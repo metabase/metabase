@@ -2,11 +2,14 @@ import type {
   Collection,
   CollectionItem,
   CollectionItemModel,
+  DatabaseId,
   IconName,
+  SchemaName,
   Table,
+  TableId,
 } from "metabase-types/api";
 
-export type LibrarySectionType = "data" | "metrics" | "snippets";
+export type LibrarySectionType = "data" | "metrics" | "snippets" | "actions";
 
 export type EmptyStateData = {
   model: "empty-state";
@@ -27,6 +30,9 @@ export type CollectionItemData = Pick<CollectionItem, "model" | "name"> &
       | "collection_position"
       | "last-edit-info"
       | "namespace"
+      | "can_write"
+      | "here"
+      | "below"
     >
   >;
 
@@ -36,6 +42,16 @@ export type CollectionData = Collection & {
 
 export type TableData = Table & {
   model: "table";
+};
+
+/** A segment or measure leaf, grouped under its published table */
+export type SegmentMeasureData = {
+  id: number;
+  name: string;
+  model: "segment" | "measure";
+  table_id: TableId;
+  databaseId: DatabaseId;
+  schemaName: SchemaName;
 };
 
 export type TreeItemModel =

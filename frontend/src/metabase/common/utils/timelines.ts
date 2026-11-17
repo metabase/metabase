@@ -1,9 +1,14 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { canonicalCollectionId } from "metabase/common/collections/utils";
+import {
+  canonicalCollectionId,
+  canonicalCollectionIdOrEntityId,
+} from "metabase/common/collections/utils";
 import type {
   Collection,
+  CollectionId,
+  CreateTimelineRequest,
   IconName,
   Timeline,
   TimelineIcon,
@@ -22,9 +27,12 @@ export const getTimelineIcons = (): {
 }[] => {
   return (
     [
+      { label: t`Info`, value: "info" },
+      { label: t`Note`, value: "note" },
+      { label: t`Event`, value: "event" },
       { label: t`Star`, value: "star" },
       { label: t`Cake`, value: "cake" },
-      { label: t`Mail`, value: "mail" },
+      { label: t`Mail`, value: "mail_at" },
       { label: t`Warning`, value: "warning" },
       { label: t`Bell`, value: "bell" },
       { label: t`Cloud`, value: "cloud" },
@@ -34,7 +42,7 @@ export const getTimelineIcons = (): {
 
 export const getDefaultTimeline = (
   collection: Collection,
-): Partial<Timeline> => {
+): CreateTimelineRequest => {
   return {
     name: getDefaultTimelineName(collection),
     collection_id: canonicalCollectionId(collection.id),
@@ -42,6 +50,28 @@ export const getDefaultTimeline = (
     default: true,
   };
 };
+
+/**
+ * null, "root" and "tenant" mean the root collection, whose timelines have a
+ * null collection_id. Regular collections can be addressed by numeric or entity id.
+ */
+export const isCollectionTimeline = (
+  timeline: Timeline,
+  collectionId: CollectionId | null | undefined,
+) => {
+  const canonicalId = canonicalCollectionIdOrEntityId(collectionId);
+
+  return canonicalId === null
+    ? timeline.collection_id == null
+    : timeline.collection_id === canonicalId ||
+        timeline.collection?.entity_id === canonicalId;
+};
+
+export const getCollectionTimelines = (
+  timelines: Timeline[],
+  collectionId: CollectionId | null | undefined,
+): Timeline[] =>
+  timelines.filter((timeline) => isCollectionTimeline(timeline, collectionId));
 
 export const getDefaultTimelineName = (collection: Collection) => {
   return t`${collection.name} events`;

@@ -1,0 +1,21 @@
+.filterButton {
+  flex: none;
+}
+
+.tree {
+  overflow-y: auto;
+  /*
+  as we poll for query results, the tree items can get resorted
+  some browsers by default try to keep the scroll position of an anchor item stable
+  but that seems to work poorly for our use case, so disable it
+  */
+  overflow-anchor: none;
+  scrollbar-gutter: stable;
+  padding: 0 1rem 1rem 0;
+  margin-right: -1rem;
+}
+
+.tree :global(ul) {
+  display: flex;
+  flex-direction: column;
+}

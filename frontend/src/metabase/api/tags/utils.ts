@@ -1,6 +1,7 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
 import { isVirtualDashCard } from "metabase/utils/dashboard";
+import { isNotNull } from "metabase/utils/types";
 import type {
   Alert,
   ApiKey,
@@ -46,7 +47,8 @@ import type {
   SearchResult,
   Segment,
   Table,
-  TableRemapping,
+  TableIndexEntry,
+  TableIndexRequest,
   Task,
   TaskRun,
   Timeline,
@@ -72,7 +74,7 @@ import type {
 import { getLensKey } from "../utils/transform-inspector-lens";
 
 import type { TagType } from "./constants";
-import { TAG_TYPE_MAPPING } from "./constants";
+import { REMOTE_SYNC_CONTENT_TAG_TYPES, TAG_TYPE_MAPPING } from "./constants";
 
 export function tag(type: TagType): TagDescription<TagType> {
   return { type };
@@ -109,7 +111,12 @@ export function provideActionListTags(
 export function provideActionTags(
   action: WritebackAction,
 ): TagDescription<TagType>[] {
-  return [idTag("action", action.id)];
+  return [
+    idTag("action", action.id),
+    ...(action.type === "implicit" && action.table_id != null
+      ? [idTag("table", action.table_id)]
+      : []),
+  ];
 }
 
 export function provideActivityItemListTags(
@@ -553,6 +560,10 @@ export function providePersistedModelTags(
   return [idTag("persisted-model", status.card_id)];
 }
 
+export function provideRemoteSyncContentTags(): TagDescription<TagType>[] {
+  return REMOTE_SYNC_CONTENT_TAG_TYPES.map(listTag);
+}
+
 export function provideRevisionListTags(
   revisions: Revision[],
 ): TagDescription<TagType>[] {
@@ -639,6 +650,12 @@ export function provideMetricDimensionValuesTags(
   return [idTag("card", metricId)];
 }
 
+export function provideMetricDimensionListTags(
+  metricId: MetricId,
+): TagDescription<TagType>[] {
+  return [listTag("metric-dimension"), idTag("metric-dimension", metricId)];
+}
+
 export function provideSnippetListTags(
   snippets: NativeQuerySnippet[],
 ): TagDescription<TagType>[] {
@@ -670,6 +687,27 @@ export function provideSubscriptionTags(
   return [idTag("subscription", subscription.id)];
 }
 
+export function provideTableIndexTags(
+  index: TableIndexRequest,
+): TagDescription<TagType>[] {
+  return [
+    idTag("table-index", index.id),
+    idTag("transform", index.transform_id),
+  ];
+}
+
+export function provideTableIndexListTags(
+  indexes: TableIndexEntry[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("table-index"),
+    ...indexes
+      .map((index) => index.request)
+      .filter(isNotNull)
+      .flatMap(provideTableIndexTags),
+  ];
+}
+
 export function provideTableListTags(
   tables: Table[],
 ): TagDescription<TagType>[] {
@@ -685,21 +723,6 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
     ...(table.measures ? provideMeasureListTags(table.measures) : []),
     ...(table.metrics ? provideCardListTags(table.metrics) : []),
-  ];
-}
-
-export function provideTableRemappingTags(
-  remapping: TableRemapping,
-): TagDescription<TagType>[] {
-  return [idTag("table-remapping", remapping.id)];
-}
-
-export function provideTableRemappingListTags(
-  remappings: TableRemapping[],
-): TagDescription<TagType>[] {
-  return [
-    listTag("table-remapping"),
-    ...remappings.flatMap(provideTableRemappingTags),
   ];
 }
 

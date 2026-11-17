@@ -1,8 +1,7 @@
-import { merge } from "icepick";
+import { deepMerge } from "metabase/utils/deep-merge";
+import { type FunnelDatum, calculateFunnelSteps } from "metabase/viz-core";
 
-import { calculateFunnelSteps } from "metabase/visualizations/lib/funnel/utils";
-
-import type { FunnelDatum, FunnelSettings } from "../types";
+import type { FunnelSettings } from "../types";
 
 import { calculateFunnelPolygonPoints, reorderData } from "./funnel";
 
@@ -146,7 +145,7 @@ describe("reorderData", () => {
   it("reorders data given `funnel.rows` is set", () => {
     const reorderedData = reorderData(
       data,
-      merge(settings, {
+      deepMerge(settings, {
         visualization_settings: {
           "funnel.rows": [
             { enabled: true, key: "funnel step 1", name: "funnel step 1" },
@@ -166,7 +165,7 @@ describe("reorderData", () => {
   it("reorders data for only enabled row in `funnel.rows`", () => {
     const reorderedData = reorderData(
       data,
-      merge(settings, {
+      deepMerge(settings, {
         visualization_settings: {
           "funnel.rows": [
             { enabled: true, key: "funnel step 1", name: "funnel step 1" },

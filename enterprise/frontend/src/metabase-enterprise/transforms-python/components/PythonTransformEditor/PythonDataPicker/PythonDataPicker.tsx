@@ -9,7 +9,6 @@ import type {
   PythonTransformTableAliases,
   Table,
 } from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api";
 
 import { AliasInput } from "./AliasInput";
 import S from "./PythonDataPicker.module.css";
@@ -115,8 +114,8 @@ export function PythonDataPicker({
 
   return (
     <Stack
-      p="md"
-      gap="md"
+      p="lg"
+      gap="lg"
       h="100%"
       w="30%"
       miw="300px"
@@ -126,10 +125,10 @@ export function PythonDataPicker({
       {database && (
         <Box>
           <Text fw="bold">{t`Pick tables and alias them`}</Text>
-          <Text size="sm" c="text-disabled" mb="sm">
+          <Text size="sm" c="text-secondary" mb="sm">
             {t`Select tables to use as data sources and provide aliases that can be referenced in your Python script.`}
           </Text>
-          <Stack gap="md">
+          <Stack gap="lg">
             {tableSelections.map((selection, index) => (
               <SelectionInput
                 key={index}
@@ -187,7 +186,7 @@ function SelectionInput({
   }
 
   function handleTableChange(table: Table | undefined) {
-    if (!table || !isConcreteTableId(table.id)) {
+    if (!table) {
       onChange({
         ...selection,
         tableId: undefined,
@@ -217,7 +216,7 @@ function SelectionInput({
   }
 
   return (
-    <Stack gap="xs" align="center" w="100%">
+    <Stack gap="xxs" align="center" w="100%">
       <TableSelector
         database={database}
         table={table}
@@ -249,8 +248,8 @@ function AddTableButton({
     <Box>
       <Button
         leftSection={<Icon name="add_data" />}
-        variant="subtle"
-        px={0}
+        variant="transparent"
+        size="compact-md"
         onClick={onClick}
         disabled={disabled}
       >

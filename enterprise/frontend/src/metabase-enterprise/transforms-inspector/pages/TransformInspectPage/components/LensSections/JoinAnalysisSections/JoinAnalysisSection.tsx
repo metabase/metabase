@@ -169,7 +169,7 @@ export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
   const joinsCount = treeData.length;
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       {joinsCount > 0 && (
         <>
           <Title order={4}>
@@ -182,6 +182,7 @@ export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
           <Card p={0} shadow="none" withBorder>
             <TreeTable
               instance={instance}
+              static
               hierarchical={false}
               styles={{
                 cell: { padding: "var(--mantine-spacing-sm)" },

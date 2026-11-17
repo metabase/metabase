@@ -23,3 +23,21 @@
             :base_type :type/Integer
             :fingerprint {:global {:distinct-count 1000 :nil% 0.0}}})
           0.1)))
+
+(deftest ^:parallel dimension-interestingness-pk-scores-zero-test
+  (is (= 0.0 (interestingness/dimension-interestingness
+              {:semantic_type :type/PK
+               :base_type :type/Integer
+               :fingerprint {:global {:distinct-count 1000 :nil% 0.0}}}))))
+
+(deftest ^:parallel dimension-interestingness-no-fingerprint-returns-neutral-test
+  ;; With no fingerprint there is no signal to score on, so the engine returns the
+  ;; neutral baseline (0.5) rather than letting a missing fingerprint drag the score
+  ;; down. `dimension-interestingness` always returns a double in [0.0, 1.0].
+  (is (= 0.5 (interestingness/dimension-interestingness
+              {:semantic_type :type/Category
+               :base_type :type/Text})))
+  (is (= 0.5 (interestingness/dimension-interestingness
+              {:semantic_type :type/Category
+               :base_type :type/Text
+               :fingerprint nil}))))

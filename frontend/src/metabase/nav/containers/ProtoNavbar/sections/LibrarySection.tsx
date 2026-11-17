@@ -1,8 +1,8 @@
-import type { Location } from "history";
 import type { MouseEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { Location } from "metabase/router";
 import { Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 

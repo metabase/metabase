@@ -1,0 +1,8 @@
+name: Metrics
+entity_id: librarylibrarymetrics
+slug: metrics
+type: library-metrics
+parent_id: librarylibrarylibrary
+serdes/meta:
+- model: Collection
+is_remote_synced: true

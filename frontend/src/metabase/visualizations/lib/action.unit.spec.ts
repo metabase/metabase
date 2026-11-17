@@ -1,3 +1,5 @@
+import { createMockMetadata } from "__support__/metadata";
+import { navigate } from "metabase/router";
 import MetabaseSettings from "metabase/utils/settings";
 import type {
   QuestionChangeClickAction,
@@ -7,7 +9,16 @@ import Question from "metabase-lib/v1/Question";
 
 import { performAction } from "./action";
 
+jest.mock("metabase/router", () => ({
+  ...jest.requireActual("metabase/router"),
+  navigate: jest.fn(),
+}));
+
 describe("performAction", () => {
+  beforeEach(() => {
+    jest.mocked(navigate).mockClear();
+  });
+
   it('should redirect using router if a "relative" url has been passed', () => {
     MetabaseSettings.set("site-url", "http://localhost");
     const action: UrlClickAction = {
@@ -27,20 +38,11 @@ describe("performAction", () => {
 
     expect(action.url).toHaveBeenCalledTimes(1);
 
-    expect(extraProps.dispatch).toHaveBeenCalledTimes(1);
-    expect(extraProps.dispatch).toHaveBeenCalledWith({
-      payload: {
-        args: [
-          {
-            hash: "",
-            pathname: "/auto/dashboard/adhoc/123Abc",
-            query: {},
-            search: "",
-          },
-        ],
-        method: "push",
-      },
-      type: "@@router/CALL_HISTORY_METHOD",
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledWith({
+      hash: "",
+      pathname: "/auto/dashboard/adhoc/123Abc",
+      search: "",
     });
   });
 
@@ -91,20 +93,11 @@ describe("performAction", () => {
 
         expect(action.url).toHaveBeenCalledTimes(1);
 
-        expect(extraProps.dispatch).toHaveBeenCalledTimes(1);
-        expect(extraProps.dispatch).toHaveBeenCalledWith({
-          payload: {
-            args: [
-              {
-                hash: "",
-                pathname: url,
-                query: {},
-                search: "",
-              },
-            ],
-            method: "push",
-          },
-          type: "@@router/CALL_HISTORY_METHOD",
+        expect(navigate).toHaveBeenCalledTimes(1);
+        expect(navigate).toHaveBeenCalledWith({
+          hash: "",
+          pathname: url,
+          search: "",
         });
       },
     );
@@ -130,20 +123,11 @@ describe("performAction", () => {
 
         expect(action.url).toHaveBeenCalledTimes(1);
 
-        expect(extraProps.dispatch).toHaveBeenCalledTimes(1);
-        expect(extraProps.dispatch).toHaveBeenCalledWith({
-          payload: {
-            args: [
-              {
-                hash: "",
-                pathname: "/" + url,
-                query: {},
-                search: "",
-              },
-            ],
-            method: "push",
-          },
-          type: "@@router/CALL_HISTORY_METHOD",
+        expect(navigate).toHaveBeenCalledTimes(1);
+        expect(navigate).toHaveBeenCalledWith({
+          hash: "",
+          pathname: "/" + url,
+          search: "",
         });
       },
     );
@@ -170,20 +154,11 @@ describe("performAction", () => {
 
       expect(action.url).toHaveBeenCalledTimes(1);
 
-      expect(extraProps.dispatch).toHaveBeenCalledTimes(1);
-      expect(extraProps.dispatch).toHaveBeenCalledWith({
-        payload: {
-          args: [
-            {
-              hash: "",
-              pathname: "/auto/dashboard/adhoc/123Abc",
-              query: {},
-              search: "",
-            },
-          ],
-          method: "push",
-        },
-        type: "@@router/CALL_HISTORY_METHOD",
+      expect(navigate).toHaveBeenCalledTimes(1);
+      expect(navigate).toHaveBeenCalledWith({
+        hash: "",
+        pathname: "/auto/dashboard/adhoc/123Abc",
+        search: "",
       });
     });
 
@@ -209,27 +184,18 @@ describe("performAction", () => {
 
       expect(action.url).toHaveBeenCalledTimes(1);
 
-      expect(extraProps.dispatch).toHaveBeenCalledTimes(1);
-      expect(extraProps.dispatch).toHaveBeenCalledWith({
-        payload: {
-          args: [
-            {
-              hash: "",
-              pathname:
-                "/invalid_protocol://localhost/metabase/auto/dashboard/adhoc/123Abc",
-              query: {},
-              search: "",
-            },
-          ],
-          method: "push",
-        },
-        type: "@@router/CALL_HISTORY_METHOD",
+      expect(navigate).toHaveBeenCalledTimes(1);
+      expect(navigate).toHaveBeenCalledWith({
+        hash: "",
+        pathname:
+          "/invalid_protocol://localhost/metabase/auto/dashboard/adhoc/123Abc",
+        search: "",
       });
     });
   });
 
   it("performs question change actions according to question change behavior", () => {
-    const mockQuestion = Question.create();
+    const mockQuestion = Question.create({ metadata: createMockMetadata() });
 
     const defaultQuestionAction: QuestionChangeClickAction = {
       name: "bar",

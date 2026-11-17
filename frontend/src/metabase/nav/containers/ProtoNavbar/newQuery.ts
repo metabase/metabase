@@ -1,3 +1,4 @@
+import type { DraftQuestionBuilder } from "metabase/metadata-store";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -32,24 +33,29 @@ export function parseNewQueryMode(pathname: string): NewQueryMode | null {
 }
 
 export function newQueryUrl(
-  mode: NewQueryMode = getLastNewQueryMode(),
-  { databaseId }: { databaseId?: number } = {},
+  mode: NewQueryMode,
+  {
+    buildQuestion,
+    databaseId,
+  }: { buildQuestion: DraftQuestionBuilder; databaseId?: number },
 ): string {
   if (mode === "ai") {
     return "/question/new";
   }
   if (mode === "notebook") {
-    return Urls.newQuestion({ mode: "notebook" }).replace(
+    return Urls.newQuestion(buildQuestion({}), { mode: "notebook" }).replace(
       /^\/question\/notebook/,
       "/question/new/notebook",
     );
   }
-  return Urls.newQuestion({
-    DEPRECATED_RAW_MBQL_type: "native",
-    creationType: "native_question",
-    cardType: "question",
-    DEPRECATED_RAW_MBQL_databaseId: databaseId,
-  }).replace(/^\/question/, "/question/new/sql");
+  return Urls.newQuestion(
+    buildQuestion({
+      DEPRECATED_RAW_MBQL_type: "native",
+      cardType: "question",
+      DEPRECATED_RAW_MBQL_databaseId: databaseId,
+    }),
+    { creationType: "native_question" },
+  ).replace(/^\/question/, "/question/new/sql");
 }
 
 /** True on the New Query SQL page before the user has typed anything. */

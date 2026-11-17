@@ -1,6 +1,4 @@
-import { useHotkeys } from "@mantine/hooks";
-import { useMemo, useState } from "react";
-import { useMount } from "react-use";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -12,8 +10,8 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import type { Transform } from "metabase-types/api";
 
 interface TransformRevisionHistorySidebarProps {
@@ -27,14 +25,7 @@ export function TransformRevisionHistorySidebar({
   onClose,
   readOnly,
 }: TransformRevisionHistorySidebarProps) {
-  const [isOpen, setIsOpen] = useState(false);
   const currentUser = useSelector(getUser);
-
-  useHotkeys([["]", onClose]]);
-
-  useMount(() => {
-    setIsOpen(true);
-  });
 
   const {
     data: revisions,
@@ -58,7 +49,7 @@ export function TransformRevisionHistorySidebar({
   }
 
   return (
-    <Sidesheet isOpen={isOpen} title={t`History`} onClose={onClose}>
+    <Sidesheet isOpen title={t`History`} onClose={onClose} closeHotkey="]">
       <SidesheetCard>
         {isLoading || error ? (
           <LoadingAndErrorWrapper loading={isLoading} error={error} />

@@ -1,16 +1,15 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { createAction, createSlice } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
 
 import {
   LOAD_DATA_PERMISSIONS,
   SAVE_DATA_PERMISSIONS,
   UPDATE_DATA_PERMISSION,
-} from "metabase/admin/permissions/permissions";
-import {
-  DATABASES_BASE_PATH,
-  GROUPS_BASE_PATH,
-} from "metabase/admin/permissions/utils/urls";
+  getDatabasesBasePath,
+  getGroupsBasePath,
+} from "metabase/permissions";
+import { navigate } from "metabase/router";
 import {
   DataPermission,
   DataPermissionValue,
@@ -25,11 +24,11 @@ export const getImpersonatedPostAction = (
   view: "database" | "group",
 ) =>
   view === "database"
-    ? push(
-        `${DATABASES_BASE_PATH}/${entityId.databaseId}/impersonated/group/${groupId}`,
+    ? navigate(
+        `${getDatabasesBasePath()}/${entityId.databaseId}/impersonated/group/${groupId}`,
       )
-    : push(
-        `${GROUPS_BASE_PATH}/${groupId}/impersonated/database/${entityId.databaseId}`,
+    : navigate(
+        `${getGroupsBasePath()}/${groupId}/impersonated/database/${entityId.databaseId}`,
       );
 
 const UPDATE_IMPERSONATION =

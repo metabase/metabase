@@ -1,11 +1,11 @@
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import { Button, Flex, Icon } from "metabase/ui";
 
 import ExpressionWidgetHeaderS from "./ExpressionWidgetHeader.module.css";
 
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const DEFAULT_SECTION_NAME = t`Custom Expression`;
+const getDefaultSectionName = () => t`Custom Expression`;
 
 interface Props {
   title?: string;
@@ -14,7 +14,7 @@ interface Props {
 }
 
 export const ExpressionWidgetHeader = ({
-  title = DEFAULT_SECTION_NAME,
+  title = getDefaultSectionName(),
   onBack,
 }: Props): JSX.Element => {
   return (

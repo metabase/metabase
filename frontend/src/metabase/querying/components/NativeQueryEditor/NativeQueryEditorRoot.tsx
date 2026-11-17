@@ -1,7 +1,8 @@
-import { useElementSize } from "@mantine/hooks";
+import { useDebouncedCallback, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import {
   Children,
+  type ReactElement,
   type ReactNode,
   cloneElement,
   forwardRef,
@@ -11,13 +12,13 @@ import {
   useRef,
   useState,
 } from "react";
-import { useMount } from "react-use";
-import { t } from "ttag";
+import { useLatest, useMount } from "react-use";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
-import { getMetabotVisible } from "metabase/metabot/state";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import { parseNewQueryMode } from "metabase/nav/containers/ProtoNavbar/newQuery";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import type { DataSelectorDatabase } from "metabase/querying/common/components/DataSelector";
 import {
   CodeMirrorEditor,
   type CodeMirrorEditorProps,
@@ -25,15 +26,13 @@ import {
 } from "metabase/querying/components/CodeMirrorEditor";
 import { SnippetFormModal } from "metabase/querying/components/NativeQueryEditor/SnippetFormModal";
 import { useNotebookScreenSize } from "metabase/querying/components/NativeQueryEditor/use-notebook-screen-size";
-import type { QueryModalType } from "metabase/querying/constants";
 import type { SelectionRange } from "metabase/querying/editor/types";
-import { useSelector } from "metabase/redux";
-import { getLocation } from "metabase/selectors/routing";
-import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
+import { useSelector, useStore } from "metabase/redux";
+import type { QueryModalType } from "metabase/redux/store";
+import { useLocation } from "metabase/router";
+import { Flex, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
   DatabaseId,
@@ -59,6 +58,7 @@ import {
   canFormatForEngine,
   formatQuery,
   getInitialEditorHeight,
+  updateSnippet,
 } from "./utils";
 
 /**
@@ -69,15 +69,18 @@ import {
  */
 export type NativeQueryEditorCoreProps = Omit<
   CodeMirrorEditorProps,
-  "query"
+  "query" | "onAcceptProposed"
 > & {
   availableHeight?: number;
+  canAutoOpenDataReference?: boolean;
   canChangeDatabase?: boolean;
   cancelQuery?: () => void;
   className?: string;
   closeSnippetModal?: () => void;
-  databaseIsDisabled?: (database: Database) => boolean;
-  databaseDisabledTooltip?: (database: Database) => string | undefined;
+  databaseIsDisabled?: (database: DataSelectorDatabase) => boolean;
+  databaseDisabledTooltip?: (
+    database: DataSelectorDatabase,
+  ) => string | undefined;
   editorContext?: "question" | "action";
   handleResize?: () => void;
   highlightedLineNumbers?: number[];
@@ -104,12 +107,11 @@ export type NativeQueryEditorCoreProps = Omit<
   openSnippetModalWithSelectedText?: () => void;
   placeholder?: string;
   proposedQuestion?: Question | undefined;
-  query: NativeQuery;
   question: Question;
   readOnly?: boolean;
   resizable?: boolean;
   runQuery?: () => void;
-  setDatasetQuery: (query: NativeQuery) => void;
+  setQuery: (query: Lib.Query) => void;
   setIsNativeEditorOpen?: (
     isOpen: boolean,
     shouldOpenDataReference?: boolean,
@@ -132,6 +134,8 @@ export const NativeQueryEditorRoot = forwardRef<
   const {
     children,
     availableHeight = Infinity,
+    canAutoOpenDataReference = true,
+    hasSqlGenerationAccess,
     canChangeDatabase = true,
     cancelQuery,
     className,
@@ -162,12 +166,11 @@ export const NativeQueryEditorRoot = forwardRef<
     openSnippetModalWithSelectedText,
     placeholder,
     proposedQuestion,
-    query,
     question,
     readOnly,
     resizable = true,
     runQuery,
-    setDatasetQuery,
+    setQuery,
     setIsNativeEditorOpen,
     setNativeEditorSelectedRange,
     setParameterValue,
@@ -201,15 +204,10 @@ export const NativeQueryEditorRoot = forwardRef<
   // or on the New Query SQL idle page where the editor is embedded
   // in a compact prompt card.
   const screenSize = useNotebookScreenSize();
-  const isMetabotSidebarOpen = useSelector((state) =>
-    getMetabotVisible(state, "omnibot"),
-  );
-  const { pathname } = useSelector(getLocation);
+  const { pathname } = useLocation();
   const isNewQuerySqlPage = parseNewQueryMode(pathname) === "sql";
   const shouldOpenDataReference =
-    screenSize !== "small" &&
-    !isMetabotSidebarOpen &&
-    !isNewQuerySqlPage;
+    screenSize !== "small" && canAutoOpenDataReference && !isNewQuerySqlPage;
 
   useMount(() => {
     setIsNativeEditorOpen?.(
@@ -227,23 +225,64 @@ export const NativeQueryEditorRoot = forwardRef<
     }
   }, [nativeEditorSelectedText, isSelectedTextPopoverOpen]);
 
-  const handleChange = useCallback(
+  // The editor reconfigures itself whenever the identity of its callbacks
+  // changes, so they must not depend on the query, which changes on every
+  // keystroke.
+  const store = useStore();
+  const query = question.query();
+  const questionRef = useLatest(question);
+
+  const applyQueryText = useCallback(
     (queryText: string) => {
-      if (query.queryText() !== queryText) {
-        const updatedQuery = query.setQueryText(queryText);
-        setDatasetQuery(updatedQuery);
+      const currentQuery = questionRef.current.query();
+      if (Lib.rawNativeQuery(currentQuery) !== queryText) {
+        setQuery(Lib.withNativeQuery(currentQuery, queryText));
       }
     },
-    [query, setDatasetQuery],
+    [questionRef, setQuery],
   );
+
+  // Putting the edit in the store rerenders the query builder, which is far
+  // more work than the keystroke that caused it. A zero delay runs it in the
+  // next task, so the editor paints the character first. That is what keeps
+  // typing responsive on large queries (DEV-3545).
+  const handleChange = useDebouncedCallback(applyQueryText, {
+    delay: 0,
+    flushOnUnmount: true,
+  });
+
+  // Anything that reads the query from the store needs the pending edit first.
+  const handleRunQuery = useCallback(() => {
+    handleChange.flush();
+    runQuery?.();
+  }, [handleChange, runQuery]);
+
+  const handleBlur = useCallback(() => {
+    handleChange.flush();
+    onBlur?.();
+  }, [handleChange, onBlur]);
+
+  const handleAcceptProposed = useCallback(() => {
+    if (proposedQuestion) {
+      handleChange(Lib.rawNativeQuery(proposedQuestion.query()));
+      handleChange.flush();
+      onAcceptProposed?.(proposedQuestion.datasetQuery());
+    }
+  }, [proposedQuestion, handleChange, onAcceptProposed]);
 
   const handleSnippetUpdate = useCallback(
     (newSnippet: NativeQuerySnippet, oldSnippet: NativeQuerySnippet) => {
-      // get the query instance with the latest Metadata that has the updated snippet
-      const updatedQuery = query.updateSnippet(oldSnippet, newSnippet);
-      setDatasetQuery(updatedQuery);
+      const metadataProvider = selectMetadataProvider(
+        store.getState(),
+        question.databaseId(),
+      );
+      const latestQuery = Lib.fromJsQuery(
+        metadataProvider,
+        question.datasetQuery(),
+      );
+      setQuery(updateSnippet(latestQuery, oldSnippet, newSnippet));
     },
-    [query, setDatasetQuery],
+    [store, question, setQuery],
   );
 
   const handleRightClickSelection = useCallback(() => {
@@ -262,7 +301,7 @@ export const NativeQueryEditorRoot = forwardRef<
   }, [setIsNativeEditorOpen, shouldOpenDataReference, isNativeEditorOpen]);
 
   const handleFormatQuery = useCallback(async () => {
-    const query = question.query();
+    const query = questionRef.current.query();
     const engine = Lib.engine(query);
     const queryText = Lib.rawNativeQuery(query);
     const canFormatQuery = engine != null && canFormatForEngine(engine);
@@ -277,8 +316,9 @@ export const NativeQueryEditorRoot = forwardRef<
 
     const formattedQuery = await formatQuery(queryText, engine);
     handleChange(formattedQuery);
+    handleChange.flush();
     focusEditor();
-  }, [question, focusEditor, handleChange]);
+  }, [questionRef, focusEditor, handleChange]);
 
   const handleResize = useCallback(
     (height: number) => {
@@ -297,7 +337,7 @@ export const NativeQueryEditorRoot = forwardRef<
   const contextValue: NativeQueryEditorContextValue = {
     question,
     query,
-    setDatasetQuery,
+    setQuery,
     focusEditor,
     onFormatQuery: handleFormatQuery,
     readOnly,
@@ -313,7 +353,7 @@ export const NativeQueryEditorRoot = forwardRef<
     isRunnable,
     isRunning,
     isResultDirty,
-    runQuery,
+    runQuery: handleRunQuery,
     cancelQuery,
     nativeEditorSelectedText,
     snippets,
@@ -333,7 +373,10 @@ export const NativeQueryEditorRoot = forwardRef<
   const bodySlots: ReactNode[] = [];
   Children.toArray(children).forEach((child) => {
     if (isValidElement(child) && child.type === TopBar) {
-      topBar = cloneElement(child, { ref: topBarRef });
+      // TopBar forwards its ref; type the element so cloneElement accepts it.
+      topBar = cloneElement(child as ReactElement<{ ref?: typeof topBarRef }>, {
+        ref: topBarRef,
+      });
     } else {
       bodySlots.push(child);
     }
@@ -364,69 +407,33 @@ export const NativeQueryEditorRoot = forwardRef<
               <Flex w="100%" flex="1" className={S.resizableBoxContent}>
                 <CodeMirrorEditor
                   ref={editorRef}
-                  query={question.query()}
+                  query={query}
                   proposedQuery={proposedQuestion?.query()}
                   readOnly={readOnly}
                   autoFocus={!isNewQuerySqlPage}
                   placeholder={placeholder}
+                  hasSqlGenerationAccess={hasSqlGenerationAccess}
                   highlightedLineNumbers={highlightedLineNumbers}
                   extensions={extensions}
-                  onBlur={onBlur}
+                  onBlur={handleBlur}
                   onChange={handleChange}
-                  onRunQuery={runQuery}
+                  onRunQuery={handleRunQuery}
                   onSelectionChange={setNativeEditorSelectedRange}
                   onCursorMoveOverCardTag={openDataReferenceAtQuestion}
                   onRightClickSelection={handleRightClickSelection}
                   onFormatQuery={handleFormatQuery}
+                  onAcceptProposed={
+                    onAcceptProposed ? handleAcceptProposed : undefined
+                  }
+                  onRejectProposed={onRejectProposed}
                 />
 
                 <Stack
                   display={readOnly ? "none" : undefined}
-                  gap="md"
+                  gap="lg"
                   justify="flex-end"
-                  p="md"
+                  p="lg"
                 >
-                  {proposedQuestion && onRejectProposed && onAcceptProposed && (
-                    <>
-                      <Tooltip
-                        label={t`Accept proposed changes`}
-                        position="top"
-                      >
-                        <Button
-                          data-testid="accept-proposed-changes-button"
-                          variant="filled"
-                          bg="success"
-                          px="0"
-                          w="2.5rem"
-                          onClick={() => {
-                            const proposedQuery =
-                              proposedQuestion.legacyNativeQuery();
-                            if (proposedQuery) {
-                              handleChange(proposedQuery.queryText());
-                              onAcceptProposed(proposedQuery.datasetQuery());
-                            }
-                          }}
-                        >
-                          <Icon name="check" />
-                        </Button>
-                      </Tooltip>
-                      <Tooltip
-                        label={t`Reject proposed changes`}
-                        position="top"
-                      >
-                        <Button
-                          data-testid="reject-proposed-changes-button"
-                          w="2.5rem"
-                          px="0"
-                          variant="filled"
-                          bg="danger"
-                          onClick={onRejectProposed}
-                        >
-                          <Icon name="close" />
-                        </Button>
-                      </Tooltip>
-                    </>
-                  )}
                   <Flex gap="sm">{bodySlots}</Flex>
                 </Stack>
               </Flex>

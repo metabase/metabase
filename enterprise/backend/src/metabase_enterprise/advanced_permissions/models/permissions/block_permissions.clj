@@ -11,7 +11,6 @@
   []
   (throw (ex-info (tru "You do not have permissions to run this query.")
                   {:type               qp.error-type/missing-required-permissions
-                   :actual-permissions @api/*current-user-permissions-set*
                    :permissions-error? true})))
 
 (defenterprise check-block-permissions
@@ -25,13 +24,12 @@
   ;; block.
   :feature :none
   [{database-id :database :as query}]
-  (let [{:keys [table-ids]} (query-perms/query->source-ids query)
-        table-permissions   (map (partial perms/table-permission-for-user api/*current-user-id*
-                                          :perms/view-data database-id)
-                                 table-ids)]
-    ;; Make sure we don't have block permissions for the entire DB or individual tables referenced by the query.
-    (or
-     (not= :blocked (perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id))
-     (= #{:unrestricted} (set table-permissions))
-     (throw-block-permissions-exception))
-    true))
+  (or
+   (not= :blocked (get (perms/every-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*) :perms/view-data [database-id]) database-id))
+   (let [{:keys [table-ids]} (query-perms/query->source-ids query)]
+     (= #{:unrestricted}
+        (set (vals (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                     :perms/view-data
+                                                     (zipmap table-ids (repeat database-id)))))))
+   (throw-block-permissions-exception))
+  true)

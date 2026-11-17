@@ -1,9 +1,9 @@
 (ns metabase.query-processor.middleware.parameters
   "Middleware for substituting parameters in queries."
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [mapv some])
   (:require
-   [clojure.data :as data]
    [clojure.set :as set]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.parameters :as lib.parameters]
    [metabase.lib.schema :as lib.schema]
@@ -16,7 +16,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some]]))
+   [metabase.util.performance :refer [mapv some]]))
 
 (mu/defn- expand-stage :- ::lib.schema/stage
   "Expand `:parameters` in one stage map that contains them."
@@ -27,8 +27,11 @@
     stage
     (let [f        (case (:lib/type stage)
                      :mbql.stage/mbql   qp.mbql/expand
-                     :mbql.stage/native (fn [query _path stage]
-                                          (qp.native/expand-stage query stage)))
+                     :mbql.stage/native (mu/fn :- ::lib.schema/stage.native
+                                          [query path _stage]
+                                          (let [{query* :query, :keys [stage-number]} (lib.walk/query-for-path query path)]
+                                            (-> (qp.native/expand-stage query* stage-number)
+                                                (lib/query-stage stage-number)))))
           expanded (f query path stage)]
       (dissoc expanded :parameters :template-tags))))
 
@@ -75,7 +78,7 @@
          (do
            (log/errorf "Query does not have a stage %d, ignoring parameter %s"
                        param-stage-number
-                       (pr-str parameter))
+                       (:id parameter))
            query)
          (lib/update-query-stage query param-stage-number
                                  update :parameters
@@ -88,8 +91,9 @@
   "Find the template tag in `template-tags` that matches `param`'s target."
   [template-tags param]
   (when-let [name-or-id (lib.parameters/parameter-target-template-tag-name (:target param))]
-    (or (get template-tags name-or-id) ; handle name
-        (some (fn [[_ tag]] ; handle id (defensive, may be unnecessary)
+    (or (m/find-first #(= (:name %) name-or-id) ; handle name
+                      template-tags)
+        (some (fn [tag]                         ; handle id (defensive, may be unnecessary)
                 (when (= (:id tag) name-or-id)
                   tag))
               template-tags))))
@@ -112,15 +116,12 @@
                                          (not= value default)))))]
         (some non-default-param? params)))))
 
-(defn- maybe-skip-result-metadata-persistence
-  "Sets :qp/skip-result-metadata-persistence to true/false."
+(defn- mark-non-default-parameterized
+  "Set `:qp/non-default-parameterized?` to true when any stage carries parameters whose values diverge from
+  their template tag defaults."
   [query]
-  (->> (:stages query)
-       (some stage-has-non-default-params?)
-       boolean
-       ;; `qp/skip-result-metadata-persistence` is used by [[metabase.query-processor.middleware.results-metadata/record-metadata!]]
-       ;; to decide whether to record metadata.
-       (assoc query :qp/skip-result-metadata-persistence)))
+  (assoc query :qp/non-default-parameterized?
+         (boolean (some stage-has-non-default-params? (:stages query)))))
 
 (mu/defn- move-top-level-params-to-stage :- ::lib.schema/query
   "Move any top-level parameters to the stage they affect."
@@ -140,7 +141,7 @@
 
     (seq parameters)
     (-> (move-top-level-params-to-stage* parameters)
-        maybe-skip-result-metadata-persistence)))
+        mark-non-default-parameterized)))
 
 (mu/defn- expand-parameters :- ::lib.schema/query
   "If any parameters were supplied then substitute them into the query."
@@ -149,17 +150,15 @@
                move-top-level-params-to-stage
                expand-all)
     (when (not= <> query)
-      (when-let [diff (second (data/diff query <>))]
-        (log/tracef "\n\nSubstituted params:\n%s\n" (u/pprint-to-str 'cyan diff))))))
+      (log/trace "Substituted params into query"))))
 
-(mu/defn- assoc-database-id-in-snippet-tag :- ::lib.schema.template-tag/template-tag-map
-  [template-tags :- ::lib.schema.template-tag/template-tag-map
+(mu/defn- assoc-database-id-in-snippet-tag :- ::lib.schema.template-tag/template-tags
+  [template-tags :- ::lib.schema.template-tag/template-tags
    database-id   :- ::lib.schema.id/database]
-  (update-vals
-   template-tags
-   (fn [v]
-     (cond-> v
-       (= (:type v) :snippet) (assoc :database database-id)))))
+  (mapv (fn [tag]
+          (cond-> tag
+            (= (:type tag) :snippet) (assoc :database database-id)))
+        template-tags))
 
 (mu/defn- hoist-database-for-snippet-tags :- ::lib.schema/query
   "Assocs the `:database` ID from `query` in all snippet template tags."

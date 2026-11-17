@@ -37,8 +37,8 @@
    [better-cond.core :as b]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.js.svg :as js.svg]
@@ -47,15 +47,18 @@
    [metabase.channel.render.pdf.markdown :as md]
    [metabase.channel.render.pdf.typeset :as typeset]
    [metabase.channel.render.png :as png]
+   [metabase.channel.render.table :as table]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.shared :as channel.shared]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.parameters.shared :as shared.params]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru trun]]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [metabase.util.memoize :as memo]
    [toucan2.core :as t2])
   (:import
@@ -72,6 +75,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *debug-boxes*
   "When true, fill the *allocated* bounding box (the full space available, not the content's actual extent) behind
   each chart (red) and each card title / heading card (light blue), so one can see how much of its cell the content
@@ -84,9 +88,16 @@
   "Display types whose static-viz (ECharts/visx) renderer honors an explicit width AND height, so we can render them
   to exactly fit their grid cell (like the frontend).
 
-  Other types (pie, gauge, funnel, progress, scalar, table, ...) have a fixed size when rendered, and resized to fit
-  their grid cell, preserving aspect ratio."
-  #{:line :area :bar :combo :scatter :boxplot :waterfall :sankey :row})
+  Pies also fill their box (their static-viz component lays the legend out to the box), but are handled separately
+  since they aren't in this set. Other types (gauge, funnel, progress, scalar, table, ...) have a fixed size when
+  rendered, and are resized to fit their grid cell, preserving aspect ratio."
+  #{:line :area :bar :combo :scatter :boxplot :waterfall :sankey :row :treemap})
+
+(def ^:private table-like-chart-types
+  "Chart types (from [[render.card/detect-pulse-chart-type]]) that render as a CSSBox HTML table -- the native
+  flat table, an assembled pivot, and the object-detail key/value view. All three take the width-filling,
+  natively-framed table path (see [[draw-table-card!]]) instead of the aspect-fit, centered image path."
+  #{:table :pivot :object})
 
 ;; --------------------------------------------------------------------------------------------
 ;; Page geometry
@@ -132,6 +143,7 @@
 ;; page draws we collect link rectangles into `*link-rects*` and add the annotations afterward.
 ;; --------------------------------------------------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *link-rects*
   "While a page renders, an atom holding a vector of `{:x0 :y0 :x1 :y1 :href}` rectangles for the clickable link
   annotations to add to the page once drawing is done."
@@ -193,29 +205,28 @@
       (draw-md-basic-item! cs x baseline item))))
 
 (defn- draw-md-line!
-  "Draw one wrapped markdown line within the box `[x, x+content-w]`.
-
-  When `rtl?`, the line is laid out flush-right within that box. The `items` (words) are reordered to their
-  left-to-right *visual* order on the page via [[typeset/reorder-bidi-items]]."
-  [^PDPageContentStream cs x content-w rtl? baseline items]
+  "Draw one wrapped markdown line within the box `[x, x+content-w]`, flushed per `align`
+  (`:left` / `:center` / `:right`). The `items` (words) are reordered to their left-to-right *visual* order on the
+  page via [[typeset/reorder-bidi-items]]."
+  [^PDPageContentStream cs x content-w align baseline items]
   (reduce #(draw-md-item! cs %1 baseline %2)
-          ;; Starting `x` depends on `rtl?`: flush left for LTR, or inset from left to make the line flush right.
-          (if rtl?
-            (+ x
-               (max 0.0 (- content-w
-                           (typeset/md-line-width items))))
-            x)
+          ;; Starting `x` is the box left plus the slack (box width minus line width) apportioned by `align`.
+          (let [slack (max 0.0 (- content-w (typeset/md-line-width items)))]
+            (+ x (case align
+                   :right  slack
+                   :center (* 0.5 slack)
+                   0.0)))
           (typeset/reorder-bidi-items items)))
 
 (defn- draw-item-lines!
   "Draw already-wrapped `lines` (each a vector of measured items) top-down from `top-y`, laying each out within
-  `[content-x, content-x+content-w]` and stopping before `bottom`. `rtl?` right-aligns. On the first line, `marker`
-  (if non-nil) is drawn at `marker-x` in `marker-font`.
+  `[content-x, content-x+content-w]` and stopping before `bottom`. `align` (`:left`/`:center`/`:right`) flushes each
+  line. On the first line, `marker` (if non-nil) is drawn at `marker-x` in `marker-font`.
 
   Note that `y` decreases downwards in PDFs; reversed from the convention on the web.
 
   Returns the y just below the last line actually drawn. Shared by [[draw-block!]] and [[draw-text-block!]]."
-  [^PDPageContentStream cs lines content-x content-w top-y bottom base-pt rtl? marker marker-x marker-font]
+  [^PDPageContentStream cs lines content-x content-w top-y bottom base-pt align marker marker-x marker-font]
   (let [lh (* base-pt common/line-height-factor)]
     (when marker
       (draw-line! cs marker-font base-pt marker-x (- top-y base-pt) marker))
@@ -227,7 +238,7 @@
                     adv      (+ lh extra)
                     y'       (- y adv)]
                 (when (>= y' bottom)
-                  (draw-md-line! cs content-x content-w rtl? baseline line))
+                  (draw-md-line! cs content-x content-w align baseline line))
                 y'))
             top-y
             lines)))
@@ -252,7 +263,7 @@
                                   (mapv #(assoc % :color color) line))))
                       (typeset/words->lines (typeset/runs->words runs) font-pt false max-w))
           y     (draw-item-lines! cs lines x max-w top-y (- top-y max-h)
-                                  font-pt (font/base-rtl? text) nil x nil)]
+                                  font-pt (if (font/base-rtl? text) :right :left) nil x nil)]
       (- top-y y))))
 
 (defn- draw-code-block!
@@ -330,7 +341,7 @@
 (defn- draw-paragraph-block!
   [^PDPageContentStream cs
    {:keys [indent kind level marker runs] :as _block}
-   x top-y cell-w bottom scale]
+   x top-y cell-w bottom scale align-override]
   (let [heading?    (= :heading kind)
         base-pt     (* scale (if heading?
                                (typeset/heading-pt level)
@@ -343,40 +354,52 @@
                       0.0)
         content-x   (+ indent-x marker-w)
         content-w   (- (+ x cell-w) content-x)
-        ;; right-align RTL paragraphs and headings; list items (those with a marker) stay
-        ;; left-aligned for now -- proper RTL lists (marker on the right) are a separate change.
-        rtl?        (and (nil? marker)
-                         (font/base-rtl? (apply str (map typeset/item-text runs))))
+        ;; List items (those with a marker) stay left-aligned for now -- a card-level alignment or proper RTL list
+        ;; (marker on the right) is a separate change. Otherwise the text card's `align-override` wins (see
+        ;; `text.align_horizontal`); with no override, right-align RTL paragraphs/headings and left-align the rest.
+        align       (if marker
+                      :left
+                      (or align-override
+                          (if (font/base-rtl? (apply str (map typeset/item-text runs))) :right :left)))
         lines       (typeset/words->lines (typeset/runs->words runs) base-pt heading? content-w)]
-    (draw-item-lines! cs lines content-x content-w top-y bottom base-pt rtl? marker indent-x marker-font)))
+    (draw-item-lines! cs lines content-x content-w top-y bottom base-pt align marker indent-x marker-font)))
 
 (defn- draw-block!
   "Draw one markdown block within `[x, top-y]` of `cell-w`, clipping at `bottom`.
 
   Returns the y below the block (top of the next)."
-  [^PDDocument doc ^PDPageContentStream cs block x top-y cell-w bottom scale]
+  [^PDDocument doc ^PDPageContentStream cs block x top-y cell-w bottom scale align-override]
   (case (:kind block)
     :hr         (draw-hr-block! cs x top-y cell-w scale)
     :image      (draw-image-block! doc cs block x top-y cell-w bottom scale)
     :code-block (draw-code-block! cs block x top-y cell-w bottom scale)
     ;; heading / paragraph / list-item
-    (draw-paragraph-block! cs block x top-y cell-w bottom scale)))
+    (draw-paragraph-block! cs block x top-y cell-w bottom scale align-override)))
 
 (defn- draw-markdown-in-cell!
-  "Render markdown `text` top-down within a cell rectangle.
+  "Render markdown `text` within a cell rectangle, honouring the text card's `text.align_horizontal` (`align-h`:
+  `:left`/`:center`/`:right`) and `text.align_vertical` (`align-v`: `:top`/`:middle`/`:bottom`).
 
   Shrinks the font (down to a floor, see [[typeset/fit-scale]]) so the content fits the cell height instead of clipping.
-  If it doesn't fit even at the limit of scaling down, we do clip the output."
-  [^PDDocument doc ^PDPageContentStream cs x top-y cell-w cell-h text]
-  (let [blocks (md/parse-markdown-blocks text)
-        scale  (typeset/fit-scale blocks cell-w cell-h)
-        bottom (- top-y cell-h)]
+  If it doesn't fit even at the limit of scaling down, we do clip the output (and vertical alignment collapses to top)."
+  [^PDDocument doc ^PDPageContentStream cs x top-y cell-w cell-h align-h align-v text]
+  (let [blocks  (md/parse-markdown-blocks text)
+        scale   (typeset/fit-scale blocks cell-w cell-h)
+        bottom  (- top-y cell-h)
+        ;; Vertical alignment: drop the start-y by the leftover space, apportioned by `align-v`. fit-scale keeps the
+        ;; laid-out height <= cell-h, so the slack is >= 0 (start-y stays at top when the content doesn't fit). `bottom`
+        ;; is unchanged (the true cell floor), so overflow still clips there.
+        slack   (max 0.0 (- cell-h (typeset/markdown-total-height blocks cell-w scale)))
+        start-y (- top-y (case align-v
+                           :bottom slack
+                           :middle (* 0.5 slack)
+                           0.0))]
     (reduce (fn [y block]
               (if (<= y (+ bottom 2.0))
                 y
-                (- (draw-block! doc cs block x y cell-w bottom scale)
+                (- (draw-block! doc cs block x y cell-w bottom scale align-h)
                    (* 4.0 scale))))
-            top-y blocks)))
+            start-y blocks)))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Cell building -- turn dashcards into renderable cells, preserving grid geometry
@@ -414,6 +437,22 @@
       :visualization_settings
       :text))
 
+(defn- text-card-align-h
+  "A text card's explicit horizontal alignment keyword (`:left`/`:center`/`:right`) from its `text.align_horizontal`
+  setting, or `nil` when unset -- in which case the drawing keeps the base-direction default (LTR flush-left, RTL
+  flush-right) rather than forcing left, so existing RTL text cards aren't regressed."
+  [dashcard]
+  (when-let [raw (get-in dashcard [:visualization_settings :text.align_horizontal])]
+    (keyword raw)))
+
+(defn- text-card-align-v
+  "A text card's vertical alignment keyword (`:top`/`:middle`/`:bottom`) from its `text.align_vertical` setting.
+  Defaults to `:top`, matching the frontend's default."
+  [dashcard]
+  (if-let [raw (get-in dashcard [:visualization_settings :text.align_vertical])]
+    (keyword raw)
+    :top))
+
 (defn- dashcard->cell
   "Build a renderable cell from a dashcard, preserving its grid geometry.
 
@@ -423,41 +462,46 @@
 
   Returns nil for dashcard kinds we don't render (placeholder/action), or for a card with no part -- a card whose
   query failed or was hidden while empty (`card.hide_empty`), which `execute-dashboard` omits."
-  [dashcard parameters parts-by-dashcard-id]
-  (let [inline (resolve-inline-params dashcard parameters)
-        geom   (cond-> (select-keys dashcard [:row :col :size_x :size_y])
-                 (seq inline) (assoc :inline-params inline))]
-    (cond
-      (:card_id dashcard)
-      ;; Reuse the pre-executed part. Large results stay disk-backed (a StreamingTempFileStorage handle, see
-      ;; [[metabase.notification.payload.temp-storage]]) here and are realized lazily at draw time in
-      ;; [[render-card-cell!]] -- so only the card being drawn is resident in memory, exactly as the email channel
-      ;; walks its parts one at a time to keep its memory watermark low.
-      (when-let [part (get parts-by-dashcard-id (:id dashcard))]
-        (assoc geom
-               :kind :card
-               :part (cond-> part
-                       (seq inline) (assoc :inline-params inline))))
+  ([dashcard parameters parts-by-dashcard-id]
+   (dashcard->cell dashcard parameters parts-by-dashcard-id (notification.payload/link-card-entities [dashcard])))
+  ([dashcard parameters parts-by-dashcard-id link-card-entities]
+   (let [inline (resolve-inline-params dashcard parameters)
+         geom   (cond-> (select-keys dashcard [:row :col :size_x :size_y])
+                  (seq inline) (assoc :inline-params inline))]
+     (cond
+       (:card_id dashcard)
+       ;; Reuse the pre-executed part. Large results stay disk-backed (a StreamingTempFileStorage handle, see
+       ;; [[metabase.notification.payload.temp-storage]]) here and are realized lazily at draw time in
+       ;; [[render-card-cell!]] -- so only the card being drawn is resident in memory, exactly as the email channel
+       ;; walks its parts one at a time to keep its memory watermark low.
+       (when-let [part (get parts-by-dashcard-id (:id dashcard))]
+         (assoc geom
+                :kind :card
+                :part (cond-> part
+                        (seq inline) (assoc :inline-params inline))))
 
-      (notification.payload/virtual-card-of-type? dashcard "heading")
-      (assoc geom :kind :heading, :text (virtual-dashcard->text dashcard parameters))
+       (notification.payload/virtual-card-of-type? dashcard "heading")
+       (assoc geom :kind :heading, :text (virtual-dashcard->text dashcard parameters))
 
-      (notification.payload/virtual-card-of-type? dashcard "text")
-      (assoc geom :kind :text, :text (virtual-dashcard->text dashcard parameters))
+       (notification.payload/virtual-card-of-type? dashcard "text")
+       (assoc geom :kind :text
+              :text    (virtual-dashcard->text dashcard parameters)
+              :align-h (text-card-align-h dashcard)
+              :align-v (text-card-align-v dashcard))
 
-      ;; link cards render as a markdown `### [name](url)` text cell (clickable like any md link);
-      ;; reuse the email conversion so they match, and so entity links are permission-checked.
-      (notification.payload/virtual-card-of-type? dashcard "link")
-      (when-let [part (notification.payload/dashcard-link-card->part dashcard)]
-        (assoc geom :kind :text, :text (:text part)))
+       ;; link cards render as a markdown `### [name](url)` text cell (clickable like any md link);
+       ;; reuse the email conversion so they match, and so entity links are permission-checked.
+       (notification.payload/virtual-card-of-type? dashcard "link")
+       (when-let [part (notification.payload/dashcard-link-card->part dashcard link-card-entities)]
+         (assoc geom :kind :text, :text (:text part)))
 
-      ;; iframe cards (embedded video/web players) can't render in a PDF -- show the target as a
-      ;; clickable link instead (autolinked bare URL).
-      (notification.payload/virtual-card-of-type? dashcard "iframe")
-      (when-let [url (iframe-url (get-in dashcard [:visualization_settings :iframe]))]
-        (assoc geom :kind :text, :text url))
+       ;; iframe cards (embedded video/web players) can't render in a PDF -- show the target as a
+       ;; clickable link instead (autolinked bare URL).
+       (notification.payload/virtual-card-of-type? dashcard "iframe")
+       (when-let [url (iframe-url (get-in dashcard [:visualization_settings :iframe]))]
+         (assoc geom :kind :text, :text url))
 
-      :else nil)))
+       :else nil))))
 
 (defn- build-cells
   "Order a tab's (or the untabbed dashboard's) dashcards and build cells, normalizing row numbers so the first
@@ -466,8 +510,9 @@
   (let [sorted  (sort dashboard-card/dashcard-comparator dashcards)
         min-row (if (seq sorted)
                   (apply min (map :row sorted))
-                  0)]
-    (into [] (comp (keep #(dashcard->cell % parameters parts-by-dashcard-id))
+                  0)
+        link-card-entities (notification.payload/link-card-entities sorted)]
+    (into [] (comp (keep #(dashcard->cell % parameters parts-by-dashcard-id link-card-entities))
                    (map  #(update % :row - min-row)))
           sorted)))
 
@@ -520,21 +565,9 @@
 ;; Drawing
 ;; --------------------------------------------------------------------------------------------
 
-(defn- card-body-png
-  "Rasterize a `:card` part's body (chart/table/scalar) to PNG bytes, WITHOUT its title or description -- those are
-  drawn natively at the PDF level.
-
-  Used for card types that can't fill an arbitrary box (pie, gauge, funnel, progress, scalar, table, ...); resize
-  to fit while preserving aspect."
-  ^bytes [timezone {:keys [card dashcard result]} px-width]
-  (-> (render.card/render-pulse-card :inline timezone card dashcard result
-                                     {:channel.render/include-title?       false
-                                      :channel.render/include-description? false})
-      (render.card/png-from-render-info px-width)))
-
 (defn- draw-image-in-cell!
   "Draw `img`, resizing to fit (preserving aspect) within a cell rectangle, horizontally centered and top-anchored.
-  Used for card types that can't fill an arbitrary box (scalar, pie, gauge, ...). Horizontal centering keeps a narrow
+  Used for card types that can't fill an arbitrary box (scalar, gauge, ...). Horizontal centering keeps a narrow
   scalar (e.g. a big number) from hugging the left edge of its cell."
   [^PDPageContentStream cs ^PDImageXObject img x top-y cell-w cell-h]
   (let [iw    (.getWidth img)
@@ -551,9 +584,38 @@
   (* (double px)
      (/ 72.0 common/dpi)))
 
-(defn- card-title [card dashcard]
-  (or (get-in dashcard [:visualization_settings :card.title])
-      (:name card)))
+(def ^:private body-target-dpi
+  "Device DPI a fixed-size card body aims for: the same a rectangular chart already gets, i.e. [[common/dpi]]
+  laid out and rasterized at [[common/chart-supersample]]."
+  (* common/dpi common/chart-supersample))
+
+(defn- fixed-body-scale
+  "Supersample factor that lands an `iw` x `ih` (logical px) card body at [[body-target-dpi]] once
+  [[draw-image-in-cell!]] has fit it into the `cell-w` x `cell-h` point box.
+
+  The fit cancels the factor out -- `min(cell-w/iw, cell-h/ih)` scales both terms -- so the drawn width
+  follows from the 1:1 dims, and with it the factor. No cap needed: it can't exceed `cell-w`."
+  [cell-w cell-h iw ih]
+  (if (or (zero? iw) (zero? ih))
+    1.0
+    (let [drawn-w-pt (min (double cell-w) (* iw (/ (double cell-h) ih)))
+          target-px  (/ (* drawn-w-pt body-target-dpi) 72.0)]
+      (max 1.0 (/ target-px iw)))))
+
+(defn- card-body-png
+  "Rasterize a `:card` part's body (chart/table/scalar) to PNG bytes, WITHOUT its title or description -- those
+  are drawn natively at the PDF level.
+
+  Used for card types that can't fill an arbitrary box (gauge, funnel, progress, scalar, table, ...), which
+  [[draw-image-in-cell!]] fits into the `cell-w` x `cell-h` point box preserving aspect. They lay out at their
+  intrinsic size, so they're supersampled by the magnification that fit will apply -- see [[fixed-body-scale]]."
+  ^bytes [timezone {:keys [card dashcard result]} cell-w cell-h]
+  (-> (render.card/render-pulse-card :inline timezone card dashcard result
+                                     {:channel.render/include-title?       false
+                                      :channel.render/include-description? false})
+      ;; the px width is CSSBox's layout viewport, not the output size -- the scale fn decides that
+      (render.card/png-from-render-info (-> cell-w pt->px (min 2200) (max 240) long)
+                                        {:channel.render/scale (partial fixed-body-scale cell-w cell-h)})))
 
 (defn- effective-display
   "The display type the card actually renders as. A visualizer dashcard overrides the underlying card's `:display`
@@ -588,7 +650,9 @@
   (binding [js.svg/*chart-size* {:width       w-px
                                  :height      h-px
                                  :scale       common/chart-supersample
-                                 :fit-within? true}]
+                                 :fit-within? true
+                                 :grid-size   (when (and (:size_x dashcard) (:size_y dashcard))
+                                                {:width (:size_x dashcard) :height (:size_y dashcard)})}]
     (let [viz                    (or (:visualization_settings dashcard)
                                      (:visualization_settings card))
           {:keys [content type]} (js.svg/*javascript-visualization* (cards-with-data card dashcard data) viz)]
@@ -677,9 +741,9 @@
         y (reduce (fn [y {:keys [name-lines value-lines height] :as _row}]
                     (let [bottom (- y height 1.0)]
                       (draw-item-lines! cs name-lines name-x name-w y bottom common/param-pt
-                                        (lines-rtl? name-lines) nil name-x nil)
+                                        (if (lines-rtl? name-lines) :right :left) nil name-x nil)
                       (draw-item-lines! cs value-lines value-x value-w y bottom common/param-pt
-                                        (lines-rtl? value-lines) nil value-x nil)
+                                        (if (lines-rtl? value-lines) :right :left) nil value-x nil)
                       (- y height)))
                   top-y
                   rows)]
@@ -718,7 +782,7 @@
     (draw-item-lines! cs lines x content-w top-y (- top-y
                                                     (typeset/lines-height lines common/param-pt)
                                                     1.0)
-                      common/param-pt (lines-rtl? lines) nil x nil)))
+                      common/param-pt (if (lines-rtl? lines) :right :left) nil x nil)))
 
 (defn- fill-rect!
   "Fill the box whose top-left is `[x, top-y]` (and is `w` x `h`) with `color`, then reset to black.
@@ -748,6 +812,15 @@
   bordered box, so an HTML bottom border would be clipped. Also the in-image footer divider, as CSS
   via [[table-border-color]]."
   (Color. 0xF0 0xF0 0xF0))
+
+(def ^:private frame-line-w-pt
+  "Stroke width (points) of the native card frame."
+  0.5)
+
+(def ^:private frame-corner-radius-pt
+  "Corner radius (points) of the native card frame -- also used to clip the content image so its square corners
+  don't spill past the rounded frame."
+  4.0)
 
 (def ^:private table-border-color
   "CSS form of [[table-frame-color]] for the in-image footer divider (`border-top` above the `N rows` row)."
@@ -792,45 +865,103 @@
                            (append-style header-divider-css))))
           items)))
 
-(defn- restyle-form
-  "Restyle one walked Hiccup form: the `<table>` gets [[table-css]]; header rows get per-cell
-  dividers. Everything else passes through."
-  [form]
-  (cond
-    (and (element? form :table) (map? (second form)))
-    (append-style form table-css)
-
-    (and (element? form :tr) (header-row? form))
-    (add-header-dividers form)
-
-    :else form))
-
 (defn- restyle-table
-  "Restyle the inner `<table>` to fit the card frame: fill the width, drop its own border/radius/margin
-  (the native frame and per-cell dividers remain), and add header dividers to match the body."
-  [content]
-  (walk/postwalk restyle-form content))
+  "Restyle the inner `<table>` to fill the card frame: `width:100%`, dropping its own border/radius/margin (the
+  native frame and per-cell dividers remain). In the fixed-width clip box this fills the cell when the content
+  is narrower (columns stretch, like the dashboard) and overflows-then-clips when it's wider. `add-dividers?`
+  adds header dividers to match the body (native `:table` only -- pivots and object-detail border their cells)."
+  [content add-dividers?]
+  (match/replace-all content
+    [:table #'map? & _] (append-style &match table-css)
+    (:and [:tr & _] #'header-row?) (cond-> &match
+                                     add-dividers? add-header-dividers)))
+
+(def ^:private footer-text-css
+  "Font size and color shared by the card footers -- the native table's row-count footer and object-detail's
+  \"Showing 1 of N\" note -- so they match."
+  "font-size:12.5px;color:#696E7B")
+
+(def ^:private footer-pad-px
+  "Horizontal inset (logical px) of footer text from the card frame, shared by the table and object-detail footers."
+  16)
 
 (def ^:private table-footer-css
   "Style of the `N rows` footer row at the bottom of a table image."
   (format (str "height:%1$dpx;line-height:%1$dpx;box-sizing:border-box;"
-               "font-size:12.5px;text-align:right;padding-right:16px;"
-               "color:#696E7B;border-top:1px solid %2$s")
-          table-footer-px table-border-color))
+               "text-align:right;padding-right:%2$dpx;%3$s;border-top:1px solid %4$s")
+          table-footer-px footer-pad-px footer-text-css table-border-color))
+
+(def ^:private object-detail-footer-px
+  "Logical-pixel height reserved for the object-detail \"Showing 1 of N\" note, kept visible below the
+  (possibly clipped) fields rather than hidden by the height clip on a short card."
+  34)
+
+(def ^:private object-detail-footer-css
+  "Style of the object-detail \"Showing 1 of N\" footer box: a fixed-height band inset from the frame, carrying
+  the shared footer font/color so the plain note text inherits it (like the table footer's count)."
+  (format "height:%dpx;overflow:hidden;padding:12px %dpx 0;%s"
+          object-detail-footer-px footer-pad-px footer-text-css))
+
+(defn- object-detail-note
+  "The text of the trailing \"Showing 1 of N\" note in object-detail render content, or nil when the shown
+  record is the only one. Coupled to [[body/render]] `:object`, which appends the note `<div>` after the
+  key/value `<table>` inside a section `<div>`."
+  [content]
+  (some-> (some #(when (element? % :div) %) (drop 2 content)) last))
+
+(defn- card-footer
+  "The pinned footer for a table-like card body, as `{:footer <hiccup-or-nil>, :footer-h <reserved-px>}`: the
+  native `:table` shows its row count and object-detail its \"Showing 1 of N\" `note` text (both inheriting the
+  shared footer style from their box); a pivot has neither."
+  [chart-type note n-rows]
+  (cond
+    (= :table chart-type)
+    {:footer   [:div {:style table-footer-css} (trun "{0} row" "{0} rows" n-rows)]
+     :footer-h table-footer-px}
+
+    note
+    {:footer   [:div {:style object-detail-footer-css} note]
+     :footer-h object-detail-footer-px}
+
+    :else
+    {:footer nil :footer-h 0}))
+
+(defn- body-chart-type
+  "The chart type the table body is styled and footered as. A `:table` card whose \"Pivot table\" toggle applies
+  renders as an assembled grid, so it takes a pivot's treatment: no header dividers and no source row count."
+  [chart-type data]
+  (if (and (= :table chart-type) (body/simple-pivot? data))
+    :pivot
+    chart-type))
 
 (defn- table-body-png
-  "Render a table card body to PNG bytes sized to the `px-w` x `px-h` cell (logical pixels):
-  width-filled, height-capped, with a row-count footer, supersampled at [[table-supersample]]x."
-  ^bytes [timezone {:keys [card dashcard result]} px-w px-h]
+  "Render a table-like card body (`:table`, `:pivot`, or `:object`) to PNG bytes sized to the `px-w` x `px-h`
+  cell (logical pixels), supersampled at [[table-supersample]]x. The body is a `width:100%` table inside a
+  fixed-`px-w` clip box, so -- like the dashboard -- its columns stretch to fill when the content is narrower
+  than the cell, and a wider table (e.g. a many-column pivot) overflows and is clipped at the cell edge. (The
+  card frame itself is stroked around the full cell in [[draw-table-card!]], not around this content.)
+
+  A pinned footer (see [[card-footer]]) is kept visible below the (possibly height-clipped) body: the native
+  `:table` gets a row-count footer, and object-detail keeps its \"Showing 1 of N\" note (pulled out of the
+  clipped body so a short card can't hide it). A pivot has neither."
+  ^bytes [timezone {:keys [card dashcard result]} chart-type px-w px-h]
   (let [;; Render directly, not via render-pulse-card: its <p>/.pulse-body margins escape CSSBox's
-        ;; height clip and push the image past the cell. body/render gives the bare table.
-        info     (body/render :table :inline timezone card dashcard (:data result))
-        n-rows   (count (get-in result [:data :rows]))
-        clip-css (format "max-height:%dpx;overflow:hidden" (max 0 (- (long px-h) table-footer-px 2)))
+        ;; height clip and push the image past the cell. body/render gives the bare table. Opt out of the email/Slack
+        ;; fixed-width fallback for wrapping columns: CSSBox lays the table out at `px-w` and auto-wraps, so a fixed
+        ;; width would only overflow the page and clip the text (see [[table/*text-wrapping-fallback-width*]]).
+        info     (binding [table/*text-wrapping-fallback-width* nil]
+                   (body/render chart-type :inline timezone card dashcard (:data result)))
+        body-type (body-chart-type chart-type (:data result))
+        note     (when (= :object chart-type) (object-detail-note (:content info)))
+        ;; the note is body/render's trailing element, so drop it from the clipped body (it's pinned below)
+        body     (cond-> (:content info) note pop)
+        {:keys [footer footer-h]} (card-footer body-type note (count (get-in result [:data :rows])))
+        max-h    (max 0 (- (long px-h) footer-h 2))
+        clip-css (format "width:%dpx;max-height:%dpx;overflow:hidden" (long px-w) max-h)
         ;; the frame is stroked natively in draw-table-card!, so this wrapper has no border
         content  [:div
-                  [:div {:style clip-css} (restyle-table (:content info))]
-                  [:div {:style table-footer-css} (trun "{0} row" "{0} rows" n-rows)]]]
+                  [:div {:style clip-css} (restyle-table body (= :table body-type))]
+                  footer]]
     (png/render-html-to-png (assoc info :content content) px-w {:channel.render/scale table-supersample})))
 
 (defn- move-to! [^PDPageContentStream cs x y] (.moveTo cs (float x) (float y)))
@@ -858,19 +989,16 @@
                (+ ax (* rc dx2)) (+ ay (* rc dy2))
                (+ ax (* r  dx2)) (+ ay (* r  dy2)))))
 
-(defn- stroke-round-rect!
-  "Stroke a rounded-rectangle outline whose top-left is `[x, top-y]` (and is `w` x `h`) with `color`
-  at `line-w` points and corner radius `r` points, then reset to a black hairline. Corners are
-  quarter-circle cubic Béziers (see [[corner-to!]])."
-  [^PDPageContentStream cs ^Color color line-w r x top-y w h]
+(defn- round-rect-path!
+  "Append a rounded-rectangle subpath -- top-left `[x, top-y]`, size `w` x `h`, corner radius `r` points -- to the
+  content stream's current path (quarter-circle cubic Béziers, see [[corner-to!]]). The caller strokes or clips it."
+  [^PDPageContentStream cs r x top-y w h]
   (let [l  x
         t  top-y
         rt (+ l w)
         b  (- t h)
         r  (min r (/ w 2.0) (/ h 2.0))
         c  (* r bezier-circle-kappa)]
-    (.setStrokingColor cs color)
-    (.setLineWidth cs (float line-w))
     (move-to!   cs (+ l r) t)
     (line-to!   cs (- rt r) t)               ; top edge
     (corner-to! cs r c rt t   1  0   0 -1)   ; TR
@@ -879,10 +1007,18 @@
     (line-to!   cs (+ l r) b)                ; bottom edge
     (corner-to! cs r c l  b  -1  0   0  1)   ; BL
     (line-to!   cs l (- t r))                ; left edge
-    (corner-to! cs r c l  t   0  1   1  0)   ; TL
-    (.stroke cs)
-    (.setStrokingColor cs Color/BLACK)
-    (.setLineWidth cs (float 1.0))))
+    (corner-to! cs r c l  t   0  1   1  0)))  ; TL
+
+(defn- stroke-round-rect!
+  "Stroke a rounded-rectangle outline whose top-left is `[x, top-y]` (and is `w` x `h`) with `color`
+  at `line-w` points and corner radius `r` points, then reset to a black hairline."
+  [^PDPageContentStream cs ^Color color line-w r x top-y w h]
+  (.setStrokingColor cs color)
+  (.setLineWidth cs (float line-w))
+  (round-rect-path! cs r x top-y w h)
+  (.stroke cs)
+  (.setStrokingColor cs Color/BLACK)
+  (.setLineWidth cs (float 1.0)))
 
 (defn- supersampled-px->pt
   "Points spanned on the page by `px` device pixels of a [[table-supersample]]-rastered image."
@@ -890,16 +1026,24 @@
   (px->pt (/ (double px) table-supersample)))
 
 (defn- draw-table-card!
-  "Draw the table card body fitted to `[x, body-top]` x `cell-w` x `body-h`, with the card's outer
-  frame stroked natively around the image."
-  [^PDDocument doc ^PDPageContentStream cs timezone part x body-top cell-w body-h]
+  "Draw a table-like card body (`:table`, `:pivot`, or `:object`) into its `[x, body-top]` x `cell-w` x
+  `body-h` cell. The content image is drawn top-left at its natural size (filled or hugged per type, and
+  clipped to the cell), and the outer frame is stroked natively around the *full allocated cell* -- like the
+  card border on the dashboard -- so the border wraps the whole dashcard rather than shrink-wrapping the
+  content."
+  [^PDDocument doc ^PDPageContentStream cs timezone chart-type part x body-top cell-w body-h]
   (let [img (PDImageXObject/createFromByteArray
-             doc (table-body-png timezone part (pt->px cell-w) (pt->px body-h)) "table")
+             doc (table-body-png timezone part chart-type (pt->px cell-w) (pt->px body-h)) "table")
         ;; image is at table-supersample x logical pixels -> divide back to points
         dw  (supersampled-px->pt (.getWidth img))
         dh  (supersampled-px->pt (.getHeight img))]
+    ;; clip the rectangular image to the frame's rounded rect so its square corners can't spill past the arc
+    (.saveGraphicsState cs)
+    (round-rect-path! cs frame-corner-radius-pt x body-top cell-w body-h)
+    (.clip cs)
     (.drawImage cs img (float x) (float (- body-top dh)) (float dw) (float dh))
-    (stroke-round-rect! cs table-frame-color 0.5 4.0 x body-top dw dh)))
+    (.restoreGraphicsState cs)
+    (stroke-round-rect! cs table-frame-color frame-line-w-pt frame-corner-radius-pt x body-top cell-w body-h)))
 
 (def ^:private no-results-image-bytes
   "Raw bytes of the 'no results' sail-boat asset (the same image the email/dashboard empty state uses), read once."
@@ -959,6 +1103,7 @@
   vary from the frontend dashboard and add little in a static export.
 
   Rectangular (ECharts/visx) charts are then rendered to exactly fill the remaining body area (matching the frontend);
+  table-like cards (native table, pivot, object-detail) draw their content top-left and get a native frame around the cell (see [[draw-table-card!]]);
   other types render their body title-less and resized (preserving aspect) to fit into the body area."
   [^PDDocument doc ^PDPageContentStream cs timezone part x top-y cell-w cell-h]
   (let [;; Realize the disk-backed rows for THIS card only, here at draw time (email does the same, one part at a
@@ -968,7 +1113,7 @@
         {:keys [card dashcard inline-params]
          {:keys [data]} :result
          :as part}      (channel.shared/maybe-realize-data-rows part)
-        title      (card-title card dashcard)
+        title      (render.util/dashcard-title card dashcard)
         title-h    (typeset/text-block-height (font/face :bold) common/chart-title-pt cell-w (* 0.5 cell-h) title)
         ;; Inline parameters (filters attached to this card) render between the title and the chart body,
         ;; like the email subscription does.
@@ -982,15 +1127,13 @@
         body-top   (- top-y header)
         body-h     (- cell-h header)
         display    (effective-display card dashcard)
-        ;; Rectangular charts always fill their box; pies fill (and move their legend to the
-        ;; side) only when the body area is square-or-wider, otherwise they keep a bottom legend.
+        ;; Rectangular charts and pies both fill their box exactly; the pie's static-viz component
+        ;; then places its legend to the side (wide box) or below (tall box).
         fill?      (or (contains? rectangular-displays display)
-                       (and (= :pie display)
-                            (>= cell-w body-h)))
-        ;; tables, pivots, and table fallbacks (map/object/unknown) all detect as :table; a result with no
-        ;; rows (e.g. filtered out) detects as :empty regardless of display, and gets the no-results placeholder.
+                       (= :pie display))
         chart-type (render.card/detect-pulse-chart-type card dashcard data)
-        table?     (= :table chart-type)
+        tabular?   (contains? table-like-chart-types chart-type)
+        ;; a no-row result detects as :empty regardless of display -> no-results placeholder
         empty?     (= :empty chart-type)
         ;; the result was too big to load into memory (see [[draw-too-large!]]); show its message instead of a chart.
         ;; carries no :data, so it would otherwise detect as :empty and show a misleading no-results placeholder.
@@ -1024,19 +1167,19 @@
           :let [png (when fill?
                       (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h)))]
 
-          ;; rectangular charts (and wide pies): fill the body area exactly
+          ;; rectangular charts and pies: fill the body area exactly
           png
           (.drawImage cs (PDImageXObject/createFromByteArray doc png "chart")
                       (float x) (float (- body-top body-h))
                       (float cell-w) (float body-h))
 
-          table?
-          (draw-table-card! doc cs timezone part x body-top cell-w body-h)
+          tabular?
+          (draw-table-card! doc cs timezone chart-type part x body-top cell-w body-h)
 
           ;; other types (and charts whose render produced no SVG): title-less body PNG,
           ;; fit preserving aspect
           :else
-          (when-let [body (card-body-png timezone part (-> cell-w pt->px (min 2200) (max 240) long))]
+          (when-let [body (card-body-png timezone part cell-w body-h)]
             (draw-image-in-cell! cs (PDImageXObject/createFromByteArray doc body "card")
                                  x body-top cell-w body-h)))))))
 
@@ -1168,6 +1311,12 @@
     (.setNonStrokingColor cs Color/BLACK)
     (* vw scale)))
 
+(defn- include-branding?
+  "Whether the 'Made with Metabase' badge should be drawn. Branding in exports is included only for
+  instances that lack the `:whitelabel` feature -- i.e. OSS instances. Pro/EE instances get no badge."
+  []
+  (not (premium-features/enable-whitelabeling?)))
+
 (defn- draw-brand-badge!
   "Draw the 'Made with [logo] Metabase' badge, right-aligned to `right`, with the logo's top at
   `logo-top` (placed in the page's top common/margin band). The 'Made with' prefix is localized to the
@@ -1193,9 +1342,11 @@
   [^PDPageContentStream cs page-height content-w {:keys [dashboard-title tab-title param-table]}]
   (let [bold (font/face :bold)
         top  (- page-height common/margin)
-        ;; "Made with Metabase" badge, vector-drawn in the empty top common/margin band, right-aligned
-        _    (draw-brand-badge! cs (+ common/margin content-w)
-                                (common/v-center page-height common/margin brand-logo-pt))
+        ;; "Made with Metabase" badge, vector-drawn in the empty top common/margin band, right-aligned.
+        ;; Only OSS instances get the badge; Pro/EE (whitelabel feature) render no branding.
+        _    (when (include-branding?)
+               (draw-brand-badge! cs (+ common/margin content-w)
+                                  (common/v-center page-height common/margin brand-logo-pt)))
         ;; order: dashboard title, then the dashboard-wide parameter table, then the tab title
         y1   (if dashboard-title
                (do (draw-line! cs bold common/dashboard-title-pt
@@ -1278,10 +1429,10 @@
                 :heading (with-cell-inline-params! cs x top-y cell-w cell-h (:inline-params cell)
                            #(draw-text-block! cs (font/face :bold) common/heading-card-pt nil x top-y cell-w % (:text cell)))
                 :text    (with-cell-inline-params! cs x top-y cell-w cell-h (:inline-params cell)
-                           #(draw-markdown-in-cell! doc cs x top-y cell-w % (:text cell)))
+                           #(draw-markdown-in-cell! doc cs x top-y cell-w % (:align-h cell) (:align-v cell) (:text cell)))
                 nil)
               (catch Throwable e
-                (log/error e "Error rendering dashboard PDF cell; substituting placeholder")
+                (log/errorf "Error rendering dashboard PDF cell; substituting placeholder: %s" (ex-message e))
                 (draw-text-block! cs (font/face :regular) 10.0 nil x top-y cell-w cell-h
                                   "[Unable to render this card]")))))
         (finally
@@ -1348,9 +1499,9 @@
                                     (map (juxt #(-> % :dashcard :id) identity)))
                            parts)
            dims      (paper-dims paper-key)
-           dash      (t2/select-one :model/Dashboard :id dashboard-id)
-           tabs      (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})
-           dcs       (t2/hydrate (t2/select :model/DashboardCard :dashboard_id dashboard-id) :card)
+           dash      (channel.db/dashboard dashboard-id)
+           tabs      (channel.db/dashboard-tabs dashboard-id)
+           dcs       (t2/hydrate (channel.db/dashcards dashboard-id) :card)
            ;; only treat a dashboard as tabbed when there's more than one tab -- a lone tab isn't shown as a tab in
            ;; the UI, so the PDF shouldn't draw (or reserve space for) its title either
            tabbed?   (> (count tabs) 1)
@@ -1393,7 +1544,7 @@
              (try
                (run! #(some-> % :result :data :rows notification.payload/cleanup!) parts)
                (catch Throwable e
-                 (log/warn e "Error cleaning up temp files for dashboard PDF"))))))))))
+                 (log/warnf "Error cleaning up temp files for dashboard PDF: %s" (ex-message e)))))))))))
 
 (defn render-dashboard-to-pdf-file
   "Convenience wrapper for the REPL: render the dashboard to PDF and write it to `path`."

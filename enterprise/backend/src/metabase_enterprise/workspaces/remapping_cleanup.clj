@@ -9,9 +9,9 @@
    derivation goes through [[metabase.driver.sql/db-slot-value]] so this ns
    has no workspace deps beyond the model registration."
   (:require
+   [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.table-remapping]
-   [metabase.driver.sql :as driver.sql]
-   [toucan2.core :as t2]))
+   [metabase.driver.sql :as driver.sql]))
 
 (comment metabase-enterprise.workspaces.models.table-remapping/keep-me)
 
@@ -39,7 +39,4 @@
    Returns the count of rows deleted."
   [database database-id output-namespace]
   (long
-   (t2/delete! :model/TableRemapping
-               :database_id database-id
-               :to_db       (iso-db-slot database)
-               :to_schema   (or output-namespace ""))))
+   (ws.db/delete-table-remappings-into! database-id (iso-db-slot database) (or output-namespace ""))))

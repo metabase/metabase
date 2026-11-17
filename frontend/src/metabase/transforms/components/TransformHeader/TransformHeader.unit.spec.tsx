@@ -1,12 +1,8 @@
-import { Route } from "react-router";
-
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import {
-  setupCollectionByIdEndpoint,
-  setupUserMetabotPermissionsEndpoint,
-} from "__support__/server-mocks";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { Route } from "metabase/router";
 import {
   createMockCollection,
   createMockTransform,
@@ -22,20 +18,19 @@ type SetupOpts = {
 function setup({ hasMenu = true, isEditMode = false }: SetupOpts = {}) {
   const transform = createMockTransform({ id: 1, name: "Test Transform" });
 
-  setupUserMetabotPermissionsEndpoint();
   setupCollectionByIdEndpoint({
     collections: [createMockCollection({ id: "root" })],
   });
 
   renderWithProviders(
     <Route
-      component={() => (
+      element={
         <TransformHeader
           transform={transform}
           hasMenu={hasMenu}
           isEditMode={isEditMode}
         />
-      )}
+      }
       path="/"
     />,
     {
@@ -77,7 +72,7 @@ describe("TransformHeader", () => {
         screen.queryByRole("tab", { name: "Run" }),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByRole("tab", { name: "Target" }),
+        screen.queryByRole("tab", { name: "Settings" }),
       ).not.toBeInTheDocument();
     });
   });

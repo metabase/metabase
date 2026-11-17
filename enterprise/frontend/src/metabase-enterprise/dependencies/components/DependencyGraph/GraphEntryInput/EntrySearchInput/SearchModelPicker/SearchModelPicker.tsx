@@ -32,6 +32,7 @@ export function SearchModelPicker({
     <Popover opened={isOpened} position="right" onDismiss={close}>
       <Popover.Target>
         <ActionIcon
+          variant="subtle"
           className={S.button}
           aria-label={t`Filter`}
           onClick={toggle}
@@ -67,11 +68,12 @@ function SearchModelPopover({
   const items = data ? getSearchModelItems(data) : [];
 
   const handleChange = (value: string[]) => {
+    // Unjustified type cast. FIXME
     onSearchModelsChange(value as SearchModel[]);
   };
 
   return (
-    <Box w="15rem" p="md">
+    <Box w="15rem" p="lg">
       {isLoading ? (
         <Center>
           <Loader />

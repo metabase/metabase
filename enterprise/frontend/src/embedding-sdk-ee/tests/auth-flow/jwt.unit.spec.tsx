@@ -110,6 +110,7 @@ describe("Auth Flow - JWT", () => {
     expect(ssoExchange!.options.headers).toMatchObject({
       "content-type": "application/json",
     });
+    // Unjustified type cast. FIXME
     expect(JSON.parse(ssoExchange!.options.body as string)).toEqual({
       jwt: MOCK_VALID_JWT_RESPONSE,
     });

@@ -1,4 +1,4 @@
-import { push } from "react-router-redux";
+import { t } from "ttag";
 
 import {
   skipToken,
@@ -7,16 +7,18 @@ import {
   useUpdateTimelineEventMutation,
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
-import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
-import { useDispatch } from "metabase/redux";
-import EditEventModal from "metabase/timelines/common/components/EditEventModal";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { useNavigate } from "metabase/router";
+import EditEventForm from "metabase/timelines/common/components/EditEventForm";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-
 function EditEventModalContainer({ params, onClose }: ModalComponentProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const archive = useSetArchive();
   const timelineId = Urls.extractEntityId(params.timelineId);
   const eventId = Urls.extractEntityId(params.timelineEventId);
@@ -37,32 +39,40 @@ function EditEventModalContainer({ params, onClose }: ModalComponentProps) {
   const onSubmit = async (event: TimelineEvent, timeline?: Timeline) => {
     await updateTimelineEvent(event).unwrap();
     if (timeline) {
-      dispatch(push(Urls.timelineInCollection(timeline)));
+      navigate(Urls.timelineInCollection(timeline));
     }
   };
 
   const onArchive = async (event: TimelineEvent, timeline?: Timeline) => {
     await archive({ id: event.id, model: "timeline-event" }, true);
     if (timeline) {
-      dispatch(push(Urls.timelineInCollection(timeline)));
+      navigate(Urls.timelineInCollection(timeline));
     }
   };
 
   const isLoading = isTimelineLoading || isEventLoading;
   const error = timelineError ?? eventError;
 
-  if (isLoading || error || !event) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
   return (
-    <EditEventModal
-      event={event}
-      timeline={timeline}
-      onSubmit={onSubmit}
-      onArchive={onArchive}
+    <TimelineModal
+      title={t`Edit event`}
       onClose={onClose}
-    />
+      animated={false}
+      density="relaxed"
+      tall={isLoading || !!error || !event}
+    >
+      {isLoading || error || !event ? (
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      ) : (
+        <EditEventForm
+          event={event}
+          timeline={timeline}
+          onSubmit={onSubmit}
+          onArchive={onArchive}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 

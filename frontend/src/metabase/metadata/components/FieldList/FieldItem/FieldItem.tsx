@@ -1,10 +1,10 @@
 import cx from "classnames";
 import type { MouseEvent } from "react";
 import { memo, useMemo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
+import { Link } from "metabase/common/components/Link";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Box, Card, Ellipsified, Flex, Group, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -101,7 +101,7 @@ const FieldItemBase = ({
         justify="space-between"
         mih={rem(40)}
         pos="relative"
-        px="md"
+        px="lg"
         py={rem(12)}
         to={href}
         w="100%"
@@ -110,7 +110,7 @@ const FieldItemBase = ({
       >
         <Group
           align="center"
-          c="text-disabled"
+          c="text-secondary"
           flex="0 0 auto"
           gap={0}
           maw="100%"
@@ -126,7 +126,7 @@ const FieldItemBase = ({
               lh="normal"
               maw="50%"
               mb={rem(-4)}
-              mr="xs"
+              mr="xxs"
               mt={rem(-3)}
             >
               <Ellipsified lines={1} tooltip={parent.display_name}>

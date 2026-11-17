@@ -2,14 +2,15 @@ import type { CellContext } from "@tanstack/react-table";
 import { c, t } from "ttag";
 
 import { getFormattedTime } from "metabase/common/components/DateTime";
-import { formatNumber, formatPercent } from "metabase/static-viz/lib/numbers";
-import { Ellipsified } from "metabase/ui";
+import { formatNumber } from "metabase/static-viz/lib/numbers";
 import {
+  Ellipsified,
   EntityNameCell,
   Flex,
   Text,
   type TreeTableColumnDef,
 } from "metabase/ui";
+import { formatPercent } from "metabase/utils/formatting";
 import {
   isDate,
   isDateWithoutTime,
@@ -62,7 +63,7 @@ export function getColumns(): TreeTableColumnDef<FieldTreeNode>[] {
             <EntityNameCell
               icon="table"
               name={
-                <Flex align="center" gap="xs">
+                <Flex align="center" gap="xxs">
                   <Text fw="bold">{node.tableName}</Text>{" "}
                   <Text c="text-secondary">({node.fieldCount})</Text>
                 </Flex>

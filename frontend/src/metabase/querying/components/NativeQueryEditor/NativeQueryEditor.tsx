@@ -4,7 +4,6 @@ import {
   type NativeQueryEditorCoreProps,
   NativeQueryEditorRoot,
 } from "./NativeQueryEditorRoot";
-import { ParametersList } from "./slots/ParametersList";
 import { RunButton } from "./slots/RunButton";
 import { Sidebar } from "./slots/Sidebar";
 import { TopBar } from "./slots/TopBar";
@@ -19,9 +18,8 @@ type NativeQueryEditorProps = NativeQueryEditorCoreProps & {
  *
  * Assemble only the parts you need via the composition API:
  *
- *     <NativeQueryEditor question={question} query={query} setDatasetQuery={...}>
+ *     <NativeQueryEditor question={question} setQuery={...}>
  *       <NativeQueryEditor.TopBar>
- *         <NativeQueryEditor.ParametersList />
  *         <NativeQueryEditor.Sidebar features={...} />
  *         <NativeQueryEditor.VisibilityToggler />
  *       </NativeQueryEditor.TopBar>
@@ -42,7 +40,6 @@ const NativeQueryEditorBase = forwardRef<
 export const NativeQueryEditor = Object.assign(NativeQueryEditorBase, {
   TopBar,
   Sidebar,
-  ParametersList,
   VisibilityToggler,
   RunButton,
 });

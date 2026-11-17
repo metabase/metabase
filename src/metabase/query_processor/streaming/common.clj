@@ -1,20 +1,26 @@
 (ns metabase.query-processor.streaming.common
   "Shared util fns for various export (download) streaming formats."
-  (:refer-clojure :exclude [mapv select-keys not-empty get-in])
+  (:refer-clojure :exclude [mapv not-empty get-in])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.appearance.core :as appearance]
    [metabase.driver :as driver]
-   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
+   ;; per-query-execution cache via qp.store/cached; general-cached-value migration pending
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.performance :as perf :refer [mapv select-keys not-empty get-in]])
+   [metabase.util.memoize :as u.memo]
+   [metabase.util.performance :as perf :refer [mapv not-empty get-in]])
   (:import
    (clojure.lang ISeq)
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (java.util.regex Pattern)))
+
+(set! *warn-on-reflection* true)
 
 (defn export-filename-timestamp
   "Generates the current timestamp as a string to use in export filenames."
@@ -36,6 +42,46 @@
    ;; existing usage -- don't use going forward
    #_{:clj-kondo/ignore [:deprecated-var]}
    (qp.store/cached ::results-timezone (t/zone-id (qp.timezone/results-timezone-id)))))
+
+(def ^:private formula-trigger-chars
+  "Leading characters that make Excel/Google Sheets/LibreOffice parse an imported cell as a formula rather than as
+  text. Tab and carriage return are included because spreadsheet apps strip them, promoting the next character to the
+  front."
+  #{\= \+ \- \@ \tab \return})
+
+(def ^:private plain-number-re
+  "Matches values a spreadsheet reads as an ordinary number, so a leading `-`/`+` on them is harmless (`-1,234.56` is
+  the number, not a formula). Deliberately conservative: only digits, group/decimal separators, whitespace, currency
+  symbols, an exponent and a trailing `%`. Known currency symbols, names and uppercase three-letter codes can follow
+  a space or NBSP.
+  Nothing that matches this can carry formula syntax, so exempting it can't reopen the injection."
+  (let [labels (->> (vals currency/currency)
+                    (mapcat (juxt :symbol :symbol_native :name_plural))
+                    distinct
+                    (map #(Pattern/quote %))
+                    (str/join "|"))]
+    (re-pattern
+     (str #"[-+]?\p{Sc}?\s?\d[\d,\s.’]*(?:[eE][-+]?\d+)?"
+          "(?:[\\s\\u00a0]?\\p{Sc}?|[ \\u00a0](?:[A-Z]{3}|" labels "))\\s?%?"))))
+
+(defn escape-spreadsheet-formula
+  "Neutralize spreadsheet formula (a.k.a. CSV/DDE) injection in an exported cell value: a value an attacker planted in
+  a queried table -- e.g. `=cmd|' /C calc'!A0` -- would otherwise be evaluated when the export is opened in Excel or
+  Sheets. Prefixes a single quote so the leading character is no longer a formula trigger.
+
+  This applies to *text* export formats only. XLSX does not need it: POI writes cell values as string-typed cells
+  (`t=\"inlineStr\"`, no `<f>` element), which Excel renders literally, and the prefix would be a real character in the
+  cell rather than a text marker -- visible junk for no security gain.
+
+  Only strings are candidates; everything else (numbers, booleans, temporal values) is written as a typed value and
+  passes through untouched. Values that are plainly numeric are left alone so exports stay faithful. See SEC-763."
+  [v]
+  (if (and (string? v)
+           (pos? (count v))
+           (contains? formula-trigger-chars (nth v 0))
+           (not (re-matches plain-number-re v)))
+    (str "'" v)
+    v))
 
 (defprotocol FormatValue
   "Protocol for specifying how objects of various classes in QP result rows should be formatted in various download
@@ -84,19 +130,14 @@
   "Merge format settings defined in the localization preferences into the format settings
   for a single column."
   [format-settings global-settings-key]
-  (let [global-settings (get (appearance/custom-formatting) global-settings-key)
-        normalized      (mb.viz/db->norm-column-settings-entries global-settings)]
-    (merge normalized format-settings)))
+  (merge (get (appearance/custom-formatting) global-settings-key) format-settings))
 
 (defn currency-identifier
   "Given the format settings for a currency column, returns the symbol, code or name for the
   appropriate currency."
   [format-settings]
-  (let [currency-code (or (::mb.viz/currency format-settings)
-                          (:currency format-settings "USD"))]
-    (condp = (or (::mb.viz/currency-style format-settings)
-                 (:currency_style format-settings)
-                 "symbol")
+  (let [currency-code (or (:currency format-settings) "USD")]
+    (condp = (or (:currency_style format-settings) "symbol")
       "symbol"
       (if (currency/supports-symbol? currency-code)
         (get-in currency/currency [(keyword currency-code) :symbol])
@@ -123,12 +164,14 @@
   [ordered-cols viz-settings format-rows?]
   (for [col ordered-cols]
     (let [merged-settings (viz-settings-for-col col viz-settings)
-          is-currency?    (or (isa? (:semantic_type col) :type/Currency)
-                              (= (::mb.viz/number-style merged-settings) "currency"))
-          column-title    (or (when format-rows? (not-empty (::mb.viz/column-title merged-settings)))
+          number-style    (:number_style merged-settings)
+          is-currency?    (and (not= number-style "duration")
+                               (or (isa? (:semantic_type col) :type/Currency)
+                                   (= number-style "currency")))
+          column-title    (or (when format-rows? (not-empty (:column_title merged-settings)))
                               (:display_name col)
                               (:name col))]
-      (if (and is-currency? (::mb.viz/currency-in-header merged-settings true))
+      (if (and is-currency? (:currency_in_header merged-settings true))
         (str column-title " (" (currency-identifier merged-settings) ")")
         column-title))))
 
@@ -148,28 +191,28 @@
   {:arglists '([col viz-settings])}
   (fn [col _viz-settings] (col-type col)))
 
-(defmethod global-type-settings :type/Temporal [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
+(defmethod global-type-settings :type/Temporal [_ {global-column-settings :qp/global-column-settings}]
   (:type/Temporal global-column-settings {}))
 
-(defmethod global-type-settings :type/Date [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
+(defmethod global-type-settings :type/Date [_ {global-column-settings :qp/global-column-settings}]
   (merge
    (:type/Temporal global-column-settings {})
-   {::mb.viz/time-enabled nil}))
+   {:time_enabled nil}))
 
-(defmethod global-type-settings :type/Time [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
+(defmethod global-type-settings :type/Time [_ {global-column-settings :qp/global-column-settings}]
   (merge
-   (:type/Temporal global-column-settings {::mb.viz/time-style "h:mm A"})
-   {::mb.viz/date-style ""}))
+   (:type/Temporal global-column-settings {:time_style "h:mm A"})
+   {:date_style ""}))
 
-(defmethod global-type-settings :type/DateTime [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
+(defmethod global-type-settings :type/DateTime [_ {global-column-settings :qp/global-column-settings}]
   (:type/Temporal global-column-settings {}))
 
-(defmethod global-type-settings :type/Number [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
+(defmethod global-type-settings :type/Number [_ {global-column-settings :qp/global-column-settings}]
   (:type/Number global-column-settings {}))
 
-(defmethod global-type-settings :type/Currency [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
+(defmethod global-type-settings :type/Currency [_ {global-column-settings :qp/global-column-settings}]
   (merge
-   {::mb.viz/number-style "currency"}
+   {:number_style "currency"}
    (:type/Currency global-column-settings)))
 
 (defmethod global-type-settings :default [_ _viz-settings]
@@ -184,13 +227,13 @@
   signal. Both the CSV (`metabase.formatter.impl`) and XLSX export paths share this predicate so they agree on what
   counts as currency; when they diverged, CSV showed the symbol while XLSX dropped it (GDGT-2398)."
   [settings]
-  (let [number-style (::mb.viz/number-style settings)]
+  (let [number-style (:number_style settings)]
     (boolean
      (or (= number-style "currency")
          ;; No explicit number-style, but the user picked a currency or a currency label style -- treat as currency.
          (and (nil? number-style)
-              (or (::mb.viz/currency-style settings)
-                  (::mb.viz/currency settings)))))))
+              (or (:currency_style settings)
+                  (:currency settings)))))))
 
 (defn- column-setting-defaults
   "Look up the setting defaults based on any information in the column-settings. This is the case when a column has no
@@ -200,47 +243,45 @@
   (if (currency-settings? column-settings)
     ;; Inject number-style "currency" so consumers that key off it (e.g. the XLSX writer) treat the column as currency
     ;; even when the user never persisted an explicit number-style.
-    (merge {::mb.viz/number-style "currency"}
+    (merge {:number_style "currency"}
            (:type/Currency global-column-settings))
     {}))
 
 (defn- ensure-global-viz-settings
-  "The ::mb.viz/global-column-settings comes from (appearance/custom-formatting) and is provided by the query
+  "The `:qp/global-column-settings` come from (appearance/custom-formatting) and is provided by the query
   processor in the `metabase.query-processor.middleware.visualization-settings` middleware _if_ `process-viz-settings?`
   is truthy. This function checks to see if those settings have been provided and adds them if they are not present."
-  [{::mb.viz/keys [global-column-settings] :as viz-settings}]
+  [viz-settings]
   (cond-> viz-settings
-    (nil? global-column-settings)
-    (assoc ::mb.viz/global-column-settings
-           (update-vals (appearance/custom-formatting)
-                        mb.viz/db->norm-column-settings-entries))))
+    (nil? (:qp/global-column-settings viz-settings))
+    (assoc :qp/global-column-settings (appearance/custom-formatting))))
+
+(def ^:private normalize-column-settings
+  "The stored `:settings` of a column, normalized, without the values that are malformed; memoized, since exports
+  look them up for every value they write."
+  (u.memo/fast-bounded #(lib/normalize ::lib.schema.visualization/column-settings.entry %)
+                       :bounded/threshold 1024))
 
 (defn viz-settings-for-col
   "Get the unified viz settings for a column based on the column's metadata (if any) and user settings (⚙)."
   [{column-name :name metadata-column-settings :settings :keys [field_ref] :as col} viz-settings]
-  (let [{::mb.viz/keys [global-column-settings] :as viz-settings} (ensure-global-viz-settings viz-settings)
+  (let [{global-column-settings :qp/global-column-settings, :as viz-settings} (ensure-global-viz-settings viz-settings)
         [ref-type field-id-or-name] field_ref
         field-id-or-name (or (and (:remapped_from col) (:fk_field_id col))
                              field-id-or-name
                              (:id col)
                              (:name col))
-        all-cols-settings           (-> viz-settings
-                                        ::mb.viz/column-settings
-                                        ;; update the keys so that they will have only the :field-id or :column-name
-                                        ;; and not have any metadata. Since we don't know the metadata, we can never
-                                        ;; match a key with metadata, even if we do have the correct name or id
-                                        (perf/update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
         ;; field_ref can be a few different things, i.e.:
         ;;   [:field <col_id> _]
         ;;   [:field <col_name> _]
         ;;   [:aggregation <col_name> _]
         ;; Only merge the column settings keyed by field-id when field_ref is of type :field
         column-settings (merge (when (= ref-type :field)
-                                 (get all-cols-settings {::mb.viz/field-id field-id-or-name}))
+                                 (lib/column-settings-for-field-id viz-settings field-id-or-name))
                                ;; For custom columns whose name colides with another column, field-id-or-name comes in non-disambiguated (e.g. CREATED_AT)
                                ;; but column-name does (e.g. CREATED_AT_2) - so prefer column name keyed settings
-                               (or (get all-cols-settings {::mb.viz/column-name column-name})
-                                   (get all-cols-settings {::mb.viz/column-name field-id-or-name})))]
+                               (or (lib/column-settings-for-name viz-settings column-name)
+                                   (lib/column-settings-for-name viz-settings field-id-or-name)))]
     (merge
      ;; The default global settings based on the type of the column
      (try
@@ -253,7 +294,8 @@
      ;; User defined metadata -- Note that this transformation should probably go in
      ;; `metabase.query-processor.middleware.results-metadata/merge-final-column-metadata
      ;; to prevent repetition
-     (mb.viz/db->norm-column-settings-entries metadata-column-settings)
+     (when (map? metadata-column-settings)
+       (normalize-column-settings metadata-column-settings))
      ;; Column settings coming from the user settings in the ui
      ;; (E.g. Click the ⚙️ on the column)
      column-settings)))

@@ -5,11 +5,9 @@
    reads from the `table_remapping` app-DB table via Toucan2. Tests can bind
    [[*remapping-store*]] with a simple map-backed implementation to avoid DB access."
   (:require
-   [metabase-enterprise.workspaces.models.table-remapping]
-   [metabase.app-db.core :as app-db]
-   [toucan2.core :as t2]))
-
-(comment metabase-enterprise.workspaces.models.table-remapping/keep-me)
+   [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
+   [metabase.workspaces.core :as ws]))
 
 (set! *warn-on-reflection* true)
 
@@ -41,10 +39,11 @@
      does a hash-map get. Hot path -- called per-table during sync, so stays O(1) per call.")
   ;; writes
   (insert-mapping!* [store db-id from-spec to-spec]
-    "Idempotently ensure a remapping exists. `from-spec` and `to-spec` are pre-normalized
-     `::table-spec` maps. Returns truthy when the remapping is in place after the call
-     (whether this call inserted it or it already existed). Handles the concurrent-insert
-     race portably -- callers don't see SQL state codes. Spec slots must be all-string;
+    "Idempotently ensure the remapping from `from-spec` points at `to-spec`, replacing one that
+     points elsewhere. `from-spec` and `to-spec` are pre-normalized `::table-spec` maps. Returns
+     truthy when the remapping is in place after the call (whether this call wrote it or it
+     already existed). Handles the concurrent-insert race portably -- callers don't see SQL
+     state codes. Spec slots must be all-string;
      use `\"\"` as the sentinel for slots a driver doesn't emit (nil slots are a contract
      violation).")
   (remove-mapping!* [store db-id from-spec]
@@ -61,44 +60,44 @@
   [{:db (:from_db row) :schema (:from_schema row) :table (:from_table_name row)}
    {:db (:to_db row)   :schema (:to_schema row)   :table (:to_table_name row)}])
 
+(defn- may-have-remappings?
+  "False when `db-id` has no TableRemapping as far as this process's cache of the Database ids with remappings
+  knows. Every QP run and every synced table asks, so on an instance without remappings the answer must usually cost
+  no query; see [[table-remapping/database-ids-with-remappings]] for when it queries.
+
+  In workspace mode the answer is always true and the caller queries: transforms on any node insert rows, and a
+  node does not see another node's write.
+
+  Outside workspace mode the cache can miss rows that another node inserted, for at most one minute after this node
+  last filled it. Rows can exist outside workspace mode: after a restart that drops `MB_WORKSPACES_ENABLED`, or
+  sets it to `false` over a stored `true` (the env var is never stored in the app DB), and after a run that records its
+  row while `workspaces-enabled` is turned off. The same window
+  applies while another node is in workspace mode and this one is not yet: until this node's settings cache picks up
+  a runtime change, or during a rolling restart that adds or removes `MB_WORKSPACES_ENABLED`. A change of the
+  `workspaces-enabled` setting that this node sees drops the cache."
+  [db-id]
+  (or (ws/workspace-mode?)
+      (contains? (table-remapping/database-ids-with-remappings) db-id)))
+
 (defrecord AppDBRemappingStore []
   RemappingStore
   (enabled-for-db?* [_ db-id]
-    (t2/exists? :model/TableRemapping :database_id db-id))
+    (and (may-have-remappings? db-id)
+         (ws.db/table-remappings-exist? db-id)))
   (remappings-for-db* [_ db-id]
-    (into {} (map row->spec-pair) (t2/select :model/TableRemapping :database_id db-id)))
+    (if (may-have-remappings? db-id)
+      (into {} (map row->spec-pair) (ws.db/table-remappings-of-database db-id))
+      {}))
   (get-mapping* [_ db-id {:keys [db schema table]}]
-    (when-let [row (t2/select-one :model/TableRemapping
-                                  :database_id     db-id
-                                  :from_db         db
-                                  :from_schema     schema
-                                  :from_table_name table)]
-      {:db (:to_db row) :schema (:to_schema row) :table (:to_table_name row)}))
+    (when (may-have-remappings? db-id)
+      (when-let [row (ws.db/table-remapping db-id {:db db :schema schema :table table})]
+        {:db (:to_db row) :schema (:to_schema row) :table (:to_table_name row)})))
   (insert-mapping!* [_ db-id from-spec to-spec]
-    ;; Idempotent on the unique constraint `(database_id, from_db, from_schema, from_table_name)`.
-    ;; `app-db/update-or-insert!` handles the concurrent-insert race portably -- if a duplicate
-    ;; insert loses the race, it retries the lookup and returns the existing row's id. The
-    ;; update-fn returns nil on existing (no-op).
-    (app-db/update-or-insert!
-     :model/TableRemapping
-     {:database_id     db-id
-      :from_db         (:db from-spec)
-      :from_schema     (:schema from-spec)
-      :from_table_name (:table from-spec)}
-     (fn [existing]
-       (when-not existing
-         {:to_db         (:db to-spec)
-          :to_schema     (:schema to-spec)
-          :to_table_name (:table to-spec)}))))
+    (ws.db/upsert-table-remapping! db-id from-spec to-spec))
   (remove-mapping!* [_ db-id {:keys [db schema table]}]
-    (long
-     (t2/delete! :model/TableRemapping
-                 :database_id     db-id
-                 :from_db         db
-                 :from_schema     schema
-                 :from_table_name table)))
+    (long (ws.db/delete-table-remapping! db-id {:db db :schema schema :table table})))
   (clear-for-db!* [_ db-id]
-    (long (t2/delete! :model/TableRemapping :database_id db-id))))
+    (long (ws.db/delete-table-remappings-of-database! db-id))))
 
 (def app-db-store
   "Default remapping store backed by the `table_remapping` app-DB table."
@@ -123,11 +122,9 @@
   (get-mapping* [_ db-id from-spec]
     (get-in @!mappings [db-id from-spec]))
   (insert-mapping!* [_ db-id from-spec to-spec]
-    ;; Idempotent: if `from-spec` already maps to anything, leave it alone (matches
-    ;; `app-db/update-or-insert!`'s "no update" semantics). Either way return the pair
-    ;; that's now in place so the caller sees a truthy result.
-    (when-not (contains? (get @!mappings db-id {}) from-spec)
-      (swap! !mappings update db-id (fnil assoc {}) from-spec to-spec))
+    ;; Like the app-DB store: `from-spec` maps to `to-spec` afterwards, whatever it mapped to
+    ;; before. Return the pair that's now in place so the caller sees a truthy result.
+    (swap! !mappings update db-id (fnil assoc {}) from-spec to-spec)
     [from-spec (get-in @!mappings [db-id from-spec])])
   (remove-mapping!* [_ db-id from-spec]
     (if (contains? (get @!mappings db-id {}) from-spec)
@@ -160,10 +157,12 @@
 
 ;;; ------------------------------------------------ Dynamic vars -------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *remapping-store*
   "The active remapping store. Defaults to [[app-db-store]]. Bind in tests to avoid DB access."
   app-db-store)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *skip-remapping?*
   "When true, [[enabled-for-db?]] always returns false. Used by workspace execution contexts
    that need to query the isolation schema directly without remapping."
@@ -197,11 +196,11 @@
   (get-mapping* *remapping-store* db-id from-spec))
 
 (defn insert-mapping!
-  "Idempotently ensure a remapping exists in the active store. Specs MUST be
+  "Idempotently ensure the remapping from `from-spec` points at `to-spec` in the active store. Specs MUST be
    pre-normalized `::table-spec` maps — `\"\"` (not nil) for slots a driver doesn't
    emit. The user-facing wrappers in `table-remapping` handle that normalization.
 
-   Returns truthy when the remapping is in place after the call (insert or already-existed)."
+   Returns truthy when the remapping is in place after the call (written or already-existed)."
   [db-id from-spec to-spec]
   (insert-mapping!* *remapping-store* db-id from-spec to-spec))
 

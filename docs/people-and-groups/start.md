@@ -1,5 +1,6 @@
 ---
 title: "People overview"
+summary: Manage accounts and groups, set up SSO and SCIM provisioning, set password, session, and two-factor rules, and create API keys.
 redirect_from:
   - /docs/latest/administration-guide/sso
   - /docs/latest/people-and-groups
@@ -25,11 +26,13 @@ Make people use longer and more complex passwords.
 
 Tell Metabase how long it should wait before asking people to log in again.
 
+## [Two-factor authentication](./two-factor-authentication.md)
+
+Have people confirm their identity with an authenticator app when they log in.
+
 ## Authentication
 
 Metabase offers several options for authentication.
-
-> If you need to set up 2-step or multi-factor authentication (2FA or MFA) for your Metabase, consider using one of the SSO options below.
 
 ### SSO for Metabase Open Source and Starter plans
 
@@ -38,11 +41,11 @@ Metabase offers several options for authentication.
 
 ### SSO for Metabase Pro and Enterprise plans
 
-With [Pro and Enterprise plans](https://www.metabase.com/pricing/), you have more options to help orchestrate lots of people and groups.
+With [Pro and Enterprise plans](https://www.metabase.com/pricing), you have more options to help orchestrate lots of people and groups.
 
 - [JWT][jwt]
 - LDAP advanced features
-  - [Group membership filter](./ldap.md#ldap-group-membership-filter)
+  - [Group membership filter](./ldap.md#group-membership-filter)
   - [Syncing user attributes](./ldap.md#syncing-user-attributes-with-ldap)
 - [OIDC][oidc]
   - [Keycloak][oidc-keycloak]

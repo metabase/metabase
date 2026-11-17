@@ -1,5 +1,4 @@
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupCardEndpoints,
@@ -10,6 +9,9 @@ import {
 } from "__support__/server-mocks";
 import { PERMISSION_ERROR } from "__support__/server-mocks/constants";
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -34,14 +36,14 @@ function makeMetricCard(opts: Partial<Card> = {}): Card {
     name: "Count of Orders",
     database_id: SAMPLE_DB_ID,
     table_id: ORDERS_ID,
-    dataset_query: {
-      type: "query",
-      database: SAMPLE_DB_ID,
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-      },
-    },
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+        },
+      ],
+    }),
     ...opts,
   });
 }
@@ -58,10 +60,7 @@ function setupBaseEndpoints(card: Card) {
 
 function renderPage() {
   renderWithProviders(
-    <Route
-      path="/metric/:cardId"
-      component={(props: any) => <MetricAboutPage params={props.params} />}
-    />,
+    <Route path="/metric/:cardId" element={<MetricAboutPage />} />,
     {
       withRouter: true,
       initialRoute: `/metric/${CARD_ID}`,

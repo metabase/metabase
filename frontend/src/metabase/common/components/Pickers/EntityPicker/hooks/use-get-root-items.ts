@@ -8,14 +8,20 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
+import { getValidCollectionItemModels } from "metabase/common/components/Pickers/utils";
 import {
   useGetPersonalCollection,
   useHasTokenFeature,
-  useSetting,
 } from "metabase/common/hooks";
-import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
+import { getUser, getUserIsAdmin } from "metabase/current-user";
+import {
+  PLUGIN_DATA_APPS,
+  PLUGIN_LIBRARY,
+  PLUGIN_TENANTS,
+} from "metabase/plugins";
 import { type DispatchFn, useDispatch, useSelector } from "metabase/redux";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
+import { mergeLazily } from "metabase/utils/merge-lazily";
 import type {
   Collection,
   CollectionNamespace,
@@ -29,18 +35,20 @@ import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "../types";
-import { getValidCollectionItemModels } from "../utils";
+import { shouldShowDataApps } from "../utils";
 
-import { getRootCollectionItem } from "./utils";
+import { getDataAppsRootItem, getRootCollectionItem } from "./utils";
 
-const personalCollectionsRoot: OmniPickerCollectionItem = {
-  ...PERSONAL_COLLECTIONS,
-  can_write: false,
-  model: "collection",
-  location: "/",
-  here: ["collection"],
-  below: ["collection"],
-};
+const personalCollectionsRoot: OmniPickerCollectionItem = mergeLazily(
+  PERSONAL_COLLECTIONS,
+  {
+    can_write: false,
+    model: "collection" as const,
+    location: "/",
+    here: ["collection" as const],
+    below: ["collection" as const],
+  },
+);
 
 /**
  * This will generate a list of the top level items for the entity picker
@@ -55,6 +63,10 @@ export const useRootItems = () => {
   const { data: databaseData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery(undefined, { skip: !options.hasDatabases });
   const tenantsEnabled = useSetting("use-tenants");
+  const showsDataApps = shouldShowDataApps({ options, models });
+  const { data: dataApps, isLoading: isLoadingDataApps } =
+    PLUGIN_DATA_APPS.useDataApps({ skip: !showsDataApps });
+  const hasDataAppsFolder = showsDataApps && (dataApps?.length ?? 0) > 0;
 
   const currentUser = useSelector(getUser);
   const [isLoadingCollections, setIsLoadingCollections] = useState(false);
@@ -89,6 +101,7 @@ export const useRootItems = () => {
       isAdmin,
       options,
       databases,
+      hasDataAppsFolder,
       totalPersonalCollectionItems,
       libraryCollection,
       namespaces,
@@ -111,6 +124,7 @@ export const useRootItems = () => {
     isAdmin,
     options,
     databaseData?.data,
+    hasDataAppsFolder,
     totalPersonalCollectionItems,
     libraryCollection,
     namespaces,
@@ -125,6 +139,7 @@ export const useRootItems = () => {
 
   const isLoading =
     isLoadingDatabases ||
+    isLoadingDataApps ||
     isLoadingCollections ||
     isLoadingPersonalCollection ||
     isLoadingPersonalCollectionItems;
@@ -138,6 +153,7 @@ async function getRootItems({
   isAdmin,
   options,
   databases,
+  hasDataAppsFolder,
   totalPersonalCollectionItems,
   libraryCollection,
   namespaces,
@@ -153,6 +169,7 @@ async function getRootItems({
   isAdmin: boolean;
   options: EntityPickerOptions;
   databases: Database[];
+  hasDataAppsFolder: boolean;
   totalPersonalCollectionItems: number;
   libraryCollection?: OmniPickerItem;
   namespaces: CollectionNamespace[];
@@ -210,6 +227,17 @@ async function getRootItems({
     });
   }
 
+  if (namespaces.includes("transforms") && transformsEnabled) {
+    collectionItems.push({
+      ...(await getRootCollectionItem({
+        namespace: "transforms",
+        dispatch,
+      })),
+      here: ["collection"],
+      below: validCollectionModels,
+    });
+  }
+
   if (namespaces.includes("snippets")) {
     collectionItems.push({
       ...(await getRootCollectionItem({
@@ -221,10 +249,10 @@ async function getRootItems({
     });
   }
 
-  if (namespaces.includes("transforms") && transformsEnabled) {
+  if (namespaces.includes("data-actions")) {
     collectionItems.push({
       ...(await getRootCollectionItem({
-        namespace: "transforms",
+        namespace: "data-actions",
         dispatch,
       })),
       here: ["collection"],
@@ -312,5 +340,10 @@ async function getRootItems({
       });
     }
   }
+
+  if (hasDataAppsFolder) {
+    collectionItems.push(getDataAppsRootItem());
+  }
+
   return collectionItems;
 }

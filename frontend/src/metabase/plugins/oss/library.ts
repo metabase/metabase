@@ -13,7 +13,6 @@ import type {
   Collection,
   CollectionId,
   CollectionItem,
-  CollectionNamespace,
   CollectionType,
   DatabaseId,
   GetLibraryCollectionResponse,
@@ -21,6 +20,8 @@ import type {
   SchemaId,
   TableId,
 } from "metabase-types/api";
+
+import { definePluginSlot } from "../slot";
 
 export type CreateLibraryModalProps = {
   title?: string;
@@ -47,19 +48,16 @@ export type UnpublishTablesModalProps = {
   onClose: () => void;
 };
 
-export type CollectionPermissionsModalProps = {
-  opened: boolean;
-  collectionId: CollectionId;
-  namespace?: CollectionNamespace | null;
-  onClose: () => void;
-};
-
 export type LibraryCollectionType =
   | "library"
   | "library-data"
-  | "library-metrics";
+  | "library-metrics"
+  | "library-dashboards";
 
-export type LibrarySubCollectionType = "library-data" | "library-metrics";
+export type LibrarySubCollectionType =
+  | "library-data"
+  | "library-metrics"
+  | "library-dashboards";
 
 export type GetEntityPickerSyntheticLibraryItemFunction = {
   (params: {
@@ -105,7 +103,6 @@ type LibraryPlugin = {
   }) => OmniPickerItem[] | undefined;
   getEntityPickerSyntheticLibraryItem: GetEntityPickerSyntheticLibraryItemFunction;
   CreateLibraryModal: ComponentType<CreateLibraryModalProps>;
-  CollectionPermissionsModal: ComponentType<CollectionPermissionsModalProps>;
   PublishTablesModal: ComponentType<PublishTablesModalProps>;
   UnpublishTablesModal: ComponentType<UnpublishTablesModalProps>;
   useGetLibraryCollectionQuery: UseQuery<
@@ -139,14 +136,16 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
   getCollectionPickerItems: () => undefined,
   getEntityPickerSyntheticLibraryItem: () => undefined,
   CreateLibraryModal:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<CreateLibraryModalProps>,
-  CollectionPermissionsModal:
-    PluginPlaceholder as ComponentType<CollectionPermissionsModalProps>,
   PublishTablesModal:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<PublishTablesModalProps>,
   UnpublishTablesModal:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<UnpublishTablesModalProps>,
   useGetLibraryCollectionQuery:
+    // Unjustified type cast. FIXME
     (() => []) as unknown as LibraryPlugin["useGetLibraryCollectionQuery"],
   getLibraryCollectionEmptyStateMessages: () => ({
     title: "",
@@ -163,11 +162,4 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
   ): _type is "library-data" => false,
 });
 
-export const PLUGIN_LIBRARY = getDefaultPluginLibrary();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_LIBRARY, getDefaultPluginLibrary());
-}
+export const PLUGIN_LIBRARY = definePluginSlot(getDefaultPluginLibrary);

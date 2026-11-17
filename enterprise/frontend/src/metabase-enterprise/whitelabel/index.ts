@@ -22,10 +22,13 @@ import {
 } from "metabase-enterprise/settings/selectors";
 import type { SettingKey } from "metabase-types/api";
 
+import { EmbeddedAppearanceSettings } from "./components/EmbeddedAppearanceSettings";
 import { LandingPageUrlField } from "./components/LandingPageUrlField";
 import { LogoIcon } from "./components/LogoIcon";
-import { WhiteLabelBrandingSettingsPage } from "./components/WhiteLabelBrandingSettingsPage";
-import { WhiteLabelConcealSettingsPage } from "./components/WhiteLabelConcealSettingsPage";
+import {
+  LazyWhiteLabelBrandingSettingsPage,
+  LazyWhiteLabelConcealSettingsPage,
+} from "./lazy";
 import { updateColors } from "./lib/whitelabel";
 
 /**
@@ -42,9 +45,10 @@ export function initializePlugin() {
     };
 
     PLUGIN_WHITELABEL.WhiteLabelBrandingSettingsPage =
-      WhiteLabelBrandingSettingsPage;
+      LazyWhiteLabelBrandingSettingsPage;
     PLUGIN_WHITELABEL.WhiteLabelConcealSettingsPage =
-      WhiteLabelConcealSettingsPage;
+      LazyWhiteLabelConcealSettingsPage;
+    PLUGIN_WHITELABEL.EmbeddedAppearanceSettings = EmbeddedAppearanceSettings;
 
     PLUGIN_APP_INIT_FUNCTIONS.push(() => {
       updateColors();

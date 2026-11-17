@@ -1,5 +1,3 @@
-import dayjs from "dayjs";
-
 import {
   setupCollectionByIdEndpoint,
   setupDatabaseEndpoints,
@@ -8,6 +6,7 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import type { SearchModel, SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
@@ -136,6 +135,13 @@ describe("InfoText", () => {
       );
     });
 
+    it("shows Data app for data apps", async () => {
+      await setup({
+        model: "data-app",
+      });
+      expect(screen.getByText("Data app")).toBeInTheDocument();
+    });
+
     it("shows segment's table name", async () => {
       await setup({
         model: "segment",
@@ -209,6 +215,21 @@ describe("InfoText", () => {
 
       expect(screen.getByTestId("revision-history-text")).toHaveTextContent(
         `Updated ${LAST_EDITED_DURATION} by ${MOCK_OTHER_USER.common_name}`,
+      );
+    });
+
+    it("should show 'you' as the last editor when the current user last edited the item", async () => {
+      await setup({
+        resultProps: {
+          last_editor_id: MOCK_USER.id,
+          last_editor_common_name: MOCK_USER.common_name,
+          creator_id: MOCK_OTHER_USER.id,
+          creator_common_name: MOCK_OTHER_USER.common_name,
+        },
+      });
+
+      expect(screen.getByTestId("revision-history-text")).toHaveTextContent(
+        `Updated ${LAST_EDITED_DURATION} by you`,
       );
     });
 

@@ -1,0 +1,24 @@
+tr.draggedRow td {
+  background-color: var(--mb-color-background_surface-brand-subtle);
+}
+
+tr.dropTargetRow td {
+  background-color: var(--mb-color-background_surface-brand-subtle-hover);
+}
+
+tr.disabledRow {
+  opacity: 0.5;
+}
+
+tr.disabledRow:hover td {
+  background-color: var(--mb-color-background_page-primary);
+}
+
+tr.disabledRow:hover td > * {
+  color: inherit;
+}
+
+tr.disabledRow:hover td,
+tr.disabledRow:hover td * {
+  cursor: default;
+}

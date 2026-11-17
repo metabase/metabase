@@ -1,5 +1,6 @@
 (ns metabase-enterprise.sandbox.pulse-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.pulse-test]}}}}}}
+  ;; exercises the deprecated /api/pulse endpoints under sandboxing until notification APIs replace them
   #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.data.csv :as csv]
@@ -58,7 +59,7 @@
                                          :user_id          (mt/user->id :rasta)}]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
           (mt/with-fake-inbox
-            (mt/with-dynamic-fn-redefs [notification.send/channel-send-retrying!  (fn [_ _ _ _] :noop)]
+            (mt/with-dynamic-fn-redefs [notification.send/channel-send-retrying!  (fn [_ _ _ _] nil)]
               (mt/with-test-user :lucky
                 (pulse.send/send-pulse! pulse)))
             (is (= {:topic    :subscription-send

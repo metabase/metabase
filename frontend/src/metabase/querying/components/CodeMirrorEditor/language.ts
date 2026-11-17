@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { json } from "@codemirror/lang-json";
 import {
   MySQL,
@@ -337,6 +338,7 @@ export function source(engine?: string | null): Source {
     case "h2":
     default: {
       const dialect =
+        // Unjustified type cast. FIXME
         engineToDialect[engine as keyof typeof engineToDialect] ?? StandardSQL;
 
       const words =

@@ -55,6 +55,7 @@ export const createMockSearchResult = (
 export const createMockModelResult = (
   model: Partial<ModelResult> = {},
 ): ModelResult =>
+  // Unjustified type cast. FIXME
   createMockSearchResult({ ...model, model: "dataset" }) as ModelResult;
 
 export const createMockSearchResults = ({

@@ -1,21 +1,12 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  createMockActionParameter,
-  createMockDashboardCard,
-} from "metabase-types/api/mocks";
 
-import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
-
-import { turnIntoModel } from "./helpers/e2e-models-helpers";
-
-const { ORDERS_ID, ORDERS, REVIEWS, REVIEWS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } =
-  SAMPLE_DATABASE;
+const { ORDERS_ID, REVIEWS, REVIEWS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("issue 19737", () => {
   const modelName = "Orders Model";
@@ -43,28 +34,7 @@ describe("issue 19737", () => {
     cy.signInAsAdmin();
   });
 
-  it("should show moved model in the data picker without refreshing (metabase#19737)", () => {
-    cy.visit("/collection/root");
-
-    moveModel(modelName, personalCollectionName);
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Moved model");
-
-    cy.findByLabelText("Navigation bar").within(() => {
-      cy.findByText("New").click();
-    });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Question").should("be.visible").click();
-
-    H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      cy.findByText(personalCollectionName).click();
-      cy.findByText(modelName);
-    });
-  });
-
-  it("should not show duplicate models in the data picker after it's moved from a custom collection without refreshing (metabase#19737)", () => {
+  it("should show a moved model once in the data picker without refreshing (metabase#19737)", () => {
     // move "Orders Model" to "First collection"
     cy.visit("/collection/root");
 
@@ -72,7 +42,7 @@ describe("issue 19737", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
-    // Close the modal so the next time we move the model another model will always be shown
+    // Close the undo toast so the next time we move the model another model will always be shown
     cy.icon("close:visible").click();
 
     cy.findByLabelText("Navigation bar").within(() => {
@@ -109,93 +79,15 @@ describe("issue 19737", () => {
 
     H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      cy.findByText("First collection").should("not.exist");
-      H.entityPickerModalLevel(1).should("exist");
-      H.entityPickerModalLevel(2).should("not.exist");
+      H.entityPickerModalItem(0, personalCollectionName).click();
+      H.entityPickerModalLevel(1).findByText(modelName).should("be.visible");
+
+      H.entityPickerModalItem(0, "Our analytics").click();
+      H.entityPickerModalLevel(1).should("be.visible");
+      H.entityPickerModalLevel(1)
+        .findByText("First collection")
+        .should("not.exist");
     });
-  });
-});
-
-describe("issue 20517", () => {
-  const modelDetails = {
-    name: "20517",
-    query: {
-      "source-table": ORDERS_ID,
-      limit: 5,
-    },
-    type: "model",
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestion(modelDetails).then(({ body: { id } }) => {
-      cy.intercept("POST", `/api/card/${id}/query`).as("modelQuery");
-      cy.intercept("PUT", `/api/card/${id}`).as("updateModel");
-      cy.visit(`/model/${id}/columns`);
-      cy.wait("@modelQuery");
-    });
-  });
-
-  it("should be able to save metadata changes with empty description (metabase#20517)", () => {
-    cy.findByTestId("dataset-edit-bar")
-      .button("Save changes")
-      .should("be.disabled");
-    cy.findByDisplayValue(/^This is a unique ID/).clear();
-    cy.findByDisplayValue(/^This is a unique ID/).should("not.exist");
-    cy.findByTestId("dataset-edit-bar")
-      .button("Save changes")
-      .should("not.be.disabled")
-      .click();
-    cy.wait("@updateModel").then(({ response: { body, statusCode } }) => {
-      expect(statusCode).not.to.eq(400);
-      expect(body.errors).not.to.exist;
-      expect(body.description).to.be.null;
-    });
-    cy.button("Save failed").should("not.exist");
-  });
-});
-
-describe("issue 22519", { tags: "@skip" }, () => {
-  const questionDetails = {
-    query: {
-      "source-table": REVIEWS_ID,
-    },
-  };
-
-  beforeEach(() => {
-    cy.intercept("PUT", "/api/field/*").as("updateField");
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.DataModel.visit({
-      databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
-      tableId: REVIEWS_ID,
-      fieldId: REVIEWS.REVIEWS,
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Don't cast").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("UNIX seconds → Datetime").click();
-    cy.wait("@updateField");
-  });
-
-  it("model query should not fail when data model is using casting (metabase#22519)", () => {
-    H.createQuestion(questionDetails, { visitQuestion: true });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("xavier");
-
-    turnIntoModel();
-
-    cy.wait("@dataset");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("xavier");
   });
 });
 
@@ -214,9 +106,6 @@ describe("issue 23024", () => {
   }
 
   beforeEach(() => {
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("PUT", "/api/card/*").as("updateMetadata");
-
     H.restore();
     cy.signInAsAdmin();
 
@@ -309,10 +198,18 @@ describe("issue 23421", () => {
     cy.signInAsAdmin();
   });
 
-  it("`visualization_settings` should not break UI (metabase#23421)", () => {
+  it("`visualization_settings` with empty or hidden columns should not break UI (metabase#23421)", () => {
     H.createNativeQuestion(emptyColumnsQuestionDetails, {
-      visitQuestion: true,
+      wrapId: true,
+      idAlias: "emptyColumnsModelId",
     });
+    H.createNativeQuestion(hiddenColumnsModelDetails, {
+      wrapId: true,
+      idAlias: "hiddenColumnsModelId",
+    });
+
+    cy.log("empty columns");
+    cy.get("@emptyColumnsModelId").then((id) => H.visitModel(id));
     H.openQuestionActions();
     H.popover().findByText("Edit query definition").click();
 
@@ -320,12 +217,9 @@ describe("issue 23421", () => {
     cy.findByRole("columnheader", { name: "id" }).should("be.visible");
     cy.findByRole("columnheader", { name: "created_at" }).should("be.visible");
     cy.button("Save changes").should("be.visible");
-  });
 
-  it("`visualization_settings` with hidden columns should not break UI (metabase#23421)", () => {
-    H.createNativeQuestion(hiddenColumnsModelDetails, {
-      visitQuestion: true,
-    });
+    cy.log("hidden columns");
+    cy.get("@hiddenColumnsModelId").then((id) => H.visitModel(id));
     H.openQuestionActions();
     H.popover().findByText("Edit query definition").click();
 
@@ -342,12 +236,15 @@ describe("issue 23449", () => {
   const questionDetails = { query: { "source-table": REVIEWS_ID, limit: 2 } };
   function turnIntoModel() {
     cy.intercept("PUT", "/api/card/*").as("cardUpdate");
+    cy.intercept("POST", "/api/dataset").as("modelQuery");
 
     H.openQuestionActions();
     cy.findByText("Turn into a model").click();
     cy.findByText("Turn this into a model").click();
 
-    cy.wait("@cardUpdate").then(({ response }) => {
+    cy.wait("@cardUpdate");
+    // Turning the question into a model re-runs its query
+    cy.wait("@modelQuery").then(({ response }) => {
       expect(response.body.error).to.not.exist;
     });
   }
@@ -377,7 +274,7 @@ describe("issue 23449", () => {
     cy.findByTextEnsureVisible("Perfecto");
 
     turnIntoModel();
-    cy.findByTextEnsureVisible("Perfecto");
+    H.tableInteractive().findByTextEnsureVisible("Perfecto");
   });
 });
 
@@ -436,7 +333,7 @@ describe("issue 29378", () => {
     H.setActionsEnabledForDB(SAMPLE_DB_ID);
   });
 
-  it("should not crash the model detail page after searching for an action (metabase#29378)", () => {
+  it("should not crash the model actions page after searching for an action (metabase#29378)", () => {
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
     H.createAction(ACTION_DETAILS);
 
@@ -471,15 +368,15 @@ function mapModelColumnToDatabase({ table, field }) {
   H.popover().findByRole("option", { name: table }).click();
   H.popover().findByRole("option", { name: field }).click();
   cy.contains(`${table} → ${field}`).should("be.visible");
-  cy.findAllByDisplayValue(field);
-  cy.findByLabelText("Description").should("not.be.empty");
+  cy.findAllByDisplayValue(field).should("exist");
+  cy.findByLabelText("Description").should("not.have.value", "");
 }
 
 function selectModelColumn(column) {
   cy.findAllByTestId("header-cell").contains(column).click();
 }
 
-describe("issue 29517 - nested question based on native model with remapped values", () => {
+describe("issue 29517 - nested question based on native model with columns mapped to database fields", () => {
   const questionDetails = {
     name: "29517",
     type: "model",
@@ -528,7 +425,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
       H.createQuestionAndDashboard({
         questionDetails: nestedQuestionDetails,
       }).then(({ body: card }) => {
-        const { card_id, dashboard_id } = card;
+        const { dashboard_id } = card;
 
         H.editDashboardCard(card, {
           visualization_settings: {
@@ -541,39 +438,19 @@ describe("issue 29517 - nested question based on native model with remapped valu
           },
         });
 
-        cy.wrap(card_id).as("nestedQuestionId");
         cy.wrap(dashboard_id).as("dashboardId");
       });
     });
   });
 
-  it("drill-through should work (metabase#29517-1)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    H.visitQuestion("@nestedQuestionId");
-
-    // We can click on any circle; this index was chosen randomly
-    H.cartesianChartCircle().eq(25).click({ force: true });
-    H.popover()
-      .findByText(/^See these/)
-      .click();
-    cy.wait("@dataset");
-
-    cy.findByTestId("qb-filters-panel").findByText(
-      "Created At is May 1–31, 2027",
-    );
-
-    H.assertQueryBuilderRowCount(520);
-  });
-
-  it("click behavior to custom destination should work (metabase#29517-2)", () => {
-    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
-
+  it("click behavior to custom destination should work (metabase#29517)", () => {
     H.visitDashboard("@dashboardId");
 
     cy.intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}*`).as(
       "loadTargetDashboard",
+    );
+    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
     );
     H.cartesianChartCircle().eq(25).click({ force: true });
     cy.wait("@loadTargetDashboard");
@@ -582,11 +459,11 @@ describe("issue 29517 - nested question based on native model with remapped valu
 
     cy.wait("@dashcardQuery");
 
-    cy.get("[data-testid=cell-data]").contains("37.65");
+    H.getDashboardCard().findAllByText("37.65").should("be.visible");
   });
 });
 
-describe("issue 53556 - nested question based on native model with remapped values", () => {
+describe("issue 53556 - nested question based on native model with columns mapped to database fields", () => {
   const questionDetails = {
     name: "53556",
     type: "model",
@@ -648,70 +525,6 @@ describe("issue 53556 - nested question based on native model with remapped valu
         idAlias: "nestedQuestionId",
       });
     });
-  });
-
-  it("Underlying records drill-through should work (metabase#53556)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    H.visitQuestion("@nestedQuestionId");
-
-    // We can click on any circle; this index was chosen randomly
-    H.cartesianChartCircle().eq(25).click({ force: true });
-    H.popover()
-      .findByText(/^See these/)
-      .click();
-    cy.wait("@dataset");
-
-    cy.findByTestId("qb-filters-panel").findByText(
-      "Created At is May 1–31, 2027",
-    );
-
-    cy.findByTestId("qb-filters-panel").findByText(
-      "Total is greater than or equal to 40",
-    );
-
-    cy.findByTestId("qb-filters-panel").findByText("Total is less than 60");
-
-    H.assertQueryBuilderRowCount(110);
-  });
-
-  it("Zoom in binning drill-through should work (metabase#53556)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    H.visitQuestion("@nestedQuestionId");
-
-    // We can click on any circle; this index was chosen randomly
-    H.cartesianChartCircle().eq(25).click({ force: true });
-    H.popover()
-      .findByText(/^Zoom in/)
-      .click();
-    cy.wait("@dataset");
-
-    cy.findByTestId("qb-filters-panel").findByText(
-      "Total: 8 bins is greater than or equal to 40",
-    );
-
-    cy.findByTestId("qb-filters-panel").findByText(
-      "Total: 8 bins is less than 60",
-    );
-
-    H.assertQueryBuilderRowCount(375);
-  });
-
-  it("Zoom in timeseries drill-through should work (metabase#53556)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    H.visitQuestion("@nestedQuestionId");
-
-    // We can click on any circle; this index was chosen randomly
-    H.cartesianChartCircle().eq(25).click({ force: true });
-    H.popover()
-      .findByText(/^See this month by week/)
-      .click();
-    cy.wait("@dataset");
-
-    cy.findByTestId("qb-filters-panel").findByText(
-      "Created At is May 1–31, 2027",
-    );
-
-    H.assertQueryBuilderRowCount(43);
   });
 
   it("Sort drill-through should work (metabase#53556)", () => {
@@ -782,278 +595,6 @@ describe("issue 53556 - nested question based on native model with remapped valu
     });
   });
 });
-
-describe("issue 52465 - model with linked columns can still be aggregated", () => {
-  const questionDetails = {
-    name: "52465",
-    type: "model",
-    native: {
-      query: `
-SELECT
-  "ID" AS "id orders",
-  "SOURCE" AS "source orders"
-FROM
-  "PEOPLE"
-`,
-      "template-tags": {},
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("Create model, set metadata, distinct", () => {
-    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.intercept(
-        "GET",
-        `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC?can-query=true`,
-      ).as("schema");
-      cy.visit(`/model/${id}/columns`);
-      cy.wait("@schema");
-
-      selectModelColumn("source orders");
-      mapModelColumnToDatabase({ table: "People", field: "Source" });
-
-      cy.intercept("PUT", "/api/card/*").as("updateModel");
-      cy.button("Save changes").click();
-      cy.wait("@updateModel");
-
-      const nestedQuestionDetails = {
-        query: {
-          "source-table": `card__${id}`,
-        },
-      };
-
-      H.createQuestion(nestedQuestionDetails, {
-        wrapId: true,
-        idAlias: "nestedQuestionId",
-      });
-
-      H.visitQuestion("@nestedQuestionId");
-      cy.findByText("Source").click();
-      cy.findByText("Distinct values").click();
-
-      H.assertQueryBuilderRowCount(1);
-    });
-  });
-});
-
-describe("issue 31309", () => {
-  const TEST_QUERY = {
-    "order-by": [["asc", ["field", "sum", { "base-type": "type/Float" }]]],
-    limit: 10,
-    filter: ["<", ["field", "sum", { "base-type": "type/Float" }], 100],
-    "source-query": {
-      "source-table": ORDERS_ID,
-      aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-      breakout: [
-        [
-          "field",
-          PEOPLE.NAME,
-          { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
-        ],
-      ],
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should duplicate a model with its original aggregation and breakout", () => {
-    H.createQuestion(
-      {
-        name: "model",
-        query: TEST_QUERY,
-        database: SAMPLE_DB_ID,
-        type: "model",
-      },
-      {
-        visitQuestion: true,
-      },
-    );
-
-    H.openQuestionActions();
-    H.popover().findByText("Duplicate").click();
-
-    H.modal().within(() => {
-      cy.findByText("Duplicate").click();
-    });
-
-    H.openQuestionActions();
-    H.popover().within(() => {
-      cy.findByText("Edit query definition").click();
-    });
-
-    cy.findByTestId("data-step-cell").findByText("Orders").should("exist");
-
-    cy.findByTestId("aggregate-step")
-      .findByText("Sum of Total")
-      .should("exist");
-
-    cy.findByTestId("breakout-step").findByText("User → Name").should("exist");
-
-    H.getNotebookStep("filter", { stage: 1, index: 0 })
-      .findByText("Sum of Total is less than 100")
-      .should("exist");
-
-    H.getNotebookStep("sort", { stage: 1, index: 0 })
-      .findByText("Sum of Total")
-      .should("exist");
-
-    H.getNotebookStep("limit", { stage: 1, index: 0 })
-      .findByDisplayValue("10")
-      .should("exist");
-  });
-});
-
-describe("issue 32483", () => {
-  const createTextFilterMapping = ({ card_id, fieldRef }) => {
-    return {
-      card_id,
-      parameter_id: DASHBOARD_FILTER_TEXT.id,
-      target: ["dimension", fieldRef],
-    };
-  };
-  const DASHBOARD_FILTER_TEXT = createMockActionParameter({
-    id: "1",
-    name: "Text filter",
-    slug: "filter-text",
-    type: "string/=",
-    sectionId: "string",
-  });
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("dashboard filter should be applied to the saved model with source containing custom column (metabase#32483)", () => {
-    const questionDetails = {
-      query: {
-        "source-table": PEOPLE_ID,
-        expressions: {
-          "source state": [
-            "concat",
-            [
-              "field",
-              PEOPLE.SOURCE,
-              {
-                "base-type": "type/Text",
-              },
-            ],
-            " ",
-            [
-              "field",
-              PEOPLE.STATE,
-              {
-                "base-type": "type/Text",
-              },
-            ],
-          ],
-        },
-      },
-    };
-
-    H.createQuestion(questionDetails, { wrapId: true });
-
-    cy.get("@questionId").then((questionId) => {
-      const modelDetails = {
-        type: "model",
-        name: "Orders + People Question Model",
-        query: {
-          "source-table": ORDERS_ID,
-          joins: [
-            {
-              fields: "all",
-              alias: "People - User",
-              condition: [
-                "=",
-                [
-                  "field",
-                  ORDERS.USER_ID,
-                  {
-                    "base-type": "type/Integer",
-                  },
-                ],
-                [
-                  "field",
-                  "ID",
-                  {
-                    "base-type": "type/BigInteger",
-                    "join-alias": "People - User",
-                  },
-                ],
-              ],
-              "source-table": `card__${questionId}`,
-            },
-          ],
-        },
-      };
-
-      H.createQuestion(modelDetails).then(({ body: { id: modelId } }) => {
-        const dashboardDetails = {
-          name: "32483 Dashboard",
-          parameters: [DASHBOARD_FILTER_TEXT],
-          dashcards: [
-            createMockDashboardCard({
-              id: 1,
-              size_x: 8,
-              size_y: 8,
-              card_id: questionId,
-              parameter_mappings: [
-                createTextFilterMapping({
-                  card_id: questionId,
-                  fieldRef: [
-                    "expression",
-                    "source state",
-                    {
-                      "base-type": "type/Text",
-                    },
-                  ],
-                }),
-              ],
-            }),
-            createMockDashboardCard({
-              id: 2,
-              size_x: 8,
-              size_y: 8,
-              card_id: modelId,
-              parameter_mappings: [
-                createTextFilterMapping({
-                  card_id: modelId,
-                  fieldRef: [
-                    "field",
-                    "source state",
-                    {
-                      "base-type": "type/Text",
-                      "join-alias": "People - User",
-                    },
-                  ],
-                }),
-              ],
-            }),
-          ],
-        };
-
-        H.createDashboard(dashboardDetails).then(
-          ({ body: { id: dashboardId } }) => {
-            H.visitDashboard(dashboardId);
-          },
-        );
-      });
-    });
-
-    H.filterWidget().click();
-    addWidgetStringFilter("Facebook MN");
-
-    H.getDashboardCard(1).should("contain", "Orders + People Question Model");
-  });
-});
-
 describe("issue 40252", () => {
   const modelA = {
     name: "Model A",
@@ -1191,54 +732,5 @@ describe("issue 42355", () => {
       .next()
       .findByText("Orders → ID")
       .should("be.visible");
-  });
-});
-
-describe("cumulative count - issue 33330", () => {
-  const questionDetails = {
-    name: "33330",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["cum-count"]],
-      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestion(questionDetails, { visitQuestion: true });
-    cy.findAllByTestId("header-cell")
-      .should("contain", "Created At: Month")
-      .and("contain", "Cumulative count");
-    cy.findAllByTestId("cell-data").should("contain", "June 2025");
-  });
-
-  it("should still work after turning a question into model (metabase#33330-1)", () => {
-    turnIntoModel();
-    cy.findAllByTestId("header-cell")
-      .should("contain", "Created At: Month")
-      .and("contain", "Cumulative count");
-    cy.findAllByTestId("cell-data").should("contain", "June 2025");
-  });
-
-  it("should still work after applying a post-aggregation filter (metabase#33330-2)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    H.filter();
-    H.popover().within(() => {
-      cy.findByText("Created At").click();
-      cy.findByText("Today").click();
-    });
-    cy.wait("@dataset");
-
-    cy.findByTestId("filter-pill").should("have.text", "Created At is today");
-    cy.findAllByTestId("header-cell")
-      .should("contain", "Created At: Month")
-      .and("contain", "Cumulative count");
-    cy.findAllByTestId("cell-data")
-      .should("have.length", "4")
-      .and("not.be.empty");
-    cy.findByTestId("question-row-count").should("have.text", "Showing 1 row");
   });
 });

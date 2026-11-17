@@ -1,8 +1,10 @@
-import { MOBILE_DEFAULT_CARD_HEIGHT } from "metabase/visualizations/shared/utils/sizes";
+import { MOBILE_DEFAULT_CARD_HEIGHT } from "metabase/viz-core";
 import type { VisualizationDisplay } from "metabase-types/api";
 import {
+  createMockActionDashboardCard,
   createMockCard,
   createMockDashboardCard,
+  createMockVirtualCard,
 } from "metabase-types/api/mocks";
 
 import { generateMobileLayout } from "./utils";
@@ -32,6 +34,21 @@ describe("generateMobileLayout", () => {
         createMockDashcardLayout(10, "action"),
       ]);
       expect(result[0].h).toBe(1);
+    });
+
+    it("should preserve desktop height for action cards displayed as a form", () => {
+      const result = generateMobileLayout([
+        {
+          ...createMockDashcardLayout(10, "action"),
+          dashcard: createMockActionDashboardCard({
+            visualization_settings: {
+              actionDisplayType: "form",
+              virtual_card: createMockVirtualCard({ display: "action" }),
+            },
+          }),
+        },
+      ]);
+      expect(result[0].h).toBe(10);
     });
 
     it("should use height=1 for link cards", () => {

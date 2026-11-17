@@ -67,10 +67,10 @@
 
 (mu/defn order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
-  ([orderable]
+  ([orderable :- [:or ::lib.schema.order-by/order-by ::lib.ref/referenceable]]
    (order-by-clause orderable :asc))
 
-  ([orderable :- some?
+  ([orderable :- [:or ::lib.schema.order-by/order-by ::lib.ref/referenceable]
     direction :- [:maybe [:enum :asc :desc]]]
    (-> (order-by-clause-method orderable)
        (with-direction (or direction :asc)))))
@@ -86,15 +86,18 @@
 
   You can teach Metabase lib how to generate order by clauses for different things by implementing the
   underlying [[order-by-clause-method]] multimethod."
-  ([query orderable]
+  ([query     :- ::lib.schema/query
+    orderable :- [:or ::lib.schema.order-by/order-by ::lib.ref/referenceable]]
    (order-by query -1 orderable nil))
 
-  ([query orderable direction]
+  ([query     :- ::lib.schema/query
+    orderable :- [:or ::lib.schema.order-by/order-by ::lib.ref/referenceable]
+    direction :- [:maybe [:enum :asc :desc]]]
    (order-by query -1 orderable direction))
 
-  ([query
+  ([query        :- ::lib.schema/query
     stage-number :- [:maybe :int]
-    orderable    :- some?
+    orderable    :- [:or ::lib.schema.order-by/order-by ::lib.ref/referenceable]
     direction    :- [:maybe [:enum :asc :desc]]]
    (let [stage-number              (or stage-number -1)
          new-order-by              (cond-> (order-by-clause-method orderable)
@@ -195,7 +198,7 @@
 
 (mu/defn remove-all-order-bys :- ::lib.schema/query
   "Remove all order bys from this stage of the query."
-  ([query]
+  ([query :- ::lib.schema/query]
    (remove-all-order-bys query -1))
 
   ([query        :- ::lib.schema/query

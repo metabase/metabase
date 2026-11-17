@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { getLocalizationNoticeText } from "metabase/common/components/CommunityLocalizationNotice";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/redux";
@@ -5,6 +7,7 @@ import type { SetupStep } from "metabase/redux/store";
 import { getSteps } from "metabase/setup/selectors";
 import { Box, Flex, Icon, Text, Tooltip } from "metabase/ui";
 
+import { AIConfigStep } from "../AIConfigStep";
 import { CloudMigrationHelp } from "../CloudMigrationHelp";
 import { CompletedStep } from "../CompletedStep";
 import { DataUsageStep } from "../DataUsageStep";
@@ -27,6 +30,7 @@ const STEP_COMPONENTS: Partial<
   user_info: UserStep,
   usage_question: UsageQuestionStep,
   db_connection: DatabaseStep,
+  ai_config: AIConfigStep,
   license_token: LicenseTokenStep,
   data_usage: DataUsageStep,
 };

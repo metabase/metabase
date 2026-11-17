@@ -6,7 +6,7 @@ interface UseScrollToAnchorOptions {
   /** The block ID to scroll to (from location.hash, without the #) */
   blockId: string | null;
   /** Ref to the editor's DOM container */
-  editorContainerRef: React.RefObject<HTMLElement>;
+  editorContainerRef: React.RefObject<HTMLElement | null>;
   /** Whether the document is still loading */
   isLoading: boolean;
 }

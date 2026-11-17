@@ -5,10 +5,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.native :as lib-native]
@@ -19,7 +19,8 @@
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.match :as match]))
 
 (defn- run-count-query [query]
   (or (ffirst
@@ -137,7 +138,7 @@
                                                              :display-name (name field)
                                                              :type         :dimension
                                                              :widget-type  value-type
-                                                             :dimension    [:field (mt/id table field) nil]}
+                                                             :field-id     (mt/id table field)}
                                                       alias (assoc :alias alias))})
     :parameters [{:type   value-type
                   :name   (name field)
@@ -210,7 +211,9 @@
     (testing "boolean params"
       (mt/dataset places-cam-likes
         (field-filter-param-test-is-count-= 2
-                                            :places :liked :boolean true)))))
+                                            :places :liked :boolean true)
+        (field-filter-param-test-is-count-= 1
+                                            :places :liked :boolean [false])))))
 
 (deftest ^:parallel alias-field-filter-param-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :test/dynamic-dataset-loading)
@@ -305,7 +308,7 @@
                                               {:name         "country"
                                                :display-name "Country"
                                                :type         :dimension
-                                               :dimension    [:field (mt/id :country :name) nil]
+                                               :field-id     (mt/id :country :name)
                                                :widget-type  :category}}}
                  :database   (mt/id)
                  :parameters [{:type   :location/country
@@ -325,7 +328,7 @@
                                             {:name         "country"
                                              :display-name "Country"
                                              :type         :dimension
-                                             :dimension    [:field (mt/id :country :name) nil]
+                                             :field-id     (mt/id :country :name)
                                              :options      {:case-sensitive false}
                                              :widget-type  :string/contains}}}
                :database   (mt/id)
@@ -346,7 +349,7 @@
                                             {:name         "country"
                                              :display-name "Country"
                                              :type         :dimension
-                                             :dimension    [:field (mt/id :country :name) nil]
+                                             :field-id     (mt/id :country :name)
                                              :options      {:case-sensitive false}
                                              :widget-type  :string/contains}}}
                :database   (mt/id)
@@ -367,7 +370,7 @@
                                             {:name         "price"
                                              :display-name "Price"
                                              :type         :dimension
-                                             :dimension    [:field (mt/id :venues :price) nil]
+                                             :field-id     (mt/id :venues :price)
                                              :widget-type  :category}}}
                :database   (mt/id)
                :parameters [{:type   :category
@@ -407,7 +410,7 @@
                                             {:name         "number_comma"
                                              :display-name "Number Comma"
                                              :type         :number
-                                             :dimension    [:field (mt/id :venues :price) nil]}}}
+                                             :field-id     (mt/id :venues :price)}}}
                :database   (mt/id)
                :parameters [{:type   "number/="
                              :value  ["1,2,"]
@@ -427,7 +430,7 @@
                                               {:name         "country"
                                                :display-name "Country"
                                                :type         :dimension
-                                               :dimension    [:field (mt/id :country :name) nil]
+                                               :field-id     (mt/id :country :name)
                                                :widget-type  :category}}}
                  :database   (mt/id)
                  :parameters [{:type   :location/country
@@ -447,7 +450,7 @@
                                             {:name         "price"
                                              :display-name "Price"
                                              :type         :dimension
-                                             :dimension    [:field (mt/id :venues :price) nil]
+                                             :field-id     (mt/id :venues :price)
                                              :widget-type  :category}}}
                :database   (mt/id)
                :parameters [{:type   :category
@@ -529,7 +532,7 @@
                                            :display-name "Cat"
                                            :type         :dimension
                                            :widget-type  :number
-                                           :dimension    [:field (mt/id :products :category) nil]}}})]
+                                           :field-id     (mt/id :products :category)}}})]
         (is (= [200]
                (mt/first-row (qp/process-query query))))))))
 
@@ -555,7 +558,7 @@
                                                       :name         param-name}
                                         "created_at" {:type         :dimension
                                                       :default      nil
-                                                      :dimension    [:field (mt/id :orders :created_at) nil]
+                                                      :field-id     (mt/id :orders :created_at)
                                                       :display-name "Created At"
                                                       :id           "__created_at__"
                                                       :name         "created_at"
@@ -591,7 +594,7 @@
                                                           :name         "created_at"
                                                           :display-name "Created At"
                                                           :type         :dimension
-                                                          :dimension    [:field (mt/id :orders :created_at) nil]
+                                                          :field-id     (mt/id :orders :created_at)
                                                           :widget-type  :date/quarter-year
                                                           :default      nil}
                                             "source"     {:id           "44038e73-f909-1bed-0974-2a42ce8979e8"
@@ -602,7 +605,7 @@
                                                           :name         "state"
                                                           :display-name "State"
                                                           :type         :dimension
-                                                          :dimension    [:field (mt/id :people :state) nil]
+                                                          :field-id     (mt/id :people :state)
                                                           :widget-type  :string/!=
                                                           :default      nil}}
                             :parameters    [{:type   :date/quarter-year
@@ -707,7 +710,7 @@
                 (testing "SHOULD NOT be able to run native query with Card ID template tag"
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
-                       #"\QYou do not have permissions to run this query.\E"
+                       #"You do not have permissions to view Card"
                        (qp/process-query query))))
                 (testing "Exception should NOT include the compiled native query"
                   (try
@@ -716,23 +719,18 @@
                         "Should never get here, query should throw an Exception")
                     (catch Throwable e
                       (doseq [data (keep ex-data (u/full-exception-chain e))]
-                        (walk/postwalk
-                         (fn [form]
-                           (when (string? form)
-                             (is (not (re-find #"SELECT" form))))
-                           form)
-                         data)))))
-                (testing (str "If we have permissions for Card 2's Collection (but not Card 1's) we should be able to"
-                              " run a native query referencing Card 2, even tho it references Card 1 (#15131)")
+                        (is (empty? (match/match-all data
+                                      (s :guard (and (string? s) (str/includes? s "SELECT"))) s)))))))
+                (testing (str "Permissions for Card 2's Collection are not enough to run a native query referencing"
+                              " Card 2 while it references Card 1, which we still cannot read")
                   (perms/grant-collection-read-permissions! (perms-group/all-users) collection-2-id)
                   ;; need to call [[mt/with-test-user]] again so [[metabase.api.common/*current-user-permissions-set*]]
                   ;; gets rebound with the updated permissions. This will be fixed in #45001
                   (mt/with-test-user :rasta
-                    (is (= [[1 "Red Medicine"]
-                            [2 "Stout Burgers & Beers"]]
-                           (mt/formatted-rows
-                            [int str]
-                            (qp/process-query query))))))))))))))
+                    (is (thrown-with-msg?
+                         clojure.lang.ExceptionInfo
+                         #"You do not have permissions to view Card"
+                         (qp/process-query query)))))))))))))
 
 ;;; TODO (Cam 9/9/25) -- I added this in #61114 but I don't remember exactly what I was testing... I think this is a
 ;;; port of one of the Cypress e2e tests but I don't remember which one. Give this a better name.
@@ -786,7 +784,8 @@
   [mp ids template-tag-overrides]
   (let [sql (mt/native-query-with-card-template-tag driver/*driver* "table")
         base-query (lib/native-query mp sql)
-        template-tag (get (lib/template-tags base-query) "table")
+        template-tag (m/find-first #(= (:name %) "table")
+                                   (lib/template-tags base-query))
         query (lib/with-template-tags base-query
                 {"table" (merge template-tag {:type :table} template-tag-overrides)})]
     (is (= (set ids) (query-result-ids query)))))
@@ -799,3 +798,74 @@
          mp
          (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :products))))
          {:table-id (mt/id :products)})))))
+
+(deftest ^:parallel number-parameter-on-expression-column-test
+  (testing "a :number/= parameter targeting an [:expression] custom column filters the card (#18747)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+      (mt/dataset test-data
+        (let [mp    (mt/metadata-provider)
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                        (lib/expression "Quantity_2" (lib.metadata/field mp (mt/id :orders :quantity))))
+              query (assoc query :parameters [{:type   :number/=
+                                               :target [:dimension (lib.convert/->legacy-MBQL
+                                                                    (lib/expression-ref query "Quantity_2"))]
+                                               :value  [14]}])]
+          (is (= 1
+                 (count (mt/rows (qp/process-query query))))))))))
+
+(deftest ^:parallel field-filter-operators-execution-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters ::field-filter-param-test-2)
+    ;; expected counts are constants derived from the immutable `test-data` `venues` table (100 rows). They match the
+    ;; result of running the equivalent MBQL filter: `<= 3`, `!= 1`, `between 2 3`, `ends-with "s"`,
+    ;; `does-not-contain "ouse"`. The `does-not-contain` probe is collation-neutral: "ouse" matches the same 3 venue
+    ;; names whether the driver's LIKE is case-sensitive or not, so 97 holds everywhere.
+    (mt/dataset test-data
+      (doseq [[field value-type value expected]
+              [[:price :number/<=               [3]      94]
+               [:price :number/!=               [1]      78]
+               [:price :number/between          [2 3]    72]
+               [:name  :string/ends-with        ["s"]    8]
+               [:name  :string/does-not-contain ["ouse"] 97]]]
+        (testing (format "%s field filter with value %s" value-type (pr-str value))
+          (field-filter-param-test-is-count-= expected :venues field value-type value))))))
+
+(deftest ^:parallel field-filter-string-contains-execution-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters ::field-filter-param-test-2)
+    (mt/dataset test-data
+      (testing "'contains' field filter resolves to the case-insensitive default count (#16181)"
+        ;; 147 = number of `test-data` `products` whose `category` contains "i" (Doohickey/Gizmo/Widget, not Gadget).
+        (field-filter-param-test-is-count-= 147 :products :category :string/contains ["i"])))))
+
+(deftest ^:parallel filter-on-joined-source-card-expression-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :expressions)
+    (testing "a string param mapped to [:field \"source state\" {:join-alias …}] pointing at a source-card expression resolves and filters (#32483)"
+      (mt/dataset test-data
+        (let [mp0     (mt/metadata-provider)
+              inner   (-> (lib/query mp0 (lib.metadata/table mp0 (mt/id :people)))
+                          (lib/expression "source state"
+                                          (lib/concat (lib.metadata/field mp0 (mt/id :people :source))
+                                                      " "
+                                                      (lib.metadata/field mp0 (mt/id :people :state)))))
+              mp      (lib.tu/metadata-provider-with-cards-for-queries mp0 [inner])
+              card    (lib.metadata/card mp 1)
+              base    (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              query   (-> base
+                          (lib/join (-> (lib/join-clause card (lib/suggested-join-conditions base card))
+                                        (lib/with-join-alias "People - User")
+                                        (lib/with-join-fields :all)))
+                          (lib/limit 10))
+              ;; the joined card exposes "source state" (an expression column, so no field id) under the join alias;
+              ;; match it case-insensitively so lowercase-folding drivers still find it
+              ss-col  (m/find-first #(and (= (u/lower-case-en (:name %)) "source state")
+                                          (= (:lib/join-alias %) "People - User"))
+                                    (lib/visible-columns query))
+              ss-idx  (first (keep-indexed (fn [i col]
+                                             (when (= (u/lower-case-en (:name col)) "source state") i))
+                                           (lib/returned-columns query)))
+              query   (assoc query :parameters [{:type   :string/=
+                                                 :value  ["Facebook MN"]
+                                                 :target [:dimension (lib.convert/->legacy-MBQL (lib/ref ss-col))]}])
+              rows    (mt/rows (qp/process-query query))]
+          (is (some? ss-idx))
+          (is (seq rows))
+          (is (every? #(= "Facebook MN" (nth % ss-idx)) rows)))))))

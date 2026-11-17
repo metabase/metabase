@@ -1,5 +1,6 @@
 import type {
   CollectionId,
+  Database,
   DatabaseId,
   SchemaName,
   TableId,
@@ -15,6 +16,16 @@ export enum DataPermission {
   DOWNLOAD = "download",
   DATA_MODEL = "data-model",
   DETAILS = "details",
+  TRANSFORMS = "transforms",
+  COLLECTIONS = "collections",
+}
+
+export enum DataPermissionType {
+  ACCESS = "access",
+  NATIVE = "native",
+  DETAILS = "details",
+  DOWNLOAD = "download",
+  DATA_MODEL = "data-model",
   TRANSFORMS = "transforms",
   COLLECTIONS = "collections",
 }
@@ -79,10 +90,6 @@ export type DetailsPermission =
   | DataPermissionValue.NO
   | DataPermissionValue.YES;
 
-export type DetailsPermissions = {
-  [key: DatabaseId]: DetailsPermission;
-};
-
 export type DownloadSchemasPermission =
   | DownloadPermission
   | { [key: SchemaName]: DownloadTablePermission };
@@ -100,7 +107,7 @@ export type DatabasePermissions = {
   [DataPermission.CREATE_QUERIES]?: NativePermissions;
   [DataPermission.DATA_MODEL]?: DataModelPermissions;
   [DataPermission.DOWNLOAD]?: DownloadAccessPermission;
-  [DataPermission.DETAILS]?: DetailsPermissions;
+  [DataPermission.DETAILS]?: DetailsPermission;
   [DataPermission.TRANSFORMS]?: TransformsPermission;
 };
 
@@ -202,6 +209,13 @@ export type PermissionEntityId = DatabaseEntityId &
   Partial<Omit<TableEntityId, "databaseId">>;
 
 export type EntityWithGroupId = PermissionEntityId & { groupId: number };
+
+/**
+ * A database as the permissions tree sees it: the API database, with `tables`
+ * from `GET /api/database/:id/metadata` and `router_user_attribute` from
+ * `GET /api/database`. Neither endpoint returns both.
+ */
+export type PermissionsDatabase = Database;
 
 export type PermissionSubject = "schemas" | "tables" | "fields";
 

@@ -1,19 +1,17 @@
-import { useMemo, useState } from "react";
+import { type ChangeEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListTimelinesQuery } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
-import type { InputProps } from "metabase/common/components/Input";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import EventCard from "metabase/timelines/collections/components/EventCard";
-import { ListRoot } from "metabase/timelines/collections/components/EventList/EventList.styled";
-import LoadingAndErrorWrapper from "metabase/timelines/collections/components/LoadingAndErrorWrapper";
-import { Box, Card, Icon, TextInput } from "metabase/ui";
+import { Box, Card, Flex, Icon, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
@@ -55,14 +53,15 @@ export function EventsPage() {
 
     return filtered.sort(
       (a, b) =>
-        parseTimestamp(b.event.timestamp) - parseTimestamp(a.event.timestamp),
+        parseTimestamp(b.event.timestamp).valueOf() -
+        parseTimestamp(a.event.timestamp).valueOf(),
     );
   }, [timelines, searchText]);
 
   const handleArchive = (event: TimelineEvent) =>
     archive({ id: event.id, model: "timeline-event" }, true);
 
-  const handleSearchChange: InputProps["onChange"] = (e) =>
+  const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) =>
     setInputText(e.target.value);
 
   return (
@@ -87,7 +86,8 @@ export function EventsPage() {
             </Box>
             <Card withBorder p={0} shadow="none">
               {events.length > 0 ? (
-                <ListRoot
+                <Flex
+                  direction="column"
                   className={S.eventList}
                   data-testid="events-page-list"
                 >
@@ -99,7 +99,7 @@ export function EventsPage() {
                       onArchive={handleArchive}
                     />
                   ))}
-                </ListRoot>
+                </Flex>
               ) : (
                 <ListEmptyState
                   label={

@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.transforms.execute-test
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
@@ -42,14 +43,14 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (let [target-type "table"
-            schema      (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            schema      (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
         (with-transform-cleanup! [{table1-name :name :as target1} {:type   target-type
                                                                    :schema schema
                                                                    :name   "g_products"}
                                   {table2-name :name :as target2} {:type   target-type
                                                                    :schema schema
                                                                    :name   "gizmo_products"}]
-          (let [table-name (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
+          (let [table-name (t2/select-one-fn :name :model/Table :id (mt/id :transforms_products))
                 t1-query (make-query table-name "category" lib/starts-with "G")]
             (mt/with-temp [:model/Transform t1 {:name   "transform1"
                                                 :source {:type  :query
@@ -79,7 +80,7 @@
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :left-join]})
     (mt/dataset transforms-dataset/transforms-test
       (let [target-type "table"
-            schema      (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            schema      (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
         (with-transform-cleanup! [no-limit-table {:type   target-type
                                                   :schema schema
                                                   :name   "widgets_daily_no_limit"}
@@ -130,21 +131,22 @@
 
 (deftest create-table-from-schema!-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (let [driver       driver/*driver*
-          db-id        (mt/id)
-          table-name   (mt/random-name)
-          schema-name  (sql.tx/session-schema driver)
-          table-schema {:name    (if schema-name
-                                   (keyword schema-name table-name)
-                                   (keyword table-name))
-                        :columns [{:name "id" :type :type/Integer :nullable? false}
-                                  {:name "name" :type :type/Text :nullable? true}]}]
-      (mt/as-admin
-        (testing "create-table-from-schema! should create the table successfully"
-          (transforms-base.u/create-table-from-schema! driver db-id table-schema)
-          (let [table-exists? (driver/table-exists? driver db-id {:schema schema-name :name table-name})]
-            (is (some? table-exists?) "Table should exist in the database schema")
-            (driver/drop-table! driver db-id (:name table-schema))))))))
+    (mt/dataset transforms-dataset/transforms-test
+      (let [driver       driver/*driver*
+            db-id        (mt/id)
+            table-name   (mt/random-name)
+            schema-name  (sql.tx/session-schema driver)
+            table-schema {:name    (if schema-name
+                                     (keyword schema-name table-name)
+                                     (keyword table-name))
+                          :columns [{:name "id" :type :type/Integer :nullable? false}
+                                    {:name "name" :type :type/Text :nullable? true}]}]
+        (mt/as-admin
+          (testing "create-table-from-schema! should create the table successfully"
+            (transforms-base.u/create-table-from-schema! driver db-id table-schema)
+            (let [table-exists? (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:schema schema-name :name table-name})]
+              (is (true? table-exists?) "Table should exist in the database schema")
+              (driver/drop-table! driver db-id (:name table-schema)))))))))
 
 (deftest transform-schema-created-if-needed-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :schemas
@@ -189,7 +191,7 @@
       (let [details (:details (mt/db))
             password (:password details)
             no-schema-user (u/lower-case-en (mt/random-name))
-            spec (sql-jdbc.conn/db->pooled-connection-spec (mt/id))]
+            spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
         (try
           (driver/execute-raw-queries! driver/*driver* spec
                                        [[(format "CREATE ROLE %s WITH LOGIN PASSWORD '%s';" no-schema-user password)]
@@ -201,7 +203,7 @@
                                              :details (assoc details
                                                              :user no-schema-user)}]
             (mt/with-db db
-              (sync/sync-database! db {:scan :schema})
+              (sync/sync-database! (:id db) {:scan :schema})
               (let [mp (mt/metadata-provider)
                     transforms-products (lib.metadata/table mp (mt/id :transforms_products))
                     products-category (lib.metadata/field mp (mt/id :transforms_products :category))
@@ -211,7 +213,7 @@
                               (lib/order-by products-id :asc))]
                 (testing "user without create schema permissions should be able to create tables in existing schema"
                   (with-transform-cleanup! [target-table {:type   "table"
-                                                          :schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+                                                          :schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))
                                                           :name   "widget_products"}]
                     (mt/with-temp [:model/Transform transform {:name   "transform"
                                                                :source {:type  :query
@@ -251,7 +253,7 @@
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table]})
     (mt/with-premium-features #{:database-routing}
       (with-transform-cleanup! [target-table {:type   :table
-                                              :schema (t2/select-one-fn :schema :model/Table (mt/id :products))
+                                              :schema (t2/select-one-fn :schema :model/Table :id (mt/id :products))
                                               :name   "products"}]
         (let [mp (mt/metadata-provider)
               products (lib.metadata/table mp (mt/id :products))
@@ -410,7 +412,7 @@
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table]})
     (mt/with-premium-features #{:database-routing}
       (with-transform-cleanup! [target-table {:type   :table
-                                              :schema (t2/select-one-fn :schema :model/Table (mt/id :products))
+                                              :schema (t2/select-one-fn :schema :model/Table :id (mt/id :products))
                                               :name   "products"}]
         (let [mp (mt/metadata-provider)
               products (lib.metadata/table mp (mt/id :products))
@@ -442,8 +444,8 @@
           (let [details       (:details (mt/db))
                 password      (:password details)
                 readonly-user (u/lower-case-en (mt/random-name))
-                spec          (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
-                schema        (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+                spec          (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
+                schema        (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))
                 make-widget-query
                 (fn [mp]
                   (let [transforms-products (lib.metadata/table mp (mt/id :transforms_products))
@@ -471,7 +473,7 @@
                     (fn [db-opts target-name]
                       (mt/with-temp [:model/Database db (merge {:engine :postgres} db-opts)]
                         (mt/with-db db
-                          (sync/sync-database! db {:scan :schema})
+                          (sync/sync-database! (:id db) {:scan :schema})
                           (let [query (make-widget-query (mt/metadata-provider))]
                             (with-transform-cleanup! [target-table {:type   "table"
                                                                     :schema schema
@@ -515,14 +517,14 @@
         (mt/dataset transforms-dataset/transforms-test
           (let [db-id               (mt/id)
                 transform-cache-key [db-id :transform]
-                schema              (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+                schema              (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))
                 old-write-details   (:write_data_details (mt/db))]
             (when-not old-write-details
-              (t2/update! :model/Database db-id {:write_data_details (:details (mt/db))}))
+              (t2/update! :model/Database :id db-id {:write_data_details (:details (mt/db))}))
             (try
-              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
               (testing "transform pool does not exist before transform execution"
-                (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool transform-cache-key))))
+                (is (not (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) transform-cache-key))))
               (with-transform-cleanup! [target-table {:type   "table"
                                                       :schema schema
                                                       :name   "pool_test"}]
@@ -538,7 +540,45 @@
                     (transforms.execute/execute! transform {:run-method :manual})
                     (transforms.tu/wait-for-table (:name target-table) 10000)
                     (testing "transform pool is created during transform execution"
-                      (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool transform-cache-key))))))
+                      (is (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) transform-cache-key))))))
               (finally
-                (t2/update! :model/Database db-id {:write_data_details old-write-details})
-                (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))))))))))
+                (t2/update! :model/Database :id db-id {:write_data_details old-write-details})
+                (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))))))))))
+
+(deftest transform-run-refreshes-target-stats-test
+  (testing "completing a transform run leaves its target table analyzed, so a dependent transform plans
+            against real stats instead of the empty estimate a freshly CTAS'd table starts with"
+    ;; The ANALYZE effect is observable on Postgres (Redshift inherits the same impl); assert it here.
+    (mt/test-driver :postgres
+      (mt/dataset transforms-dataset/transforms-test
+        (let [schema      (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))
+              source-name (t2/select-one-fn :name :model/Table :id (mt/id :transforms_products))
+              admin-spec  (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
+              ;; A table has one pg_statistic row per analyzed column; a never-analyzed CTAS table has none.
+              analyzed-column-count
+              (fn [table-name]
+                (-> (jdbc/query admin-spec
+                                ["SELECT count(*) AS n FROM pg_stats WHERE schemaname = ? AND tablename = ?"
+                                 schema table-name])
+                    first :n))
+              run-and-wait! (fn [transform]
+                              (transforms.execute/execute! transform {:run-method :manual})
+                              (transforms.tu/wait-for-table (-> transform :target :name) 10000))]
+          (testing "real lifecycle: the target ends up with planner stats"
+            (with-transform-cleanup! [target {:type "table" :schema schema :name "products_analyzed"}]
+              (mt/with-temp [:model/Transform t {:name   "analyzed"
+                                                 :source {:type :query :query (make-query source-name)}
+                                                 :target target}]
+                (run-and-wait! t)
+                (is (pos? (analyzed-column-count (:name target)))
+                    "complete-execution! should have run ANALYZE, populating pg_statistic for the target"))))
+          (testing "control: with the refresh hook stubbed out, the same run leaves no stats — so the rows
+                    above come from our refresh, not from Postgres analyzing on its own"
+            (with-transform-cleanup! [target {:type "table" :schema schema :name "products_unanalyzed"}]
+              (mt/with-temp [:model/Transform t {:name   "unanalyzed"
+                                                 :source {:type :query :query (make-query source-name)}
+                                                 :target target}]
+                (with-redefs [driver/refresh-table-stats! (fn [& _] nil)]
+                  (run-and-wait! t))
+                (is (zero? (analyzed-column-count (:name target)))
+                    "a freshly materialized table has no planner stats until something analyzes it")))))))))

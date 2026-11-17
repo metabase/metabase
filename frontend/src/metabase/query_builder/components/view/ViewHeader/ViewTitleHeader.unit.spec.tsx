@@ -1,0 +1,956 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+import type { ComponentProps } from "react";
+import _ from "underscore";
+
+import { renderWithRegisterActionsSpy } from "__support__/kbar";
+import {
+  createMockMetadata,
+  createMockMetadataFromState,
+} from "__support__/metadata";
+import {
+  setupListDatabaseSchemasEndpoint,
+  setupTableEndpoints,
+} from "__support__/server-mocks";
+import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
+import { createMockState } from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
+import MetabaseSettings from "metabase/utils/settings";
+import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
+import type {
+  Card,
+  Database,
+  DatabaseId,
+  UnsavedCard,
+} from "metabase-types/api";
+import {
+  COMMON_DATABASE_FEATURES,
+  createMockCard,
+  createMockDataset,
+  createMockUnsavedCard,
+} from "metabase-types/api/mocks";
+import {
+  ORDERS_ID,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
+  createOrdersTable,
+  createProductsTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+
+import { ViewTitleHeader } from "./ViewTitleHeader";
+
+console.warn = jest.fn();
+console.error = jest.fn();
+
+const ORDERS_TABLE = createOrdersTable();
+const PRODUCTS_TABLE = createProductsTable();
+const HIDDEN_ORDERS_TABLE = createOrdersTable({
+  visibility_type: "hidden",
+});
+
+const ORDERS_QUERY = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+);
+
+const FILTERED_GUI_QUESTION: Partial<UnsavedCard> = {
+  display: "table",
+  visualization_settings: {},
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          filters: [
+            {
+              type: "operator",
+              operator: "<",
+              args: [
+                { type: "column", name: "TOTAL" },
+                { type: "literal", value: 50 },
+              ],
+            },
+            {
+              type: "operator",
+              operator: "not-null",
+              args: [{ type: "column", name: "TAX" }],
+            },
+          ],
+        },
+      ],
+    }),
+  ),
+};
+
+const SAVED_QUESTION = {
+  id: 1,
+  name: "Q1",
+  description: null,
+  collection_id: null,
+  can_write: true,
+};
+
+function getAdHocQuestionCard(overrides?: Partial<UnsavedCard>): UnsavedCard {
+  return createMockUnsavedCard({
+    visualization_settings: {},
+    dataset_query: ORDERS_QUERY,
+    ...overrides,
+  });
+}
+
+function createAdHocNativeCard(opts?: Partial<UnsavedCard>): UnsavedCard {
+  return createMockUnsavedCard({
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
+    ...opts,
+  });
+}
+
+function createSavedNativeCard(opts?: Partial<Card>): Card {
+  return createMockCard({
+    query_type: "native",
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
+    ...opts,
+  });
+}
+
+function getNativeQuestionCard(): UnsavedCard {
+  return createAdHocNativeCard();
+}
+
+function getNativeQuestionCardWithUnmappedTag(
+  type: "dimension" | "temporal-unit",
+): UnsavedCard {
+  const query = Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+    query: "select * from products where {{my_filter}}",
+    templateTags: {
+      my_filter: {
+        id: "24d574c5-40e7-4e9d-9d0e-3fbc7b1f7bd0",
+        name: "my_filter",
+        "display-name": "My Filter",
+        type: "text",
+      },
+    },
+  });
+  return createAdHocNativeCard({
+    dataset_query: Lib.toJsQuery(
+      Lib.withTemplateTags(
+        query,
+        Lib.templateTags(query).map((tag) => ({ ...tag, type })),
+      ),
+    ),
+  });
+}
+
+function getEmptyNativeQuestionCard({
+  database,
+}: {
+  database: DatabaseId | null;
+}): UnsavedCard {
+  return createAdHocNativeCard({
+    dataset_query: {
+      ...Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, { query: "" }),
+      database,
+    },
+  });
+}
+
+function getSavedGUIQuestionCard(overrides?: Partial<Card>): Card {
+  return createMockCard({
+    visualization_settings: {},
+    dataset_query: ORDERS_QUERY,
+    ...SAVED_QUESTION,
+    ...overrides,
+  });
+}
+
+function getSavedNativeQuestionCard(overrides?: Partial<Card>): Card {
+  return createSavedNativeCard({ ...SAVED_QUESTION, ...overrides });
+}
+
+function mockSettings({ enableNestedQueries = true } = {}) {
+  MetabaseSettings.get = jest.fn().mockImplementation((key: string) => {
+    if (key === "enable-nested-queries") {
+      return enableNestedQueries;
+    }
+    return false;
+  });
+}
+
+type CancelQuery = ComponentProps<typeof ViewTitleHeader>["cancelQuery"];
+
+interface SetupOpts extends Partial<ComponentProps<typeof ViewTitleHeader>> {
+  card: Card | UnsavedCard;
+  database?: Database | null;
+  settings?: { enableNestedQueries?: boolean };
+  hideOrdersTable?: boolean;
+}
+
+function buildSetup({
+  card,
+  database = createSampleDatabase(),
+  settings,
+  isActionListVisible = true,
+  isAdditionalInfoVisible = true,
+  isDirty = false,
+  isRunnable = true,
+  hideOrdersTable = false,
+  ...props
+}: SetupOpts) {
+  mockSettings(settings);
+
+  setupTableEndpoints(ORDERS_TABLE);
+  setupTableEndpoints(PRODUCTS_TABLE);
+  setupListDatabaseSchemasEndpoint(SAMPLE_DB_ID, ["PUBLIC"]);
+  setupGetUserKeyValueEndpoint({
+    namespace: "user_acknowledgement",
+    key: "turn_into_model_modal",
+    value: false,
+  });
+
+  const callbacks = {
+    runQuestionQuery: jest.fn(),
+    updateQuestion: jest.fn(),
+    setQueryBuilderMode: jest.fn(),
+    onOpenModal: jest.fn(),
+    onAddFilter: jest.fn(),
+    onCloseFilter: jest.fn(),
+    editSummary: jest.fn(),
+    onOpenQuestionInfo: jest.fn(),
+    onCloseSummary: jest.fn(),
+    onSave: jest.fn(),
+  };
+
+  const storeInitialState = createMockState({
+    entities: createMockEntitiesState({
+      databases: database ? [database] : [],
+      questions: "id" in card ? [card] : [],
+      tables: hideOrdersTable
+        ? [PRODUCTS_TABLE, HIDDEN_ORDERS_TABLE]
+        : undefined,
+    }),
+  });
+
+  const metadata = createMockMetadataFromState(storeInitialState);
+  const question = new Question(card, metadata);
+
+  const viewTitleHeaderProps: ComponentProps<typeof ViewTitleHeader> = {
+    isNavBarOpen: false,
+    isObjectDetail: false,
+    isBookmarked: false,
+    isSaved: false,
+    isModelOrMetric: false,
+    isNativeEditorOpen: false,
+    isShowingSummarySidebar: false,
+    isResultDirty: false,
+    isShowingQuestionInfoSidebar: false,
+    areFiltersExpanded: false,
+    queryBuilderMode: "dataset",
+    isRunning: false,
+    toggleBookmark: jest.fn(),
+    cancelQuery: jest.fn(),
+    onExpandFilters: jest.fn(),
+    onCollapseFilters: jest.fn(),
+    onCloseQuestionInfo: jest.fn(),
+    ...callbacks,
+    ...props,
+    question,
+    isActionListVisible,
+    isAdditionalInfoVisible,
+    isDirty,
+    isRunnable,
+  };
+
+  return { question, callbacks, storeInitialState, viewTitleHeaderProps };
+}
+
+function setup(opts: SetupOpts) {
+  const { question, callbacks, storeInitialState, viewTitleHeaderProps } =
+    buildSetup(opts);
+
+  renderWithProviders(
+    <Route path="/" element={<ViewTitleHeader {...viewTitleHeaderProps} />} />,
+    {
+      withRouter: true,
+      storeInitialState,
+    },
+  );
+
+  return { question, ...callbacks };
+}
+
+function setupWithKBar(opts: SetupOpts) {
+  const { question, callbacks, storeInitialState, viewTitleHeaderProps } =
+    buildSetup(opts);
+
+  const { rerender, getRegistrationsOf } = renderWithRegisterActionsSpy(
+    <ViewTitleHeader {...viewTitleHeaderProps} />,
+    { withRouter: true, storeInitialState },
+  );
+
+  return {
+    question,
+    props: viewTitleHeaderProps,
+    rerender,
+    getRegistrationsOf,
+    ...callbacks,
+  };
+}
+
+function setupAdHoc(props: Partial<SetupOpts> = {}) {
+  return setup({ card: getAdHocQuestionCard(), ...props });
+}
+
+function setupNative(props?: Partial<SetupOpts>) {
+  return setup({ card: getNativeQuestionCard(), ...props });
+}
+
+function setupSavedNative(props: Partial<SetupOpts> = {}) {
+  const collection = {
+    id: "root",
+    name: "Our analytics",
+  };
+
+  fetchMock.get("path:/api/collection/root", collection);
+
+  const utils = setup({ card: getSavedNativeQuestionCard(), ...props });
+
+  return {
+    ...utils,
+    collection,
+  };
+}
+
+describe("ViewTitleHeader", () => {
+  const TEST_CASE = {
+    SAVED_GUI_QUESTION: {
+      card: getSavedGUIQuestionCard(),
+      questionType: "saved GUI question",
+    },
+    AD_HOC_QUESTION: {
+      card: getAdHocQuestionCard(),
+      questionType: "ad-hoc GUI question",
+    },
+    NATIVE_QUESTION: {
+      card: getNativeQuestionCard(),
+      questionType: "not saved native question",
+    },
+    SAVED_NATIVE_QUESTION: {
+      card: getSavedNativeQuestionCard(),
+      questionType: "saved native question",
+    },
+  };
+
+  const ALL_TEST_CASES = Object.values(TEST_CASE);
+  const GUI_TEST_CASES = [
+    TEST_CASE.SAVED_GUI_QUESTION,
+    TEST_CASE.AD_HOC_QUESTION,
+  ];
+  const NATIVE_TEST_CASES = [
+    TEST_CASE.SAVED_NATIVE_QUESTION,
+    TEST_CASE.NATIVE_QUESTION,
+  ];
+  const SAVED_QUESTIONS_TEST_CASES = [
+    TEST_CASE.SAVED_GUI_QUESTION,
+    TEST_CASE.SAVED_NATIVE_QUESTION,
+  ];
+
+  describe("Common", () => {
+    ALL_TEST_CASES.forEach((testCase) => {
+      const { card, questionType } = testCase;
+
+      describe(questionType, () => {
+        it("offers to save", () => {
+          const { onOpenModal } = setup({ card, isDirty: true });
+          fireEvent.click(screen.getByText("Save"));
+          expect(onOpenModal).toHaveBeenCalledWith("save");
+        });
+
+        it("does not offer to save if it's not dirty", () => {
+          setup({ card, isDirty: false });
+          expect(screen.queryByText("Save")).not.toBeInTheDocument();
+        });
+
+        it("offers to refresh query results", () => {
+          const { runQuestionQuery } = setup({ card });
+          fireEvent.click(screen.getByLabelText("refresh icon"));
+          expect(runQuestionQuery).toHaveBeenCalledWith({ ignoreCache: true });
+        });
+
+        it("does not offer to refresh query results if question is not runnable", () => {
+          setup({ card, isRunnable: false });
+          expect(
+            screen.queryByLabelText("refresh icon"),
+          ).not.toBeInTheDocument();
+        });
+
+        it("does not offer to modify a query when a user doesn't have data permissions", () => {
+          setup({ card, database: null });
+          expect(screen.queryByText("Filter")).not.toBeInTheDocument();
+          expect(
+            screen.queryByTestId("filters-visibility-control"),
+          ).not.toBeInTheDocument();
+          expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
+          expect(
+            screen.queryByTestId("notebook-button"),
+          ).not.toBeInTheDocument();
+          expect(screen.getByLabelText("refresh icon")).toBeInTheDocument();
+        });
+
+        it("displays refresh button tooltip for the refresh button", async () => {
+          setup({ card });
+          const refreshButton = screen.getByLabelText("refresh icon");
+          await userEvent.hover(refreshButton);
+          const tooltip = await screen.findByRole("tooltip");
+          expect(tooltip).toHaveTextContent("Refresh");
+        });
+      });
+    });
+  });
+
+  describe("GUI", () => {
+    GUI_TEST_CASES.forEach((testCase) => {
+      const { card, questionType } = testCase;
+
+      describe(questionType, () => {
+        it("displays database and table names", async () => {
+          setup({ card });
+
+          expect(
+            await screen.findByText("Sample Database"),
+          ).toBeInTheDocument();
+          expect(await screen.findByText("Orders")).toBeInTheDocument();
+        });
+
+        it("offers to filter query results", () => {
+          setup({
+            card,
+            queryBuilderMode: "view",
+          });
+          expect(screen.getByText("Filter")).toBeInTheDocument();
+        });
+
+        it("offers to summarize query results", () => {
+          const { editSummary } = setup({
+            card,
+            queryBuilderMode: "view",
+          });
+          fireEvent.click(screen.getByText("Summarize"));
+          expect(editSummary).toHaveBeenCalled();
+        });
+
+        it("allows to open notebook editor", () => {
+          const { setQueryBuilderMode } = setup({
+            card,
+            queryBuilderMode: "view",
+          });
+          fireEvent.click(screen.getByTestId("notebook-button"));
+          expect(setQueryBuilderMode).toHaveBeenCalledWith("notebook");
+        });
+
+        it("allows to close notebook editor", () => {
+          const { setQueryBuilderMode } = setup({
+            card,
+            queryBuilderMode: "notebook",
+            result: createMockDataset(),
+          });
+          fireEvent.click(screen.getByTestId("notebook-button"));
+          expect(setQueryBuilderMode).toHaveBeenCalledWith("view");
+        });
+
+        it("does not offer to filter query results in notebook mode", () => {
+          setup({ card, queryBuilderMode: "notebook" });
+          expect(screen.queryByText("Filter")).not.toBeInTheDocument();
+        });
+
+        it("does not offer to filter query in detail view", () => {
+          setup({ card, isObjectDetail: true });
+          expect(screen.queryByText("Filter")).not.toBeInTheDocument();
+        });
+
+        it("does not offer to summarize query results in notebook mode", () => {
+          setup({ card, queryBuilderMode: "notebook" });
+          expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
+        });
+
+        it("does not offer to summarize query in detail view", () => {
+          setup({ card, isObjectDetail: true });
+          expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
+        });
+      });
+    });
+  });
+
+  describe("Native", () => {
+    NATIVE_TEST_CASES.forEach((testCase) => {
+      const { card, questionType } = testCase;
+
+      describe(questionType, () => {
+        it("does not offer to filter query results", () => {
+          setup({ card });
+          expect(screen.queryByText("Filter")).not.toBeInTheDocument();
+        });
+
+        it("does not offer to summarize query results", () => {
+          setup({ card });
+          expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
+        });
+
+        it("does not offer to refresh query results if native editor is open", () => {
+          setup({ card, isNativeEditorOpen: true });
+          expect(
+            screen.queryByLabelText("refresh icon"),
+          ).not.toBeInTheDocument();
+        });
+      });
+    });
+  });
+
+  describe("Saved", () => {
+    SAVED_QUESTIONS_TEST_CASES.forEach((testCase) => {
+      const { card, questionType } = testCase;
+
+      describe(questionType, () => {
+        beforeEach(() => {
+          fetchMock.get("path:/api/collection/root", {
+            id: "root",
+            name: "Our analytics",
+          });
+        });
+
+        it("calls save function on title update", async () => {
+          const { onSave } = setup({ card });
+          const title = screen.getByTestId("saved-question-header-title");
+          await userEvent.clear(title);
+          await userEvent.type(title, "New Title{enter}");
+          expect(title).toHaveValue("New Title");
+          title.blur();
+          expect(onSave).toHaveBeenCalled();
+        });
+
+        it("shows bookmark and action buttons", () => {
+          setup({ card });
+          expect(
+            screen.getByTestId("qb-header-info-button"),
+          ).toBeInTheDocument();
+        });
+      });
+    });
+  });
+
+  describe("refresh shortcut", () => {
+    // `r` is the key of the "query-builder-data-refresh" shortcut.
+    const pressRefreshKey = () => userEvent.keyboard("r");
+
+    const mockCancelQuery = () =>
+      jest.fn<ReturnType<CancelQuery>, Parameters<CancelQuery>>();
+
+    it('cancels a running query when "r" is pressed', async () => {
+      const cancelQuery = mockCancelQuery();
+      const { runQuestionQuery } = setupWithKBar({
+        card: getAdHocQuestionCard(),
+        queryBuilderMode: "view",
+        isRunning: true,
+        cancelQuery,
+      });
+
+      await pressRefreshKey();
+
+      expect(cancelQuery).toHaveBeenCalledTimes(1);
+      expect(runQuestionQuery).not.toHaveBeenCalled();
+    });
+
+    it('runs the query without cache when "r" is pressed and no query runs', async () => {
+      const cancelQuery = mockCancelQuery();
+      const { runQuestionQuery } = setupWithKBar({
+        card: getAdHocQuestionCard(),
+        queryBuilderMode: "view",
+        isRunning: false,
+        cancelQuery,
+      });
+
+      await pressRefreshKey();
+
+      expect(runQuestionQuery).toHaveBeenCalledTimes(1);
+      expect(runQuestionQuery).toHaveBeenCalledWith({ ignoreCache: true });
+      expect(cancelQuery).not.toHaveBeenCalled();
+    });
+
+    it("uses the latest isRunning without re-registering", async () => {
+      const cancelQuery = mockCancelQuery();
+      const { props, rerender, getRegistrationsOf, runQuestionQuery } =
+        setupWithKBar({
+          card: getAdHocQuestionCard(),
+          queryBuilderMode: "view",
+          isRunning: false,
+          cancelQuery,
+        });
+      const getRefreshRegistrations = () =>
+        getRegistrationsOf("query-builder-data-refresh");
+      expect(getRefreshRegistrations()).toHaveLength(1);
+
+      rerender(<ViewTitleHeader {...props} isRunning />);
+      await pressRefreshKey();
+
+      expect(getRefreshRegistrations()).toHaveLength(1);
+      expect(cancelQuery).toHaveBeenCalledTimes(1);
+      expect(runQuestionQuery).not.toHaveBeenCalled();
+    });
+
+    it("has no refresh shortcut in the notebook", async () => {
+      const cancelQuery = mockCancelQuery();
+      const { props, rerender, getRegistrationsOf, runQuestionQuery } =
+        setupWithKBar({
+          card: getAdHocQuestionCard(),
+          queryBuilderMode: "view",
+          isRunning: false,
+          cancelQuery,
+        });
+      expect(getRegistrationsOf("query-builder-data-refresh")).toHaveLength(1);
+
+      rerender(<ViewTitleHeader {...props} queryBuilderMode="notebook" />);
+      await pressRefreshKey();
+
+      expect(runQuestionQuery).not.toHaveBeenCalled();
+      expect(cancelQuery).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe("ViewHeader | Ad-hoc GUI question", () => {
+  it("does not open details sidebar on table name click", async () => {
+    const { onOpenModal } = setupAdHoc();
+    const tableName = ORDERS_TABLE.display_name;
+
+    fireEvent.click(await screen.findByText(tableName));
+
+    expect(onOpenModal).not.toHaveBeenCalled();
+  });
+
+  it("does not render bookmark and action buttons", () => {
+    setupAdHoc();
+    expect(
+      screen.queryByTestId("qb-header-info-button"),
+    ).not.toBeInTheDocument();
+  });
+
+  describe("filters", () => {
+    const card = getAdHocQuestionCard(FILTERED_GUI_QUESTION);
+
+    it("shows all filters by default", () => {
+      setup({ card, queryBuilderMode: "view" });
+      expect(screen.getByText("Total is less than 50")).toBeInTheDocument();
+      expect(screen.getByText("Tax is not empty")).toBeInTheDocument();
+    });
+
+    it("can collapse and expand filters", async () => {
+      setup({ card, queryBuilderMode: "view" });
+
+      fireEvent.click(screen.getByTestId("filters-visibility-control"));
+
+      expect(
+        screen.queryByText("Total is less than 50"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Tax is not empty")).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId("filters-visibility-control"));
+
+      expect(screen.getByText("Total is less than 50")).toBeInTheDocument();
+      expect(screen.getByText("Tax is not empty")).toBeInTheDocument();
+    });
+
+    it("does not show filters in notebook mode", () => {
+      setup({ card, queryBuilderMode: "notebook" });
+
+      expect(
+        screen.queryByTestId("filters-visibility-control"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Total is less than 50"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Tax is not empty")).not.toBeInTheDocument();
+    });
+
+    it("hides the close notebook editor for brand new questions", () => {
+      setup({
+        card,
+        queryBuilderMode: "notebook",
+      });
+      expect(screen.queryByLabelText("notebook icon")).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe("View Header | Saved GUI question", () => {
+  describe("filters", () => {
+    const card = getSavedGUIQuestionCard(FILTERED_GUI_QUESTION);
+
+    it("shows filters collapsed by default", () => {
+      setup({ card, queryBuilderMode: "view" });
+
+      expect(
+        screen.getByTestId("filters-visibility-control"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Total is less than 50"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Tax is not empty")).not.toBeInTheDocument();
+    });
+
+    it("can collapse and expand filters", () => {
+      setup({ card, queryBuilderMode: "view" });
+
+      fireEvent.click(screen.getByTestId("filters-visibility-control"));
+
+      expect(screen.getByText("Total is less than 50")).toBeInTheDocument();
+      expect(screen.getByText("Tax is not empty")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId("filters-visibility-control"));
+
+      expect(
+        screen.queryByText("Total is less than 50"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Tax is not empty")).not.toBeInTheDocument();
+    });
+
+    it("does not show filters in notebook mode", () => {
+      setup({ card, queryBuilderMode: "notebook" });
+
+      expect(
+        screen.queryByTestId("filters-visibility-control"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Total is less than 50"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Tax is not empty")).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe("View Header | native question without write permissions on database (eg user without self serve data permissions)", () => {
+  const database = createSampleDatabase({ native_permissions: "none" });
+
+  it("does not display question database", () => {
+    const { question } = setupNative({ database });
+    const databaseName = checkNotNull(
+      Lib.databaseDisplayInfo(question.query()),
+    ).displayName;
+    expect(screen.queryByText(databaseName)).not.toBeInTheDocument();
+  });
+
+  it("does not offer to explore query results", () => {
+    setupNative({ database });
+    expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
+  });
+});
+
+describe("View Header | Not saved native question", () => {
+  it("does not display question database", () => {
+    const { question } = setupNative();
+    const databaseName = checkNotNull(
+      Lib.databaseDisplayInfo(question.query()),
+    ).displayName;
+    expect(screen.queryByText(databaseName)).not.toBeInTheDocument();
+  });
+
+  it("does not offer to explore query results", () => {
+    setupNative();
+    expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
+  });
+
+  it("does not let the question be saved before a database is selected (metabase#18148)", async () => {
+    const { onOpenModal } = setup({
+      card: createAdHocNativeCard({
+        dataset_query: {
+          ...Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+            query: "select foo",
+          }),
+          database: null,
+        },
+      }),
+      isDirty: true,
+    });
+
+    const saveButton = screen.getByTestId("qb-save-button");
+    expect(saveButton).toHaveAttribute("aria-disabled", "true");
+
+    await userEvent.click(saveButton);
+    expect(onOpenModal).not.toHaveBeenCalled();
+  });
+
+  it("does not show an empty tooltip on the disabled save button of an empty query (metabase#51035)", async () => {
+    setup({
+      card: getEmptyNativeQuestionCard({ database: SAMPLE_DB_ID }),
+      isDirty: true,
+    });
+
+    const saveButton = screen.getByTestId("qb-save-button");
+    expect(saveButton).toHaveAttribute("aria-disabled", "true");
+
+    await userEvent.hover(saveButton);
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  describe.each(["dimension", "temporal-unit"] as const)(
+    "%s template tag without a field",
+    (type) => {
+      const UNMAPPED_TAG_ERROR =
+        'The variable "my_filter" needs to be mapped to a field.';
+
+      it("does not let the question be saved and explains why", async () => {
+        const { onOpenModal } = setup({
+          card: getNativeQuestionCardWithUnmappedTag(type),
+          isDirty: true,
+        });
+
+        const saveButton = screen.getByTestId("qb-save-button");
+        expect(saveButton).toHaveAttribute("aria-disabled", "true");
+
+        await userEvent.hover(saveButton);
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(
+          UNMAPPED_TAG_ERROR,
+        );
+
+        await userEvent.click(saveButton);
+        expect(onOpenModal).not.toHaveBeenCalled();
+      });
+    },
+  );
+});
+
+describe("View Header | Saved native question", () => {
+  it("displays database a question is using", () => {
+    const { question } = setupSavedNative();
+    const databaseName = checkNotNull(
+      Lib.databaseDisplayInfo(question.query()),
+    ).displayName;
+    expect(screen.getByText(databaseName)).toBeInTheDocument();
+  });
+
+  it("offers to explore query results", () => {
+    setupSavedNative();
+    expect(screen.getByText("Explore results")).toBeInTheDocument();
+  });
+
+  it("doesn't offer to explore results if nested queries are disabled", () => {
+    setupSavedNative({ settings: { enableNestedQueries: false } });
+    expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
+  });
+
+  it("doesn't offer to explore results without data permissions (metabase#20044)", () => {
+    setupSavedNative({ database: null });
+    expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
+  });
+
+  it("doesn't offer to explore results if the database doesn't support nested queries (metabase#22822)", () => {
+    setupSavedNative({
+      database: createSampleDatabase({
+        features: _.without(COMMON_DATABASE_FEATURES, "nested-queries"),
+      }),
+    });
+    expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
+  });
+});
+
+describe("View Header | Read only permissions", () => {
+  it("should disable the input field for the question title", () => {
+    setup({ card: getSavedGUIQuestionCard({ can_write: false }) });
+    expect(screen.queryByTestId("saved-question-header-title")).toBeDisabled();
+  });
+});
+
+describe("View Header | Hidden tables", () => {
+  it("should show the View-only badge when the source table is hidden", async () => {
+    setup({
+      hideOrdersTable: true,
+      card: getSavedGUIQuestionCard({ can_write: false }),
+    });
+    expect(await screen.findByText("View-only")).toBeInTheDocument();
+  });
+
+  it("should show the View-only badge when a joined table is hidden", async () => {
+    setup({
+      hideOrdersTable: true,
+      card: getSavedGUIQuestionCard({
+        can_write: false,
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestQuery(SAMPLE_PROVIDER, {
+            stages: [
+              {
+                source: { type: "table", id: PRODUCTS_ID },
+                joins: [
+                  {
+                    source: { type: "table", id: ORDERS_ID },
+                    strategy: "left-join",
+                    alias: "Orders",
+                    conditions: [
+                      {
+                        operator: "=",
+                        left: { type: "column", name: "ID" },
+                        right: { type: "column", name: "PRODUCT_ID" },
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          }),
+        ),
+      }),
+    });
+    expect(await screen.findByText("View-only")).toBeInTheDocument();
+  });
+});
+
+describe("View Header | Inaccessible Cards", () => {
+  it("should show the View-only badge when the source question is inaccessible", async () => {
+    const sourceCard = createMockCard({ id: 123, dataset_query: ORDERS_QUERY });
+    const provider = createMetadataProvider({
+      metadata: createMockMetadata({
+        databases: [createSampleDatabase()],
+        questions: [sourceCard],
+      }),
+    });
+    setup({
+      card: getSavedGUIQuestionCard({
+        can_write: false,
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestQuery(provider, {
+            stages: [
+              {
+                source: { type: "card", id: sourceCard.id },
+                joins: [
+                  {
+                    source: { type: "table", id: ORDERS_ID },
+                    strategy: "left-join",
+                    alias: "Orders",
+                    conditions: [
+                      {
+                        operator: "=",
+                        left: { type: "column", name: "ID" },
+                        right: { type: "column", name: "PRODUCT_ID" },
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          }),
+        ),
+      }),
+    });
+    expect(await screen.findByText("View-only")).toBeInTheDocument();
+  });
+});

@@ -6,7 +6,7 @@ export const userToColor = (user: User) => {
 };
 
 const groupColorPalette = [
-  color("error"),
+  color("feedback-negative"),
   color("accent2"),
   color("core-brand"),
   color("accent4"),

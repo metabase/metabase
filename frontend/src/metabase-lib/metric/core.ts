@@ -1,13 +1,16 @@
-import dayjs, { type Dayjs } from "dayjs";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
+/* eslint-disable metabase/no-unjustified-type-casts */
 
 import * as LibMetric from "cljs/metabase.lib_metric.js";
-import type { Metadata } from "metabase-lib";
+import { type Dayjs, dayjs } from "metabase/dayjs";
+import type { JsMetadata } from "metabase-lib";
 import type {
-  ConcreteTableId,
   JsMetricDefinition,
   MeasureId,
+  MetricDimension,
   MetricId,
   SegmentId,
+  TableId,
 } from "metabase-types/api";
 
 import type {
@@ -46,7 +49,7 @@ import type {
   TimeFilterParts,
 } from "./types";
 
-export function metadataProvider(jsMetadata: Metadata): MetadataProvider {
+export function metadataProvider(jsMetadata: JsMetadata): MetadataProvider {
   return LibMetric.metadataProvider(jsMetadata) as MetadataProvider;
 }
 
@@ -125,8 +128,8 @@ export function sourceMeasureId(
 
 export function sourceMeasureTableId(
   definition: MetricDefinition,
-): ConcreteTableId | null {
-  return LibMetric.sourceMeasureTableId(definition) as ConcreteTableId | null;
+): TableId | null {
+  return LibMetric.sourceMeasureTableId(definition) as TableId | null;
 }
 
 export function sourceMeasureMetadata(
@@ -470,6 +473,14 @@ export function project(
   return LibMetric.project(definition, dimensionRef) as MetricDefinition;
 }
 
+/** Projects a dimension using its default temporal bucket or binning strategy. */
+export function projectDimension(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+): MetricDefinition {
+  return LibMetric.projectDimension(definition, dimension) as MetricDefinition;
+}
+
 export function projectionDimension(
   definition: MetricDefinition,
   dimension: ProjectionClause | DimensionMetadata,
@@ -750,6 +761,24 @@ export function isSameSource(
   dimension2: DimensionMetadata,
 ): boolean {
   return LibMetric.isSameSource(dimension1, dimension2) as boolean;
+}
+
+export function fromMetricDimension(
+  dimension: MetricDimension,
+): DimensionMetadata {
+  return LibMetric.fromMetricDimension(dimension) as DimensionMetadata;
+}
+
+export function toMetricDimension(
+  dimension: DimensionMetadata,
+): MetricDimension {
+  return LibMetric.toMetricDimension(dimension) as MetricDimension;
+}
+
+export function groupDimensionsBySource(
+  dimensions: DimensionMetadata[],
+): DimensionMetadata[][] {
+  return LibMetric.groupDimensionsBySource(dimensions) as DimensionMetadata[][];
 }
 
 export function isCompatibleType(

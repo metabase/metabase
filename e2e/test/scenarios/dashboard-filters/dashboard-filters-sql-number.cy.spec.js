@@ -1,90 +1,5 @@
 const { H } = cy;
 
-import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
-
-import {
-  DASHBOARD_SQL_NUMBER_FILTERS,
-  questionDetails,
-} from "./shared/dashboard-filters-sql-number";
-
-describe("scenarios > dashboard > filters > SQL > text/category", () => {
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestionAndDashboard({ questionDetails }).then(
-      ({ body: { card_id, dashboard_id } }) => {
-        H.visitQuestion(card_id);
-
-        H.visitDashboard(dashboard_id);
-      },
-    );
-
-    H.editDashboard();
-  });
-
-  it("should work when set through the filter widget", () => {
-    Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(([filter]) => {
-      cy.log(`Make sure we can connect ${filter} filter`);
-
-      H.setFilter("Number", filter);
-
-      clickSelect();
-      H.popover().contains(filter).click();
-    });
-
-    H.saveDashboard();
-
-    Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
-      ([filter, { value, representativeResult }], index) => {
-        // eslint-disable-next-line metabase/no-unsafe-element-filtering
-        H.filterWidget().eq(index).click();
-        addWidgetNumberFilter(value);
-
-        cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.findByTestId("dashcard").within(() => {
-          cy.contains(representativeResult);
-        });
-
-        H.clearFilterWidget(index);
-        cy.wait("@dashcardQuery");
-      },
-    );
-  });
-
-  it("should work when set as the default filter", () => {
-    H.setFilter("Number", "Equal to");
-    H.sidebar().findByText("Default value").next().click();
-
-    addWidgetNumberFilter("3.8");
-
-    clickSelect();
-    H.popover().contains("Equal to").click();
-
-    H.saveDashboard();
-
-    cy.findByTestId("dashcard").within(() => {
-      cy.contains("Small Marble Hat");
-      cy.contains("Rustic Paper Wallet").should("not.exist");
-    });
-
-    H.clearFilterWidget();
-
-    H.filterWidget().click();
-
-    addWidgetNumberFilter("4.6", { buttonLabel: "Update filter" });
-
-    cy.findByTestId("dashcard").within(() => {
-      cy.findByText("Ergonomic Linen Toucan");
-      cy.contains("Small Marble Hat").should("not.exist");
-    });
-  });
-});
-
 describe("scenarios > dashboard > filters > SQL > number", () => {
   const questionDetails = {
     name: "Question 1",
@@ -113,13 +28,6 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
       name: "Rating",
       slug: "rating",
       id: "10c0d4ba",
-      type: "number/=",
-      sectionId: "number",
-    },
-    {
-      name: "Price",
-      slug: "price",
-      id: "88b1a9dd",
       type: "number/=",
       sectionId: "number",
     },
@@ -167,8 +75,14 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
     });
   });
 
-  it("should keep filter value on blur (metabase#31975)", () => {
-    cy.findByPlaceholderText("Price").type("95").blur();
+  it("should keep filter value on blur (metabase#31975), and reset mappings when the operator changes from '=' to another operator", () => {
+    H.editDashboard();
+    H.setFilter("Number", "Equal to");
+    H.getDashboardCard().findByRole("button").click();
+    H.popover().findByText("Price").click();
+    H.saveDashboard();
+
+    cy.findByPlaceholderText("Number").type("95").blur();
     cy.findByPlaceholderText("Rating").type("3.8").blur();
 
     cy.findByTestId("table-body")
@@ -182,97 +96,36 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
       .and("contain", "95.93")
       // second line rating
       .and("contain", "4.4");
-  });
-});
 
-describe("scenarios > dashboard > filters > SQL > number and multiple values", () => {
-  const questionDetails = {
-    name: "SQL",
-    native: {
-      query: "SELECT ID FROM products WHERE ID IN ({{number}})",
-      "template-tags": {
-        number: {
-          id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
-          name: "number",
-          "display-name": "Number",
-          type: "number",
-        },
-      },
-    },
-  };
-
-  const parameterDetails = {
-    id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
-    type: "number/=",
-    name: "Number",
-    slug: "number",
-    isMultiSelect: true,
-  };
-
-  const dashboardDetails = {
-    parameters: [parameterDetails],
-    enable_embedding: true,
-    embedding_params: {
-      number: "enabled",
-    },
-  };
-
-  function setFilterAndVerify({ values } = {}) {
-    H.filterWidget().click();
-    H.popover().within(() => {
-      H.multiAutocompleteInput().type(values.join(","));
-      cy.button("Add filter").click();
-    });
-    values.forEach((value) => {
-      H.getDashboardCard().within(() => {
-        cy.findAllByText(value).should("have.length.gte", 1);
-        cy.findAllByText(value).should("have.length.gte", 1);
-      });
-    });
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should allow multiple values for Number variables", () => {
-    cy.log("create a dashboard");
-    H.createNativeQuestionAndDashboard({
-      questionDetails,
-      dashboardDetails,
-    }).then(({ body: dashcard }) => {
-      cy.wrap(dashcard.dashboard_id).as("dashboardId");
-    });
-
-    cy.log("set mapping");
-    H.visitDashboard("@dashboardId");
+    cy.log("reset mappings when the operator changes from '=' to Between");
     H.editDashboard();
-    cy.findByTestId("fixed-width-filters").findByText("Number").click();
-    H.selectDashboardFilter(H.getDashboardCard(), "Number");
-    H.sidebar().findByLabelText("Multiple values").click();
+
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .contains("Number")
+      .click();
+
+    H.sidebar().findByText("Filter operator").next().click();
+    H.popover().findByText("Between").click();
+
+    H.getDashboardCard()
+      .should(
+        "contain",
+        "A number variable in this card can only be connected to a number filter with Equal to operator.",
+      )
+      .and("not.contain", "Column to filter on");
+
+    H.sidebar().findByText("Filter operator").next().click();
+    H.popover().findByText("Equal to").click();
+
+    H.getDashboardCard()
+      .should("contain", "Column to filter on")
+      .findByRole("button")
+      .should("contain", "Select…")
+      .and("not.contain", "Price");
+
     H.saveDashboard();
 
-    cy.log("regular dashboard");
-    setFilterAndVerify({ values: ["10", "20"] });
-
-    cy.log("public dashboard");
-    cy.get("@dashboardId").then((dashboardId) =>
-      H.visitPublicDashboard(dashboardId),
-    );
-    setFilterAndVerify({ values: ["10", "20"] });
-
-    cy.log("embedded dashboard");
-    cy.get("@dashboardId").then((dashboardId) =>
-      H.visitEmbeddedPage({
-        resource: { dashboard: dashboardId },
-        params: {},
-      }),
-    );
-    setFilterAndVerify({ values: ["10", "20"] });
+    H.filterWidget({ name: "Rating" }).should("be.visible");
+    H.filterWidget({ name: "Number" }).should("not.exist");
   });
 });
-
-function clickSelect() {
-  H.getDashboardCard().findByText("Select…").click();
-}

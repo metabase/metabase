@@ -29,21 +29,21 @@ export const AgentTodoListMessage = ({
   const [opened, { toggle }] = useDisclosure(true);
 
   return (
-    <Paper shadow="none" radius="md" className={S.todoContainer}>
+    <Paper shadow="none" radius="sm" className={S.todoContainer}>
       <Group
         align="center"
         justify="space-between"
         onClick={toggle}
         className={S.todoHeader}
         py="sm"
-        px="md"
+        px="lg"
         data-testid="todo-list-header"
       >
         <Flex align="center" justify="center">
-          <Icon name="list" size=".75rem" mr="xs" c="core-brand" />
+          <Icon name="list" size=".75rem" mr="xxs" c="core-brand" />
           <Text size="sm" fw="bold" c="core-brand">{t`Todo List`}</Text>
         </Flex>
-        <Flex align="center" justify="center" h="md">
+        <Flex align="center" justify="center" h="lg">
           <Icon
             name={opened ? "chevrondown" : "chevronup"}
             size=".75rem"
@@ -56,14 +56,14 @@ export const AgentTodoListMessage = ({
         in={opened}
         transitionDuration={opened ? 200 : 0}
         pb="sm"
-        px="md"
+        px="lg"
       >
-        <Stack gap="sm" w="100%" pb="xs">
+        <Stack gap="sm" w="100%" pb="xxs">
           {todos.map((todo) => {
             const config = todoStatusConfig[todo.status];
 
             return (
-              <Flex key={todo.id} bdrs="sm" align="flex-start">
+              <Flex key={todo.id} bdrs="xs" align="flex-start">
                 {match(todo.status)
                   .with("pending", () => (
                     <Flex
@@ -80,7 +80,7 @@ export const AgentTodoListMessage = ({
                       justify="center"
                       mr="sm"
                     >
-                      <Icon name="check" size=".7rem" c="white" />
+                      <Icon name="check" size=".7rem" c="core-white" />
                     </Flex>
                   ))
                   .with("in_progress", () => (
@@ -90,7 +90,7 @@ export const AgentTodoListMessage = ({
                       justify="center"
                       mr="sm"
                     >
-                      <Icon name="arrow_right" size=".6rem" c="white" />
+                      <Icon name="arrow_right" size=".6rem" c="core-white" />
                     </Flex>
                   ))
                   .with("cancelled", () => (
@@ -101,7 +101,7 @@ export const AgentTodoListMessage = ({
                       justify="center"
                       mr="sm"
                     >
-                      <Icon name="close" size=".7rem" c="white" />
+                      <Icon name="close" size=".7rem" c="core-white" />
                     </Flex>
                   ))
                   .exhaustive()}

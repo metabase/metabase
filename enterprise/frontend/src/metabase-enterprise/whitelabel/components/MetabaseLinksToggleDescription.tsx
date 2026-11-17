@@ -24,7 +24,7 @@ export function MetabaseLinksToggleDescription() {
         </Anchor>
       </Popover.Target>
       <Popover.Dropdown>
-        <Stack p="md" gap="sm" maw="26rem">
+        <Stack p="lg" gap="sm" maw="26rem">
           <Text size="sm">
             {t`This affects all links in the product experience (outside of the admin panel) that point to Metabase.com URLs.`}
           </Text>

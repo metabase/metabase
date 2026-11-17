@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { actionApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { Dispatch } from "metabase/redux/store";
@@ -26,7 +27,7 @@ export const executeAction =
       );
 
       const message = getActionExecutionMessage(action, result);
-      dispatch(addUndo({ message, toastColor: "success" }));
+      dispatch(addUndo({ message, toastColor: "feedback-positive" }));
       return { success: true, message };
     } catch (error) {
       const message = getActionErrorMessage(error);

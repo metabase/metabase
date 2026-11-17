@@ -5,9 +5,9 @@ import {
   isNewQuerySqlIdle,
   parseNewQueryMode,
 } from "metabase/nav/containers/ProtoNavbar/newQuery";
-import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
-import { useSelector } from "metabase/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { MODAL_TYPES } from "metabase/querying/constants";
+import type { QueryModalType } from "metabase/redux/store";
+import { useLocation } from "metabase/router";
 import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -39,7 +39,7 @@ export function AdHocQuestionLeftSide(
     isSummarized,
     onOpenModal,
   } = props;
-  const { pathname } = useSelector(getLocation);
+  const { pathname } = useLocation();
   const hideNativeTitle = isNewQuerySqlIdle(pathname, question);
   const nativeTitle =
     parseNewQueryMode(pathname) === "sql" ? t`New query` : t`New question`;

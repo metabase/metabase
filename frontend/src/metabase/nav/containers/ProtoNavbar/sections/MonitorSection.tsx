@@ -1,7 +1,7 @@
-import type { Location } from "history";
 import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
+import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import { SidebarLink } from "../../MainNavbar/SidebarItems";
@@ -9,7 +9,7 @@ import { SubNavHeading, SubNavSection } from "../SubNav";
 
 type Props = { location: Location };
 
-// Usage Analytics + the /admin/tools views (minus Help).
+// Usage Analytics + the /monitor views.
 export function MonitorSection({ location }: Props) {
   const path = location.pathname;
 
@@ -45,7 +45,7 @@ export function MonitorSection({ location }: Props) {
         <SidebarLink
           icon="search_check"
           url={Urls.dependencyDiagnostics()}
-          isSelected={path.startsWith("/data-studio/dependency-diagnostics")}
+          isSelected={path.startsWith(Urls.dependencyDiagnostics())}
         >
           {t`Dependency diagnostics`}
         </SidebarLink>
@@ -55,43 +55,43 @@ export function MonitorSection({ location }: Props) {
         <SubNavHeading>{t`Tools`}</SubNavHeading>
         <SidebarLink
           icon="clipboard"
-          url={Urls.adminToolsTasks()}
-          isSelected={path.startsWith("/admin/tools/tasks")}
+          url={Urls.monitorTasks()}
+          isSelected={path.startsWith(Urls.monitorTasks())}
         >
           {t`Tasks`}
         </SidebarLink>
         <SidebarLink
           icon="clock"
-          url={Urls.adminToolsJobs()}
-          isSelected={path.startsWith("/admin/tools/jobs")}
+          url={Urls.monitorJobs()}
+          isSelected={path.startsWith(Urls.monitorJobs())}
         >
           {t`Jobs`}
         </SidebarLink>
         <SidebarLink
           icon="audit"
-          url={Urls.adminToolsLogs()}
-          isSelected={path.startsWith("/admin/tools/logs")}
+          url={Urls.monitorLogs()}
+          isSelected={path.startsWith(Urls.monitorLogs())}
         >
           {t`Logs`}
         </SidebarLink>
         <SidebarLink
           icon="octagon_alert"
-          url={Urls.adminToolsErrors()}
-          isSelected={path.startsWith("/admin/tools/errors")}
+          url={Urls.monitorErroringQuestions()}
+          isSelected={path.startsWith(Urls.monitorErroringQuestions())}
         >
           {t`Erroring questions`}
         </SidebarLink>
         <SidebarLink
           icon="database"
-          url={Urls.adminToolsModelCaching()}
-          isSelected={path.startsWith("/admin/tools/model-caching")}
+          url={Urls.monitorModelPersistenceLog()}
+          isSelected={path.startsWith(Urls.monitorModelPersistenceLog())}
         >
           {t`Model cache log`}
         </SidebarLink>
         <SidebarLink
           icon="bell"
-          url={Urls.adminToolsNotifications()}
-          isSelected={path.startsWith("/admin/tools/notifications")}
+          url={Urls.monitorNotifications()}
+          isSelected={path.startsWith(Urls.monitorNotifications())}
         >
           {t`Alerts management`}
         </SidebarLink>

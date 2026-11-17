@@ -1,10 +1,11 @@
-import type { Location } from "history";
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useContext } from "react";
 
 import { skipToken } from "metabase/api";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { useSearchParams } from "metabase/router";
 import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
@@ -15,17 +16,12 @@ import { isSameNode } from "../../utils";
 import S from "./DependencyGraphPage.module.css";
 import { parseDependencyEntry } from "./utils";
 
-export type DependencyGraphPageQuery = {
-  id?: string;
-  type?: string;
-};
-
-type DependencyGraphPageProps = {
-  location?: Location<DependencyGraphPageQuery>;
-};
-
-export function DependencyGraphPage({ location }: DependencyGraphPageProps) {
-  const entry = parseDependencyEntry(location?.query?.id, location?.query.type);
+export function DependencyGraphPage() {
+  const [searchParams] = useSearchParams();
+  const entry = parseDependencyEntry(
+    searchParams.get("id") ?? undefined,
+    searchParams.get("type") ?? undefined,
+  );
   const { defaultEntry, baseUrl } = useContext(
     PLUGIN_DEPENDENCIES.DependencyGraphPageContext,
   );

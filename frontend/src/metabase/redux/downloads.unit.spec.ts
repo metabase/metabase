@@ -1,4 +1,5 @@
 import { setupBasename } from "__support__/basename";
+import { createMockMetadata } from "__support__/metadata";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import Question from "metabase-lib/v1/Question";
 import type { EntityToken } from "metabase-types/api/entity";
@@ -56,8 +57,12 @@ describe("getDatasetResponse", () => {
 });
 
 describe("getDatasetParams - embed question (token-based)", () => {
+  // Unjustified type cast. FIXME
   const TOKEN = "fake.jwt.token" as EntityToken;
-  const question = new Question(createMockCard({ id: 1 }), undefined);
+  const question = new Question(
+    createMockCard({ id: 1 }),
+    createMockMetadata(),
+  );
   const result = createMockDataset();
 
   const setLocationSearch = (search: string) => {
@@ -125,7 +130,10 @@ describe("getDatasetParams - embed question (token-based)", () => {
 
 describe("getDatasetParams - public question (uuid-based)", () => {
   const PUBLIC_UUID = "11111111-2222-3333-4444-555555555555";
-  const question = new Question(createMockCard({ id: 1 }), undefined);
+  const question = new Question(
+    createMockCard({ id: 1 }),
+    createMockMetadata(),
+  );
   const result = createMockDataset();
 
   it("forwards format_rows and pivot_results to the public question endpoint (#75545)", () => {
@@ -156,15 +164,35 @@ describe("getDatasetParams - public question (uuid-based)", () => {
   });
 });
 
+describe("getDatasetParams - ad-hoc question", () => {
+  it("sends the question display so the export can match the visualization (metabase#70909)", () => {
+    const question = new Question(
+      createMockCard({ id: undefined, display: "object" }),
+      createMockMetadata(),
+    );
+
+    const downloadParams = getDatasetParams({
+      type: "csv",
+      question,
+      result: createMockDataset(),
+    });
+
+    expect(downloadParams.url).toBe("/api/dataset/csv");
+    expect(downloadParams.body).toMatchObject({ display: "object" });
+  });
+});
+
 describe("readDownloadBlob", () => {
   it("returns the blob when the response reads to completion", async () => {
     const blob = new Blob(["a,b,c"], { type: "text/csv" });
+    // Unjustified type cast. FIXME
     const response = { blob: () => Promise.resolve(blob) } as Response;
 
     await expect(readDownloadBlob(response)).resolves.toBe(blob);
   });
 
   it("surfaces a localized error when the stream was aborted mid-download", async () => {
+    // Unjustified type cast. FIXME
     const response = {
       blob: () => Promise.reject(new TypeError("Failed to fetch")),
     } as unknown as Response;
@@ -182,7 +210,7 @@ describe("getChartFileName", () => {
   });
 
   const createMockQuestion = (name?: string) => {
-    return new Question(createMockCard({ name }), undefined);
+    return new Question(createMockCard({ name }), createMockMetadata());
   };
 
   const namedQuestion = createMockQuestion("Test Question");

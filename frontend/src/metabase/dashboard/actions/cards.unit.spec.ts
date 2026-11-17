@@ -9,16 +9,20 @@ import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
+import { createMockDashboardState, createMockState } from "__support__/state";
+import { waitFor } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import type { State, StoreDashcard } from "metabase/redux/store";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { performUndo } from "metabase/redux/undo";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   CardId,
   DashCardId,
   Dashboard,
   DashboardTabId,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -31,14 +35,9 @@ import {
   createMockLinkDashboardCard,
   createMockParameter,
   createMockPlaceholderDashboardCard,
-  createMockStructuredDatasetQuery,
   createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
-import {
-  ORDERS,
-  ORDERS_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { ORDERS, createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import type { SectionLayout } from "../sections";
 import { layoutOptions } from "../sections";
@@ -47,9 +46,14 @@ import { getDashCardById, getDashboardById, getDashcards } from "../selectors";
 import type { AddCardToDashboardOpts } from "./cards-typed";
 import {
   addCardToDashboard,
+  addHeadingDashCardToDashboard,
+  addMarkdownDashCardToDashboard,
   addSectionToDashboard,
+  duplicateCard,
+  removeCardFromDashboard,
   replaceCard,
 } from "./cards-typed";
+import { fetchCardData } from "./data-fetching";
 
 const DATE_PARAMETER = createMockParameter({
   id: "1",
@@ -68,9 +72,9 @@ const UNUSED_PARAMETER = createMockParameter({
   name: "Not mapped to anything",
 });
 
-const dataset_query = createMockStructuredDatasetQuery({
-  query: { "source-table": ORDERS_ID },
-});
+const dataset_query = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+);
 
 const ORDERS_TABLE_CARD = createMockCard({ id: 1, dataset_query });
 const ORDERS_LINE_CHART_CARD = createMockCard({
@@ -176,6 +180,7 @@ function setup({
     dashcards: _.indexBy(dashcards, "id"),
   });
 
+  // Unjustified type cast. FIXME
   const store = getMainStore(
     createMockState({ dashboard: dashboardState }),
   ) as Store<State>;
@@ -209,6 +214,29 @@ describe("dashboard/actions/cards", () => {
           );
         });
 
+        afterEach(() => {
+          jest.restoreAllMocks();
+        });
+
+        it("should track the added section layout", () => {
+          const trackSchemaEvent = jest
+            .spyOn(Analytics, "trackSchemaEvent")
+            .mockClear();
+
+          runAddSectionAction({ dashcards: [], sectionLayout });
+
+          expect(trackSchemaEvent.mock.calls).toEqual([
+            [
+              "dashboard",
+              {
+                event: "dashboard_section_added",
+                dashboard_id: DASHBOARD.id,
+                section_layout: sectionLayout.id,
+              },
+            ],
+          ]);
+        });
+
         it("should add a section to specified tab", async () => {
           const tabId = 2;
           const { nextDashcards } = runAddSectionAction({
@@ -225,6 +253,127 @@ describe("dashboard/actions/cards", () => {
         });
       });
     });
+  });
+
+  describe.each([
+    {
+      display: "text",
+      event: "new_text_card_created",
+      addCard: addMarkdownDashCardToDashboard,
+    },
+    {
+      display: "heading",
+      event: "new_heading_card_created",
+      addCard: addHeadingDashCardToDashboard,
+    },
+  ])("adding a $display card", ({ display, event, addCard }) => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("should add a just-added virtual card and track it", () => {
+      const trackSchemaEvent = jest
+        .spyOn(Analytics, "trackSchemaEvent")
+        .mockClear();
+      const { store } = setup();
+
+      addCard({ dashId: DASHBOARD.id, tabId: null })(store.dispatch);
+
+      const existingIds = DASHCARDS.map((dashcard) => dashcard.id);
+      const newDashcards = Object.values(getDashcards(store.getState())).filter(
+        (dashcard) => !existingIds.includes(dashcard.id),
+      );
+      expect(newDashcards).toHaveLength(1);
+      expect(newDashcards[0]).toMatchObject({
+        card: { display },
+        justAdded: true,
+      });
+      expect(trackSchemaEvent.mock.calls).toEqual([
+        ["dashboard", { event, dashboard_id: DASHBOARD.id }],
+      ]);
+    });
+  });
+
+  describe("removeCardFromDashboard", () => {
+    const DASHCARD_QUERY_PATH = `path:/api/dashboard/${DASHBOARD.id}/dashcard/${TABLE_DASHCARD.id}/card/${ORDERS_TABLE_CARD.id}/query`;
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("should cancel the running query of a removed card and re-run it on undo (metabase#12926)", async () => {
+      const abort = jest.spyOn(AbortController.prototype, "abort");
+      const dataset = createMockDataset();
+      const { store } = setup();
+      setupDashcardQueryEndpoints(DASHBOARD.id, TABLE_DASHCARD, dataset, {
+        delay: 100,
+      });
+
+      const initialFetch = fetchCardData(
+        ORDERS_TABLE_CARD,
+        TABLE_DASHCARD,
+      )(store.dispatch);
+      await waitFor(() =>
+        expect(fetchMock.callHistory.calls(DASHCARD_QUERY_PATH)).toHaveLength(
+          1,
+        ),
+      );
+      abort.mockClear();
+
+      await removeCardFromDashboard({
+        dashcardId: TABLE_DASHCARD.id,
+        cardId: ORDERS_TABLE_CARD.id,
+      })(store.dispatch, store.getState);
+      await initialFetch;
+
+      expect(abort).toHaveBeenCalled();
+      expect(
+        getDashCardById(store.getState(), TABLE_DASHCARD.id).isRemoved,
+      ).toBe(true);
+      expect(getCardData(store)).toBeNull();
+
+      performUndo(store.getState().undo[0].id)(store.dispatch, store.getState);
+
+      await waitFor(() =>
+        expect(
+          getDashCardById(store.getState(), TABLE_DASHCARD.id).isRemoved,
+        ).toBe(false),
+      );
+      await waitFor(() => expect(getCardData(store)).toEqual(dataset));
+      expect(fetchMock.callHistory.calls(DASHCARD_QUERY_PATH)).toHaveLength(2);
+    });
+
+    it("should restore a removed virtual card on undo without running a query (metabase#35545)", async () => {
+      const { store } = setup();
+
+      await removeCardFromDashboard({
+        dashcardId: TEXT_DASHCARD.id,
+        cardId: TEXT_DASHCARD.card_id,
+      })(store.dispatch, store.getState);
+
+      expect(
+        getDashCardById(store.getState(), TEXT_DASHCARD.id).isRemoved,
+      ).toBe(true);
+
+      const [undo] = store.getState().undo;
+      expect(undo.message).toBe("Removed card");
+      performUndo(undo.id)(store.dispatch, store.getState);
+
+      await waitFor(() =>
+        expect(
+          getDashCardById(store.getState(), TEXT_DASHCARD.id),
+        ).toMatchObject({ isRemoved: false, card: TEXT_DASHCARD.card }),
+      );
+      expect(fetchMock.callHistory.calls()).toHaveLength(0);
+    });
+
+    function getCardData(store: Store<State>) {
+      return (
+        store.getState().dashboard.dashcardData[TABLE_DASHCARD.id]?.[
+          ORDERS_TABLE_CARD.id
+        ] ?? null
+      );
+    }
   });
 
   describe("replaceCard", () => {
@@ -254,7 +403,7 @@ describe("dashboard/actions/cards", () => {
       });
     });
 
-    it("should run a new card query", async () => {
+    it("should run a new card query with dashboard context (UXW-4769)", async () => {
       await runReplaceCardAction({
         dashcardId: TABLE_DASHCARD.id,
         nextCardId: ORDERS_LINE_CHART_CARD.id,
@@ -266,6 +415,16 @@ describe("dashboard/actions/cards", () => {
         `path:/api/card/${ORDERS_LINE_CHART_CARD.id}/query`,
       );
       expect(queryCalls).toHaveLength(1);
+
+      const requestBody = queryCalls[0].options.body;
+      expect(typeof requestBody).toBe("string");
+
+      if (typeof requestBody !== "string") {
+        return;
+      }
+
+      const parsedBody: unknown = JSON.parse(requestBody);
+      expect(parsedBody).toMatchObject({ dashboard_id: DASHBOARD.id });
     });
 
     it("should not auto-wire parameters", async () => {
@@ -292,6 +451,92 @@ describe("dashboard/actions/cards", () => {
       });
 
       expect(nextDashCard.parameter_mappings).toEqual([]);
+    });
+  });
+
+  describe("duplicateCard", () => {
+    it("should duplicate inline parameters including settings like default and required", async () => {
+      const cardParameter = createMockParameter({
+        id: "card-filter",
+        name: "Card Filter",
+        type: "number/=",
+        sectionId: "number",
+        default: [10],
+        required: true,
+        isMultiSelect: false,
+      });
+      const questionDashcard = createMockDashboardCard({
+        id: 10,
+        card_id: ORDERS_TABLE_CARD.id,
+        card: ORDERS_TABLE_CARD,
+        inline_parameters: [cardParameter.id],
+        parameter_mappings: [
+          {
+            card_id: ORDERS_TABLE_CARD.id,
+            parameter_id: cardParameter.id,
+            target: [
+              "dimension",
+              ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
+            ],
+          },
+        ],
+      });
+      const dashboard = createMockDashboard({
+        id: 1,
+        dashcards: [questionDashcard],
+        parameters: [cardParameter],
+      });
+
+      const { store } = setup({
+        dashboard,
+        dashcards: [questionDashcard],
+      });
+
+      await duplicateCard({ id: questionDashcard.id })(
+        store.dispatch,
+        store.getState,
+      );
+
+      const nextState = store.getState();
+      const nextDashboard = getDashboardById(nextState, dashboard.id);
+      const duplicatedDashcardId = nextDashboard.dashcards.find(
+        (dashcardId) => dashcardId !== questionDashcard.id,
+      );
+      expect(duplicatedDashcardId).toBeDefined();
+
+      // question is a QuestionDashboardCard
+      const duplicatedDashcard = getDashCardById(
+        nextState,
+        duplicatedDashcardId!,
+      ) as QuestionDashboardCard;
+      expect(duplicatedDashcard.inline_parameters).toHaveLength(1);
+
+      const newParameterId = duplicatedDashcard.inline_parameters![0];
+      expect(newParameterId).not.toBe(cardParameter.id);
+      expect(duplicatedDashcard.parameter_mappings).toEqual([
+        expect.objectContaining({ parameter_id: newParameterId }),
+      ]);
+
+      const newParameter = nextDashboard.parameters?.find(
+        (parameter) => parameter.id === newParameterId,
+      );
+      expect(newParameter).toMatchObject({
+        name: "Card Filter 1",
+        default: [10],
+        required: true,
+        isMultiSelect: false,
+      });
+
+      // Original card still references the original parameter
+      expect(
+        // question is a QuestionDashboardCard
+        (
+          getDashCardById(
+            nextState,
+            questionDashcard.id,
+          ) as QuestionDashboardCard
+        ).inline_parameters,
+      ).toEqual([cardParameter.id]);
     });
   });
 });

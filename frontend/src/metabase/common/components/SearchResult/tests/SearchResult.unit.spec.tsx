@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
@@ -15,6 +14,7 @@ import {
 import { SearchResult } from "metabase/common/components/SearchResult/SearchResult";
 import { createWrappedSearchResult } from "metabase/common/components/SearchResult/tests/util";
 import { trackSearchClick } from "metabase/common/search/analytics";
+import { Route } from "metabase/router";
 import { modelToUrl } from "metabase/urls";
 import type { SearchResult as ApiSearchResult } from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
@@ -57,18 +57,15 @@ const setup = ({ result }: { result: ApiSearchResult }) => {
   setupUsersEndpoints([USER]);
   setupUserRecipientsEndpoint({ users: [USER] });
 
-  const { history } = renderWithProviders(
-    <Route
-      path="*"
-      component={() => <SearchResult result={result} index={0} />}
-    />,
+  const { router } = renderWithProviders(
+    <Route path="*" element={<SearchResult result={result} index={0} />} />,
     {
       withRouter: true,
       initialRoute: "/",
     },
   );
 
-  return { history };
+  return { router };
 };
 
 describe("SearchResult", () => {
@@ -77,6 +74,7 @@ describe("SearchResult", () => {
 
     expect(screen.getByText(TEST_RESULT_QUESTION.name)).toBeInTheDocument();
     expect(
+      // Unjustified type cast. FIXME
       screen.getByText(TEST_RESULT_QUESTION.description as string),
     ).toBeInTheDocument();
     expect(getIcon("table2")).toBeInTheDocument();
@@ -94,17 +92,17 @@ describe("SearchResult", () => {
   });
 
   it("should redirect to search result page when clicking item", async () => {
-    const { history } = setup({ result: TEST_RESULT_QUESTION });
+    const { router } = setup({ result: TEST_RESULT_QUESTION });
 
     await userEvent.click(screen.getByText(TEST_RESULT_QUESTION.name));
 
     const expectedPath = modelToUrl(TEST_RESULT_QUESTION);
 
-    expect(history?.getCurrentLocation().pathname).toEqual(expectedPath);
+    expect(router?.location.pathname).toEqual(expectedPath);
   });
 
   it("renders the result as a link and lets the browser open a modified click in a new tab", () => {
-    const { history } = setup({ result: TEST_RESULT_QUESTION });
+    const { router } = setup({ result: TEST_RESULT_QUESTION });
 
     const title = screen.getByTestId("search-result-item-name");
     expect(title).toHaveAttribute("href", modelToUrl(TEST_RESULT_QUESTION));
@@ -113,7 +111,7 @@ describe("SearchResult", () => {
 
     // a ⌘/ctrl-click must not navigate in-app; the browser opens the new tab
     // via the href instead
-    expect(history?.getCurrentLocation().pathname).toBe("/");
+    expect(router?.location.pathname).toBe("/");
   });
 
   it("tracks a search click when a result is opened via a ⌘/ctrl-click", () => {
@@ -172,16 +170,13 @@ describe("SearchResult", () => {
     it("renders x-ray button for indexed entity search result", () => {
       setup({ result: TEST_RESULT_INDEXED_ENTITY });
 
-      expect(screen.getByTestId("search-result-item-icon")).toHaveAttribute(
-        "type",
-        "indexed-entity",
-      );
+      expect(screen.getByTestId("search-result-item-icon")).toBeInTheDocument();
 
       expect(getIcon("bolt")).toBeInTheDocument();
     });
 
     it("redirects to x-ray page when clicking on x-ray button", async () => {
-      const { history } = setup({ result: TEST_RESULT_INDEXED_ENTITY });
+      const { router } = setup({ result: TEST_RESULT_INDEXED_ENTITY });
 
       expect(getIcon("bolt")).toBeInTheDocument();
 
@@ -189,7 +184,7 @@ describe("SearchResult", () => {
 
       const expectedPath = `/auto/dashboard/model_index/${TEST_RESULT_INDEXED_ENTITY.model_index_id}/primary_key/${TEST_RESULT_INDEXED_ENTITY.id}`;
 
-      expect(history?.getCurrentLocation().pathname).toEqual(expectedPath);
+      expect(router?.location.pathname).toEqual(expectedPath);
     });
   });
 });

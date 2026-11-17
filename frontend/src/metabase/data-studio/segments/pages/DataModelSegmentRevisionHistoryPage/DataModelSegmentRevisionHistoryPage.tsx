@@ -1,8 +1,9 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { DataModelSegmentBreadcrumbs } from "../../components/SegmentBreadcrumbs";
-import { useDataModelSegmentPage } from "../../hooks";
+import { useDataModelSegmentPage } from "../../hooks/use-data-model-segment-page";
 import { SegmentRevisionHistoryPage } from "../SegmentRevisionHistoryPage";
 
 type DataModelSegmentRevisionHistoryPageParams = {
@@ -12,13 +13,8 @@ type DataModelSegmentRevisionHistoryPageParams = {
   segmentId: string;
 };
 
-type DataModelSegmentRevisionHistoryPageProps = {
-  params: DataModelSegmentRevisionHistoryPageParams;
-};
-
-export function DataModelSegmentRevisionHistoryPage({
-  params,
-}: DataModelSegmentRevisionHistoryPageProps) {
+export function DataModelSegmentRevisionHistoryPage() {
+  const params = useParams<DataModelSegmentRevisionHistoryPageParams>();
   const { isLoading, error, segment, table, tabUrls, onRemove } =
     useDataModelSegmentPage(params);
 

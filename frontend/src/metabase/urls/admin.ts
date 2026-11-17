@@ -1,14 +1,13 @@
+import { getTenantsBasePath } from "metabase/common/tenants";
 import type {
   BaseUser,
   CustomVizPluginId,
   DatabaseId,
   FieldId,
+  GroupId,
   SchemaName,
   SegmentId,
   TableId,
-  TaskRunDateFilterOption,
-  TaskRunEntityType,
-  TaskRunType,
 } from "metabase-types/api";
 
 export const isInternalUser = (user: Pick<BaseUser, "tenant_id">) =>
@@ -17,38 +16,53 @@ export const isInternalUser = (user: Pick<BaseUser, "tenant_id">) =>
 export function newUser() {
   return `/admin/people/new`;
 }
+
 export function newTenantUser() {
-  return "/admin/people/tenants/people/new";
+  return `${getTenantsBasePath()}/people/new`;
 }
 
 export function editUser(user: Pick<BaseUser, "id" | "tenant_id">) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/edit`
-    : `/admin/people/tenants/people/${user.id}/edit`;
+    : `${getTenantsBasePath()}/people/${user.id}/edit`;
 }
 
 export function resetPassword(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/reset`
-    : `/admin/people/tenants/people/${user.id}/reset`;
+    : `${getTenantsBasePath()}/people/${user.id}/reset`;
 }
 
 export function newUserSuccess(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/success`
-    : `/admin/people/tenants/people/${user.id}/success`;
+    : `${getTenantsBasePath()}/people/${user.id}/success`;
 }
 
 export function deactivateUser(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/deactivate`
-    : `/admin/people/tenants/people/${user.id}/deactivate`;
+    : `${getTenantsBasePath()}/people/${user.id}/deactivate`;
 }
 
 export function reactivateUser(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/reactivate`
-    : `/admin/people/tenants/people/${user.id}/reactivate`;
+    : `${getTenantsBasePath()}/people/${user.id}/reactivate`;
+}
+
+export function unsubscribeUser(user: Pick<BaseUser, "id" | "tenant_id">) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/unsubscribe`
+    : `${getTenantsBasePath()}/people/${user.id}/unsubscribe`;
+}
+
+export function adminTenantGroup(groupId: GroupId) {
+  return `${getTenantsBasePath()}/groups/${groupId}`;
+}
+
+export function adminGroup(groupId: GroupId) {
+  return `/admin/people/groups/${groupId}`;
 }
 
 // TODO: move to EE urls
@@ -71,10 +85,6 @@ export function editDatabase(databaseId: DatabaseId) {
 
 export function editDatabaseWritableConnection(databaseId: DatabaseId) {
   return `/admin/databases/${databaseId}/write-data`;
-}
-
-export function editDatabaseAdminConnection(databaseId: DatabaseId) {
-  return `/admin/databases/${databaseId}/admin`;
 }
 
 type DataModelParams = {
@@ -139,8 +149,15 @@ export function dataModelSegmentRevisions(segmentId: SegmentId) {
   return `${dataModelSegment(segmentId)}/revisions`;
 }
 
+/** Default `/admin/settings` page. The index route redirects here. */
+export const SETTINGS_INDEX_SLUG = "general";
+
 export function generalSettings() {
-  return "/admin/settings/general";
+  return `/admin/settings/${SETTINGS_INDEX_SLUG}`;
+}
+
+export function domainsSettings() {
+  return "/admin/settings/domains";
 }
 
 export function uploadsSettings() {
@@ -167,76 +184,18 @@ export function customVizDev() {
   return `${customViz()}/development`;
 }
 
-export function adminToolsHelp() {
-  return "/admin/tools/help";
+export function adminHelp() {
+  return "/admin/help";
 }
 
-export function adminToolsTasks() {
-  return "/admin/tools/tasks";
-}
-export function adminToolsTasksList() {
-  return `${adminToolsTasks()}/list`;
+export function adminHelpGrantAccess() {
+  return `${adminHelp()}/grant-access`;
 }
 
-export function adminToolsTaskDetails(taskId: number) {
-  return `${adminToolsTasksList()}/${taskId}`;
+export function adminAiSettings() {
+  return "/admin/metabot";
 }
 
-export function adminToolsTasksRuns() {
-  return `${adminToolsTasks()}/runs`;
-}
-
-export function adminToolsTaskRunDetails(runId: number) {
-  return `${adminToolsTasksRuns()}/${runId}`;
-}
-
-export function adminToolsTasksRunsFor(opts: {
-  runType: TaskRunType;
-  entityType: TaskRunEntityType;
-  entityId?: number;
-  startedAt?: TaskRunDateFilterOption;
-  includeToday?: boolean;
-}) {
-  const params: Record<string, string> = {
-    "run-type": opts.runType,
-    "entity-type": opts.entityType,
-  };
-  if (opts.entityId) {
-    params["entity-id"] = String(opts.entityId);
-  }
-  if (opts.startedAt) {
-    params["started-at"] = opts.startedAt;
-  }
-  if (opts.includeToday) {
-    params["include-today"] = "true";
-  }
-  return `${adminToolsTasksRuns()}?${new URLSearchParams(params).toString()}`;
-}
-
-export function adminToolsJobs() {
-  return "/admin/tools/jobs";
-}
-
-export function adminToolsLogs() {
-  return "/admin/tools/logs";
-}
-
-export function adminToolsErrors() {
-  return "/admin/tools/errors";
-}
-
-export function adminToolsModelCaching() {
-  return "/admin/tools/model-caching";
-}
-
-export function adminToolsGrantAccess() {
-  return "/admin/tools/help/grant-access";
-}
-
-export function adminToolsNotifications() {
-  return "/admin/tools/notifications";
-}
-
-export function adminToolsNotificationDetail(id: number) {
-  return `/admin/tools/notifications/${id}`;
+export function adminMcpSettings() {
+  return `${adminAiSettings()}/mcp`;
 }

@@ -5,9 +5,9 @@
    [medley.core :as m]
    [metabase.api.macros :as api.macros]
    [metabase.config.core :as config]
+   [metabase.global-system.system :as system]
    [metabase.server.protocols :as server.protocols]
    [metabase.server.statistics-handler :as statistics-handler]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.adapter.jetty :as ring-jetty]
@@ -52,18 +52,19 @@
                                              (merge (jetty-ssl-config)))))
 
 (defn- log-config [jetty-config]
-  (log/info "Launching Embedded Jetty Webserver with config:\n"
-            (u/pprint-to-str (m/filter-keys
-                              #(not (str/includes? % "password"))
-                              jetty-config))))
+  (log/info "Launching Embedded Jetty Webserver with config:"
+            (pr-str (m/filter-keys
+                     #(not (str/includes? % "password"))
+                     jetty-config))))
 
-(defonce ^:private instance*
-  (atom nil))
+;; The running Jetty server, or nil. Started by [[start-web-server!]] and stopped with the global system.
+(def ^:private server-component
+  (system/mutable-component-handle ::server (constantly nil)))
 
 (defn instance
   "*THE* instance of our Jetty web server, if there currently is one."
   ^Server []
-  @instance*)
+  @server-component)
 
 (defn server-port
   "Return the actual port the running Jetty server is listening on. Useful when the server was started with port 0
@@ -79,11 +80,11 @@
                                     (.setTimeout timeout))
             request-map           (servlet/build-request-map request)
             raise                 (fn raise [^Throwable e]
-                                    (log/error e "Unexpected exception in endpoint")
+                                    (log/errorf "Unexpected exception in endpoint: %s" (ex-message e))
                                     (try
                                       (.sendError response 500 (.getMessage e))
                                       (catch Throwable e
-                                        (log/error e "Unexpected exception writing error response")))
+                                        (log/errorf "Unexpected exception writing error response: %s" (ex-message e))))
                                     (.complete context))]
         (try
           (handler
@@ -96,7 +97,7 @@
                                                              :response-map  response-map}))
            raise)
           (catch Throwable e
-            (log/error e "Unexpected Exception in API request handler")
+            (log/errorf "Unexpected Exception in API request handler: %s" (ex-message e))
             (raise e))
           (finally
             (.setHandled base-request true)))))))
@@ -105,7 +106,25 @@
   "Create a new async Jetty server with `handler` and `options`. Handy for creating the real Metabase web server, and
   creating one-off web servers for tests and REPL usage."
   ^Server [handler :- ::api.macros/handler
-           options :- [:maybe :map]]
+           options :- [:maybe [:map {:closed true}
+                               [:port                 {:optional true} :int]
+                               [:host                 {:optional true} :string]
+                               [:max-threads          {:optional true} :int]
+                               [:min-threads          {:optional true} :int]
+                               [:max-queued           {:optional true} :int]
+                               [:max-idle-time        {:optional true} :int]
+                               [:send-server-version? {:optional true} :boolean]
+                               [:request-header-size  {:optional true} :int]
+                               [:daemon?              {:optional true} :boolean]
+                               [:ssl?                 {:optional true} :boolean]
+                               [:ssl-port             {:optional true} :int]
+                               [:keystore             {:optional true} :string]
+                               [:key-password         {:optional true} :string]
+                               [:truststore           {:optional true} :string]
+                               [:trust-password       {:optional true} :string]
+                               [:client-auth          {:optional true} :keyword]
+                               [:sni-host-check?      {:optional true} :boolean]
+                               [:join?                {:optional true} :boolean]]]]
   ;; if any API endpoint functions aren't at the very least returning a channel to fetch the results later after 10
   ;; minutes we're in serious trouble. (Almost everything 'slow' should be returning a channel before then, but
   ;; some things like CSV downloads don't currently return channels at this time)
@@ -122,26 +141,41 @@
   "Start the embedded Jetty web server. Returns `:started` if a new server was started; `nil` if there was already a
   running server.
 
-    (let [server-routes (metabase.server.core/make-routes #'metabase.api-routes.core/routes)
-          handler       (metabase.server.core/make-handler server-routes)]
+    (let [server-routes (metabase.server.core/make-routes
+                         {:api        #'metabase.api-routes.core/routes
+                          :auth       #'metabase.sso.auth-wrapper/routes
+                          :oauth      #'metabase.oauth-server.api/oauth-routes
+                          :well-known #'metabase.oauth-server.api/well-known-routes})
+          handler       (metabase.server.core/make-handler server-routes #'metabase.mcp.http-handler/options)]
         (metabase.server.core/start-web-server! handler))"
   [handler :- ::api.macros/handler]
-  (when-not (instance)
-    ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the background
-    (let [config     (jetty-config)
-          new-server (create-server handler config)]
-      (log-config config)
-      ;; Only start the server if the newly created server becomes the official new server
-      ;; Don't JOIN yet -- we're doing other init in the background; we can join later
-      (when (compare-and-set! instance* nil new-server)
-        (.start new-server)
-        :started))))
+  (let [[_server started?]
+        (system/start!
+         server-component
+         (fn []
+           ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the
+           ;; background. Don't JOIN yet -- we're doing other init in the background; we can join later
+           (let [config     (jetty-config)
+                 new-server (create-server handler config)]
+             (log-config config)
+             (try
+               (.start new-server)
+               (catch Throwable e
+                 ;; not yet the instance, so nothing else would stop what part of it started
+                 (try
+                   (.stop new-server)
+                   (catch Throwable stop-e
+                     (.addSuppressed e stop-e)))
+                 (throw e)))
+             new-server))
+         (fn [^Server server]
+           (log/info "Shutting Down Embedded Jetty Webserver")
+           (.stop server)))]
+    (when started?
+      :started)))
 
 (defn stop-web-server!
   "Stop the embedded Jetty web server. Returns `:stopped` if a server was stopped, `nil` if there was nothing to stop."
   []
-  (let [[^Server old-server] (reset-vals! instance* nil)]
-    (when old-server
-      (log/info "Shutting Down Embedded Jetty Webserver")
-      (.stop old-server)
-      :stopped)))
+  (when (system/stop! server-component)
+    :stopped))

@@ -1,14 +1,20 @@
 import querystring from "querystring";
 
-import type { Location } from "history";
 import _ from "underscore";
 
 import { serializeCardForUrl } from "metabase/common/utils/card";
+import type { DraftQuestionBuilder } from "metabase/metadata-store";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
+import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Card, Field, NormalizedField } from "metabase-types/api";
+import type {
+  Card,
+  DatasetColumn,
+  Field,
+  NormalizedField,
+} from "metabase-types/api";
 
 interface GetPathNameFromQueryBuilderModeOptions {
   pathname: string;
@@ -58,6 +64,7 @@ export function getURLForCardState(
   const isAdHocQuestion = !card.id;
   if (objectId != null) {
     if (isAdHocQuestion) {
+      // Unjustified type cast. FIXME
       (options.query as QueryParams).objectId = objectId;
     } else {
       options.objectId = objectId;
@@ -76,6 +83,7 @@ export function getURLForCardState(
  */
 export function getTableUrlForPristineQuestion(
   question: Question,
+  buildDraftQuestion: DraftQuestionBuilder,
 ): string | null {
   if (question.isSaved()) {
     return null;
@@ -87,19 +95,23 @@ export function getTableUrlForPristineQuestion(
     return null;
   }
 
-  // A card source (`card__123`) is a string id; only a real table qualifies.
-  const sourceTableId = Lib.sourceTableOrCardId(query);
-  if (typeof sourceTableId !== "number") {
+  const sourceTableId = Lib.primarySourceTableId(query);
+  if (sourceTableId == null) {
     return null;
   }
 
-  const table = question.metadata().table(sourceTableId);
-  if (!table) {
+  const tableMetadata = Lib.tableMetadata(query, sourceTableId);
+  if (!tableMetadata) {
     return null;
   }
 
   const card = question.card();
-  const defaultCard = table.newQuestion().card();
+  const defaultCard = buildDraftQuestion({
+    DEPRECATED_RAW_MBQL_databaseId: Lib.databaseID(query) ?? undefined,
+    DEPRECATED_RAW_MBQL_tableId: sourceTableId,
+  })
+    .setDefaultDisplay()
+    .card();
   const isPristine =
     Lib.areLegacyQueriesEqual(card.dataset_query, defaultCard.dataset_query) &&
     card.display === defaultCard.display &&
@@ -107,7 +119,10 @@ export function getTableUrlForPristineQuestion(
     question.parameters().length === 0;
 
   return isPristine
-    ? Urls.table({ id: sourceTableId, name: table.display_name })
+    ? Urls.table({
+        id: sourceTableId,
+        name: Lib.displayInfo(query, -1, tableMetadata).displayName,
+      })
     : null;
 }
 
@@ -206,7 +221,7 @@ const WRITABLE_NATIVE_COLUMN_PROPERTIES = [
 ];
 
 export function getWritableColumnProperties(
-  column: NormalizedField | Field,
+  column: DatasetColumn | NormalizedField | Field,
   isNative: boolean,
 ) {
   return _.pick(

@@ -1,3 +1,68 @@
+/* tab list padding, minus the label frame's padding and border */
+.root {
+  padding: calc(0.6875rem - 0.25rem - 1px) calc(0.5rem - 0.25rem - 2px);
+  color: var(--mb-color-text-primary);
+  border-bottom: 0.125rem solid transparent;
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
+
+  &::after {
+    content: " ";
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    border-bottom: 0.125rem solid transparent;
+  }
+}
+
+.selected {
+  color: var(--mb-color-core-brand);
+
+  &::after {
+    border-color: var(--mb-color-core-brand);
+  }
+}
+
+.disabled {
+  opacity: 0.3;
+
+  &:hover {
+    color: var(--mb-color-text-primary);
+  }
+}
+
+/* The frame and the resizer let the input grow with its content:
+   https://css-tricks.com/auto-growing-inputs-textareas/#aa-resizing-actual-input-elements */
+.inputWrapper {
+  border: 1px solid transparent;
+}
+
+.renaming,
+.renameable:hover {
+  box-shadow: 0 0 2px 1px var(--mb-color-core-brand);
+}
+
+.resizer {
+  visibility: hidden;
+  white-space: pre;
+  padding-right: 2px;
+}
+
+.input {
+  border: 1px solid transparent;
+  outline: none;
+  background-color: transparent;
+  color: inherit;
+  font-size: inherit;
+
+  &:disabled {
+    pointer-events: none;
+  }
+}
+
 .menuButton {
   &[data-variant="subtle"] {
     align-self: center;
@@ -10,5 +75,15 @@
       color: var(--mb-color-core-brand);
       background-color: var(--mb-color-background_page-tertiary);
     }
+  }
+}
+
+.menuItem {
+  color: var(--mb-color-text-primary);
+
+  &:hover,
+  &:focus {
+    color: var(--mb-color-core-brand);
+    background-color: var(--mb-color-background_page-secondary);
   }
 }

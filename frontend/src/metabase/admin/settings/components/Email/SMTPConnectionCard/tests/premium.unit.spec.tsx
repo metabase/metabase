@@ -22,8 +22,8 @@ describe("SMTPConnectionCard (EE with token)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should show self-hosted SMTP card when self-hoste", () => {
-    setup({
+  it("should show self-hosted SMTP card when self-hoste", async () => {
+    await setup({
       isHosted: false,
       tokenFeatures: { cloud_custom_smtp: true },
     });

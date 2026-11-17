@@ -31,29 +31,21 @@
 
 /** Non-whitelabeled Metabase brand color */
 .textMetabaseBrand {
-  color: var(--mb-color-metabase-brand);
+  color: var(--mb-color-core-metabase_brand);
 }
 
 .textSuccess {
-  color: var(--mb-color-success);
+  color: var(--mb-color-feedback-positive);
 }
 
 /* error */
 
 .textError {
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
 }
 
 .textSlate {
   color: var(--mb-color-text-secondary);
-}
-
-.textSlateLight {
-  color: var(--mb-color-text-disabled);
-}
-
-.textLight {
-  color: var(--mb-color-text-disabled);
 }
 
 .textMedium,
@@ -74,8 +66,12 @@
   color: var(--mb-color-text-secondary);
 }
 
-.textTertiary {
-  color: var(--mb-color-text-disabled);
+.textSecondaryHoverPrimary {
+  color: var(--mb-color-text-secondary);
+}
+
+.textSecondaryHoverPrimary:hover {
+  color: var(--mb-color-text-primary);
 }
 
 .bgBrandHover:hover {

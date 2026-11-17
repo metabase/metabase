@@ -1,4 +1,4 @@
-import type { CardId } from "./card";
+import type { CardId, VisualizationSettings } from "./card";
 import type {
   Collection,
   CollectionId,
@@ -8,12 +8,20 @@ import type { UserInfo } from "./user";
 
 export type TimelineId = number;
 export type TimelineEventId = number;
-export type TimelineEventSource = "question" | "collections" | "api";
+export type TimelineEventSource =
+  | "question"
+  | "dashboard"
+  | "collections"
+  | "api";
 
 export type TimelineIcon =
+  | "info"
+  | "note"
+  | "event"
   | "star"
   | "cake"
   | "mail"
+  | "mail_at"
   | "warning"
   | "bell"
   | "cloud";
@@ -37,7 +45,7 @@ export interface TimelineData {
 export interface TimelineEvent extends TimelineEventData {
   id: TimelineEventId;
   timeline_id: TimelineId;
-  creator: UserInfo;
+  creator?: UserInfo;
   created_at: string;
 }
 
@@ -55,10 +63,15 @@ export interface TimelineEventData {
   question_id?: CardId;
 }
 
-export interface ListTimelinesRequest {
+export type TimelineEventsVisibility = Pick<
+  VisualizationSettings,
+  "timeline.selected_timeline_ids" | "timeline.excluded_timeline_event_ids"
+>;
+
+export type ListTimelinesRequest = {
   include?: "events";
   archived?: boolean;
-}
+};
 
 export interface ListCollectionTimelinesRequest {
   id: CollectionId;

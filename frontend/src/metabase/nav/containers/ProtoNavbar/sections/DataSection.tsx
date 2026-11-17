@@ -1,11 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { Location } from "history";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
-import { useAddDataPermissions } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/use-add-data-permission";
+import { useCanAddData } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/use-can-add-data";
 import { trackAddDataModalOpened } from "metabase/nav/containers/MainNavbar/analytics";
+import type { Location } from "metabase/router";
 import { Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -22,7 +22,7 @@ export function DataSection({ location }: Props) {
 
   const { data: databasesData } = useListDatabasesQuery();
   const databases = databasesData?.data ?? [];
-  const { canPerformMeaningfulActions } = useAddDataPermissions();
+  const canPerformMeaningfulActions = useCanAddData();
   const [
     addDataModalOpened,
     { open: openAddDataModal, close: closeAddDataModal },
@@ -90,13 +90,6 @@ export function DataSection({ location }: Props) {
           isSelected={path.startsWith("/data-studio/transforms/runs")}
         >
           {t`Runs`}
-        </SidebarLink>
-        <SidebarLink
-          icon="workspace"
-          url={Urls.workspaces()}
-          isSelected={path.startsWith(Urls.workspaces())}
-        >
-          {t`Workspaces`}
         </SidebarLink>
       </SubNavSection>
 

@@ -1,5 +1,6 @@
 ---
 title: "Tools overview"
+summary: Admin tools for seeing how people use your Metabase and for tracking down problems.
 redirect_from:
   - /docs/latest/usage-and-performance-tools
 ---
@@ -12,6 +13,6 @@ Administration tools for managing your Metabase.
 
 See how people are using your Metabase.
 
-## [Admin tools](./tools.md)
+## [Monitor](../monitor/start.md)
 
-View question error and model caching logs.
+View erroring questions, logs, and other troubleshooting tools.

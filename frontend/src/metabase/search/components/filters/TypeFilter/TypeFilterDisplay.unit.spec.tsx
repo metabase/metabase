@@ -16,7 +16,9 @@ const MODEL_TYPE_DISPLAY_NAMES: Record<EnabledSearchModel, string> = {
   table: "Table",
   "indexed-entity": "Indexed record",
   document: "Document",
+  exploration: "Research",
   transform: "Transform",
+  "data-app": "Data app",
 };
 
 const setup = (value: TypeFilterProps) => {
@@ -37,6 +39,7 @@ describe("TypeFilterDisplay", () => {
   it.each(Object.keys(MODEL_TYPE_DISPLAY_NAMES))(
     "should display correct text for %s type selected",
     (type) => {
+      // Unjustified type cast. FIXME
       const searchModelType = type as EnabledSearchModel;
       setup([searchModelType]);
       const expectedText: string = MODEL_TYPE_DISPLAY_NAMES[searchModelType];

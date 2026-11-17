@@ -4,12 +4,17 @@ import * as Yup from "yup";
 
 import { useListCollectionsQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
-import { FormInput } from "metabase/common/components/FormInput";
-import { FormTextArea } from "metabase/common/components/FormTextArea";
+import { FormFooter } from "metabase/common/components/FormFooter";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
-import { Button, Flex, Icon } from "metabase/ui";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+  FormTextarea,
+} from "metabase/forms";
+import { Button, Icon, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
@@ -78,62 +83,61 @@ function SnippetFormInner({
     >
       {({ dirty }) => (
         <Form disabled={!dirty && !isInitiallyDirty} className={S.SnippetForm}>
-          <FormTextArea
-            inputClassName={S.FormSnippetTextArea}
-            name="content"
-            title={t`Enter some SQL here so you can reuse it later`}
-            placeholder="AND canceled_at IS null\nAND account_type = 'PAID'"
-            rows={4}
-          />
-          <FormInput
-            name="name"
-            title={t`Give your snippet a name`}
-            placeholder={t`Current Customers`}
-          />
-          <FormInput
-            name="description"
-            title={t`Add a description`}
-            placeholder={t`It's optional but oh, so helpful`}
-            nullable
-          />
-          {hasManyCollections && (
-            <FormCollectionPicker
-              name="collection_id"
-              title={t`Folder this should be in`}
-              collectionPickerModalProps={{ namespaces: ["snippets"] }}
+          <Stack gap="xl">
+            <FormTextarea
+              classNames={{ input: S.FormSnippetTextArea }}
+              name="content"
+              label={t`Enter some SQL here so you can reuse it later`}
+              placeholder="AND canceled_at IS null\nAND account_type = 'PAID'"
+              autosize={false}
+              resize="vertical"
+              rows={5}
             />
-          )}
-          <Flex align="center" justify="space-between">
-            <Flex align="center" justify="center" gap="sm">
-              {isEditing && (
-                <Button
-                  type="button"
-                  className={S.ArchiveButton}
-                  leftSection={<Icon name="archive" />}
-                  variant="subtle"
-                  color="text-secondary"
-                  size="sm"
-                  onClick={onArchive}
-                >
-                  {t`Archive`}
-                </Button>
-              )}
-              <FormErrorMessage inline />
-            </Flex>
-            <Flex align="center" justify="center" gap="sm" mt="md">
-              {!!onCancel && (
-                <Button type="button" size="sm" onClick={onCancel}>
-                  {t`Cancel`}
-                </Button>
-              )}
-              <FormSubmitButton
-                label={t`Save`}
-                disabled={!dirty && !isInitiallyDirty}
-                variant="filled"
-                size="sm"
+            <FormTextInput
+              name="name"
+              label={t`Give your snippet a name`}
+              placeholder={t`Current Customers`}
+            />
+            <FormTextInput
+              name="description"
+              label={t`Add a description`}
+              placeholder={t`It's optional but oh, so helpful`}
+              nullable
+            />
+            {hasManyCollections && (
+              <FormCollectionPicker
+                name="collection_id"
+                title={t`Folder this should be in`}
+                collectionPickerModalProps={{ namespaces: ["snippets"] }}
               />
-            </Flex>
-          </Flex>
+            )}
+          </Stack>
+          <FormFooter>
+            {isEditing && (
+              <Button
+                type="button"
+                className={S.ArchiveButton}
+                leftSection={<Icon name="archive" />}
+                variant="transparent"
+                size="compact-md"
+                me="auto"
+                onClick={onArchive}
+              >
+                {t`Archive`}
+              </Button>
+            )}
+            <FormErrorMessage inline flex={1} />
+            {!!onCancel && (
+              <Button type="button" onClick={onCancel}>
+                {t`Cancel`}
+              </Button>
+            )}
+            <FormSubmitButton
+              label={t`Save`}
+              disabled={!dirty && !isInitiallyDirty}
+              variant="filled"
+            />
+          </FormFooter>
         </Form>
       )}
     </FormProvider>

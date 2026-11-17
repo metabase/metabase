@@ -10,7 +10,7 @@ const preemptiveCachingSwitch = () =>
 
 const saveCacheStrategyForm = () => {
   cy.intercept("PUT", "/api/cache").as("putCacheConfig");
-  cy.findByRole("form", { name: "Select the cache invalidation policy" })
+  cy.findByRole("form", { name: "Cache invalidation policy" })
     .button(/Save/)
     .click();
   cy.wait("@putCacheConfig");
@@ -57,7 +57,7 @@ const cancelConfirmationModal = () =>
  *   frontend/.../Schedule/{cron,Schedule}.unit.spec.{ts,tsx}.
  * - Strategy form input binding (typing into Min Duration / Multiplier),
  *   strategy-switch flows (Adaptive <-> Duration <-> No caching),
- *   strategy -> launcher-label mapping, policy-options counts,
+ *   strategy -> row-label mapping, policy-options counts,
  *   preemptive caching switch availability for root/database targets:
  *   frontend/.../StrategyEditorForDatabases.unit.spec.tsx and
  *   enterprise/.../caching/components/StrategyEditorForDatabases.unit.spec.tsx.
@@ -72,6 +72,10 @@ describe("scenarios > admin > performance > caching", () => {
     it("saves the default-policy strategy and reflects the saved state", () => {
       cy.visit("/admin/performance");
       H.selectCacheStrategy(/Adaptive/);
+      cy.findByRole("spinbutton", { name: /minimum query duration/i }).type(
+        "1",
+      );
+      cy.findByRole("spinbutton", { name: /multiplier/i }).type("10");
       saveCacheStrategyForm();
       H.cacheStrategySelect().should("have.value", "Adaptive");
     });
@@ -95,6 +99,7 @@ describe("scenarios > admin > performance > caching", () => {
 
       cy.log("Set Sample Database to Duration and save");
       H.selectCacheStrategy(/Duration/);
+      H.fillCacheDuration(24);
       saveCacheStrategyForm();
       cy.findByTestId("admin-layout-content").findByLabelText(
         /Edit.*Sample Database.*currently.*Duration/,
@@ -109,7 +114,7 @@ describe("scenarios > admin > performance > caching", () => {
       cy.button(/Clear cache for this database/).click();
 
       cy.log("Confirm in the dialog");
-      cy.findByRole("dialog")
+      cy.findByTestId("confirm-modal")
         .button(/Clear cache/)
         .click();
       cy.wait("@invalidateCacheForSampleDatabase");
@@ -122,6 +127,8 @@ describe("scenarios > admin > performance > caching", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
       openSidebarCacheStrategyForm("question");
       H.selectCacheStrategy(/Duration/);
+      // 24 keeps the "Duration: 24h" admin-tab assertion below true
+      H.fillCacheDuration(24);
       preemptiveCachingSwitch().within(() => {
         cy.findByRole("switch").should("not.be.checked");
         cy.findByRole("switch").parent("label").click();
@@ -209,13 +216,17 @@ describe("scenarios > admin > performance > caching", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
       openSidebarCacheStrategyForm("question");
       H.selectCacheStrategy(/Duration/);
-      cy.findByLabelText(/Cache duration/).type("99");
+      cy.findByRole("spinbutton", { name: /Cache duration/ }).type("99");
       saveCacheStrategyForm();
 
       cy.log("Configure Orders, Count with Adaptive");
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       openSidebarCacheStrategyForm("question");
       H.selectCacheStrategy(/Adaptive/);
+      cy.findByRole("spinbutton", { name: /minimum query duration/i }).type(
+        "1",
+      );
+      cy.findByRole("spinbutton", { name: /multiplier/i }).type("10");
       saveCacheStrategyForm();
 
       cy.log("Both entries are visible on the admin tab");
@@ -227,7 +238,10 @@ describe("scenarios > admin > performance > caching", () => {
       cy.log("Clicking Duration: 99h opens its form with duration selected");
       cy.findByTestId("cache-config-table").contains("Duration: 99h").click();
       H.cacheStrategySelect().should("have.value", "Duration");
-      cy.findByLabelText(/Cache duration/).should("have.value", "99");
+      cy.findByRole("spinbutton", { name: /Cache duration/ }).should(
+        "have.value",
+        "99",
+      );
 
       cy.log("Close the sidesheet via ESC");
       cy.get("body").type("{esc}");

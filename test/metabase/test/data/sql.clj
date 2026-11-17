@@ -3,7 +3,6 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.test.data.sql]}}}}}}
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [honey.sql :as sql]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -17,7 +16,10 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [metabase.util.random :as u.random]))
+
+(set! *warn-on-reflection* true)
 
 (comment metabase.driver.sql/keep-me)
 
@@ -89,13 +91,10 @@
 
   (if (string? native-ddl)
     [native-ddl]
-    (let [compiled-honeysql (walk/postwalk
-                             (fn [node]
-                               (if (and (vector? node) (= ::table-identifier (first node)))
-                                 (let [{:keys [database-name]} (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db* (tx/default-dataset driver)))]
-                                   (keyword (str/join "." (qualified-name-components driver database-name (name (second node))))))
-                                 node))
-                             native-ddl)]
+    (let [{:keys [database-name]} (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db* (tx/default-dataset driver)))
+          compiled-honeysql (match/replace-all native-ddl
+                              [::table-identifier id & _]
+                              (keyword (str/join "." (qualified-name-components driver database-name (name id)))))]
       (sql.qp/format-honeysql driver compiled-honeysql))))
 
 (sql/register-clause! :add-constraint :modify-column :modify-column)
@@ -294,7 +293,7 @@
                               (:native base-type)
 
                               (and (map? base-type) (contains? base-type :natives))
-                              (get-in base-type [:natives driver])
+                              (get-in base-type [:natives (u/qualified-name driver)])
 
                               base-type
                               (field-base-type->sql-type driver base-type))

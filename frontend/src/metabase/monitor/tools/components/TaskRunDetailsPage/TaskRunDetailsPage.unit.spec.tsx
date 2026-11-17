@@ -1,14 +1,13 @@
 import { useClipboard } from "@mantine/hooks";
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { setupTaskRunEndpoint } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-  within,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TaskRunExtended } from "metabase-types/api";
 import { createMockTaskRunExtended } from "metabase-types/api/mocks";
@@ -20,9 +19,10 @@ jest.mock("@mantine/hooks", () => ({
   useClipboard: jest.fn(),
 }));
 
+// Unjustified type cast. FIXME
 const mockUseClipboard = useClipboard as jest.Mock;
 
-const PATHNAME = `${Urls.adminToolsTasksRuns()}/:runId`;
+const PATHNAME = `${Urls.monitorTasksRuns()}/:runId`;
 
 interface SetupOpts {
   taskRun?: TaskRunExtended;
@@ -32,9 +32,9 @@ const setup = ({ taskRun = createMockTaskRunExtended() }: SetupOpts = {}) => {
   setupTaskRunEndpoint(taskRun);
 
   return renderWithProviders(
-    <Route path={PATHNAME} component={TaskRunDetailsPage} />,
+    <Route path={PATHNAME} element={<TaskRunDetailsPage />} />,
     {
-      initialRoute: Urls.adminToolsTaskRunDetails(taskRun.id),
+      initialRoute: Urls.monitorTaskRunDetails(taskRun.id),
       withRouter: true,
     },
   );
@@ -48,6 +48,17 @@ describe("TaskRunDetailsPage", () => {
       reset: jest.fn(),
       error: null,
     });
+  });
+
+  it("should show a link back to the runs list", async () => {
+    setup();
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.getByRole("link", { name: /Back to Runs/ })).toHaveAttribute(
+      "href",
+      Urls.monitorTasksRuns(),
+    );
   });
 
   it("should display formatted datetime for started_at and ended_at", async () => {
@@ -103,18 +114,12 @@ describe("TaskRunDetailsPage", () => {
 
     await waitForLoaderToBeRemoved();
 
-    const copyButtons = screen.getAllByTestId("copy-button");
+    const copyButtons = screen.getAllByRole("button", { name: "Copy" });
 
-    const startedAtCopyIcon = within(copyButtons[0]).getByRole("img", {
-      name: "copy icon",
-    });
-    await userEvent.click(startedAtCopyIcon);
+    await userEvent.click(copyButtons[0]);
     expect(copyMock).toHaveBeenCalledWith(startedAt);
 
-    const endedAtCopyIcon = within(copyButtons[1]).getByRole("img", {
-      name: "copy icon",
-    });
-    await userEvent.click(endedAtCopyIcon);
+    await userEvent.click(copyButtons[1]);
     expect(copyMock).toHaveBeenCalledWith(endedAt);
   });
 });

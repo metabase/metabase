@@ -25,10 +25,10 @@
   top: 0;
   right: 0;
   z-index: 2;
-  margin-top: var(--mantine-spacing-md);
-  margin-right: var(--mantine-spacing-md);
+  margin-top: var(--mantine-spacing-lg);
+  margin-right: var(--mantine-spacing-lg);
 }
 
 .shadowed {
-  box-shadow: 0 2px 2px var(--mb-color-shadow);
+  box-shadow: 0 2px 2px var(--mb-color-shadow-default);
 }

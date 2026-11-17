@@ -2,8 +2,8 @@ import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
-import type { ExportFormat } from "metabase/common/types/export";
 import { Anchor, Box, Group, Stack, Text, Tooltip } from "metabase/ui";
+import type { ExportFormat } from "metabase-types/api";
 
 export const PublicLinkCopyPanel = ({
   loading = false,
@@ -43,7 +43,9 @@ export const PublicLinkCopyPanel = ({
               key={extension}
               tt="uppercase"
               c={
-                extension === selectedExtension ? "core-brand" : "text-disabled"
+                extension === selectedExtension
+                  ? "core-brand"
+                  : "text-secondary"
               }
               fw={700}
               onClick={() =>
@@ -70,7 +72,7 @@ export const PublicLinkCopyPanel = ({
               component="button"
               style={{ whiteSpace: "nowrap" }}
               fz="sm"
-              c="error"
+              c="feedback-negative"
               fw={700}
               onClick={onRemoveLink}
             >

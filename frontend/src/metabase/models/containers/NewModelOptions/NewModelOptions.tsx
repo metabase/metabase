@@ -1,18 +1,24 @@
 import cx from "classnames";
-import type { Location } from "history";
 import { t } from "ttag";
 
+import notebookModeIllustration from "assets/img/notebook_mode_illustration.png";
+import notebookModeIllustration2x from "assets/img/notebook_mode_illustration@2x.png";
+import sqlIllustration from "assets/img/sql_illustration.png";
+import sqlIllustration2x from "assets/img/sql_illustration@2x.png";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { NoDatabasesEmptyState } from "metabase/common/components/NoDatabasesEmptyState";
 import CS from "metabase/css/core/index.css";
-import { NewModelOption } from "metabase/models/components/NewModelOption";
-import { useSelector } from "metabase/redux";
-import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
-} from "metabase/selectors/user";
+} from "metabase/current-user";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
+import { NewModelOption } from "metabase/models/components/NewModelOption";
+import { useSelector } from "metabase/redux";
+import { useLocation } from "metabase/router";
+import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { getSetting } from "metabase/settings";
 import { Flex, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -20,11 +26,9 @@ import S from "./NewModelOptions.module.css";
 
 const EDUCATIONAL_LINK = getLearnUrl("metabase-basics/getting-started/models");
 
-interface NewModelOptionsProps {
-  location: Location;
-}
-
-const NewModelOptions = ({ location }: NewModelOptionsProps) => {
+const NewModelOptions = () => {
+  const location = useLocation();
+  const buildQuestion = useQuestionFromOptsBuilder();
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
 
@@ -33,7 +37,7 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   );
 
   const collectionId = Urls.extractEntityId(
-    location.query.collectionId as string,
+    new URLSearchParams(location.search).get("collectionId") ?? undefined,
   );
 
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
@@ -62,33 +66,39 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
         {hasDataAccess && (
           <div>
             <NewModelOption
-              image="app/img/notebook_mode_illustration"
+              image={{
+                src: notebookModeIllustration,
+                srcSet: `${notebookModeIllustration2x} 2x`,
+              }}
               title={t`Use the notebook editor`}
               description={t`This automatically inherits metadata from your source tables, and gives your models drill-through.`}
               width={180}
-              to={Urls.newQuestion({
-                mode: "query",
-                creationType: "custom_question",
-                cardType: "model",
-                collectionId,
-              })}
+              to={Urls.newQuestion(
+                buildQuestion({ cardType: "model", collectionId }),
+                { mode: "query", creationType: "custom_question" },
+              )}
             />
           </div>
         )}
         {hasNativeWrite && (
           <div>
             <NewModelOption
-              image="app/img/sql_illustration"
+              image={{
+                src: sqlIllustration,
+                srcSet: `${sqlIllustration2x} 2x`,
+              }}
               title={t`Use a native query`}
               description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
-              to={Urls.newQuestion({
-                mode: "query",
-                DEPRECATED_RAW_MBQL_type: "native",
-                creationType: "native_question",
-                cardType: "model",
-                collectionId,
-                DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
-              })}
+              to={Urls.newQuestion(
+                buildQuestion({
+                  DEPRECATED_RAW_MBQL_type: "native",
+                  cardType: "model",
+                  collectionId,
+                  DEPRECATED_RAW_MBQL_databaseId:
+                    lastUsedDatabaseId || undefined,
+                }),
+                { mode: "query", creationType: "native_question" },
+              )}
               width={180}
             />
           </div>

@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import {
-  type PaneHeaderTab,
-  PaneHeaderTabs,
-} from "metabase/common/data-studio/components/PaneHeader";
+  type PillTab,
+  PillTabNavigation,
+} from "metabase/common/components/PillTabNavigation";
 import * as Urls from "metabase/urls";
 import type { TransformJobId } from "metabase-types/api";
 
@@ -13,10 +13,10 @@ type JobTabsProps = {
 
 export const JobTabs = ({ jobId }: JobTabsProps) => {
   const tabs = getTabs(jobId);
-  return <PaneHeaderTabs tabs={tabs} />;
+  return <PillTabNavigation tabs={tabs} />;
 };
 
-function getTabs(jobId: TransformJobId): PaneHeaderTab[] {
+function getTabs(jobId: TransformJobId): PillTab[] {
   return [
     {
       label: t`Overview`,

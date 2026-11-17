@@ -1,4 +1,4 @@
-(ns ^:synchronous metabase-enterprise.support-access-grants.session-integration-test
+(ns ^:synchronized metabase-enterprise.support-access-grants.session-integration-test
   "Tests for session API integration with support access grants.
   Tests the fallback mechanism in /api/session/reset_password and /api/session/password_reset_token_valid
   that tries support-access-grant provider first, then falls back to emailed-secret-password-reset."
@@ -12,13 +12,33 @@
    [metabase.auth-identity.provider :as auth.provider]
    [metabase.session.api :as api.session]
    [metabase.session.core :as session]
+   [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
+
+;; :test-users is load-bearing, not boilerplate -- deactivating the support user is only legal while another admin
+;; exists, and crowberto is that admin.
+(use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
 (use-fixtures :each (fn [f] (mt/with-premium-features #{:support-access-grants}
                               (with-redefs [api.session/throttling-disabled? true]
                                 (f)))))
+
+(defn- password-reset-emails
+  "Messages in the fake inbox for `email` sent by /api/session/forgot_password.
+
+  Other senders reach the support address too - notably the `:event/support-access-grant-created`
+  notification, which fires on a background thread and also carries a reset URL - so match on the
+  subject rather than counting everything in the inbox."
+  [email]
+  (filter #(re-find #"Password Reset Request" (:subject %)) (get @mt/inbox email)))
+
+(defn- email-body
+  [message]
+  (-> message :body first :content))
 
 (deftest reset-password-with-support-access-grant-token-test
   (testing "POST /api/session/reset_password works with support access grant token"
@@ -47,6 +67,34 @@
                                                                           :token_exchange false
                                                                           :ip_address "127.0.0.1"}})]
                     (is (:success? login-result) "Should be able to login with new password")))))))))))
+
+(deftest reset-password-with-support-access-grant-works-when-password-login-disabled-test
+  (testing "POST /api/session/reset_password redeems a support access grant on an SSO-only instance"
+    (ldap.test/with-ldap-server!
+      (mt/with-premium-features #{:support-access-grants :disable-password-login}
+        (mt/with-temp [:model/User {creator-id :id} {}]
+          (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
+            (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly "support@example.com")
+                                        sag.settings/support-access-grant-first-name (constantly "Support")
+                                        sag.settings/support-access-grant-last-name (constantly "User")]
+              (let [token (:token (grants/create-grant! creator-id 60 "TICKET-SSO-ONLY" "Test notes"))]
+                (mt/with-temporary-setting-values [enable-password-login false]
+                  (is (false? (session/enable-password-login))
+                      "sanity check: password login really is disabled")
+                  (is (true? (:success (mt/client :post 200 "session/reset_password"
+                                                  {:token token :password "NewSecurePassword123!"})))
+                      "the support grant is redeemed even though password login is off")
+                  (let [support-user-id   (t2/select-one-pk :model/User :email "support@example.com")
+                        grant-identity-id (t2/select-one-pk :model/AuthIdentity
+                                                            :user_id support-user-id
+                                                            :provider "support-access-grant")
+                        sessions          (t2/query {:select [:auth_identity_id]
+                                                     :from   [:core_session]
+                                                     :where  [:= :user_id support-user-id]})]
+                    (is (= 1 (count sessions))
+                        "the redeemed grant left exactly one session")
+                    (is (= grant-identity-id (:auth_identity_id (first sessions)))
+                        "the support session is attributed to the support-access-grant identity")))))))))))
 
 (deftest reset-password-fallback-to-regular-token-test
   (testing "POST /api/session/reset_password falls back to regular password reset when support grant token is invalid"
@@ -293,7 +341,7 @@
                                                         :ticket_number "TICKET-FIRST"))))
             ;; Deactivate the support user (simulates admin action or cleanup)
             (let [support-user (t2/select-one [:model/User :id :is_active] :email email)]
-              (t2/update! :model/User (:id support-user) {:is_active false})
+              (t2/update! :model/User :id (:id support-user) {:is_active false})
               (is (false? (:is_active (t2/select-one [:model/User :is_active]
                                                      :id (:id support-user))))
                   "User should be deactivated"))
@@ -312,9 +360,9 @@
 
 (deftest forgot-password-support-user-no-active-grant-test
   (testing "POST /api/session/forgot_password - Support user with no active grant gets no email"
-    (with-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-temp [:model/User user {:first_name "support"
                                        :last_name "user"
                                        :email "support@example.com"}
@@ -325,19 +373,19 @@
             (mt/user-http-request user :post 204 "session/forgot_password" {:email (:email user)})
             (is (not (t2/exists? :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
                 "Should not create a normal password reset token")
-            (is (empty? @mt/inbox)
+            (is (empty? (password-reset-emails (:email user)))
                 "No email should be sent when the grant has no active credentials")))))))
 
 (deftest forgot-password-support-user-active-grant-test
   (testing "POST /api/session/forgot_password - Support user with active grant gets a refreshed token"
-    (with-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-temp [:model/User {creator-id :id} {}]
         (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
-          (with-redefs [sag.settings/support-access-grant-email (constantly "support-forgot@example.com")
-                        sag.settings/support-access-grant-first-name (constantly "Support")
-                        sag.settings/support-access-grant-last-name (constantly "User")]
+          (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly "support-forgot@example.com")
+                                      sag.settings/support-access-grant-first-name (constantly "Support")
+                                      sag.settings/support-access-grant-last-name (constantly "User")]
             (let [grant (grants/create-grant! creator-id 60 "TICKET-FORGOT" "Test forgot password")
                   original-token (:token grant)]
               (is (some? original-token) "Grant should create a token")
@@ -345,10 +393,10 @@
                 (mt/with-fake-inbox
                   (mt/client :post 204 "session/forgot_password" {:email "support-forgot@example.com"})
                   (testing "Email is sent with a valid reset URL"
-                    (let [emails (get @mt/inbox "support-forgot@example.com")]
-                      (is (= 1 (count emails)) "Should send exactly one email")
-                      (is (mt/received-email-body? "support-forgot@example.com"
-                                                   #"http://test.example.com/auth/reset_password/\d+_")
+                    (let [emails (password-reset-emails "support-forgot@example.com")]
+                      (is (= 1 (count emails)) "Should send exactly one password reset email")
+                      (is (re-find #"http://test.example.com/auth/reset_password/\d+_"
+                                   (email-body (first emails)))
                           "Email should contain a reset URL")))
                   (testing "No normal password reset token is created"
                     (let [support-user (t2/select-one :model/User :email "support-forgot@example.com")]
@@ -368,14 +416,14 @@
 
 (deftest forgot-password-then-reset-preserves-support-provider-test
   (testing "Consuming a refreshed support-access token via reset_password keeps the support-access-grant provider"
-    (with-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-temp [:model/User {creator-id :id} {}]
         (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
-          (with-redefs [sag.settings/support-access-grant-email (constantly "support-reset@example.com")
-                        sag.settings/support-access-grant-first-name (constantly "Support")
-                        sag.settings/support-access-grant-last-name (constantly "User")]
+          (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly "support-reset@example.com")
+                                      sag.settings/support-access-grant-first-name (constantly "Support")
+                                      sag.settings/support-access-grant-last-name (constantly "User")]
             (let [grant (grants/create-grant! creator-id 60 "TICKET-PROVIDER" "Test provider preservation")]
               (is (some? (:token grant)) "Grant should create a token")
               (mt/with-temporary-setting-values [site-url "http://test.example.com"]
@@ -383,10 +431,10 @@
                   ;; Step 1: Request a password reset for the support user.
                   (mt/client :post 204 "session/forgot_password" {:email "support-reset@example.com"})
                   ;; Step 2: Extract the refreshed token from the email.
-                  (let [emails          (get @mt/inbox "support-reset@example.com")
-                        _               (is (= 1 (count emails)) "Should send exactly one email")
-                        email-body      (-> emails first :body first :content)
-                        [_ reset-token] (re-find #"/auth/reset_password/(\d+_[\w_-]+)" email-body)
+                  (let [emails          (password-reset-emails "support-reset@example.com")
+                        _               (is (= 1 (count emails)) "Should send exactly one password reset email")
+                        [_ reset-token] (re-find #"/auth/reset_password/(\d+_[\w_-]+)"
+                                                 (email-body (first emails)))
                         _               (is (some? reset-token) "Should find reset token in email")
                         new-password    "ResetViaForgot123!"
                         support-user    (t2/select-one :model/User :email "support-reset@example.com")]
@@ -414,3 +462,67 @@
                                                    :provider "password")]
                         (is (some? (:expires_at pw-auth))
                             "Password AuthIdentity should have an expiration from the grant")))))))))))))
+
+(deftest support-grant-session-does-not-outlive-the-grant-test
+  (testing "a session minted from a support access grant stops authenticating once the grant window has passed"
+    (mt/with-temp [:model/User {creator-id :id} {}]
+      (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
+        (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly "support-session-expiry@example.com")
+                                    sag.settings/support-access-grant-first-name (constantly "Support")
+                                    sag.settings/support-access-grant-last-name (constantly "User")]
+          (let [grant       (grants/create-grant! creator-id 60 "SUPPORT-SESSION-EXPIRY" "Time-boxed access")
+                session-key (:session_id (mt/client :post 200 "session/reset_password"
+                                                    {:token (:token grant) :password "SupportPass!2468"}))
+                session     (t2/select-one :model/Session :key_hashed (session/hash-session-key session-key))]
+            (testing "the session records the grant's end as its own expires_at"
+              (is (some? (:expires_at session))))
+            (testing "inside the grant window the support session works"
+              (is (true? (:is_superuser (mt/client session-key :get 200 "user/current")))))
+            (testing "past the grant window the support session is rejected"
+              ;; Sessions cannot be updated through the model and the clock cannot be wound forward, so
+              ;; simulate the grant window elapsing by moving expires_at into the past.
+              (t2/query-one {:update (t2/table-name :model/Session)
+                             :set    {:expires_at (t/minus (t/instant) (t/minutes 1))}
+                             :where  [:= :id (:id session)]})
+              (is (= "Unauthenticated" (mt/client session-key :get 401 "user/current"))))))))))
+
+(deftest reset-password-grant-tokens-cost-same-bcrypt-work-test
+  (testing "POST /api/session/reset_password and GET /api/session/password_reset_token_valid run the same number of bcrypt checks for grant users as for any other token that gets the same answer"
+    (mt/with-temp [:model/User {creator-id :id} {}
+                   :model/User {grant-id :id} {}
+                   :model/User {both-id :id} {}
+                   :model/User {inactive-id :id} {}
+                   :model/User {reset-id :id} {}
+                   :model/SupportAccessGrantLog grant {:user_id               creator-id
+                                                       :ticket_number         "TEST-BCRYPT"
+                                                       :notes                 "Test bcrypt cost"
+                                                       :grant_start_timestamp (t/offset-date-time)
+                                                       :grant_end_timestamp   (t/plus (t/offset-date-time) (t/hours 1))
+                                                       :revoked_at            nil}]
+      (sag.provider/create-support-access-reset! grant-id grant)
+      (sag.provider/create-support-access-reset! both-id grant)
+      (auth-identity/create-password-reset! both-id)
+      (auth-identity/create-password-reset! reset-id)
+      (let [inactive-token (sag.provider/create-support-access-reset! inactive-id grant)
+            checks         (atom 0)
+            bcrypt         (mt/original-fn #'u.password/bcrypt-verify)
+            invalid-token  {"malformed"                   "not-a-token"
+                            "wrong reset secret"          (str reset-id "_" (random-uuid))
+                            "wrong grant secret"          (str grant-id "_" (random-uuid))
+                            "wrong secret, grant + reset" (str both-id "_" (random-uuid))}
+            cost           (fn [f] (reset! checks 0) (f) @checks)]
+        (t2/update! :model/User :id inactive-id {:is_active false})
+        (mt/with-dynamic-fn-redefs [u.password/bcrypt-verify (fn [token hash] (swap! checks inc) (bcrypt token hash))]
+          (testing "reset_password answering Invalid reset token"
+            (let [costs (into {} (for [[label token] (assoc invalid-token "deactivated grant user" inactive-token)]
+                                   [label (cost #(is (= {:errors {:password "Invalid reset token"}}
+                                                        (mt/client :post 400 "session/reset_password"
+                                                                   {:token token :password "SomePassword12!!"}))))]))]
+              (is (apply = (vals costs)) (pr-str costs))
+              (is (not (t2/exists? :model/AuthIdentity :user_id inactive-id :provider "password"))
+                  "the deactivated grant user gets no password")))
+          (testing "password_reset_token_valid answering false"
+            (let [costs (into {} (for [[label token] (assoc invalid-token "deactivated grant user" inactive-token)]
+                                   [label (cost #(is (= {:valid false}
+                                                        (mt/client :get 200 "session/password_reset_token_valid" :token token))))]))]
+              (is (apply = (vals costs)) (pr-str costs)))))))))

@@ -20,7 +20,7 @@ For significant feature additions, it is expected that discussion will have take
 
 ## Contributor License Agreement
 
-We don't like getting sued, so before merging any pull request, we'll need each person contributing code to sign a [Contributor License Agreement](https://docs.google.com/a/metabase.com/forms/d/1oV38o7b9ONFSwuzwmERRMi9SYrhYeOrkbmNaq9pOJ_E/viewform).
+We don't like getting sued, so before merging any pull request, we'll need each person contributing code to sign a [Contributor License Agreement](https://docs.google.com/a/metabase.com/forms/d/e/1FAIpQLSfc9GWyJ3F9U_4NzHLeTblgtog1FKtG3CjLshE4FAAKSdvNoQ/viewform).
 
 ## What we're trying to build
 
@@ -69,7 +69,7 @@ If there are tests missing, code style concerns or specific architectural issues
 
 ## Ways to help
 
-The starting point would be to get familiar with Metabase the product, and know your way around. If you're using it at work, that's great! If not, [download Metabase](https://www.metabase.com/start/oss/) and play around with it. Read the docs and generally get a feel for the flow of the product.
+The starting point would be to get familiar with Metabase the product, and know your way around. If you're using it at work, that's great! If not, [download Metabase](https://www.metabase.com/start/oss) and play around with it. Read the docs and generally get a feel for the flow of the product.
 
 Here are some ways you can help, in order of increasing coordination + interaction with us:
 
@@ -80,8 +80,6 @@ If you want to help, try out Metabase. Use it at your company, and report back t
 ### Help us triage and support other users
 
 Spend time on discourse.metabase.com and on new issues and try to reproduce the bugs reported. For people having trouble with their databases where you have significant knowledge, help them out. Who knows, maybe they'll end up helping you with something in the future.
-
-It is helpful if you understand our [prioritization framework](https://github.com/metabase/metabase/wiki/Bug-Prioritization) when responding.
 
 ### Tell your friends
 

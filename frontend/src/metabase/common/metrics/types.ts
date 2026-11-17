@@ -12,18 +12,18 @@ export interface MetricUrls {
   about: (cardId: CardId) => string;
   overview: (cardId: CardId) => string;
   query: (cardId: CardId) => string;
+  dimensions: (cardId: CardId) => string;
   dependencies: (cardId: CardId) => string;
   history: (cardId: CardId) => string;
   database?: (databaseId: DatabaseId) => string;
   table?: (databaseId: DatabaseId, tableId: TableId) => string;
 }
 
-export interface MetricPageParams {
+export type MetricPageParams = {
   cardId: string;
-}
+};
 
 export interface MetricPageProps {
-  params: MetricPageParams;
   urls?: MetricUrls;
   renderBreadcrumbs?: (card: Card) => ReactNode;
   showAppSwitcher?: boolean;

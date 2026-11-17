@@ -1,11 +1,12 @@
 (ns metabase.model-persistence.events.persisted-model-refresh-error
   "This event gets triggered when there is an error in the [[metabase.model-persistence.task.persist-refresh]] task."
   (:require
+   [metabase.events.core :as events]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(derive ::event :metabase/event)
-(derive :event/persisted-model-refresh-error ::event)
+(events/derive! ::event :metabase/event)
+(events/derive! :event/persisted-model-refresh-error ::event)
 
 (mr/def :event/persisted-model-refresh-error
   [:map

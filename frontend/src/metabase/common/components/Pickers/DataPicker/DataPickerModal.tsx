@@ -1,25 +1,30 @@
 import { useCallback, useMemo } from "react";
 
-import { useSetting } from "metabase/common/hooks";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { DatabaseId, RecentContexts, TableId } from "metabase-types/api";
+import { useSetting } from "metabase/settings";
+import type {
+  DatabaseId,
+  RecentContexts,
+  SearchRequest,
+} from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
   OmniPickerItem,
+  OmniPickerQuestionItem,
+  OmniPickerTableItem,
   OmniPickerValue,
 } from "../EntityPicker";
 import { EntityPickerModal } from "../EntityPicker";
 
 import type { DataPickerValue } from "./types";
 import { isDataPickerValue } from "./types";
-import { shouldDisableItemNotInDb } from "./utils";
+import { getItemNotInDbTooltip, shouldDisableItemNotInDb } from "./utils";
 
 interface Props {
   title: string;
   value?: OmniPickerValue;
   models?: DataPickerValue["model"][];
-  onChange: (value: TableId) => void;
+  onChange: (item: OmniPickerTableItem | OmniPickerQuestionItem) => void;
   onClose: () => void;
   onlyDatabaseId?: DatabaseId;
   shouldDisableItem?: (item: OmniPickerItem) => boolean;
@@ -52,12 +57,13 @@ export const DataPickerModal = ({
     [hasNestedQueriesEnabled, passedModels],
   );
 
-  const searchParams = useMemo(() => {
+  const searchParams: Partial<SearchRequest> = useMemo(() => {
     const tableParams = onlyDatabaseId
       ? { table_db_id: onlyDatabaseId }
       : undefined;
     return {
       include_dashboard_questions: true,
+      filter_items_in_personal_collection: "exclude-others",
       ...tableParams,
     };
   }, [onlyDatabaseId]);
@@ -69,15 +75,19 @@ export const DataPickerModal = ({
       shouldDisableFn(i) || Boolean(shouldDisableItem && shouldDisableItem(i));
   }, [onlyDatabaseId, shouldDisableItem]);
 
+  const getItemTooltip = useMemo(() => {
+    const getNotInDbTooltip = getItemNotInDbTooltip(onlyDatabaseId);
+    return (item: OmniPickerItem): string | undefined =>
+      passedOptions?.getItemTooltip?.(item) ?? getNotInDbTooltip(item);
+  }, [onlyDatabaseId, passedOptions]);
+
   const handleItemSelect = useCallback(
     (item: OmniPickerItem) => {
       if (!isDataPickerValue(item)) {
         return;
       }
 
-      const id =
-        item.model === "table" ? item.id : getQuestionVirtualTableId(item.id);
-      onChange(id);
+      onChange(item);
       onClose();
     },
     [onChange, onClose],
@@ -96,6 +106,7 @@ export const DataPickerModal = ({
         hasConfirmButtons: false,
         hasPersonalCollections: true,
         ...passedOptions,
+        getItemTooltip,
       }}
       recentsContext={RECENTS_CONTEXT}
       searchParams={searchParams}

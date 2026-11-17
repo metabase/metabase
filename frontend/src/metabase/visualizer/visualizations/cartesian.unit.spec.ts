@@ -401,15 +401,7 @@ describe("cartesian", () => {
         columnValuesMapping: {},
       };
 
-      addColumnToCartesianChart(
-        state,
-        {},
-        {},
-        [column2],
-        column2,
-        column2Ref,
-        dataSource,
-      );
+      addColumnToCartesianChart(state, {}, column2, column2Ref, dataSource);
 
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_2"]);
       expect(state.columnValuesMapping).toEqual({
@@ -432,15 +424,7 @@ describe("cartesian", () => {
         columnValuesMapping: {},
       };
 
-      addColumnToCartesianChart(
-        state,
-        {},
-        {},
-        [column1],
-        column1,
-        column1Ref,
-        dataSource,
-      );
+      addColumnToCartesianChart(state, {}, column1, column1Ref, dataSource);
 
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
       expect(state.columnValuesMapping).toEqual({
@@ -475,8 +459,6 @@ describe("cartesian", () => {
       addColumnToCartesianChart(
         state,
         settings,
-        {},
-        [column1],
         column1,
         column1Ref,
         dataSource,
@@ -505,15 +487,7 @@ describe("cartesian", () => {
         display: "bar",
       };
 
-      addColumnToCartesianChart(
-        state,
-        {},
-        {},
-        [column4],
-        column4,
-        column4Ref,
-        dataSource,
-      );
+      addColumnToCartesianChart(state, {}, column4, column4Ref, dataSource);
 
       expect(state.columns.map((c) => c.name)).toEqual([]);
       expect(state.columnValuesMapping).toEqual({});
@@ -533,8 +507,6 @@ describe("cartesian", () => {
         addColumnToCartesianChart(
           state,
           {},
-          {},
-          [column1],
           copyColumn(column1Ref.name, column1, dataSource.name, []),
           column1Ref,
           dataSource,
@@ -547,8 +519,6 @@ describe("cartesian", () => {
         addColumnToCartesianChart(
           state,
           { "graph.dimensions": ["COLUMN_1"] },
-          {},
-          [column2],
           copyColumn(column2Ref.name, column2, dataSource.name, []),
           column2Ref,
           dataSource,
@@ -573,8 +543,6 @@ describe("cartesian", () => {
             "graph.dimensions": ["COLUMN_1"],
             "graph.metrics": ["COLUMN_2"],
           },
-          {},
-          [column3],
           copyColumn(column3Ref.name, column3, dataSource.name, []),
           column3Ref,
           dataSource,

@@ -1,16 +1,15 @@
-import type { Location } from "history";
 import { useMemo } from "react";
-import { push } from "react-router-redux";
 
 import {
   skipToken,
   useGetCardQuery,
   useGetCollectionQuery,
 } from "metabase/api";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { useDispatch } from "metabase/redux";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
+import { type Location, useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
-import Question from "metabase-lib/v1/Question";
 
 import MainNavbarContainer from "../../MainNavbar/MainNavbarContainer";
 import {
@@ -34,6 +33,7 @@ type Props = {
  */
 export function CollectionsSection({ isOpen, location, params }: Props) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { pathname } = location;
 
   const questionId =
@@ -51,10 +51,11 @@ export function CollectionsSection({ isOpen, location, params }: Props) {
     collectionId ? { id: collectionId } : skipToken,
   );
 
-  const selectedItems = useMemo<SelectedItem[]>(() => {
-    const question = card && new Question(card);
-    return getSelectedItems({ pathname, params, question, collection });
-  }, [pathname, params, card, collection]);
+  const question = useQuestionFromCard(card);
+  const selectedItems = useMemo<SelectedItem[]>(
+    () => getSelectedItems({ pathname, params, question, collection }),
+    [pathname, params, question, collection],
+  );
 
   return (
     <MainNavbarContainer
@@ -64,7 +65,7 @@ export function CollectionsSection({ isOpen, location, params }: Props) {
       selectedItems={selectedItems}
       openNavbar={() => dispatch(openNavbar())}
       closeNavbar={() => dispatch(closeNavbar())}
-      onChangeLocation={(loc) => dispatch(push(loc))}
+      onChangeLocation={navigate}
     />
   );
 }

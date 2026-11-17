@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { NodeViewWrapper } from "@tiptap/react";
 import cx from "classnames";
 
@@ -67,7 +68,7 @@ export const DocumentBlockShell = ({
           )}
           <CommentsMenu
             active={isOpen}
-            href={`/document/${document.id}/comments/${_id}`}
+            childTargetId={_id}
             ref={commentsRefs.setFloating}
             show={isOpen || hovered}
             style={commentsFloatingStyles}

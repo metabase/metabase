@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { ReactNode } from "react";
 import { c, jt, t } from "ttag";
 
@@ -27,7 +28,7 @@ function EmptyStateWrapper({ children }: { children: ReactNode }) {
       data-testid="dashboard-empty-state"
       h="100%"
       justify="center"
-      gap="lg"
+      gap="xl"
       mih="20rem"
     >
       <img src={EmptyDashboardBot} alt={t`Empty dashboard illustration`} />
@@ -52,7 +53,7 @@ export function DashboardEmptyState({
   return (
     <EmptyStateWrapper>
       <>
-        <Stack align="center" maw="25rem" gap="xs">
+        <Stack align="center" maw="25rem" gap="xxs">
           <Title ta="center" order={3}>
             {title}
           </Title>

@@ -6,20 +6,24 @@
   (:require
    [malli.util]
    [metabase.api.common :as api]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.schema :as collections.schema]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
+
+(events/derive! :event/collection-create :metabase/event)
 
 (defn- parent-or-root
   "From a create request return either the parent collection or the root collection."
   [{collection-id :parent_id collection-namespace :namespace}]
   (if collection-id
-    (t2/select-one :model/Collection :id collection-id)
+    (collections.db/collection collection-id)
     (collection/root-collection-with-ui-details collection-namespace)))
 
 (defn- write-check-authority-level
@@ -42,7 +46,7 @@
 
 (def ^:private CreateCollectionArguments
   "The arguments to a create-collection call — what the public API surface accepts."
-  [:map
+  [:map {:closed true}
    [:name            ms/NonBlankString]
    [:description     {:optional true} [:maybe ms/NonBlankString]]
    [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
@@ -56,7 +60,7 @@
       (malli.util/assoc :location [:maybe ms/NonBlankString])
       (malli.util/assoc :namespace [:maybe [:or :keyword ms/NonBlankString]])
       (malli.util/assoc :is_remote_synced [:maybe :boolean])
-      (malli.util/assoc :type [:enum "trash" "library" "library-data" "library-metrics"])
+      (malli.util/assoc :type [:enum "trash" "library" "library-data" "library-metrics" "library-dashboards"])
       (malli.util/optional-keys [:location :type])
       (malli.util/closed-schema)))
 
@@ -88,11 +92,11 @@
   superuser/feature check, runs the EE tenant-collection validation, and publishes both the
   create and touch events. The single source of truth for collection creation; REST and agent
   callers both go through here."
-  [coll-data]
-  (u/prog1 (t2/insert-returning-instance!
-            :model/Collection
-            (-> (apply-defaults-to-collection coll-data)
-                write-check-authority-level
-                validate-new-tenant-collection!))
+  [coll-data :- CreateCollectionArguments]
+  (u/prog1 (collections.db/insert-collection!
+            (->> (-> (apply-defaults-to-collection coll-data)
+                     write-check-authority-level
+                     validate-new-tenant-collection!)
+                 (lib/normalize ::collections.schema/collection.update)))
     (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*})
     (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))

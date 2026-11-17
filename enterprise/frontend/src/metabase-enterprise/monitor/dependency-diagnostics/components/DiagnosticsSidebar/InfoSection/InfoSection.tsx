@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Anchor, Box, Card, FixedSizeIcon, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -102,7 +102,7 @@ type InfoSectionItemProps = {
 
 function InfoSectionItem({ label, date, children }: InfoSectionItemProps) {
   return (
-    <Stack className={S.section} p="md" gap="xs">
+    <Stack className={S.section} p="lg" gap="xxs">
       <Box className={CS.textWrap} c="text-secondary" fz="sm" lh="h5">
         {label}
       </Box>

@@ -1,6 +1,6 @@
 ---
 title: ClickHouse
-description: Learn how to connect Metabase to your ClickHouse database, including connection settings, database selection, and SSL configuration.
+description: Learn how to connect Metabase to your ClickHouse database, including supported versions, the built-in driver, a read-only user, connection settings, database selection, and SSL configuration.
 ---
 
 # ClickHouse
@@ -8,6 +8,14 @@ description: Learn how to connect Metabase to your ClickHouse database, includin
 To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
 You can edit these settings at any time. Just remember to save your changes.
+
+## Supported versions
+
+Metabase supports ClickHouse 23.3 and later, on ClickHouse Cloud and on self-managed ClickHouse. [Impersonation](../../permissions/impersonation.md) requires ClickHouse 24.4 or later.
+
+If you set a [report time zone](../../configuring-metabase/localization.md#set-default-instance-report-timezone) in Metabase, use ClickHouse 23.6 or later. Metabase sends the `session_timezone` setting with each query, and ClickHouse added that setting in 23.6.
+
+The ClickHouse driver is included with Metabase as of version 54.1, so you don't need to download or install a driver. Metabase maintains the driver in the [metabase/metabase](https://github.com/metabase/metabase) repository. The earlier partner driver in [ClickHouse/metabase-clickhouse-driver](https://github.com/ClickHouse/metabase-clickhouse-driver) is archived. If your `plugins` folder still contains `clickhouse.metabase-driver.jar`, you can delete it.
 
 ## Connection and Sync
 
@@ -37,7 +45,7 @@ The database port (e.g., `8123`).
 
 ### Username
 
-The database username for the account that you want to use to connect to your database. You can set up multiple connections to the same database using different user accounts to connect to the same database, each with different sets of [privileges](../users-roles-privileges.md).
+The username Metabase uses to connect to your database. Create a dedicated database user for Metabase with read-only access to the schemas and tables you want to analyze. For write operations like uploads, actions, or transforms, use a separate [writable connection](../writable-connection.md). For instructions, see [Database users, roles, and privileges](../users-roles-privileges.md). You can set up multiple connections to the same database using different user accounts, each with different sets of privileges.
 
 ### Password
 
@@ -45,7 +53,7 @@ The password for the username that you use to connect to the database.
 
 ### Databases
 
-Include all of the database you want to be able to query in Metabase. Separate databases with the space character, e.g., `db1 db2 db3`.
+Include all of the databases you want to be able to query in Metabase. Separate databases with the space character, e.g., `db1 db2 db3`.
 
 ### Scan all databases
 
@@ -87,7 +95,7 @@ clickhouse_setting_connection_timeout=1000&clickhouse_setting_socket_timeout=300
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/summarizing-and-grouping.md) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose a grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when syncs and scans happen
 
@@ -105,9 +113,11 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
 
-## Model features
+## Uploads
 
-There aren't (yet) any model features for ClickHouse.
+Metabase supports [CSV uploads](../uploads.md) to ClickHouse Cloud and self-hosted single-node ClickHouse deployments. Self-hosted clusters aren't supported.
+
+For self-hosted deployments, the database user must be able to read the `system.clusters` table, as well as create tables and insert data.
 
 ## Danger zone
 

@@ -11,7 +11,7 @@ jest.mock("../components/DocumentPage.module.css", () => ({
 
 describe("useScrollToAnchor", () => {
   let container: HTMLDivElement;
-  let editorContainerRef: React.RefObject<HTMLDivElement>;
+  let editorContainerRef: React.RefObject<HTMLDivElement | null>;
   const mockScrollIntoView = getScrollIntoViewMock();
 
   beforeEach(() => {
@@ -22,6 +22,7 @@ describe("useScrollToAnchor", () => {
     document.body.appendChild(container);
 
     editorContainerRef = createRef<HTMLDivElement>();
+    // Unjustified type cast. FIXME
     (editorContainerRef as { current: HTMLDivElement }).current = container;
   });
 

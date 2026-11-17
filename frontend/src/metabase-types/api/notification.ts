@@ -125,14 +125,14 @@ export type NotificationCronSubscription = {
   updated_at?: string;
 };
 
-export interface ListNotificationsRequest extends PaginationRequest {
+export type ListNotificationsRequest = PaginationRequest & {
   include_inactive?: boolean;
   creator_id?: UserId;
   recipient_id?: UserId;
   creator_or_recipient_id?: UserId;
   card_id?: CardId;
   permission_group_id?: number;
-}
+};
 
 export type CreateAlertNotificationRequest = NotificationCardData & {
   handlers: NotificationHandler[];
@@ -186,6 +186,13 @@ export type NotificationTickSendEntry = {
   channels: NotificationChannelSendEntry[];
 };
 
+export type SendNotificationStatus = "sent" | "skipped";
+
+export type SendNotificationResponse = {
+  status: SendNotificationStatus;
+  skip_reason?: string | null;
+};
+
 export type AdminNotificationSortColumn =
   | "id"
   | "last_send"
@@ -223,6 +230,12 @@ export type AdminNotificationListParams = {
   query?: string;
   sort_column?: AdminNotificationSortColumn;
   sort_direction?: SortDirection;
+};
+
+export type AdminNotificationCountsResponse = {
+  all: number;
+  failing: number;
+  ownerless: number;
 };
 
 export type AdminNotificationListResponse = {

@@ -2,11 +2,16 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.channel.impl.email :as email.impl]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.urls :as urls]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.notification.send :as notification.send]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]))
 
 (deftest bcc-enabled-test
@@ -81,6 +86,29 @@
         (is (true? (-> result first :card :format_rows))
             "Should include format_rows setting using the fallback match")))))
 
+(defn- test-dashcard
+  "A DashboardCard row for card `card-id` on dashboard `dashboard-id`, as a Dashboard Subscription part carries it."
+  [id dashboard-id card-id]
+  {:id                     id
+   :dashboard_id           dashboard-id
+   :card_id                card-id
+   :created_at             (t/offset-date-time)
+   :updated_at             (t/offset-date-time)
+   :size_x                 4
+   :size_y                 4
+   :row                    0
+   :col                    0
+   :parameter_mappings     []
+   :visualization_settings {}
+   :entity_id              "test-dashcard-entity"
+   :action_id              nil
+   :dashboard_tab_id       nil
+   :inline_parameters      nil})
+
+(def ^:private empty-result
+  "A QP result with no rows."
+  {:data {:cols [] :rows []} :row_count 0})
+
 (deftest dashboard-notification-dashcard-links-test
   (testing "Dashboard notification renders dashcard links with parameters like Slack implementation"
     (let [dashboard-id 42
@@ -99,8 +127,8 @@
                                   :dashboard_parts [{:type :card
                                                      :card {:id card-id
                                                             :name "Test Card"}
-                                                     :dashcard {:id dashcard-id
-                                                                :dashboard_id dashboard-id}}]
+                                                     :dashcard (test-dashcard dashcard-id dashboard-id card-id)
+                                                     :result empty-result}]
                                   :dashboard_subscription {:id 789
                                                            :dashboard_subscription_dashcards []}}}
           recipients [{:type :notification-recipient/user
@@ -154,7 +182,7 @@
     (mt/with-prometheus-system! [_ system]
       (let [template {:details {:type :email/handlebars-resource
                                 :subject "Test"
-                                :path "metabase/channel/email/notification_card.hbs"}}]
+                                :path "notification_card"}}]
         ;; render-body will throw if the payload doesn't match the template, but the metric
         ;; fires before the render, so we just need to not blow up
         (try (#'email.impl/render-body template {})
@@ -176,13 +204,44 @@
              (#'email.impl/notification-recipients->emails recipients {}))))))
 
 (deftest render-body-logging-test
-  (testing "rendering a user-provided template logs the template body at debug level"
+  (testing "rendering a user-provided template logs a debug message, without leaking the template body"
     (mt/with-log-messages-for-level [messages :debug]
       (let [template {:details {:type :email/handlebars-text
                                 :subject "Test"
                                 :body "Hello {{name}}"}}]
         (#'email.impl/render-body template {:name "World"})
         (is (some (fn [{:keys [message]}]
-                    (and (re-find #"Rendering user-provided template" message)
-                         (re-find #"Hello" message)))
-                  (messages)))))))
+                    (re-find #"Rendering user-provided template" message))
+                  (messages)))
+        (testing "the template body itself is not logged"
+          (is (not (some (fn [{:keys [message]}]
+                           (re-find #"Hello" message))
+                         (messages)))))))))
+
+(deftest email-branding-hidden-when-whitelabel-test
+  (testing "the 'Made with Metabase' footer respects the :whitelabel premium feature"
+    (notification.tu/with-notification-testing-setup!
+      (notification.tu/with-card-notification
+        [notification {:card         {:name          "Orders question"
+                                      :dataset_query (let [mp (mt/metadata-provider)]
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                           (lib/limit 1)))}
+                       :subscriptions [{:type          :notification-subscription/cron
+                                        :cron_schedule "0 0 0 * * ? *"}]
+                       :handlers      [{:channel_type :channel/email
+                                        :recipients   [{:type    :notification-recipient/user
+                                                        :user_id (mt/user->id :crowberto)}]}]}]
+        (let [render! (fn []
+                        (-> (notification.tu/with-captured-channel-send!
+                              (#'notification.send/send-notification-sync! notification))
+                            :channel/email first :message first :content))]
+          (testing "branding link is present without whitelabel"
+            (mt/with-premium-features #{}
+              (is (str/includes? (render!) "Made with"))))
+          ;; Whitelabeling is only wired up in EE builds (`enable-whitelabeling?` is gated on
+          ;; `config/ee-available?`), so `:whitelabel` can never hide the footer on OSS builds.
+          ;; The EE app-db jobs run this same file with EE on the classpath and cover the hidden case.
+          (mt/when-ee-evailable
+           (testing "branding link is hidden with whitelabel"
+             (mt/with-premium-features #{:whitelabel}
+               (is (not (str/includes? (render!) "Made with")))))))))))

@@ -3,16 +3,18 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.util :as u]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouses.core :as warehouses]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (defn- nil-if-unreadable
   [instance]
-  (when (and instance (mi/can-read? instance))
+  (when (and instance (mi/can-read? (t2/hydrate instance :can_read)))
     instance))
 
 (defn present-table
@@ -31,12 +33,33 @@
                 (update field :values field-values/field-values->pairs)
                 field)))))
 
+(defenterprise filter-tables-by-data-model-perms
+  "Given a list of tables, removes the ones for which the current user does not have data model editing permissions.
+  Admin-only without the advanced-permissions feature. Data model reads, sensitive fields and FK targets rely on this
+  filter alone, so it must keep nothing the user cannot edit."
+  metabase-enterprise.advanced-permissions.common
+  [tables]
+  (if (mi/superuser?) tables (empty tables)))
+
+(defn check-data-model-perms
+  "Return `table`, or throw a 403 unless the current user has data model editing permissions for it."
+  [table]
+  (api/check-403 (first (filter-tables-by-data-model-perms [table]))))
+
 (defn- can-access-table-for-query-metadata?
   "Returns true if the current user can access this table for query metadata.
   Uses can-read? which checks data permissions, metadata management permissions,
   and collection permissions for published tables."
   [table]
-  (mi/can-read? table))
+  (mi/can-read? (t2/hydrate table :can_read)))
+
+(defn sensitive-fields-table-ids
+  "IDs of the `tables` whose sensitive fields to list: none unless `include-sensitive-fields?`, and then only those the
+  current user can edit the data model of."
+  [include-sensitive-fields? tables]
+  (if include-sensitive-fields?
+    (into #{} (map :id) (filter-tables-by-data-model-perms tables))
+    #{}))
 
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
@@ -44,11 +67,13 @@
   [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
   (api/check-404 table)
   (if include-editable-data-model?
-    (api/write-check table)
+    (check-data-model-perms table)
     (api/check-403 (can-access-table-for-query-metadata? table)))
-  (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                                [:segments :definition_description] [:measures :definition_description] :metrics :collection]
-                         (premium-features/any-transforms-enabled?) (conj :transform))]
+  (let [include-sensitive-fields? (contains? (sensitive-fields-table-ids include-sensitive-fields? [table]) (:id table))
+        hydration-keys            (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
+                                           [:segments :definition_description] [:measures :definition_description] :metrics :collection
+                                           :can_write]
+                                    (premium-features/any-transforms-enabled?) (conj :transform))]
     (-> table
         (update :collection nil-if-unreadable)
         (#(apply t2/hydrate % hydration-keys))
@@ -64,21 +89,20 @@
 (defn batch-fetch-query-metadatas*
   "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`.
   Options:
-    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive for tables the current
+      user can edit the data model of (default false)"
   ([ids]
    (batch-fetch-query-metadatas* ids nil))
   ([ids {:keys [include-sensitive-fields?]}]
    (when (seq ids)
-     (let [tables (->> (t2/select :model/Table :id [:in ids])
-                       (filter can-access-table-for-query-metadata?))
-           tables (t2/hydrate tables
-                              [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                              :segments
-                              :measures
-                              :metrics)
-           excluded-visibility-types (cond-> #{:hidden}
-                                       (not include-sensitive-fields?) (conj :sensitive))]
-       (for [table tables]
+     (let [tables (t2/hydrate (warehouse-schema.db/tables ids) :can_read)
+           tables (filter can-access-table-for-query-metadata? tables)
+           sensitive-table-ids (sensitive-fields-table-ids include-sensitive-fields? tables)
+           tables (t2/hydrate tables [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :measures :metrics)]
+       (for [table tables
+             :let [excluded-visibility-types (cond-> #{:hidden}
+                                               (not (contains? sensitive-table-ids (:id table)))
+                                               (conj :sensitive))]]
          (-> table
              (m/dissoc-in [:db :details])
              format-fields-for-response
@@ -90,12 +114,13 @@
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   metabase-enterprise.sandbox.api.table
   [id opts]
-  (fetch-query-metadata* (t2/select-one :model/Table :id id) opts))
+  (fetch-query-metadata* (warehouse-schema.db/table id) opts))
 
 (defenterprise batch-fetch-table-query-metadatas
   "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`.
   Options:
-    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive for tables the current
+      user can edit the data model of (default false)"
   metabase-enterprise.sandbox.api.table
   [ids opts]
   (batch-fetch-query-metadatas* ids opts))
@@ -114,135 +139,104 @@
   [fields-by-table]
   fields-by-table)
 
-(defn- card-result-metadata->virtual-fields
-  "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
-   database.
-  `metadata-fields` can be nil."
-  [card-id metadata metadata-fields]
-  (let [underlying (m/index-by :id (or metadata-fields
-                                       (when-let [ids (seq (keep :id metadata))]
-                                         (-> (t2/select :model/Field :id [:in ids])
-                                             (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)))))
-        fields (for [{col-id :id :as col} metadata]
-                 (-> col
-                     (update :base_type keyword)
-                     (merge (select-keys (underlying col-id)
-                                         [:semantic_type :fk_target_field_id :has_field_values :target :dimensions :name_field]))
-                     (assoc
-                      :table_id      (str "card__" card-id)
-                      :id            (or col-id
-                                         ;; TODO -- what????
-                                         [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
-                      ;; Assoc semantic_type at least temporarily. We need the correct semantic type in place to make
-                      ;; decisions about what kind of dimension options should be added. PK/FK values will be removed
-                      ;; after we've added the dimension options
-                      :semantic_type (keyword (:semantic_type col)))
-                     (m/assoc-some
-                      ;; If the semantic type is a FK, and the target is defined, keep it too.
-                      :fk_target_field_id (when (and (:semantic_type col)
-                                                     (isa? (keyword (:semantic_type col)) :type/FK))
-                                            (:fk_target_field_id col)))))]
-    fields))
+(defenterprise current-user-can-manage-schema-metadata?
+  "Returns a boolean whether the current user has permission to edit table metadata for any tables in the schema.
+  On OSS, this is only available to admins."
+  metabase-enterprise.advanced-permissions.common
+  [_db-id _schema-name]
+  (mi/superuser?))
 
-(defn root-collection-schema-name
-  "Schema name to use for the saved questions virtual database for Cards that are in the root collection (i.e., not in
-  any collection)."
-  []
-  "Everything else")
+(defenterprise filter-schema-by-data-model-perms
+  "Given a list of `{:db_id ... :schema ...}` maps, removes the ones for which the current user does not have data
+  model editing permissions. Admin-only on OSS."
+  metabase-enterprise.advanced-permissions.common
+  [schemas]
+  (if (mi/superuser?) schemas (empty schemas)))
 
-(defn card->virtual-table
-  "Return metadata for a 'virtual' table for a `card` in the Saved Questions 'virtual' database. Optionally include
-  'virtual' fields as well."
-  [{:keys [database_id] :as card} & {:keys [include-database? include-fields? databases card-id->metadata-fields]}]
-  ;; if collection isn't already hydrated then do so
-  (let [card-type     (:type card)
-        dataset-query (:dataset_query card)
-        database      (when (int? database_id)
-                        (or (get databases database_id)
-                            (t2/select-one :model/Database :id database_id)))]
-    (cond-> {:id               (str "card__" (u/the-id card))
-             :db_id            (:database_id card)
-             :display_name     (:name card)
-             :schema           (get-in card [:collection :name] (root-collection-schema-name))
-             :moderated_status (:moderated_status card)
-             :description      (:description card)
-             :entity_id        (:entity_id card)
-             :metrics          (:metrics card)
-             :type             card-type}
-      (and (= card-type :metric)
-           dataset-query)
-      (assoc :dataset_query dataset-query)
+(defenterprise filter-databases-by-data-model-perms
+  "Given a list of databases, removes the ones for which the current user has no data model editing permissions. If
+  the databases are hydrated with their tables, also removes the tables the user cannot edit. Admin-only on OSS."
+  metabase-enterprise.advanced-permissions.common
+  [dbs]
+  (if (mi/superuser?) dbs (empty dbs)))
 
-      include-database?
-      (assoc :db (when (and database (mi/can-read? database)) database))
+(defn can-read-schema?
+  "Does the current user have permissions to know the schema with `schema-name` exists? (Do they have permissions to see
+  at least some of its tables?)"
+  [database-id schema-name]
+  (or
+   (contains? #{:query-builder :query-builder-and-native}
+              (perms/some-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/create-queries database-id schema-name))
+   (current-user-can-manage-schema-metadata? database-id schema-name)))
 
-      include-fields?
-      (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
-                                                           (:result_metadata card)
-                                                           (when card-id->metadata-fields
-                                                             (card-id->metadata-fields (u/the-id card))))))))
+(defn browsable-databases-honeysql-filter
+  "The `:where` predicate selecting the databases a user may browse: excludes stubs (placeholder
+   rows for in-progress database creation) and — unless `:include-analytics?` — the audit
+   database, and restricts to non-router databases unless `:router-database-id` scopes to one
+   router's destinations. The per-user read permission filter is applied separately by the caller.
 
-(defn- remove-nested-pk-fk-semantic-types
-  "This method clears the semantic_type attribute for PK/FK fields of nested queries. Those fields having a semantic
-  type confuses the frontend and it can really used in the same way"
-  [{:keys [fields] :as metadata-response} {:keys [trust-semantic-keys?]}]
-  (assoc metadata-response :fields (for [{:keys [semantic_type id] :as field} fields]
-                                     (if (and (not trust-semantic-keys?)
-                                              (or (isa? semantic_type :type/PK)
-                                                  (isa? semantic_type :type/FK))
-                                              ;; if they have a user entered id let it stay
-                                              (or (nil? id)
-                                                  (not (number? id))))
-                                       (assoc field :semantic_type nil)
-                                       field))))
+   Excluding destination databases (`router_database_id` non-null — the same definition as
+   `metabase-enterprise.database-routing.common/is-disallowed-destination-db-access?`) is a
+   security boundary, not a nicety: a destination reached directly bypasses the router that would
+   reroute a user to their own tenant, so a caller with a raw destination id could otherwise read
+   another tenant's data. Keep this in sync with that definition."
+  ([] (browsable-databases-honeysql-filter nil))
+  ([{:keys [include-analytics? router-database-id]}]
+   [:and
+    [:= :is_stub false]
+    (when-not include-analytics?
+      [:= :is_audit false])
+    (if router-database-id
+      [:= :router_database_id router-database-id]
+      [:= :router_database_id nil])]))
 
-(defn batch-fetch-card-query-metadatas
-  "Return metadata for the 'virtual' tables for a Cards. Unreadable cards are silently skipped."
-  [ids {:keys [include-database?]}]
-  (when (seq ids)
-    (let [cards (t2/select :model/Card
-                           {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
-                                        :c.description :c.collection_id :c.database_id :c.type
-                                        :c.source_card_id :c.created_at :c.entity_id :c.card_schema
-                                        [:r.status :moderated_status]]
-                            :from      [[:report_card :c]]
-                            :left-join [[{:select   [:moderated_item_id :status]
-                                          :from     [:moderation_review]
-                                          :where    [:and
-                                                     [:= :moderated_item_type "card"]
-                                                     [:= :most_recent true]]
-                                          :order-by [[:id :desc]]
-                                          :limit    1} :r]
-                                        [:= :r.moderated_item_id :c.id]]
-                            :where      [:in :c.id ids]})
-          dbs (if (seq cards)
-                (t2/select-pk->fn identity :model/Database :id [:in (into #{} (map :database_id) cards)])
-                {})
-          metadata-field-ids (into #{}
-                                   (comp (mapcat :result_metadata)
-                                         (keep :id))
-                                   cards)
-          metadata-fields (if (seq metadata-field-ids)
-                            (-> (t2/select :model/Field :id [:in metadata-field-ids])
-                                (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
-                                (->> (m/index-by :id)))
-                            {})
-          card-id->metadata-fields (into {}
-                                         (map (fn [card]
-                                                [(:id card) (into []
-                                                                  (keep (comp metadata-fields :id))
-                                                                  (:result_metadata card))]))
-                                         cards)
-          readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]
-      (for [card readable-cards]
-        ;; Models can have user configured FK columns which, for MBQL models, we cannot distinguish from
-        ;; stale data that remained there from a time when the given column was still FK. We assume
-        ;; treating a not-FK-anymore column as FK is not that bad as not supporting user defined FK
-        ;; settings, so we trust the model's information.
-        (let [trust-semantic-keys? (= (:type card) :model)]
-          (-> card
-              (card->virtual-table :include-database? include-database?
-                                   :include-fields? true
-                                   :databases dbs
-                                   :card-id->metadata-fields card-id->metadata-fields)
-              (remove-nested-pk-fk-semantic-types {:trust-semantic-keys? trust-semantic-keys?})))))))
+(defn database-schemas
+  "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
+  [id {:keys [include-editable-data-model? include-hidden? can-query?]}]
+  (let [filter-schemas (fn [schemas]
+                         (if include-editable-data-model?
+                           (->> schemas
+                                (map (fn [s] {:db_id id :schema s}))
+                                filter-schema-by-data-model-perms
+                                (map :schema))
+                           (filter (partial can-read-schema? id) schemas)))
+        filter-schemas-by-tables (fn [schemas]
+                                   (if can-query?
+                                     (let [tables (warehouse-schema.db/active-tables-for-database id)
+                                           filtered-tables (filter mi/can-query? (t2/hydrate tables :can_query))
+                                           allowed-schemas (set (map :schema filtered-tables))]
+                                       (filter #(contains? allowed-schemas %) schemas))
+                                     schemas))]
+    (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
+    (->> (warehouse-schema.db/active-table-schemas id include-hidden?)
+         filter-schemas
+         filter-schemas-by-tables
+         ;; for `nil` schemas return the empty string
+         (map #(if (nil? %) "" %))
+         distinct
+         sort)))
+
+(defn schema-tables-list
+  "Returns the list of Tables in `schema` of the database `db-id` that are visible to the current user, permission-
+  filtered and ordered by `display_name`. Read-checks the database and the schema unless
+  `include-editable-data-model?` routes the filtering through data-model permissions instead."
+  ([db-id schema]
+   (schema-tables-list db-id schema {}))
+  ([db-id schema {:keys [include-hidden? include-editable-data-model? can-query? include-measures?]}]
+   (when-not include-editable-data-model?
+     (api/read-check :model/Database db-id)
+     (api/check-403 (can-read-schema? db-id schema)))
+   (let [candidate-tables (if include-hidden?
+                            (warehouse-schema.db/active-tables-in-schema db-id schema)
+                            (warehouse-schema.db/active-visible-tables-in-schema db-id schema))
+         filtered-tables  (cond->> (if include-editable-data-model?
+                                     (filter-tables-by-data-model-perms candidate-tables)
+                                     (filter mi/can-read? (t2/hydrate candidate-tables :can_read)))
+                            can-query? (#(t2/hydrate % :can_query))
+                            can-query? (filter mi/can-query?))
+         hydration-keys   (cond-> []
+                            (premium-features/any-transforms-enabled?)   (conj :transform)
+                            include-measures? (conj :measures))]
+     (if (seq hydration-keys)
+       (apply t2/hydrate filtered-tables hydration-keys)
+       filtered-tables))))

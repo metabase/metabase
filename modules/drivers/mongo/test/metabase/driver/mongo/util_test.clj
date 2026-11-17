@@ -8,6 +8,6 @@
 (deftest do-find-returns-lazy-seq-test
   (mt/test-driver :mongo
     (testing "do-find returns a lazy seq #42133"
-      (mongo.connection/with-mongo-database [db (mt/db)]
+      (mongo.connection/with-mongo-database [db (mt/id)]
         (is (= clojure.lang.LazySeq
                (type (mongo.util/do-find (mongo.util/collection db "venues")))))))))

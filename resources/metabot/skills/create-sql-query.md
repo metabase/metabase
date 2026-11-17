@@ -11,11 +11,13 @@ priority: 50
 - User requests new SQL analysis or data exploration
 - You need to demonstrate SQL patterns or solutions
 
-**Usage:**
+**Usage:** `database_id`, `sql_query`, and `title` are all required — the tool rejects a call that omits any of them.
 - Provide the database_id where the SQL should run (available from model/table representations)
 - Write complete, valid SQL using table names or {{#model_id}} template syntax for models.
+- Provide a `title`: a short, human-friendly name for the query, shown above its results when the query is delivered as a result card.
+- `show_chart`: optional, and offered only when you can read the results with `run_query`. Pass `false` when you build the query only to read its values: the user is then shown nothing, so give them the values in your answer.
 - Quote column names with special characters, spaces, or reserved keywords using double quotes (e.g., "column name", "order", "group", "column_name")
-- The tool will return a newly created SQL query that you can show to the user or create charts from
+- The tool will return a newly created SQL query that you can show to the user. If chart tools (`create_chart`/`edit_chart`) are available to you, you can also build a chart from it.
 - The tool does NOT execute the SQL, it only creates the query
 
 **Model Usage:**
@@ -27,6 +29,7 @@ priority: 50
 **Limitations:**
 - Creates new queries only (use edit_sql_query for modifying existing queries)
 - Requires valid database_id for the target database
+- The SQL runs on the database in Metabase that `database_id` names. It can read anything that database's connection reaches, such as other schemas, or other databases, catalogs or projects on the same server or account. Don't use it to reach a database in Metabase with another `database_id`, whether with one of its models or by naming its tables.
 - SQL must be compatible with the target database's SQL engine
 - When using tables, always use fully qualified table names (include namespace / schema / catalog).
 

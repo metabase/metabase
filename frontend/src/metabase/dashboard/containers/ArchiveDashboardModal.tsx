@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,6 +7,7 @@ import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { setArchivedDashboard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/redux";
+import { useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
@@ -17,19 +17,20 @@ type OwnProps = {
 
 type ArchiveDashboardModalProps = OwnProps & {
   dashboard: Dashboard;
+  onArchive: () => Promise<unknown>;
 };
 
-const ArchiveDashboardModal = ({
+export const ArchiveDashboardModal = ({
   onClose,
   dashboard,
+  onArchive,
 }: ArchiveDashboardModalProps) => {
   const [loading, setLoading] = useState(false);
-  const dispatch = useDispatch();
 
   const archive = async () => {
     setLoading(true);
     try {
-      await dispatch(setArchivedDashboard(true));
+      await onArchive();
     } finally {
       setLoading(false);
     }
@@ -56,10 +57,10 @@ const ArchiveDashboardModal = ({
   );
 };
 
-export const ArchiveDashboardModalConnectedInner = (
-  props: OwnProps & { params: { slug?: string } },
-) => {
-  const id = Urls.extractCollectionId(props.params?.slug);
+export const ArchiveDashboardModalConnectedInner = (props: OwnProps) => {
+  const dispatch = useDispatch();
+  const params = useParams();
+  const id = Urls.extractCollectionId(params?.slug);
   const { currentData: dashboard, error } = useGetDashboardQuery(
     id != null ? { id } : skipToken,
   );
@@ -71,12 +72,15 @@ export const ArchiveDashboardModalConnectedInner = (
       noWrapper
     >
       {dashboard && (
-        <ArchiveDashboardModal onClose={props.onClose} dashboard={dashboard} />
+        <ArchiveDashboardModal
+          dashboard={dashboard}
+          onArchive={() => dispatch(setArchivedDashboard(true))}
+          onClose={props.onClose}
+        />
       )}
     </LoadingAndErrorWrapper>
   );
 };
 
-export const ArchiveDashboardModalConnected = withRouter(
-  ArchiveDashboardModalConnectedInner,
-);
+export const ArchiveDashboardModalConnected =
+  ArchiveDashboardModalConnectedInner;

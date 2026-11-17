@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { Location } from "history";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
@@ -12,10 +11,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { trackSegmentCreateStarted } from "metabase/common/data-studio/analytics";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getShallowTables } from "metabase/selectors/metadata";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useLocation } from "metabase/router";
 import { Button } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Segment } from "metabase-types/api";
@@ -27,10 +25,6 @@ interface Props {
 
 function SegmentListAppInner({ segments, tableSelector }: Props) {
   const isAdmin = useSelector(getUserIsAdmin);
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
-  const tables = useSelector(getShallowTables);
   const archive = useSetArchive();
   const trackSegmentCreateClick = () => {
     trackSegmentCreateStarted("admin_datamodel_segments");
@@ -70,9 +64,6 @@ function SegmentListAppInner({ segments, tableSelector }: Props) {
             <SegmentItem
               key={segment.id}
               segment={segment}
-              readOnly={
-                tables[segment.table_id]?.is_published && isRemoteSyncReadOnly
-              }
               onRetire={
                 isAdmin
                   ? () => archive({ id: segment.id, model: "segment" }, true)
@@ -94,11 +85,8 @@ function SegmentListAppInner({ segments, tableSelector }: Props) {
 
 const FilteredSegmentList = FilteredToUrlTable(SegmentListAppInner);
 
-type SegmentListAppProps = {
-  location: Location<{ table?: string }>;
-};
-
-export function SegmentListApp({ location }: SegmentListAppProps) {
+export function SegmentListApp() {
+  const location = useLocation();
   const { data: segments, isLoading, error } = useListSegmentsQuery();
 
   if (isLoading || error || !segments) {

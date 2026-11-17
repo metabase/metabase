@@ -1,18 +1,18 @@
-import type { Location } from "history";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { resetConversation } from "metabase/metabot/state";
+import { startNewConversation } from "metabase/metabot/state";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { type Location, useNavigate } from "metabase/router";
+import { getSetting } from "metabase/settings";
 import { Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { IconName } from "metabase-types/api";
 
 import { SidebarLink } from "../../MainNavbar/SidebarItems";
 import S from "../ProtoNavbar.module.css";
-import { getLastNewQueryMode, newQueryUrl } from "../newQuery";
 import { SubNavHeading, SubNavSection } from "../SubNav";
+import { getLastNewQueryMode, newQueryUrl } from "../newQuery";
 
 type Props = {
   location: Location;
@@ -45,17 +45,21 @@ function withFreshParam(url: string) {
 
 export function ExploreSection({ location, onPin }: Props) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const buildQuestion = useQuestionFromOptsBuilder();
   const path = location.pathname;
 
   const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
   );
-  const sqlQueryUrl = Urls.newQuestion({
-    DEPRECATED_RAW_MBQL_type: "native",
-    creationType: "native_question",
-    cardType: "question",
-    DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
-  });
+  const sqlQueryUrl = Urls.newQuestion(
+    buildQuestion({
+      DEPRECATED_RAW_MBQL_type: "native",
+      cardType: "question",
+      DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
+    }),
+    { creationType: "native_question" },
+  );
 
   const historyUrlFor = (icon: IconName) => {
     if (icon === "sql") {
@@ -68,14 +72,13 @@ export function ExploreSection({ location, onPin }: Props) {
   };
 
   const handleNewQuery = () => {
-    dispatch(resetConversation({ agentId: "ask" }));
-    dispatch(
-      push(
-        withFreshParam(
-          newQueryUrl(getLastNewQueryMode(), {
-            databaseId: lastUsedDatabaseId ?? undefined,
-          }),
-        ),
+    dispatch(startNewConversation({ agentId: "ask" }));
+    navigate(
+      withFreshParam(
+        newQueryUrl(getLastNewQueryMode(), {
+          buildQuestion,
+          databaseId: lastUsedDatabaseId ?? undefined,
+        }),
       ),
     );
     onPin();

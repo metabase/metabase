@@ -1,98 +1,79 @@
 import cx from "classnames";
-import type { Location } from "history";
-import { Component } from "react";
+import { useEffect } from "react";
+import { usePrevious } from "react-use";
 
-import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
+import { connect, useSelector } from "metabase/redux";
+import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import TableDetail from "metabase/reference/databases/TableDetail";
 import * as actions from "metabase/reference/reference";
+import { useLocation, useParams } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
-import type {
-  ReferenceRouteParams,
-  ReferenceRouteProps,
-  StateWithReference,
-} from "../selectors";
+import type { ClearStateProps } from "../reference";
 import {
-  getDatabase,
+  type ReferenceRouteParams,
   getDatabaseId,
   getIsEditing,
-  getTable,
+  getTableId,
 } from "../selectors";
-import type { StubbedDatabase, StubbedTable } from "../types";
 
 import TableSidebar from "./TableSidebar";
-
-const mapStateToProps = (
-  state: StateWithReference,
-  props: ReferenceRouteProps,
-) => ({
-  database: getDatabase(state, props),
-  table: getTable(state, props),
-  databaseId: getDatabaseId(state, props),
-  isEditing: getIsEditing(state),
-});
+import { useReferenceTable } from "./use-reference-database";
 
 const mapDispatchToProps = {
-  ...metadataActions,
   ...actions,
 };
 
-interface TableDetailContainerProps extends FetchProps, ClearStateProps {
-  // From React Router
-  params: ReferenceRouteParams;
-  location: Location;
+type TableDetailContainerProps = ClearStateProps;
 
-  // From route definition / parent
-  style: React.CSSProperties;
+function TableDetailContainer(props: TableDetailContainerProps) {
+  const { pathname } = useLocation();
+  const previousPathname = usePrevious(pathname);
+  const params = useParams<ReferenceRouteParams>();
 
-  // From mapStateToProps
-  database: StubbedDatabase;
-  databaseId: number;
-  table: StubbedTable;
-  isEditing?: boolean;
+  const databaseId = useSelector((state) => getDatabaseId(state, { params }));
+  const tableId = useSelector((state) => getTableId(state, { params }));
+  const isEditing = useSelector(getIsEditing);
+  const { database, tables, table, isLoading, error } = useReferenceTable(
+    databaseId,
+    tableId,
+  );
 
-  // From mapDispatchToProps (metadataActions spread)
-  fetchDatabaseMetadata: (id: number) => Promise<unknown>;
-}
-
-class TableDetailContainer extends Component<TableDetailContainerProps> {
-  fetchContainerData() {
-    actions.wrappedFetchDatabaseMetadata(this.props, this.props.databaseId);
-  }
-
-  UNSAFE_componentWillMount() {
-    this.fetchContainerData();
-  }
-
-  UNSAFE_componentWillReceiveProps(newProps: TableDetailContainerProps) {
-    if (this.props.location.pathname === newProps.location.pathname) {
-      return;
+  useEffect(() => {
+    const pathnameChanged =
+      previousPathname !== undefined && previousPathname !== pathname;
+    if (pathnameChanged) {
+      actions.clearState(props);
     }
+  }, [pathname, previousPathname, props]);
 
-    actions.clearState(newProps);
-  }
-
-  render() {
-    const { database, table, isEditing } = this.props;
-
-    return (
-      <SidebarLayout
-        className={cx(CS.flexFull, CS.relative)}
-        style={isEditing ? { paddingTop: "43px" } : {}}
-        sidebar={<TableSidebar database={database} table={table} />}
-      >
-        <TableDetail {...this.props} />
-      </SidebarLayout>
-    );
-  }
+  return (
+    <SidebarLayout
+      className={cx(CS.flexFull, CS.relative)}
+      style={isEditing ? { paddingTop: "43px" } : {}}
+      sidebar={
+        <TableSidebar
+          databaseId={databaseId}
+          databaseName={database?.name}
+          tableId={tableId}
+          tableName={table?.name}
+        />
+      }
+    >
+      <TableDetail
+        table={table}
+        tables={tables}
+        loading={isLoading}
+        loadingError={error}
+      />
+    </SidebarLayout>
+  );
 }
 
 // connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
-  mapStateToProps,
+  null,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(TableDetailContainer as unknown as React.ComponentType);

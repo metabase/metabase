@@ -5,7 +5,7 @@
   transition: box-shadow 200ms ease;
 
   &:hover {
-    box-shadow: var(--mantine-shadow-md);
+    box-shadow: var(--mantine-shadow-sm);
   }
 }
 
@@ -21,6 +21,10 @@
   & :global(.CardVisualization) {
     padding: 0;
   }
+}
+
+.autoLoadTrigger {
+  height: 1px;
 }
 
 .skeletonCard {

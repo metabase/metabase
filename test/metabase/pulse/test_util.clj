@@ -41,7 +41,7 @@
 (defmacro slack-test-setup!
   "Macro that ensures test-data is present and disables sending of all notifications"
   [& body]
-  `(with-redefs [channel/send!       (constantly :noop)]
+  `(with-redefs [channel/send! (constantly :noop)]
      (do-with-site-url! (fn [] ~@body))))
 
 (defmacro with-captured-channel-send-messages!
@@ -105,7 +105,9 @@
       (invoke [_ x1 x2 x3 x4 x5]
         (invoke-with-wrapping input output func [x1 x2 x3 x4 x5]))
       (invoke [_ x1 x2 x3 x4 x5 x6]
-        (invoke-with-wrapping input output func [x1 x2 x3 x4 x5 x6])))))
+        (invoke-with-wrapping input output func [x1 x2 x3 x4 x5 x6]))
+      (applyTo [_ args]
+        (invoke-with-wrapping input output func (vec args))))))
 
 (defn thunk->boolean [{:keys [attachments] :as result}]
   (assoc result :attachments (for [attachment-info attachments]

@@ -94,9 +94,6 @@
                                                              (some? output) "output-available"
                                                              :else          "input-available")
                                                :input      (:arguments entry)}
-                                        ;; errored tool-outputs do co-occur with `:result`, but only because
-                                        ;; `persistence/strip-tool-output-bloat` rewrites the absent result of an
-                                        ;; errored call to `{}` — there is never a real result to preserve
                                         (and (some? output) (nil? error))
                                         ;; the result map passes through verbatim: its keys (`:output`,
                                         ;; `:structured-output`/`:structured_output`) keep their v1 spelling
@@ -149,7 +146,7 @@
   (defn validate-conversion-csv [path]
     (with-open [reader (io/reader path)]
       (let [[header & rows] (csv/read-csv reader)
-            column-index    (fn [column] (first (keep-indexed #(when (= column %2) %1) header)))
+            column-index    (fn [column] (u/index-of #(= column %) header))
             id-idx          (column-index "id")
             data-idx        (column-index "data")
             explain         (mr/explainer :metabase.metabot.schema.v2/message-data)]

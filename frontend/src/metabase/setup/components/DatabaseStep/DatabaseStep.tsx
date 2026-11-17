@@ -1,15 +1,15 @@
-import { updateIn } from "icepick";
+import type { JSX } from "react";
 import { c, t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { InviteInfo } from "metabase/redux/store";
+import { useSetting } from "metabase/settings";
 import {
   getDatabase,
   getDatabaseEngine,
   getInvite,
-  getIsEmailConfigured,
   getUser,
 } from "metabase/setup";
 import { Text } from "metabase/ui";
@@ -28,13 +28,15 @@ import { InviteUserForm } from "../InviteUserForm";
 import { SetupSection } from "../SetupSection";
 import type { NumberedStepProps } from "../types";
 
+import { getSubmitError } from "./utils";
+
 export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const { isStepActive, isStepCompleted } = useStep("db_connection");
   const user = useSelector(getUser);
   const database = useSelector(getDatabase);
   const engine = useSelector(getDatabaseEngine);
   const invite = useSelector(getInvite);
-  const isEmailConfigured = useSelector(getIsEmailConfigured);
+  const isEmailConfigured = useSetting("email-configured?");
 
   const dispatch = useDispatch();
   const [sendToast] = useToast();
@@ -79,7 +81,7 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
       title={getStepTitle(database, invite, isStepCompleted)}
       label={stepLabel}
     >
-      <Text mt="sm" mb="md">
+      <Text mt="sm" mb="lg">
         {c("{0} refers to the word '(optional)'")
           .jt`Are you ready to start exploring your data? Add it below ${optional}.`}
       </Text>
@@ -122,10 +124,4 @@ const getStepTitle = (
   } else {
     return t`I'll add my own data later`;
   }
-};
-
-const getSubmitError = (error: unknown): unknown => {
-  return updateIn(error, ["data", "errors"], (errors) => ({
-    details: errors,
-  }));
 };

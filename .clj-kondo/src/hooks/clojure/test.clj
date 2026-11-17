@@ -28,11 +28,11 @@
     (walk form)))
 
 (defn- deftest-check-parallel
-  "1. Check if test is marked ^:parallel / ^:synchronized correctly.
+  "1. Check if test is marked `^:parallel` / `^:synchronized` correctly.
    2. Make sure disallowed forms are not used in ^:parallel tests.
-   3. Disallow ^:parallel tests in namespaces marked ^:synchronous -- the
-      ns marker is the author's blanket promise that nothing inside runs
-      in parallel, so an individual ^:parallel deftest contradicts it."
+   3. Disallow `^:parallel` tests in namespaces marked `^:synchronized` --
+      the ns marker is the author's blanket promise that nothing inside runs
+      in parallel, so an individual `^:parallel` deftest contradicts it."
   [{[_ test-name & body] :children, :as _node} ns-sym config]
   (let [test-metadata     (:meta test-name)
         metadata-sexprs   (map hooks/sexpr test-metadata)
@@ -44,28 +44,48 @@
                            (completing merge)
                            {}
                            metadata-sexprs)
-        parallel?     (:parallel combined-metadata)
-        synchronized? (:synchronized combined-metadata)
-        ns-synchronous? (boolean (:synchronous (meta ns-sym)))]
+        parallel?                  (true? (:parallel combined-metadata))
+        synchronized?              (true? (:synchronized combined-metadata))
+        explicitly-nonparallel?    (or synchronized?
+                                       (and (contains? combined-metadata :parallel)
+                                            (false? (:parallel combined-metadata))))
+        ns-metadata                (meta ns-sym)
+        ns-explicitly-nonparallel? (or (true? (:synchronized ns-metadata))
+                                       (and (contains? ns-metadata :parallel)
+                                            (false? (:parallel ns-metadata))))]
+    (when (and (contains? combined-metadata :parallel)
+               (false? (:parallel combined-metadata)))
+      (hooks/reg-finding! (assoc (meta test-name)
+                                 :message (str "Use `^:synchronized` instead of `^{:parallel false}`. "
+                                               "[:metabase/validate-deftest]")
+                                 :type :metabase/validate-deftest)))
+    (when (:sequential combined-metadata)
+      (hooks/reg-finding! (assoc (meta test-name)
+                                 :message (str "Use `^:synchronized` to mark this test explicitly non-parallel; "
+                                               "`^:sequential` is ignored by Hawk. "
+                                               "[:metabase/validate-deftest]")
+                                 :type :metabase/validate-deftest)))
     (when (and parallel? synchronized?)
       (hooks/reg-finding! (assoc (meta test-name)
-                                 :message "Test should not be marked both ^:parallel and ^:synchronized"
+                                 :message "Test should not be marked both `^:parallel` and `^:synchronized`"
                                  :type :metabase/validate-deftest)))
-    (when (and parallel? ns-synchronous?)
+    (when (and parallel? ns-explicitly-nonparallel?)
       (hooks/reg-finding!
        (assoc (meta test-name)
-              :message (str "Test should not be marked ^:parallel in a namespace marked ^:synchronous -- "
+              :message (str "Test should not be marked `^:parallel` in a namespace marked "
+                            "`^:synchronized` -- "
                             "the ns marker promises no parallel execution. "
-                            "Drop ^:parallel from the deftest, or drop ^:synchronous from the ns. "
+                            "Drop `^:parallel` from the deftest, or drop `^:synchronized` from the ns. "
                             "[:metabase/validate-deftest]")
               :type :metabase/validate-deftest)))
-    ;; only when the custom `:metabase/deftest-not-marked-parallel-or-synchronized` is enabled: complain if tests are
-    ;; not explicitly marked `^:parallel` or `^:synchronized`. This is mostly to encourage people to mark everything
-    ;; `^:parallel` in places like `metabase.lib` tests unless there is a really good reason not to.
-    (when-not (or parallel? synchronized?)
+    ;; Only when the custom `:metabase/deftest-not-marked-parallel-or-synchronized` is enabled:
+    ;; complain if tests are not explicitly marked `^:parallel` or `^:synchronized`. This is
+    ;; mostly to encourage people to mark everything `^:parallel` in places like `metabase.lib`
+    ;; tests unless there is a really good reason not to.
+    (when-not (or parallel? explicitly-nonparallel?)
       (hooks/reg-finding!
        (assoc (meta test-name)
-              :message "Test should be marked either ^:parallel or ^:synchronized"
+              :message "Test should be marked either `^:parallel` or `^:synchronized`"
               :type :metabase/deftest-not-marked-parallel-or-synchronized)))
     (when parallel?
       (doseq [form body]
@@ -117,7 +137,9 @@
 (defn- ignore? [node error-type]
   (contains? (hooks.common/ignored-linters node) error-type))
 
-(defn deftest-check-no-driver-keywords [node {:keys [drivers], :as _config}]
+(defn deftest-check-no-driver-keywords
+  "Warn about hardcoded driver names in driver tests."
+  [node {:keys [drivers], :as _config}]
   ;; fail fast after we see the first error, where we see one hardcoded driver name there are likely several more and we
   ;; don't need multiple warnings for a single test.
   (letfn [(f [node]
@@ -151,8 +173,11 @@
           (str/starts-with? (name ns-symb) prefix))
         ["build-drivers."
          "build."
+         "hooks." ; clj-kondo hook tests, outside the module system
          "i18n." ; bin/i18n
          "lint-migrations-file-test"
+         "load-namespaces." ; bin/load-namespaces
+         "mage."
          "main-test" ; bin/release-list
          "metabase.deps-edn-test"
          "metabase.driver."
@@ -171,14 +196,16 @@
                (not (contains? @warned-namespaces ns-symb)))
       (swap! warned-namespaces conj ns-symb)
       (let [known-modules  (set (keys (:metabase/modules (modules/config input))))
-            current-module (modules/module ns-symb)]
+            current-module (modules/module (modules/config input) ns-symb)]
         (when (or (not current-module)
                   (not (contains? known-modules current-module)))
           (hooks/reg-finding! (assoc (meta node)
                                      :message (format "All tests must live in a known module; %s is not a known module" (pr-str current-module))
                                      :type    :metabase/tests-must-live-in-known-modules)))))))
 
-(defn deftest [{:keys [node cljc lang config], ns-sym :ns, :as input}]
+(defn deftest
+  "Validate a test and pass its driver-test tag to hooks in its body."
+  [{:keys [node cljc lang config], ns-sym :ns, :as input}]
   ;; run [[deftest-check-parallel]] only once... if this is a `.cljc` file only run it for the `:clj` analysis, no point
   ;; in running it twice.
   (when (or (not cljc)
@@ -188,7 +215,12 @@
   (deftest-check-should-not-be-multiple-separate-tests node (get-in config [:linters :metabase/validate-deftest-logically-separate-tests]))
   (deftest-check-no-driver-keywords node (get-in config [:linters :metabase/disallow-hardcoded-driver-names-in-tests]))
   (deftest-check-in-valid-module input)
-  input)
+  (assoc-in input [:context :mb/driver-tests]
+            (boolean (some (fn [metadata]
+                             (let [metadata (hooks/sexpr metadata)]
+                               (or (= metadata :mb/driver-tests)
+                                   (true? (:mb/driver-tests metadata)))))
+                           (:meta (second (:children node)))))))
 
 ;;; this is a hacky way to determine whether these namespaces are required in the `ns` form or not... basically `:ns`
 ;;; will come back as `nil` if they are not.
@@ -224,25 +256,29 @@
 
               nil)))))))
 
-(defn is [{:keys [node lang], :as input}]
+(defn is
+  "Validate the assertion's required namespaces."
+  [{:keys [node lang], :as input}]
   (when (= lang :cljs)
     (warn-about-missing-test-expr-requires-in-cljs node))
   input)
 
 (defn use-fixtures
   "Flag `:parallel/unsafe` forms inside fixtures. Skipped when the surrounding
-  namespace is marked `^:synchronous` -- the ns marker is the author's
+  namespace is marked `^:synchronized` -- the ns marker is the author's
   explicit opt-in to a single-threaded test ns where destructive setup is
   safe. Without that opt-in, kondo can't know whether sibling deftests will
   be `^:parallel`, so the conservative default is to flag.
 
   Sister to [[deftest-check-parallel]]: the deftest hook rejects `^:parallel`
-  tests inside a `^:synchronous` ns, so the two checks together form a
-  coherent opt-in: either the whole ns is synchronous (fixtures can be
+  tests inside a `^:synchronized` ns, so the two checks together form a
+  coherent opt-in: either the whole ns is explicitly non-parallel (fixtures can be
   anything; no parallel tests allowed) or it isn't (fixtures must be
   parallel-safe)."
   [{:keys [node config], ns-sym :ns, :as input}]
-  (when-not (:synchronous (meta ns-sym))
+  (when-not (or (true? (:synchronized (meta ns-sym)))
+                (and (contains? (meta ns-sym) :parallel)
+                     (false? (:parallel (meta ns-sym)))))
     (let [linter-config (get-in config [:linters :metabase/validate-deftest])]
       (doseq [form (rest (:children node))]
         (warn-about-disallowed-parallel-forms form linter-config))))

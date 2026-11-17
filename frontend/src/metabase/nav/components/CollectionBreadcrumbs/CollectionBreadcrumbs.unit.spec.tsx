@@ -1,7 +1,6 @@
-import { Route } from "react-router";
-
 import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import {
   createMockCollection,
   createMockDashboard,
@@ -26,13 +25,13 @@ function setup() {
   return renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <CollectionBreadcrumbs
           baseCollectionId={null}
           collection={COLLECTION}
           dashboard={DASHBOARD}
         />
-      )}
+      }
     />,
     { withRouter: true },
   );

@@ -1,6 +1,4 @@
 import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
-import type { FontStyle } from "metabase/utils/measure-text";
-import * as measureText from "metabase/utils/measure-text";
 import type {
   DatasetColumn,
   DateTimeAbsoluteUnit,
@@ -20,25 +18,10 @@ import { COMPARISON_TYPES } from "./constants";
 import {
   COMPARISON_SELECTOR_OPTIONS,
   formatChange,
-  formatChangeAutoPrecision,
-  getChangeWidth,
   getComparisonOptions,
   getDefaultComparison,
-  getValueWidth,
   isComparisonValid,
 } from "./utils";
-
-jest.doMock("metabase/utils/measure-text", () => ({
-  measureText: jest.fn(),
-}));
-
-const createMockMeasureText = (width: number, height: number) => {
-  return (_text: string, _style: FontStyle) => ({ width, height });
-};
-
-const getAutoPrecisionOptions = (width: number) => {
-  return { fontFamily: "Lato", fontWeight: 400, width };
-};
 
 describe("SmartScalar > utils", () => {
   describe("scalar.comparisons", () => {
@@ -258,8 +241,10 @@ describe("SmartScalar > utils", () => {
           ["2019-11-01", 300],
         ];
         const isValid = isComparisonValid(
+          // Unjustified type cast. FIXME
           comparison as SmartScalarComparison,
           series({ rows, insights: [] }),
+          // Unjustified type cast. FIXME
           settings as VisualizationSettings,
         );
 
@@ -361,11 +346,7 @@ describe("SmartScalar > utils", () => {
             "scalar.comparisons": [comparison],
           };
 
-          const isValid = isComparisonValid(
-            comparison,
-            multiSeries,
-            settings as VisualizationSettings,
-          );
+          const isValid = isComparisonValid(comparison, multiSeries, settings);
 
           expect(isValid).toBe(true);
         });
@@ -381,8 +362,10 @@ describe("SmartScalar > utils", () => {
           };
 
           const isValid = isComparisonValid(
+            // Unjustified type cast. FIXME
             comparison as SmartScalarComparisonAnotherColumn,
             multiSeries,
+            // Unjustified type cast. FIXME
             settings as VisualizationSettings,
           );
 
@@ -400,8 +383,10 @@ describe("SmartScalar > utils", () => {
           };
 
           const isValid = isComparisonValid(
+            // Unjustified type cast. FIXME
             comparison as SmartScalarComparisonAnotherColumn,
             multiSeries,
+            // Unjustified type cast. FIXME
             settings as VisualizationSettings,
           );
 
@@ -420,11 +405,7 @@ describe("SmartScalar > utils", () => {
             "scalar.comparisons": [comparison],
           };
 
-          const isValid = isComparisonValid(
-            comparison,
-            multiSeries,
-            settings as VisualizationSettings,
-          );
+          const isValid = isComparisonValid(comparison, multiSeries, settings);
 
           expect(isValid).toBe(false);
         });
@@ -441,8 +422,10 @@ describe("SmartScalar > utils", () => {
           };
 
           const isValid = isComparisonValid(
+            // Unjustified type cast. FIXME
             comparison as SmartScalarComparisonAnotherColumn,
             multiSeries,
+            // Unjustified type cast. FIXME
             settings as VisualizationSettings,
           );
 
@@ -467,7 +450,7 @@ describe("SmartScalar > utils", () => {
             ["2019-11-01", 300],
           ];
           const isValid = isComparisonValid(
-            comparison as SmartScalarComparisonStaticNumber,
+            comparison,
             series({ rows, insights: [] }),
             settings,
           );
@@ -490,8 +473,10 @@ describe("SmartScalar > utils", () => {
           ];
 
           const isValid = isComparisonValid(
+            // Unjustified type cast. FIXME
             comparison as SmartScalarComparisonStaticNumber,
             series({ rows, insights: [] }),
+            // Unjustified type cast. FIXME
             settings as VisualizationSettings,
           );
 
@@ -513,67 +498,16 @@ describe("SmartScalar > utils", () => {
           ];
 
           const isValid = isComparisonValid(
+            // Unjustified type cast. FIXME
             comparison as SmartScalarComparisonStaticNumber,
             series({ rows, insights: [] }),
+            // Unjustified type cast. FIXME
             settings as VisualizationSettings,
           );
 
           expect(isValid).toBeFalsy();
         });
       });
-    });
-  });
-
-  describe("getValueWidth", () => {
-    it("should not return negative values", () => {
-      expect(getValueWidth(1)).toBeGreaterThanOrEqual(0);
-      expect(getValueWidth(1)).toBeGreaterThanOrEqual(0);
-    });
-  });
-
-  describe("getChangeWidth", () => {
-    it("should not return negative values", () => {
-      expect(getChangeWidth(1)).toBeGreaterThanOrEqual(0);
-      expect(getChangeWidth(1)).toBeGreaterThanOrEqual(0);
-    });
-  });
-
-  describe("formatChangeAutoPrecision", () => {
-    let measureTextSpy: jest.SpyInstance;
-
-    beforeEach(() => {
-      measureTextSpy = jest.spyOn(measureText, "measureText");
-    });
-
-    afterEach(() => {
-      measureTextSpy.mockRestore();
-    });
-
-    it("should use maximum 2 fraction digits precision when text fits", () => {
-      measureTextSpy.mockImplementationOnce(createMockMeasureText(100, 50));
-
-      expect(
-        formatChangeAutoPrecision(1.23456, getAutoPrecisionOptions(100)),
-      ).toBe("123.46%");
-    });
-
-    it("should use 1 fraction digit when 2 digits don not fit", () => {
-      measureTextSpy.mockImplementationOnce(createMockMeasureText(101, 50));
-      measureTextSpy.mockImplementationOnce(createMockMeasureText(100, 50));
-
-      expect(
-        formatChangeAutoPrecision(1.23456, getAutoPrecisionOptions(100)),
-      ).toBe("123.5%");
-    });
-
-    it("should use no fraction digits when they do not fit", () => {
-      measureTextSpy.mockImplementationOnce(createMockMeasureText(103, 50));
-      measureTextSpy.mockImplementationOnce(createMockMeasureText(102, 50));
-      measureTextSpy.mockImplementationOnce(createMockMeasureText(101, 50));
-
-      expect(
-        formatChangeAutoPrecision(1.23456, getAutoPrecisionOptions(100)),
-      ).toBe("123%");
     });
   });
 

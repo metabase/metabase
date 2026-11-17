@@ -41,8 +41,14 @@ const TRANSLATED_NAME_BY_MODEL_TYPE: Record<ModelNames, string> = {
   get document() {
     return t`Document`;
   },
+  get exploration() {
+    return t`Research`;
+  },
   get transform() {
     return t`Transform`;
+  },
+  get "data-app"() {
+    return t`Data app`;
   },
   get user() {
     return t`User`;

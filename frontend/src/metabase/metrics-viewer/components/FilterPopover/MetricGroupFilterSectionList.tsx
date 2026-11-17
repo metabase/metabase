@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
 import { AccordionList } from "metabase/common/components/AccordionList";
-import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
+import { getDimensionIcon } from "metabase/common/utils/columns";
 import type {
   DimensionListItem,
   FilterItem,

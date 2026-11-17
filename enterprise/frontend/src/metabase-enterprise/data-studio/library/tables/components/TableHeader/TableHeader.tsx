@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -8,9 +9,12 @@ import {
   type PaneHeaderProps,
 } from "metabase/common/data-studio/components/PaneHeader";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
+import { getLibraryCollectionDisplayName } from "metabase/data-studio/common/utils";
 import { Button, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
+
+import { TableModal, type TableModalState } from "../TableModal";
 
 import { TableMoreMenu } from "./TableMoreMenu";
 import { TableNameInput } from "./TableNameInput";
@@ -20,55 +24,55 @@ type TableHeaderProps = {
   table: Table;
 } & Omit<PaneHeaderProps, "breadcrumbs">;
 
-function getExploreUrl(table: Table) {
-  return (
-    Urls.modelToUrl({
-      id: Number(table.id),
-      name: table.name,
-      model: "table",
-      database: { id: table.db_id },
-    }) ?? "#"
-  );
-}
-
 export function TableHeader({ table, ...rest }: TableHeaderProps) {
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: table.collection_id,
   });
+  const [tableModal, setTableModal] = useState<TableModalState>();
+  const exploreUrl = Urls.modelToUrl({
+    id: Number(table.id),
+    name: table.name,
+    model: "table",
+    database: { id: table.db_id },
+  });
+
   return (
-    <PaneHeader
-      data-testid="table-pane-header"
-      title={<TableNameInput table={table} />}
-      icon="table"
-      menu={<TableMoreMenu table={table} />}
-      tabs={
-        <Group justify="space-between" align="center" wrap="nowrap" w="100%">
-          <TableTabs table={table} />
-          <Button
-            component={ForwardRefLink}
-            to={getExploreUrl(table)}
-            aria-label={t`Explore`}
-          >
-            {t`Explore`}
-          </Button>
-        </Group>
-      }
-      {...rest}
-      breadcrumbs={
-        <DataStudioBreadcrumbs loading={isLoadingPath}>
-          {path?.map((collection, i) => (
-            <Link
-              key={collection.id}
-              to={Urls.dataStudioLibrary({
-                expandedIds: path.slice(1, i + 1).map((c) => c.id),
-              })}
+    <>
+      <PaneHeader
+        data-testid="table-pane-header"
+        title={<TableNameInput table={table} />}
+        icon="table"
+        menu={<TableMoreMenu table={table} onOpenModal={setTableModal} />}
+        tabs={
+          <Group justify="space-between" align="center" wrap="nowrap" w="100%">
+            <TableTabs table={table} />
+            <Button
+              component={ForwardRefLink}
+              to={exploreUrl}
+              aria-label={t`Explore`}
             >
-              {collection.name}
-            </Link>
-          ))}
-          <span>{table.display_name}</span>
-        </DataStudioBreadcrumbs>
-      }
-    />
+              {t`Explore`}
+            </Button>
+          </Group>
+        }
+        {...rest}
+        breadcrumbs={
+          <DataStudioBreadcrumbs loading={isLoadingPath}>
+            {path?.map((collection, i) => (
+              <Link
+                key={collection.id}
+                to={Urls.dataStudioLibrary({
+                  expandedIds: path.slice(1, i + 1).map((c) => c.id),
+                })}
+              >
+                {getLibraryCollectionDisplayName(collection)}
+              </Link>
+            ))}
+            <span>{table.display_name}</span>
+          </DataStudioBreadcrumbs>
+        }
+      />
+      <TableModal modal={tableModal} onClose={() => setTableModal(undefined)} />
+    </>
   );
 }

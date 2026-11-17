@@ -1,0 +1,633 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { createMockMetadata } from "__support__/metadata";
+import {
+  setupGroupsEndpoint,
+  setupTenantEntpoints,
+  setupUsersEndpoints,
+} from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
+import { parseSearchQuery } from "metabase/utils/browser";
+import {
+  AUDIT_DB_ID,
+  VIEW_CONVERSATIONS,
+  VIEW_USAGE_LOG,
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
+import {
+  ADMIN_GROUP,
+  ALL_USERS_GROUP,
+  BOBBY,
+  BOBBY_TENANT,
+  DATA_GROUP,
+  ROBERT,
+  ROBERT_TENANT,
+  selectFilterOption,
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/tests/fixtures";
+import * as Lib from "metabase-lib";
+import type { ClickObject } from "metabase-lib";
+import type { Dataset, RawSeries, RowValue } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
+
+import { ConversationStatsPage } from "./ConversationStatsPage";
+import { buildAuditViewsFixture } from "./audit-views-fixture";
+
+jest.mock("metabase/visualizations/components/Visualization", () => {
+  type StubProps = {
+    rawSeries?: RawSeries | null;
+    handleVisualizationClick?: (clicked: ClickObject | null) => void;
+  };
+
+  const StubVisualization = ({
+    rawSeries,
+    handleVisualizationClick,
+  }: StubProps) => {
+    const data = rawSeries?.[0]?.data;
+    const dimensionIndex =
+      data?.cols.findIndex((col) => col.source === "breakout") ?? -1;
+
+    if (!data || dimensionIndex < 0) {
+      return <div data-testid="visualization" />;
+    }
+
+    const dimensionColumn = data.cols[dimensionIndex];
+
+    return (
+      <div data-testid="visualization">
+        {data.rows.map((row, index) => (
+          <button
+            key={index}
+            onClick={() =>
+              handleVisualizationClick?.({
+                dimensions: [
+                  { value: row[dimensionIndex], column: dimensionColumn },
+                ],
+              })
+            }
+          >
+            {String(row[dimensionIndex])}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  return { __esModule: true, default: StubVisualization };
+});
+
+const STATS_PATH = Urls.monitorAiAuditingUsageMetric("conversations");
+const CONVERSATIONS_PATH = Urls.monitorAiAuditingConversations();
+
+const { database: auditDatabase } = buildAuditViewsFixture();
+
+const TABLE_NAME_BY_ID = new Map(
+  (auditDatabase.tables ?? []).map(
+    (table) => [Number(table.id), table.name] as const,
+  ),
+);
+
+const AUDIT_PROVIDER = Lib.metadataProvider(
+  AUDIT_DB_ID,
+  createMockMetadata({ databases: [auditDatabase] }),
+);
+
+const DAY_BUCKETS = ["2026-04-15T00:00:00", "2026-04-16T00:00:00"];
+const HOUR_BUCKETS = ["2026-04-17T09:00:00", "2026-04-17T10:00:00"];
+const SINGLE_DAY = "2026-04-17";
+
+const BREAKOUT_VALUES: Record<string, RowValue[]> = {
+  source_name: ["Slackbot", "Internal"],
+  profile_name: ["NLQ", "SQL"],
+  user_display_name: ["Bobby Tables", "Robert Tableton"],
+  ip_address: ["10.0.0.1", "10.0.0.2"],
+  tenant_id: [BOBBY_TENANT.id, ROBERT_TENANT.id],
+  group_name: ["Administrators", "data"],
+};
+
+function parseQuery(body: unknown): Lib.Query | null {
+  if (typeof body !== "string") {
+    return null;
+  }
+  return Lib.fromJsQuery(AUDIT_PROVIDER, JSON.parse(body));
+}
+
+function getBreakout(query: Lib.Query) {
+  return Lib.breakouts(query, -1)[0];
+}
+
+function getBreakoutValues(query: Lib.Query): RowValue[] {
+  const breakout = getBreakout(query);
+  if (!breakout) {
+    return [];
+  }
+  const columnName = Lib.displayInfo(query, -1, breakout).name;
+  if (columnName === "created_at") {
+    const bucket = Lib.temporalBucket(breakout);
+    return bucket && Lib.displayInfo(query, -1, bucket).shortName === "hour"
+      ? HOUR_BUCKETS
+      : DAY_BUCKETS;
+  }
+  const values = BREAKOUT_VALUES[columnName];
+  if (!values) {
+    throw new Error(
+      `Unexpected breakout column in dataset request: ${columnName}`,
+    );
+  }
+  return values;
+}
+
+function buildCountResponse(count: number): Dataset {
+  return createMockDataset({
+    data: createMockDatasetData({
+      cols: [createMockColumn({ source: "aggregation", name: "count" })],
+      rows: [[count]],
+    }),
+    database_id: AUDIT_DB_ID,
+    row_count: 1,
+  });
+}
+
+function getViewName(query: Lib.Query): string {
+  return TABLE_NAME_BY_ID.get(Number(Lib.primarySourceTableId(query))) ?? "";
+}
+
+function buildDatasetResponse(body: unknown, emptyViews: string[]): Dataset {
+  const query = parseQuery(body);
+  if (query && !getBreakout(query)) {
+    return buildCountResponse(emptyViews.includes(getViewName(query)) ? 0 : 2);
+  }
+  const values = query ? getBreakoutValues(query) : [];
+  const aggregationNames =
+    query && Lib.aggregations(query, -1).length > 1
+      ? ["sum", "sum_2"]
+      : ["count"];
+
+  return createMockDataset({
+    data: createMockDatasetData({
+      cols: [
+        createMockColumn({ source: "breakout", name: "dimension" }),
+        ...aggregationNames.map((name) =>
+          createMockColumn({ source: "aggregation", name }),
+        ),
+      ],
+      rows: values.map((value, index) => [
+        value,
+        ...aggregationNames.map((_, offset) => (index + 1) * 10 + offset),
+      ]),
+    }),
+    database_id: AUDIT_DB_ID,
+    row_count: values.length,
+  });
+}
+
+function getDatasetQueries(): Lib.Query[] {
+  return fetchMock.callHistory
+    .calls("dataset")
+    .map((call) => parseQuery(call.options?.body))
+    .filter((query): query is Lib.Query => query != null);
+}
+
+function getFilteredColumns(): string[] {
+  return getDatasetQueries().flatMap((query) =>
+    Lib.filters(query, -1).flatMap((filter) => {
+      const parts = Lib.filterParts(query, -1, filter);
+      if (!parts || !("column" in parts)) {
+        return [];
+      }
+      const info = Lib.displayInfo(query, -1, parts.column);
+      return [`${getViewName(query)}.${info.name}`];
+    }),
+  );
+}
+
+type SetupOpts = {
+  initialRoute?: string;
+  hasTenants?: boolean;
+  emptyViews?: string[];
+  heldView?: string;
+};
+
+function setup({
+  initialRoute = STATS_PATH,
+  hasTenants = false,
+  emptyViews = [],
+  heldView,
+}: SetupOpts = {}) {
+  setupEnterprisePlugins();
+
+  const heldMetadata = Promise.withResolvers<void>();
+  const heldCount = Promise.withResolvers<void>();
+
+  fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
+  // useAuditTable pulls the table's fields (and its FK targets') from here.
+  fetchMock.post("path:/api/dataset/query_metadata", async (call) => {
+    const query = parseQuery(call.options.body);
+    if (query && getViewName(query) === heldView) {
+      await heldMetadata.promise;
+    }
+    return {
+      databases: [auditDatabase],
+      tables: auditDatabase.tables ?? [],
+      fields: (auditDatabase.tables ?? []).flatMap(
+        (table) => table.fields ?? [],
+      ),
+    };
+  });
+  fetchMock.post(
+    "path:/api/dataset",
+    async (call) => {
+      const query = parseQuery(call.options.body);
+      if (query && !getBreakout(query) && getViewName(query) === heldView) {
+        await heldCount.promise;
+      }
+      return buildDatasetResponse(call.options.body, emptyViews);
+    },
+    { name: "dataset" },
+  );
+  setupUsersEndpoints([BOBBY, ROBERT]);
+  setupGroupsEndpoint([ALL_USERS_GROUP, ADMIN_GROUP, DATA_GROUP]);
+  setupTenantEntpoints([BOBBY_TENANT, ROBERT_TENANT]);
+
+  const view = renderWithProviders(
+    <>
+      <Route
+        path={`${Urls.monitorAiAuditingUsage()}/:metric`}
+        element={<ConversationStatsPage />}
+      />
+      <Route
+        path={CONVERSATIONS_PATH}
+        element={<div data-testid="conversations-page" />}
+      />
+    </>,
+    {
+      initialRoute,
+      withRouter: true,
+      storeInitialState: createMockState({
+        settings: mockSettings({
+          "token-features": createMockTokenFeatures({
+            audit_app: true,
+            tenants: hasTenants,
+          }),
+          "use-tenants": hasTenants,
+        }),
+      }),
+    },
+  );
+
+  return {
+    ...view,
+    releaseHeldMetadata: heldMetadata.resolve,
+    releaseHeldCount: heldCount.resolve,
+  };
+}
+
+async function findChartCard(title: string): Promise<HTMLElement> {
+  const { parentElement } = await screen.findByText(title);
+  if (!parentElement) {
+    throw new Error(`No chart card found for "${title}"`);
+  }
+  return parentElement;
+}
+
+async function drillInto(chartTitle: string, dimensionLabel: string) {
+  const card = await findChartCard(chartTitle);
+  await userEvent.click(
+    await within(card).findByRole("button", { name: dimensionLabel }),
+  );
+}
+
+function chartTitles(label: string): string[] {
+  const lowerLabel = label.toLowerCase();
+  return [
+    `${label} by day`,
+    `${label} by source`,
+    `${label} by profile`,
+    `Groups with most ${lowerLabel}`,
+    `Users with most ${lowerLabel}`,
+    `IP addresses with most ${lowerLabel}`,
+  ];
+}
+
+describe("ConversationStatsPage", () => {
+  describe("charts", () => {
+    it("renders every conversation chart with the Conversations tab selected", async () => {
+      setup();
+
+      expect(
+        await screen.findByRole("heading", { name: "Usage stats" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("tab", { name: "Conversations" }),
+      ).toHaveAttribute("aria-selected", "true");
+
+      for (const title of chartTitles("Conversations")) {
+        expect(await screen.findByText(title)).toBeInTheDocument();
+      }
+    });
+
+    it.each([
+      { tab: "Tokens", metric: "tokens" },
+      { tab: "Messages", metric: "messages" },
+    ])(
+      "switches to the $metric charts at the $metric route, keeping the filters",
+      async ({ tab, metric }) => {
+        const { router } = setup({
+          initialRoute: `${STATS_PATH}?date=past6days~`,
+        });
+
+        await screen.findByText("Conversations by day");
+        await userEvent.click(screen.getByRole("tab", { name: tab }));
+
+        expect(screen.getByRole("tab", { name: tab })).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
+        for (const title of chartTitles(tab)) {
+          expect(await screen.findByText(title)).toBeInTheDocument();
+        }
+        await waitFor(() => {
+          expect(router?.location).toMatchObject({
+            pathname: Urls.monitorAiAuditingUsageMetric(metric),
+            search: "?date=past6days~",
+          });
+        });
+      },
+    );
+
+    it("redirects an unknown metric to the Conversations tab, keeping the filters", async () => {
+      const { router } = setup({
+        initialRoute: `${Urls.monitorAiAuditingUsage()}/unknown?date=past6days~`,
+      });
+
+      await waitFor(() => {
+        expect(router?.location).toMatchObject({
+          pathname: STATS_PATH,
+          search: "?date=past6days~",
+        });
+      });
+      expect(
+        await screen.findByRole("tab", { name: "Conversations" }),
+      ).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("buckets the timeseries by hour for a single-day date filter", async () => {
+      setup({ initialRoute: `${STATS_PATH}?date=${SINGLE_DAY}` });
+
+      expect(
+        await screen.findByText("Conversations by hour"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Conversations by day"),
+      ).not.toBeInTheDocument();
+      expect(
+        await screen.findByText("Users with most conversations"),
+      ).toBeInTheDocument();
+    });
+
+    it("buckets the timeseries by hour after picking the Today shortcut", async () => {
+      setup();
+
+      await screen.findByText("Conversations by day");
+      await selectFilterOption("conversation-filters-date-select", "Today");
+
+      expect(
+        await screen.findByText("Conversations by hour"),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps daily buckets after picking a multi-day shortcut", async () => {
+      setup({ initialRoute: `${STATS_PATH}?date=${SINGLE_DAY}` });
+
+      await screen.findByText("Conversations by hour");
+      await selectFilterOption(
+        "conversation-filters-date-select",
+        "Last 7 days",
+      );
+
+      expect(
+        await screen.findByText("Conversations by day"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("empty state", () => {
+    it("shows one empty state instead of the charts when nothing matches the filters", async () => {
+      setup({ emptyViews: [VIEW_CONVERSATIONS] });
+
+      expect(await screen.findByText("No conversations")).toBeInTheDocument();
+      expect(
+        screen.getByRole("tab", { name: "Conversations" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("conversation-filters-date-select"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Conversations by day"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the token charts when there is token usage but no conversations", async () => {
+      setup({
+        initialRoute: Urls.monitorAiAuditingUsageMetric("tokens"),
+        emptyViews: [VIEW_CONVERSATIONS],
+      });
+
+      expect(await screen.findByText("Tokens by day")).toBeInTheDocument();
+    });
+
+    it("keeps the loader up until the Tokens count comes back", async () => {
+      const { releaseHeldMetadata, releaseHeldCount } = setup({
+        emptyViews: [VIEW_CONVERSATIONS, VIEW_USAGE_LOG],
+        heldView: VIEW_USAGE_LOG,
+      });
+
+      await screen.findByText("No conversations");
+      await userEvent.click(screen.getByRole("tab", { name: "Tokens" }));
+
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+      expect(screen.queryByText("No token usage")).not.toBeInTheDocument();
+
+      releaseHeldMetadata();
+      await waitFor(() =>
+        expect(
+          getDatasetQueries().some(
+            (query) =>
+              !getBreakout(query) && getViewName(query) === VIEW_USAGE_LOG,
+          ),
+        ).toBe(true),
+      );
+
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+
+      releaseHeldCount();
+
+      expect(await screen.findByText("No token usage")).toBeInTheDocument();
+    });
+  });
+
+  describe("tenants", () => {
+    it("hides the tenant filter and tenant chart when tenants are disabled", async () => {
+      setup();
+
+      await screen.findByText("Conversations by day");
+
+      expect(
+        screen.queryByTestId("conversation-filters-tenant-select"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Tenants with most conversations"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the tenant filter and labels tenant bars with tenant names", async () => {
+      setup({ hasTenants: true });
+
+      expect(
+        await screen.findByDisplayValue("All tenants"),
+      ).toBeInTheDocument();
+
+      const card = await findChartCard("Tenants with most conversations");
+      expect(
+        await within(card).findByRole("button", { name: BOBBY_TENANT.name }),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByRole("button", { name: ROBERT_TENANT.name }),
+      ).toBeInTheDocument();
+    });
+
+    it("filters the charts by the selected tenant", async () => {
+      const { router } = setup({ hasTenants: true });
+
+      await screen.findByText("Conversations by day");
+      await selectFilterOption(
+        "conversation-filters-tenant-select",
+        BOBBY_TENANT.name,
+      );
+
+      await waitFor(() => {
+        expect(parseSearchQuery(router?.location.search ?? "")).toMatchObject({
+          tenant: String(BOBBY_TENANT.id),
+        });
+      });
+      await waitFor(() => {
+        expect(getFilteredColumns()).toContain(
+          `${VIEW_CONVERSATIONS}.tenant_id`,
+        );
+      });
+    });
+  });
+
+  describe("filters", () => {
+    it("applies the selected user to the url and to the chart queries", async () => {
+      const { router } = setup();
+
+      await screen.findByText("Conversations by day");
+      await selectFilterOption(
+        "conversation-filters-user-select",
+        "Robert Tableton",
+      );
+
+      await waitFor(() => {
+        expect(parseSearchQuery(router?.location.search ?? "")).toMatchObject({
+          user: String(ROBERT.id),
+        });
+      });
+      await waitFor(() => {
+        expect(getFilteredColumns()).toContain(`${VIEW_CONVERSATIONS}.user_id`);
+      });
+    });
+
+    it("joins group members when a group is selected", async () => {
+      const { router } = setup();
+
+      await screen.findByText("Conversations by day");
+      await selectFilterOption("conversation-filters-group-select", "data");
+
+      await waitFor(() => {
+        expect(parseSearchQuery(router?.location.search ?? "")).toMatchObject({
+          group: String(DATA_GROUP.id),
+        });
+      });
+      await waitFor(() => {
+        const joinedQueries = getDatasetQueries().filter(
+          (query) => Lib.joins(query, -1).length > 0,
+        );
+        expect(joinedQueries.length).toBeGreaterThan(0);
+      });
+    });
+  });
+
+  describe("drill-through to the conversations list", () => {
+    it.each([
+      {
+        chart: "Users with most conversations",
+        label: "Bobby Tables",
+        query: { user: String(BOBBY.id) },
+      },
+      {
+        chart: "Groups with most conversations",
+        label: "Administrators",
+        query: { group: String(ADMIN_GROUP.id) },
+      },
+      {
+        chart: "Tenants with most conversations",
+        label: BOBBY_TENANT.name,
+        query: { tenant: String(BOBBY_TENANT.id) },
+        setupOpts: { hasTenants: true },
+      },
+      {
+        chart: "Conversations by day",
+        label: "2026-04-16T00:00:00",
+        query: { date: "2026-04-16" },
+      },
+      {
+        chart: "Conversations by hour",
+        label: "2026-04-17T10:00:00",
+        query: { date: "2026-04-17T10:00:00~2026-04-17T11:00:00" },
+        setupOpts: { initialRoute: `${STATS_PATH}?date=${SINGLE_DAY}` },
+      },
+    ])(
+      "drills from the $chart chart",
+      async ({ chart, label, query, setupOpts }) => {
+        const { router } = setup(setupOpts);
+
+        await drillInto(chart, label);
+
+        expect(router?.location.pathname).toBe(CONVERSATIONS_PATH);
+        expect(parseSearchQuery(router?.location.search ?? "")).toEqual(query);
+      },
+    );
+
+    it("carries the active filters over to the conversations list", async () => {
+      const { router } = setup({
+        initialRoute: `${STATS_PATH}?date=past6days~&group=${ADMIN_GROUP.id}`,
+      });
+
+      await drillInto("Users with most conversations", "Bobby Tables");
+
+      expect(parseSearchQuery(router?.location.search ?? "")).toEqual({
+        date: "past6days~",
+        group: String(ADMIN_GROUP.id),
+        user: String(BOBBY.id),
+      });
+    });
+
+    it("does not drill on charts without a dimension handler", async () => {
+      const { router } = setup();
+
+      await drillInto("IP addresses with most conversations", "10.0.0.1");
+
+      expect(router?.location.pathname).toBe(STATS_PATH);
+    });
+  });
+});

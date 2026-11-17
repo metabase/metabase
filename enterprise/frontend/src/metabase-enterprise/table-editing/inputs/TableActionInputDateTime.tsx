@@ -5,7 +5,7 @@ import { DateTimePicker } from "metabase/ui";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
-} from "metabase/utils/formatting/datetime-utils";
+} from "metabase/utils/formatting";
 
 import type { TableActionInputSharedProps } from "./types";
 import { useDateValueWithoutTimezone } from "./use-date-value-without-timezone";
@@ -83,7 +83,7 @@ export const TableActionInputDateTime = ({
         onDismiss: handleDismiss,
         styles: {
           dropdown: {
-            "--popover-padding": "var(--mantine-spacing-md)",
+            "--popover-padding": "var(--mantine-spacing-lg)",
           },
         },
       }}

@@ -1,6 +1,8 @@
 import type { SdkCollectionId } from "./collection";
 
 export type SdkBreadcrumbItemType =
+  /** The virtual top level of the "all collections" browser. */
+  | "all-collections"
   | "collection"
   | "dashboard"
   | "question"

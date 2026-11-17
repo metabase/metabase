@@ -2,8 +2,7 @@ import { Group } from "@visx/group";
 
 import { Text } from "metabase/static-viz/components/Text";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
-import { truncateText } from "metabase/visualizations/lib/text";
-import type { RenderingContext } from "metabase/visualizations/types";
+import { type RenderingContext, truncateText } from "metabase/viz-core";
 
 import {
   DOT_GAP,
@@ -61,7 +60,7 @@ export function TreemapLegend({
                 x2={width}
                 y1={-PADDING_TOP}
                 y2={-PADDING_TOP}
-                stroke={getColor("border")}
+                stroke={getColor("border-neutral")}
               />
             )}
             {row.color !== undefined && (

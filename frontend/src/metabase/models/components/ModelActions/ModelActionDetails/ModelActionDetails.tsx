@@ -2,52 +2,51 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { supportsImplicitActions } from "metabase/actions/utils";
 import {
   useDeleteActionMutation,
   useListActionsQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { useSetArchive } from "metabase/archive/hooks";
 import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import { ActionIcon, Button, Icon, Menu } from "metabase/ui";
+import {
+  ActionIcon,
+  Alert,
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Menu,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import {
-  canArchiveAction,
+  canDeleteAction,
   canEditAction,
   canRunAction,
 } from "metabase-lib/v1/actions/utils";
-import type { Card, WritebackAction } from "metabase-types/api";
+import type { Database, WritebackAction } from "metabase-types/api";
 
-import {
-  EmptyStateActionContainer,
-  EmptyStateContainer,
-  EmptyStateMessage,
-  EmptyStateTitle,
-} from "../EmptyState.styled";
-
-import {
-  ActionAlert,
-  ActionList,
-  ActionsHeader,
-  Root,
-} from "./ModelActionDetails.styled";
-import ModelActionListItem from "./ModelActionListItem";
+import { ModelActionListItem } from "./ModelActionListItem";
 import { useEnableImplicitActionsForModel } from "./useEnableImplicitActionsForModel";
 
-interface OwnProps {
+const EMPTY_DATABASE_LIST: Database[] = [];
+
+interface ModelActionDetailsProps {
   model: Question;
 }
 
-type Props = OwnProps;
-
-function ModelActionDetails({ model }: Props) {
-  useListDatabasesQuery();
-  const databases = useSelector((state) => getMetadata(state).databasesList());
+export function ModelActionDetails({ model }: ModelActionDetailsProps) {
+  const { data: databasesResponse } = useListDatabasesQuery();
+  const databases = databasesResponse?.data ?? EMPTY_DATABASE_LIST;
   const { data: actions = [] } = useListActionsQuery({
     "model-id": model.id(),
   });
@@ -57,19 +56,14 @@ function ModelActionDetails({ model }: Props) {
     (action: WritebackAction) => deleteAction(action.id),
     [deleteAction],
   );
-  const archive = useSetArchive();
-  const onArchiveAction = useCallback(
-    (action: WritebackAction) =>
-      archive({ id: action.id, model: "action" }, true),
-    [archive],
-  );
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
 
-  const database = model.database();
-  const hasActionsEnabled = database != null && database.hasActionsEnabled();
-  const canWrite = model.canWriteActions();
-  const supportsImplicitActions = model.supportsImplicitActions();
+  const databaseInfo = Lib.databaseDisplayInfo(model.query());
+  const hasActionsEnabled = databaseInfo?.isActionsEnabled ?? false;
+  const isAdmin = useSelector(getUserIsAdmin);
+  const canWrite = isAdmin && model.canWriteActions();
+  const hasImplicitActionsSupport = supportsImplicitActions(model.query());
 
   const actionsSorted = useMemo(
     () => _.sortBy(actions, mostRecentFirst),
@@ -95,11 +89,11 @@ function ModelActionDetails({ model }: Props) {
   }, [implicitActions, askConfirmation, onDeleteAction]);
 
   const hasImplicitActions = implicitActions.length > 0;
-  const hasActionsMenu = hasImplicitActions || supportsImplicitActions;
+  const hasActionsMenu = hasImplicitActions || hasImplicitActionsSupport;
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
-      const actionUrl = Urls.action(model.card() as Card, action.id);
+      const actionUrl = Urls.action(model.card(), action.id);
 
       return (
         <li key={action.id} aria-label={action.name}>
@@ -108,21 +102,25 @@ function ModelActionDetails({ model }: Props) {
             actionUrl={actionUrl}
             canRun={canRunAction(action, databases)}
             canEdit={canEditAction(action, model)}
-            canArchive={canArchiveAction(action, model)}
-            onArchive={onArchiveAction}
+            canDelete={canDeleteAction(action, model)}
+            onDelete={onDeleteAction}
           />
         </li>
       );
     },
-    [model, databases, onArchiveAction],
+    [model, databases, onDeleteAction],
   );
 
-  const newActionUrl = Urls.newAction(model.card() as Card);
+  const newActionUrl = Urls.newAction(model.card());
 
   return (
-    <Root data-testid="model-action-details">
+    <Box w="100%" h="100%" data-testid="model-action-details">
       {canWrite && (
-        <ActionsHeader data-testid="model-actions-header">
+        <Flex
+          justify="flex-end"
+          align="center"
+          data-testid="model-actions-header"
+        >
           <Button component={Link} to={newActionUrl}>{t`New action`}</Button>
           {hasActionsMenu && (
             <Menu position="bottom-end">
@@ -150,48 +148,70 @@ function ModelActionDetails({ model }: Props) {
               </Menu.Dropdown>
             </Menu>
           )}
-        </ActionsHeader>
+        </Flex>
       )}
-      {database && !hasActionsEnabled && (
-        <ActionAlert icon="warning" variant="error">
-          {t`Running Actions is not enabled for database ${database.displayName()}`}
-        </ActionAlert>
+      {databaseInfo && !hasActionsEnabled && (
+        <Alert
+          size="compact"
+          w="70%"
+          icon={<Icon name="warning" />}
+          color="error"
+        >
+          {t`Running Actions is not enabled for database ${databaseInfo.displayName}`}
+        </Alert>
       )}
       {actions.length > 0 ? (
-        <ActionList aria-label={t`Action list`}>
+        <Stack
+          component="ul"
+          gap="2.25rem"
+          w={{ base: "100%", md: "70%" }}
+          mt="lg"
+          aria-label={t`Action list`}
+        >
           {actionsSorted.map(renderActionListItem)}
-        </ActionList>
+        </Stack>
       ) : (
         <NoActionsState
-          hasCreateButton={canWrite && supportsImplicitActions}
+          hasCreateButton={canWrite && hasImplicitActionsSupport}
           onCreateClick={onEnableImplicitActions}
         />
       )}
       {confirmationModal}
-    </Root>
+    </Box>
   );
+}
+
+interface NoActionsStateProps {
+  hasCreateButton: boolean;
+  onCreateClick: () => void;
 }
 
 function NoActionsState({
   hasCreateButton,
   onCreateClick,
-}: {
-  hasCreateButton: boolean;
-  onCreateClick: () => void;
-}) {
+}: NoActionsStateProps) {
   return (
-    <EmptyStateContainer>
-      <EmptyStateTitle>{t`No actions have been created yet.`}</EmptyStateTitle>
-      <EmptyStateMessage>{t`Get started quickly with some basic actions to create, edit and delete, or create your own from scratch.`}</EmptyStateMessage>
+    <Stack justify="center" gap="sm" h="100%" maw="25rem" m="auto" ta="center">
+      <Title
+        order={4}
+        fz="1rem"
+        lh="normal"
+        c="text-primary"
+      >{t`No actions have been created yet.`}</Title>
+      <Text
+        component="p"
+        mt="sm"
+        c="text-secondary"
+      >{t`Get started quickly with some basic actions to create, edit and delete, or create your own from scratch.`}</Text>
       {hasCreateButton && (
-        <EmptyStateActionContainer>
+        <Box mt="lg">
           <Button
             leftSection={<Icon name="bolt" />}
             onClick={onCreateClick}
           >{t`Create basic actions`}</Button>
-        </EmptyStateActionContainer>
+        </Box>
       )}
-    </EmptyStateContainer>
+    </Stack>
   );
 }
 
@@ -199,6 +219,3 @@ function mostRecentFirst(action: WritebackAction) {
   const createdAt = parseTimestamp(action["created_at"]);
   return -createdAt.valueOf();
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ModelActionDetails;

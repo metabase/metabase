@@ -1,48 +1,47 @@
-// I/O entrypoint: gather inputs (env vars, the cruise graph, the test-file
-// lists) and hand them to createTestPlan, which does the computing.
+// I/O entrypoint: gather inputs (env vars, the test-file lists, the cruise graph on request),
+// hand them to createTestPlan, which does the computing, and publish its small stats output.
 
-import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { appendFileSync, existsSync, readFileSync } from "node:fs";
 
+import micromatch from "micromatch";
+
+import { MAIN_APP_STORY_GLOBS } from "../../.storybook/story-files.cjs";
 import { elements, rules } from "../../frontend/lint/module-boundaries.mjs";
 
 import { type FileDependency, parseCruiseModules } from "./affected-modules";
 import { createTestPlan } from "./affected-tests";
+import { listSpecFiles } from "./e2e-spec-globs.mjs";
 
+// The specs `bun run test-unit` runs.
+const UNIT_ROOTS = ["."];
 const UNIT_GLOBS = [
-  "frontend/src/**/*.unit.spec.js",
-  "frontend/src/**/*.unit.spec.jsx",
-  "frontend/src/**/*.unit.spec.ts",
-  "frontend/src/**/*.unit.spec.tsx",
-  "enterprise/frontend/src/**/*.unit.spec.js",
-  "enterprise/frontend/src/**/*.unit.spec.jsx",
-  "enterprise/frontend/src/**/*.unit.spec.ts",
-  "enterprise/frontend/src/**/*.unit.spec.tsx",
+  "**/*.unit.spec.{js,jsx,ts,tsx}",
+  "!.github/**", // the ci-scripts project, which test-unit ignores
+  "!release/**", // has its own jest config
+  "!enterprise/frontend/src/custom-viz/**", // modulePathIgnorePatterns in jest.config.js
+  "!**/*.leak.unit.spec.{js,jsx,ts,tsx}", // run only by jest.memory.conf.js
 ];
 
-const STORY_GLOBS = [
-  "frontend/**/*.stories.js",
-  "frontend/**/*.stories.jsx",
-  "frontend/**/*.stories.ts",
-  "frontend/**/*.stories.tsx",
-  "enterprise/frontend/**/*.stories.js",
-  "enterprise/frontend/**/*.stories.jsx",
-  "enterprise/frontend/**/*.stories.ts",
-  "enterprise/frontend/**/*.stories.tsx",
-];
+const FRONTEND_ROOTS = ["frontend", "enterprise/frontend"];
 
-const E2E_GLOBS = [
-  "e2e/test/scenarios/**/*.cy.spec.js",
-  "e2e/test/scenarios/**/*.cy.spec.jsx",
-  "e2e/test/scenarios/**/*.cy.spec.ts",
-  "e2e/test/scenarios/**/*.cy.spec.tsx",
-];
+const LOKI_PREVIEW_FILE = ".storybook/preview.tsx";
 
-function listFiles(globs: string[]): string[] {
-  return execFileSync("git", ["ls-files", "--", ...globs], { encoding: "utf8" })
-    .split("\n")
-    .map((line) => line.trim())
+// `git ls-files -- frontend enterprise/frontend` already prints just over a
+// megabyte of paths, and node's default maxBuffer is exactly 1 MiB: past that
+// the spawn dies with ENOBUFS. Give the listings room to grow.
+const LS_FILES_MAX_BUFFER = 64 * 1024 * 1024;
+
+// Returns the tracked files under `roots` that match `globs`. The `dot: true`
+// option means files inside dot-directories such as `.storybook` are included.
+function listFiles(roots: string[], globs: string[]): string[] {
+  const tracked = execFileSync("git", ["ls-files", "-z", "--", ...roots], {
+    encoding: "utf8",
+    maxBuffer: LS_FILES_MAX_BUFFER,
+  })
+    .split("\0")
     .filter(Boolean);
+  return micromatch(tracked, globs, { dot: true });
 }
 
 // dorny outputs comma-separated lists; CHANGED_FILES is `all_changed_files`.
@@ -52,24 +51,64 @@ const csvToList = (csv: string | undefined) =>
     .map((s) => s.trim())
     .filter(Boolean);
 
-// Reads the dependency-cruiser graph (DEP_GRAPH_JSON). Null falls back to the
-// rules graph, so a missing or unparseable file never breaks the plan.
-function readFileDependencies(): FileDependency[] | null {
-  const path = process.env.DEP_GRAPH_JSON;
+// Runs dependency-cruiser over the frontend sources and the Storybook preview and parses its edges.
+// Null falls back to the rules graph, so a failed cruise never breaks the plan.
+function loadFileDependencies(): FileDependency[] | null {
+  const output = "dependency-graph.json";
+  process.stderr.write("Building usage graph with dependency-cruiser.\n");
+  try {
+    // stdout is the plan JSON, so the cruise's own output goes to stderr.
+    const result = spawnSync(
+      "bunx",
+      [
+        "depcruise",
+        "frontend/src",
+        "enterprise/frontend/src",
+        LOKI_PREVIEW_FILE,
+        "--config",
+        ".dependency-cruiser.cjs",
+        "--output-type",
+        "json",
+        "--output-to",
+        output,
+      ],
+      { stdio: ["ignore", 2, 2] },
+    );
+    if (result.error) {
+      throw result.error;
+    }
+    if (result.status !== 0) {
+      throw new Error(`depcruise exited with status ${result.status}`);
+    }
+    const { modules } = JSON.parse(readFileSync(output, "utf8"));
+    return parseCruiseModules(modules);
+  } catch (error) {
+    process.stderr.write(
+      `Failed to build usage graph; falling back to rules graph: ${error}\n`,
+    );
+    return null;
+  }
+}
+
+// Reads the nightly coverage manifest (E2E_SPEC_MANIFEST): { builtAt, specs:
+// { spec -> files } }. Returns the specs map, or null so e2e falls back to a
+// full run when the manifest is missing/unparseable.
+function readE2eSpecFiles(): Record<string, string[]> | null {
+  const path = process.env.E2E_SPEC_MANIFEST;
   if (path && existsSync(path)) {
     try {
-      const { modules } = JSON.parse(readFileSync(path, "utf8"));
-      process.stderr.write(`Using usage graph from ${path}.\n`);
-      return parseCruiseModules(modules);
+      const { specs } = JSON.parse(readFileSync(path, "utf8"));
+      if (specs && typeof specs === "object") {
+        process.stderr.write(`Using e2e coverage manifest from ${path}.\n`);
+        return specs;
+      }
     } catch (error) {
       process.stderr.write(
-        `Failed to read ${path}; falling back to rules graph: ${error}\n`,
+        `Failed to read ${path}; e2e will run in full: ${error}\n`,
       );
     }
   } else {
-    process.stderr.write(
-      "No DEP_GRAPH_JSON found; falling back to rules graph.\n",
-    );
+    process.stderr.write("No E2E_SPEC_MANIFEST found; e2e will run in full.\n");
   }
   return null;
 }
@@ -78,19 +117,29 @@ const testPlan = createTestPlan({
   elements,
   rules,
   changedFiles: csvToList(process.env.CHANGED_FILES),
-  fileDependencies: readFileDependencies(),
+  loadFileDependencies,
   testFilesBySuite: {
-    unit: listFiles(UNIT_GLOBS),
-    loki: listFiles(STORY_GLOBS),
-    e2e: listFiles(E2E_GLOBS),
+    unit: listFiles(UNIT_ROOTS, UNIT_GLOBS),
+    loki: listFiles(FRONTEND_ROOTS, MAIN_APP_STORY_GLOBS),
+    e2e: listSpecFiles(),
   },
+  lokiPreviewFile: LOKI_PREVIEW_FILE,
+  e2eSpecFiles: readE2eSpecFiles(),
   unitInfraTouched: process.env.UNIT_INFRA_TOUCHED === "true",
   lokiInfraTouched: process.env.LOKI_INFRA_TOUCHED === "true",
+  e2eInfraTouched: process.env.E2E_INFRA_TOUCHED === "true",
   sharedSourcesTouched: process.env.SHARED_SOURCES_TOUCHED === "true",
   feFilesChanged: csvToList(process.env.FE_CHANGED_FILES).length,
   beFilesChanged: csvToList(process.env.BE_CHANGED_FILES).length,
-  feFilesTotal: listFiles(["frontend", "enterprise/frontend"]).length,
-  beFilesTotal: listFiles(["src", "enterprise/backend"]).length,
+  feFilesTotal: listFiles(FRONTEND_ROOTS, ["**"]).length,
+  beFilesTotal: listFiles(["src", "enterprise/backend"], ["**"]).length,
 });
 
 process.stdout.write(JSON.stringify(testPlan) + "\n");
+
+if (process.env.GITHUB_OUTPUT) {
+  appendFileSync(
+    process.env.GITHUB_OUTPUT,
+    `stats=${JSON.stringify(testPlan.stats)}\n`,
+  );
+}

@@ -1,11 +1,10 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 
 import { NewModelOption } from "./NewModelOption";
 
 const defaultProps = {
-  image: "app/img/sql_illustration",
+  image: { src: "sql_illustration.png", srcSet: "sql_illustration@2x.png 2x" },
   title: "Use a native query",
   description: "Fall back to SQL.",
   to: "/model/new/native",
@@ -15,7 +14,7 @@ const setup = (props = {}) =>
   renderWithProviders(
     <Route
       path="*"
-      component={() => <NewModelOption {...defaultProps} {...props} />}
+      element={<NewModelOption {...defaultProps} {...props} />}
     />,
     { withRouter: true },
   );
@@ -43,8 +42,8 @@ describe("NewModelOption", () => {
     setup({ width: 180 });
 
     const img = screen.getByRole("img");
-    expect(img).toHaveAttribute("src", "app/img/sql_illustration.png");
-    expect(img).toHaveAttribute("srcset", "app/img/sql_illustration@2x.png 2x");
+    expect(img).toHaveAttribute("src", defaultProps.image.src);
+    expect(img).toHaveAttribute("srcset", defaultProps.image.srcSet);
     expect(img).toHaveAttribute("width", "180");
   });
 

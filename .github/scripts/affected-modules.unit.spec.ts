@@ -6,6 +6,7 @@ import {
   getAffectedFiles,
   getAffectedModules,
   getChangedModules,
+  getTransitiveDependencies,
   mapFileToModule,
   parseCruiseModules,
 } from "./affected-modules";
@@ -120,6 +121,31 @@ describe("affected modules", () => {
       expect([...getAffectedFiles(fileGraph, ["src/app.js"])]).toEqual([
         "src/app.js",
       ]);
+    });
+  });
+
+  describe("getTransitiveDependencies", () => {
+    it("should return the file and everything it transitively imports", () => {
+      expect(
+        [...getTransitiveDependencies(FILE_DEPS, "src/app.js")].sort(),
+      ).toEqual(["src/app.js", "src/foo/foo.tsx", "src/utils/colors.ts"]);
+    });
+
+    it("should return only the file when it imports nothing", () => {
+      expect([
+        ...getTransitiveDependencies(FILE_DEPS, "src/utils/colors.ts"),
+      ]).toEqual(["src/utils/colors.ts"]);
+    });
+
+    it("should stop at an import cycle", () => {
+      const cyclic = [
+        { source: "src/a.ts", dependencies: ["src/b.ts"] },
+        { source: "src/b.ts", dependencies: ["src/a.ts"] },
+      ];
+
+      expect([...getTransitiveDependencies(cyclic, "src/a.ts")].sort()).toEqual(
+        ["src/a.ts", "src/b.ts"],
+      );
     });
   });
 
