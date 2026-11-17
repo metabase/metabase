@@ -373,10 +373,7 @@ export type VisualizationSettings = {
   /** Whether a table of two breakouts and one aggregation pivots; `false` keeps a row per group. */
   "table.pivot"?: boolean;
 
-  /**
-   * Whether a table shows a `#` column numbering its rows from 1, in the order
-   * shown. Defaults to `false`.
-   */
+  /** Show a `#` column numbering rows 1, 2, 3… in display order. Defaults to `false`. */
   "table.row_index"?: boolean;
 
   /**
@@ -406,9 +403,9 @@ export type VisualizationSettings = {
   "graph.y_axis.auto_range"?: boolean;
 
   /**
-   * Let the automatic y-axis range fit the data instead of starting at 0. Applies
-   * only with `graph.y_axis.auto_range` on, no stacking, and no bar, area or
-   * waterfall series. Defaults to `true` on a scatter chart, `false` otherwise.
+   * Fit the y-axis to the data instead of always including 0. Only for unstacked
+   * line and scatter charts with `graph.y_axis.auto_range` on; ignored otherwise.
+   * Defaults to `true` for scatter, `false` for the rest.
    */
   "graph.y_axis.unpin_from_zero"?: boolean;
 
@@ -472,17 +469,16 @@ export type VisualizationSettings = {
   series_settings?: Record<string, SeriesSettings | undefined>;
 
   /**
-   * Explicit order, labels, colors, and enabled state for breakout series.
-   * Applied only when `graph.series_order_dimension` names the breakout column
-   * and every entry has a `color`; otherwise the series keep the result's
-   * order. On a stacked bar or area chart, the first entry is the top of the
-   * stack.
+   * Order of a chart's breakout series; `enabled: false` hides one. Ignored
+   * unless `graph.series_order_dimension` is set and every entry has `key`,
+   * `name` and `color` (`name` and `color` aren't drawn). On a stacked chart,
+   * the first entry is the top (on a row chart, the left end).
    */
   "graph.series_order"?: SeriesOrderSetting[];
 
   /**
-   * Result column name of the breakout that `graph.series_order` orders: the
-   * second `graph.dimensions` entry. Set it together with `graph.series_order`.
+   * The breakout column `graph.series_order` applies to: the second
+   * `graph.dimensions` entry. Unless it matches, `graph.series_order` is ignored.
    */
   "graph.series_order_dimension"?: string;
 
