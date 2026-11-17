@@ -57,6 +57,7 @@ import { FUNNEL_CHART_DEFINITION } from "./visualizations/Funnel/definition";
 import { GAUGE_CHART_DEFINITION } from "./visualizations/Gauge/definition";
 import { LINE_CHART_DEFINITION } from "./visualizations/LineChart/definition";
 import { LIST_DEFINITION } from "./visualizations/List/definition";
+import { MapRegionWidget } from "./visualizations/Map/MapRegionWidget";
 import { MAP_VIZ_DEFINITION } from "./visualizations/Map/definition";
 import { OBJECT_DETAIL_DEFINITION } from "./visualizations/ObjectDetail/definition";
 import { DimensionsWidget } from "./visualizations/PieChart/DimensionsWidget";
@@ -218,6 +219,7 @@ function registerVisualizationSettingWidgets() {
     tableColumns: ChartSettingTableColumns,
     nestedColumns: chartSettingNestedSettings(ChartNestedSettingColumns),
     nestedSeries: chartSettingNestedSettings(ChartNestedSettingSeries),
+    mapRegion: MapRegionWidget,
     pieDimensions: DimensionsWidget,
     pieSliceName: SliceNameWidget,
     smartScalarComparison: SmartScalarComparisonWidget,

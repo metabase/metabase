@@ -13,7 +13,6 @@
    [metabase.lib.core :as lib]
    [metabase.queries.models.query :as queries.query]
    [metabase.source-swap.core :as source-swap]
-   [metabase.visualization-settings.core :as vs]
    [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 (set! *warn-on-reflection* true)
@@ -152,9 +151,7 @@
         parameter-mappings' (replacement.walk/walk-parameter-mapping-targets parameter-mappings update-fn)
         viz-settings        (:visualization_settings dashcard)
         viz-settings'       (some-> viz-settings
-                                    vs/db->norm
                                     (replacement.walk/walk-viz-settings-click-behaviors update-fn)
-                                    vs/norm->db
                                     (swap-goal-refs old-source new-source))
         changes (cond-> {}
                   (not= parameter-mappings parameter-mappings')
@@ -173,7 +170,7 @@
                                         (replacement.walk/parameter-mapping-card-ids
                                          (:parameter_mappings dashcard))
                                         (replacement.walk/viz-settings-click-behavior-card-ids
-                                         (-> dashcard :visualization_settings vs/db->norm)))))
+                                         (:visualization_settings dashcard)))))
                              dashcards)
         card-id->card (if (seq all-card-ids)
                         (replacement.db/cards-by-id all-card-ids)

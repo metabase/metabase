@@ -4,12 +4,13 @@
   and transactions."
   (:require
    [malli.util :as mut]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.models.collection :as collection]
    [metabase.documents.schema :as documents.schema]
    [metabase.explorations.schema :as explorations.schema]
    [metabase.interestingness.chart.types :as chart.types]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
@@ -73,7 +74,7 @@
              :join     [[agg :agg] [:= :agg.eid :exploration.id]]
              :where    [:and
                         [:= :exploration.archived false]
-                        (collection/visible-collection-filter-clause :exploration.collection_id)]
+                        (perms/visible-collections-filter-clause :exploration.collection_id (api/current-user-info) {:root-namespace nil})]
              :order-by [[:current_user_last_touched_at :desc] [:exploration.id :desc]]}
       limit  (assoc :limit limit)
       offset (assoc :offset offset))))
@@ -329,6 +330,13 @@
   "The ExplorationPage with `page-id`, or nil."
   [page-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationPage :id page-id))
+
+(mu/defn pages-by-ids
+  "The ExplorationPages with `page-ids`."
+  [page-ids :- [:sequential ms/PositiveInt]]
+  (if (seq page-ids)
+    (t2/select :model/ExplorationPage :id [:in page-ids])
+    []))
 
 (mu/defn page-block-id-row
   "The `:exploration_block_id` row of the ExplorationPage with `page-id`, or nil."
@@ -768,6 +776,13 @@
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
+
+(mu/defn cards-by-ids
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
 
 (mu/defn card-names
   "The ID and name of the Cards with `card-ids`."

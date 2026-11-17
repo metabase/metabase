@@ -324,7 +324,7 @@
   (when-not (int? id)
     (common/throw-teaching-error (message/msg ["Alerts take a numeric id — they have no entity_id."])))
   (let [notification (mcp.db/notification-by-payload-type id :notification/card)]
-    (when-not (and notification (mi/can-read? notification) (mi/can-write? notification))
+    (when-not (and notification (mi/can-read? (t2/hydrate notification :can_read)) (mi/can-write? (t2/hydrate notification :can_write)))
       (common/throw-not-found :alert id))
     (notification.api/get-notification id)))
 

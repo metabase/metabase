@@ -29,6 +29,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -202,6 +203,11 @@
    ctx       :- ActionContext
    ;; Since the inner map shape will depend on action-kw, we will need to dynamically validate it.
    inputs    :- [:sequential ::actions.args/any-arg-map]]
+  ;; writes here skip the QP's workspace SQL remapping, so they would hit production table names. Every implicit
+  ;; and data-grid entry point comes through here; data-grid editing never reaches
+  ;; [[metabase.actions.execution/execute-action!]]. Saved query actions never come through here: the check in
+  ;; `execute-action!` is their only gate, so do not remove it as a duplicate of this one.
+  (workspaces/check-not-in-workspace-mode! "Editing table data")
   (driver.conn/with-write-connection
     (lib-be/with-metadata-provider-cache
       (let [invocation-id  (u/generate-nano-id)

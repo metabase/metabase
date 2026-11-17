@@ -10,8 +10,8 @@
 
 (defn- present-dashboard [dashboard]
   (-> (cond
-        (not (mi/can-read? dashboard)) {:error :unreadable-dashboard}
-        (not (mi/can-write? dashboard)) (merge dashboard {:error :unwritable-dashboard})
+        (not (mi/can-read? (t2/hydrate dashboard :can_read))) {:error :unreadable-dashboard}
+        (not (mi/can-write? (t2/hydrate dashboard :can_write))) (merge dashboard {:error :unwritable-dashboard})
         :else dashboard)
       (select-keys [:id :name :error])))
 

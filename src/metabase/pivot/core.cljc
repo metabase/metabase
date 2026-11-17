@@ -3,8 +3,7 @@
    [medley.core :as m]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.performance :as perf]
-   [metabase.visualization-settings.core :as mb.viz])
+   [metabase.util.performance :as perf])
   (:import
    #?(:clj (java.text Collator))))
 
@@ -444,7 +443,6 @@
   (or (if format-values?
         (or
          (:column_title col-settings)
-         (::mb.viz/column-title col-settings)
          (:display_name (:remapped_to_column column))
          (:display_name column))
         (:display_name column))

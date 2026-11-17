@@ -101,7 +101,7 @@
   ;; Documents attached to an exploration are internal to that exploration — every other listing surface (search,
   ;; recents, collection items) excludes them too.
   {:items (as-> (documents.db/visible-unarchived-documents) docs
-            (filter mi/can-read? docs)
+            (filterv mi/can-read? (t2/hydrate docs :can_read))
             (t2/hydrate docs :creator :can_write :is_remote_synced))})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -195,7 +195,7 @@
                                               :archived_directly (boolean (:archived_directly card))}))
                 (assoc accum (:id card) (:id new-card))))
             {}
-            cards-to-copy)))
+            (t2/hydrate cards-to-copy :can_read))))
 
 (defn- rewire-goals-and-publish-copied-cards!
   "Points the goals of the Document's cards that read a copied card (`card-id-map`: old id -> copy's id) at the copy,

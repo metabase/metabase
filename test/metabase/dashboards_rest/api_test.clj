@@ -30,7 +30,7 @@
    [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -50,6 +50,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [methodical.core :as methodical]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]))
@@ -1886,11 +1887,9 @@
   ^{:doc "Set of ids that will report [[mi/can-write]] as true."}
   *readable-card-ids* #{})
 
-(defmethod mi/can-read? ::dispatches-on-dynamic
-  ([fake-model]
-   (contains? *readable-card-ids* (:id fake-model)))
-  ([_fake-model id]
-   (contains? *readable-card-ids* id)))
+(methodical/defmethod t2/simple-hydrate [::dispatches-on-dynamic :can_read]
+  [_model k fake-model]
+  (vary-meta fake-model assoc k (boolean (contains? *readable-card-ids* (:id fake-model)))))
 
 (defn- card-model
   "Return a card \"model\" that reports as a `::dispatches-on-dynamic` model type, and checking `mi/can-write?` checks
@@ -2784,6 +2783,27 @@
                 :created_at                 true
                 :updated_at                 true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-2))))))))
+
+(deftest update-cards-empty-card-title-test
+  (testing "PUT /api/dashboard/:id keeps an empty card.title, so a cleared title stays cleared (metabase#12013, metabase#36788)"
+    (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                   :model/Card          {card-id :id}      {:name "Orders"}
+                   :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id, :card_id card-id}]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
+        (move-cards-to-dashboard-collection! dashboard-id [card-id])
+        (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
+                              {:dashcards [{:id                     dashcard-id
+                                            :size_x                 4
+                                            :size_y                 4
+                                            :col                    0
+                                            :row                    0
+                                            :visualization_settings {:card.title ""}}]
+                               :tabs      []})
+        (is (= {:card.title ""}
+               (-> (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))
+                   :dashcards
+                   first
+                   :visualization_settings)))))))
 
 (deftest update-cards-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id"
@@ -5133,12 +5153,12 @@
                                                      :card_id card-id-1
                                                      :visualization_settings {:column_settings
                                                                               {"[\"name\",\"ID\"]" ;; FE reference that must be json formatted
-                                                                               {:click_behavior {:type :link
+                                                                               {:click_behavior {:type "link"
                                                                                                  :linkType "dashboard"
                                                                                                  :targetId link-dash}}}}}
      :model/DashboardCard       _                   {:dashboard_id dashboard-id,
                                                      :card_id card-id-2
-                                                     :visualization_settings {:click_behavior {:type :link
+                                                     :visualization_settings {:click_behavior {:type "link"
                                                                                                :linkType "question"
                                                                                                :targetId link-card}}}
      :model/Card                {series-id-1 :id}   {:name "Series Card 1"
@@ -5231,13 +5251,11 @@
 
 (deftest dashboard-query-metadata-no-tables-test
   (testing "Don't throw an error if users doesn't have access to any tables #44043"
-    (let [original-can-read? mi/can-read?]
-      (mt/with-temp [:model/Dashboard dash {}]
-        (with-redefs [mi/can-read? (fn [& args]
-                                     (if (= :model/Table (apply mi/dispatch-on-model args))
-                                       false
-                                       (apply original-can-read? args)))]
-          (is (map? (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id dash))))))))))
+    (mt/with-temp [:model/Dashboard dash {}]
+      (mt/with-dynamic-fn-redefs [mi/can-read? (fn [instance]
+                                                 (and (not (t2/instance-of? :model/Table instance))
+                                                      (:can_read (meta instance))))]
+        (is (map? (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id dash)))))))))
 
 (deftest dashboard-field-params-field-names-test
   (mt/with-temp

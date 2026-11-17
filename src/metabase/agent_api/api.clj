@@ -26,7 +26,7 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.tools.construct :as metabot-construct]
@@ -934,7 +934,7 @@
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]])
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]])
 
 (mr/def ::create-question-response
   [:map
@@ -985,7 +985,7 @@
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]])
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]])
 
 (mr/def ::create-metric-response
   [:map
@@ -1052,7 +1052,7 @@
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
-   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
@@ -1111,7 +1111,7 @@
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
-   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
@@ -1274,7 +1274,9 @@
                         (personal-collection-id))]
     (api/create-check :model/Dashboard {:collection_id collection_id})
     (let [cards (when (seq question_ids)
-                  (mapv #(api/read-check :model/Card %) question_ids))
+                  (let [id->card (u/index-by :id (t2/hydrate (agent-api.db/cards-with-ids (vec (distinct question_ids)))
+                                                             :can_read))]
+                    (mapv #(api/read-check (id->card %)) question_ids)))
           dash  (t2/with-transaction [_conn]
                   (let [dash (agent-api.db/insert-dashboard!
                               {:name          dashboard-name
@@ -1419,6 +1421,12 @@
         ;; collision/reflow purposes they count as first-tab cards.
         effective-tab  (fn [dashcard] (or (:dashboard_tab_id dashcard) default-tab-id))
         on-tab         (fn [placed tab-id] (filterv #(= (effective-tab %) tab-id) placed))
+        add-cards      (u/index-by :id (t2/hydrate (agent-api.db/cards-with-ids
+                                                    (into [] (comp (filter (comp #{"add"} :action))
+                                                                   (keep :card_id)
+                                                                   (distinct))
+                                                          mutations))
+                                                   :can_read))
         state          (atom {:placed  (vec current)
                               :added   []
                               :removed []
@@ -1428,7 +1436,7 @@
       (try
         (case action
           "add"
-          (let [card    (api/read-check :model/Card card_id)
+          (let [card    (api/read-check (add-cards card_id))
                 ;; A card placed on a shared dashboard exposes its selected timeline events, so the
                 ;; same read check the REST writer applies runs here too.
                 _       (queries/check-newly-exposed-dashcards-timeline-permissions!

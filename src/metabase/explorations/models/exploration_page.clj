@@ -15,19 +15,9 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defmethod mi/can-read? :model/ExplorationPage
-  ([instance]
-   (mi/can-read? :model/ExplorationBlock (:exploration_block_id instance)))
-  ([_model pk]
-   (when-let [p (explorations.db/page-block-id-row pk)]
-     (mi/can-read? :model/ExplorationBlock (:exploration_block_id p)))))
-
-(defmethod mi/can-write? :model/ExplorationPage
-  ([instance]
-   (mi/can-write? :model/ExplorationBlock (:exploration_block_id instance)))
-  ([_model pk]
-   (when-let [p (explorations.db/page-block-id-row pk)]
-     (mi/can-write? :model/ExplorationBlock (:exploration_block_id p)))))
+(methodical/defmethod t2/simple-hydrate [:model/ExplorationPage :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (some-> (explorations.db/block-thread-id-row (:exploration_block_id instance)) (t2/hydrate :can_read) mi/can-read?))))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationPage :can_write]
   "Add whether the current user can write each ExplorationPage, which is whether they can write its parent."
