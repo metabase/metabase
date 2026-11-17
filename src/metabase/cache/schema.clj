@@ -1,8 +1,74 @@
 (ns metabase.cache.schema
   "Malli schemas for the cache module."
   (:require
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.util.cron :as u.cron]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
+
+(defn- cache-strategy-dispatch
+  "`:multi` dispatch for a cache strategy.
+
+  `:type` arrives from JSON as a string, and `:multi` dispatches before the branch that would coerce it to a keyword
+  runs, so the dispatch has to do the coercion itself. A sibling `[:map [:type [:enum ...]]]` guard can't do it for
+  us: request decoding would then strip every key the guard doesn't name, emptying out the strategy."
+  [strategy]
+  (let [strategy-type (:type strategy)]
+    (when (or (keyword? strategy-type) (string? strategy-type))
+      (keyword strategy-type))))
+
+(mr/def ::cache-strategy.nocache
+  ::lib.schema/cache-strategy.nocache)
+
+(mr/def ::cache-strategy.ttl
+  "[[::lib.schema/cache-strategy.ttl]] as it may be configured: whole numbers."
+  [:merge
+   ::lib.schema/cache-strategy.ttl
+   [:map {:closed true}
+    [:multiplier      ms/PositiveInt]
+    [:min_duration_ms ms/IntGreaterThanOrEqualToZero]]])
+
+(mr/def ::cache-strategy.oss
+  "Schema for a caching strategy (OSS)"
+  [:multi {:description      (deferred-tru "cache strategy :type must be one of :nocache, :ttl")
+           :decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         cache-strategy-dispatch
+           :error/fn    (fn [{:keys [value]} _]
+                          (tru "invalid cache strategy :type {0}, must be one of :nocache, :ttl"
+                               (pr-str (:type value))))}
+   [:nocache ::cache-strategy.nocache]
+   [:ttl     ::cache-strategy.ttl]])
+
+(mr/def ::cache-strategy.ee.duration
+  "[[::lib.schema/cache-strategy.duration]] as it may be configured: a whole number of units."
+  [:merge
+   ::lib.schema/cache-strategy.duration
+   [:map {:closed true}
+    [:duration ms/PositiveInt]]])
+
+(mr/def ::cache-strategy.ee.schedule
+  "[[::lib.schema/cache-strategy.schedule]] as it may be configured: a valid cron schedule."
+  [:merge
+   ::lib.schema/cache-strategy.schedule
+   [:map {:closed true}
+    [:schedule u.cron/CronScheduleString]]])
+
+;;; This is basically the same schema as `:metabase-enterprise.cache.strategies/cache-strategy` except it doesn't have
+;;; the optional `:invalidated-at` keys
+(mr/def ::cache-strategy.ee
+  "Schema for a caching strategy in EE when we have an premium token with `:cache-granular-controls`."
+  [:multi {:description      (deferred-tru "cache strategy :type must be one of :nocache, :ttl, :duration, :schedule")
+           :decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         cache-strategy-dispatch
+           :error/fn    (fn [{:keys [value]} _]
+                          (tru "invalid cache strategy :type {0}, must be one of :nocache, :ttl, :duration, :schedule"
+                               (pr-str (:type value))))}
+   [:nocache     ::cache-strategy.nocache]
+   [:ttl         ::cache-strategy.ttl]
+   [:duration    ::cache-strategy.ee.duration]
+   [:schedule    ::cache-strategy.ee.schedule]])
 
 (mr/def ::cache-config.config
   "The `:config` column of a CacheConfig, decoded: a cache strategy body with `:type` and `:refresh_automatically`
