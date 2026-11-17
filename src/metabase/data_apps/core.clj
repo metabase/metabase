@@ -73,11 +73,12 @@
    _card-id  :- ::lib.schema.id/card]
   nil)
 
-(defenterprise-schema referenced-entity-refusals :- [:map-of [:tuple :string :int] :string]
-  "Refusal messages for the referenced-entity `specs` that `data-app` may not run, keyed by `[type id]`."
+(defenterprise-schema goal-source-refusals :- [:map-of [:tuple :string :int] :string]
+  "Refusal messages for the dynamic goal `sources` that `data-app` may not run, keyed by `[type id]`; none without the
+  data-apps feature."
   metabase-enterprise.data-apps.checks
   [_data-app :- ::data-apps.schema/data-app-info
-   _specs    :- [:sequential [:map [:type :string] [:id :int]]]]
+   _sources  :- [:sequential [:map [:type :string] [:id :int]]]]
   {})
 
 (defenterprise-schema check-action :- :nil
