@@ -21,14 +21,28 @@ title: Driver interface changelog
 - `metabase.driver/allowed-connection-parameters` `[driver]` -- new multimethod returning the names of the client
   connection parameters a user may write into `:additional-options`. It is not enforced yet: when
   `:additional-options` names a parameter on neither this list nor `disallowed-connection-parameters`, Metabase
-  allows it but publishes an `:event/unlisted-connection-parameter` event with the `:driver` and `:parameter`, and logs
-  a warning. The default lists none, so a driver whose connection form offers `:additional-options` should list what its
-  client documents. Return `nil` if the driver never hands `:additional-options` to its client.
+  allows it but publishes an `:event/unlisted-connection-parameter` event with the `:driver`, the `:parameter`, and
+  the `:database-id` when there is one, and logs a warning. It is published when a Database is created, when its
+  additional options change, and when a connection pool is created for it. The default is `nil`, which reports nothing; a driver whose connection form offers `:additional-options` should
+  list what its client documents. An empty list reports every parameter. The list is not inherited: a driver
+  deriving from `:postgres` or `:mysql` reports nothing until it implements this itself, by calling the parent's
+  method if it uses the same client.
 
   ```clj
   (defmethod driver/allowed-connection-parameters :my-driver
     [_driver]
     ["applicationName" "connectTimeout" "socketTimeout" "ssl" "sslmode"])
+  ```
+
+- `metabase.driver/additional-options-key` `[driver]` -- new multimethod returning the connection-detail key that
+  holds the parameters a user writes in the connection form's additional options field. Defaults to
+  `:additional-options`. `disallowed-connection-parameters` and `allowed-connection-parameters` are checked against the
+  parameters under this key, so override it if your connection form stores that field under another name.
+
+  ```clj
+  (defmethod driver/additional-options-key :my-driver
+    [_driver]
+    :jdbc-flags)
   ```
 
 ## Metabase 0.65.3

@@ -234,6 +234,24 @@
         (testing (pr-str k)
           (is (= "false" (put-get-as-the-client-reads-it
                           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details (keyword k) "true"))))))))
+    (testing "...including other spellings the client may honor"
+      (doseq [opts ["ENABLE_PUT_GET=true" "enable_put_get=true" "JDBC_ENABLE_PUT_GET=true" "enable%50utGet=true"]]
+        (testing (pr-str opts)
+          (let [spec (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :additional-options opts))]
+            (is (= "false" (:enablePutGet spec)))
+            (is (not (re-find #"(?i)put.?get" (str (:subname spec))))))))
+      (doseq [k ["ENABLE_PUT_GET" "jdbc_enable_put_get"]]
+        (testing (pr-str k)
+          (is (= [:enablePutGet]
+                 (filterv #(re-find #"(?i)put.?get" (name %))
+                          (keys (sql-jdbc.conn/connection-details->spec :snowflake (assoc details (keyword k) "true")))))))))
+    (testing "...and refused when written into a value that goes into the connection string"
+      (doseq [details [(assoc details :use-hostname true :host "x.snowflakecomputing.com/?ENABLE_PUT_GET=true")
+                       (assoc details :use-hostname true :host "x.snowflakecomputing.com/?enablePutGet=true")
+                       (assoc details :account "ls10467.us-east-2.aws.snowflakecomputing.com/?JDBC_ENABLE_PUT_GET=true&x=")]]
+        (testing (pr-str (select-keys details [:host :account]))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Potentially dangerous keys"
+                                (sql-jdbc.conn/connection-details->spec :snowflake details))))))
     (testing "additional options wins over top-level schema"
       ;; https://github.com/metabase/metabase/issues/65493
       (let [details (assoc details :schema "BAD" :additional-options "schema=GOOD")

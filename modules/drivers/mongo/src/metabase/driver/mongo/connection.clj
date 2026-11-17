@@ -15,6 +15,7 @@
    [metabase.util.performance :refer [every? not-empty]])
   (:import
    (com.mongodb
+    AuthenticationMechanism
     ConnectionString
     MongoClientSettings
     MongoClientSettings$Builder
@@ -79,6 +80,19 @@
           (driver.u/validate-resolved-addresses! addresses))
         addresses))))
 
+(defn- refuse-ambient-credentials!
+  "Throw a 400 if `credential` would have the client authenticate with something the Metabase host has rather than
+  something the user supplied: `MONGODB-OIDC` reads a service-account token from a local file or the instance
+  metadata service, and `MONGODB-AWS` without a secret uses the host's own AWS credentials. Either is then sent to the
+  server the user chose."
+  [^MongoCredential credential]
+  (when-let [mechanism (some-> credential .getMechanism)]
+    (when (or (= mechanism (.getMechanismName AuthenticationMechanism/MONGODB_OIDC))
+              (and (= mechanism (.getMechanismName AuthenticationMechanism/MONGODB_AWS))
+                   (nil? (.getPassword credential))))
+      (throw (ex-info "Potentially dangerous keys in connection details"
+                      {:status-code 400, :disallowed-key (str "authMechanism=" mechanism)})))))
+
 (defn db-details->mongo-client-settings
   "Generate `MongoClientSettings` from `db-details`. `ConnectionString` is generated and applied to
    `MongoClientSettings$Builder` first. Then credentials are set and ssl context is updated in the `builder` object.
@@ -112,7 +126,9 @@
                                                          (char-array pass)))))
       (when ssl
         (maybe-add-ssl-context-to-builder! builder db-details)))
-    (.build builder)))
+    ;; the credential may come from the connection string -- `:additional-options` or a `:conn-uri` -- or from us
+    (u/prog1 (.build builder)
+      (refuse-ambient-credentials! (.getCredential ^MongoClientSettings <>)))))
 
 (defn do-with-mongo-client
   "Implementation of [[with-mongo-client]]."

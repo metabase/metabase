@@ -55,7 +55,11 @@
 (defmethod driver/disallowed-connection-parameters :mongo
   [_driver]
   [;; Sends every connection through a chosen SOCKS5 proxy, which skips the checks on the addresses connected to
-   "proxyHost"])
+   "proxyHost"
+   ;; The `authMechanism` that sends the host's own service-account token to the server. A value rather than a
+   ;; parameter name, caught because the whole options string is searched; `MONGODB-AWS` is allowed with an explicit
+   ;; secret, so it is refused only when the client is built (see `metabase.driver.mongo.connection`)
+   "MONGODB-OIDC"])
 
 (defmethod driver/allowed-connection-parameters :mongo
   [_driver]

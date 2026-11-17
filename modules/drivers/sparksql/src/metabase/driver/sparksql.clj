@@ -120,6 +120,11 @@
   [_driver details]
   (sql-jdbc.common/connection-string-hosts (connection-url details)))
 
+;; the form's additional options field is stored as `:jdbc-flags`, which [[connection-url]] writes into the URL as is
+(defmethod driver/additional-options-key :sparksql
+  [_driver]
+  :jdbc-flags)
+
 ;; with `ssl=true` and no store password, the client looks the password up in a Hadoop credential provider, and a
 ;; `jceks://https@host/path` value makes it fetch that URL
 (defmethod driver/host-carrying-parameters :sparksql

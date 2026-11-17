@@ -360,9 +360,27 @@
             non-admin-groups         (conj non-magic-groups all-users-group all-external-users-group)]
         (perms/set-default-database-permissions! database non-admin-groups)))))
 
+(def ^:private details-keys
+  "Every place a Database stores a set of connection details."
+  [:details :write_data_details])
+
+(defn- publish-unlisted-connection-parameters!
+  "Report the parameters in `database`'s additional options that its driver neither allows nor disallows (see
+  [[driver.u/publish-unlisted-connection-parameters!]]), for each of `keys-to-check` whose options differ from
+  `original`'s. Pass nil for `original` when the database is new."
+  [engine database original keys-to-check]
+  (when-let [engine (some-> engine keyword)]
+    (when (driver.impl/registered? engine)
+      (let [options-key (driver/additional-options-key engine)]
+        (doseq [k     keys-to-check
+                :let  [options (get-in database [k options-key])]
+                :when (and (some? options) (not= options (get-in original [k options-key])))]
+          (driver.u/publish-unlisted-connection-parameters! engine options (:id database)))))))
+
 (t2/define-after-insert :model/Database
   [database]
   (u/prog1 database
+    (publish-unlisted-connection-parameters! (:engine database) database nil details-keys)
     (set-new-database-permissions! database)
     ;; schedule the Database sync & analyze tasks This will not do anything when coming
     ;; from [[metabase-enterprise.advanced-config.file/initialize!]], since the scheduler will not be up yet. Thus, we
@@ -450,10 +468,6 @@
     (throw (ex-info (tru "Cannot change router_database_id; a destination database is established at creation, not by updating an existing database.")
                     {:status-code 400}))))
 
-(def ^:private details-keys
-  "Every place a Database stores a set of connection details."
-  [:details :write_data_details])
-
 (defn- validate-connection-details!
   "Refuse to store details pointing at a private/internal network address, or setting a connection parameter the driver
   disallows (see [[driver/disallowed-connection-parameters]]). Enforcing this on the model, and not just on the
@@ -490,7 +504,11 @@
                                   (merge original changes)
                                   (if (contains? changes :engine)
                                     details-keys
-                                    (filterv #(contains? changes %) details-keys))))
+                                    (filterv #(contains? changes %) details-keys)))
+    (publish-unlisted-connection-parameters! (or (:engine changes) (:engine original))
+                                             (merge original changes)
+                                             original
+                                             (filterv #(contains? changes %) details-keys)))
   ;; Note: the "sample database may not be edited" policy is enforced at the API layer
   ;; ([[metabase.warehouses-rest.api]] PUT /:id), so internally-derived updates - e.g. the sample
   ;; database engine migration in [[metabase.sample-data.impl]] - can change the engine here.

@@ -488,10 +488,16 @@
           (and (not= "oauth-client-credentials" auth-mode) oauth-details)
           (conj oauth-details))))))
 
+(defn- put-get-parameter?
+  "Whether `s` holds the client's `enablePutGet` in any spelling it might read as that: in any case, percent-escaped, or
+  as `ENABLE_PUT_GET` or `JDBC_ENABLE_PUT_GET`, names that can also reach it as session parameters."
+  [s]
+  (str/includes? (driver.u/normalize-connection-parameter s) "enableputget"))
+
 (defn- normalize-additional-options [additional-options]
   (when-not (str/blank? additional-options)
     (not-empty
-     (str/join "&" (remove #(re-matches #"(?i)enablePutGet(=.*)?" %)
+     (str/join "&" (remove #(put-get-parameter? (first (str/split % #"=" 2)))
                            (str/split additional-options #"&"))))))
 
 ;; we used to have schema as a top-level key but it's been gone for a while now
@@ -582,8 +588,14 @@
         ;; `PUT` and `GET` move files between the Metabase host and a stage. Details are merged into the spec above, and
         ;; the client reads property names case-insensitively, so a detail key such as `Enableputget` would otherwise
         ;; sit beside ours and, depending on hash order, win.
-        (as-> spec (m/remove-keys #(= "enableputget" (u/lower-case-en (str/trim (name %)))) spec))
-        (assoc :enablePutGet "false"))))
+        (as-> spec (m/remove-keys (comp put-get-parameter? name) spec))
+        (assoc :enablePutGet "false")
+        ;; a parameter in the connection string overrides that property. `:additional-options` has had it removed
+        ;; above, so one still there was written into a value such as `:host` or `:account`.
+        (as-> spec (if (some put-get-parameter? [(:subname spec) (:connection-uri spec)])
+                     (throw (ex-info "Potentially dangerous keys in connection details"
+                                     {:status-code 400, :disallowed-key "enablePutGet"}))
+                     spec)))))
 
 (mu/defn- database-type->base-type
   [database-type :- string?

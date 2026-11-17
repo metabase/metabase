@@ -58,6 +58,25 @@
     (is (some? (mongo.connection/db-details->mongo-client-settings
                 {:host "db.example.com" :additional-options "retryWrites=true"})))))
 
+(deftest ^:parallel ambient-credentials-are-refused-test
+  (testing "a credential the Metabase host supplies, rather than the user, is refused, from options or a connection string"
+    (doseq [details [{:host "db.example.com"
+                      :additional-options "authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:k8s"}
+                     {:use-conn-uri true
+                      :conn-uri "mongodb://db.example.com/db?authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:azure,TOKEN_RESOURCE:x"}
+                     {:host "db.example.com" :additional-options "authMechanism=MONGODB-AWS"}
+                     {:use-conn-uri true :conn-uri "mongodb://db.example.com/db?authMechanism=MONGODB-AWS"}]]
+      (testing (pr-str details)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Potentially dangerous keys"
+                              (mongo.connection/db-details->mongo-client-settings details))))))
+  (testing "credentials the user supplies are fine"
+    (doseq [details [{:host "db.example.com" :user "u" :pass "p"}
+                     {:use-conn-uri true
+                      :conn-uri "mongodb://AKIDEXAMPLE:secret@db.example.com/db?authMechanism=MONGODB-AWS"}
+                     {:host "db.example.com"}]]
+      (testing (pr-str details)
+        (is (some? (mongo.connection/db-details->mongo-client-settings details)))))))
+
 (deftest ^:parallel fqdn?-test
   (testing "test hostname is fqdn"
     (is (true? (#'mongo.db/fqdn? "db.mongo.com")))

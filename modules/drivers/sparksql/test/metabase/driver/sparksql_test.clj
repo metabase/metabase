@@ -190,3 +190,10 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+(deftest ^:parallel jdbc-flags-are-checked-test
+  (testing "the form's additional options are stored as `:jdbc-flags`, so that is where disallowed parameters are refused"
+    (is (= :jdbc-flags (driver/additional-options-key :sparksql)))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Potentially dangerous keys in additional options"
+                          (driver.u/validate-connection-parameters! :sparksql {:host "h" :jdbc-flags ";socketFactory=a.b.C"})))
+    (is (nil? (driver.u/validate-connection-parameters! :sparksql {:host "h" :jdbc-flags ";transportMode=binary"})))))

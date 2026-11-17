@@ -327,6 +327,9 @@
                               (driver.u/validate-connection-hosts! driver details))
         ;; likewise for parameters that were disallowed after the database was saved
         _                   (driver.u/validate-connection-parameters! driver details)
+        ;; and reported once per pool, which covers databases saved before a parameter was reported
+        _                   (driver.u/publish-unlisted-connection-parameters!
+                             driver (get details (driver/additional-options-key driver)) id)
         details-with-tunnel (driver/incorporate-ssh-tunnel-details ;; If the tunnel is disabled this returned unchanged
                              driver
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))

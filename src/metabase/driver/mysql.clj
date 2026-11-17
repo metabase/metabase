@@ -58,8 +58,9 @@
 (defmethod driver/host-carrying-parameters :mysql
   [_driver]
   ;; the client fetches these when they are URLs, and a `file:` URL naming a host other than localhost is fetched over
-  ;; FTP
-  ["serverSslCert" "trustStore" "keyStore"])
+  ;; FTP. `trustCertificateKeyStoreUrl` and `clientCertificateKeyStoreUrl` are the client's aliases for `trustStore`
+  ;; and `keyStore`
+  ["serverSslCert" "trustStore" "keyStore" "trustCertificateKeyStoreUrl" "clientCertificateKeyStoreUrl"])
 
 (defmethod driver/non-host-parameters :mysql
   [_driver]

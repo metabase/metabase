@@ -851,6 +851,24 @@
       (is (=? {:details {:host "db2.example.com"}}
               (t2/select-one :model/Database :id (:id db)))))))
 
+(deftest unlisted-connection-parameters-are-reported-on-save-test
+  ;; validation runs on every save, test, and connection; reporting happens only where a user's options come in
+  (let [calls (atom [])]
+    (mt/with-dynamic-fn-redefs [driver.u/publish-unlisted-connection-parameters!
+                                (fn [driver options database-id] (swap! calls conj [driver options database-id]))]
+      (mt/with-temp [:model/Database db {:engine :postgres :details {:host "db.example.com" :additional-options "a=1"}}]
+        (testing "a new database reports its options, with its id"
+          (is (= [[:postgres "a=1" (:id db)]] @calls)))
+        (testing "changing the options reports them again"
+          (reset! calls [])
+          (t2/update! :model/Database :id (:id db) {:details {:host "db.example.com" :additional-options "b=2"}})
+          (is (= [[:postgres "b=2" (:id db)]] @calls)))
+        (testing "an update that leaves the options alone reports nothing"
+          (reset! calls [])
+          (t2/update! :model/Database :id (:id db) {:details {:host "db2.example.com" :additional-options "b=2"}})
+          (t2/update! :model/Database :id (:id db) {:name "renamed"})
+          (is (= [] @calls)))))))
+
 (deftest empty-details-are-not-subject-to-the-network-policy-test
   (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
     (testing "a database with empty details can be created"

@@ -252,9 +252,10 @@
                 ^[StringBuffer] StringBuilder/.append)
       (str)))
 
-(defn- normalize-connection-parameter
+(defn normalize-connection-parameter
   "Normalize `s` for matching against [[driver/disallowed-connection-parameters]]: percent escapes decoded once, case
-  folded the way `equalsIgnoreCase` does, and `_ . - +` and whitespace removed."
+  folded the way `equalsIgnoreCase` does, and `_ . - +` and whitespace removed. Drivers that strip a parameter
+  themselves rather than refuse it use this too, so that every spelling of it is stripped."
   [s]
   ;; (?U) makes \s match Unicode whitespace too
   (-> (codec/percent-decode (str s)) fold-case (str/replace #"(?U)[_.\-+\s]" "")))
@@ -285,12 +286,22 @@
                 (= parameter-name allowed-parameter-name))))
           allowed)))
 
+(defn- own-allowed-connection-parameters
+  "`driver`'s [[driver/allowed-connection-parameters]] if it implements that itself, or nil. An allowlist describes one
+  client, and a driver deriving from another often talks to a different one -- a community driver whose parent is
+  `:postgres` need not use pgjdbc -- so a parent's list is not inherited. A driver that does share its parent's client
+  opts in with a method that calls the parent's."
+  [driver]
+  (let [driver (driver/the-initialized-driver driver)]
+    (when (contains? (methods driver/allowed-connection-parameters) driver)
+      (driver/allowed-connection-parameters driver))))
+
 (defn unlisted-connection-parameters
   "Reports any connection parameters that are not explicitly allowlisted or denylisted."
   [driver s]
   ;; If a driver reports `nil` for allowed parameters, it means it hasn't specified any allowlist.
   ;; This is different from an empty allowlist, which would imply "nothing is allowlisted."
-  (if-some [allowed (driver/allowed-connection-parameters driver)]
+  (if-some [allowed (own-allowed-connection-parameters driver)]
     (let [parameters (sql-jdbc.common/connection-string-parameters
                       (u/ensure-prefix (str/triml (str s)) "?"))]
       (into []
@@ -303,8 +314,23 @@
 
 (mr/def :event/unlisted-connection-parameter
   [:map {:closed true}
-   [:driver    :keyword]
-   [:parameter :string]])
+   [:driver      :keyword]
+   [:parameter   :string]
+   [:database-id {:optional true} ::lib.schema.id/database]])
+
+(defn publish-unlisted-connection-parameters!
+  "Publish an `:event/unlisted-connection-parameter` for each parameter in `options`, an additional options string,
+  that [[unlisted-connection-parameters]] reports for `driver`. `database-id` is the Database they belong to, or nil
+  for one not saved yet.
+
+  Called where a user's options are introduced -- when a Database is created or its options change -- and when a
+  connection pool is created, which covers databases saved before a parameter was reported. Not called on every
+  validation, which happens several times for each of those."
+  [driver options database-id]
+  (doseq [parameter (unlisted-connection-parameters driver options)]
+    (events/publish-event! :event/unlisted-connection-parameter
+                           (cond-> {:driver (keyword driver), :parameter parameter}
+                             database-id (assoc :database-id database-id)))))
 
 (def ^:private url-separators
   "Characters that end a URL-building detail's part of a connection URL and start a client parameter."
@@ -322,8 +348,8 @@
 
 (defn validate-connection-parameters!
   "Throw a 400 if `details` set a connection parameter named in [[driver/disallowed-connection-parameters]], either in
-  `:additional-options` or as a detail key, or if a value of one of the [[driver/url-building-detail-keys]] contains a
-  URL separator. Returns nil when the details are acceptable.
+  the driver's additional options (see [[driver/additional-options-key]]) or as a detail key, or if a value of one of
+  the [[driver/url-building-detail-keys]] contains a URL separator. Returns nil when the details are acceptable.
 
   Reads the details a user supplied rather than the connection spec built from them: the spec also carries properties
   Metabase sets itself, which are not the user's to have chosen. An auth provider's response is merged into the details
@@ -331,13 +357,12 @@
   [driver details]
   (letfn [(refuse! [where match]
             (throw (ex-info (str "Potentially dangerous keys in " where) {:status-code 400, :disallowed-key match})))]
-    (when-let [match (some->> (:additional-options details) (disallowed-connection-parameter driver))]
+    (when-let [match (some->> (get details (driver/additional-options-key driver))
+                              (disallowed-connection-parameter driver))]
       (refuse! "additional options" match))
     (when-let [match (some #(disallowed-connection-parameter driver (if (keyword? %) (name %) %)) (keys details))]
       (refuse! "connection details" match)))
-  (validate-url-building-details! driver details)
-  (doseq [parameter (some->> (:additional-options details) (unlisted-connection-parameters driver))]
-    (events/publish-event! :event/unlisted-connection-parameter {:driver (keyword driver), :parameter parameter})))
+  (validate-url-building-details! driver details))
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT

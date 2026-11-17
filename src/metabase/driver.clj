@@ -308,14 +308,37 @@
 
   This should be the inverse of `disallowed-connection-parameters`. It is our intention to eventually
   move to explicit allowlisting of parameters as opposed to disallowing known bad parameters. Before that
-  switch, this is merely advisory."
+  switch, this is merely advisory.
+
+  Defaults to `nil`, meaning the driver has no allowlist and none of its parameters are reported. An empty list is
+  different: it allows nothing, so every parameter is reported.
+
+  Not inherited: only a driver's own method counts, since a driver deriving from another often uses a different client.
+  To use the parent's list, implement it by calling the parent's:
+
+    (defmethod driver/allowed-connection-parameters :my-postgres-fork
+      [driver]
+      ((get-method driver/allowed-connection-parameters :postgres) driver))"
   {:added "0.66.0" :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmethod allowed-connection-parameters :default
   [_driver]
-  [])
+  nil)
+
+(defmulti additional-options-key
+  "The connection-detail key that holds the client parameters a user writes in the connection form's additional
+  options field. [[metabase.driver.util/validate-connection-parameters!]] checks the parameters in it against
+  [[disallowed-connection-parameters]], and [[allowed-connection-parameters]] is checked against the same ones.
+  Defaults to `:additional-options`. Override it only for a driver whose form stores that field under another key."
+  {:added "0.66.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod additional-options-key :default
+  [_driver]
+  :additional-options)
 
 (defmulti url-building-detail-keys
   "The connection-detail keys whose values this driver splices into its connection URL.

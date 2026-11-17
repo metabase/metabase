@@ -115,7 +115,7 @@
 
 (def ^:private dangerous-parameters
   {:mysql      ["credentialType"]
-   :mongo      ["proxyHost"]
+   :mongo      ["proxyHost" "authMechanism=MONGODB-OIDC"]
    :vertica    ["OAuthJsonConfig"]
    :postgres   ["authenticationPluginClassName" "connectExecutor" "connectExecutorArg" "datatype.point"]
    :redshift   ["authenticationPluginClassName" "AuthProfile" "IniFile" "Profile" "plugin_name" "datatype.point"]

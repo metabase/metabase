@@ -1,5 +1,6 @@
 (ns metabase.driver.util-test
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -1043,6 +1044,12 @@
   (is (nil? (validation-error ::denylist-driver {:host "db.example.com" :port 5432 :db "d" :user "u" :password "p&q;r"
                                                  :additional-options "harmless=1&other=2"}))))
 
+(driver/register! ::empty-allowlist-driver, :abstract? true)
+
+(defmethod driver/allowed-connection-parameters ::empty-allowlist-driver
+  [_driver]
+  [])
+
 (driver/register! ::ignores-additional-options-driver, :abstract? true)
 
 (defmethod driver/allowed-connection-parameters ::ignores-additional-options-driver
@@ -1060,12 +1067,23 @@
   (when *events*
     (swap! *events* conj event)))
 
-(defn- validate-and-capture
-  "Validate `details` for `driver`. Returns the error it throws, if any, and the unlisted parameters it reports."
-  [driver details]
+(defn- captured-events
+  "The `:event/unlisted-connection-parameter` events published while running `thunk`."
+  [thunk]
   (binding [*events* (atom [])]
-    {:error    (validation-error driver details)
-     :unlisted (mapv :parameter @*events*)}))
+    (thunk)
+    @*events*))
+
+(defn- publish-and-capture!
+  "The unlisted parameters [[driver.u/publish-unlisted-connection-parameters!]] reports for `options`."
+  [driver options]
+  (mapv :parameter (captured-events #(driver.u/publish-unlisted-connection-parameters! driver options nil))))
+
+(driver/register! ::opts-in-driver, :parent ::denylist-driver, :abstract? true)
+
+(defmethod driver/allowed-connection-parameters ::opts-in-driver
+  [driver]
+  ((get-method driver/allowed-connection-parameters ::denylist-driver) driver))
 
 (deftest ^:parallel unlisted-connection-parameters-test
   (testing "names that are not allowed are reported, in order and once each"
@@ -1092,36 +1110,57 @@
     (doseq [opts ["harmless=a&b" "unknown" "harmless=1&unknown&other=2"]]
       (testing (pr-str opts)
         (is (= [] (driver.u/unlisted-connection-parameters ::denylist-driver opts))))))
-  (testing "a driver that lists nothing reports every name"
-    (is (= [] (driver/allowed-connection-parameters :h2)))
-    (is (= ["a"] (driver.u/unlisted-connection-parameters :h2 "a=1"))))
+  (testing "a driver without an allowlist reports nothing"
+    (is (nil? (driver/allowed-connection-parameters :h2)))
+    (is (= [] (driver.u/unlisted-connection-parameters :h2 "a=1"))))
+  (testing "a parent's allowlist is not inherited"
+    (is (= [] (driver.u/unlisted-connection-parameters ::other-options-key-driver "unknown=1"))))
+  (testing "...unless the driver opts in by calling the parent's"
+    (is (= ["unknown"] (driver.u/unlisted-connection-parameters ::opts-in-driver "harmless=1&unknown=1"))))
+  (testing "a driver whose allowlist is empty reports every name"
+    (is (= ["a"] (driver.u/unlisted-connection-parameters ::empty-allowlist-driver "a=1"))))
   (testing "a driver that ignores additional options reports none"
     (is (= [] (driver.u/unlisted-connection-parameters ::ignores-additional-options-driver "anything=1")))))
 
-(deftest validate-connection-parameters!-unlisted-parameter-event-test
+(deftest publish-unlisted-connection-parameters!-test
   (testing "a parameter on neither list is allowed, but published"
-    (is (= {:error nil, :unlisted ["unknown" "other-unknown"]}
-           (validate-and-capture ::denylist-driver {:additional-options "harmless=1&unknown=2&other-unknown=3"}))))
-  (testing "and logged as a warning"
+    (is (= ["unknown" "other-unknown"]
+           (publish-and-capture! ::denylist-driver "harmless=1&unknown=2&other-unknown=3"))))
+  (testing "with the database it belongs to, when there is one"
+    (is (=? [{:driver ::denylist-driver, :parameter "unknown", :database-id 7}]
+            (captured-events #(driver.u/publish-unlisted-connection-parameters! ::denylist-driver "unknown=1" 7)))))
+  (testing "and logged as a warning, once for each driver and parameter"
+    (memoize/memo-clear! @#'metabase.driver.events.unlisted-connection-parameter/warn!)
     (mt/with-log-messages-for-level [messages [metabase.driver.events.unlisted-connection-parameter :warn]]
-      (is (nil? (validation-error ::denylist-driver {:additional-options "unknown=2"})))
+      (dotimes [_ 3]
+        (driver.u/publish-unlisted-connection-parameters! ::denylist-driver "unknown=2" nil))
       (is (=? [{:level   :warn
                 :message #"Connection parameter \"unknown\" for driver .*denylist-driver.* allowed for now.*"}]
               (messages)))))
   (testing "nothing is published for allowed parameters"
-    (is (= {:error nil, :unlisted []}
-           (validate-and-capture ::denylist-driver {:additional-options "harmless=1&other=2"}))))
-  (testing "a disallowed parameter is still refused, and nothing is published"
-    (doseq [opts ["testSetting=x" "unknown=1&testSetting=x"]]
-      (testing (pr-str opts)
-        (is (=? {:error {:status-code 400 :disallowed-key "testSetting"}, :unlisted []}
-                (validate-and-capture ::denylist-driver {:additional-options opts}))))))
-  (testing "nothing is published when a URL-building detail is refused"
-    (is (=? {:error {:status-code 400 :detail :db}, :unlisted []}
-            (validate-and-capture ::denylist-driver {:db "a?b" :additional-options "unknown=1"}))))
+    (is (= [] (publish-and-capture! ::denylist-driver "harmless=1&other=2"))))
   (testing "a driver that ignores additional options publishes nothing"
-    (is (= {:error nil, :unlisted []}
-           (validate-and-capture ::ignores-additional-options-driver {:additional-options "anything=1"})))))
+    (is (= [] (publish-and-capture! ::ignores-additional-options-driver "anything=1")))))
+
+(deftest validate-connection-parameters!-publishes-nothing-test
+  (testing "validation runs several times for each save, test, and connection, so it reports nothing itself"
+    (doseq [details [{:additional-options "unknown=1"}
+                     {:additional-options "unknown=1&testSetting=x"}
+                     {:db "a?b" :additional-options "unknown=1"}]]
+      (testing (pr-str details)
+        (is (= [] (captured-events #(validation-error ::denylist-driver details))))))))
+
+(driver/register! ::other-options-key-driver, :parent ::denylist-driver, :abstract? true)
+
+(defmethod driver/additional-options-key ::other-options-key-driver
+  [_driver]
+  :jdbc-flags)
+
+(deftest ^:parallel validate-connection-parameters!-additional-options-key-test
+  (testing "a driver whose form stores the additional options under another key has them checked there"
+    (is (=? {:status-code 400 :disallowed-key "testSetting"}
+            (validation-error ::other-options-key-driver {:jdbc-flags ";testSetting=x"})))
+    (is (nil? (validation-error ::other-options-key-driver {:jdbc-flags ";harmless=1"})))))
 
 (deftest ^:parallel validate-connection-parameters!-url-building-details-test
   (doseq [k   [:host :port :db :dbname :catalog :account]
