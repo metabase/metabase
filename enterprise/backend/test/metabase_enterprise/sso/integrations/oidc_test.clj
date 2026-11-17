@@ -8,6 +8,8 @@
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.request.core :as request]
+   [metabase.session.core :as session]
    [metabase.sso.oidc.discovery :as oidc.discovery]
    [metabase.sso.oidc.state :as oidc.state]
    [metabase.sso.oidc.tokens :as oidc.tokens]
@@ -65,7 +67,10 @@
   [_provider request]
   (if (some #(contains? request %) [:code :error :state])
     {:success? true
-     :claims {}
+     :claims {:sub "test-oidc-provider-id"
+              :iss "https://test.idp.example.com"
+              :email "oidcuser@example.com"
+              :email_verified true}
      :user-data {:email "oidcuser@example.com"}
      :provider-id "test-oidc-provider-id"}
     {:success? :redirect
@@ -218,6 +223,43 @@
                 (is (not (str/includes? (:body response) "ClassCastException"))))
               (is (false? (t2/select-one-fn :is_active :model/User :id user-id))))))))))
 
+;;; -------------------------------------------------- Account Linking Tests --------------------------------------------------
+
+(deftest link-flow-test
+  (with-oidc-default-setup!
+    (with-ensure-encryption!
+      (with-successful-oidc!
+        (testing "GET /auth/sso/:key?link=true without a session is rejected before contacting the IdP"
+          (is (str/includes? (:body (mt/client-real-response :get 401 "/auth/sso/test-idp"
+                                                             {:request-options {:redirect-strategy :none}}
+                                                             :link true))
+                             "Account linking requires an authenticated session")))
+        ;; earlier callback tests may have provisioned the mock user already
+        (t2/delete! :model/User :email "oidcuser@example.com")
+        (let [session-key (session/generate-session-key)
+              cookies     (fn [response]
+                            (str/join "; " (cons (str request/metabase-session-cookie "=" session-key)
+                                                 (for [[cookie-name {:keys [value]}] (:cookies response)]
+                                                   (str cookie-name "=" value)))))]
+          (mt/with-temp [:model/User {user-id :id} {:email "oidcuser@example.com"}
+                         :model/Session _ {:user_id    user-id
+                                           :id         (session/generate-session-id)
+                                           :key_hashed (session/hash-session-key session-key)}]
+            (testing "a signed-in user's callback links the identity and returns to the redirect without a new session"
+              (let [init     (mt/client-real-response :get 302 "/auth/sso/test-idp"
+                                                      {:request-options {:redirect-strategy :none
+                                                                         :headers {"Cookie" (cookies nil)}}}
+                                                      :redirect "/account/authentication"
+                                                      :link true)
+                    response (mt/client-real-response :get 302 "/auth/sso/test-idp/callback"
+                                                      {:request-options {:redirect-strategy :none
+                                                                         :headers {"Cookie" (cookies init)}}}
+                                                      :code "test-code"
+                                                      :state "test-state")]
+                (is (= "/account/authentication" (get-in response [:headers "Location"])))
+                (is (not (contains? (:cookies response) request/metabase-session-cookie)))
+                (is (t2/exists? :model/AuthIdentity :user_id user-id :provider_id "test-oidc-provider-id"))))))))))
+
 ;;; -------------------------------------------------- Open Redirect Protection Tests --------------------------------------------------
 
 (deftest no-open-redirect-test
@@ -242,16 +284,21 @@
   "Dynamic var to control the email returned by the group sync mock."
   "oidc-group-user@example.com")
 
-;; Mock that returns claims with group membership
+;; Mock that returns claims with group membership. The sub is derived from the email: one sub asserted
+;; for several different users is exactly what identity linking rejects.
 (methodical/defmethod auth-identity/authenticate :provider/test-oidc-with-groups
   [_provider request]
   (if (some #(contains? request %) [:code :error :state])
     {:success?    true
-     :claims      *group-sync-claims*
+     :claims      (merge {:sub            (str "sub-" *group-sync-email*)
+                          :iss            "https://test.idp.example.com"
+                          :email          *group-sync-email*
+                          :email_verified true}
+                         *group-sync-claims*)
      :user-data   {:email      *group-sync-email*
                    :first_name "OIDC"
                    :last_name  "GroupUser"}
-     :provider-id "test-oidc-provider-id"}
+     :provider-id (str "sub-" *group-sync-email*)}
     {:success?     :redirect
      :redirect-url "https://test.idp.example.com/authorize"
      :state        "test-state"
@@ -515,3 +562,14 @@
            {:params {:code "test-code" :state "test-state"}})
           (is (not-any? #(re-find #"jane@example.com" (:message %)) (log-messages))
               "Log messages should not contain user's email address"))))))
+
+(deftest ^:parallel identity-provider-name-fits-column-test
+  (testing "short keys keep the readable oidc-<key> name"
+    (is (= "oidc-okta" (oidc.provider/identity-provider-name "okta"))))
+  (testing "long keys are truncated with a hash of the whole key, so they fit auth_identity.provider (varchar 50)"
+    (let [k1 (apply str (repeat 60 "a"))
+          k2 (str (apply str (repeat 59 "a")) "b")]
+      (is (= 50 (count (oidc.provider/identity-provider-name k1))))
+      (is (str/starts-with? (oidc.provider/identity-provider-name k1) "oidc-"))
+      (is (= (oidc.provider/identity-provider-name k1) (oidc.provider/identity-provider-name k1)))
+      (is (not= (oidc.provider/identity-provider-name k1) (oidc.provider/identity-provider-name k2))))))

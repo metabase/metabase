@@ -46,14 +46,23 @@
                                                [:user_agent {:optional true} [:maybe :string]]
                                                [:timestamp  {:optional true} [:maybe [:or ms/TemporalInstant :string]]]]]]])
 
-(mr/def ::auth-identity.metadata.slack-connect
-  "Metadata of the `slack-connect` provider."
+(mr/def ::auth-identity.metadata.oidc
+  "Metadata of an OIDC identity: the issuer its `provider_id` (the token's `sub`) belongs to."
   [:map {:closed true}
-   [:signing_secret_version {:optional true} [:maybe :int]]])
+   [:iss {:optional true} [:maybe :string]]])
+
+(mr/def ::auth-identity.metadata.slack-connect
+  "Metadata of the `slack-connect` provider, an OIDC provider."
+  [:map {:closed true}
+   [:signing_secret_version {:optional true} [:maybe :int]]
+   [:iss                    {:optional true} [:maybe :string]]])
 
 (mr/def ::auth-identity.metadata
   "The `:metadata` column of a AuthIdentity, decoded."
-  [:or ::auth-identity.metadata.emailed-secret ::auth-identity.metadata.slack-connect])
+  [:or
+   ::auth-identity.metadata.emailed-secret
+   ::auth-identity.metadata.oidc
+   ::auth-identity.metadata.slack-connect])
 
 (mr/def ::auth-identity
   "A AuthIdentity as selected from the app DB: every column of `:auth_identity`."

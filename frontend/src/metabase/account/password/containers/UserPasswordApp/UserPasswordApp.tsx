@@ -12,7 +12,10 @@ import {
   refetchCurrentUser,
   useGetCurrentUserQuery,
 } from "metabase/current-user";
-import { PLUGIN_MULTI_FACTOR_AUTH } from "metabase/plugins";
+import {
+  PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_MULTI_FACTOR_AUTH,
+} from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -81,6 +84,7 @@ const UserPasswordApp = () => {
         </Stack>
       )}
       <PLUGIN_MULTI_FACTOR_AUTH.AccountSecurityPanel />
+      <PLUGIN_AUTH_PROVIDERS.AccountLinkingPanel />
       {user.slack_account_status != null && (
         <SlackAccount
           isActive={user.slack_account_status === "active"}

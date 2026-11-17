@@ -141,7 +141,7 @@
 
    Throws an exception if the redirect URL is invalid (not relative or not same-origin).
    This prevents open redirect attacks."
-  [{:keys [state nonce redirect provider ttl-ms browser-id]
+  [{:keys [state nonce redirect provider ttl-ms browser-id link-user-id]
     :or   {ttl-ms default-ttl-ms}}]
   {:pre [(some? state) (some? nonce) (some? redirect) (some? provider)]}
   ;; Validate redirect URL to prevent open redirect attacks
@@ -153,7 +153,9 @@
              :provider   (name provider)
              :created-at now
              :expires-at (+ now ttl-ms)}
-      browser-id (assoc :browser-id browser-id))))
+      browser-id   (assoc :browser-id browser-id)
+      ;; the signed-in user who started an account-linking flow
+      link-user-id (assoc :link-user-id link-user-id))))
 
 ;;; -------------------------------------------------- Encryption --------------------------------------------------
 
@@ -258,8 +260,8 @@
    Returns updated response with cookie set."
   ([response request state-data]
    (set-oidc-state-cookie response request state-data {}))
-  ([response request state-data {:keys [ttl-ms browser-id] :or {ttl-ms default-ttl-ms}}]
-   (let [full-state  (create-oidc-state (cond-> (assoc state-data :ttl-ms ttl-ms)
+  ([response request state-data {:keys [ttl-ms browser-id link-user-id] :or {ttl-ms default-ttl-ms}}]
+   (let [full-state  (create-oidc-state (cond-> (assoc state-data :ttl-ms ttl-ms :link-user-id link-user-id)
                                           browser-id (assoc :browser-id browser-id)))
          encrypted   (encrypt-state full-state)
          ttl-seconds (quot ttl-ms 1000)]

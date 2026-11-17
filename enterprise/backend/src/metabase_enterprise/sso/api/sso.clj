@@ -187,11 +187,13 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:key"
-  "Initiate OIDC SSO for a specific provider."
+  "Initiate OIDC SSO for a specific provider. With `link=true`, the signed-in user links their identity at that
+  provider to their account instead of signing in."
   [{provider-key :key} :- [:map {:closed true}
                            [:key ProviderKey]]
    _query-params :- [:map {:closed true}
-                     [:redirect {:optional true} [:maybe :string]]]
+                     [:redirect {:optional true} [:maybe :string]]
+                     [:link     {:default false} [:maybe ms/BooleanValue]]]
    _body request]
   (try
     (oidc-integration/sso-initiate provider-key request)

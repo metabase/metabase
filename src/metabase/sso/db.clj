@@ -30,11 +30,17 @@
                              [:in :group_id group-ids]
                              [:not-in :group_id excluded-group-ids]]}))
 
-(mu/defn auth-identity-exists?
-  "Whether the User with `user-id` has an AuthIdentity for `provider`."
+(mu/defn auth-identity
+  "The AuthIdentity of the User with `user-id` at `provider`, or nil."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/exists? :model/AuthIdentity :user_id user-id :provider provider))
+  (t2/select-one :model/AuthIdentity :user_id [:auto/param (long user-id)] :provider [:auto/param provider]))
+
+(mu/defn auth-identities-with-provider-id
+  "The AuthIdentities at any of `providers` whose `provider_id` is `provider-id`."
+  [providers   :- [:sequential :string]
+   provider-id :- :string]
+  (t2/select :model/AuthIdentity :provider [:in providers] :provider_id [:auto/param provider-id]))
 
 (mu/defn used-password-exists?
   "Whether the User with `user-id` has a `password` AuthIdentity that has been used to log in and has not expired."
@@ -56,16 +62,18 @@
   [user-id :- ::lib.schema.id/user]
   (t2/delete! :model/AuthIdentity :user_id [:auto/param (long user-id)] :provider "slack-connect"))
 
+(mu/defn update-auth-identity!
+  "Update `auth-identity` with `columns`, merging `metadata` into its existing `:metadata`."
+  [auth-identity :- ::auth-identity.schema/auth-identity
+   columns       :- [:maybe ::auth-identity.schema/auth-identity.update]
+   metadata      :- [:maybe ::auth-identity.schema/auth-identity.metadata]]
+  (t2/update! :model/AuthIdentity :id (:id auth-identity)
+              (assoc columns :metadata (merge (:metadata auth-identity) metadata))))
+
 (mu/defn insert-auth-identity!
-  "Insert an AuthIdentity linking the User with `user-id` to `provider-id` at `provider`."
+  "Insert an AuthIdentity linking the User with `user-id` to `provider-id` at `provider`, with `metadata`."
   [user-id     :- ::lib.schema.id/user
    provider    :- :string
-   provider-id :- :string]
-  (t2/insert! :model/AuthIdentity {:user_id user-id, :provider provider, :provider_id provider-id}))
-
-(mu/defn set-auth-identity-metadata!
-  "Set the `metadata` of the AuthIdentity of the User with `user-id` at `provider`."
-  [user-id  :- ::lib.schema.id/user
-   provider :- :string
-   metadata :- [:maybe ::auth-identity.schema/auth-identity.metadata]]
-  (t2/update! :model/AuthIdentity {:user_id user-id, :provider provider} {:metadata metadata}))
+   provider-id :- :string
+   metadata    :- [:maybe ::auth-identity.schema/auth-identity.metadata]]
+  (t2/insert! :model/AuthIdentity {:user_id user-id, :provider provider, :provider_id provider-id, :metadata metadata}))

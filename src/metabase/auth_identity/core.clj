@@ -57,6 +57,7 @@
   validate
   authenticate
   login!
+  identity-provider-name
   provider-string->keyword
   provider-keyword->string])
 

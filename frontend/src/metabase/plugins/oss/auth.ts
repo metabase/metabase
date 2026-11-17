@@ -27,6 +27,7 @@ const getDefaultPluginAuthProviders = () => ({
   isEnabled: () => false,
   AuthSettingsPage: PluginPlaceholder<AuthSettingsPageProps>,
   UserProvisioningSettings: PluginPlaceholder,
+  AccountLinkingPanel: PluginPlaceholder,
   settingsSAMLForm: pluginPlaceholderRoute,
   settingsJWTForm: pluginPlaceholderRoute,
   settingsOIDCForm: pluginPlaceholderRoute,

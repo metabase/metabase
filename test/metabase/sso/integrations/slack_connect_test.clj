@@ -53,7 +53,10 @@
   [_provider request]
   (if (some #(contains? request %) [:code :error :state])
     {:success?    true
-     :claims      {}
+     :claims      {:sub "test-provider-id"
+                   :iss "https://slack.com"
+                   :email "example@slack.com"
+                   :email_verified true}
      :user-data   {:email "example@slack.com"}
      :provider-id "test-provider-id"}
     {:success?     :redirect

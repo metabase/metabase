@@ -17,6 +17,7 @@ import {
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
+  FormSwitch,
   FormTextInput,
 } from "metabase/forms";
 import { useSelector } from "metabase/redux";
@@ -73,6 +74,8 @@ function getOidcFormSchema({ isExisting }: { isExisting: boolean }) {
     scopes: Yup.string().nullable().default(null),
     "attribute-firstname": Yup.string().nullable().default(null),
     "attribute-lastname": Yup.string().nullable().default(null),
+    "auto-link-verified-email": Yup.boolean().default(true),
+    "trusted-email-domains": Yup.string().nullable().default(null),
     "group-attribute": Yup.string().nullable().default(null),
   });
 }
@@ -86,6 +89,8 @@ interface OIDCFormValues {
   scopes: string | null;
   "attribute-firstname": string | null;
   "attribute-lastname": string | null;
+  "auto-link-verified-email": boolean;
+  "trusted-email-domains": string | null;
   "group-attribute": string | null;
 }
 
@@ -107,6 +112,8 @@ function providerToFormValues(
       scopes: null,
       "attribute-firstname": null,
       "attribute-lastname": null,
+      "auto-link-verified-email": true,
+      "trusted-email-domains": null,
       "group-attribute": null,
     };
   }
@@ -131,6 +138,9 @@ function providerToFormValues(
       attributeMap["last_name"],
       DEFAULT_LAST_NAME_ATTRIBUTE,
     ),
+    "auto-link-verified-email": provider["auto-link-verified-email"] ?? true,
+    "trusted-email-domains":
+      provider["trusted-email-domains"]?.join(", ") || null,
     "group-attribute": withoutDefault(
       provider["group-sync"]?.["group-attribute"],
       DEFAULT_GROUP_ATTRIBUTE,
@@ -169,6 +179,9 @@ function formValuesToProvider(
     scopes,
     enabled: true,
     "attribute-map": attributeMap,
+    "auto-link-verified-email": values["auto-link-verified-email"],
+    "trusted-email-domains":
+      values["trusted-email-domains"]?.split(/[\s,]+/).filter(Boolean) ?? [],
     "group-sync": toGroupSync(groupSync, {
       "group-attribute": values["group-attribute"] ?? DEFAULT_GROUP_ATTRIBUTE,
     }),
@@ -404,6 +417,29 @@ export function SettingsOIDCForm() {
                     name="attribute-lastname"
                     label={t`Last name attribute key`}
                     placeholder={DEFAULT_LAST_NAME_ATTRIBUTE}
+                    nullable
+                    readOnly={isLocked}
+                  />
+                </Stack>
+              </CollapsibleSettingsSection>
+
+              <CollapsibleSettingsSection
+                title={t`Account linking`}
+                description={t`Control how people's accounts at this provider get connected to their ${applicationName} accounts.`}
+              >
+                <Stack gap="lg">
+                  <FormSwitch
+                    name="auto-link-verified-email"
+                    label={t`Automatically link accounts with a verified email`}
+                    description={t`Connect people to the account with the same email when the provider has verified that email. When off, people connect their account from their account settings.`}
+                    disabled={isLocked}
+                  />
+                  <FormTextInput
+                    name="trusted-email-domains"
+                    label={t`Trusted email domains`}
+                    description={t`Connect people with these email domains even if the provider hasn't verified their email. Separate domains with commas, or use * for all. Only add domains you control.`}
+                    descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
+                    placeholder={t`e.g. mycompany.com`}
                     nullable
                     readOnly={isLocked}
                   />
