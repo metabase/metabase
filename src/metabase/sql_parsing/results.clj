@@ -1,7 +1,7 @@
 (ns metabase.sql-parsing.results
   "The values [[metabase.sql-parsing.core]] hands its callers, made from what a parser returns. Both parsers return
-  the same data in slightly different shapes (Python's frozensets arrive as pair vectors, keys in snake case); these
-  functions read either shape. [[metabase.sql-parsing.shadow]] compares parsers on the same values."
+  the same data with keyword keys in snake case, but Python's errors arrive as lists of key-value pairs.
+  [[metabase.sql-parsing.shadow]] compares parsers on the same values."
   (:require
    [clojure.string :as str]))
 
@@ -15,95 +15,63 @@
       keyword))
 
 (defn- convert-error
-  "Convert Python error format to Metabase lib error format."
+  "A parser error in the Metabase lib error format. A Python error arrives as a list of key-value pairs."
   [error]
-  (let [;; Get type from various possible key formats
-        err-type (or (:type error) (get error "type"))
-        ;; Get name/table/column from various possible formats
-        table-name (or (:table error) (get error "table"))
-        column-name (or (:column error) (get error "column") (:name error) (get error "name"))]
-    (cond
-      ;; Python frozenset came through as vector of pairs: [["type" "syntax_error"]]
-      (and (sequential? error) (sequential? (first error)))
-      (let [m (into {} error)
-            err-type (get m "type")]
-        (case err-type
-          "syntax_error" {:type :syntax-error}
-          "missing_column" {:type :missing-column :name (get m "column")}
-          "missing_table_alias" {:type :missing-table-alias :name (get m "table")}
-          {:type (keyword err-type)}))
+  (let [{err-type :type :as m} (if (sequential? error)
+                                 (update-keys (into {} error) keyword)
+                                 error)]
+    (case err-type
+      "syntax_error"        {:type :syntax-error}
+      "missing_column"      {:type :missing-column :name (:column m)}
+      "missing_table_alias" {:type :missing-table-alias :name (:table m)}
+      (if (some? err-type)
+        {:type (keyword err-type)}
+        error))))
 
-      ;; Handle string or keyword types
-      (or (string? err-type) (keyword? err-type))
-      (case (if (keyword? err-type) (name err-type) err-type)
-        ("syntax-error" "syntax_error") {:type :syntax-error}
-        ("missing-column" "missing_column") {:type :missing-column :name column-name}
-        ("missing-table-alias" "missing_table_alias") {:type :missing-table-alias :name table-name}
-        {:type (keyword err-type)})
-
-      :else error)))
+(defn- convert-table
+  "The table of an all-columns field, without its empty keys."
+  [{:keys [table schema database table_alias]}]
+  (cond-> {}
+    table       (assoc :table table)
+    schema      (assoc :schema schema)
+    database    (assoc :database database)
+    table_alias (assoc :table-alias table_alias)))
 
 (defn- convert-field
-  "Convert a field spec from Python format to Clojure format."
+  "A parser field in the Metabase format."
   [field]
   (when field
-    (let [field-type (some-> (or (:type field) (get field "type")) convert-field-type)]
+    (let [field-type (some-> (:type field) convert-field-type)]
       (case field-type
         :single-column
-        {:type :single-column
-         :column (or (:column field) (get field "column"))
-         :alias (or (:alias field) (get field "alias"))
-         :source-columns (mapv (fn [scope]
-                                 (mapv convert-field scope))
-                               (or (:source-columns field)
-                                   (:source_columns field)
-                                   (get field "source_columns")
-                                   []))}
+        {:type           :single-column
+         :column         (:column field)
+         :alias          (:alias field)
+         :source-columns (mapv #(mapv convert-field %) (:source_columns field))}
 
         :all-columns
-        {:type :all-columns
-         :table (let [t (or (:table field) (get field "table"))]
-                  (cond-> {}
-                    (or (:table t) (get t "table"))
-                    (assoc :table (or (:table t) (get t "table")))
-                    (or (:schema t) (get t "schema"))
-                    (assoc :schema (or (:schema t) (get t "schema")))
-                    (or (:database t) (get t "database"))
-                    (assoc :database (or (:database t) (get t "database")))
-                    (or (:table-alias t) (:table_alias t) (get t "table_alias"))
-                    (assoc :table-alias (or (:table-alias t) (:table_alias t) (get t "table_alias")))))}
+        {:type  :all-columns
+         :table (convert-table (:table field))}
 
         :custom-field
-        {:type :custom-field
-         :alias (or (:alias field) (get field "alias"))
-         :used-fields (set (map convert-field
-                                (or (:used-fields field)
-                                    (:used_fields field)
-                                    (get field "used_fields")
-                                    [])))}
+        {:type        :custom-field
+         :alias       (:alias field)
+         :used-fields (into #{} (map convert-field) (:used_fields field))}
 
         :composite-field
-        {:type :composite-field
-         :alias (or (:alias field) (get field "alias"))
-         :member-fields (mapv convert-field
-                              (or (:member-fields field)
-                                  (:member_fields field)
-                                  (get field "member_fields")
-                                  []))}
+        {:type          :composite-field
+         :alias         (:alias field)
+         :member-fields (mapv convert-field (:member_fields field))}
 
         :unknown-columns
         {:type :unknown-columns}
 
-        ;; Fallback - return as-is with type conversion
         (assoc field :type field-type)))))
 
 (defn field-references
   "The `field-references` value callers get from a parser's raw `field-references` result: `:used-fields` and
   `:errors` as sets, `:returned-fields` in order."
-  [raw]
-  (let [used-fields     (or (:used-fields raw) (:used_fields raw) (get raw "used_fields") [])
-        returned-fields (or (:returned-fields raw) (:returned_fields raw) (get raw "returned_fields") [])
-        errors          (or (:errors raw) (get raw "errors") [])]
-    {:used-fields     (set (map convert-field used-fields))
-     :returned-fields (vec (map convert-field returned-fields))
-     :errors          (set (map convert-error errors))}))
+  [{:keys [used_fields returned_fields errors]}]
+  {:used-fields     (into #{} (map convert-field) used_fields)
+   :returned-fields (mapv convert-field returned_fields)
+   :errors          (into #{} (map convert-error) errors)})

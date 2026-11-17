@@ -272,6 +272,7 @@ describe("column settings", () => {
           select: () => null,
           radio: () => null,
           segmentedControl: () => null,
+          numberInput: () => null,
         });
       });
 
@@ -319,6 +320,67 @@ describe("column settings", () => {
         expect(hiddenById.currency_position).toBe(true);
         expect(hiddenById.currency_in_header).toBe(true);
       });
+
+      it("should hide duration widgets unless duration style is selected", () => {
+        const hiddenById = getWidgetHiddenById();
+        expect(hiddenById.duration_unit).toBe(true);
+        expect(hiddenById.duration_style).toBe(true);
+        expect(hiddenById.duration_precision).toBe(true);
+        expect(hiddenById.decimals).toBe(false);
+      });
+
+      it("should show duration widgets and hide currency and decimals widgets when duration style is selected", () => {
+        const hiddenById = getWidgetHiddenById({ number_style: "duration" });
+        expect(hiddenById.duration_unit).toBe(false);
+        expect(hiddenById.duration_style).toBe(false);
+        expect(hiddenById.duration_precision).toBe(false);
+        expect(hiddenById.decimals).toBe(true);
+        expect(hiddenById.currency).toBe(true);
+        expect(hiddenById.currency_style).toBe(true);
+      });
+    });
+  });
+
+  describe("duration style", () => {
+    it("should format plain number column with stored duration settings", () => {
+      const series = seriesWithColumn({
+        base_type: "type/Integer",
+        semantic_type: null,
+      });
+      const column = series[0].data.cols[0];
+      const formatWith = (settings: VisualizationSettings) =>
+        formatNumber(
+          4_442_706_500,
+          getComputedSettings(columnSettings(), series, {
+            column_settings: { '["name","foo"]': settings },
+          }).column?.(column),
+        );
+
+      expect(
+        formatWith({ number_style: "duration", duration_unit: "millisecond" }),
+      ).toBe("1,234:05:07");
+      expect(
+        formatWith({
+          number_style: "duration",
+          duration_unit: "millisecond",
+          duration_style: "narrow",
+          duration_precision: "millisecond",
+          number_separators: ", ",
+        }),
+      ).toBe("51d 10h 5m 6s 500ms");
+    });
+
+    it("should default to seconds, digital style, and seconds precision", () => {
+      const series = seriesWithColumn({ base_type: "type/Integer" });
+      const computed = checkNotNull(
+        getComputedSettings(columnSettings(), series, {
+          column_settings: { '["name","foo"]': { number_style: "duration" } },
+        }).column?.(series[0].data.cols[0]),
+      );
+
+      expect(computed.duration_unit).toBe("second");
+      expect(computed.duration_style).toBe("digital");
+      expect(computed.duration_precision).toBe("second");
     });
   });
 

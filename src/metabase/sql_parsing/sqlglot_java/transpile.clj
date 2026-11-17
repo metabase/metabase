@@ -2,8 +2,7 @@
   "`transpile_sql`: a query rewritten from one dialect into another."
   (:require
    [clojure.string :as str]
-   [metabase.sql-parsing.sqlglot-java.ast :as ast]
-   [metabase.util :as u])
+   [metabase.sql-parsing.sqlglot-java.ast :as ast])
   (:import
    (com.metabase.sqlglot.ast Expr Expressions$Identifier)
    (com.metabase.sqlglot.reference NormalizeIdentifiers)
@@ -15,7 +14,7 @@
 (defn- metabase-templates?
   "Whether `sql` holds Metabase template syntax: `{{variable}}`, `{{#model}}`, `{{snippet: name}}` or
   `[[optional clause]]`. Templated queries are passed through, since normalizing every template kind for parsing is
-  brittle."
+  brittle. Port of `has_metabase_templates`."
   [sql]
   (boolean (re-find #"\{\{|\[\[" sql)))
 
@@ -55,13 +54,13 @@
 (defn- dialect-name
   "The name of the dialect `dialect` selects, which may carry options (`postgres, normalization_strategy=lowercase`)."
   [dialect]
-  (u/lower-case-en (str/trim (first (str/split dialect #",")))))
+  (ast/lower (str/trim (first (str/split dialect #",")))))
 
 (defn- quote-reserved-identifiers!
   "Quote the identifiers in `expr` that collide with `dialect`'s reserved words. Each is folded first, the way the
   server would have folded the bare name, so quoting never changes what it resolves to. Only words reserved in that
   dialect are touched: a generic list would misfire, e.g. quoting `user` on SQLite, where a quoted nonexistent column
-  silently becomes a string literal."
+  silently becomes a string literal. Port of `_quote_reserved_identifiers`."
   [expr dialect]
   (let [dialect-name (dialect-name dialect)
         reserved     (into (set (.RESERVED_KEYWORDS (SourceSettings/generator dialect-name)))
@@ -69,7 +68,7 @@
     (when (seq reserved)
       (doseq [ident (ast/find-all expr Expressions$Identifier)
               :when (and (not (ast/quoted? ident))
-                         (contains? reserved (u/lower-case-en (ast/node-name ident))))]
+                         (contains? reserved (ast/lower (ast/node-name ident))))]
         (NormalizeIdentifiers/normalizeIdentifiers ^Expr ident ^String dialect false)
         (ast/set-arg! ident "quoted" true)))
     expr))
@@ -82,7 +81,7 @@
   Identifiers keep the quoting they were written with, so the database folds an unquoted one exactly as it would
   have folded the input; quoting everything would freeze the written casing, which breaks on dialects that fold
   (Snowflake uppercases, Postgres lowercases). The exception is an identifier that collides with the target
-  dialect's reserved words, which is quoted."
+  dialect's reserved words, which is quoted. Port of `transpile_sql`."
   [sql from-dialect to-dialect]
   (cond
     (metabase-templates? sql)

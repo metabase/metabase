@@ -3,9 +3,9 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -28,16 +28,6 @@
   "The NativeQuerySnippet with `id`, or nil."
   [id :- ::lib.schema.id/native-query-snippet]
   (t2/select-one :model/NativeQuerySnippet :id id))
-
-(mu/defn writable-snippet-ids :- [:set ::lib.schema.id/native-query-snippet]
-  "The ids among `ids` of the NativeQuerySnippets remote sync lets be written."
-  [ids :- [:sequential ::lib.schema.id/native-query-snippet]]
-  (if (seq ids)
-    (set (t2/select-pks-set :model/NativeQuerySnippet
-                            {:where [:and
-                                     [:in :id ids]
-                                     (remote-sync/can-write-filter-clause :model/NativeQuerySnippet :native_query_snippet)]}))
-    #{}))
 
 (mu/defn snippet-name-exists?
   "Whether a NativeQuerySnippet named `snippet-name` exists."
@@ -65,3 +55,11 @@
   [snippet-names :- [:sequential :string]]
   (t2/select [:model/NativeQuerySnippet :name :entity_id]
              {:where (into [:or] (map (fn [n] [:like :name [:auto/param (str n "%")]])) snippet-names)}))
+
+(mu/defn synced-snippet-items :- [:sequential ::native-query-snippets.schema/native-query-snippet]
+  "The NativeQuerySnippets with `ids`, with their Collection and its ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection :snippets)]
+    (-> (t2/select [:model/NativeQuerySnippet :id :name :collection_id] :id [:in ids])
+        (t2/hydrate [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))

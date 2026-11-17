@@ -9,18 +9,13 @@
 (shared.ns/import-fns
  [remote-sync.db
   built-in-filter-clause
+  synced-filter-clause
   synced-fk-clause
   synced-ids-clause]
  [remote-sync.spec
   spec]
  [remote-sync.synced
-  can-write-filter-clause
-  can-write?
-  do-with-read-only-pks-cache
   read-only?
   synced-changes?
-  synced-collection-from-parent?
-  synced-collection-id
-  synced-label
   synced-models
-  synced-parent])
+  synced-name])

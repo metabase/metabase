@@ -59,7 +59,6 @@
   (case method
     (:referenced-tables
      :referenced-fields)      (set value)
-    :returned-columns-lineage (mapv (fn [[alias pure? deps]] [alias pure? (set deps)]) value)
     :validate-query           (select-keys value [:status :type :column :table])
     :simple-query             (select-keys value [:is_simple])
     (:add-into-clause
@@ -257,9 +256,6 @@
         (run ctx :referenced-tables dialect sql [] #(protocol/referenced-tables % dialect sql)))
       (referenced-fields [_ dialect sql]
         (run ctx :referenced-fields dialect sql [] #(protocol/referenced-fields % dialect sql)))
-      (returned-columns-lineage [_ dialect sql default-table-schema sqlglot-schema]
-        (run ctx :returned-columns-lineage dialect sql [default-table-schema sqlglot-schema]
-             #(protocol/returned-columns-lineage % dialect sql default-table-schema sqlglot-schema)))
       (validate-query [_ dialect sql default-table-schema sqlglot-schema]
         (run ctx :validate-query dialect sql [default-table-schema sqlglot-schema]
              #(protocol/validate-query % dialect sql default-table-schema sqlglot-schema)))

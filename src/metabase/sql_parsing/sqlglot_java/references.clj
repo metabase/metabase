@@ -2,8 +2,7 @@
   "The tables and fields a query reads: `referenced_tables`, `referenced_fields`, and the table helpers they share
   with the rewrites."
   (:require
-   [metabase.sql-parsing.sqlglot-java.ast :as ast]
-   [metabase.util :as u])
+   [metabase.sql-parsing.sqlglot-java.ast :as ast])
   (:import
    (com.metabase.sqlglot.ast Expressions$Column Expressions$CTE Expressions$Identifier Expressions$Select
                              Expressions$Star Expressions$Table Expressions$With)
@@ -13,7 +12,7 @@
 
 (defn temp-table-prefix
   "The T-SQL temp table prefix of `table`: \"##\" for a global temp table, \"#\" for a local one, \"\" otherwise.
-  sqlglot keeps the prefix as a flag on the identifier rather than in its name."
+  sqlglot keeps the prefix as a flag on the identifier rather than in its name. Port of `temp_table_prefix`."
   [table]
   (let [identifier (ast/this table)]
     (cond
@@ -23,7 +22,7 @@
       :else                                                "")))
 
 (defn table-parts
-  "`[catalog schema table]` of a Table node, or nil when it has no name (a table function)."
+  "`[catalog schema table]` of a Table node, or nil when it has no name (a table function). Port of `table_parts`."
   [table]
   (let [table-name (ast/node-name table)]
     (when (seq table-name)
@@ -33,7 +32,7 @@
 
 (defn shadowing-cte-names
   "The CTE names, lower-cased, that shadow a table at `node`: those declared by a query `node` sits inside. A CTE does
-  not shadow the table its own body reads, unless it is recursive."
+  not shadow the table its own body reads, unless it is recursive. Port of `shadowing_cte_names`."
   [node]
   (loop [current node, names #{}, own #{}]
     (if-not current
@@ -44,37 +43,38 @@
                                (seq (ast/node-alias current))
                                (not (and (instance? Expressions$With declaration)
                                          (ast/arg declaration "recursive"))))
-                          (conj (u/lower-case-en (ast/node-alias current))))
+                          (conj (ast/lower (ast/node-alias current))))
             names       (into names
                               (for [value (vals (ast/args current))
                                     :when (instance? Expressions$With value)
                                     cte   (ast/expressions value)
                                     :let  [cte-alias (ast/node-alias cte)]
                                     :when (seq cte-alias)]
-                                (u/lower-case-en cte-alias)))]
+                                (ast/lower cte-alias)))]
         (recur (ast/parent current) names own)))))
 
 (defn statements
-  "Every statement in `sql`, without the empty ones a stray semicolon leaves behind."
+  "Every statement in `sql`, without the empty ones a stray semicolon leaves behind. Port of `statements`."
   [sql dialect]
   (remove nil? (ast/parse sql dialect)))
 
 (defn table-references
   "Every Table node in the statement `stmt` that names a table: CTE references, derived tables and table functions
-  are left out, and the table a statement writes is kept. This is the walk the rewrites replace by."
+  are left out, and the table a statement writes is kept. This is the walk the rewrites replace by.
+  Port of `table_references`."
   [stmt]
   (for [table (ast/find-all stmt Expressions$Table)
         :when (table-parts table)
         :when (not (and (empty? (ast/text table "db"))
                         (empty? (ast/text table "catalog"))
-                        (contains? (shadowing-cte-names table) (u/lower-case-en (ast/node-name table)))))]
+                        (contains? (shadowing-cte-names table) (ast/lower (ast/node-name table)))))]
     table))
 
 (defn- sort-key [parts]
   (mapv #(or % "") parts))
 
 (defn referenced-tables
-  "`[catalog schema table]` of every table `sql` reads, sorted."
+  "`[catalog schema table]` of every table `sql` reads, sorted. Port of `referenced_tables`."
   [dialect sql]
   (->> (for [stmt  (statements sql dialect)
              table (table-references stmt)]
@@ -138,7 +138,8 @@
   (ast/python-error "AttributeError" (str "'NoneType' object has no attribute '" method "'")))
 
 (defn referenced-fields
-  "`[catalog schema table field]` of every field `sql` reads from a real table, sorted; `*` for a wildcard."
+  "`[catalog schema table field]` of every field `sql` reads from a real table, sorted; `*` for a wildcard.
+  Port of `referenced_fields`."
   [dialect sql]
   (let [stmt        (ast/parse-one sql dialect)
         ;; `build_scope`: the last scope `traverse_scope` yields, none for a statement that holds no query (a

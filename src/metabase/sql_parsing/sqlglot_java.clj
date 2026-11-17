@@ -131,8 +131,6 @@
       (call #(references/referenced-tables dialect sql)))
     (referenced-fields [_ dialect sql]
       (call #(references/referenced-fields dialect sql)))
-    (returned-columns-lineage [_ dialect sql default-table-schema sqlglot-schema]
-      (call #(qualify/returned-columns-lineage dialect sql default-table-schema (json-shaped sqlglot-schema))))
     (validate-query [_ dialect sql default-table-schema sqlglot-schema]
       (call #(qualify/validate-query dialect sql default-table-schema (json-shaped sqlglot-schema))))
     (simple-query [_ dialect sql]

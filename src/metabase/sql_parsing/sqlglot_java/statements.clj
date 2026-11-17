@@ -18,7 +18,8 @@
 
 (defn- split-placeholder-casts
   "`sql` with `?::` written `? ::` outside Databricks. sqlglot's tokenizer reads `?::` as one token that only the
-  Databricks parser consumes, so `select ?::text` fails to parse anywhere else (#81373)."
+  Databricks parser consumes, so `select ?::text` fails to parse anywhere else (#81373).
+  Port of `_split_placeholder_casts`."
   [^String sql dialect]
   (if (or (= dialect "databricks") (not (str/includes? sql "?::")))
     sql
@@ -133,19 +134,21 @@
 (def ^:private mysql-family-dialects #{"mysql" "mariadb" "singlestore" "starrocks" "doris" "tidb"})
 
 (defn- function-name
-  "The lower-case name of the function `node` calls, or nil when it is not a function call."
+  "The lower-case name of the function `node` calls, or nil when it is not a function call. Port of `_function_name`."
   [node]
   (cond
-    (instance? Expressions$Anonymous node) (u/lower-case-en (ast/node-name node))
-    (instance? Expressions$Func node)      (u/lower-case-en (ast/sql-name node))))
+    (instance? Expressions$Anonymous node) (ast/lower (ast/node-name node))
+    (instance? Expressions$Func node)      (ast/lower (ast/sql-name node))))
 
 (defn- first-function-in
-  "The name of the first function in `stmt` that is in `names`, or nil."
+  "The name of the first function in `stmt` that is in `names`, or nil.
+  Port of `_session_effect_function`, with the names passed in."
   [names stmt]
   (some #(names (function-name %)) (ast/walk stmt)))
 
 (defn- sql-executing-function
-  "The name of the first function in `stmt` that runs SQL passed to it as text, or nil."
+  "The name of the first function in `stmt` that runs SQL passed to it as text, or nil.
+  Port of `_sql_executing_function`."
   [stmt]
   (some (fn [node]
           (or (sql-executing-functions (function-name node))
@@ -154,7 +157,7 @@
               ;; counts only under a `system` schema.
               (when (and (instance? Expressions$Dot node)
                          (ast/ast-node? (ast/this node))
-                         (= "system" (u/lower-case-en (ast/node-name (ast/this node))))
+                         (= "system" (ast/lower (ast/node-name (ast/this node))))
                          (= "query" (function-name (ast/arg node "expression"))))
                 "system.query")))
         (ast/walk stmt)))
@@ -163,7 +166,7 @@
   "Whether `stmt` calls a function named by Snowflake's `IDENTIFIER(...)`, as in `IDENTIFIER('f')(1)`. Name checks
   never see that name, a string or a variable, so the call is refused whatever it names. Only the call form has an
   `expressions` arg, holding the call's arguments, possibly none; a table or column name such as `IDENTIFIER('t')`
-  has no such arg."
+  has no such arg. Port of `_dynamic_function_call`."
   [stmt]
   (boolean (some #(and (instance? Expressions$DynamicIdentifier %)
                        (.containsKey (ast/args %) "expressions"))
@@ -171,7 +174,8 @@
 
 (defn- external-table?
   "Whether `stmt` names a file or a URL as a table. DuckDB reads `FROM 'data.csv'` and `FROM \"s3://b/x.parquet\"` as
-  the file at that path, and a name holding `.`, `/`, `\\` or `:` cannot be a plain table there unless quoted."
+  the file at that path, and a name holding `.`, `/`, `\\` or `:` cannot be a plain table there unless quoted.
+  Port of `_external_table`."
   [stmt dialect]
   (and (= dialect "duckdb")
        (boolean (some #(and (instance? Expressions$Table %)
@@ -183,13 +187,15 @@
   [node]
   (contains? locking-table-hints (u/upper-case-en (ast/node-name node))))
 
-(defn- writes-or-locks? [node]
+(defn- writes-or-locks?
+  "Whether the node `node` writes data, changes the session, or locks a table. Port of `_writes_or_locks`."
+  [node]
   (cond
     (ast/instance-of-any? not-read-only-classes node)
     true
 
     (instance? Expressions$Anonymous node)
-    (contains? write-functions (u/lower-case-en (ast/node-name node)))
+    (contains? write-functions (ast/lower (ast/node-name node)))
 
     ;; MySQL assigns a user variable inside a SELECT with `@x := ...`, and the value outlives the query on a pooled
     ;; connection. A bare name on the left is a named argument instead, as in DuckDB and Postgres. The variable is
@@ -201,7 +207,7 @@
 
     (instance? Expressions$Column node)
     (and (seq (ast/text node "table"))
-         (= "nextval" (u/lower-case-en (ast/node-name node))))
+         (= "nextval" (ast/lower (ast/node-name node))))
 
     (instance? Expressions$WithTableHint node)
     (boolean (some locking-hint? (ast/expressions node)))
@@ -224,7 +230,9 @@
 
 ;; Any other function with side effects, a user-defined one included, passes this check: no list of names can be
 ;; complete. Grants on the database credential are what keep such a function from writing.
-(defn- read-only? [stmt]
+(defn- read-only?
+  "Whether no node in the statement `stmt` writes, changes the session, or locks a table. Port of `_read_only`."
+  [stmt]
   (not-any? writes-or-locks? (ast/walk stmt)))
 
 (defn- hidden-sql
@@ -239,7 +247,7 @@
   and MySQL does not, so the text after it would be a comment to one and SQL to the other.
 
   The T-SQL statement words are looked for only when `select?` says the statement is a SELECT, since a write statement
-  starts with one."
+  starts with one. Port of `_hidden_sql`."
   [sql dialect select?]
   (or (when (re-find #"\r(?!\n)" sql)
         ["lone-carriage-return" nil])
@@ -265,7 +273,8 @@
           (re-find #"\\['\"`]" sql)                                  ["backslash-quote" nil]))))
 
 (defn- unbracketed
-  "`stmt` without the brackets around the whole query: `(SELECT 1)` parses as a subquery with no alias."
+  "`stmt` without the brackets around the whole query: `(SELECT 1)` parses as a subquery with no alias.
+  Port of `_unbracketed`."
   [stmt]
   (if (and (instance? Expressions$Subquery stmt) (empty? (ast/node-alias stmt)))
     (recur (ast/this stmt))
@@ -275,7 +284,8 @@
 (def ^:private write-classes [Expressions$Update Expressions$Insert Expressions$Delete])
 
 (defn- statement-reason
-  "`[reason detail]` for why `stmt`, parsed from `sql`, fails the checks every statement type shares, else nil."
+  "`[reason detail]` for why `stmt`, parsed from `sql`, fails the checks every statement type shares, else nil.
+  Port of `_statement_reason`."
   [stmt sql dialect]
   (or (when-let [function (first-function-in (into session-effect-functions (dialect-session-effect-functions dialect))
                                              stmt)]
@@ -289,7 +299,8 @@
       (hidden-sql sql dialect (ast/instance-of-any? read-classes (unbracketed stmt)))))
 
 (defn- not-read-only-reason
-  "`[reason detail]` for why `stmts`, parsed from `sql`, are not one read-only SELECT, else nil."
+  "`[reason detail]` for why `stmts`, parsed from `sql`, are not one read-only SELECT, else nil.
+  Port of `_not_read_only_reason`."
   [stmts sql dialect]
   (cond
     (empty? stmts)                                                     ["not-a-select" nil]
@@ -304,7 +315,8 @@
 
   `\"read-only\"` also refuses a SELECT holding anything that writes or locks anywhere in its tree, and does not count
   a statement holding only a comment after the last semicolon. Every mode applies the checks the statement types
-  share. `:reason` (and `:reason_detail`) say why a query is refused for what it holds."
+  share. `:reason` (and `:reason_detail`) say why a query is refused for what it holds.
+  Port of `is_single_stmt_of_type`."
   [dialect sql stmt-type]
   (let [read-only-type? (= stmt-type "read-only")
         ;; Filled in as it goes, so a failure part way keeps what was found before it.
@@ -336,7 +348,8 @@
       (and read-only-type? (:error @result)) (assoc :reason "unparseable"))))
 
 (defn simple-query
-  "Whether `sql` is a simple SELECT, with no LIMIT, OFFSET or CTE, and the `:reason` when it is not."
+  "Whether `sql` is a simple SELECT, with no LIMIT, OFFSET or CTE, and the `:reason` when it is not.
+  Port of `simple_query`."
   [dialect sql]
   (try
     (let [stmt (ast/parse-one sql dialect)]

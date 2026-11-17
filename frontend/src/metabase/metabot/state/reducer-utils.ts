@@ -465,6 +465,7 @@ export const getMetabotInitialState = (): MetabotState => {
     agents,
     reactions: {
       navigateToPath: null,
+      dashboardSaveIds: {},
       suggestedCodeEdits: {},
     },
     titlePollingConversationIds: [],

@@ -3,8 +3,8 @@
   generate, walk, read and set arguments, build nodes. Function names follow the sqlglot Python API they stand in for
   (`sql_tools.py` is the reference).
 
-  The other `metabase.sql-parsing.sqlglot-java.*` namespaces use these and also call the port's `Scope`, `Qualify`,
-  `Lineage` and expression classes directly. The boundary is that directory, as [[metabase.sql-parsing.sqlglot-java]]
+  The other `metabase.sql-parsing.sqlglot-java.*` namespaces use these and also call the port's `Scope`, `Qualify`
+  and expression classes directly. The boundary is that directory, as [[metabase.sql-parsing.sqlglot-java]]
   describes."
   (:require
    [clojure.string :as str]
@@ -44,7 +44,9 @@
   (SqlGlot/generate expr dialect))
 
 (defn pretty-sql
-  "`expr` as pretty-printed SQL in `dialect`, generated in place (`Dialect.generate(copy=False, pretty=True)`)."
+  "`expr` as pretty-printed SQL in `dialect` (`Dialect.generate(pretty=True)`). `sql_tools.py` passes `copy=False`,
+  but this copies the tree first: in place, Python writes each Postgres function parameter mode twice
+  (`IN a INT IN`)."
   ^String [^Expr expr ^String dialect]
   (.sqlPretty (Generator/forDialect dialect) expr))
 

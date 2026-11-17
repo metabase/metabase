@@ -2,8 +2,9 @@ import type { KeyboardEvent } from "react";
 import { useState } from "react";
 import { c, t } from "ttag";
 
-import type { GlossaryItem, UpdateGlossaryRequest } from "metabase/api";
+import type { UpdateGlossaryRequest } from "metabase/api";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import type { GlossaryItem } from "metabase-types/api";
 
 import S from "./Glossary.module.css";
 import { DefinitionField, TermField } from "./GlossaryFields";

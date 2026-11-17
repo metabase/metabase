@@ -1,11 +1,7 @@
+import type { GlossaryItem } from "metabase-types/api";
+
 import { Api } from "./api";
 import { idTag, invalidateTags, listTag } from "./tags";
-
-export type GlossaryItem = {
-  id: number;
-  term: string;
-  definition: string;
-};
 
 export type ListGlossaryRequest = {
   search?: string;

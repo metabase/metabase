@@ -37,8 +37,6 @@
   (derive :hook/timestamped?)
   (derive :hook/dependencies))
 
-(methodical/defmethod t2/primary-keys :model/TableUserSettings [_model] [:table_id])
-
 (defn- complete-pairs
   "Fill in the other half of the two-column choices in `settings`: `visibility_type`/`data_layer`, derived from a
   changing half or else kept from `table`, and `is_published`/`collection_id`."
@@ -180,7 +178,6 @@
 (defmethod serialization/spec :model/TableUserSettings [_]
   {:schema    ::warehouse-schema.schema/external-table-user-settings
    :identity  [:table_id]
-   :primary-key :table_id
    :copy      [:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
                :show_in_getting_started :data_authority :data_source :data_layer :owner_email :is_published
                :description_set :visibility_type_set :data_layer_set :data_source_set]
@@ -226,5 +223,6 @@
 
 (defmethod remote-sync/spec :model/TableUserSettings
   [_model]
-  {:label                (fn [{:keys [display_name table_id]}] (or display_name (last table_id)))
+  {:name                 (fn [{:keys [display_name table_id]}] (or display_name (last table_id)))
+   :synced-items         warehouse-schema.db/synced-table-user-settings-items
    :synced-filter-clause warehouse-schema.db/synced-table-user-settings-clause})

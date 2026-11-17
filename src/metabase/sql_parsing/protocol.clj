@@ -16,8 +16,6 @@
   (referenced-fields [parser dialect sql]
     "Field references from actual database tables, as a vector of `[catalog schema table field]`
     4-tuples (wildcards as `\"*\"`).")
-  (returned-columns-lineage [parser dialect sql default-table-schema sqlglot-schema]
-    "Column lineage of the query's output, as a vector of `[alias pure? deps]` tuples.")
   (validate-query [parser dialect sql default-table-schema sqlglot-schema]
     "Validate the query against `sqlglot-schema` (strict) or its own structure (permissive when the
     schema is nil/empty). Returns a keywordized `{:status \"ok\"}` or `{:status \"error\" ...}` map.")

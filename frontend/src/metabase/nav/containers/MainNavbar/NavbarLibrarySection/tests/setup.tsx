@@ -11,7 +11,7 @@ import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
 import type { State } from "metabase/redux/store";
 import { Route } from "metabase/router";
-import type { Collection, RemoteSyncEntity } from "metabase-types/api";
+import type { Collection, RemoteSyncDirtyItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockSettings,
@@ -53,7 +53,7 @@ export const setup = ({
 }: {
   collections?: Collection[];
   isEnterprise?: boolean;
-  dirty?: RemoteSyncEntity[];
+  dirty?: RemoteSyncDirtyItem[];
 } = {}) => {
   let state: State;
   if (isEnterprise) {
