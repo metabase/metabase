@@ -3394,6 +3394,17 @@
                  (is (= #{copy-id save-as-id}
                         (set (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id))))))))))))))
 
+(deftest update-card-keeps-numeric-column-name-segment-bound-test
+  (testing "PUT /api/card/:id keeps a scalar segment bound that names a column called \"2023\" as the name, not the number"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
+                                              :display       :scalar}]
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                            {:visualization_settings {:scalar.segments [{:min 0 :max "2023" :color "red"}
+                                                                        {:min 2023 :max 3000 :color "blue"}]}})
+      (is (= [{:min 0 :max "2023" :color "red"}
+              {:min 2023 :max 3000 :color "blue"}]
+             (:scalar.segments (t2/select-one-fn :visualization_settings :model/Card :id card-id)))))))
+
 (deftest change-collection-permissions-test
   (testing "PUT /api/card/:id"
     (testing "\nChange the `collection_id` of a Card"

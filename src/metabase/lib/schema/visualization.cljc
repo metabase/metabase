@@ -265,7 +265,8 @@
 
 (mr/def ::goal-value
   "A goal: a number, the name of another column of the same result, or a [[::goal-value.reference]]."
-  [:or number? :string ::goal-value.reference])
+  ;; :string first: the API decoder parses a numeric string such as the column name "2023" when `number?` comes first
+  [:or :string number? ::goal-value.reference])
 
 (mr/def ::scalar.segment
   "A segment of a scalar visualization: the color of the values from its minimum to its maximum."
