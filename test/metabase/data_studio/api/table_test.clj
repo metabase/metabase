@@ -2,8 +2,9 @@
   "Tests for /api/data-studio/table endpoints."
   (:require
    [clojure.test :refer :all]
-   [metabase.data-studio.api.table :as api.table]
+   [metabase.collections.models.collection :as collection]
    [metabase.data-studio.db :as data-studio.db]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -60,6 +61,15 @@
                              :data_source "ingested"})
       (is (= :metabase-transform (user-table-fn :data_source table-id))))))
 
+(deftest bulk-edit-does-not-accept-metabase-transform-data-source-test
+  (testing "POST /api/data-studio/table/edit does not accept metabase-transform as data_source"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-id :id} {:db_id db-id :data_source :ingested}]
+      (mt/user-http-request :crowberto :post 400 "data-studio/table/edit"
+                            {:table_ids   [table-id]
+                             :data_source "metabase-transform"})
+      (is (= :ingested (user-table-fn :data_source table-id))))))
+
 (deftest data-analyst-can-access-endpoints-test
   (testing "Data analysts (members of Data Analysts group) can access data studio endpoints with advanced-permissions"
     (let [data-analyst-group-id (:id (perms-group/data-analyst))]
@@ -67,11 +77,11 @@
                                                    :last_name "Analyst"
                                                    :email "data-analyst@metabase.com"
                                                    :is_data_analyst true}
-                     :model/PermissionsGroupMembership _ {:user_id analyst-id :group_id data-analyst-group-id}
                      :model/Database {db-id :id} {}
                      :model/Table {table-id :id} {:db_id db-id}]
         (mt/when-ee-evailable
          (mt/with-premium-features #{:advanced-permissions}
+           (t2/insert! :model/PermissionsGroupMembership {:user_id analyst-id :group_id data-analyst-group-id})
            (testing "data analyst can edit tables"
              (is (= {} (mt/user-http-request analyst-id :post 200 "data-studio/table/edit"
                                              {:table_ids [table-id]
@@ -84,6 +94,27 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request analyst-id :post 403 "data-studio/table/selection"
                                          {:table_ids [table-id]})))))))))
+
+(deftest bulk-endpoints-need-table-write-permission-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/Table {writable-id :id} {:db_id db-id}
+                 :model/Table {locked-id :id} {:db_id db-id}]
+    (mt/with-dynamic-fn-redefs [collection/remote-sync-writable-table? (fn [table] (not= locked-id (:id table)))]
+      (doseq [[endpoint body] {"edit"           {:data_layer "final"}
+                               "sync-schema"    {}
+                               "rescan-values"  {}
+                               "discard-values" {}}]
+        (testing endpoint
+          (testing "selection holding table without write permission is refused"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :crowberto :post 403 (str "data-studio/table/" endpoint)
+                                         (assoc body :table_ids [writable-id locked-id])))))))
+      (testing "nothing was written to either table"
+        (is (= #{:internal}
+               (t2/select-fn-set :data_layer :model/Table :id [:in [writable-id locked-id]]))))
+      (testing "selection of writable tables goes through"
+        (is (= {} (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
+                                        {:table_ids [writable-id] :data_layer "final"})))))))
 
 (deftest regular-user-cannot-access-data-studio-test
   (testing "Regular users (not in Data Analysts group) cannot access data studio endpoints"
@@ -180,6 +211,16 @@
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :post 403 "data-studio/table/discard-values" {:database_ids [(mt/id)]})))))
 
+(deftest bulk-discard-values-runs-model-hooks-test
+  (testing "discarding FieldValues deletes them through the model, so their delete hooks run"
+    (mt/with-temp [:model/Table       {table-id :id} {}
+                   :model/Field       {field-id :id} {:table_id table-id}
+                   :model/FieldValues {fv-id :id}    {:field_id field-id, :values [1 2 3 4]}]
+      (let [deleted (atom #{})]
+        (mt/with-dynamic-fn-redefs [dependencies.hooks/before-delete (fn [_model row] (swap! deleted conj (:id row)))]
+          (data-studio.db/delete-field-values-for-tables! [table-id]))
+        (is (contains? @deleted fv-id))))))
+
 (deftest bulk-discard-values-test
   (mt/with-empty-h2-app-db!
     (testing "POST /api/data-studio/table/discard-values"
@@ -269,7 +310,7 @@
                    :model/Table    {internal-1 :id} {:db_id db-id, :data_layer :internal}
                    :model/Table    {final-1 :id}    {:db_id db-id, :data_layer :final}]
       (let [synced-ids (atom #{})]
-        (mt/with-dynamic-fn-redefs [api.table/sync-unhidden-tables (fn [tables] (reset! synced-ids (set (map :id tables))))]
+        (mt/with-dynamic-fn-redefs [sync/sync-tables-in-background! (fn [tables] (reset! synced-ids (set (map :id tables))))]
           (testing "Changing from hidden to final triggers sync"
             (reset! synced-ids #{})
             (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"

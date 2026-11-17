@@ -16,6 +16,8 @@
 
 (set! *warn-on-reflection* true)
 
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
+
 (methodical/defmethod t2/table-name :model/TableUserSettings [_model] :metabase_table_user_settings)
 
 (t2/deftransforms :model/TableUserSettings
@@ -36,6 +38,8 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/dependencies))
+
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (defn- complete-pairs
   "Fill in the other half of the two-column choices in `settings`: `visibility_type`/`data_layer`, derived from a
@@ -67,12 +71,17 @@
              settings
              user-settings/table-set-flags))
 
-(defn- enforce-invariants
-  "Validate `explicit`, complete its two-column pairs and set its flags, merged into `settings`."
+(defn- pair-columns-written?
+  "Whether `explicit` writes a column whose pair [[complete-pairs]] completes."
+  [explicit]
+  (boolean (some #(contains? explicit %) [:visibility_type :data_layer :collection_id])))
+
+(defn- completed-settings
+  "`settings` merged with `explicit`, its two-column pairs completed from its Table, with its flags set."
   [settings explicit]
-  (let [table     (warehouse-schema.db/table (:table_id settings))
-        completed (complete-pairs explicit table)]
-    (table/validate-user-changes! explicit table)
+  (let [completed (cond-> explicit
+                    (pair-columns-written? explicit)
+                    (complete-pairs (warehouse-schema.db/table (:table_id settings))))]
     (-> (merge settings completed)
         (with-set-flags completed explicit))))
 
@@ -86,7 +95,7 @@
 
 (t2/define-before-insert :model/TableUserSettings
   [settings]
-  (enforce-invariants settings settings))
+  (completed-settings settings settings))
 
 (t2/define-after-insert :model/TableUserSettings
   [settings]
@@ -94,20 +103,13 @@
 
 (t2/define-before-update :model/TableUserSettings
   [settings]
-  (enforce-invariants settings (t2/changes settings)))
+  (completed-settings settings (t2/changes settings)))
 
 (t2/define-after-update :model/TableUserSettings
   [settings]
   (delete-when-empty! settings))
 
-(defn- without-derived-half
-  "Drop from `changes` the half of a `visibility_type`/`data_layer` pair the Table's own update derives from the other."
-  [{:keys [visibility_type data_layer] :as changes}]
-  (if (and (contains? changes :visibility_type) (contains? changes :data_layer))
-    (if (= (some-> data_layer keyword) (table/visibility-type->data-layer (some-> visibility_type keyword)))
-      (dissoc changes :data_layer)
-      (dissoc changes :visibility_type))
-    changes))
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
 (mu/defn upsert-table-user-settings!
   "Record the user-settable Table columns present in `settings` as the user values of `table`, in its settings and its
@@ -171,7 +173,7 @@
   (doseq [batch (partition-all 1000 table-ids)]
     (warehouse-schema.db/delete-table-user-settings! batch)))
 
-;;; ------------------------------------------------- Serialization -------------------------------------------------
+;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (def ^:private table-user-settings-slug "___tableusersettings")
 
@@ -201,7 +203,14 @@
           (cond-> #{} collection_id (conj [:model/Collection collection_id])))
         entities))
 
-;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
+(defn- without-derived-half
+  "Drop from `changes` the half of a `visibility_type`/`data_layer` pair the Table's own update derives from the other."
+  [{:keys [visibility_type data_layer] :as changes}]
+  (if (and (contains? changes :visibility_type) (contains? changes :data_layer))
+    (if (= (some-> data_layer keyword) (table/visibility-type->data-layer (some-> visibility_type keyword)))
+      (dissoc changes :data_layer)
+      (dissoc changes :visibility_type))
+    changes))
 
 (defn- load-legacy-fields!
   "Loads the FieldUserSettings that the settings `items` of an older export carry under `:fields`, deleting the other
@@ -220,6 +229,8 @@
                                                  (select-keys settings (user-settings/user-set-table-columns settings))))
     (when (:field_order entity)
       (table/update-field-positions! (warehouse-schema.db/table table_id)))))
+
+;;; -------------------------------------------------- Remote sync ---------------------------------------------------
 
 (defmethod remote-sync/spec :model/TableUserSettings
   [_model]
