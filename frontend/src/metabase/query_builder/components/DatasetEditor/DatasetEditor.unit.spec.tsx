@@ -12,7 +12,7 @@ import {
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { Card, UnsavedCard } from "metabase-types/api";
 import {
@@ -36,7 +36,10 @@ const mockSavedCard = createMockCard({
 const mockSavedModel = { ...mockSavedCard, type: "model" };
 const mockSavedMetric = { ...mockSavedCard, type: "metric" };
 const mockUnsavedCard = createMockUnsavedCard();
-const mockUnsavedModel = { ...mockUnsavedCard, type: "model" };
+const mockUnsavedModel = createMockUnsavedCard({
+  type: "model",
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+});
 
 const noop = () => {};
 const defaultDatasetEditorProps = {
