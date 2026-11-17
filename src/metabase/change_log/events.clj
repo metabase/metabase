@@ -5,26 +5,27 @@
    [metabase.change-log.cascade :as change-log.cascade]
    [metabase.change-log.log :as change-log.log]
    [metabase.events.core :as events]
-   [metabase.premium-features.core :as premium-features]))
+   [metabase.premium-features.core :as premium-features]
+   [metabase.util.events :as u.events]))
 
 (set! *warn-on-reflection* true)
 
 (defn- capture-cascade
   "What the delete of a row makes the database delete or null in tracked tables, as `[table-name row-ids action]`s."
-  [{:keys [operation model object]}]
+  [{:keys [operation model previous-object]}]
   (when (and (= :delete operation) (premium-features/enable-change-log?))
     (let [fks   (change-log.cascade/foreign-keys)
           table (change-log.log/table-of model)]
       (when (seq (change-log.cascade/referenced-columns fks table))
-        (not-empty (vec (change-log.cascade/changes fks table [object])))))))
+        (not-empty (vec (change-log.cascade/changes fks table [previous-object])))))))
 
 (defn- own-changes
-  [{:keys [operation model id changes]}]
+  [{:keys [operation model id] :as event}]
   (when (contains? change-log.log/tracked-models model)
     (let [table (change-log.log/table-of model)]
       (case operation
         :create [[table [id] "insert"]]
-        :update (when-not (every? (conj (change-log.log/ignored-columns model) :updated_at) (keys changes))
+        :update (when-not (every? (conj (change-log.log/ignored-columns model) :updated_at) (u.events/changed-keys event))
                   [[table [id] "update"]])
         :delete [[table [id] "delete"]]))))
 

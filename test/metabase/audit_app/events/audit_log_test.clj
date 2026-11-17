@@ -67,9 +67,8 @@
         (mt/with-temp [:model/Card card {:name "My Cool Card", :type card-type}]
           (mt/with-test-user :rasta
             (let [old-card (assoc card :name "Old Name", :type :question)]
-              (is (= {:object card :previous-object old-card :changes {:name "My Cool Card"} :user-id (mt/user->id :rasta)}
+              (is (= {:object card :previous-object old-card :user-id (mt/user->id :rasta)}
                      (events/publish-event! :event/card-update {:object card :previous-object old-card
-                                                                :changes {:name "My Cool Card"}
                                                                 :user-id (mt/user->id :rasta)})))
               (is (partial=
                    {:topic    :card-update
@@ -343,7 +342,6 @@
   (testing :segment-update
     (mt/with-temp [:model/Segment segment]
       (let [event {:object  segment
-                   :changes {:name "renamed"}
                    :context {:revision-message "update this mofo"}
                    :user-id (mt/user->id :rasta)}]
         (is (= event
@@ -413,9 +411,8 @@
   (testing :event/user-update
     (mt/with-current-user (mt/user->id :rasta)
       (let [user   (mt/fetch-user :lucky)
-            event {:object          user
+            event {:object          (assoc user :last_name "Pigeon")
                    :previous-object (assoc user :last_name "Charms")
-                   :changes         {:last_name "Pigeon"}
                    :user-id         (mt/user->id :rasta)}]
         (is (= event (events/publish-event! :event/user-update event)))
         (is (partial=
@@ -555,11 +552,9 @@
          (let [updated-doc (assoc document :name "Updated Document")]
            (is (= {:object updated-doc
                    :previous-object document
-                   :changes {:name "Updated Document"}
                    :user-id (mt/user->id :rasta)}
                   (events/publish-event! :event/document-update {:object updated-doc
                                                                  :previous-object document
-                                                                 :changes {:name "Updated Document"}
                                                                  :user-id (mt/user->id :rasta)})))
            (is (= {:model_id (:id document)
                    :user_id (mt/user->id :rasta)

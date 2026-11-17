@@ -13,6 +13,7 @@
    [metabase.batch-processing.core :as grouper]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
+   [metabase.util.events :as u.events]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -38,21 +39,14 @@
 (def ^:private writes-queue
   (delay (grouper/start! (fn [_writes] (trigger-jobs-now!)) :capacity 500 :interval 1000)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:private ^:dynamic *batched-marks*
-  "Within [[do-with-batched-marks]], an atom of what the batch marks when it ends: the `:dependents` of
-  `{entity-type #{entity-id}}`, the `:remapped-tables` and the `:remap-targets` fields, the only way the hooks of a
-  batch can mark each of them once."
-  nil)
-
 (mu/defn- trigger-jobs!
   "Have every job triggered once the current transaction commits."
   []
   (mdb/do-after-commit #(grouper/submit! @writes-queue {:dependency-jobs true})))
 
-(def ^:private Row
-  "A row a hook is given, a Toucan instance."
-  [:fn {:error/message "a row"} map?])
+(def ^:private Marks
+  "An atom of what the writes of a batch mark when it ends."
+  [:fn {:error/message "an atom"} #(instance? clojure.lang.IAtom %)])
 
 (def ^:private Columns
   "The columns a write of a model has to change, or `:any`."
@@ -63,13 +57,12 @@
   [:maybe [:tuple ::deps.dependency-types/dependency-types [:maybe ms/PositiveInt]]])
 
 (mu/defn- changed? :- :boolean
-  "Whether `changes`, the columns an update changes, hold any of `columns`, or any column at all when `columns` is
-  `:any`."
-  [changes :- [:maybe [:fn map?]]
+  "Whether the `event`, an update, changes any of `columns`, or any column at all when `columns` is `:any`."
+  [event   :- [:map]
    columns :- Columns]
   (if (= :any columns)
-    (boolean (seq changes))
-    (boolean (some #(contains? changes %) columns))))
+    (boolean (seq (u.events/changed-keys event)))
+    (u.events/changed-any? event columns)))
 
 (def ^:private dependency-columns
   "For each model, the columns whose update has the dependency job compute the entity's dependencies again."
@@ -102,7 +95,7 @@
 (mu/defn- output-columns :- Columns
   "The [[model-output-columns]] of `row` of `model`, with the name of a metric, which the cards aggregating it show."
   [model :- :keyword
-   row   :- Row]
+   row   :- [:map]]
   (cond-> (get model-output-columns model)
     (and (= :model/Card model) (= :metric (keyword (:type row)))) (conj :name)))
 
@@ -114,7 +107,7 @@
 (mu/defn- part-owner :- Node
   "The entity, as `[entity-type entity-id]`, that `row` of `model` is a part of, or nil."
   [model :- :keyword
-   row   :- [:maybe Row]]
+   row   :- [:maybe [:map]]]
   (case model
     (:model/DashboardCard :model/DashboardTab)    [:dashboard (:dashboard_id row)]
     :model/DashboardCardSeries                    [:dashboard (some-> (:dashboardcard_id row)
@@ -136,61 +129,58 @@
    :model/FieldUserSettings   (conj field-columns :custom_position :json_unfolding)})
 
 (mu/defn- mark-dependents!
-  "Mark the result metadata and analysis statuses of the entities directly depending on the entity `entity-type`
-  `entity-id` stale."
-  [entity-type :- ::deps.dependency-types/dependency-types
+  "Add the entity `entity-type` `entity-id` to what `batched`, an atom of the marks of a batch, marks when it ends: the
+  `:dependents` of `{entity-type #{entity-id}}`, the `:remapped-tables` and the `:remap-targets` fields, the only way
+  the writes of a batch can mark each of them once."
+  [batched     :- Marks
+   entity-type :- ::deps.dependency-types/dependency-types
    entity-id   :- ms/PositiveInt]
-  (if-let [batched *batched-marks*]
-    (swap! batched update-in [:dependents entity-type] (fnil conj #{}) entity-id)
-    (do
-      (dependencies.db/mark-dependents-result-metadata-statuses-stale! entity-type #{entity-id})
-      (dependencies.db/mark-dependents-analysis-finding-statuses-stale! entity-type #{entity-id}))))
+  (swap! batched update-in [:dependents entity-type] (fnil conj #{}) entity-id))
 
 (mu/defn- mark-remapped-tables!
-  "Mark the result metadata and analysis statuses of every entity transitively depending on the Tables with `table-ids`
-  stale, whose remapped columns their stored metadata carries down."
-  [table-ids :- [:set ms/PositiveInt]]
+  "Add the Tables with `table-ids` to what `batched` marks: every entity transitively depending on them, whose
+  remapped columns their stored metadata carries down."
+  [batched   :- Marks
+   table-ids :- [:set ms/PositiveInt]]
   (when (seq table-ids)
-    (if-let [batched *batched-marks*]
-      (swap! batched update :remapped-tables (fnil into #{}) table-ids)
-      (let [dependents (models.dependency/transitive-dependents {:table (mapv #(hash-map :id %) table-ids)})]
-        (dependencies.db/mark-result-metadata-statuses-stale! dependents)
-        (dependencies.db/mark-analysis-finding-statuses-stale! dependents)))))
+    (swap! batched update :remapped-tables (fnil into #{}) table-ids)))
 
 (mu/defn- mark-remap-targets!
-  "Mark what reads the remaps whose human-readable field is one of the Fields with `field-ids`, a change of which the
-  remapped columns show."
-  [field-ids :- [:set ms/PositiveInt]]
+  "Add the Fields with `field-ids` to what `batched` marks: what reads the remaps whose human-readable field is one of
+  them, a change of which the remapped columns show."
+  [batched   :- Marks
+   field-ids :- [:set ms/PositiveInt]]
   (when (seq field-ids)
-    (if-let [batched *batched-marks*]
-      (swap! batched update :remap-targets (fnil into #{}) field-ids)
-      (mark-remapped-tables! (dependencies.db/remapped-table-ids field-ids)))))
+    (swap! batched update :remap-targets (fnil into #{}) field-ids)))
 
 (mu/defn- mark-dimension!
   "Mark what reads the remap of the Dimension `row`, whose Field's Table's entities show it."
-  [row :- [:maybe Row]]
+  [batched :- Marks
+   row     :- [:maybe [:map]]]
   (when-let [table-id (some-> (:field_id row) dependencies.db/field-table-id)]
-    (mark-remapped-tables! #{table-id})))
+    (mark-remapped-tables! batched #{table-id})))
 
 (mu/defn- mark-field-values! :- :boolean
   "Mark what reads the internal remap of the Field of the FieldValues, which shows only while they have human-readable
   values, when a write of them as `before` and `after` adds or removes those."
-  [before :- [:maybe Row]
-   after  :- [:maybe Row]]
+  [batched :- Marks
+   before  :- [:maybe [:map]]
+   after   :- [:maybe [:map]]]
   (let [row      (or after before)
         readable (comp boolean seq :human_readable_values)]
     (boolean
      (when (and (= :full (keyword (:type row)))
                 (not= (readable before) (readable after))
                 (dependencies.db/internal-remap? (:field_id row)))
-       (mark-dimension! row)
+       (mark-dimension! batched row)
        true))))
 
 (mu/defn- mark-output-changed!
   "Mark what reads the output of the entity `entity-type` `entity` stale: the direct dependents, or every transitive
   dependent of a measure or a snippet, which their dependents expand and nothing between them stores."
-  [entity-type :- ::deps.dependency-types/dependency-types
-   entity      :- Row]
+  [batched     :- Marks
+   entity-type :- ::deps.dependency-types/dependency-types
+   entity      :- [:map]]
   (case entity-type
     :measure (let [dependents (models.dependency/transitive-dependents {:measure [entity]})]
                (dependencies.db/mark-result-metadata-statuses-stale! dependents)
@@ -198,37 +188,34 @@
     :snippet (let [dependents (models.dependency/transitive-dependents {:snippet [entity]})]
                (dependencies.db/mark-dependency-statuses-stale! dependents)
                (dependencies.db/mark-analysis-finding-statuses-stale! dependents))
-    (mark-dependents! entity-type (:id entity))))
+    (mark-dependents! batched entity-type (:id entity))))
 
 (mu/defn- mark-part-owner!
   "Mark what a write of a part of the `[owner-type owner-id]` entity changes: the dependencies of a dashboard or an
   action, or what the entities depending on a table read."
-  [[owner-type owner-id] :- Node]
+  [batched               :- Marks
+   [owner-type owner-id] :- Node]
   (when owner-id
     (if (= :table owner-type)
-      (mark-dependents! :table owner-id)
+      (mark-dependents! batched :table owner-id)
       (dependencies.db/mark-dependency-statuses-stale! {owner-type #{owner-id}}))))
 
 (mu/defn- output-changed? :- :boolean
-  "Whether the update of `row` of `model`, from `previous` by `changes`, changes what the entities directly depending on
-  it read, ignoring a card's result metadata changes they don't see, such as a run's new fingerprints."
-  [model    :- :keyword
-   row      :- Row
-   previous :- Row
-   changes  :- Row]
-  (let [columns (output-columns model row)]
-    (and (changed? changes columns)
+  "Whether the `event`, the update of a row of a model, changes what the entities directly depending on it read,
+  ignoring a card's result metadata changes they don't see, such as a run's new fingerprints."
+  [{:keys [model object previous-object] :as event} :- [:map]]
+  (let [columns (output-columns model object)]
+    (and (changed? event columns)
          (or (not= :model/Card model)
-             (changed? changes (disj columns :result_metadata))
-             (not (deps.result-metadata/same-output? (:result_metadata previous) (:result_metadata row)))))))
+             (changed? event (disj columns :result_metadata))
+             (not (deps.result-metadata/same-output? (:result_metadata previous-object) (:result_metadata object)))))))
 
 (mu/defn- data-apps-changed? :- :boolean
-  "Whether the update of a row of `model` by `changes` moves a Card or an Action to another collection, which changes
+  "Whether the `event`, the update of a row of a model, moves a Card or an Action to another collection, which changes
   what the data apps whose resource collection it leaves or enters depend on."
-  [model   :- :keyword
-   changes :- Row]
+  [{:keys [model] :as event} :- [:map]]
   (and (contains? #{:model/Action :model/Card} model)
-       (changed? changes #{:collection_id})))
+       (changed? event #{:collection_id})))
 
 (mu/defn- mark-data-apps!
   "Mark the dependencies of the data apps whose resource collection is one of `collection-ids` stale, querying nothing
@@ -238,39 +225,36 @@
     (dependencies.db/mark-data-app-dependency-statuses-stale! collection-ids)))
 
 (mu/defn- mark-update! :- :boolean
-  "Mark the statuses an update of `row` of `model`, from `previous` by `changes`, makes stale: the entity's own, by the
-  columns each job reads, and what reads its output when that changes, returning whether a column some job reads
-  changed."
-  [model    :- :keyword
-   row      :- Row
-   previous :- Row
-   changes  :- Row]
+  "Mark the statuses the update `event` makes stale: the entity's own, by the columns each job reads, and what reads
+  its output when that changes, returning whether a column some job reads changed."
+  [batched :- Marks
+   {:keys [model object previous-object] :as event} :- [:map]]
   (let [entity-type (deps.dependency-types/model->dependency-type model)
-        own         {entity-type #{(:id row)}}
-        dependency? (changed? changes (dependency-columns model))
-        analysis?   (changed? changes (analysis-columns model))
-        output?     (output-changed? model row previous changes)
-        part?       (changed? changes (part-columns model))
-        data-apps?  (data-apps-changed? model changes)]
+        own         {entity-type #{(:id object)}}
+        dependency? (changed? event (dependency-columns model))
+        analysis?   (changed? event (analysis-columns model))
+        output?     (output-changed? event)
+        part?       (changed? event (part-columns model))
+        data-apps?  (data-apps-changed? event)]
     (when dependency?
       (dependencies.db/mark-dependency-statuses-stale! own))
     (when analysis?
       (dependencies.db/mark-analysis-finding-statuses-stale! own))
     (when output?
-      (mark-output-changed! entity-type row))
+      (mark-output-changed! batched entity-type object))
     (when part?
-      (run! mark-part-owner! (distinct [(part-owner model previous) (part-owner model row)])))
+      (run! #(mark-part-owner! batched %) (distinct [(part-owner model previous-object) (part-owner model object)])))
     (when part?
       (case model
-        :model/Field             (mark-remap-targets! #{(:id row)})
-        :model/FieldUserSettings (mark-remap-targets! #{(:field_id row)})
+        :model/Field             (mark-remap-targets! batched #{(:id object)})
+        :model/FieldUserSettings (mark-remap-targets! batched #{(:field_id object)})
         nil))
     (when data-apps?
-      (mark-data-apps! [(:collection_id previous) (:collection_id row)]))
+      (mark-data-apps! [(:collection_id previous-object) (:collection_id object)]))
     (or dependency? analysis? output? part? data-apps?
         (case model
-          :model/Dimension   (do (run! mark-dimension! (distinct [previous row])) true)
-          :model/FieldValues (mark-field-values! previous row)
+          :model/Dimension   (do (run! #(mark-dimension! batched %) (distinct [previous-object object])) true)
+          :model/FieldValues (mark-field-values! batched previous-object object)
           false))))
 
 (defn- flush-marks!
@@ -289,32 +273,34 @@
 
 (mu/defn- mark-insert!
   "Mark what inserting `row` of `model` changes; a new entity has no status, which has the jobs process it."
-  [model :- :keyword
-   row   :- Row]
+  [batched :- Marks
+   model   :- :keyword
+   row     :- [:map]]
   (when (contains? part-columns model)
-    (mark-part-owner! (part-owner model row)))
+    (mark-part-owner! batched (part-owner model row)))
   (case model
     (:model/Action :model/Card) (mark-data-apps! [(:collection_id row)])
-    :model/Dimension            (mark-dimension! row)
-    :model/FieldValues          (mark-field-values! nil row)
-    :model/FieldUserSettings    (mark-remap-targets! #{(:field_id row)})
+    :model/Dimension            (mark-dimension! batched row)
+    :model/FieldValues          (mark-field-values! batched nil row)
+    :model/FieldUserSettings    (mark-remap-targets! batched #{(:field_id row)})
     nil))
 
 (mu/defn- mark-delete!
   "Mark what deleting `row` of `model` changes, the entity it is a part of and what reads a deleted entity."
-  [model :- :keyword
-   row   :- Row]
+  [batched :- Marks
+   model   :- :keyword
+   row     :- [:map]]
   (when (contains? part-columns model)
-    (mark-part-owner! (part-owner model row)))
+    (mark-part-owner! batched (part-owner model row)))
   (case model
     (:model/Action :model/Card) (mark-data-apps! [(:collection_id row)])
-    :model/Dimension            (mark-dimension! row)
-    :model/FieldValues          (mark-field-values! row nil)
-    :model/Field                (mark-remap-targets! #{(:id row)})
-    :model/FieldUserSettings    (mark-remap-targets! #{(:field_id row)})
+    :model/Dimension            (mark-dimension! batched row)
+    :model/FieldValues          (mark-field-values! batched row nil)
+    :model/Field                (mark-remap-targets! batched #{(:id row)})
+    :model/FieldUserSettings    (mark-remap-targets! batched #{(:field_id row)})
     nil)
   (when-let [entity-type (deps.dependency-types/model->dependency-type model)]
-    (mark-output-changed! entity-type row)))
+    (mark-output-changed! batched entity-type row)))
 
 (def ^:private tracked-models
   "The models whose writes the dependency jobs read."
@@ -331,19 +317,18 @@
 
 (defn- mark-event!
   "Mark what the `event` makes stale, returning whether it marked anything the jobs read."
-  [{:keys [model operation object previous-object changes]}]
+  [batched {:keys [model operation object previous-object] :as event}]
   (case operation
-    :create (do (mark-insert! model object) true)
-    :update (mark-update! model object previous-object changes)
-    :delete (do (mark-delete! model object) true)))
+    :create (do (mark-insert! batched model object) true)
+    :update (mark-update! batched event)
+    :delete (do (mark-delete! batched model previous-object) true)))
 
 (defn- mark-batch!
   "Mark what the `events` of a batch make stale, once per entity, and trigger the jobs once the transaction commits."
   [_owner events _all-events]
   (when (premium-features/has-feature? :dependencies)
     (let [batched (atom {})
-          marked? (binding [*batched-marks* batched]
-                    (some true? (doall (map mark-event! events))))]
+          marked? (some true? (doall (map #(mark-event! batched %) events)))]
       (flush-marks! @batched)
       (when marked?
         (trigger-jobs!)))))

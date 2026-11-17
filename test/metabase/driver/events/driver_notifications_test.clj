@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.driver :as driver]
+   [metabase.driver.events.driver-notifications]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

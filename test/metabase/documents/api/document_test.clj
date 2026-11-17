@@ -1810,7 +1810,7 @@
                                     {:archived true})
               ;; Should have published document-archive event
               (is (some #(and (= :event/document-update (:topic %))
-                              (true? (:archived (:changes (:event %)))))
+                              (true? (:archived (:object (:event %)))))
                         @events))))))
       (testing "unarchiving document publishes update event"
         (mt/with-model-cleanup [:model/Document]
@@ -1822,7 +1822,7 @@
                                     {:archived false})
               ;; Should have published document-update event (not archive event)
               (is (some #(and (= :event/document-update (:topic %))
-                              (false? (:archived (:changes (:event %)))))
+                              (false? (:archived (:object (:event %)))))
                         @events)))))))))
 
 (deftest document-archive-transaction-rollback-test
@@ -2023,7 +2023,7 @@
           ;; Should have published document-delete event
           (is (some #(= :event/document-delete (:topic %)) @events))
           (let [delete-event (first (filter #(= :event/document-delete (:topic %)) @events))]
-            (is (= "Event Test Document" (get-in delete-event [:event :object :name])))
+            (is (= "Event Test Document" (get-in delete-event [:event :previous-object :name])))
             (is (= (mt/user->id :crowberto) (get-in delete-event [:event :user-id])))))))))
 
 (deftest document-position-reconciliation-on-create-test
@@ -2738,7 +2738,8 @@
         (let [published (atom [])
               original  (mt/original-fn #'events/publish-event!)]
           (with-redefs [events/publish-event! (fn [topic event]
-                                                (swap! published conj [topic (some-> event :object :id)])
+                                                (when (= :event/document-update topic)
+                                                  (swap! published conj [topic (some-> event :object :id)]))
                                                 (original topic event))]
             (mt/user-http-request :crowberto :post 200 (format "document/%d/public-link" (:id document)))
             (is (= [[:event/document-update (:id document)]] @published))

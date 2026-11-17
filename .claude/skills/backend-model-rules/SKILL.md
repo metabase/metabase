@@ -60,8 +60,7 @@ that needs the row as stored.
 - A hook may read another row through a `<module>.db` function. It sees stored rows, not those of its own statement,
   so a writer whose rows depend on each other writes them in separate statements, dependency first. A check that
   needs the row's id (cycle detection) runs in `before-update` only.
-- Publish no event and record nothing in a model's own hook: a model that derives `:hook/events` publishes its own
-  lifecycle events, and consumers react to those (see Events).
+- Publish no event and record nothing in a model's own hook: consumers react to its lifecycle events (see Events).
 - **Derived column.** Never trusted from the caller: compute and overwrite on insert; recompute when its source
   changes; a change to it alone is a 400; leave it out of the request schema. A column derived only in some states
   (a model's `display` is `:table`) is overwritten in those states and keeps the caller's value in the others.
@@ -120,19 +119,22 @@ endpoint's own helper.
   events of its writes delivered once, merged per row, before the commit (nothing on a throw; nested batches join).
   A message for the records the writes cause: `(events/with-event-context {:revision-message m} ...)`.
 - A moment that is no row write (login, read, sync begin, transform run, user invited) is published by hand; a rule
-  that must see rows before the write (a delete's cascade) stays in a hook of the model.
+  that must see rows before the write (a delete's cascade) registers a capture function on the bus instead.
 
 ## Events
 
-- The payload is `{:object <after> :previous-object <before> :changes <t2/changes> :user-id <current user or nil>
-  :context {...}}` (`::events.schema/lifecycle`).
+- The payload is `{:object <after> :previous-object <before> :user-id <current user or nil> :context {...}}`
+  (`::events.schema/lifecycle`): a create has `:object` only, a delete `:previous-object` only. Compare columns with
+  `u.events/changed?`, `changed-any?` and `changed-keys` (`metabase.util.events`): a merged batch has no "changes".
+- `events/register-capture!` runs a function at the write, in its transaction and before a DELETE runs, so it can read
+  rows that `ON DELETE CASCADE` removes; its value reaches the consumer's batch handler under `:captures`. The change
+  log and the search index are consumers: they list their models by tag and derive `:hook/events` on them.
 - A consumer lives in `<module>/events.clj` or `<module>/events/<topic>.clj`, required from `init.clj`, as a
   `methodical/defmethod events/publish-event!` on a topic it derives; `events/register-owned-consumer!` gives it one
   call per owner per batch.
 - Upkeep (subscription sync, persisted models, driver pools, personal collections, session revoke, dependency marks)
   runs for every writer. A record of a user action (revision, audit row) needs a non-nil `:user-id`.
 - Work that needs committed rows goes in `mdb/do-after-commit` inside the handler.
-
 - The request schema is closed and lists only what a caller may set: no derived columns, no `archived_directly`.
 - App-DB queries live in `<module>.db`, caller values bound: `(t2/select-one :model/X :id [:auto/param id])`.
 
@@ -149,11 +151,9 @@ endpoint's own helper.
   `(mi/define-update-in-transaction :model/X)` and a `(defmethod mi/after-archived-change :model/X [model rows changes])`
   that writes them through their models, one statement per kind. The followers then find their parent archived and
   derive their cause from it.
-- Collection archives its subtree in a fixed number of statements; a collection that inherits an archive does not
-  cascade again. Dashboard carries its dashboard questions, Document its cards, Exploration its summary documents,
-  Timeline its events. Card hooks delete a Card's alerts only when it is archived directly.
-- A live row cannot be inserted or moved into an archived parent (`collection/check-collection-not-archived`),
-  checked only when the parent changes.
+- Collection archives its subtree in a fixed number of statements and does not cascade again when it inherits an
+  archive. Dashboard carries its dashboard questions, Document its cards, Timeline its events.
+- A live row cannot be inserted or moved into an archived parent (`collection/check-collection-not-archived`).
 - A user-facing writer asks `api/update-check` on the parent with `{:archived x}`: the parent's `mi/can-update?` also
   covers every row the archive or restore writes, each kind loaded once by the same `<module>.db` selection the cascade
   uses and hydrated once (`mi/can-update-each?`). A per-user rule such as a sandbox restriction belongs to a model's
@@ -161,17 +161,15 @@ endpoint's own helper.
 
 ## Lay out a model file
 
-Banners `;;; ---- Hooks ----` padded with dashes to 120 columns, in this order: `Model setup` (`t2/table-name`,
-`t2/deftransforms`, `derive`), `Hooks`, `Permissions`, `Hydration`, `Writes`, `Revisions`, `Serialization`,
-`Remote sync`, `Search`.
+Banners `;;; ---- Hooks ----` padded with dashes to 120 columns, in this order: `Model setup`, `Hooks`,
+`Permissions`, `Hydration`, `Writes`, `Revisions`, `Serialization`, `Remote sync`, `Search`.
 
 ## Tests
 
 - One `with-temp` default per model in `with-temp-defaults-fns` (`test/metabase/test/util.clj`) that passes its hooks;
   a fixture overrides a column only when the test depends on it. Build queries with `metabase.lib`.
 - Test a hook through `t2/insert!` / `t2/update!`; a permission rule through `api/create-check` / `api/update-check`
-  as each kind of user, and once through the endpoint.
+  as each kind of user.
 - Assert a list endpoint stays batched with `t2/with-call-count` at two sizes. Test an event consumer by writing the
   row, not by publishing the event. Run the enumeration tests (entity ids, SerDes specs, stats) for a new model.
-
 Before handing off: `./bin/mage kondo <file>`, `./bin/mage fix-modules-config`, and the tests of each writer you touched.

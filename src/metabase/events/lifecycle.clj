@@ -24,21 +24,29 @@
   (events.batch/collect! (merge {:model     model
                                  :operation operation
                                  :id        (first (vals (t2.model/primary-key-values-map row)))
-                                 :object    (t2.realize/realize row)
                                  :user-id   (mi/current-user-id)}
                                 extra)))
 
 (t2/define-after-insert :hook/events
   [instance]
-  (collect! (model-of &model) :create instance nil)
+  (collect! (model-of &model) :create instance {:object (t2.realize/realize instance)})
   instance)
+
+(defn- settled
+  "The row `object` as the update will leave it, with the `:updated_at` that a timestamp hook set as an SQL expression
+  to be evaluated by the database taken from the `previous-object`."
+  [object previous-object]
+  (cond-> object
+    (let [updated-at (:updated_at object)]
+      (or (keyword? updated-at) (vector? updated-at))) (assoc :updated_at (:updated_at previous-object))))
 
 (t2/define-before-update :hook/events
   [instance]
-  (let [changes (t2/changes instance)]
-    (when (seq changes)
-      (collect! (model-of &model) :update instance {:previous-object (t2/instance (model-of &model) (t2.realize/realize (t2/original instance)))
-                                                    :changes         changes})))
+  (when (seq (t2/changes instance))
+    (let [model    (model-of &model)
+          previous (t2/instance model (t2.realize/realize (t2/original instance)))]
+      (collect! model :update instance {:object          (settled (t2.realize/realize instance) previous)
+                                        :previous-object previous})))
   instance)
 
 (t2/define-before-delete :hook/events

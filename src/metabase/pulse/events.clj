@@ -8,21 +8,21 @@
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-card :as pulse-card]
+   [metabase.util.events :as u.events]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (defn- owner
   "The id of the Dashboard whose subscriptions the `event` calls to sync, or nil."
-  [{:keys [model operation object changes]}]
+  [{:keys [model operation object previous-object] :as event}]
   (case model
     :model/Dashboard     (when (and (= :update operation)
-                                    (or (contains? changes :name) (contains? changes :collection_id)))
+                                    (u.events/changed-any? event #{:name :collection_id}))
                            (:id object))
     :model/DashboardCard (when (or (#{:create :delete} operation)
-                                   (contains? changes :card_id)
-                                   (contains? changes :dashboard_id))
-                           (:dashboard_id object))
+                                   (u.events/changed-any? event #{:card_id :dashboard_id}))
+                           (:dashboard_id (or object previous-object)))
     nil))
 
 (defn- sync-subscriptions!

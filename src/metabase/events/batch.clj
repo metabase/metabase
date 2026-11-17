@@ -35,14 +35,14 @@
   (keyword "event" (str (get topic-stems model (u/->kebab-case-en (name model))) "-" (name operation))))
 
 (def ^:private CollectedEvent
-  "A write of a row: its model, its kind, the row, the row before for an update or delete, and the changes."
+  "A write of a row: its model, its kind, the row after it for a create or an update, and the row before it for an
+  update or a delete."
   [:map
    [:model     :keyword]
    [:operation Operation]
    [:id        [:maybe [:or :int :string]]]
-   [:object    [:fn map?]]
-   [:previous-object {:optional true} [:maybe [:fn map?]]]
-   [:changes   {:optional true} [:maybe [:fn map?]]]
+   [:object    {:optional true} [:maybe [:map]]]
+   [:previous-object {:optional true} [:maybe [:map]]]
    [:user-id   [:maybe :int]]
    [:context   {:optional true} [:maybe [:fn map?]]]
    [:captures  {:optional true} [:maybe [:map]]]])
@@ -105,28 +105,27 @@
   "The one event that the `events` of one row amount to, or nil when the row came and went. The insert of a row may
   collect after the writes its own hooks make, so a creation is told by any of the events, not by the first."
   [events]
-  (let [create  (first (filter #(= :create (:operation %)) events))
-        updates (remove #(#{:create :delete} (:operation %)) events)
-        fst     (first events)
-        lst     (peek events)
-        shared  {:user-id  (some :user-id (rseq events))
-                 :context  (apply merge (map :context events))
-                 :captures (apply merge (map :captures events))}
-        changes (apply merge (map :changes updates))]
+  (let [create (first (filter #(= :create (:operation %)) events))
+        fst    (first events)
+        lst    (peek events)
+        shared {:user-id  (some :user-id (rseq events))
+                :context  (apply merge (map :context events))
+                :captures (apply merge (map :captures events))}
+        object (:object (peek (filterv :object events)))]
     (cond
       (and create (some #(= :delete (:operation %)) events))
       nil
 
       create
-      (merge create shared {:object (into (:object create) changes)})
+      (merge create shared {:object object})
 
       (= :delete (:operation lst))
-      (merge (dissoc lst :changes) shared {:previous-object (:previous-object fst)})
+      (merge (dissoc lst :object) shared {:previous-object (:previous-object fst)})
 
       :else
-      (merge (dissoc lst :previous-object) shared {:operation       :update
-                                                   :previous-object (:previous-object fst)
-                                                   :changes         changes}))))
+      (merge lst shared {:operation       :update
+                         :object          object
+                         :previous-object (:previous-object fst)}))))
 
 (defn- compact
   "One event per row, in the order of the first write of the row."
@@ -136,10 +135,10 @@
     (into [] (keep #(merge-events (vec (get by-row %)))) order)))
 
 (defn- payload
-  [{:keys [object previous-object changes user-id context]}]
-  (cond-> {:object object :user-id user-id}
+  [{:keys [object previous-object user-id context]}]
+  (cond-> {:user-id user-id}
+    object          (assoc :object object)
     previous-object (assoc :previous-object previous-object)
-    changes         (assoc :changes changes)
     (seq context)   (assoc :context context)))
 
 (defn- deliver!

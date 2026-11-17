@@ -7,6 +7,7 @@
    [metabase.events.core :as events]
    [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision :as revision]
+   [metabase.util.events :as u.events]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -28,17 +29,17 @@
 
 (defn- owner
   "The `[model id]` of the entity whose Revision the `event` calls for, or nil when it calls for none."
-  [{:keys [model operation object changes context]}]
+  [{:keys [model operation object previous-object context] :as event}]
   (cond
     (and (contains? revisioned-models model) (#{:create :update} operation))
     (when (and (or (not (:reverting? context)) (creator-recorded model))
                (not (and (= :update operation)
-                         (every? (get ignored-columns model #{:updated_at}) (keys changes)))))
+                         (every? (get ignored-columns model #{:updated_at}) (u.events/changed-keys event)))))
       [model (:id object)])
 
     (#{:model/DashboardCard :model/DashboardTab} model)
     (when-not (:reverting? context)
-      [:model/Dashboard (:dashboard_id object)])))
+      [:model/Dashboard (:dashboard_id (or object previous-object))])))
 
 (defn- push!
   "Write the Revision of the entity `[model id]` as it is now, for the `events` of its writes."

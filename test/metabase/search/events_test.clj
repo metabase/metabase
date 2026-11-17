@@ -71,7 +71,7 @@
         (is (= 1 (count (capture-enqueues! #(t2/delete! :model/Card :id id)))))))))
 
 (def ^:private card-delete
-  {:operation :delete, :model :model/Card, :object {:id 1}})
+  {:operation :delete, :model :model/Card, :previous-object {:id 1}})
 
 (deftest capture-disabled-without-engine-test
   (testing "delete capture enumerates nothing when no search engine is active"

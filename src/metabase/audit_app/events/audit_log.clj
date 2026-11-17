@@ -4,6 +4,7 @@
    [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.events.core :as events]
+   [metabase.util.events :as u.events]
    [methodical.core :as methodical]))
 
 (events/derive! ::event :metabase/event)
@@ -17,18 +18,18 @@
 (defn- record-lifecycle!
   "Record the lifecycle `event` of a write by a user under `stored-topic`, with the changes of an update when
   `previous?`, and nothing for a write without a user or an update that changes nothing the log records."
-  [stored-topic {:keys [user-id object previous-object changes context] :as event} previous?]
+  [stored-topic {:keys [user-id object previous-object context] :as event} previous?]
   (when (and user-id
-             (not (and previous? changes previous-object (unchanged-details? stored-topic event))))
+             (not (and previous? object previous-object (unchanged-details? stored-topic event))))
     (audit-log/record-event! stored-topic
-                             (cond-> {:object object :user-id user-id}
-                               (and previous? changes previous-object) (assoc :previous-object previous-object)
+                             (cond-> {:object (or object previous-object) :user-id user-id}
+                               (and previous? object previous-object) (assoc :previous-object previous-object)
                                (:revision-message context)             (assoc :details {:revision-message (:revision-message context)})
                                (:details context)                      (update :details merge (:details context))))))
 
 (defn- noop-card-update?
-  [{:keys [changes]}]
-  (every? #{:updated_at :collection_position} (keys changes)))
+  [event]
+  (every? #{:updated_at :collection_position} (u.events/changed-keys event)))
 
 (events/derive! ::card-event ::event)
 (events/derive! :event/card-create ::card-event)
@@ -50,9 +51,9 @@
 
 (defn- dashcards-owner
   "The `[dashboard-id operation]` of the DashboardCard `event` of an addition or a removal, nil for the others."
-  [{:keys [model operation object]}]
+  [{:keys [model operation object previous-object]}]
   (when (and (= :model/DashboardCard model) (#{:create :delete} operation))
-    [(:dashboard_id object) operation]))
+    [(:dashboard_id (or object previous-object)) operation]))
 
 (defn- record-dashcards!
   "Record that the cards of `events`, the DashboardCards added to or removed from one Dashboard, were."
@@ -63,7 +64,7 @@
                                      all-events))
                           (some :user-id events))]
     (let [dashboard (audit-app.db/dashboard dashboard-id)
-          dashcards (map :object events)
+          dashcards (map #(or (:object %) (:previous-object %)) events)
           cards     (into {}
                           (map (juxt :id #(select-keys % [:name :description])))
                           (audit-app.db/cards (keep :card_id dashcards)))
@@ -238,8 +239,8 @@
   #{:first_name :last_name :email :sso_source :tenant_id})
 
 (methodical/defmethod events/publish-event! ::user-update-event
-  [topic {:keys [changes] :as event}]
-  (when (some audited-user-columns (keys changes))
+  [topic event]
+  (when (u.events/changed-any? event audited-user-columns)
     (record-lifecycle! topic event true)))
 
 (events/derive! ::user-joined-event ::event)
@@ -279,10 +280,10 @@
 (events/derive! :event/database-update ::database-update-event)
 
 (methodical/defmethod events/publish-event! ::database-update-event
-  [topic {:keys [changes] :as event}]
-  (if changes
-    (record-lifecycle! topic event true)
-    (audit-log/record-event! topic event)))
+  [topic event]
+  (if (:details event)
+    (audit-log/record-event! topic event)
+    (record-lifecycle! topic event true)))
 
 (events/derive! ::permission-failure-event ::event)
 (events/derive! :event/write-permission-failure ::permission-failure-event)
@@ -366,8 +367,8 @@
 (events/derive! :event/document-delete ::document-event)
 
 (methodical/defmethod events/publish-event! ::document-event
-  [topic {:keys [changes] :as event}]
-  (record-lifecycle! (if (and (= :event/document-update topic) (true? (:archived changes)))
+  [topic {:keys [object] :as event}]
+  (record-lifecycle! (if (and (= :event/document-update topic) (true? (:archived object)) (u.events/changed? event :archived))
                        :event/document-delete
                        topic)
                      event

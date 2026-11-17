@@ -20,13 +20,13 @@
 (defn- capture-dependents
   "The documents that the delete of a row leaves unpurgeable. A search error must not fail the delete: it skips the
   enumeration and leaves those documents to the scheduled reindex."
-  [{:keys [operation model object]}]
+  [{:keys [operation model previous-object]}]
   (when (and (= :delete operation)
              (feeds-index? model operation)
              (not search.ingestion/*disable-updates*)
              (search/supports-index?))
     (try
-      (search/cascading-documents [(t2/instance model object)])
+      (search/cascading-documents [(t2/instance model previous-object)])
       (catch InterruptedException e
         (.interrupt (Thread/currentThread))
         (log/errorf e "Interrupted; skipping search cascade enumeration for %s" model)
@@ -37,13 +37,17 @@
 
 (defn- updated-instance
   "The row of an update as an instance that knows its changes."
-  [{:keys [model previous-object changes]}]
-  (reduce-kv assoc (t2/instance model previous-object) changes))
+  [{:keys [model object previous-object]}]
+  (reduce-kv (fn [instance column value]
+               (cond-> instance
+                 (not= value (get previous-object column)) (assoc column value)))
+             (t2/instance model previous-object)
+             object))
 
 (defn- handle-deleted!
   "Hand off the re-derivation of the documents of the `deleted` rows once the transaction commits."
   [deleted]
-  (let [instances  (mapv #(t2/instance (:model %) (:object %)) deleted)
+  (let [instances  (mapv #(t2/instance (:model %) (:previous-object %)) deleted)
         dependents (apply merge-with into (keep #(get-in % [:captures :search]) deleted))
         steps      (cond-> []
                      (search/feeds-documents? instances)

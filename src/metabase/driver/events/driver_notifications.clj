@@ -24,10 +24,11 @@
     (map? (:settings database)) (m/dissoc-in [:settings :database-enable-actions])))
 
 (methodical/defmethod events/publish-event! ::event
-  [topic {database :object, previous-database :previous-object}]
+  [topic {:keys [object previous-object]}]
   (try
     (when (or (= topic :event/database-delete)
-              (not= (connection-state database) (connection-state previous-database)))
-      (driver/notify-database-updated (:engine database) (driver.u/ensure-lib-database database)))
+              (not= (connection-state object) (connection-state previous-object)))
+      (let [database (or object previous-object)]
+        (driver/notify-database-updated (:engine database) (driver.u/ensure-lib-database database))))
     (catch Throwable e
       (log/warnf "Failed to process driver notifications event %s: %s" topic (ex-message e)))))

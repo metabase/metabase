@@ -46,9 +46,10 @@
     (let [[_ update delete] (map :event @received)]
       (is (= "t" (:name (:previous-object update))))
       (is (= "u" (:name (:object update))))
-      (is (= {:name "u"} (select-keys (:changes update) [:name])))
+      (is (not (contains? update :changes)))
       (is (= (mt/user->id :rasta) (:user-id update)))
-      (is (= "u" (:name (:previous-object delete)))))))
+      (is (= "u" (:name (:previous-object delete))))
+      (is (not (contains? delete :object))))))
 
 (deftest no-user-test
   (t2/insert! :model/EventsTestTimeline {:name "t" :icon "cake" :creator_id (mt/user->id :rasta)})

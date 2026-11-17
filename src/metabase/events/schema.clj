@@ -204,9 +204,8 @@
 
 (mr/def ::lifecycle
   [:map {:closed true}
-   [:object [:fn map?]]
-   [:previous-object {:optional true} [:fn map?]]
-   [:changes {:optional true} [:fn map?]]
+   [:object {:optional true} [:map]]
+   [:previous-object {:optional true} [:map]]
    [:user-id [:maybe pos-int?]]
    [:context {:optional true}
     [:map {:closed true}
