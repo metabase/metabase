@@ -800,6 +800,15 @@
         (is (= message
                (test-util/tool-boundary-error "search" #'metabot.tools/search-tool {field value})))))))
 
+(deftest ^:parallel repeated-bad-search-args-test
+  (testing "one mistake repeated across a long list does not hide a later argument's error"
+    (is (= (str "Invalid tool arguments: `entity_types[0]`, `[1]`, `[2]` and 197 more should be either "
+                "\"dashboard\", \"document\", \"measure\", \"metric\", \"model\", \"question\", \"segment\" "
+                "or \"table\"; received a number. `keyword_queries[1]` should be a string; received a number.")
+           (test-util/tool-boundary-error "search" #'metabot.tools/search-tool
+                                          {:entity_types    (vec (repeat 200 5))
+                                           :keyword_queries ["orders" 5]})))))
+
 (deftest ^:parallel scalar-search-args-every-variant-test
   (testing "every search tool variant rejects a scalar the same way"
     (doseq [[tool-var extra-args] [[#'metabot.tools/search-tool {}]

@@ -50,11 +50,7 @@
   (api/check-403 (not (remote-sync/read-only?)))
   (t2/hydrate (api/check-404 (glossary.core/update-entry! api/*current-user-id* id body)) :creator))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a glossary entry."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-data-studio-access)

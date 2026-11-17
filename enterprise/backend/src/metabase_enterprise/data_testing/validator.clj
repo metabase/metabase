@@ -1,17 +1,17 @@
 (ns metabase-enterprise.data-testing.validator
-  "May this transform test run? [[validate]] answers, once, for the whole test, and throws a typed refusal when the
+  "May this test run? [[validate]] answers, once, for the whole test, and throws a typed refusal when the
   answer is no. Pure: it parses and rewrites SQL, and opens no connection.
 
   Two guards, run against the test as a whole:
 
-  - Guard A (pre-rewrite): every table the transform reads must have a declared input, and every declared input must
-    be read, and no two inputs may be ones a reference cannot tell apart. A read with no input would leave that table
-    pointing at the REAL table (via `replace-names` `:allow-unused?`) — a false-green that reads production data into
-    a passing test.
+  - Guard A (pre-rewrite): every table the query under test reads must have a declared input, and every declared
+    input must be read, and no two inputs may be ones a reference cannot tell apart. A read with no input would leave
+    that table pointing at the REAL table (via `replace-names` `:allow-unused?`) — a false-green that reads production
+    data into a passing test.
   - Guard B (post-rewrite): every table the rewritten queries read must be one of the run's temp tables. A leftover
     real table means `replace-names` did not rewrite something it should have (e.g. a reference shape the parser
-    could not match), and running it would hit the real table or error at execution. This covers the transform and
-    every expectation that carries the author's own SQL.
+    could not match), and running it would hit the real table or error at execution. This covers the query under test
+    and every expectation that carries the author's own SQL.
 
   [[table-label]] is here too, and is not validation: it is the one way this module renders a table in a message."
   (:require
@@ -61,7 +61,7 @@
     (into [] (remove (fn [ref] (some #(table-match? ref % default-schema) declared))) referenced-tables)))
 
 (mu/defn- unused-inputs :- [:sequential ::data-testing.schema/table]
-  "The declared inputs the transform does not read — a fake for a table the query never touches
+  "The declared inputs the query under test does not read — a fake for a table the query never touches
   (usually a stale or mistyped input). Empty means the suite declares nothing extraneous. Together
   with `missing-inputs`, this makes the declared set exactly the referenced set: every read faked,
   no fake unused."
@@ -126,7 +126,7 @@
 
 (mu/defn- check-rewrite
   "Throw unless every table `rewritten` reads is one of `temp-tables`. `source` names the query for the author: nil is
-  the transform under test, a string is the expectation that carries the SQL."
+  the query under test, a string is the expectation that carries the SQL."
   [driver      :- :keyword
    rewritten   :- :string
    temp-tables :- [:set :string]
@@ -146,16 +146,18 @@
               source (assoc :expectation source))))))
 
 (mu/defn- check-expectation-sql
-  "Throw unless the expectation named `expectation-name` reads only `temp-tables` once rewritten. Its SQL is the
-  author's, so SQL the parser cannot read is a refusal naming the expectation rather than the parser's own escape."
+  "Throw unless the expectation named `expectation-name` reads only `temp-tables` once rewritten with `replacements`
+  and `output-token`. Its SQL is the author's, so SQL the parser cannot read is a refusal naming the expectation
+  rather than the parser's own escape."
   [driver           :- :keyword
    expectation-name :- :string
    sql              :- :string
    replacements     :- ::data-testing.compile/table-replacements
+   output-token     :- [:maybe ::data-testing.compile/output-token]
    temp-tables      :- [:set :string]]
   (try
     (check-rewrite driver
-                   (data-testing.compile/replace-tables driver sql replacements)
+                   (data-testing.compile/replace-tables driver sql replacements output-token)
                    temp-tables
                    expectation-name)
     (catch Exception e
@@ -167,23 +169,47 @@
                 {:expectation expectation-name}))
         (throw e)))))
 
+(def ^:private placeholder
+  "A `{{...}}` placeholder, with the name inside its braces as the group, whitespace around it excluded."
+  #"\{\{\s*([^{}]*?)\s*\}\}")
+
+(mu/defn- check-placeholders :- :nil
+  "Throw unless every placeholder in the SQL of expectation `expectation-name` is `output-token`. Whitespace inside
+  the braces does not matter and case does, as in [[data-testing.compile/replace-tables]]."
+  [expectation-name :- :string
+   sql              :- :string
+   output-token     :- ::data-testing.compile/output-token]
+  (let [token-name (second (re-find placeholder output-token))]
+    (when-let [unknown (seq (into []
+                                  (comp (remove (fn [[_ placeholder-name]] (= token-name placeholder-name)))
+                                        (map first)
+                                        (distinct))
+                                  (re-seq placeholder sql)))]
+      (throw (data-testing.errors/ex
+              ::data-testing.errors/unknown-placeholder
+              (tru "Expectation \"{0}\" uses placeholders a test does not know: {1}. Write {2} for the output of the query under test."
+                   expectation-name (str/join ", " unknown) output-token)
+              {:placeholders  (vec unknown)
+               :response/keys #{:placeholders}})))))
+
 (mu/defn validate :- :nil
   "Refuse the test unless it is complete against the query it tests, every query it will run reads only the run's
   temp tables, and it has at least one expectation. Returns nil when there is nothing to refuse, and otherwise throws a
   typed refusal from [[metabase-enterprise.data-testing.errors]].
 
-  `referenced-tables` are the tables the query under test reads, parsed before any replacement; `rewritten-transform`
+  `referenced-tables` are the tables the query under test reads, parsed before any replacement; `rewritten-query`
   is that query after it; `replacements` is the map both it and the expectations are rewritten with, whose values name
-  the temp tables everything may read; `default-schema` is the schema an unqualified reference resolves to in the
-  database under test."
+  the temp tables everything may read; `output-token`, when given, is the placeholder for the output that expectation
+  SQL may write; `default-schema` is the schema an unqualified reference resolves to in the database under test."
   [driver :- :keyword
-   {:keys [inputs expectations referenced-tables rewritten-transform replacements default-schema]}
+   {:keys [inputs expectations referenced-tables rewritten-query replacements output-token default-schema]}
    :- [:map {:closed true}
        [:inputs              ::data-testing.schema/inputs]
        [:expectations        ::data-testing.schema/expectations]
        [:referenced-tables   [:set ::data-testing.schema/table]]
-       [:rewritten-transform :string]
+       [:rewritten-query :string]
        [:replacements        ::data-testing.compile/table-replacements]
+       [:output-token        {:optional true} [:maybe ::data-testing.compile/output-token]]
        [:default-schema      [:maybe :string]]]]
   (when-let [missing (seq (missing-inputs inputs referenced-tables default-schema))]
     (throw (data-testing.errors/ex
@@ -207,10 +233,12 @@
             {:tables (vec colliding)
              :response/keys #{:tables}})))
   (let [temp-tables (into #{} (map :table) (vals replacements))]
-    (check-rewrite driver rewritten-transform temp-tables nil)
+    (check-rewrite driver rewritten-query temp-tables nil)
     (doseq [{:keys [name sql]} expectations
             :when              sql]
-      (check-expectation-sql driver name sql replacements temp-tables)))
+      (when output-token
+        (check-placeholders name sql output-token))
+      (check-expectation-sql driver name sql replacements output-token temp-tables)))
   (when (empty? expectations)
     (throw (data-testing.errors/ex
             ::data-testing.errors/no-expectations

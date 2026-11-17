@@ -15,6 +15,7 @@ import {
   DEPENDENCY_TYPES,
   type DashboardDependencyNode,
   type DataAppDependencyNode,
+  type DataTestRun,
   type DependencyGraph,
   type DependencyNode,
   type DocumentDependencyNode,
@@ -29,7 +30,6 @@ import {
   type TableDependencyNode,
   type TransformDependencyNode,
   type TransformTest,
-  type TransformTestRun,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -58,7 +58,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "security-advisory",
   "session",
   "transform-test",
-  "transform-test-run",
+  "data-test-run",
 ] as const;
 
 export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -316,17 +316,14 @@ export function provideTransformTestListTags(
   ];
 }
 
-export function provideTransformTestRunTags(
-  run: TransformTestRun,
+export function provideDataTestRunTags(
+  run: DataTestRun,
 ): TagDescription<EnterpriseTagType>[] {
-  return [idTag("transform-test-run", run.id)];
+  return [idTag("data-test-run", run.id)];
 }
 
-export function provideTransformTestRunListTags(
-  runs: TransformTestRun[],
+export function provideDataTestRunListTags(
+  runs: DataTestRun[],
 ): TagDescription<EnterpriseTagType>[] {
-  return [
-    listTag("transform-test-run"),
-    ...runs.flatMap(provideTransformTestRunTags),
-  ];
+  return [listTag("data-test-run"), ...runs.flatMap(provideDataTestRunTags)];
 }

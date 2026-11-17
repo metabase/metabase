@@ -693,10 +693,9 @@
 (defmethod serialization/spec :model/FieldValues [_]
   {:schema    ::warehouse-schema.schema/external-field-values
    :identity  [:field_id :type]
-   :copy      [:values :human_readable_values :has_more_values :hash_key]
+   :copy      [:type :values :human_readable_values :has_more_values :hash_key]
    :skip      [:last_used_at]
-   :transform {:type     serialization/keyword-transform
-               :field_id serialization/field-transform}
+   :transform {:field_id serialization/field-transform}
    :defaults  {:has_more_values false}})
 
 (defmethod serialization/storage-paths :model/FieldValues [_ entities _]

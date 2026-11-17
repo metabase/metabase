@@ -1,9 +1,14 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { t } from "ttag";
 import _ from "underscore";
 
 import { getNullDisplayValue } from "metabase/utils/constants";
 import {
+  DEFAULT_DURATION_PRECISION,
+  DEFAULT_DURATION_STYLE,
+  DEFAULT_DURATION_UNIT,
   currency,
+  formatDuration,
   formatNumber,
   getCurrency,
   getCurrencyNarrowSymbol,
@@ -39,6 +44,7 @@ import type {
   ColumnSettings,
   DatasetColumn,
   DatetimeUnit,
+  DurationUnit,
   Series,
   TimeEnabled,
   VisualizationSettings,
@@ -265,30 +271,110 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
   },
 };
 
+const DURATION_SAMPLE_SECONDS = 3723.25;
+
+function formatDurationSample({
+  duration_style,
+  duration_precision,
+  number_separators,
+}: ColumnSettings) {
+  return formatDuration(DURATION_SAMPLE_SECONDS, {
+    duration_style,
+    duration_precision,
+    number_separators,
+  });
+}
+
+function getDurationUnitOptions(): { name: string; value: DurationUnit }[] {
+  return [
+    { name: t`Nanoseconds`, value: "nanosecond" },
+    { name: t`Microseconds`, value: "microsecond" },
+    { name: t`Milliseconds`, value: "millisecond" },
+    { name: t`Seconds`, value: "second" },
+    { name: t`Minutes`, value: "minute" },
+    { name: t`Hours`, value: "hour" },
+    { name: t`Days`, value: "day" },
+    { name: t`Weeks`, value: "week" },
+  ];
+}
+
 export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
   number_style: {
     get title() {
       return t`Format`;
     },
     widget: "segmentedControl",
-    // Each option is the same sample value rendered in that style, so the
+    // Each option is a sample value rendered in that style, so the
     // examples reflect the column's separators and currency.
     getProps: (_column, settings) => ({
-      options: (["decimal", "percent", "currency", "scientific"] as const).map(
-        (numberStyle) => ({
-          name: formatNumber(1.23, {
+      options: (
+        ["decimal", "percent", "currency", "scientific", "duration"] as const
+      ).map((numberStyle) => ({
+        name: formatNumber(
+          numberStyle === "duration" ? DURATION_SAMPLE_SECONDS : 1.23,
+          {
             number_style: numberStyle,
             number_separators: settings.number_separators,
             currency: settings.currency,
             currency_style: "symbol",
             currency_position: settings.currency_position,
-          }),
-          value: numberStyle,
-        }),
-      ),
+          },
+        ),
+        value: numberStyle,
+      })),
     }),
     getDefault: getDefaultNumberStyle,
     readDependencies: ["currency"],
+  },
+  duration_unit: {
+    get title() {
+      return t`Unit of duration`;
+    },
+    widget: "select",
+    getProps: () => ({
+      options: getDurationUnitOptions(),
+    }),
+    getDefault: () => DEFAULT_DURATION_UNIT,
+    getHidden: (_column, settings) => settings.number_style !== "duration",
+    readDependencies: ["number_style"],
+  },
+  duration_style: {
+    get title() {
+      return t`Duration style`;
+    },
+    widget: "radio",
+    getProps: (_column, settings) => ({
+      options: (["digital", "narrow"] as const).map((durationStyle) => ({
+        name: formatDurationSample({
+          ...settings,
+          duration_style: durationStyle,
+        }),
+        value: durationStyle,
+      })),
+    }),
+    getDefault: () => DEFAULT_DURATION_STYLE,
+    getHidden: (_column, settings) => settings.number_style !== "duration",
+    readDependencies: ["number_style"],
+  },
+  duration_precision: {
+    get title() {
+      return t`Duration precision`;
+    },
+    widget: "radio",
+    getProps: (_column, settings) => ({
+      options: (["minute", "second", "millisecond"] as const).map(
+        (durationPrecision) => ({
+          name: formatDurationSample({
+            ...settings,
+            duration_precision: durationPrecision,
+          }),
+          value: durationPrecision,
+        }),
+      ),
+    }),
+    getDefault: () => DEFAULT_DURATION_PRECISION,
+    getHidden: (_column, settings) => settings.number_style !== "duration",
+    readDependencies: ["number_style"],
   },
   currency: {
     get title() {
@@ -399,6 +485,8 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       min: 0,
       max: 20,
     }),
+    getHidden: (_column, settings) => settings.number_style === "duration",
+    readDependencies: ["number_style"],
   },
   scale: {
     get title() {

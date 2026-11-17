@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { parseParameterValue } from "metabase/parameters/utils/parameter-parsing";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type { ValueAndColumnForColumnNameDate } from "metabase/value-formatting";

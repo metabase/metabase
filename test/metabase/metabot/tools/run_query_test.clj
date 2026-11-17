@@ -972,7 +972,7 @@
                                                                         :type         :snippet
                                                                         :snippet-name "body"
                                                                         :snippet-id   snippet-id}}}}
-            read-only?     sql-tools/read-only-select?
+            read-only?     (mt/original-fn #'sql-tools/read-only-select?)
             driver-ran-sql (atom [])]
         (mt/with-dynamic-fn-redefs [sql-tools/read-only-select?
                                     (fn [driver sql]
@@ -980,7 +980,7 @@
                                         (t2/update! :model/NativeQuerySnippet :id snippet-id
                                                     {:content "SELECT 2 AS N FOR UPDATE"})))]
           (binding [qp.pipeline/*execute* (fn [_driver query respond]
-                                            (swap! driver-ran-sql conj (get-in query [:native :query]))
+                                            (swap! driver-ran-sql conj (:native (lib/query-stage query -1)))
                                             (respond {:cols [{:name "N"}]} []))]
             (is (= (not-read-only "It writes, takes a lock, or advances a sequence.")
                    (run-sql-tool! {"q1" query} {:query_id "q1"})))))

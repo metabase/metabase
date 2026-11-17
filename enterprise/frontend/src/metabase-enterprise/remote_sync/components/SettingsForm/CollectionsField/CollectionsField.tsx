@@ -7,21 +7,30 @@ import type { SyncableCollection } from "../../../types";
 
 type CollectionsFieldProps = {
   title: string;
+  description?: string;
   emptyMessage: string;
   collections: SyncableCollection[];
 };
 
-export const CollectionsField = ({
+export function CollectionsField({
   title,
+  description,
   emptyMessage,
   collections,
-}: CollectionsFieldProps) => {
+}: CollectionsFieldProps) {
   const [{ value }, , { setValue }] =
     useField<Record<RegularCollectionId, boolean>>("collections");
 
   return (
     <Stack gap="sm">
-      <Text fw="bold">{title}</Text>
+      <Stack gap="xs">
+        <Text fw="bold">{title}</Text>
+        {description && (
+          <Text c="text-secondary" size="sm">
+            {description}
+          </Text>
+        )}
+      </Stack>
       {collections.length === 0 && (
         <Text c="text-secondary">{emptyMessage}</Text>
       )}
@@ -37,4 +46,4 @@ export const CollectionsField = ({
       ))}
     </Stack>
   );
-};
+}

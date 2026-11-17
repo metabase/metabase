@@ -23,7 +23,6 @@ import {
   createMockCard,
   createMockColumn,
   createMockDataset,
-  createMockSavedQuestionsDatabase,
   createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import {
@@ -56,8 +55,6 @@ type SetupOpts = {
   queryBuilderMode?: QueryBuilderMode;
   isShowingTemplateTagsEditor?: boolean;
 };
-
-const SAVED_QUESTIONS_DB = createMockSavedQuestionsDatabase();
 
 function createNativeJsQuery(
   templateTags: Record<string, TestTemplateTag> = {},
@@ -222,7 +219,7 @@ async function setup({
   }
 
   const entitiesState = createMockEntitiesState({
-    databases: [createSampleDatabase(), SAVED_QUESTIONS_DB],
+    databases: [createSampleDatabase()],
     // Unjustified type cast. FIXME
     questions: cards,
   });

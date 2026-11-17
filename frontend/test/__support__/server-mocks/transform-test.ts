@@ -1,7 +1,6 @@
 import fetchMock from "fetch-mock";
 
 import type {
-  ListTransformTestRunsResponse,
   RunTransformTestResponse,
   TransformTest,
   TransformTestId,
@@ -13,13 +12,6 @@ export function setupListTransformTestsEndpoint(tests: TransformTest[]) {
 
 export function setupGetTransformTestEndpoint(test: TransformTest) {
   fetchMock.get(`path:/api/ee/transform-test/${test.id}`, test);
-}
-
-export function setupListTransformTestRunsEndpoint(
-  testId: TransformTestId,
-  response: ListTransformTestRunsResponse,
-) {
-  fetchMock.get(`path:/api/ee/transform-test/${testId}/run`, response);
 }
 
 export function setupRunTransformTestEndpoint(

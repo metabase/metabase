@@ -26,15 +26,13 @@
 ;;;
 ;;; WorkspaceDatabases are superuser-only: read, write, and create all require admin.
 
-(defmethod mi/can-read? :model/WorkspaceDatabase
-  ([_instance] api/*is-superuser?*)
-  ([_model _pk] api/*is-superuser?*))
+(methodical/defmethod t2/simple-hydrate [:model/WorkspaceDatabase :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean api/*is-superuser?*)))
 
-(defmethod mi/can-write? :model/WorkspaceDatabase
-  ([_instance]
-   api/*is-superuser?*)
-  ([_model _pk]
-   api/*is-superuser?*))
+(methodical/defmethod t2/simple-hydrate [:model/WorkspaceDatabase :can_write]
+  [_model k instance]
+  (assoc instance k (boolean api/*is-superuser?*)))
 
 (defmethod mi/can-create? :model/WorkspaceDatabase
   [_model _instance]
@@ -76,9 +74,10 @@
 (defenterprise reconcile-workspace-database-refs-before-delete!
   "Enterprise impl of the `:model/Database` before-delete hook. Refuses (409) when any
    non-`:unprovisioned` workspace_database row references `db-id` — anything in a
-   `:provisioning`, `:provisioned`, or `:deprovisioning` state points at (or is in
-   flight against) live warehouse schemas/users that must be unprovisioned explicitly
-   first. Deletes any `:unprovisioned` rows so the `workspace_database.database_id`
+   `:provisioning`, `:provisioned`, `:deprovisioning`, or `:teardown_failed` state points
+   at (or is in flight against) live warehouse schemas/users that must be torn down first, by
+   deleting their workspaces. A `:never_started` row has no warehouse objects and refuses too:
+   deleting its workspace removes it. Deletes any `:unprovisioned` rows so the `workspace_database.database_id`
    FK RESTRICT doesn't trip on the subsequent Database delete. Deliberately NOT gated
    on a premium feature: a token expiry shouldn't leave workspace_database rows
    un-cleanable, and an active row must refuse the delete regardless of current
@@ -86,7 +85,7 @@
   :feature :none
   [db-id]
   (when (ws.db/database-has-active-workspace-databases? db-id)
-    (throw (ex-info "Cannot delete a Database with active workspace_database rows; deprovision them first"
+    (throw (ex-info "Cannot delete a Database with active workspace_database rows; delete their workspaces first (DELETE /api/ee/workspace-manager/:id). For rows in teardown_failed, add ?force=true only when the warehouse is gone for good."
                     {:status-code 409
                      :database_id db-id})))
   (ws.db/delete-unprovisioned-workspace-databases-of-database! db-id))

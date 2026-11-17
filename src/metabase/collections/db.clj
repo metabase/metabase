@@ -7,6 +7,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -28,10 +29,12 @@
   "The clause over the Collection table aliased `alias` selecting the collections remote sync syncs: the synced
   top-level ones with their descendants, and those of the `always-synced` namespaces."
   [always-synced :- [:sequential :keyword]
-   alias         :- :keyword]
+   alias         :- :keyword
+   opts          :- ::remote-sync.schema/synced-filter-opts]
   (let [column #(u/qualified-key alias %)]
     [:and
-     [:= (column :archived) false]
+     (when-not (:include-archived? opts)
+       [:= (column :archived) false])
      [:or
       [:exists ^:allow-subquery {:select [[[:inline 1] :one]]
                                  :from   [[(t2/table-name :model/Collection) :synced_root]]
@@ -59,11 +62,6 @@
   [type :- :string]
   (t2/select-one :model/Collection :type type))
 
-(mu/defn root-remote-synced-collection
-  "The top-level remote-synced ::collections.schema/collection, or nil."
-  []
-  (t2/select-one :model/Collection :is_remote_synced true :location "/"))
-
 (mu/defn personal-collection-of-user
   "The personal ::collections.schema/collection of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
@@ -80,15 +78,16 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id :archived false))
 
-(mu/defn remote-synced-collection-exists?
-  "Whether a remote-synced ::collections.schema/collection with `collection-id` exists."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id :is_remote_synced true))
-
 (mu/defn personal-collection?
   "Whether the ::collections.schema/collection with `collection-id` is a personal ::collections.schema/collection."
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id :personal_owner_id [:not= nil]))
+
+(mu/defn collection-sync-columns
+  "The id, type, namespace and `is_remote_synced` of the Collections with `collection-ids`, which tell whether remote
+  sync syncs each."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select [:model/Collection :id :type :namespace :is_remote_synced] :id [:in collection-ids]))
 
 (mu/defn collection-remote-synced?
   "Whether the ::collections.schema/collection with `collection-id` is remote-synced, or nil if `collection-id` is nil (the root
@@ -109,7 +108,7 @@
 (defn collection-location-columns
   "The location, id, and type of the Collection with `collection-id`, or nil."
   [collection-id]
-  (t2/select-one [:model/Collection :location :id :type] :id collection-id))
+  (t2/select-one [:model/Collection :location :id :type :namespace :is_remote_synced] :id collection-id))
 
 (mu/defn root-collection-type-by-id
   "The type of the top-level Collection with `collection-id`, or nil if it is not top-level."
@@ -156,10 +155,7 @@
   `archived?` is given (true or false, not nil), further restricted to that archived status.
 
   `visibility-clause` is the one Honey SQL argument left in this namespace, and is always a
-  `metabase.collections.models.collection/visible-collection-filter-clause`. That builder needs this namespace (it
-  looks up the Trash, the user's personal Collection subtree, and their root-Collection permission), so this
-  namespace cannot call it back without a require cycle — building the clause here means first moving the whole
-  Collection-visibility machinery below this namespace."
+  `perms/visible-collections-filter-clause` built by the caller."
   [children-location-prefix :- :string
    current-user-id          :- [:maybe ::lib.schema.id/user]
    archived?                :- [:maybe :boolean]
@@ -257,9 +253,7 @@
                     {:where [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]}))
 
 (defn collections-matching
-  "The Collections matching the Honey SQL `query` map. The caller builds the whole query because it needs clause
-  builders like `visible-collection-filter-clause`, which live in `metabase.collections.models.collection` and so
-  can't be called from here without a require cycle (that namespace already requires this one)."
+  "The Collections matching the Honey SQL `query` map, which the caller builds."
   [query]
   (t2/select :model/Collection (h2x/assert-map-or-nil! query)))
 
@@ -352,12 +346,6 @@
   (t2/delete! :model/Collection :location location))
 
 ;;; ---------------------------------------------- ::collections.schema/collection contents ----------------------------------------------
-
-(mu/defn instance-by-id
-  "The instance of `model` with `id`, or nil."
-  [model :- :keyword
-   id    :- ms/PositiveInt]
-  (t2/select-one model :id id))
 
 (mu/defn collection-namespaces-of
   "A map of ID to the namespace of the ::collections.schema/collection holding each instance of `model` with `ids`."
@@ -568,19 +556,6 @@
 
 ;;; ------------------------------------------------ Permissions ------------------------------------------------
 
-(mu/defn user-has-root-collection-permission?
-  "Whether the User with `user-id` belongs to a group holding a Permissions row for one of the root collection
-  `objects`."
-  [user-id :- ::lib.schema.id/user
-   objects :- [:sequential :string]]
-  (t2/exists? :model/Permissions {:select [:p.*]
-                                  :from   [[:permissions :p]]
-                                  :join   [[:permissions_group :pg] [:= :pg.id :p.group_id]
-                                           [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
-                                  :where  [:and
-                                           [:= :pgm.user_id user-id]
-                                           [:in :p.object objects]]}))
-
 (mu/defn group-ids-with-permission-object
   "The set of group IDs holding a Permissions row for `object`."
   [object :- :string]
@@ -618,3 +593,9 @@
   "The IDs of the Users among `user-ids` that are not API key users."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pks-set :model/User :id [:in user-ids] :type [:not= :api-key]))
+
+(mu/defn synced-collection-items :- [:sequential ::collections.schema/collection]
+  "The Collections with `ids`, with their ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (-> (t2/select [:model/Collection :id :name :type :location] :id [:in ids])
+      (t2/hydrate :effective_ancestors)))

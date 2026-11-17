@@ -77,4 +77,4 @@ clojure -M:ee:doc api-documentation
 
 ## Style guide
 
-Ancient [style guide](<https://github.com/metabase/metabase/wiki/Writing-style-guide-for-documentation-and-blog-posts-(WIP)>) that needs an update.
+Follow the [Metabase documentation style guide](https://github.com/metabase/metabase/blob/master/.claude/skills/_shared/metabase-style-guide.md).

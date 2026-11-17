@@ -135,55 +135,6 @@ describe("Remote Sync", () => {
       });
     });
 
-    it("pushes to new branch and switches back to main", () => {
-      const NEW_BRANCH = `new-branch-${Date.now()}`;
-      H.copySyncedCollectionFixture();
-      H.commitToRepo();
-      H.configureGitAndPullChanges("read-write");
-
-      cy.visit("/collection/root");
-      H.moveCollectionItemToSyncedCollection("Orders");
-      H.pushToNewBranch(NEW_BRANCH);
-      H.waitForTask({ taskName: "export" });
-      H.getGitSyncControls()
-        .findByRole("textbox", { name: "Branch" })
-        .should("have.value", NEW_BRANCH);
-
-      H.switchBranch("main");
-      H.waitForTask({ taskName: "import" });
-      H.goToSyncedCollection();
-      H.collectionTable().within(() => {
-        cy.findByText(REMOTE_QUESTION_NAME).should("exist");
-        cy.findByText("Orders").should("not.exist");
-      });
-    });
-
-    it("asks what to do with unpushed changes when switching branches", () => {
-      H.copySyncedCollectionFixture();
-      H.commitToRepo();
-      H.checkoutSyncedCollectionBranch("other");
-      H.updateRemoteQuestion((doc) => ({ ...doc, name: "Other branch name" }));
-      cy.exec(`git -C ${H.LOCAL_GIT_PATH} checkout main`);
-      H.configureGitAndPullChanges("read-write");
-
-      cy.visit("/collection/root");
-      H.moveCollectionItemToSyncedCollection("Orders");
-      H.switchBranch("other");
-      H.modal().within(() => {
-        cy.findByText(/You have changes that aren't pushed yet/).should(
-          "exist",
-        );
-        cy.button("Keep my changes").click();
-      });
-      H.waitForTask({ taskName: "import" });
-
-      H.goToSyncedCollection();
-      H.collectionTable().within(() => {
-        cy.findByText("Orders").should("exist");
-        cy.findByText("Other branch name").should("exist");
-      });
-    });
-
     it("discards unpushed changes when pulling", () => {
       H.copySyncedCollectionFixture();
       H.commitToRepo();
@@ -212,7 +163,7 @@ describe("Remote Sync", () => {
       H.configureGitAndPullChanges("read-write");
 
       cy.visit("/collection/root");
-      H.getGitSyncControls().findByRole("button", { name: /Sync/ }).click();
+      H.getGitSyncControls().click();
       H.popover().within(() => {
         cy.findByRole("menuitem", { name: /Pull changes/ }).should(
           "be.disabled",

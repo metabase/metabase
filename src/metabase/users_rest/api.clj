@@ -305,15 +305,22 @@
     (assoc user :sso_source (users-rest.db/user-sso-source id))
     user))
 
+(defn- collection-user-info
+  "The user info of `user` for the Collection permission filters."
+  [user]
+  {:user-id          (:id user)
+   :is-superuser?    (boolean (:is_superuser user))
+   :is-data-analyst? (boolean (:is_data_analyst user))})
+
 (defn- add-has-question-and-dashboard
   "True when the user has permissions for at least one un-archived question and one un-archived dashboard, excluding
   internal/automatically-loaded content."
   [user]
   (-> user
       (assoc :has_question_and_dashboard
-             (and (users-rest.db/has-visible-card? nil)
-                  (users-rest.db/has-visible-dashboard?)))
-      (assoc :has_model (users-rest.db/has-visible-card? "model"))))
+             (and (users-rest.db/has-visible-card? (collection-user-info user) nil)
+                  (users-rest.db/has-visible-dashboard? (collection-user-info user))))
+      (assoc :has_model (users-rest.db/has-visible-card? (collection-user-info user) "model"))))
 
 (defn- add-first-login
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
@@ -329,7 +336,7 @@
   (let [enabled? (appearance/custom-homepage)
         id       (appearance/custom-homepage-dashboard)
         dash     (users-rest.db/dashboard id)
-        valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
+        valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? (t2/hydrate dash :can_read)))]
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
 
@@ -340,7 +347,7 @@
   [user]
   (assoc user :can_write_any_collection
          (or (:is_superuser user)
-             (users-rest.db/writable-collection-exists?))))
+             (= :read-and-write (perms/some-collection-permission-for-user (collection-user-info user))))))
 
 (mr/def ::user-permissions
   "Permission flags for the current user, used by the FE to decide which UI elements to show. The `can_access_*`,
@@ -412,9 +419,7 @@
       add-can-write-any-collection
       (assoc :slack_account_status (sso/slack-account-status api/*current-user-id*))))
 
-(api.macros/defendpoint :delete "/:id/slack" :- [:map {:closed true}
-                                                 [:status [:= 204]]
-                                                 [:body :nil]]
+(api.macros/defendpoint :delete "/:id/slack" :- ::api/generic-204-no-content
   "Remove the current user's Slack Connect link."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
@@ -699,11 +704,7 @@
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- [:map {:closed true} [:success [:= true]]]
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
@@ -721,11 +722,7 @@
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/:id/modal/:modal"
+(api.macros/defendpoint :put "/:id/modal/:modal" :- [:map {:closed true} [:success [:= true]]]
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [{:keys [id modal]} :- [:map {:closed true}
                           [:id ms/PositiveInt]

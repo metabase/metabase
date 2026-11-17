@@ -966,6 +966,21 @@
         ;; :id should be portablized to a Field FK path: [db-name schema table-name field-name]
         (is (=? [string? "PUBLIC" "VENUES" "ID"] (:id col)))))))
 
+(deftest ^:parallel native-model-load-keeps-exported-metadata-test
+  (testing "a native model whose metadata can't be inferred keeps the exported columns with the changed overrides"
+    (let [query    (lib/native-query (mt/metadata-provider) "SELECT 1 AS ONE")
+          exported [{:name         "ONE"
+                     :display_name "New name"
+                     :base_type    :type/Integer
+                     :field_ref    [:field "ONE" {:base-type :type/Integer}]}]
+          [item]   (serialization/before-load :model/Card
+                                              [{:row   {:type            :model
+                                                        :dataset_query   query
+                                                        :result_metadata exported}
+                                                :local {:result_metadata [(assoc (first exported)
+                                                                                 :display_name "Old name")]}}])]
+      (is (= exported (get-in item [:row :result_metadata]))))))
+
 (deftest serdes-load-legacy-query-integer-literals-test
   (testing "a Card loaded from a legacy-MBQL export keeps integer literals in comparisons and runs"
     (let [db-name  (t2/select-one-fn :name :model/Database :id (mt/id))
@@ -990,20 +1005,18 @@
             (is (= [[(* 100 75)]]
                    (mt/rows (qp/process-query query))))))))))
 
-(deftest ^:parallel upgrade-to-v2-db-test
-  (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
+(deftest ^:parallel pie-percent-visibility-normalized-on-select-test
+  (testing "the deprecated pie legend settings are normalized to the percent visibility on select"
     (mt/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
-      (is (= {:version 2
-              :pie.show_legend true
+      (is (= {:pie.show_legend        true
               :pie.percent_visibility "inside"}
              (t2/select-one-fn :visualization_settings :model/Card :id card-id))))))
 
-(deftest upgrade-to-v2-db-test-2
-  (testing ":visualization_settings v. 1 should be upgraded to v. 2 and persisted on update"
+(deftest pie-percent-visibility-normalized-on-update-test
+  (testing "the deprecated pie legend settings are normalized to the percent visibility and persisted on update"
     (mt/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
       (t2/update! :model/Card :id card-id {:name "Favorite Toucan Foods"})
-      (is (= {:version 2
-              :pie.show_legend true
+      (is (= {:pie.show_legend        true
               :pie.percent_visibility "inside"}
              (-> (t2/select-one (t2/table-name :model/Card) {:where [:= :id card-id]})
                  :visualization_settings
@@ -1184,11 +1197,11 @@
                      :model/Card       card       {:collection_id (:id collection)}]
         (mt/with-dynamic-fn-redefs [audit/default-audit-collection (constantly collection)]
           (mt/with-test-user :rasta
-            (is (false? (mi/can-read? card)))
-            (is (false? (mi/can-write? card))))
+            (is (false? (mi/can-read? (t2/hydrate card :can_read))))
+            (is (false? (mi/can-write? (t2/hydrate card :can_write)))))
           (mt/with-test-user :crowberto
-            (is (false? (mi/can-read? card)))
-            (is (false? (mi/can-write? card)))))))))
+            (is (false? (mi/can-read? (t2/hydrate card :can_read))))
+            (is (false? (mi/can-write? (t2/hydrate card :can_write))))))))))
 
 (deftest card-in-a-data-apps-collection-is-admin-only-test
   (testing "Only administrators write a card in a collection of the data apps namespace"
@@ -1196,12 +1209,12 @@
                    :model/Card       card                {:collection_id collection-id
                                                           :dataset_query (mt/mbql-query venues)}]
       (mt/with-test-user :crowberto
-        (is (true? (mi/can-write? card)))
-        (is (true? (mi/can-write? :model/Card (:id card))))
-        (is (true? (:can_write (t2/hydrate card :can_write))))
+        (is (true? (mi/can-write? (t2/hydrate card :can_write))))
+        (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/Card :id (:id card)) :can_write))))
+        (is (true? (mi/can-write? (t2/hydrate card :can_write))))
         (is (true? (mi/can-create? :model/Card {:collection_id collection-id}))))
       (mt/with-test-user :rasta
-        (is (false? (mi/can-write? card)))
+        (is (false? (mi/can-write? (t2/hydrate card :can_write))))
         (is (false? (mi/can-create? :model/Card {:collection_id collection-id})))))))
 
 (defn- venues-query
@@ -1973,10 +1986,10 @@
         (testing user-kw
           (testing "control: a card in an ordinary document in the same collection is writable"
             (is (true? (mt/with-current-user (mt/user->id user-kw)
-                         (mi/can-write? (t2/select-one :model/Card :id doc-card))))))
+                         (mi/can-write? (t2/hydrate (t2/select-one :model/Card :id doc-card) :can_write))))))
           (testing "through mi/can-write?"
             (is (false? (mt/with-current-user (mt/user->id user-kw)
-                          (mi/can-write? (t2/select-one :model/Card :id summary-card))))))
+                          (mi/can-write? (t2/hydrate (t2/select-one :model/Card :id summary-card) :can_write))))))
           (testing "through PUT /api/card/:id"
             (mt/user-http-request user-kw :put 403 (str "card/" summary-card) {:name "Renamed"})
             (is (not= "Renamed" (t2/select-one-fn :name :model/Card :id summary-card)))))))))

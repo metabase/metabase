@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-testing.executor
   "The one place warehouse I/O lives. Given a single test-run connection (from
   `driver/do-with-test-connection`), it creates temp tables from compiled queries, drops them, and
-  runs read-back queries. It knows nothing about transform tests, expectations, or judgment — it takes
+  runs read-back queries. It knows nothing about tests, expectations, or judgment — it takes
   compiled queries and table names and talks to the connection.
 
   Kept separate from the runner (orchestration) and the compiler (pure SQL) so the module's I/O is
@@ -31,7 +31,7 @@
   (try
     (driver/execute-on-connection! driver conn (driver/compile-drop-temp-table driver table))
     (catch Exception e
-      (log/warnf "Failed to drop transform test temp table %s: %s" table (ex-message e)))))
+      (log/warnf "Failed to drop data test temp table %s: %s" table (ex-message e)))))
 
 (mu/defn table-columns :- [:sequential ::data-testing.schema/result-column]
   "The columns of the temp table `table` on `conn`, in order, fetching no rows."

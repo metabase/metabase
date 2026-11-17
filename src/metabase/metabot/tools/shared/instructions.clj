@@ -74,8 +74,10 @@ Reference items using: [name](metabase://type/id)")
 (defn query-created-instructions-for
   "Generate instructions for a newly created SQL query, embedding the query ID
    in the link template. Matches Python CreateSQLQueryToolV2._create_result.
-   With `results-readable?`, the model is told it can read the results with `run_query`."
-  [query-id results-readable?]
+   With `results-readable?`, the model is told it can read the results with `run_query`.
+   With `chart-id`, the query already has that chart, so the model is told not to make another, and with
+   `edit-chart?` how to change its chart type."
+  [query-id results-readable? & [chart-id edit-chart?]]
   (str "The assistant needs to:\n"
        (if results-readable?
          "- Run the query with `run_query` when the answer needs a value from its results\n"
@@ -83,7 +85,11 @@ Reference items using: [name](metabase://type/id)")
        "- Always provide a direct link using `[Link text](metabase://query/" query-id ")` "
        "so the user can open it themselves\n"
        not-saved-instruction "\n"
-       "- Consider whether to create a chart or graph when that better matches the user's intent\n"
+       (if chart-id
+         (str "- It is already drawn as a chart with `chart_id` `" chart-id "`, so don't call `create_chart` for it"
+              (when edit-chart? ". To show another chart type, call `edit_chart` with that `chart_id`")
+              "\n")
+         "- Consider whether to create a chart or graph when that better matches the user's intent\n")
        "- Present the results in a way that matches the user's intent and follow up if they need clarification"))
 
 (def query-loaded-in-editor-instructions
@@ -112,6 +118,11 @@ Reference items using: [name](metabase://type/id)")
        "your answer.\n"
        "- If the user wants to open the query, link it using `[Link text](metabase://query/" query-id ")`.\n"
        not-saved-instruction))
+
+(defn add-to-dashboard-instruction
+  "The line telling the model how to put the chart `chart-id` on a dashboard with `write_dashboard`."
+  [chart-id]
+  (str "- To add it to a dashboard, pass `chart_id` `" chart-id "` to `write_dashboard`, with no `create_chart` call."))
 
 (defn- delivery-instruction
   "The delivery line for an updated query, by how it reached the user.
@@ -159,3 +170,33 @@ Reference items using: [name](metabase://type/id)")
    "- Date/time literal syntax and formatting functions\n"
    "- NULL handling differences between dialects\n"
    "- Case sensitivity of identifiers\n"))
+
+(defn sql-reference-warnings-instructions
+  "Instructions that list possible bad table references in a constructed SQL query, or nil when there are none.
+
+  When `repeated?`, this turn has already shown each of the warnings and the query is accepted, so the text asks the
+  model to do nothing about them."
+  [warnings repeated?]
+  (when (seq warnings)
+    (let [warning-list (apply str (map #(str "- " % "\n") warnings))]
+      (if repeated?
+        (str "The query was created and accepted, although checking its table references against the "
+             "database metadata found possible problems that this turn has already reported:\n"
+             warning-list)
+        (str "The query was created, but checking its table references against the database metadata "
+             "found possible problems:\n"
+             warning-list
+             "\n"
+             "This check can report false positives. Verify each reference against the table metadata you "
+             "have gathered, and fix any that are wrong. If the references are correct, keep the query: when you can "
+             "only respond with tool calls, send the same complete SQL again to accept it (after an edit, as a full "
+             "replacement of the query). If you are unsure, "
+             "ask the user (with `ask_for_sql_clarification` when that tool is available).")))))
+
+(defn with-sql-reference-warnings
+  "`text` followed by [[sql-reference-warnings-instructions]] for the `:warnings` of `validation-result`, or `text`
+  when there are none."
+  [text {:keys [warnings repeated-warnings?] :as _validation-result}]
+  (if-let [warnings-text (sql-reference-warnings-instructions warnings repeated-warnings?)]
+    (str text "\n\n" warnings-text)
+    text))

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 type TableState = Record<string, any>;
 type ReducerAction = { type: string; payload?: any; error?: unknown };
 

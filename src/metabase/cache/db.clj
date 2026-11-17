@@ -36,6 +36,41 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :collection_id] :id card-id))
 
+(mu/defn dashboard-collection-ids :- [:map-of ::lib.schema.id/dashboard [:maybe ::lib.schema.id/collection]]
+  "The `:collection_id` of each of the Dashboards with `dashboard-ids`, by id."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (if (seq dashboard-ids)
+    (t2/select-fn->fn :id :collection_id [:model/Dashboard :id :collection_id] :id [:in dashboard-ids])
+    {}))
+
+(mu/defn card-collection-ids :- [:map-of ::lib.schema.id/card [:maybe ::lib.schema.id/collection]]
+  "The `:collection_id` of each of the Cards with `card-ids`, by id."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select-fn->fn :id :collection_id [:model/Card :id :collection_id] :id [:in card-ids])
+    {}))
+
+(mu/defn databases
+  "The Databases with `database-ids`."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (if (seq database-ids)
+    (t2/select :model/Database :id [:in database-ids])
+    []))
+
+(mu/defn dashboards
+  "The Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (if (seq dashboard-ids)
+    (t2/select :model/Dashboard :id [:in dashboard-ids])
+    []))
+
+(mu/defn cards
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
+
 (mu/defn cache-config
   "The CacheConfig with primary key `pk`, or nil."
   [pk :- ms/PositiveInt]

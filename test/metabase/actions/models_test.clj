@@ -281,11 +281,11 @@
                                           :table_id      (mt/id :categories)}))
               elsewhere (action/select-action :id (action/insert! (action-in coll-id)))]
           (mt/with-test-user :crowberto
-            (is (true? (mi/can-write? elsewhere)))
+            (is (true? (mi/can-write? (t2/hydrate elsewhere :can_write))))
             (is (true? (mi/can-create? :model/Action (action-in app-id))))
             (is (true? (mi/can-update? elsewhere {:collection_id app-id}))))
           (mt/with-test-user :rasta
-            (is (false? (mi/can-write? elsewhere)))
+            (is (false? (mi/can-write? (t2/hydrate elsewhere :can_write))))
             (is (false? (mi/can-create? :model/Action (action-in app-id))))
             (is (false? (mi/can-update? elsewhere {:collection_id app-id})))))))))
 
@@ -700,3 +700,14 @@
         (is (= "data_actions" (folder-label {:name "In folder" :entity_id "x" :model_id nil :collection_id folder-eid})))
         (is (= "data_apps" (folder-label {:name "App copy" :entity_id "x" :model_id nil :collection_id app-eid})))
         (is (= "main" (folder-label {:name "On a model" :entity_id "x" :model_id "model-eid" :collection_id nil})))))))
+
+(deftest ^:parallel query-action-import-dependencies-test
+  (testing "query action depends on what its query uses, whether its exported type is keyword or string"
+    (let [card-eid (apply str (repeat 21 \d))]
+      (doseq [action-type [:query "query"]]
+        (testing (pr-str action-type)
+          (is (contains? (first (serialization/import-dependencies
+                                 :model/Action
+                                 [{:type  action-type
+                                   :query [{:dataset_query {:source-card card-eid}}]}]))
+                         [:model/Card card-eid])))))))

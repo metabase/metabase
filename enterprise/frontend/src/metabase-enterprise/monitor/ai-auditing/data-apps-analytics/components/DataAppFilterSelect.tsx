@@ -20,8 +20,8 @@ function getDataAppOptions(
   selectedName: string | null,
 ) {
   const installed = dataApps.map((dataApp) => ({
-    value: dataApp.name,
-    label: dataApp.display_name,
+    value: dataApp.slug,
+    label: dataApp.name,
   }));
   const installedNames = new Set(installed.map((option) => option.value));
   const removedNames = new Set(

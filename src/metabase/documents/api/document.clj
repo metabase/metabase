@@ -14,6 +14,7 @@
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -99,7 +100,7 @@
   ;; Documents attached to an exploration are internal to that exploration — every other listing surface (search,
   ;; recents, collection items) excludes them too.
   {:items (as-> (documents.db/visible-unarchived-documents) docs
-            (filter mi/can-read? docs)
+            (filterv mi/can-read? (t2/hydrate docs :can_read))
             (t2/hydrate docs :creator :can_write :is_remote_synced))})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -144,11 +145,7 @@
       (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
     (m.document/update-document! existing-document body)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:document-id"
+(api.macros/defendpoint :delete "/:document-id" :- ::api/generic-204-no-content
   "Permanently deletes an archived Document."
   [{:keys [document-id]} :- [:map {:closed true} [:document-id ms/PositiveInt]]]
   (let [document (api/check-404 (documents.db/document document-id))]
@@ -195,7 +192,7 @@
                                               :archived_directly (boolean (:archived_directly card))}))
                 (assoc accum (:id card) (:id new-card))))
             {}
-            cards-to-copy)))
+            (t2/hydrate cards-to-copy :can_read))))
 
 (defn copy-document!
   "Copy the document with `from-document-id` into `:collection_id` (nil = root), along with the
@@ -274,11 +271,7 @@
         ;; Always select after update to ensure we return what's actually stored
         {:uuid (documents.db/document-public-uuid document-id)}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:document-id/public-link"
+(api.macros/defendpoint :delete "/:document-id/public-link" :- ::api/generic-204-no-content
   "Remove the public link for a Document.
 
   Deletes the public UUID from the Document, making it no longer accessible via the public sharing endpoint.
@@ -329,11 +322,8 @@
     (api/check-404 (and (contains? (set (prose-mirror/card-ids document)) card-id)
                         (documents.db/unarchived-card-in-document-exists? card-id document-id)))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:document-id/card/:card-id/query/:export-format"
+  :- ::qp.streaming/export-response
   "Download query results for a Card embedded in a Document.
 
   Returns query results in the requested format. The user must have read access to the document

@@ -16,11 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/db/:id"
+(api.macros/defendpoint :post "/db/:id" :- [:map {:closed true} [:success [:= true]]]
   "Notification about a potential schema change to one of our `Databases`.
   Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single
   `Table`. Optional Parameter `:scan` can be `\"full\"` or `\"schema\"` for a full sync or a schema sync, available
@@ -72,12 +68,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/db/attached_datawarehouse"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/db/attached_datawarehouse" :- [:map {:closed true} [:success [:= true]]]
   "Sync the attached datawarehouse. Can provide in the body:
   - table_name and schema_name: both strings. Will look for an existing table and sync it, otherwise will try to find a
   new table with that name and sync it. If it cannot find a table it will throw an error. If table_name is empty or

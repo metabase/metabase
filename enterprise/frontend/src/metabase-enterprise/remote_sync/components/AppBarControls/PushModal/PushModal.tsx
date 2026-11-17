@@ -10,30 +10,31 @@ import {
   FormSubmitButton,
   FormTextarea,
 } from "metabase/forms";
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Button,
+  FocusTrap,
   Group,
   List,
   Loader,
   Modal,
   Radio,
-  ScrollArea,
   Stack,
   Text,
 } from "metabase/ui";
-import * as Errors from "metabase/utils/errors";
 import {
   useExportChangesMutation,
   useGetExportPreflightQuery,
   useGetRemoteSyncChangesQuery,
 } from "metabase-enterprise/api";
-import type {
-  ExportPreflightResponse,
-  RemoteSyncEntity,
-} from "metabase-types/api";
+import type { ExportPreflightResponse } from "metabase-types/api";
 
 import { trackPushChanges } from "../../../analytics";
 import type { SyncTask } from "../types";
+
+import { ChangesList } from "./ChangesList";
+import { getDefaultCommitMessage } from "./utils";
 
 type PushModalProps = {
   opened: boolean;
@@ -49,26 +50,30 @@ type PushFormValues = {
   strategy: PushStrategy;
 };
 
-const getPushSchema = () =>
-  Yup.object({
-    message: Yup.string().trim().required(Errors.required),
+function getPushSchema() {
+  return Yup.object({
+    message: Yup.string(),
     strategy: Yup.string().oneOf(["merge", "overwrite"]),
   });
+}
 
-export const PushModal = ({
+export function PushModal({
   opened,
   branch,
   onTaskStarted,
   onClose,
-}: PushModalProps) => (
-  <Modal opened={opened} title={t`Push changes`} size="lg" onClose={onClose}>
-    <PushModalBody
-      branch={branch}
-      onTaskStarted={onTaskStarted}
-      onClose={onClose}
-    />
-  </Modal>
-);
+}: PushModalProps) {
+  return (
+    <Modal opened={opened} title={t`Push changes`} size="lg" onClose={onClose}>
+      <FocusTrap.InitialFocus />
+      <PushModalBody
+        branch={branch}
+        onTaskStarted={onTaskStarted}
+        onClose={onClose}
+      />
+    </Modal>
+  );
+}
 
 type PushModalBodyProps = {
   branch: string;
@@ -76,11 +81,9 @@ type PushModalBodyProps = {
   onClose: () => void;
 };
 
-const PushModalBody = ({
-  branch,
-  onTaskStarted,
-  onClose,
-}: PushModalBodyProps) => {
+function PushModalBody({ branch, onTaskStarted, onClose }: PushModalBodyProps) {
+  const applicationName = useSelector(getApplicationName);
+  const defaultMessage = getDefaultCommitMessage(applicationName);
   const {
     data: changes,
     error: changesError,
@@ -115,7 +118,7 @@ const PushModalBody = ({
     const isForce = preflight.has_changes && strategy === "overwrite";
     const { task_id } = await exportChanges({
       branch,
-      message,
+      message: message.trim() || defaultMessage,
       merge: preflight.has_changes && strategy === "merge",
       force: isForce,
     }).unwrap();
@@ -134,9 +137,13 @@ const PushModalBody = ({
     >
       <Form>
         <Stack gap="lg">
-          <ChangesList dirty={changes.dirty} />
+          <ChangesList entities={changes.dirty} />
           {preflight.has_changes && <RemoteChanges preflight={preflight} />}
-          <FormTextarea name="message" label={t`Commit message`} />
+          <FormTextarea
+            name="message"
+            label={t`Commit message`}
+            placeholder={defaultMessage}
+          />
           <FormErrorMessage />
           <Group justify="flex-end" gap="sm">
             <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
@@ -146,32 +153,13 @@ const PushModalBody = ({
       </Form>
     </FormProvider>
   );
-};
-
-type ChangesListProps = {
-  dirty: RemoteSyncEntity[];
-};
-
-const ChangesList = ({ dirty }: ChangesListProps) => (
-  <Stack gap="xs">
-    <Text fw="bold">{t`Changes`}</Text>
-    <ScrollArea.Autosize mah="12rem">
-      <List>
-        {dirty.map((entity, index) => (
-          <List.Item key={`${entity.model}-${entity.id}-${index}`}>
-            {entity.name}
-          </List.Item>
-        ))}
-      </List>
-    </ScrollArea.Autosize>
-  </Stack>
-);
+}
 
 type RemoteChangesProps = {
   preflight: ExportPreflightResponse;
 };
 
-const RemoteChanges = ({ preflight }: RemoteChangesProps) => {
+function RemoteChanges({ preflight }: RemoteChangesProps) {
   const casualties = [
     ...preflight.force_push_casualties.deleted,
     ...preflight.force_push_casualties.overwritten,
@@ -213,22 +201,24 @@ const RemoteChanges = ({ preflight }: RemoteChangesProps) => {
       </FormRadioGroup>
     </Stack>
   );
-};
+}
 
 type LabelListProps = {
   title: string;
   labels: string[];
 };
 
-const LabelList = ({ title, labels }: LabelListProps) => (
-  <Stack gap="xs">
-    <Text c="inherit" fz="inherit">
-      {title}
-    </Text>
-    <List size="sm">
-      {labels.map((label, index) => (
-        <List.Item key={`${label}-${index}`}>{label}</List.Item>
-      ))}
-    </List>
-  </Stack>
-);
+function LabelList({ title, labels }: LabelListProps) {
+  return (
+    <Stack gap="xs">
+      <Text c="inherit" fz="inherit">
+        {title}
+      </Text>
+      <List size="sm">
+        {labels.map((label, index) => (
+          <List.Item key={`${label}-${index}`}>{label}</List.Item>
+        ))}
+      </List>
+    </Stack>
+  );
+}
