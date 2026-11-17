@@ -50,6 +50,7 @@
 
 (doto :model/ApiKey
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/ApiKey
@@ -136,19 +137,10 @@
       add-key
       (validate-with-schema ::api-keys.schema/api-key.insert)))
 
-(t2/define-after-insert :model/ApiKey
-  [api-key]
-  (u/prog1 api-key
-    (events/publish-event!
-     :event/api-key-create
-     {:object  (t2/hydrate api-key :group :updated_by)
-      :user-id api/*current-user-id*})))
-
 (t2/define-before-update :model/ApiKey
   [{user-id :user_id, :as api-key}]
   (t2/with-transaction [_conn]
-    ;; need to hydrate user info BEFORE making changes so we record the correct stuff for audit logging
-    (let [key-before (t2/hydrate (t2/instance :model/ApiKey (t2/original api-key)) :user :group :updated_by)]
+    (do
       ;; update the user name associated with this API key if it was created just for this API key.
       (when-let [new-name (:name (t2/changes api-key))]
         (api-keys.db/rename-api-key-user! user-id new-name))
@@ -163,21 +155,11 @@
                    ;; force a no-op update so the T2 code doesn't optimize this whole update out
                    (cond-> (::api-keys/group-id (t2/changes api-key)) (-> (dissoc ::api-keys/group-id)
                                                                           (assoc :updated_at (t/offset-date-time))))
-                   (validate-with-schema ::api-keys.schema/api-key.update))
-        (events/publish-event!
-         :event/api-key-update
-         {:object          (t2/hydrate (t2/instance :model/ApiKey (t2/current <>)) :user :group :updated_by)
-          :previous-object key-before
-          :user-id         api/*current-user-id*})))))
+                   (validate-with-schema ::api-keys.schema/api-key.update))))))
 
 (t2/define-before-delete :model/ApiKey
   [{user-id :user_id, :as api-key}]
   (u/prog1 api-key
-    (events/publish-event!
-     :event/api-key-delete
-     {:object  (-> api-key
-                   (t2/hydrate :group))
-      :user-id api/*current-user-id*})
     ;; if we created a user along with the key (type = :api-key), mark it inactive.
     (api-keys.db/deactivate-api-key-user! user-id)))
 

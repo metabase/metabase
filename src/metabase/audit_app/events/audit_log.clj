@@ -1,11 +1,13 @@
 (ns metabase.audit-app.events.audit-log
   "This namespace is responsible for publishing events to the audit log. "
   (:require
+   [medley.core :as m]
    [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.events.core :as events]
    [metabase.util.events :as u.events]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 (events/derive! ::event :metabase/event)
 
@@ -307,9 +309,19 @@
 (events/derive! :event/api-key-regenerate ::api-key-event)
 (events/derive! :event/api-key-delete ::api-key-event)
 
+(defn- hydrate-api-key
+  [api-key]
+  (some-> api-key (t2/hydrate :user :group :updated_by)))
+
 (methodical/defmethod events/publish-event! ::api-key-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (if (= :event/api-key-regenerate topic)
+    (audit-log/record-event! topic event)
+    (record-lifecycle! topic
+                       (-> event
+                           (m/update-existing :object hydrate-api-key)
+                           (m/update-existing :previous-object hydrate-api-key))
+                       true)))
 
 (events/derive! ::upload-event ::event)
 (events/derive! :event/upload-create ::upload-event)
