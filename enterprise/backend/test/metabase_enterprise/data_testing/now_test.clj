@@ -10,7 +10,9 @@
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -19,7 +21,7 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
-   (java.sql Connection)))
+   (java.sql Connection PreparedStatement ResultSet)))
 
 (set! *warn-on-reflection* true)
 
@@ -176,32 +178,63 @@
           (is (= :passed (run!))))))))
 
 (defn- first-warehouse-error!
-  "Redshift's first error when the query under test of a run of `subject`, a `subject-type`, with `definition` is
-  prepared on a test connection that holds the run's inputs, and the query's SQL and parameters. A run's own
-  preparation drops that error, and reports only that the transaction is aborted."
+  "Where Redshift's transaction aborts when the query under test of a run of `subject`, a `subject-type`, with
+  `definition` is prepared and run on a test connection that holds the run's inputs, step by step as a run does it,
+  with `SELECT 1` after each step; and the SQL and parameters of the query, and of the same query compiled as a card.
+  A run's own preparation drops some errors, and then reports only that the transaction is aborted."
   [subject-type subject definition]
   (try
     (let [{:keys [driver database input->table labels compiled]}
-          (#'data-testing.runner/validated-plan subject-type subject definition)]
-      (str "SQL: " (:query compiled) "\nParameters: " (pr-str (:params compiled)) "\nFirst error: "
+          (#'data-testing.runner/validated-plan subject-type subject definition)
+          card-compiled (try
+                          (:compiled (#'data-testing.runner/subject-plan
+                                      :card {:id 1 :dataset_query (get-in subject [:source :query]) :name "probe"}
+                                      (some-> (:now definition) t/offset-date-time)))
+                          (catch Throwable e (ex-message e)))]
+      (str "SQL: " (:query compiled) "\nParameters: " (pr-str (:params compiled))
+           "\nAs a card: " (pr-str card-compiled)
+           "\nFirst error: "
            (driver/do-with-test-connection
             driver database
             (fn [^Connection conn]
               (let [output (driver/temp-table-name driver)
+                    sql    ^String (:query compiled)
+                    stmt   (volatile! nil)
+                    ps     #(let [^PreparedStatement s @stmt] s)
                     steps  [["create the inputs" #(#'data-testing.runner/create-inputs! driver conn input->table labels)]
-                            ["describe the query" #(with-open [stmt (.prepareStatement conn ^String (:query compiled))]
-                                                     (.getParameterCount (.getParameterMetaData stmt)))]
-                            ["run the query" #(data-testing.executor/run-query driver conn
-                                                                               [(:query compiled) (vec (:params compiled))] 1)]
-                            ["create the output" #(data-testing.executor/create-temp-table! driver conn output compiled)]]]
-                (or (some (fn [[step thunk]]
-                            (try
-                              (thunk)
-                              nil
-                              (catch Throwable e
-                                (str "at \"" step "\": " (ex-message e)))))
-                          steps)
-                    "none"))))))
+                            ["describe the query" #(with-open [s (.prepareStatement conn sql)]
+                                                     (.getParameterCount (.getParameterMetaData s)))]
+                            ["prepare as a run does" #(vreset! stmt (.prepareStatement conn sql
+                                                                                       ResultSet/TYPE_FORWARD_ONLY
+                                                                                       ResultSet/CONCUR_READ_ONLY
+                                                                                       ResultSet/CLOSE_CURSORS_AT_COMMIT))]
+                            ["set the fetch direction" #(.setFetchDirection (ps) ResultSet/FETCH_FORWARD)]
+                            ["set the fetch size" #(.setFetchSize (ps) (int (driver.settings/sql-jdbc-fetch-size)))]
+                            ["set the query timeout" #(.setQueryTimeout (ps) (int (/ driver.settings/*query-timeout-ms* 1000)))]
+                            ["count the parameters" #(.getParameterCount (.getParameterMetaData (ps)))]
+                            ["set the parameters" #(doseq [[i param] (map-indexed vector (:params compiled))]
+                                                     (sql-jdbc.execute/set-parameter driver (ps) (inc i) param))]
+                            ["cap the rows" #(do (.setFetchSize (ps) 0) (.setMaxRows (ps) 1))]
+                            ["execute" #(with-open [rs (.executeQuery (ps))] (.next rs))]
+                            ["close the statement" #(.close (ps))]
+                            ["create the output" #(data-testing.executor/create-temp-table! driver conn output compiled)]]
+                    select-1 #(try
+                                (with-open [s  (.createStatement conn)
+                                            rs (.executeQuery s "SELECT 1")]
+                                  (.next rs)
+                                  nil)
+                                (catch Throwable e (ex-message e)))]
+                (try
+                  (or (some (fn [[step thunk]]
+                              (let [error   (try (thunk) nil (catch Throwable e (ex-message e)))
+                                    aborted (select-1)]
+                                (when (or error aborted)
+                                  (str "at \"" step "\": " (or error "no error")
+                                       (when aborted (str "; then SELECT 1 fails: " aborted))))))
+                            steps)
+                      "none")
+                  (finally
+                    (some-> ^PreparedStatement @stmt .close))))))))
     (catch Throwable e
       (str "The probe failed: " (ex-message e)))))
 
