@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+import type { ReactElement } from "react";
 
 import {
   setupApiKeyEndpoints,
@@ -54,11 +55,22 @@ export const testApiKeys: ApiKey[] = [
   },
 ];
 
-export const setup = async (
-  extraSettings?: Partial<EnterpriseSettings>,
+export interface SetupOpts {
+  extraSettings?: Partial<EnterpriseSettings>;
+  isEnterprise?: boolean;
+  tab?: AuthSettingsPageTab;
+  apiKeys?: ApiKey[];
+  /** Rendered instead of `<AuthenticationSettingsPage tab={tab} />`, e.g. a route's own component. */
+  page?: ReactElement;
+}
+
+export const setup = async ({
+  extraSettings,
   isEnterprise = false,
-  tab: AuthSettingsPageTab = "authentication",
-) => {
+  tab = "authentication",
+  apiKeys = testApiKeys,
+  page,
+}: SetupOpts = {}) => {
   const settings = createMockSettings({
     "google-auth-enabled": false,
     "ldap-enabled": false,
@@ -83,13 +95,13 @@ export const setup = async (
   setupPropertiesEndpoints(settings);
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints([]);
-  setupApiKeyEndpoints(testApiKeys);
+  setupApiKeyEndpoints(apiKeys);
   setupTokenStatusEndpoint({ valid: isEnterprise });
   fetchMock.get("path:/api/ee/sso/oidc", []);
 
   renderWithProviders(
     <div>
-      <AuthenticationSettingsPage tab={tab} />
+      {page ?? <AuthenticationSettingsPage tab={tab} />}
       <UndoListing />
     </div>,
     {
