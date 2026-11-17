@@ -13,6 +13,7 @@
 (methodical/defmethod t2/table-name :model/ExplorationThread [_model] :exploration_thread)
 
 (doto :model/ExplorationThread
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))

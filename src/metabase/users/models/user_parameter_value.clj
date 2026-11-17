@@ -18,6 +18,7 @@
 (methodical/defmethod t2/table-name :model/UserParameterValue [_model] :user_parameter_value)
 
 (doto :model/UserParameterValue
+  (derive :hook/worktree-id)
   (derive :metabase/model))
 
 (defn- json-out

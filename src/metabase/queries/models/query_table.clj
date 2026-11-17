@@ -7,6 +7,7 @@
 (methodical/defmethod t2/table-name :model/QueryTable [_model] :query_table)
 
 (doto :model/QueryTable
+  (derive :hook/worktree-id)
   (derive :metabase/model))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

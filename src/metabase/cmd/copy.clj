@@ -494,13 +494,14 @@
   (step (trs "Clearing default entries created by Liquibase migrations...")
     (clear-existing-rows! target-db-type target-data-source))
   ;; create a transaction and load the data.
-  (jdbc/with-db-transaction [target-conn-spec {:datasource target-data-source}]
-    ;; transaction should be set as rollback-only until it completes. Only then should we disable rollback-only so the
-    ;; transaction will commit (i.e., only commit if the whole thing succeeds)
-    (with-connection-rollback-only target-conn-spec
-      ;; disable FK constraints for the duration of loading data.
-      (with-disabled-db-constraints target-db-type target-conn-spec
-        (copy-data! source-data-source target-db-type target-conn-spec))))
+  (mdb/with-worktree-scope {:type :all}
+    (jdbc/with-db-transaction [target-conn-spec {:datasource target-data-source}]
+      ;; transaction should be set as rollback-only until it completes. Only then should we disable rollback-only so the
+      ;; transaction will commit (i.e., only commit if the whole thing succeeds)
+      (with-connection-rollback-only target-conn-spec
+        ;; disable FK constraints for the duration of loading data.
+        (with-disabled-db-constraints target-db-type target-conn-spec
+          (copy-data! source-data-source target-db-type target-conn-spec)))))
   ;; finally, update sequence values (if needed)
   (update-sequence-values! target-db-type target-data-source)
   (step (trs "Seeding metabot permissions for magic groups without any...")

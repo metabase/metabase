@@ -7,6 +7,7 @@
    [metabase-enterprise.remote-sync.task.auto-import]
    [metabase-enterprise.remote-sync.task.table-cleanup]
    [metabase-enterprise.remote-sync.tasks :as tasks]
+   [metabase-enterprise.remote-sync.write :as remote-sync.write]
    [metabase.collections.core :as collections]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.settings.core :as setting]
@@ -16,9 +17,10 @@
 (set! *warn-on-reflection* true)
 
 (defn- remote-sync-init!
-  "Ends the tasks that stopped sending heartbeats, stops syncing collections when remote sync is off, and pulls the
-  synced branch into a read-only instance."
+  "Turns row-level security on or off as worktrees exist, ends the tasks that stopped sending heartbeats, stops syncing
+  collections when remote sync is off, and pulls the synced branch into a read-only instance."
   []
+  (remote-sync.write/sync-row-level-security!)
   (remote-sync.task/supersede-stale-tasks!)
   (cond
     (nil? (setting/get-raw-value :remote-sync-url))

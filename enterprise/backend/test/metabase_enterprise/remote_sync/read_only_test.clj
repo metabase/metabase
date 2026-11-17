@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
+   [metabase.api.common :as api]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -22,7 +23,11 @@
         (is (true? (remote-sync/read-only?)))))
     (testing "read-write instance pushes to the remote"
       (remote-sync.tu/with-remote-sync [url :read-write]
-        (is (false? (remote-sync/read-only?)))))))
+        (is (false? (remote-sync/read-only?)))))
+    (testing "worktree of read-only instance can be changed and pushed"
+      (remote-sync.tu/with-remote-sync [url :read-only]
+        (binding [api/*worktree-id* 1]
+          (is (false? (remote-sync/read-only?))))))))
 
 (deftest can-write-test
   (mt/with-temp [:model/Collection synced   {:name "Synced" :is_remote_synced true :location "/"}

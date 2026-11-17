@@ -46,6 +46,7 @@
    :allowed_hosts mi/transform-json})
 
 (doto :model/DataApp
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)

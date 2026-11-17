@@ -31,6 +31,7 @@
        (cond-> (merge session/session-from-and-joins
                       {:select [[:session.user_id :metabase-user-id]
                                 [:user.is_superuser :is-superuser?]
+                                [:user.worktree_id :worktree-id]
                                 [:user.is_data_analyst :is-data-analyst?]
                                 [:user.locale :user-locale]
                                 [:auth_identity.provider :auth-provider]]
@@ -78,6 +79,7 @@
                             [:api_key.key :api-key]
                             [:api_key.scope :api-key-scope]
                             [:user.is_superuser :is-superuser?]
+                            [:user.worktree_id :worktree-id]
                             [:user.is_data_analyst :is-data-analyst?]
                             [:user.locale :user-locale]]
                 :from      :api_key
@@ -102,6 +104,7 @@
       (t2.pipeline/compile*
        (cond-> {:select    [[:user.id :metabase-user-id]
                             [:user.is_superuser :is-superuser?]
+                            [:user.worktree_id :worktree-id]
                             [:user.is_data_analyst :is-data-analyst?]
                             [:user.locale :user-locale]]
                 :from      [[:core_user :user]]
@@ -160,3 +163,8 @@
   (t2/query-one {:update (t2/table-name :model/Session)
                  :set    {:last_active_at :%now}
                  :where  [:= :key_hashed key-hashed]}))
+
+(mu/defn worktree-exists? :- :boolean
+  "Whether the remote sync worktree with `worktree-id` exists."
+  [worktree-id :- pos-int?]
+  (t2/exists? :model/RemoteSyncWorktree :id [:auto/param worktree-id]))

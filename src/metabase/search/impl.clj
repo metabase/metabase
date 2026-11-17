@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
@@ -216,8 +217,13 @@
     (not (zero? v))
     v))
 
-(defn- parse-engine [value]
-  (or (when-not (str/blank? value)
+(defn- parse-engine
+  "The engine that serves a search asking for `value`: in-place in a worktree, whose rows no index holds, else `value`
+  when it names a supported engine, else the default one."
+  [value]
+  (or (when (mdb/worktree-id)
+        :search.engine/in-place)
+      (when-not (str/blank? value)
         (let [engine (keyword "search.engine" value)]
           (cond
             (not (search.engine/known-engine? engine))

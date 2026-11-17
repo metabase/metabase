@@ -2,6 +2,7 @@
   "Code for creating the connection pool for the application DB and setting it as the default Toucan connection."
   (:require
    [java-time.api :as t]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.util.connection :as u.connection]
@@ -35,8 +36,11 @@
 
 ;;; I spun these out into separate functions so we can picc up changes to them in the REPL -- Cam
 
-(defn- on-acquire [_connection]
-  (reset! latest-activity (t/offset-date-time)))
+(defn- on-acquire [^java.sql.Connection connection]
+  (reset! latest-activity (t/offset-date-time))
+  (when (postgres-connection? connection)
+    (with-open [stmt (.createStatement connection)]
+      (.execute stmt mdb.worktree/main-app-sql))))
 
 (defn- on-check-in [^java.sql.Connection connection]
   (reset! latest-activity (t/offset-date-time))
@@ -47,10 +51,16 @@
   ;; rationale behind why we're doing it -- Cam
   (when (postgres-connection? connection)
     (with-open [stmt (.createStatement connection)]
-      (.execute stmt "DISCARD ALL;"))))
+      (.execute stmt mdb.worktree/check-in-sql))))
 
-(defn- on-check-out [_connection]
-  (reset! latest-activity (t/offset-date-time)))
+(defn- on-check-out
+  "Sets the worktree of the thread checking out a Postgres `connection`, which check-in leaves in the main app, so that
+  main app threads check out without a round trip."
+  [^java.sql.Connection connection]
+  (reset! latest-activity (t/offset-date-time))
+  (when-let [sql (and (postgres-connection? connection) (mdb.worktree/checkout-sql))]
+    (with-open [stmt (.createStatement connection)]
+      (.execute stmt sql))))
 
 (defn- on-destroy [_connection]
   ;; no-op

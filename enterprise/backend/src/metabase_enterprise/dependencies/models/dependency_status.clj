@@ -15,6 +15,7 @@
 (methodical/defmethod t2/table-name :model/DependencyStatus [_model] :dependency_status)
 
 (derive :model/DependencyStatus :metabase/model)
+(derive :model/DependencyStatus :hook/worktree-id)
 
 (t2/deftransforms :model/DependencyStatus
   {:entity_type mi/transform-keyword})

@@ -1,6 +1,7 @@
 (ns metabase.warehouse-schema.models.table-user-settings-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
@@ -151,3 +152,14 @@
       (is (= #{table-id} (collection/unpublish-in-collections! :model/Table [collection-id])))
       (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id)))
       (is (nil? (:collection_id (user-table table-id)))))))
+
+(deftest worktree-settings-leave-table-row-test
+  (testing "in a worktree, user settings are recorded without writing the Table row, which main reads"
+    (mt/with-temp [:model/Table {table-id :id :as table} {:display_name "Sync Name" :data_authority :authoritative}]
+      (mdb/with-worktree-scope {:type :worktree :worktree-id 1}
+        (table-user-settings/upsert-table-user-settings! table {:display_name "Worktree Name"})
+        (testing "and the Table's checks still refuse a change it cannot take"
+          (is (thrown-with-msg? Exception #"Cannot set data_authority back to unconfigured"
+                                (table-user-settings/upsert-table-user-settings! table {:data_authority :unconfigured})))))
+      (is (= "Sync Name" (t2/select-one-fn :display_name :model/Table :id table-id)))
+      (is (= "Worktree Name" (t2/select-one-fn :display_name :model/TableUserSettings :table_id table-id))))))

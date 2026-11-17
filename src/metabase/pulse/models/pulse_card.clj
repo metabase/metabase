@@ -18,6 +18,7 @@
 (methodical/defmethod t2/table-name :model/PulseCard [_model] :pulse_card)
 
 (doto :model/PulseCard
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/events))

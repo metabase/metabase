@@ -12,6 +12,7 @@
 (methodical/defmethod t2/table-name :model/ExplorationPage [_model] :exploration_page)
 
 (doto :model/ExplorationPage
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))

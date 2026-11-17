@@ -26,6 +26,7 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
   (derive :hook/events)
+  (derive :hook/worktree-id)
   (derive ::data-testing.models/saved-test))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/SegmentTest :segment]

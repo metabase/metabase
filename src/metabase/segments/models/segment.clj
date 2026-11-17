@@ -43,6 +43,7 @@
   {:definition lib-be/transform-query})
 
 (doto :model/Segment
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)

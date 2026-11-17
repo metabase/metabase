@@ -6,6 +6,8 @@
    [metabase-enterprise.remote-sync.dependencies :as remote-sync.dependencies]
    [metabase-enterprise.remote-sync.protocol :as protocol]
    [metabase-enterprise.remote-sync.protocol.git :as git]
+   [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.core :as collections]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -33,6 +35,17 @@
   :encryption :when-encryption-key-set
   :export? false
   :can-read-from-env? true)
+
+(defsetting remote-sync-worktrees-enabled
+  (deferred-tru "Whether worktrees are available, which they are on a PostgreSQL application database.")
+  :feature :remote-sync
+  :type :boolean
+  :visibility :admin
+  :export? false
+  :setter :none
+  :getter (fn [] (= :postgres (mdb/db-type)))
+  :audit :never
+  :doc false)
 
 (defsetting remote-sync-token
   (deferred-tru "An access token for the git repository, such as a personal access token.")
@@ -109,12 +122,35 @@
   :encryption :no
   :default 60)
 
+(defn writable?
+  "Whether the current request can change synced content and push it: in a worktree always, in the main app only on a
+  read-write instance."
+  []
+  (or (some? api/*worktree-id*)
+      (= :read-write (remote-sync-type))))
+
 (defenterprise read-only?
-  "Whether remote sync is on and keeps the rows it syncs read-only. Without the `:remote-sync` feature it is false:
-  synced content can be edited, and the next force pull once the feature returns overwrites those edits."
+  "Whether remote sync is on and keeps the rows it syncs read-only for the current request, which it never does in a
+  worktree. Without the `:remote-sync` feature it is false: synced content can be edited, and the next force pull once
+  the feature returns overwrites those edits."
   :feature :remote-sync
   []
-  (boolean (and (remote-sync-enabled) (= :read-only (remote-sync-type)))))
+  (boolean (and (remote-sync-enabled) (not (writable?)))))
+
+(defn branch
+  "The branch the current request syncs: its worktree's, or the `remote-sync-branch` setting in the main app."
+  []
+  (if-let [worktree-id api/*worktree-id*]
+    (remote-sync.db/worktree-branch worktree-id)
+    (setting/get :remote-sync-branch)))
+
+(defn set-branch!
+  "Make `new-branch` the branch the current request syncs: its worktree's, or the `remote-sync-branch` setting in the
+  main app."
+  [new-branch]
+  (if-let [worktree-id api/*worktree-id*]
+    (remote-sync.db/update-worktree! worktree-id {:branch new-branch})
+    (setting/set! :remote-sync-branch new-branch)))
 
 (defn repository
   "The repository of the remote sync settings."
@@ -174,7 +210,7 @@
   that isn't synced."
   [collections]
   (when (seq collections)
-    (when (= :read-only (setting/get :remote-sync-type))
+    (when-not (writable?)
       (throw (ex-info (tru "You can''t change which collections sync on a read-only instance.") {:status-code 400})))
     (t2/with-transaction [_conn]
       (doseq [[id synced?] collections

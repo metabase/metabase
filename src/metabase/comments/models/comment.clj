@@ -18,6 +18,7 @@
 (methodical/defmethod t2/table-name :model/Comment [_model] :comment)
 
 (doto :model/Comment
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/events)
   (derive :hook/timestamped?))

@@ -10,6 +10,7 @@
 (methodical/defmethod t2/table-name :model/CommentReaction [_model] :comment_reaction)
 
 (doto :model/CommentReaction
+  (derive :hook/worktree-id)
   (derive :metabase/model))
 
 (methodical/defmethod t2/batched-hydrate [:model/CommentReaction :user]

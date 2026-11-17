@@ -22,6 +22,7 @@
 (methodical/defmethod t2/table-name :model/CardTest [_model] :card_test)
 
 (doto :model/CardTest
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)

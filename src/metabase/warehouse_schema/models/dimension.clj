@@ -25,6 +25,7 @@
 (methodical/defmethod t2/table-name :model/Dimension [_model] :dimension)
 
 (doto :model/Dimension
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)

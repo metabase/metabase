@@ -5,6 +5,7 @@
    [metabase.remote-sync.spec :as remote-sync.spec]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (def ^:private all-rows-filter-clause
@@ -48,3 +49,13 @@
    model  :- :keyword
    opts   :- ::remote-sync.schema/synced-filter-opts]
   [:in (u/qualified-key alias column) (synced-ids-clause model opts)])
+
+(mu/defn worktree-users :- [:sequential :map]
+  "The users working in the worktrees with `worktree-ids`, with their `worktree_id`."
+  [worktree-ids :- [:sequential ms/PositiveInt]]
+  (if (empty? worktree-ids)
+    []
+    (t2/select [:model/User :id :email :first_name :last_name :worktree_id]
+               :worktree_id [:in worktree-ids]
+               :is_active true
+               {:order-by [[:id :asc]]})))

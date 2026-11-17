@@ -18,6 +18,7 @@
 (methodical/defmethod t2/table-name :model/StoredResultUse [_model] :stored_result_use)
 
 (doto :model/StoredResultUse
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/timestamped?))
 

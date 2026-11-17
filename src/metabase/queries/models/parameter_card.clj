@@ -16,6 +16,7 @@
 (methodical/defmethod t2/table-name :model/ParameterCard [_model] :parameter_card)
 
 (doto :model/ParameterCard
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/timestamped?))
 

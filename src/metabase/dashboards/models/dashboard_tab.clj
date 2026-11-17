@@ -26,6 +26,7 @@
 (methodical/defmethod t2/table-name :model/DashboardTab [_model] :dashboard_tab)
 
 (doto :model/DashboardTab
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
@@ -103,7 +104,7 @@
   [dashboard-id :- ms/PositiveInt
    new-tabs     :- [:sequential [:merge ::dashboards.schema/dashboard-tab.update [:map {:closed true} [:id neg-int?]]]]]
   (let [new-tab-ids (dashboards.db/insert-dashboard-tabs! (->> new-tabs
-                                                               (map #(dissoc % :id :worktree_id))
+                                                               (map #(dissoc % :id))
                                                                (map #(assoc % :dashboard_id dashboard-id))))]
     (zipmap (map :id new-tabs) new-tab-ids)))
 
@@ -149,7 +150,7 @@
         old->new-tab-id     (when (seq to-create)
                               (let [new-tab-ids (dashboards.db/insert-dashboard-tabs!
                                                  (->> to-create
-                                                      (map #(dissoc % :id :worktree_id))
+                                                      (map #(dissoc % :id))
                                                       (map #(assoc % :dashboard_id dashboard-id))))]
                                 (zipmap (map :id to-create) new-tab-ids)))]
     (when (seq to-update)

@@ -135,6 +135,11 @@
   "Is the current user a data analyst with access to Data Studio?"
   false)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *worktree-id*
+  "The id of the remote sync worktree the current API call works in, or nil for the main app."
+  nil)
+
 ;;; TODO -- move this to [[metabase.request.current]]
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn current-user-info

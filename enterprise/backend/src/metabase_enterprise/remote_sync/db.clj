@@ -4,6 +4,7 @@
   (:require
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.resolution :as models.resolution]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
@@ -177,3 +178,73 @@
   "A map of User ID to User for `user-ids`."
   [user-ids :- [:sequential [:maybe ::lib.schema.id/user]]]
   (t2/select-pk->fn identity :model/User :id [:in user-ids]))
+
+(mu/defn worktrees :- [:sequential ::remote-sync.schema/worktree]
+  "Every worktree, by branch."
+  []
+  (t2/select :model/RemoteSyncWorktree {:order-by [[:branch :asc] [:id :asc]]}))
+
+(mu/defn worktree :- [:maybe ::remote-sync.schema/worktree]
+  "The worktree with `worktree-id`, or nil."
+  [worktree-id :- ms/PositiveInt]
+  (t2/select-one :model/RemoteSyncWorktree :id [:auto/param worktree-id]))
+
+(mu/defn worktree-branch :- [:maybe :string]
+  "The branch of the worktree with `worktree-id`, or nil."
+  [worktree-id :- ms/PositiveInt]
+  (t2/select-one-fn :branch :model/RemoteSyncWorktree :id [:auto/param worktree-id]))
+
+(mu/defn worktree-count :- :int
+  "The number of worktrees."
+  []
+  (t2/count :model/RemoteSyncWorktree))
+
+(mu/defn worktree-tables :- [:sequential :string]
+  "The tables of the models whose rows belong to worktrees, those deriving `:hook/worktree-id` directly."
+  []
+  (models.resolution/load-all-models!)
+  (sort (for [model (descendants :hook/worktree-id)
+              :when (contains? (parents model) :hook/worktree-id)]
+          (name (t2/table-name model)))))
+
+(mu/defn row-level-security-tables :- [:set :string]
+  "The tables of the current schema with forced row-level security."
+  []
+  (into #{} (map :relname)
+        (t2/query {:select [:c.relname]
+                   :from   [[:pg_class :c]]
+                   :join   [[:pg_namespace :n] [:= :n.oid :c.relnamespace]]
+                   :where  [:and [:= :n.nspname [:current_schema]] :c.relrowsecurity :c.relforcerowsecurity]})))
+
+(mu/defn enable-row-level-security!
+  "Turns row-level security on for `table`, applying the worktree policy its migration added."
+  [table :- :string]
+  (t2/query [(format "ALTER TABLE %s ENABLE ROW LEVEL SECURITY" table)])
+  (t2/query [(format "ALTER TABLE %s FORCE ROW LEVEL SECURITY" table)]))
+
+(mu/defn disable-row-level-security!
+  "Turns row-level security off for `table`, leaving its worktree policy in place but inert."
+  [table :- :string]
+  (t2/query [(format "ALTER TABLE %s NO FORCE ROW LEVEL SECURITY" table)])
+  (t2/query [(format "ALTER TABLE %s DISABLE ROW LEVEL SECURITY" table)]))
+
+(mu/defn insert-worktree! :- ::remote-sync.schema/worktree
+  "Insert the worktree `worktree` and return it."
+  [worktree :- ::remote-sync.schema/worktree.update]
+  (t2/insert-returning-instance! :model/RemoteSyncWorktree worktree))
+
+(mu/defn update-worktree!
+  "Set the columns `changes` of the worktree with `worktree-id`."
+  [worktree-id :- ms/PositiveInt
+   changes     :- ::remote-sync.schema/worktree.update]
+  (t2/update! :model/RemoteSyncWorktree :id [:auto/param worktree-id] changes))
+
+(mu/defn delete-worktree!
+  "Delete the worktree with `worktree-id`, the database deleting its content and moving its users to the main app."
+  [worktree-id :- ms/PositiveInt]
+  (t2/delete! :model/RemoteSyncWorktree :id [:auto/param worktree-id]))
+
+(mu/defn row-level-security-bypassed? :- :boolean
+  "Whether the app DB role skips row-level security, as a superuser or a role with BYPASSRLS does."
+  []
+  (boolean (:bypassed (t2/query-one ["SELECT rolsuper OR rolbypassrls AS bypassed FROM pg_roles WHERE rolname = current_user"]))))

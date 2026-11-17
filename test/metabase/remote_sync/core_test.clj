@@ -37,6 +37,11 @@
                 [:model/Card :model/Collection :model/Dashboard :model/DashboardCard :model/Document
                  :model/NativeQuerySnippet :model/Timeline :model/Transform]))))
 
+(deftest synced-models-belong-to-worktrees-test
+  (testing "synced models derive :hook/worktree-id, as the tables row-level security covers"
+    (doseq [model (remote-sync/synced-models)]
+      (is (isa? model :hook/worktree-id) (str model)))))
+
 (deftest collection-content-test
   (mt/with-temp [:model/Collection    synced   {:name "Synced" :is_remote_synced true :location "/"}
                  :model/Collection    child    {:name "Child" :is_remote_synced true :location (format "/%d/" (:id synced))}

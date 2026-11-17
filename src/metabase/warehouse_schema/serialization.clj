@@ -2,6 +2,7 @@
   "The SerDes of Fields, their Dimensions, FieldValues and user settings, and the user settings of Tables."
   (:require
    [clojure.string :as str]
+   [metabase.app-db.core :as mdb]
    [metabase.serialization.core :as serialization]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.table :as table]
@@ -81,7 +82,8 @@
 (defn field-user-settings-after-load
   "Writes the user-set columns of the loaded FieldUserSettings `items` to their Fields."
   [items]
-  (doseq [{{:keys [field_id] :as settings} :instance} items]
+  (doseq [{{:keys [field_id] :as settings} :instance} items
+          :when (not (mdb/worktree-id))]
     (warehouse-schema.db/update-field! field_id (select-keys settings (user-settings/user-set-field-columns settings)))))
 
 (defn table-user-settings-storage-paths
@@ -126,7 +128,8 @@
   of older exports."
   [items]
   (load-legacy-fields! items)
-  (doseq [{{:keys [table_id] :as settings} :instance :keys [entity]} items]
+  (doseq [{{:keys [table_id] :as settings} :instance :keys [entity]} items
+          :when (not (mdb/worktree-id))]
     (warehouse-schema.db/update-table! table_id (without-derived-half
                                                  (select-keys settings (user-settings/user-set-table-columns settings))))
     (when (:field_order entity)
