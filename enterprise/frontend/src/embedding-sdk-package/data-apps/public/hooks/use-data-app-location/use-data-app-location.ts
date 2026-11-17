@@ -4,7 +4,7 @@ import {
   getBasename,
   navigate,
   subscribeToDataAppRouting,
-} from "embedding-sdk-package/data-apps/lib/data-app-routing";
+} from "embedding-sdk-package/data-apps/private/lib/data-app-routing";
 
 export type UseDataAppLocationResult = {
   pathname: string;

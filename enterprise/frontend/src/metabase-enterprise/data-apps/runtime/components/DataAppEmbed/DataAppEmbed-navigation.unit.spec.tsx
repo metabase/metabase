@@ -10,7 +10,7 @@ import {
 import userEvent from "@testing-library/user-event";
 
 import { render, renderHook, screen } from "__support__/ui";
-import { useDataAppLocation } from "embedding-sdk-package/data-apps/hooks/use-data-app-location";
+import { useDataAppLocation } from "embedding-sdk-package/data-apps/public/hooks/use-data-app-location";
 
 import { DataAppEmbed } from "./DataAppEmbed";
 import { useDataAppPathNavigation } from "./hooks/use-data-app-path-navigation";

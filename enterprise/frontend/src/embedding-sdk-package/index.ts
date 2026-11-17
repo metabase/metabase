@@ -14,7 +14,10 @@ defineGlobalDependencies();
 export { CollectionBrowser } from "./components/public/CollectionBrowser";
 export { CreateQuestion } from "./components/public/CreateQuestion";
 export { CreateDashboardModal } from "./components/public/CreateDashboardModal";
-export { DataApp, type DataAppProps } from "./data-apps/components/DataApp";
+export {
+  DataApp,
+  type DataAppProps,
+} from "./data-apps/public/components/DataApp";
 export { EditableDashboard } from "./components/public/dashboard/EditableDashboard";
 export { InteractiveDashboard } from "./components/public/dashboard/InteractiveDashboard";
 export { StaticDashboard } from "./components/public/dashboard/StaticDashboard";
@@ -48,15 +51,15 @@ export { defineMetabaseTheme } from "./lib/public/define-metabase-theme";
 export {
   DataAppRouter,
   type DataAppRouterProps,
-} from "./data-apps/components/DataAppRouter";
+} from "./data-apps/public/components/DataAppRouter";
 export {
   DataAppLink,
   type DataAppLinkProps,
-} from "./data-apps/components/DataAppLink";
+} from "./data-apps/public/components/DataAppLink";
 export {
   useDataAppLocation,
   type UseDataAppLocationResult,
-} from "./data-apps/hooks/use-data-app-location";
+} from "./data-apps/public/hooks/use-data-app-location";
 
 export {
   type CollectionBrowserProps,

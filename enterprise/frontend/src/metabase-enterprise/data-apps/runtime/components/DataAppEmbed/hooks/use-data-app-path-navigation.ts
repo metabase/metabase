@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { navigate } from "embedding-sdk-package/data-apps/lib/data-app-routing";
+import { navigate } from "embedding-sdk-package/data-apps/private/lib/data-app-routing";
 import {
   getDataAppEmbedUrl,
   normalizeDataAppPath,

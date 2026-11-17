@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useAsyncFn } from "react-use";
 
-import { useDataAppDevLog } from "embedding-sdk-package/data-apps/hooks/use-data-app-dev-log";
+import { useDataAppDevLog } from "embedding-sdk-package/data-apps/private/hooks/use-data-app-dev-log";
 import { useLazySelector } from "embedding-sdk-package/hooks/private/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-package/lib/provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";

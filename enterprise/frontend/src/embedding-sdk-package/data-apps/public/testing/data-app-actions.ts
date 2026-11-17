@@ -14,7 +14,7 @@ import {
 import {
   getActionParametersError,
   isActionParameters,
-} from "../../testing/lib/private/action-parameters";
+} from "../../../testing/lib/private/action-parameters";
 
 import type { DataAppMockError } from "./data-app-queries";
 
