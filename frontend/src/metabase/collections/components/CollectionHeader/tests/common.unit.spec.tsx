@@ -206,6 +206,32 @@ describe("CollectionHeader", () => {
         screen.getByRole("link", { name: "calendar icon" }),
       ).toHaveAttribute("href", "/collection/root/timelines");
     });
+
+    it.each([
+      {
+        collection: { id: 9, name: "1st collection" },
+        href: "/collection/9-1st-collection/timelines",
+      },
+      {
+        collection: {
+          id: 2,
+          name: "Bobby Tables's Personal Collection",
+          personal_owner_id: 1,
+          is_personal: true,
+          can_write: false,
+        },
+        href: "/collection/2-bobby-tables-s-personal-collection/timelines",
+      },
+    ])(
+      "should link to the timelines of collection $collection.id",
+      ({ collection, href }) => {
+        setup({ collection });
+
+        expect(
+          screen.getByRole("link", { name: "calendar icon" }),
+        ).toHaveAttribute("href", href);
+      },
+    );
   });
 
   describe("collection bookmark", () => {
