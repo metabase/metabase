@@ -295,8 +295,8 @@
       (rethrow-remapped e ::data-testing.errors/query-failed (tru "The query under test failed to run:") labels))))
 
 (mu/defn- check-expectations :- [:sequential ::data-testing.schema/expectation-result]
-  "The result of every expectation against the output temp table, or against the input temp tables when the subject
-  modifies tables, passing ones included."
+  "The result of every expectation, passing ones included, against the output temp table, or against the input temp
+  tables when the subject modifies tables."
   [driver       :- :keyword
    conn         :- ::data-testing.schema/connection
    context      :- ::context
