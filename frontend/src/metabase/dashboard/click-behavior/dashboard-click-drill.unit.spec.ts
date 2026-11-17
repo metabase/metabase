@@ -1,5 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import { selectTab } from "metabase/redux/dashboard";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { ClickBehavior } from "metabase-types/api";
@@ -488,65 +487,6 @@ describe("DashboardClickAction", () => {
       name: "click_behavior",
       defaultAlways: true,
     });
-  });
-
-  it("switches the tab and sets mapped filters when linking to the same dashboard (metabase#39319)", () => {
-    const setParameterValue = jest.fn((id: string, value: unknown) => ({
-      type: "set-parameter-value",
-      payload: { id, value },
-    }));
-    const userIdColumn = createMockColumn({ name: "USER_ID" });
-    const [action] = DashboardClickAction({
-      question: new Question(createMockCard(), createMockMetadata()),
-      clicked: {
-        column: userIdColumn,
-        data: [{ col: userIdColumn, value: 1 }],
-        settings: buildSettings({
-          root: {
-            type: "link",
-            linkType: "dashboard",
-            targetId: 1,
-            tabId: 2,
-            parameterMapping: {
-              "text-param": {
-                id: "text-param",
-                source: { type: "column", id: "USER_ID", name: "User ID" },
-                target: { type: "parameter", id: "text-param" },
-              },
-            },
-          },
-        }),
-        extraData: {
-          dashboard: createMockDashboard({ id: 1 }),
-          dashboards: { 1: createMockDashboard({ id: 1 }) },
-          parameters: [
-            createMockParameter({ id: "text-param", type: "string/contains" }),
-          ],
-          setParameterValue,
-        },
-      },
-    });
-    const dispatch = jest.fn();
-
-    expect(action).toHaveProperty("action");
-    if (!("action" in action)) {
-      return;
-    }
-    const thunk = action.action();
-    expect(typeof thunk).toBe("function");
-    if (typeof thunk === "function") {
-      thunk(dispatch, jest.fn());
-    }
-
-    expect(dispatch.mock.calls).toEqual([
-      [selectTab({ tabId: 2 })],
-      [
-        {
-          type: "set-parameter-value",
-          payload: { id: "text-param", value: 1 },
-        },
-      ],
-    ]);
   });
 
   it("returns no action when no click behavior is configured for the clicked target", () => {

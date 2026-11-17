@@ -5,6 +5,7 @@ import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import {
+  type OpenUrlOptions,
   captureClickModifierKeys,
   getUrlTarget,
   openUrl,
@@ -181,7 +182,11 @@ describe("openUrl()", () => {
 describe("openUrl() with a URL on the Metabase origin", () => {
   const { origin } = window.location;
 
-  function setup({ siteUrl }: { siteUrl: string }) {
+  interface SetupOpts {
+    siteUrl: string;
+  }
+
+  function setup({ siteUrl }: SetupOpts) {
     mockSettings({ "site-url": siteUrl });
     const clickedLinks: { href: string; target: string }[] = [];
     jest
@@ -189,8 +194,14 @@ describe("openUrl() with a URL on the Metabase origin", () => {
       .mockImplementation(function (this: HTMLAnchorElement) {
         clickedLinks.push({ href: this.href, target: this.target });
       });
-    const openInSameOrigin = jest.fn();
-    const openInSameWindow = jest.fn();
+    const openInSameOrigin = jest.fn<
+      ReturnType<NonNullable<OpenUrlOptions["openInSameOrigin"]>>,
+      Parameters<NonNullable<OpenUrlOptions["openInSameOrigin"]>>
+    >();
+    const openInSameWindow = jest.fn<
+      ReturnType<NonNullable<OpenUrlOptions["openInSameWindow"]>>,
+      Parameters<NonNullable<OpenUrlOptions["openInSameWindow"]>>
+    >();
 
     return { clickedLinks, openInSameOrigin, openInSameWindow };
   }

@@ -81,7 +81,10 @@ describe("DashboardChartSettings", () => {
   });
 
   it("reset settings should keep column click behaviors (metabase#14919)", async () => {
-    const onChange = jest.fn();
+    const onChange = jest.fn<
+      ReturnType<NonNullable<DashboardChartSettingsProps["onChange"]>>,
+      Parameters<NonNullable<DashboardChartSettingsProps["onChange"]>>
+    >();
     const originalVizSettings = createMockVisualizationSettings({
       "table.pivot": false,
     });
