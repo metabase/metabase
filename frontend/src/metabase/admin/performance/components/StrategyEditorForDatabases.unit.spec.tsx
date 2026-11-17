@@ -1,9 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
+import { findRequests } from "__support__/server-mocks/util";
 import { screen, waitFor } from "__support__/ui";
 
 import {
   changeInput,
+  getCacheStrategySelect,
   getSaveButton,
   selectCacheStrategy,
   setupStrategyEditorForDatabases as setup,
@@ -43,8 +45,21 @@ describe("StrategyEditorForDatabases (OSS)", () => {
       await screen.findByTestId("strategy-form-submit-button"),
     );
 
-    // NOTE: There is no need to check that the submission of the form was successful.
-    // It doesn't meaningfully change the state of the component on OSS
+    const putRequests = await findRequests("PUT");
+    expect(putRequests).toHaveLength(1);
+    expect(putRequests[0].body).toEqual({
+      model: "root",
+      model_id: 0,
+      strategy: { type: "ttl", min_duration_ms: 5000, multiplier: 3 },
+    });
+    // The refetched config becomes the form's saved state: the form shows it
+    // and, once the post-save "Saved" window elapses, is no longer dirty
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("strategy-form-submit-button"),
+      ).not.toBeInTheDocument();
+    });
+    expect(getCacheStrategySelect()).toHaveValue("Adaptive");
 
     await selectCacheStrategy(/Don.t cache/i);
     expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
