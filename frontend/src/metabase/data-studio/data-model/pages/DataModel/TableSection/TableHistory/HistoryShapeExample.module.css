@@ -1,0 +1,36 @@
+.text {
+  max-width: 24rem;
+  white-space: normal;
+}
+
+.table {
+  border-collapse: collapse;
+  font-size: var(--mantine-font-size-sm);
+
+  th,
+  td {
+    padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
+    text-align: start;
+    white-space: nowrap;
+  }
+
+  th {
+    font-weight: normal;
+    color: var(--mb-color-tooltip-text-secondary);
+    border-bottom: 1px solid var(--mb-color-tooltip-text-secondary);
+  }
+
+  th:first-child,
+  td:first-child {
+    padding-inline-start: 0;
+  }
+
+  th:last-child,
+  td:last-child {
+    padding-inline-end: 0;
+  }
+}
+
+.currentRow td {
+  font-weight: bold;
+}

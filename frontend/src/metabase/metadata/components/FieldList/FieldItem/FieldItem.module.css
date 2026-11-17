@@ -9,6 +9,12 @@
   }
 }
 
+/* Flat, rounder card to match the Data Studio drawer's sections */
+.card.outlined {
+  border-radius: var(--mantine-radius-lg);
+  box-shadow: none !important;
+}
+
 .active {
   border-color: var(--mb-color-core-brand) !important;
 }

@@ -1,13 +1,11 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import { useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   useGetTableQueryMetadataQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer/PageContainer";
@@ -16,8 +14,7 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { hasLibraryCollection } from "metabase/data-studio/common/utils";
 import { isCypressActive } from "metabase/env";
 import {
-  FieldSection,
-  FieldValuesModal,
+  MetadataCardVariantProvider,
   NoDatabasesEmptyState,
   PreviewSection,
   type PreviewType,
@@ -27,41 +24,49 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
 } from "metabase/plugins";
-import { useParams } from "metabase/router";
-import {
-  ActionIcon,
-  Box,
-  Flex,
-  Group,
-  Icon,
-  ScrollArea,
-  Stack,
-  rem,
-} from "metabase/ui";
+import { useNavigate, useParams } from "metabase/router";
+import { Box, Drawer, Flex, Stack, Transition, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-import { trackMetadataChange } from "../../analytics";
-
 import S from "./DataModel.module.css";
+import {
+  DetailPanel,
+  DetailPanelHeader,
+  TableDetailsSkeleton,
+} from "./DetailPanel";
+import { FieldDetailsPanel } from "./FieldDetailsPanel";
+import { PropertyDetailsPanel } from "./PropertyDetailsPanel";
 import { RouterTablePicker } from "./TablePicker";
 import type { TreePath } from "./TablePicker/types";
 import { TableSection } from "./TableSection";
 import { TableAttributesEditBulk } from "./TableSection/TableAttributesEditBulk";
-import { COLUMN_CONFIG } from "./constants";
+import {
+  DRAWER_PANEL_WIDTH,
+  NAV_COLUMN_CONFIG,
+  REVEAL_WIDTH_DURATION_MS,
+  REVEAL_WIDTH_TRANSITION,
+} from "./constants";
+import {
+  PropertySelectionProvider,
+  usePropertySelection,
+} from "./contexts/PropertySelectionContext";
 import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
-import type { RouteParams } from "./types";
-import { parseRouteParams } from "./utils";
+import type { DrawerPanel, RouteParams } from "./types";
+import { isPageEscape, parseRouteParams } from "./utils";
 
 export const DataModel = () => {
   return (
     <SelectionProvider>
-      <DataModelContent />
+      <PropertySelectionProvider>
+        <DataModelContent />
+      </PropertySelectionProvider>
     </SelectionProvider>
   );
 };
 
 function DataModelContent() {
   const params = useParams<RouteParams>();
+  const navigate = useNavigate();
   const {
     hasSelectedItems,
     hasOnlyOneTableSelected,
@@ -89,26 +94,21 @@ function DataModelContent() {
   );
   const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =
     useDisclosure();
-  const [
-    isFieldValuesModalOpen,
-    { close: closeFieldValuesModal, open: openFieldValuesModal },
-  ] = useDisclosure();
   // Use the first selected table for fetching metadata when exactly one is selected
   const metadataTableId = Array.from(selectedTables)[0] ?? queryTableId;
   // But keep the URL tableId for navigation/path to avoid auto-expansion when selecting/deselecting
   const navigationTableId = hasSelectedItems ? queryTableId : queryTableId;
 
   const {
-    data: table,
+    // `currentData` so switching tables shows the loading state, not the previous table
+    currentData: table,
     error: tableError,
-    isLoading: isLoadingTables,
+    isFetching: isFetchingTable,
   } = useGetTableQueryMetadataQuery(getTableMetadataQuery(metadataTableId));
-  const fieldsByName = useMemo(() => {
-    return _.indexBy(table?.fields ?? [], (field) => field.name);
-  }, [table]);
+  const isLoadingTable = isFetchingTable && table == null;
   const field = table?.fields?.find((field) => field.id === fieldId);
-  const parentName = field?.nfc_path?.[0] ?? "";
-  const parentField = fieldsByName[parentName];
+  const { selectedPropertyName, setSelectedPropertyName } =
+    usePropertySelection(table?.id);
 
   const hasLibraryFeature = useHasTokenFeature("library");
   const { data: libraryCollection, isLoading: isLoadingLibrary } =
@@ -117,7 +117,8 @@ function DataModelContent() {
     });
 
   const [previewType, setPreviewType] = useState<PreviewType>("table");
-  const isLoading = isLoadingDatabases || isLoadingTables || isLoadingLibrary;
+  const [panelWidths, setPanelWidths] = useState(DRAWER_PANEL_WIDTH);
+  const isLoading = isLoadingDatabases || isLoadingTable || isLoadingLibrary;
   const error = databasesError ?? tableError;
 
   const hasLibrary = hasLibraryCollection(libraryCollection);
@@ -127,37 +128,41 @@ function DataModelContent() {
     ((path?: TreePath) => void) | null
   >(null);
 
-  useWindowEvent(
-    "keydown",
-    (event) => {
-      const activeElement = document.activeElement;
-      const isInputFocused =
-        activeElement instanceof HTMLElement &&
-        (["INPUT", "TEXTAREA", "SELECT"].includes(activeElement.tagName) ||
-          activeElement.isContentEditable);
-      const isModalOpen = isFieldValuesModalOpen;
+  const containerRef = useRef<HTMLDivElement>(null);
+  // Assigned each render below, once the open panels are known; they're
+  // computed after the early return, which hooks can't follow
+  const closeActivePanelRef = useRef<() => void>(() => undefined);
 
-      if (event.key === "Escape" && !isInputFocused && !isModalOpen) {
-        event.stopPropagation();
-        closePreview();
-      }
-    },
-    {
-      // otherwise modals get closed earlier and isModalOpen evaluates to false in the handler
-      capture: true,
-    },
-  );
+  useWindowEvent("keydown", (event) => {
+    if (
+      event.key === "Escape" &&
+      isPageEscape(event.target, containerRef.current)
+    ) {
+      closeActivePanelRef.current();
+    }
+  });
 
+  // Scroll only the drawer's panel row; `scrollIntoView` would also scroll the
+  // page behind the drawer while it slides in.
   const scrollToPanel = useCallback((el: HTMLDivElement | null) => {
-    el?.scrollIntoView({
+    const panelRow = el?.closest<HTMLElement>("[data-drawer-panels]");
+    panelRow?.scrollTo({
+      left: panelRow.scrollWidth,
       behavior: isCypressActive ? "instant" : "smooth",
-      inline: "end",
     });
   }, []);
+
+  const lastDrawerPanelsRef = useRef<ReactNode>(null);
+  const lastFieldPanelRef = useRef<ReactNode>(null);
 
   if (databasesData?.data?.length === 0) {
     return <NoDatabasesEmptyState />;
   }
+
+  // Widths survive the panel unmounting, e.g. when the drawer closes and reopens
+  const handlePanelWidthChange = (panel: DrawerPanel) => (width: number) => {
+    setPanelWidths((widths) => ({ ...widths, [panel]: width }));
+  };
 
   const isEmptyStateShown =
     metadataTableId == null && fieldId == null && !hasSelectedItems;
@@ -172,35 +177,226 @@ function DataModelContent() {
     !hasSelectedMoreThanOneTable &&
     !showBulkTableEdit;
 
-  return (
+  const showPropertyDetails =
+    showTableDetailsSection &&
+    activeTab === "properties" &&
+    table != null &&
+    selectedPropertyName != null;
+
+  const isDrawerOpen =
+    showBulkTableEdit || showTableDetailsSection || showFieldDetails;
+
+  const closeDrawer = () => {
+    closePreview();
+    resetSelection();
+    navigate(Urls.dataStudioData({ databaseId, schemaName }));
+  };
+
+  const handleTableUpdate = () => {
+    if (table) {
+      onUpdateCallback?.({
+        databaseId: table.db_id,
+        schemaName: table.schema,
+        tableId: table.id,
+      });
+    }
+  };
+
+  const closeFieldDetails = () => {
+    closePreview();
+    navigate(
+      Urls.dataStudioData({
+        databaseId: table?.db_id,
+        schemaName: table?.schema,
+        tableId: table?.id,
+      }),
+    );
+  };
+
+  // Esc closes the innermost open panel: preview, then field, then the drawer
+  closeActivePanelRef.current = () => {
+    if (showPropertyDetails) {
+      setSelectedPropertyName(null);
+    } else if (showFieldPreview) {
+      closePreview();
+    } else if (showFieldDetails) {
+      closeFieldDetails();
+    } else if (isDrawerOpen) {
+      closeDrawer();
+    }
+  };
+
+  const fieldPanel = showFieldDetails ? (
+    <FieldDetailsPanel
+      ref={scrollToPanel}
+      field={field}
+      table={table}
+      error={error}
+      isLoading={isLoading}
+      defaultWidth={panelWidths.field}
+      onWidthChange={handlePanelWidthChange("field")}
+      getFieldHref={(fieldId) =>
+        Urls.dataStudioData({ ...parsedParams, fieldId })
+      }
+      onClose={closeFieldDetails}
+      onPreviewClick={togglePreview}
+    />
+  ) : null;
+
+  // Keep the last field panel rendered so it has content while it collapses
+  if (fieldPanel) {
+    lastFieldPanelRef.current = fieldPanel;
+  }
+
+  const drawerPanels = isDrawerOpen ? (
     <Flex
       bg="background_page-secondary"
+      className={S.drawerPanels}
+      h="100%"
+      data-drawer-panels
+    >
+      {showBulkTableEdit && (
+        <DetailPanel
+          defaultWidth={panelWidths.table}
+          onWidthChange={handlePanelWidthChange("table")}
+        >
+          <TableAttributesEditBulk
+            canPublish={canPublish}
+            hasLibrary={hasLibrary}
+            onUpdate={() => onUpdateCallback?.()}
+          />
+        </DetailPanel>
+      )}
+
+      {showTableDetailsSection && (
+        <DetailPanel
+          ref={scrollToPanel}
+          defaultWidth={panelWidths.table}
+          onWidthChange={handlePanelWidthChange("table")}
+        >
+          <DetailPanelHeader
+            icon="table2"
+            label={t`Table`}
+            title={table?.display_name}
+            isLoading={isLoading}
+            onClose={closeDrawer}
+            data-testid="table-section-header"
+          />
+          {error ? (
+            <LoadingAndErrorWrapper error={error} />
+          ) : isLoading ? (
+            <TableDetailsSkeleton />
+          ) : (
+            table && (
+              <TableSection
+                /**
+                 * Make sure internal component state is reset when changing tables.
+                 * This is to avoid state mix-up with optimistic updates.
+                 */
+                key={table.id}
+                table={table}
+                activeFieldId={fieldId}
+                activeTab={activeTab}
+                canPublish={canPublish}
+                hasLibrary={hasLibrary}
+                onUpdate={handleTableUpdate}
+              />
+            )
+          )}
+        </DetailPanel>
+      )}
+
+      {showPropertyDetails && (
+        <PropertyDetailsPanel
+          key={`${table.id}:${selectedPropertyName}`}
+          ref={scrollToPanel}
+          table={table}
+          propertyName={selectedPropertyName}
+          defaultWidth={panelWidths.field}
+          onWidthChange={handlePanelWidthChange("field")}
+          onClose={() => setSelectedPropertyName(null)}
+        />
+      )}
+
+      <Transition
+        mounted={showFieldDetails}
+        transition={REVEAL_WIDTH_TRANSITION}
+        duration={REVEAL_WIDTH_DURATION_MS}
+        timingFunction="ease"
+      >
+        {(transitionStyles) => (
+          <Box className={S.widthReveal} style={transitionStyles}>
+            <Box className={S.widthRevealContent}>
+              {fieldPanel ?? lastFieldPanelRef.current}
+            </Box>
+          </Box>
+        )}
+      </Transition>
+
+      {showFieldPreview && databaseId != null && fieldId != null && (
+        <Stack
+          flex="0 0 auto"
+          h="100%"
+          p="xl"
+          gap="xl"
+          w={panelWidths.preview}
+          ref={scrollToPanel}
+        >
+          <DetailPanelHeader title={t`Field preview`} onClose={closePreview} />
+          <Box flex={1} mih={0}>
+            <PreviewSection
+              className={S.preview}
+              field={field}
+              table={table}
+              previewType={previewType}
+              withHeader={false}
+              onPreviewTypeChange={setPreviewType}
+              onClose={closePreview}
+            />
+          </Box>
+        </Stack>
+      )}
+    </Flex>
+  ) : null;
+
+  // Keep the last panels rendered so the drawer has content while it slides out.
+  if (drawerPanels) {
+    lastDrawerPanelsRef.current = drawerPanels;
+  }
+
+  return (
+    <Box
+      ref={containerRef}
+      className={S.container}
       data-testid="data-model"
       h="100%"
-      style={{ overflow: "auto" }}
     >
-      <PageContainer
-        maw={COLUMN_CONFIG.nav.max}
-        miw={COLUMN_CONFIG.nav.min}
-        flex={COLUMN_CONFIG.nav.flex}
-        className={S.column}
-        gap={0}
+      <Flex
+        bg="background_page-secondary"
+        h="100%"
+        style={{ overflow: "auto" }}
       >
-        <PaneHeader
-          breadcrumbs={
-            <DataStudioBreadcrumbs>{t`Tables`}</DataStudioBreadcrumbs>
-          }
-        />
-        <RouterTablePicker
-          databaseId={databaseId}
-          schemaName={schemaName}
-          tableId={navigationTableId}
-          params={params}
-          setOnUpdateCallback={setOnUpdateCallback}
-        />
-      </PageContainer>
+        <PageContainer
+          maw={NAV_COLUMN_CONFIG.max}
+          miw={NAV_COLUMN_CONFIG.min}
+          flex={NAV_COLUMN_CONFIG.flex}
+          className={S.column}
+          gap={0}
+        >
+          <PaneHeader
+            breadcrumbs={
+              <DataStudioBreadcrumbs>{t`Tables`}</DataStudioBreadcrumbs>
+            }
+          />
+          <RouterTablePicker
+            databaseId={databaseId}
+            schemaName={schemaName}
+            tableId={navigationTableId}
+            params={params}
+            setOnUpdateCallback={setOnUpdateCallback}
+          />
+        </PageContainer>
 
-      <>
         {databaseId != null &&
           metadataTableId == null &&
           databaseExists === false && (
@@ -214,184 +410,31 @@ function DataModelContent() {
               <LoadingAndErrorWrapper error={t`Not found.`} />
             </Stack>
           )}
+      </Flex>
 
-        {showBulkTableEdit && (
-          <Stack
-            className={S.column}
-            flex={COLUMN_CONFIG.table.flex}
-            h="100%"
-            justify={error ? "center" : undefined}
-            maw={COLUMN_CONFIG.table.max}
-            miw={COLUMN_CONFIG.table.min}
-          >
-            <TableAttributesEditBulk
-              canPublish={canPublish}
-              hasLibrary={hasLibrary}
-              onUpdate={() => onUpdateCallback?.()}
-            />
-          </Stack>
-        )}
-
-        {showTableDetailsSection && (
-          <Stack
-            className={S.column}
-            flex={COLUMN_CONFIG.table.flex}
-            h="100%"
-            justify={error ? "center" : undefined}
-            maw={COLUMN_CONFIG.table.max}
-            miw={COLUMN_CONFIG.table.min}
-            ref={scrollToPanel}
-            gap={0}
-          >
-            <Group
-              justify="space-between"
-              w="100%"
-              data-testid="table-section-header"
-              py="xl"
-              bg="background_page-secondary"
-              className={S.header}
-              px="xl"
-            >
-              <DataStudioBreadcrumbs>{t`Table details`}</DataStudioBreadcrumbs>
-              <ActionIcon
-                variant="subtle"
-                size="sm"
-                component={ForwardRefLink}
-                to={Urls.dataStudioData({
-                  databaseId: table?.db_id,
-                  schemaName: table?.schema,
-                })}
-                onClick={() => {
-                  closePreview();
-                  resetSelection();
-                }}
-              >
-                <Icon name="close" />
-              </ActionIcon>
-            </Group>
-            <ScrollArea flex={1} px="xl" type="hover">
-              <LoadingAndErrorWrapper error={error} loading={isLoading}>
-                {table && (
-                  <TableSection
-                    /**
-                     * Make sure internal component state is reset when changing tables.
-                     * This is to avoid state mix-up with optimistic updates.
-                     */
-                    key={table.id}
-                    table={table}
-                    activeFieldId={fieldId}
-                    activeTab={activeTab}
-                    canPublish={canPublish}
-                    hasLibrary={hasLibrary}
-                    onUpdate={() =>
-                      onUpdateCallback?.({
-                        databaseId: table.db_id,
-                        schemaName: table.schema,
-                        tableId: table.id,
-                      })
-                    }
-                  />
-                )}
-              </LoadingAndErrorWrapper>
-            </ScrollArea>
-          </Stack>
-        )}
-
-        {showFieldDetails && (
-          <Stack
-            className={S.column}
-            flex={COLUMN_CONFIG.field.flex}
-            h="100%"
-            justify={
-              (!isLoading && !error && !field) || error ? "center" : undefined
-            }
-            maw={COLUMN_CONFIG.field.max}
-            miw={COLUMN_CONFIG.field.min}
-            ref={scrollToPanel}
-            gap={0}
-          >
-            <Group
-              justify="space-between"
-              w="100%"
-              data-testid="field-section-header"
-              p="xl"
-              bg="background_page-secondary"
-              className={S.header}
-            >
-              <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>
-              <ActionIcon
-                variant="subtle"
-                size="sm"
-                component={ForwardRefLink}
-                to={Urls.dataStudioData({
-                  databaseId: table?.db_id,
-                  schemaName: table?.schema,
-                  tableId: table?.id,
-                })}
-                onClick={closePreview}
-              >
-                <Icon name="close" />
-              </ActionIcon>
-            </Group>
-            <ScrollArea flex={1} px="xl" type="hover">
-              <LoadingAndErrorWrapper error={error} loading={isLoading}>
-                {field && table && databaseId != null && (
-                  <>
-                    <FieldSection
-                      /**
-                       * Make sure internal component state is reset when changing fields.
-                       * This is to avoid state mix-up with optimistic updates.
-                       */
-                      key={field.id}
-                      field={field}
-                      parent={parentField}
-                      table={table}
-                      getFieldHref={(fieldId) =>
-                        Urls.dataStudioData({ ...parsedParams, fieldId })
-                      }
-                      onTrackMetadataChange={trackMetadataChange}
-                      onFieldValuesClick={openFieldValuesModal}
-                      onPreviewClick={togglePreview}
-                    />
-                  </>
-                )}
-              </LoadingAndErrorWrapper>
-
-              {!isLoading && !error && !field && (
-                <LoadingAndErrorWrapper error={t`Not found.`} />
-              )}
-            </ScrollArea>
-          </Stack>
-        )}
-
-        {showFieldPreview && databaseId != null && fieldId != null && (
-          <Box
-            flex={COLUMN_CONFIG.preview.flex}
-            h="100%"
-            p="xl"
-            maw={COLUMN_CONFIG.preview.max}
-            miw={COLUMN_CONFIG.preview.min}
-            ref={scrollToPanel}
-          >
-            <PreviewSection
-              className={S.preview}
-              field={field}
-              table={table}
-              previewType={previewType}
-              onPreviewTypeChange={setPreviewType}
-              onClose={closePreview}
-            />
-          </Box>
-        )}
-      </>
-
-      {fieldId && (
-        <FieldValuesModal
-          fieldId={fieldId}
-          isOpen={isFieldValuesModalOpen}
-          onClose={closeFieldValuesModal}
-        />
-      )}
-    </Flex>
+      {/* Non-modal: the table list behind the drawer stays interactive. */}
+      <Drawer
+        opened={isDrawerOpen}
+        onClose={closeDrawer}
+        position="right"
+        size="auto"
+        padding={0}
+        withinPortal={false}
+        withOverlay={false}
+        withCloseButton={false}
+        closeOnClickOutside={false}
+        closeOnEscape={false}
+        lockScroll={false}
+        trapFocus={false}
+        returnFocus={false}
+        shadow="lg_outline"
+        classNames={{ body: S.drawerBody }}
+      >
+        {/* Flat, bordered metadata cards to match the drawer's sections */}
+        <MetadataCardVariantProvider value="outlined">
+          {drawerPanels ?? lastDrawerPanelsRef.current}
+        </MetadataCardVariantProvider>
+      </Drawer>
+    </Box>
   );
 }

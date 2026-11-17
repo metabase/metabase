@@ -1,6 +1,11 @@
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Route } from "metabase/router";
 
+const metricsPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-library" */ "../pages/LibraryPage"
+  ).then(({ MetricsPage }) => ({ Component: MetricsPage }));
+
 /**
  * The Data Studio Library metric pages, in the `metrics` chunk.
  *
@@ -68,6 +73,7 @@ const metricHistoryPage = () =>
 export function getDataStudioMetricRoutes() {
   return (
     <Route path="metrics">
+      <Route index lazy={metricsPage} />
       <Route path="new" lazy={newMetricPage} />
       <Route path=":cardId" lazy={metricAboutPage} />
       <Route path=":cardId/overview" lazy={metricOverviewPage} />

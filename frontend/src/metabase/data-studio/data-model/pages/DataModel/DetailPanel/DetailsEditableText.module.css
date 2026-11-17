@@ -1,0 +1,38 @@
+/* Click-to-edit text that fills a details-table cell, like the cell inputs:
+ * no border, a tint on hover, a focus ring, and a pencil on the right */
+.cell {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.editableText.editableText {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  padding-block: var(--mantine-spacing-sm);
+  padding-inline: var(--mantine-spacing-lg)
+    calc(var(--mantine-spacing-lg) * 2 + 1rem);
+  transition: background-color 0.15s ease;
+
+  &:focus-within {
+    background-color: var(--mb-color-background_page-primary);
+    box-shadow: inset 0 0 0 2px var(--mb-color-core-brand);
+  }
+}
+
+.cell:not(.disabled):hover .editableText {
+  background-color: var(--mb-color-background_surface-hover);
+}
+
+/* Lines up with the first line of text, so it stays put in multiline cells */
+.editIcon {
+  position: absolute;
+  top: calc(var(--mantine-spacing-sm) + 0.1875rem);
+  right: var(--mantine-spacing-lg);
+  color: var(--mb-color-text-secondary);
+  pointer-events: none;
+}

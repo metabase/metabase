@@ -1,5 +1,5 @@
 .icon {
-  color: var(--mb-color-text-secondary);
+  color: var(--area-nav-icon-color, var(--mb-color-text-secondary));
 }
 
 .tab {

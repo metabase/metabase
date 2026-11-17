@@ -305,6 +305,7 @@
                                        :database_is_auto_increment false
                                        :name_field                 nil)
                                 (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :last_login)))
+                                       :semantic_type              "type/LastActivityTimestamp"
                                        :table_id                   (mt/id :users)
                                        :name                       "LAST_LOGIN"
                                        :display_name               "Last Login"
@@ -397,6 +398,7 @@
                                        :database_is_auto_increment false
                                        :name_field        nil)
                                 (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :last_login)))
+                                       :semantic_type            "type/LastActivityTimestamp"
                                        :table_id                 (mt/id :users)
                                        :name                     "LAST_LOGIN"
                                        :display_name             "Last Login"

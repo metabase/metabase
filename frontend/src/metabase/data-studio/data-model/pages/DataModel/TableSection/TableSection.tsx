@@ -4,14 +4,16 @@ import { t } from "ttag";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
-import {
-  FieldOrderPicker,
-  NameDescriptionInput,
-} from "metabase/metadata/components";
+import { FieldOrderPicker } from "metabase/metadata/components";
 import { ResponsiveButton } from "metabase/metadata/components/ResponsiveButton";
 import { TableFieldList } from "metabase/metadata/components/TableFieldList";
 import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useTableUpdateHandlers } from "metabase/metadata/hooks";
+import {
+  isRoleA,
+  usePropertyRegistry,
+  useTableStructures,
+} from "metabase/metadata/table-structure";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_LIBRARY,
@@ -39,9 +41,10 @@ import { SegmentList } from "./SegmentList";
 import { TableActionsMenu } from "./TableActionsMenu";
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
-import { TableMetadata } from "./TableMetadata";
+import { TableMetadata, TableStats } from "./TableMetadata";
+import { TablePropertyList } from "./TablePropertyList";
 import S from "./TableSection.module.css";
-import { TableSectionGroup } from "./TableSectionGroup";
+import { TableStructure } from "./TableStructure";
 
 interface Props {
   table: Table;
@@ -78,6 +81,12 @@ const TableSectionBase = ({
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  const structure = useTableStructures().getTableStructure(table);
+  const isCustomPropertyTable =
+    structure.role != null &&
+    isRoleA(structure.role, "role/CustomPropertyTable");
+  // History pages link to the "history" tab, which lands on Details
+  const visibleTab = activeTab === "history" ? "details" : activeTab;
 
   const getFieldHref = (fieldId: FieldId) => {
     return Urls.dataStudioData({
@@ -136,31 +145,21 @@ const TableSectionBase = ({
 
   return (
     <Stack data-testid="table-section" gap="lg" pb="xxl">
+      {isCustomPropertyTable && <KeepPropertyRegistryLoaded table={table} />}
       <Box>
-        <Tabs value={activeTab} onChange={handleTabChange}>
+        <Tabs value={visibleTab} onChange={handleTabChange}>
           <Tabs.List mb="lg">
             <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
             <Tabs.Tab value="field">{t`Fields`}</Tabs.Tab>
+            {isCustomPropertyTable && (
+              <Tabs.Tab value="properties">{t`Custom properties`}</Tabs.Tab>
+            )}
             <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>
             <Tabs.Tab value="measures">{t`Measures`}</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="details">
-            <Stack gap="lg">
-              <Box className={S.header}>
-                <NameDescriptionInput
-                  description={table.description ?? ""}
-                  descriptionPlaceholder={t`Give this table a description`}
-                  name={table.display_name}
-                  nameIcon="table2"
-                  nameMaxLength={254}
-                  namePlaceholder={t`Give this table a name`}
-                  readOnly={readOnly}
-                  onNameChange={handleNameChange}
-                  onDescriptionChange={handleDescriptionChange}
-                />
-              </Box>
-
+            <Stack gap="xxl">
               <Group justify="stretch" gap="sm">
                 {canPublish && isLibraryEnabled && !remoteSyncReadOnly && (
                   <Button
@@ -199,13 +198,20 @@ const TableSectionBase = ({
                 <TableActionsMenu table={table} />
               </Group>
 
+              <TableMetadata
+                table={table}
+                readOnly={readOnly}
+                onNameChange={handleNameChange}
+                onDescriptionChange={handleDescriptionChange}
+              />
+
               <TableAttributesEditSingle table={table} onUpdate={onUpdate} />
 
-              <TableSectionGroup title={t`Metadata`}>
-                <TableMetadata table={table} />
-              </TableSectionGroup>
+              <TableStructure table={table} readOnly={readOnly} />
 
               {table.is_published && <TableCollection table={table} />}
+
+              <TableStats table={table} />
             </Stack>
           </Tabs.Panel>
 
@@ -278,6 +284,12 @@ const TableSectionBase = ({
             </Stack>
           </Tabs.Panel>
 
+          {isCustomPropertyTable && (
+            <Tabs.Panel value="properties">
+              <TablePropertyList table={table} />
+            </Tabs.Panel>
+          )}
+
           <Tabs.Panel value="segments">
             <SegmentList table={table} />
           </Tabs.Panel>
@@ -330,6 +342,14 @@ function TableLink({ table }: { table: Table }) {
       />
     </Tooltip>
   );
+}
+
+// Ad-hoc query results are dropped as soon as nothing reads them, so the
+// Properties tab would re-profile on every visit. Reading the registry here,
+// where it outlives tab switches, keeps it loaded while the table is open.
+function KeepPropertyRegistryLoaded({ table }: { table: Table }) {
+  usePropertyRegistry(table);
+  return null;
 }
 
 export const TableSection = memo(TableSectionBase);

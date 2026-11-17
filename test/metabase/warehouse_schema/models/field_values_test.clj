@@ -72,7 +72,16 @@
     :type/TimeWithZoneOffset
     :type/DateTime
     :type/DateTimeWithLocalTZ
-    :type/Interval})
+    :type/Interval
+    :type/EventTimestamp
+    :type/MilestoneTimestamp
+    :type/StartTimestamp
+    :type/EndTimestamp
+    :type/ValidFrom
+    :type/ValidTo
+    :type/PeriodKey
+    :type/LoadTimestamp
+    :type/LastActivityTimestamp})
 
 (deftest ^:parallel base-type-should-have-field-values-test
   (doseq [base-type (conj (descendants :type/*) :type/*)]

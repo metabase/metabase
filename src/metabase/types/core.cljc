@@ -48,7 +48,11 @@
 
   ### Entity Types -- keys starting with `:entity/`
 
-  These are used to record the semantic purpose of a Table."
+  These are used to record the semantic purpose of a Table: the subject its rows are about.
+
+  ### Table Roles -- keys starting with `:role/`
+
+  How a Table is built (fact, dimension, bridge, ...). See [[table-role-hierarchy]]."
   #?(:clj (:refer-clojure :exclude [for]))
   (:require
    #?(:clj [metabase.util.performance :refer [for]]
@@ -61,16 +65,84 @@
 ;;; Table (entity) Types
 
 (def entity-hierarchy
-  "Hierarchy of table entity types, i.e. a Table's `:entity_type`. Not part of Clojure's global hierarchy, so `isa?`
-  on these keywords must be passed this hierarchy explicitly."
+  "Hierarchy of table entity types, i.e. a Table's `:entity_type`: the subject a table's rows are about. Not part of
+  Clojure's global hierarchy, so `isa?` on these keywords must be passed this hierarchy explicitly."
   (-> (make-hierarchy)
       (derive :entity/GenericTable :entity/*)
-      (derive :entity/UserTable :entity/GenericTable)
+      ;; people, in the roles they play for the business
+      (derive :entity/PersonTable :entity/GenericTable)
+      (derive :entity/UserTable :entity/PersonTable)
+      (derive :entity/ContactTable :entity/PersonTable)
+      (derive :entity/EmployeeTable :entity/PersonTable)
+      (derive :entity/CustomerTable :entity/PersonTable)
       (derive :entity/CompanyTable :entity/GenericTable)
+      ;; the tenant: accounts, organizations, workspaces, teams
+      (derive :entity/OrganizationTable :entity/GenericTable)
       (derive :entity/TransactionTable :entity/GenericTable)
+      ;; order and invoice lines, the grain under a transaction
+      (derive :entity/LineItemTable :entity/GenericTable)
       (derive :entity/ProductTable :entity/GenericTable)
       (derive :entity/SubscriptionTable :entity/GenericTable)
-      (derive :entity/EventTable :entity/GenericTable)))
+      (derive :entity/EventTable :entity/GenericTable)
+      (derive :entity/MessageTable :entity/GenericTable)
+      (derive :entity/SessionTable :entity/GenericTable)
+      (derive :entity/CampaignTable :entity/GenericTable)
+      (derive :entity/OpportunityTable :entity/GenericTable)
+      (derive :entity/TicketTable :entity/GenericTable)
+      (derive :entity/ProjectTable :entity/GenericTable)
+      (derive :entity/LocationTable :entity/GenericTable)
+      (derive :entity/DeviceTable :entity/GenericTable)
+      (derive :entity/CalendarTable :entity/GenericTable)))
+
+;;; Table Roles
+
+(def table-role-hierarchy
+  "Hierarchy of table roles: how a table is built, i.e. whether its rows can be counted, its columns summed, or the
+  table joined through. A role is independent of the table's subject in [[entity-hierarchy]]: a history of users has
+  the role `:role/HistoryDimension` and the subject `:entity/UserTable`. Not part of Clojure's global hierarchy, so
+  `isa?` on these keywords must be passed this hierarchy explicitly."
+  (-> (make-hierarchy)
+      ;; a measurement
+      (derive :role/Fact :role/*)
+      (derive :role/TransactionFact :role/Fact)
+      (derive :role/EventFact :role/Fact)
+      (derive :role/ActivityStream :role/EventFact)
+      (derive :role/PeriodicSnapshotFact :role/Fact)
+      (derive :role/UserDayFact :role/PeriodicSnapshotFact)
+      (derive :role/CohortSnapshot :role/PeriodicSnapshotFact)
+      (derive :role/AccumulatingSnapshotFact :role/Fact)
+      (derive :role/FactlessFact :role/Fact)
+      (derive :role/AggregateFact :role/Fact)
+      (derive :role/SessionFact :role/AggregateFact)
+      ;; one thing with attributes
+      (derive :role/Dimension :role/*)
+      (derive :role/EntityDimension :role/Dimension)
+      (derive :role/DateDimension :role/Dimension)
+      (derive :role/TimeDimension :role/Dimension)
+      (derive :role/LookupDimension :role/Dimension)
+      (derive :role/HistoryDimension :role/Dimension)
+      (derive :role/MiniDimension :role/Dimension)
+      (derive :role/JunkDimension :role/Dimension)
+      (derive :role/OutriggerDimension :role/Dimension)
+      ;; one link between two things; never counted as a fact
+      (derive :role/Bridge :role/*)
+      (derive :role/HierarchyBridge :role/Bridge)
+      (derive :role/ArrayChild :role/Bridge)
+      (derive :role/CustomPropertyTable :role/*)
+      (derive :role/TranslationTable :role/*)
+      (derive :role/ConfigurationTable :role/*)
+      (derive :role/SystemTable :role/*)
+      (derive :role/OneBigTable :role/*)
+      ;; Data Vault
+      (derive :role/Hub :role/*)
+      (derive :role/Link :role/*)
+      (derive :role/Satellite :role/*)
+      (derive :role/PointInTime :role/*)
+      ;; anchor modeling
+      (derive :role/Anchor :role/*)
+      (derive :role/Attribute :role/*)
+      (derive :role/Tie :role/*)
+      (derive :role/Knot :role/*)))
 
 ;;; Modifier Types
 
@@ -350,6 +422,102 @@
 
 (derive :type/FK :Relation/*)
 (derive :type/PK :Relation/*)
+
+;;; Semantic layer types. Each derives from an existing type, so `isa?` checks against that parent keep working, e.g.
+;;; a `:type/Balance` column is still a `:type/Number`. Roles a column plays besides its meaning (a time role, a key
+;;; role, a structure role, a lifecycle role) are meant to be facets in the column metadata
+;;; (`metabase.lib.schema.metadata`) next to its single semantic type; the keywords live here so `isa?` works on
+;;; facet values too.
+
+;;; Keys and identity: how rows join and what makes a row unique
+
+(derive :type/SurrogateKey :type/PK)        ; warehouse-generated key with no business meaning
+(derive :type/HashKey :type/SurrogateKey)   ; hash of the natural key (Data Vault)
+(derive :type/NaturalKey :Semantic/*)       ; business key from the source system: SKU, customer number
+(derive :type/DurableKey :type/NaturalKey)  ; the key that is stable across SCD2 versions of a row
+(derive :type/ExternalID :type/NaturalKey)  ; an ID from another system; not joinable here
+(derive :type/DegenerateDimension :type/NaturalKey) ; an identifier kept on a fact, e.g. an order number
+(derive :type/TenantKey :type/FK)           ; the scope every query should filter on: account, organization
+(derive :type/ParentKey :type/FK)           ; a self-reference; one edge of a hierarchy
+(derive :type/PolymorphicKey :type/FK)      ; target table is named by a sibling `:type/TypeDiscriminator`
+(derive :type/RoleKey :type/FK)             ; one of several FKs to the same table (role-playing dimension)
+(derive :type/TypeDiscriminator :type/Category)
+(derive :type/ArrayIndex :Semantic/*)       ; position inside the parent row's list
+(derive :type/Version :Semantic/*)          ; version or revision counter
+
+;;; Time roles: which timestamp is the grain, and which only describe the row
+
+(derive :type/EventTimestamp :Semantic/*)   ; the moment the fact happened
+(derive :type/EventTimestamp :type/Temporal)
+(derive :type/MilestoneTimestamp :Semantic/*) ; one step of a process: approved_at, shipped_at
+(derive :type/MilestoneTimestamp :type/Temporal)
+(derive :type/StartTimestamp :type/MilestoneTimestamp)
+(derive :type/EndTimestamp :type/MilestoneTimestamp)
+(derive :type/ValidFrom :Semantic/*)        ; SCD2 validity interval
+(derive :type/ValidFrom :type/Temporal)
+(derive :type/ValidTo :Semantic/*)
+(derive :type/ValidTo :type/Temporal)
+(derive :type/PeriodKey :Semantic/*)        ; the period of a snapshot row
+(derive :type/PeriodKey :type/Temporal)
+(derive :type/LoadTimestamp :Semantic/*)    ; when the loader wrote the row
+(derive :type/LoadTimestamp :type/Temporal)
+(derive :type/LastActivityTimestamp :Semantic/*)
+(derive :type/LastActivityTimestamp :type/Temporal)
+(derive :type/TimeZone :type/Category)
+
+;;; Measures: whether a column can be summed, and over what
+
+(derive :type/Balance :Semantic/*)          ; semi-additive: sums across entities, not across time
+(derive :type/Balance :type/Number)
+(derive :type/Rate :type/Share)             ; a ratio stored as a number: exchange_rate, tax_rate, ctr
+(derive :type/UnitPrice :type/Price)        ; multiply by a quantity; never sum
+(derive :type/Count :type/Quantity)         ; an integer count of things: impressions, clicks
+(derive :type/Weight :type/Share)           ; allocation factor on a bridge row, sums to 1 per parent
+(derive :type/RangeBound :Semantic/*)       ; min/max/floor/ceiling of a range; aggregate with min or max
+(derive :type/RangeBound :type/Number)
+(derive :type/Bytes :type/Quantity)
+(derive :type/CurrencyCode :type/Category)  ; unit of the money column next to it
+(derive :type/UnitOfMeasure :type/Category) ; unit of the measure next to it
+
+;;; Categories and enums: whether a column is a breakout, and whether its values have an order
+
+(derive :type/Status :type/Category)        ; ordinal lifecycle state with open and terminal values
+(derive :type/Priority :type/Category)      ; ordinal severity, priority, or tier
+(derive :type/Reason :type/Category)
+(derive :type/Kind :type/Category)          ; the sub-type of the row: event_type, transaction_type
+(derive :type/Channel :type/Source)
+(derive :type/Locale :type/Category)
+(derive :type/Color :type/Category)
+(derive :type/Tags :Semantic/*)             ; multi-valued labels in one cell
+(derive :type/Tags :type/Text)
+(derive :type/Flag :Semantic/*)
+(derive :type/Flag :type/Boolean)
+(derive :type/SoftDeleteFlag :type/Flag)
+(derive :type/CurrentRowFlag :type/Flag)    ; marks the current SCD2 version of a row
+(derive :type/TestDataFlag :type/Flag)
+(derive :type/PrimaryFlag :type/Flag)       ; the preferred one of several, e.g. the primary email
+
+;;; Identity and contact text
+
+(derive :type/Phone :Semantic/*)
+(derive :type/Phone :type/Text)
+(derive :type/UserAgent :Semantic/*)
+(derive :type/UserAgent :type/Text)
+(derive :type/FilePath :Semantic/*)
+(derive :type/FilePath :type/Text)
+(derive :type/Hash :Semantic/*)
+(derive :type/Hash :type/Text)
+
+;;; Structure and lineage: whether the UI should show a column at all
+
+(derive :type/SystemColumn :Semantic/*)     ; loader bookkeeping: _fivetran_*, _airbyte_*, dbt_*
+(derive :type/RowHash :type/SystemColumn)   ; change-detection hash
+(derive :type/CustomProperty :Semantic/*)   ; customer-defined column whose label lives elsewhere
+(derive :type/SourceSystem :type/Category)  ; which source a merged row came from
+(derive :type/HierarchyLevel :Semantic/*)   ; depth in a hierarchy
+(derive :type/HierarchyPath :Semantic/*)    ; materialized path, e.g. /a/b/c
+(derive :type/HierarchyPath :type/Text)
+(derive :type/SortOrder :Semantic/*)        ; display order; neither a measure nor a category
 
 ;;; Coercion strategies
 
