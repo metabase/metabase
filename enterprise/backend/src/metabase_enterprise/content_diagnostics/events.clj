@@ -4,6 +4,7 @@
   drops out of the served set immediately instead of lingering until the next scan."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.content-diagnostics.db :as content-diagnostics.db]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
@@ -41,8 +42,9 @@
       (cond
         (and (= :model/Collection model) archived?)
         (invalidate! {:collection-id (:id object)}
-                     #(finding/invalidate-for-collection-subtree!
-                       (conj (collection/descendant-ids object) (:id object))))
+                     #(let [archived (content-diagnostics.db/collection (:id object))]
+                        (finding/invalidate-for-collection-subtree!
+                         (conj (collection/descendant-ids archived) (:id object)))))
 
         (and (entity-types model) (or deleted? archived?))
         (invalidate! {:entity-type (entity-types model) :entity-id (:id object)}

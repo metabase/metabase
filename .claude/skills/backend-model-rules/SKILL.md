@@ -41,9 +41,6 @@ that needs the row as stored.
   (let [changes (t2/changes segment)]
     (when (contains? changes :creator_id)
       (throw (ex-info (tru "You cannot change the creator of a Segment.") {:status-code 400})))
-    (when (and (contains? changes :table_id) (not (contains? changes :definition)))
-      (throw (ex-info (tru "The table of a Segment follows its definition; change the definition instead.")
-                      {:status-code 400})))
     (when (contains? changes :definition)
       (check-definition definition)
       (lib/check-segment-overwrite id (lib-be/normalize-query definition)))
@@ -63,8 +60,8 @@ that needs the row as stored.
 - A hook may read another row through a `<module>.db` function. It sees stored rows, not those of its own statement,
   so a writer whose rows depend on each other writes them in separate statements, dependency first. A check that
   needs the row's id (cycle detection) runs in `before-update` only.
-- Publish no event and record nothing in a model's own hook: a consumer's trait (`:hook/revisions`, `:hook/pulse`)
-  reacts to the write.
+- Publish no event and record nothing in a model's own hook: a model that derives `:hook/events` publishes its own
+  lifecycle events, and consumers react to those (see Events).
 - **Derived column.** Never trusted from the caller: compute and overwrite on insert; recompute when its source
   changes; a change to it alone is a 400; leave it out of the request schema. A column derived only in some states
   (a model's `display` is `:table`) is overwritten in those states and keeps the caller's value in the others.
@@ -117,17 +114,25 @@ endpoint's own helper.
 - Every user-facing writer of a model calls the check: REST, MCP and Metabot tools, Agent API, bulk endpoints,
   revision revert, copy; grep the model's `update-...!` and `t2/update! :model/X` callers when adding a rule. A bulk
   endpoint hydrates `:can_write` on all rows once, then checks each.
-- Nothing publishes a model-level event. A module that reacts to a model's writes exposes `<module>/hooks.clj` (EE
-  consumer: `defenterprise` there, implementation in the EE module, as `dependencies.hooks`) and a `:hook/...` trait
-  from `mi/define-hook-trait`, derived in the model's setup. Upkeep (pulse sync, persisted models, personal
-  collection, finding invalidation, driver pools) runs for every writer; a record of a user action (a revision) only
-  when `api/*current-user-id*` is bound, read in the consumer's hooks, never in a model's rule hooks.
-- Hooks mark the owner they change with `write-batch/mark!`; its work runs once per owner when the batch ends. A write
-  function that writes several rows of one aggregate opens it with `dependencies.hooks/with-batched-writes`, which
-  also batches the dependency marks; a single write is its own batch. A record's message goes in through the
-  consumer's macro (`revisions.hooks/with-revision-message`).
-- A moment that is no row write (a user deactivated, a Database saved) is a direct call into the consumer's hooks
-  namespace. `requiring-resolve` is only for a module cycle.
+- Nobody publishes a lifecycle event by hand: a model that derives `:hook/events` (and requires
+  `metabase.events.core`) publishes `:event/<name>-create|update|delete` for every write by any writer, in its transaction.
+- A write function that writes several rows of one aggregate opens `events/with-batched-events`: one transaction, the
+  events of its writes delivered once, merged per row, before the commit (nothing on a throw; nested batches join).
+  A message for the records the writes cause: `(events/with-event-context {:revision-message m} ...)`.
+- A moment that is no row write (login, read, sync begin, transform run, user invited) is published by hand; a rule
+  that must see rows before the write (a delete's cascade) stays in a hook of the model.
+
+## Events
+
+- The payload is `{:object <after> :previous-object <before> :changes <t2/changes> :user-id <current user or nil>
+  :context {...}}` (`::events.schema/lifecycle`).
+- A consumer lives in `<module>/events.clj` or `<module>/events/<topic>.clj`, required from `init.clj`, as a
+  `methodical/defmethod events/publish-event!` on a topic it derives; `events/register-owned-consumer!` gives it one
+  call per owner per batch.
+- Upkeep (subscription sync, persisted models, driver pools, personal collections, session revoke, dependency marks)
+  runs for every writer. A record of a user action (revision, audit row) needs a non-nil `:user-id`.
+- Work that needs committed rows goes in `mdb/do-after-commit` inside the handler.
+
 - The request schema is closed and lists only what a caller may set: no derived columns, no `archived_directly`.
 - App-DB queries live in `<module>.db`, caller values bound: `(t2/select-one :model/X :id [:auto/param id])`.
 
@@ -157,19 +162,16 @@ endpoint's own helper.
 ## Lay out a model file
 
 Banners `;;; ---- Hooks ----` padded with dashes to 120 columns, in this order: `Model setup` (`t2/table-name`,
-`t2/deftransforms`, `derive`), `Hooks`, `Permissions`, `Hydration`, `Writes`, `Revisions`, `Serialization` (spec,
-import dependencies, storage paths), `Remote sync`, `Search`.
+`t2/deftransforms`, `derive`), `Hooks`, `Permissions`, `Hydration`, `Writes`, `Revisions`, `Serialization`,
+`Remote sync`, `Search`.
 
 ## Tests
 
 - One `with-temp` default per model in `with-temp-defaults-fns` (`test/metabase/test/util.clj`) that passes its hooks;
   a fixture overrides a column only when the test depends on it. Build queries with `metabase.lib`.
-- Test a hook through `t2/insert!` / `t2/update!`: the rejection, the derivation, the cascade. Test a permission rule
-  through `api/create-check` / `api/update-check` as each kind of user, and once through the endpoint.
-- Assert a list endpoint stays batched with `t2/with-call-count` at two sizes. Run the enumeration tests (entity ids,
-  SerDes specs, stats) for a new model or column.
+- Test a hook through `t2/insert!` / `t2/update!`; a permission rule through `api/create-check` / `api/update-check`
+  as each kind of user, and once through the endpoint.
+- Assert a list endpoint stays batched with `t2/with-call-count` at two sizes. Test an event consumer by writing the
+  row, not by publishing the event. Run the enumeration tests (entity ids, SerDes specs, stats) for a new model.
 
-## Before handing off
-
-`./bin/mage kondo <file>` per changed file, `./bin/mage fix-modules-config`, `./bin/mage lint-migrations` for a changeset, and
-the tests of the model and each writer you touched.
+Before handing off: `./bin/mage kondo <file>`, `./bin/mage fix-modules-config`, and the tests of each writer you touched.

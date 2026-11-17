@@ -78,6 +78,11 @@
                                    finding-row-columns)]))
         finding-details))
 
+(mu/defn collection
+  "The Collection with `collection-id`, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-one :model/Collection :id [:auto/param collection-id]))
+
 (mu/defn insert-findings!
   "Insert one chunk of `content_diagnostics_finding` `rows`."
   [rows :- [:sequential FindingRow]]

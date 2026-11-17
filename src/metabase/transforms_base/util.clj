@@ -51,7 +51,8 @@
 
 (set! *warn-on-reflection* true)
 
-(events/derive! :event/transform-run-complete :metabase/event)
+(events/derive! ::transform-run-complete :metabase/event)
+(events/derive! :event/transform-run-complete ::transform-run-complete)
 
 ;;; ------------------------------------------------- Constants -------------------------------------------------
 

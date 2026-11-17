@@ -743,12 +743,6 @@
    :api  #{metabase.connection-pool}
    :uses #{}}
 
-  content-diagnostics
-  {:team "Gadget"
-   :api  #{metabase.content-diagnostics.hooks}
-   :uses #{models
-           premium-features}}
-
   content-translation
   {:team "UX West"
    :api  #{metabase.content-translation.models}
@@ -939,12 +933,6 @@
   {:team "UX West"
    :api  #{metabase.database-routing.core}
    :uses #{lib.schema premium-features}}
-
-  dependencies
-  {:team       "Data Apps"
-   :codeowners true
-   :api  #{metabase.dependencies.hooks}
-   :uses #{events premium-features util}}
 
   documents
   {:team "UX West"

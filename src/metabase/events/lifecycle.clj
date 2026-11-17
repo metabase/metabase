@@ -13,6 +13,12 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- model-of
+  "The model keyword of `model`, which a write may give as an instance."
+  [model]
+  (let [model (t2/resolve-model model)]
+    (if (keyword? model) model (t2/model model))))
+
 (defn- collect!
   [model operation row extra]
   (events.batch/collect! (merge {:model     model
@@ -24,14 +30,14 @@
 
 (t2/define-after-insert :hook/events
   [instance]
-  (collect! &model :create instance nil)
+  (collect! (model-of &model) :create instance nil)
   instance)
 
 (t2/define-before-update :hook/events
   [instance]
   (let [changes (t2/changes instance)]
     (when (seq changes)
-      (collect! &model :update instance {:previous-object (t2/instance &model (t2.realize/realize (t2/original instance)))
+      (collect! (model-of &model) :update instance {:previous-object (t2/instance (model-of &model) (t2.realize/realize (t2/original instance)))
                                          :changes         changes})))
   instance)
 

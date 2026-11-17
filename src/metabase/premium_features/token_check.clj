@@ -724,7 +724,8 @@
     (log/info "Token is valid.")
     status))
 
-(events.hierarchy/derive! :event/premium-token-update :metabase/event)
+(events.hierarchy/derive! ::premium-token-update :metabase/event)
+(events.hierarchy/derive! :event/premium-token-update ::premium-token-update)
 
 (defn -set-premium-embedding-token!
   "Setter for the [[metabase.premium-features.settings/token-status]] setting."
