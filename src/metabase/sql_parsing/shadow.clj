@@ -175,12 +175,12 @@
     (quietly #(log-difference! (difference-message result method dialect primary-backend shadow-backend
                                                    caller-thread))))
   (quietly #(record-difference! {:method          method
-                                 :dialect         dialect
+                                   :dialect         dialect
                                  :outcome         result
                                  :primary-backend primary-backend
                                  :shadow-backend  shadow-backend
-                                 :sql             sql
-                                 :args            args
+                                   :sql             sql
+                                   :args            args
                                  :primary         (recorded-outcome primary-outcome)
                                  :shadow          (recorded-outcome shadow-outcome)})))
 
@@ -220,19 +220,26 @@
       (quietly #(record-comparison! method dialect :dropped))))
   (quietly #(record-in-flight! shadow-backend in-flight)))
 
+(def ^:private max-sql-length
+  "Longer SQL is not compared. Parsing it can take hundreds of megabytes of heap, which the shadow parser must not
+  take from the primary one."
+  65536)
+
 (defn- run
-  "Call `call` on the primary parser, schedule a comparison when this call is sampled, and return the primary value
-  or throw its exception."
+  "Call `call` on the primary parser, schedule a comparison when this call is sampled and its SQL is not longer than
+  [[max-sql-length]], and return the primary value or throw its exception."
   [{:keys [primary sample?] :as ctx} method dialect sql args call]
   (let [primary-outcome (outcome #(call primary))]
     (when (sampled? sample? method)
-      (schedule-comparison! ctx {:method          method
-                                 :dialect         dialect
-                                 :sql             sql
-                                 :args            args
-                                 :call            call
-                                 :primary-outcome primary-outcome
-                                 :caller-thread   (.getName (Thread/currentThread))}))
+      (if (< max-sql-length (count sql))
+        (quietly #(record-comparison! method dialect :too-large))
+        (schedule-comparison! ctx {:method          method
+                                   :dialect         dialect
+                                   :sql             sql
+                                   :args            args
+                                   :call            call
+                                   :primary-outcome primary-outcome
+                                   :caller-thread   (.getName (Thread/currentThread))})))
     (if-let [e (:thrown primary-outcome)]
       (throw ^Throwable e)
       (:value primary-outcome))))
@@ -240,8 +247,9 @@
 (defn parser
   "A SqlParser that answers with `primary` and, when `(sample? method)` is true, runs `shadow` on the same arguments in
   the background and compares the two. Each comparison counts one `metabase-sql-parsing/shadow-comparisons` outcome
-  (see [[classify]]); one that finds no room in the background queue counts as `dropped`, and one that throws as
-  `comparison-failed`. The gauge `metabase-sql-parsing/shadow-in-flight` counts the comparisons running or waiting.
+  (see [[classify]]); one whose SQL is longer than [[max-sql-length]] counts as `too-large`, one that finds no room
+  in the background queue counts as `dropped`, and one that throws as `comparison-failed`. The gauge
+  `metabase-sql-parsing/shadow-in-flight` counts the comparisons running or waiting.
   A comparison that is not a match also logs one INFO line (see [[difference-message]]), at most one per method a
   minute, through `log-difference!` (default: `log/info`), and calls `record-difference!` (default: do nothing) on the
   background thread. The backend keywords label the metrics. A `sample?` that throws means no comparison.

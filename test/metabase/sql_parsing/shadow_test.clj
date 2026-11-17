@@ -343,12 +343,24 @@
 (deftest thread-start-failure-answers-with-the-primary-test
   (testing "a comparison whose thread cannot start is dropped, and the caller gets the primary's value"
     (mt/with-prometheus-system! [_ system]
-      (let [parser (with-redefs [shadow/executor (fn []
-                                                   (proxy [ThreadPoolExecutor] [1 1 60 TimeUnit/SECONDS
-                                                                                (ArrayBlockingQueue. 1)]
-                                                     (execute [_]
-                                                       (throw (OutOfMemoryError. "unable to create native thread")))))]
-                     (shadow-parser (stub-parser (fn [_ _] [[nil nil "t"]])) (stub-parser (fn [_ _] []))))]
+      (let [broken-executor (fn []
+                              (proxy [ThreadPoolExecutor] [1 1 60 TimeUnit/SECONDS (ArrayBlockingQueue. 1)]
+                                (execute [_]
+                                  (throw (OutOfMemoryError. "unable to create native thread")))))
+            parser          (mt/with-dynamic-fn-redefs [shadow/executor broken-executor]
+                              (shadow-parser (stub-parser (fn [_ _] [[nil nil "t"]])) (stub-parser (fn [_ _] []))))]
         (is (= [[nil nil "t"]] (protocol/referenced-tables parser "postgres" "sql")))
         (is (== 1 (comparisons system "referenced-tables" "dropped")))
         (is (zero? (mt/metric-value system :metabase-sql-parsing/shadow-in-flight {:parser "sqlglot-java"})))))))
+
+(deftest long-sql-is-not-compared-test
+  (testing "SQL longer than the limit is answered by the primary and counted as too-large, with no shadow call"
+    (mt/with-prometheus-system! [_ system]
+      (let [shadow-calls (atom 0)
+            parser       (shadow-parser (stub-parser (fn [_ _] [[nil nil "t"]]))
+                                        (stub-parser (fn [_ _] (swap! shadow-calls inc) [])))
+            long-sql     (apply str "select 1 from t where " (repeat 70000 "x"))]
+        (is (= [[nil nil "t"]] (protocol/referenced-tables parser "postgres" long-sql)))
+        (Thread/sleep 100)
+        (is (zero? @shadow-calls))
+        (is (== 1 (comparisons system "referenced-tables" "too-large")))))))
