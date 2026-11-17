@@ -1,0 +1,1 @@
+export { TablePropertyList } from "./TablePropertyList";

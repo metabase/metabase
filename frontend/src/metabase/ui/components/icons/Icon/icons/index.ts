@@ -109,6 +109,7 @@ import fields_component from "./fields.svg?component";
 import filter_component from "./filter.svg?component";
 import filter_plus_component from "./filter_plus.svg?component";
 import find_replace_component from "./find_replace.svg?component";
+import flag_component from "./flag.svg?component";
 import folder_component from "./folder.svg?component";
 import folder_database_component from "./folder_database.svg?component";
 import folder_filled_component from "./folder_filled.svg?component";
@@ -133,6 +134,7 @@ import grid_component from "./grid.svg?component";
 import grid_2x2_component from "./grid_2x2.svg?component";
 import grid_bordered_component from "./grid_bordered.svg?component";
 import group_component from "./group.svg?component";
+import handshake_component from "./handshake.svg?component";
 import heart_handshake_component from "./heart_handshake.svg?component";
 import history_component from "./history.svg?component";
 import home_component from "./home.svg?component";
@@ -231,7 +233,9 @@ import search_component from "./search.svg?component";
 import search_check_component from "./search_check.svg?component";
 import section_component from "./section.svg?component";
 import segment_component from "./segment.svg?component";
+import segment_group_component from "./segment_group.svg?component";
 import send_component from "./send.svg?component";
+import server_component from "./server.svg?component";
 import settings_component from "./settings.svg?component";
 import share_component from "./share.svg?component";
 import shield_component from "./shield.svg?component";
@@ -276,6 +280,7 @@ import text_italic_component from "./text_italic.svg?component";
 import text_strike_component from "./text_strike.svg?component";
 import thumbs_down_component from "./thumbs_down.svg?component";
 import thumbs_up_component from "./thumbs_up.svg?component";
+import tickets_component from "./tickets.svg?component";
 import time_history_component from "./time_history.svg?component";
 import transform_component from "./transform.svg?component";
 import trash_component from "./trash.svg?component";
@@ -412,6 +417,7 @@ export const Icons: Record<IconName, React.FC> = {
   filter: filter_component,
   filter_plus: filter_plus_component,
   find_replace: find_replace_component,
+  flag: flag_component,
   bug: bug_component,
   format_code: format_code_component,
   formula: formula_component,
@@ -437,6 +443,7 @@ export const Icons: Record<IconName, React.FC> = {
   google: google_component,
   google_drive: google_drive_component,
   google_sheet: google_sheet_component,
+  handshake: handshake_component,
   heart_handshake: heart_handshake_component,
   history: history_component,
   home: home_component,
@@ -519,6 +526,7 @@ export const Icons: Record<IconName, React.FC> = {
   revert: revert_component,
   schema: schema_component,
   sankey: sankey_component,
+  server: server_component,
   settings: settings_component,
   share: share_component,
   sort: sort_component,
@@ -547,6 +555,7 @@ export const Icons: Record<IconName, React.FC> = {
   search_check: search_check_component,
   section: section_component,
   segment: segment_component,
+  segment_group: segment_group_component,
   send: send_component,
   shield: shield_component,
   shield_outline: shield_outline_component,
@@ -580,6 +589,7 @@ export const Icons: Record<IconName, React.FC> = {
   text_strike: text_strike_component,
   thumbs_down: thumbs_down_component,
   thumbs_up: thumbs_up_component,
+  tickets: tickets_component,
   time_history: time_history_component,
   transform: transform_component,
   trash: trash_component,

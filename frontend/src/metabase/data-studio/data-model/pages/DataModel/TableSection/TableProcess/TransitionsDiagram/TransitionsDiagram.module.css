@@ -1,0 +1,50 @@
+.frame {
+  overflow: hidden;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-lg);
+}
+
+/* The schema viewer's table card */
+.node {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  height: 100%;
+  padding: 0 var(--mantine-spacing-lg);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 0.5rem;
+  background: var(--mb-color-background_page-primary);
+  box-shadow: 0 0.25rem 1.25rem 0 rgba(0, 0, 0, 0.05);
+}
+
+.node.connected {
+  border-color: var(--mb-color-core-brand);
+}
+
+.name {
+  flex: 1;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.5rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--mb-color-text-primary);
+}
+
+/* Edges attach here; nobody draws new ones */
+.handle {
+  width: 1px;
+  height: 1px;
+  border: none;
+  background: transparent;
+  opacity: 0;
+}
+
+.edge {
+  cursor: pointer;
+}
+
+.panel {
+  width: 18rem;
+}

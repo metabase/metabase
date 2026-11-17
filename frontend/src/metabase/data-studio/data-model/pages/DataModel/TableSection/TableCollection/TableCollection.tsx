@@ -33,7 +33,7 @@ export function TableCollection({ table }: TableCollectionProps) {
           <Box
             className={S.link}
             component={Link}
-            to={Urls.dataStudioLibrary({ expandedIds })}
+            to={Urls.dataStudioPublishedData({ expandedIds })}
             fw="bold"
           >
             {collection.name}

@@ -93,6 +93,8 @@ type PaneHeaderInputProps = {
   maxLength?: number;
   isOptional?: boolean;
   readOnly?: boolean;
+  /** Focuses the name on mount, for something new that needs one */
+  autoFocus?: boolean;
   "data-testid"?: string;
   onChange?: (value: string) => void;
   onContentChange?: (value: string) => void;
@@ -105,6 +107,7 @@ export function PaneHeaderInput({
   "data-testid": dataTestId,
   isOptional,
   readOnly = false,
+  autoFocus,
   onChange,
   onContentChange,
 }: PaneHeaderInputProps) {
@@ -121,6 +124,7 @@ export function PaneHeaderInput({
       bd={isOptional ? "1px solid var(--mb-color-border-neutral)" : undefined}
       isOptional={isOptional}
       isDisabled={readOnly}
+      autoFocus={autoFocus}
       data-testid={dataTestId}
       onChange={onChange}
       onContentChange={onContentChange}

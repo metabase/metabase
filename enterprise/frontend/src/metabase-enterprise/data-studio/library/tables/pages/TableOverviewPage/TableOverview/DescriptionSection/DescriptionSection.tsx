@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { MouseEvent, ReactNode } from "react";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
@@ -7,28 +8,17 @@ import { EditableText } from "metabase/common/components/EditableText";
 import { Link } from "metabase/common/components/Link/Link";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
-import {
-  DataSourceInput,
-  EntityTypeInput,
-  UserInput,
-} from "metabase/metadata/components";
+import { DataSourceInput, UserInput } from "metabase/metadata/components";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import {
-  Box,
-  Card,
-  Divider,
-  Flex,
-  Group,
-  Icon,
-  Stack,
-  Text,
-  rem,
-} from "metabase/ui";
+import { Box, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isNullOrUndefined } from "metabase/utils/types";
-import type { Table, TableDataSource, UserId } from "metabase-types/api";
-
-import { PublishingInfo } from "../PublishingInfo";
+import type {
+  IconName,
+  Table,
+  TableDataSource,
+  UserId,
+} from "metabase-types/api";
 
 import S from "./DescriptionSection.module.css";
 
@@ -44,11 +34,11 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
   const formatNumber = useNumberFormatter();
   const isDependenciesEnabled = PLUGIN_DEPENDENCIES.isEnabled;
 
-  const { dependentsCount } = PLUGIN_DEPENDENCIES.useGetDependenciesCount({
-    id: Number(table.id),
-    type: "table",
-  });
-
+  const { dependenciesCount, dependentsCount } =
+    PLUGIN_DEPENDENCIES.useGetDependenciesCount({
+      id: Number(table.id),
+      type: "table",
+    });
   const handleChange = async (newValue: string) => {
     const newDescription = newValue.trim();
     const { error } = await updateTable({
@@ -81,25 +71,6 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
         const { error } = await updateTable({
           id: table.id,
           data_source: table.data_source,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
-  const handleEntityTypeChange = async (entityType: Table["entity_type"]) => {
-    const { error } = await updateTable({
-      id: table.id,
-      entity_type: entityType,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update entity type`);
-    } else {
-      sendSuccessToast(t`Entity type updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          entity_type: table.entity_type,
         });
         sendUndoToast(error);
       });
@@ -156,26 +127,6 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
 
   return (
     <Stack gap={0} align="stretch" data-testid="table-description-sidebar">
-      {/* Entity Type Selector */}
-      <Flex justify="space-between" align="center" px="xl" py="lg">
-        <Text size="md" c="text-secondary">
-          {t`Entity type`}
-        </Text>
-        <EntityTypeInput
-          value={table.entity_type ?? "entity/GenericTable"}
-          label={null}
-          onChange={handleEntityTypeChange}
-          classNames={{
-            input: S.input,
-            label: S.label,
-            section: table.entity_type ? S.sectionLabel : "",
-          }}
-          className={S.gridLabelInput}
-        />
-      </Flex>
-
-      <Divider />
-
       {/* Description */}
       <Box data-testid="table-description-section" p={rem(20)}>
         <EditableText
@@ -188,151 +139,237 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
         />
       </Box>
 
-      {/* Metadata Sections */}
+      {/* Who owns it, when it last changed, where it lives, and where it
+          comes from */}
       <Card mx="xl" bg="background_page-secondary" shadow="none" radius="1rem">
-        <Card.Section withBorder p="lg">
-          <Group gap="sm" mb={4}>
-            <Icon name="pencil" c="core-brand" />
-            <Text size="md" fw={600} lh="1rem">
-              <DateTime value={table.updated_at} />
-            </Text>
-          </Group>
-          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
-            {t`Last edited at`}
+        <OverviewProperty
+          icon="person"
+          isSet={Boolean(isOwnerSpecified)}
+          label={t`Owner`}
+          isPicker
+        >
+          <UserInput
+            email={table.owner_email}
+            userId={isOwnerSpecified ? table.owner_user_id : "unknown"}
+            onEmailChange={handleOwnerEmailChange}
+            onUserIdChange={handleOwnerUserIdChange}
+            unknownUserLabel={t`No owner`}
+            classNames={{
+              root: S.textStyleWrapper,
+              input: cx(S.textStyleInput, isOwnerSpecified && S.selectedInput),
+              section: S.textStyleSection,
+            }}
+          />
+        </OverviewProperty>
+        <OverviewProperty icon="pencil" isSet label={t`Last edited at`}>
+          <Text size="md" fw={600} lh="1rem">
+            <DateTime value={table.updated_at} />
           </Text>
-        </Card.Section>
-        <Card.Section withBorder p="lg">
-          <Group gap="sm" mb={4}>
-            <Icon name="database" c="core-brand" />
-            {table.db ? (
-              <Link to={Urls.dataStudioData({ databaseId: table.db.id })}>
+        </OverviewProperty>
+        <OverviewProperty icon="database" isSet label={t`Location`}>
+          <TableLocation table={table} />
+        </OverviewProperty>
+        <OverviewProperty
+          icon="refresh_downstream"
+          isSet={table.data_source != null}
+          label={t`Source`}
+          isPicker={table.data_source !== "metabase-transform"}
+        >
+          <DataSourceInput
+            disabled={table.data_source === "metabase-transform"}
+            value={table.data_source ?? "unknown"}
+            label={null}
+            classNames={{
+              root: S.textStyleWrapper,
+              input: cx(S.textStyleInput, table.data_source && S.selectedInput),
+              section: S.textStyleSection,
+            }}
+            showUnknown={!table.data_source}
+            onChange={handleDataSourceChange}
+          />
+        </OverviewProperty>
+        {table.data_source === "metabase-transform" && (
+          <OverviewProperty icon="insight" isSet label={t`Transform`}>
+            {table.transform ? (
+              <Link to={Urls.transform(table.transform.id)}>
                 <Text size="md" fw={600} lh="1rem">
-                  {table.db.name}
+                  {table.transform.name}
                 </Text>
               </Link>
             ) : (
-              <Text size="md" fw={600} lh="1rem">
-                —
+              <Text size="md" fw={600} lh="1rem" c="feedback-negative">
+                {t`Transform does not exist anymore`}
               </Text>
             )}
-          </Group>
-          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
-            {t`Database`}
-          </Text>
-        </Card.Section>
-        <Card.Section withBorder p="lg">
-          <Group gap="sm" mb={4}>
-            <Icon
-              name="refresh_downstream"
-              c={table.data_source ? "core-brand" : "icon-disabled"}
-            />
-
-            <DataSourceInput
-              disabled={table.data_source === "metabase-transform"}
-              value={table.data_source ?? "unknown"}
-              label={null}
-              classNames={{
-                root: S.textStyleWrapper,
-                input: cx(
-                  S.textStyleInput,
-                  table.data_source && S.selectedInput,
-                ),
-                section: S.textStyleSection,
-              }}
-              showUnknown={!table.data_source}
-              onChange={handleDataSourceChange}
-            />
-          </Group>
-          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
-            {t`Source`}
-          </Text>
-        </Card.Section>
-        <Card.Section withBorder p="lg">
-          <Group gap="sm" mb={4}>
-            <Icon
-              name="person"
-              c={isOwnerSpecified ? "core-brand" : "icon-disabled"}
-            />
-
-            <UserInput
-              email={table.owner_email}
-              userId={isOwnerSpecified ? table.owner_user_id : "unknown"}
-              onEmailChange={handleOwnerEmailChange}
-              onUserIdChange={handleOwnerUserIdChange}
-              unknownUserLabel={t`No owner`}
-              classNames={{
-                root: S.textStyleWrapper,
-                input: cx(
-                  S.textStyleInput,
-                  isOwnerSpecified && S.selectedInput,
-                ),
-                section: S.textStyleSection,
-              }}
-            />
-          </Group>
-          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
-            {t`Owner`}
-          </Text>
-        </Card.Section>
-        <PublishingInfo table={table} />
+          </OverviewProperty>
+        )}
       </Card>
 
-      {/* Statistics */}
+      {/* Size, then usage */}
       <Card mx="xl" my="xl" shadow="none">
-        <Card.Section withBorder py={rem(12)} px="lg">
-          <Flex justify="space-between" align="center">
-            <Text size="md" c="text-secondary">
-              {t`Fields`}
-            </Text>
-            <Link
-              to={Urls.dataStudioTableFields(table.id)}
-              className={S.metricLink}
-            >
-              <Text size="xl" fw={600}>
-                {table.fields?.length ?? 0}
-              </Text>
-            </Link>
-          </Flex>
-        </Card.Section>
-
         {!isNullOrUndefined(table.estimated_row_count) && (
-          <Card.Section withBorder py={rem(12)} px="lg">
-            <Flex justify="space-between" align="center">
-              <Text size="md" c="text-secondary">
-                {t`Rows`}
-              </Text>
-              <Text size="xl" fw={600}>
-                {formatNumber(table.estimated_row_count)}
-              </Text>
-            </Flex>
-          </Card.Section>
+          <OverviewCount
+            label={t`Rows`}
+            value={formatNumber(table.estimated_row_count)}
+          />
         )}
-
+        <OverviewCount
+          label={t`Fields`}
+          value={table.fields?.length ?? 0}
+          to={Urls.dataStudioTableFields(table.id)}
+        />
+        <OverviewCount
+          label={t`Views`}
+          value={formatNumber(table.view_count)}
+        />
         {isDependenciesEnabled && (
-          <Card.Section withBorder py={rem(12)} px="lg">
-            <Flex justify="space-between" align="center">
-              <Text size="md" c="text-secondary">
-                {t`Dependents`}
-              </Text>
-
-              {dependentsCount > 0 ? (
-                <Link
-                  to={Urls.dataStudioTableDependencies(table.id)}
-                  className={S.metricLink}
-                >
-                  <Text size="xl" fw={600}>
-                    {dependentsCount}
-                  </Text>
-                </Link>
-              ) : (
-                <Text size="xl" fw={600}>
-                  {dependentsCount}
-                </Text>
-              )}
-            </Flex>
-          </Card.Section>
+          <OverviewCount
+            label={t`Dependents`}
+            value={dependentsCount}
+            to={
+              dependentsCount > 0
+                ? Urls.dataStudioTableDependencies(table.id)
+                : undefined
+            }
+          />
+        )}
+        {isDependenciesEnabled && (
+          <OverviewCount
+            label={t`Dependencies`}
+            value={dependenciesCount}
+            to={
+              dependenciesCount > 0
+                ? Urls.dataStudioTableDependencies(table.id)
+                : undefined
+            }
+          />
         )}
       </Card>
     </Stack>
+  );
+}
+
+/** One property of the table: its value with an icon, and a label under it */
+function OverviewProperty({
+  icon,
+  isSet,
+  label,
+  isPicker = false,
+  children,
+}: {
+  icon: IconName;
+  /** Unset properties get a muted icon */
+  isSet: boolean;
+  label: string;
+  /** The value is a picker; clicking anywhere in the row opens it */
+  isPicker?: boolean;
+  children: ReactNode;
+}) {
+  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
+    const { currentTarget, target } = event;
+    // Clicks in the picker's own dropdown are portaled outside the row, and
+    // clicks on the picker itself (its input and chevron) already open it
+    if (
+      !(target instanceof Node) ||
+      !currentTarget.contains(target) ||
+      (target instanceof Element && target.closest(`.${S.textStyleWrapper}`))
+    ) {
+      return;
+    }
+    const input = currentTarget.querySelector("input");
+    input?.focus();
+    input?.click();
+  };
+
+  return (
+    <Card.Section
+      withBorder
+      p="lg"
+      className={isPicker ? S.pickerProperty : undefined}
+      onClick={isPicker ? handleClick : undefined}
+    >
+      <Group gap="sm" mb={4} wrap="nowrap" align="flex-start">
+        <Icon
+          name={icon}
+          c={isSet ? "core-brand" : "icon-disabled"}
+          flex="0 0 auto"
+        />
+        {/* Fills the row, so a picker's chevron sits at the right edge */}
+        <Box flex={1} miw={0}>
+          {children}
+        </Box>
+      </Group>
+      <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
+        {label}
+      </Text>
+    </Card.Section>
+  );
+}
+
+/** Database › schema › the table's name in the database */
+function TableLocation({ table }: { table: Table }) {
+  return (
+    <Group gap="xs" wrap="wrap">
+      {table.db ? (
+        <Link to={Urls.dataStudioData({ databaseId: table.db.id })}>
+          <Text size="md" fw={600} lh="1rem">
+            {table.db.name}
+          </Text>
+        </Link>
+      ) : (
+        <Text size="md" fw={600} lh="1rem">
+          —
+        </Text>
+      )}
+      {table.schema && (
+        <>
+          <Text c="text-secondary" lh="1rem">
+            ›
+          </Text>
+          <Text size="md" fw={600} lh="1rem" ff="monospace">
+            {table.schema}
+          </Text>
+        </>
+      )}
+      <Text c="text-secondary" lh="1rem">
+        ›
+      </Text>
+      <Text size="md" fw={600} lh="1rem" ff="monospace">
+        {table.name}
+      </Text>
+    </Group>
+  );
+}
+
+/** A count, linking somewhere when there's a page for it */
+function OverviewCount({
+  label,
+  value,
+  to,
+}: {
+  label: string;
+  value: ReactNode;
+  to?: string;
+}) {
+  const valueText = (
+    <Text size="xl" fw={600}>
+      {value}
+    </Text>
+  );
+  return (
+    <Card.Section withBorder py={rem(12)} px="lg">
+      <Flex justify="space-between" align="center">
+        <Text size="md" c="text-secondary">
+          {label}
+        </Text>
+        {to ? (
+          <Link to={to} className={S.metricLink}>
+            {valueText}
+          </Link>
+        ) : (
+          valueText
+        )}
+      </Flex>
+    </Card.Section>
   );
 }

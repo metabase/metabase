@@ -1,0 +1,423 @@
+import { useMemo } from "react";
+import { t } from "ttag";
+
+import {
+  type MetadataSelectorOpts,
+  useMetadataProvider,
+} from "metabase/metadata-store";
+import {
+  type ResolvedFieldType,
+  isFieldTypeA,
+  useTableSemantics,
+} from "metabase/metadata/semantic-types";
+import {
+  CONDITION_SEGMENT_ROLES,
+  type DefaultSegment,
+  type DefaultSegmentInference,
+  type FieldCondition,
+  type MainDateKind,
+  type RequiredFilterInference,
+  type ResolvedSegmentSettings,
+  type SystemSegmentInference,
+  type SystemSegmentRole,
+  getSystemSegmentDescription,
+  getSystemSegmentLabel,
+  inferDefaultSegment,
+  inferRequiredFilter,
+  inferSystemSegment,
+  useSegmentSettings,
+  useTableSegments,
+} from "metabase/metadata/table-segments";
+import { isRoleA, useTableStructures } from "metabase/metadata/table-structure";
+import * as Lib from "metabase-lib";
+import type { DatasetQuery, FieldId, Segment, Table } from "metabase-types/api";
+
+const STAGE_INDEX = -1;
+
+// Hoisted: the metadata selector memoises on the options object
+const WITH_HIDDEN_TABLES: MetadataSelectorOpts = { includeHiddenTables: true };
+
+export type ResolvedSystemSegment = {
+  role: SystemSegmentRole;
+  label: string;
+  description: string;
+  /** The base query with the segment's filters; `undefined` while loading */
+  query: Lib.Query | undefined;
+  filterNames: string[];
+  /**
+   * The system segments a composite one is made of, like Default rows; empty
+   * for one with its own filters
+   */
+  memberLabels: string[];
+  isEdited: boolean;
+  inference: SystemSegmentInference;
+};
+
+export type ResolvedDefaultSegment = {
+  segment: DefaultSegment;
+  label: string;
+  inference: DefaultSegmentInference;
+  isOverridden: boolean;
+};
+
+export type TableSegmentsModel = {
+  /** The table's query with no filters; `undefined` while metadata loads */
+  baseQuery: Lib.Query | undefined;
+  systemSegments: ResolvedSystemSegment[];
+  defaultSegment: ResolvedDefaultSegment;
+  requiredFilter: ResolvedRequiredFilter;
+  /** `undefined` goes back to the definition sync built */
+  setSystemSegmentQuery: (role: SystemSegmentRole, query?: Lib.Query) => void;
+  setDefaultSegment: (segment: DefaultSegment) => void;
+  /** `null` sets no required filter */
+  setRequiredFilterQuery: (query: Lib.Query | null) => void;
+};
+
+export type ResolvedRequiredFilter = {
+  /** The base query with the one filter, or `null` for none */
+  query: Lib.Query | null | undefined;
+  filterName: string | null;
+  inference: RequiredFilterInference;
+  inferredQuery: Lib.Query | null | undefined;
+  inferredFilterName: string | null;
+  isOverridden: boolean;
+};
+
+function findColumn(
+  query: Lib.Query,
+  fieldId: FieldId,
+): Lib.ColumnMetadata | undefined {
+  return Lib.filterableColumns(query, STAGE_INDEX).find((column) => {
+    const { isImplicitlyJoinable } = Lib.displayInfo(
+      query,
+      STAGE_INDEX,
+      column,
+    );
+    return (
+      !isImplicitlyJoinable &&
+      Lib.fieldSearchInfo(query, column).fieldId === fieldId
+    );
+  });
+}
+
+function toFilterClause(
+  query: Lib.Query,
+  condition: FieldCondition,
+): Lib.ExpressionClause | undefined {
+  const column = findColumn(query, condition.fieldId);
+  if (!column) {
+    return undefined;
+  }
+  switch (condition.operator) {
+    case "=":
+      return typeof condition.value === "boolean"
+        ? Lib.booleanFilterClause({
+            operator: "=",
+            column,
+            values: [condition.value],
+          })
+        : Lib.stringFilterClause({
+            operator: "=",
+            column,
+            values: [condition.value],
+            options: {},
+          });
+    case "in":
+      // A status bucket: text values usually, numbers for coded statuses
+      return Lib.isNumeric(column)
+        ? Lib.numberFilterClause({
+            operator: "=",
+            column,
+            values: condition.values.map(Number),
+          })
+        : Lib.stringFilterClause({
+            operator: "=",
+            column,
+            values: condition.values,
+            options: {},
+          });
+    case "is-null":
+    case "not-null":
+      return Lib.defaultFilterClause({ operator: condition.operator, column });
+    case "last-days":
+      return Lib.relativeDateFilterClause({
+        column,
+        value: -condition.days,
+        unit: "day",
+        offsetValue: null,
+        offsetUnit: null,
+        options: {},
+      });
+    case "last-period":
+      return Lib.relativeDateFilterClause({
+        column,
+        value: -1,
+        unit: condition.unit,
+        offsetValue: null,
+        offsetUnit: null,
+        options: {},
+      });
+  }
+}
+
+/** The query with a filter for each condition whose column it can find */
+export function applyConditions(
+  query: Lib.Query,
+  conditions: FieldCondition[],
+): Lib.Query {
+  return conditions.reduce((nextQuery, condition) => {
+    const clause = toFilterClause(nextQuery, condition);
+    return clause ? Lib.filter(nextQuery, STAGE_INDEX, clause) : nextQuery;
+  }, query);
+}
+
+export function getFilterNames(query: Lib.Query): string[] {
+  return Lib.filters(query, STAGE_INDEX).map(
+    (filter) => Lib.displayInfo(query, STAGE_INDEX, filter).displayName,
+  );
+}
+
+/** A query on the table with no filters, to build segments and filters on */
+export function useTableQuery(table: Table) {
+  const metadataProvider = useMetadataProvider(table.db_id, WITH_HIDDEN_TABLES);
+  const query = useMemo(() => {
+    const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
+    return tableMetadata
+      ? Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata)
+      : undefined;
+  }, [metadataProvider, table.id]);
+
+  const fromDefinition = (definition: DatasetQuery) =>
+    Lib.fromJsQuery(metadataProvider, definition);
+
+  return { query, fromDefinition };
+}
+
+function getDefaultSegmentLabel(
+  segment: DefaultSegment,
+  customSegments: Segment[],
+): string {
+  switch (segment.type) {
+    case "all":
+      return t`All records`;
+    case "system":
+      return getSystemSegmentLabel(segment.role);
+    case "custom":
+      return (
+        customSegments.find(({ id }) => id === segment.segmentId)?.name ??
+        t`A deleted segment`
+      );
+  }
+}
+
+/** Whether a segment is the one a table's questions start from */
+export function isDefaultSegment(
+  { segment: current }: ResolvedDefaultSegment,
+  segment: Exclude<DefaultSegment, { type: "all" }>,
+): boolean {
+  return segment.type === "system"
+    ? current.type === "system" && current.role === segment.role
+    : current.type === "custom" && current.segmentId === segment.segmentId;
+}
+
+/** Why sync generated nothing, when an admin turned generation off */
+export function getGenerationOffSignal({
+  generateSegments,
+}: ResolvedSegmentSettings): string | null {
+  if (generateSegments.value) {
+    return null;
+  }
+  return generateSegments.source === "schema"
+    ? t`Segment generation is off for this schema`
+    : t`Segment generation is off for this database`;
+}
+
+/** Whether a main date is an event time, a snapshot period, or neither */
+function getMainDateKind(
+  fieldType: ResolvedFieldType | undefined,
+): MainDateKind | null {
+  if (!fieldType) {
+    return null;
+  }
+  const types = [fieldType.semanticType, fieldType.facets.time ?? null];
+  if (types.some((type) => isFieldTypeA(type, "type/PeriodKey"))) {
+    return "period";
+  }
+  if (types.some((type) => isFieldTypeA(type, "type/EventTimestamp"))) {
+    return "event";
+  }
+  return null;
+}
+
+/**
+ * PROTOTYPE: mocked. A table's system segments, default segment, and required
+ * filter: what an admin set, over what sync would infer from its columns.
+ */
+export function useTableSegmentsModel(table: Table): TableSegmentsModel {
+  const {
+    getTableSegmentsOverrides,
+    setSystemSegmentDefinition,
+    setDefaultSegment,
+    setRequiredFilter,
+  } = useTableSegments();
+  const { getTableStructure } = useTableStructures();
+  const { query: baseQuery, fromDefinition } = useTableQuery(table);
+  const fields = table.fields ?? [];
+  const customSegments = table.segments ?? [];
+  const overrides = getTableSegmentsOverrides(table);
+  const {
+    mainDateField,
+    periodGranularity,
+    role: tableRole,
+    history,
+  } = getTableStructure(table);
+  const { fieldTypes } = useTableSemantics(table);
+  const currentVersion =
+    tableRole != null && isRoleA(tableRole, "role/HistoryDimension")
+      ? history
+      : undefined;
+  const { getSegmentSettings } = useSegmentSettings();
+  const settings = getSegmentSettings(table.db_id, table.schema);
+  const generationOffSignal = getGenerationOffSignal(settings);
+
+  const getInference = (role: SystemSegmentRole): SystemSegmentInference =>
+    generationOffSignal == null
+      ? inferSystemSegment(fields, role, currentVersion)
+      : { conditions: [], signal: generationOffSignal, confidence: "high" };
+
+  // Sync makes a segment only for conditions the table has columns for; one
+  // an admin edited stays, as the admin's version wins
+  const conditionSegments: ResolvedSystemSegment[] =
+    CONDITION_SEGMENT_ROLES.flatMap((role) => {
+      const inference = getInference(role);
+      const definition = overrides.systemSegments[role];
+      if (definition == null && inference.conditions.length === 0) {
+        return [];
+      }
+      const query = definition
+        ? fromDefinition(definition)
+        : baseQuery && applyConditions(baseQuery, inference.conditions);
+      return [
+        {
+          role,
+          label: getSystemSegmentLabel(role),
+          description: getSystemSegmentDescription(role),
+          query,
+          filterNames: query ? getFilterNames(query) : [],
+          memberLabels: [],
+          isEdited: definition != null,
+          inference,
+        },
+      ];
+    });
+
+  // Default rows is made of the other system segments as they stand, so an
+  // edit to one carries into it; it has no filters of its own to edit
+  const defaultScopeQuery =
+    baseQuery &&
+    conditionSegments.reduce(
+      (query, member) =>
+        member.query
+          ? Lib.filters(member.query, STAGE_INDEX).reduce(
+              (nextQuery, filter) => Lib.filter(nextQuery, STAGE_INDEX, filter),
+              query,
+            )
+          : query,
+      baseQuery,
+    );
+  const systemSegments: ResolvedSystemSegment[] = [
+    ...conditionSegments,
+    ...(conditionSegments.length > 0
+      ? [
+          {
+            role: "default_scope" as const,
+            label: getSystemSegmentLabel("default_scope"),
+            description: getSystemSegmentDescription("default_scope"),
+            query: defaultScopeQuery,
+            filterNames: defaultScopeQuery
+              ? getFilterNames(defaultScopeQuery)
+              : [],
+            memberLabels: conditionSegments.map(({ label }) => label),
+            isEdited: false,
+            inference: getInference("default_scope"),
+          },
+        ]
+      : []),
+  ];
+
+  const defaultInference: DefaultSegmentInference =
+    generationOffSignal == null
+      ? inferDefaultSegment(fields, currentVersion)
+      : {
+          segment: { type: "all" },
+          signal: generationOffSignal,
+          confidence: "high",
+        };
+  // A default pointing at a segment the table no longer has falls back to the
+  // inferred one
+  const storedDefault = overrides.defaultSegment;
+  const isStoredDefaultMissing =
+    (storedDefault?.type === "custom" &&
+      !customSegments.some(({ id }) => id === storedDefault.segmentId)) ||
+    (storedDefault?.type === "system" &&
+      !systemSegments.some(({ role }) => role === storedDefault.role));
+  const defaultOverride = isStoredDefaultMissing ? undefined : storedDefault;
+  const defaultSegmentValue = defaultOverride ?? defaultInference.segment;
+  const defaultSegment: ResolvedDefaultSegment = {
+    segment: defaultSegmentValue,
+    label: getDefaultSegmentLabel(defaultSegmentValue, customSegments),
+    inference: defaultInference,
+    isOverridden: defaultOverride != null,
+  };
+
+  const mainDateType = mainDateField && fieldTypes.get(mainDateField.id);
+  const requiredInference = inferRequiredFilter(
+    table,
+    mainDateField && {
+      field: mainDateField,
+      kind: getMainDateKind(mainDateType),
+      periodUnit: periodGranularity,
+    },
+    settings.requiredFilterRowThreshold.value,
+  );
+  const inferredRequiredQuery =
+    requiredInference.condition == null
+      ? null
+      : baseQuery && applyConditions(baseQuery, [requiredInference.condition]);
+  const requiredQuery =
+    overrides.requiredFilter === undefined
+      ? inferredRequiredQuery
+      : overrides.requiredFilter === null
+        ? null
+        : fromDefinition(overrides.requiredFilter);
+  const requiredFilter: ResolvedRequiredFilter = {
+    query: requiredQuery,
+    filterName: requiredQuery
+      ? (getFilterNames(requiredQuery)[0] ?? null)
+      : null,
+    inference: requiredInference,
+    inferredQuery: inferredRequiredQuery,
+    inferredFilterName: inferredRequiredQuery
+      ? (getFilterNames(inferredRequiredQuery)[0] ?? null)
+      : null,
+    isOverridden: overrides.requiredFilter !== undefined,
+  };
+
+  return {
+    baseQuery,
+    systemSegments,
+    defaultSegment,
+    requiredFilter,
+    setSystemSegmentQuery: (role: SystemSegmentRole, query?: Lib.Query) =>
+      setSystemSegmentDefinition(
+        table,
+        role,
+        query ? Lib.toJsQuery(query) : undefined,
+      ),
+    setDefaultSegment: (segment: DefaultSegment) =>
+      setDefaultSegment(table, segment),
+    /** `null` sets no required filter */
+    setRequiredFilterQuery: (query: Lib.Query | null) =>
+      setRequiredFilter(table, query ? Lib.toJsQuery(query) : null),
+  };
+}

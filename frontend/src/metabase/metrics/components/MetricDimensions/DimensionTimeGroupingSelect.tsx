@@ -13,38 +13,38 @@ import type {
   TemporalUnit,
 } from "metabase-types/api";
 
+const NO_UNITS: TemporalUnit[] = [];
+
+/** The time groupings a saved metric's date dimension offers; none otherwise */
+export function useMetricDimensionTemporalUnits(
+  metricId: MetricId,
+  dimension: MetricDimension,
+): TemporalUnit[] {
+  const { definition } = useMetricDefinition(metricId);
+  return useMemo(() => {
+    const dimensionMetadata = definition
+      ? getDimensionDescriptors(definition).get(dimension.id)?.dimensionMetadata
+      : undefined;
+    return definition &&
+      dimensionMetadata &&
+      LibMetric.isDateOrDateTime(dimensionMetadata)
+      ? getTemporalUnits(definition, dimensionMetadata)
+      : NO_UNITS;
+  }, [definition, dimension.id]);
+}
+
 interface DimensionTimeGroupingSelectProps {
-  metricId: MetricId;
-  dimension: MetricDimension;
+  /** Empty for dimensions that aren't dates; the select then hides */
+  temporalUnits: TemporalUnit[];
   value: TemporalUnit | undefined;
   onChange: (unit: TemporalUnit) => void;
 }
 
 export function DimensionTimeGroupingSelect({
-  metricId,
-  dimension,
+  temporalUnits,
   value,
   onChange,
 }: DimensionTimeGroupingSelectProps) {
-  const { definition } = useMetricDefinition(metricId);
-  const dimensionMetadata = useMemo(
-    () =>
-      definition
-        ? getDimensionDescriptors(definition).get(dimension.id)
-            ?.dimensionMetadata
-        : undefined,
-    [definition, dimension.id],
-  );
-  const temporalUnits = useMemo(
-    () =>
-      definition &&
-      dimensionMetadata &&
-      LibMetric.isDateOrDateTime(dimensionMetadata)
-        ? getTemporalUnits(definition, dimensionMetadata)
-        : [],
-    [definition, dimensionMetadata],
-  );
-
   const options = useMemo(
     () =>
       temporalUnits.map((unit) => ({
@@ -60,7 +60,7 @@ export function DimensionTimeGroupingSelect({
     }
   };
 
-  if (!dimensionMetadata || !LibMetric.isDateOrDateTime(dimensionMetadata)) {
+  if (temporalUnits.length === 0) {
     return null;
   }
 

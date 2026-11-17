@@ -1,0 +1,1 @@
+export { TableHierarchiesPage } from "./TableHierarchiesPage";
