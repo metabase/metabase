@@ -356,7 +356,7 @@ describe("PublicOrEmbeddedDashboardPage > content translation", () => {
       await within(dashcard).findByText("Produits par catégorie (Camembert)"),
     ).toBeInTheDocument();
 
-    await userEvent.hover(within(dashcard).getByLabelText("info icon"));
+    await userEvent.hover(await within(dashcard).findByLabelText("info icon"));
     expect(
       await screen.findByRole("tooltip", {
         name: "Une répartition des produits par catégorie",
@@ -476,7 +476,7 @@ describe("PublicOrEmbeddedDashboardPage > content translation", () => {
     });
 
     const tableHeader = await screen.findByTestId("table-header");
-    expect(within(tableHeader).getByText("Titel")).toBeInTheDocument();
+    expect(await within(tableHeader).findByText("Titel")).toBeInTheDocument();
     expect(within(tableHeader).getByText("Kategorie")).toBeInTheDocument();
     expect(within(tableHeader).queryByText("Title")).not.toBeInTheDocument();
 
