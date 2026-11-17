@@ -48,6 +48,7 @@ export type CartesianVisualizationSettings = Pick<
   | "graph.y_axis.right.title_text"
   | "graph.y_axis.scale"
   | "graph.y_axis.auto_range"
+  | "graph.y_axis.unpin_from_zero"
   | "graph.y_axis.min"
   | "graph.y_axis.max"
   | "stackable.stack_type"

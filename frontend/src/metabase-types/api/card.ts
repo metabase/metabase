@@ -405,6 +405,13 @@ export type VisualizationSettings = {
   /** Let Metabase choose the y-axis bounds automatically. */
   "graph.y_axis.auto_range"?: boolean;
 
+  /**
+   * Let the automatic y-axis range fit the data instead of starting at 0. Applies
+   * only with `graph.y_axis.auto_range` on, no stacking, and no bar, area or
+   * waterfall series. Defaults to `true` on a scatter chart, `false` otherwise.
+   */
+  "graph.y_axis.unpin_from_zero"?: boolean;
+
   /** Show the y-axis title. `"auto"` hides it on narrow cards. */
   "graph.y_axis.labels_enabled"?: boolean | "auto";
 
