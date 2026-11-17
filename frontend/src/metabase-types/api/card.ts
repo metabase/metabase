@@ -374,6 +374,12 @@ export type VisualizationSettings = {
   "table.pivot"?: boolean;
 
   /**
+   * Whether a table shows a `#` column numbering its rows from 1, in the order
+   * shown. Defaults to `false`.
+   */
+  "table.row_index"?: boolean;
+
+  /**
    * Per-column titles, number or currency formatting, and click behavior.
    * Keys can be modern (`getColumnKey`) or legacy (`getLegacyColumnKey`).
    */

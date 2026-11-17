@@ -92,8 +92,8 @@ export type WaterfallVisualizationSettings = Pick<
 
 /**
  * Settings for table, pivot, object detail, and list displays. Use these for
- * visible column order, conditional formatting, pivot state, and per-column
- * titles or number/currency formatting.
+ * visible column order, conditional formatting, pivot state, a row-index
+ * column, and per-column titles or number/currency formatting.
  */
 export type TableVisualizationSettings = Pick<
   VisualizationSettings,
@@ -103,6 +103,7 @@ export type TableVisualizationSettings = Pick<
   | "pivot_table.collapsed_rows"
   | "column_settings"
   | "table.pivot"
+  | "table.row_index"
 >;
 
 /**
