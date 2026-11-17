@@ -1,7 +1,6 @@
 (ns ^:synchronized metabase.events.archive-cascade-records-test
-  "The archive or restore of an entity records what a user does to it, while the rows its cascade writes along with it
-  record what they recorded before lifecycle events: nothing for Cards, Dashboards and Collections, and a Document's
-  update for a Document."
+  "The archive or restore of an entity records what a user does to it, while a row its cascade writes along with it
+  records nothing, whatever its model."
   (:require
    [clojure.test :refer :all]
    [metabase.events.core :as events]
@@ -31,9 +30,8 @@
                             (map (juxt :model :model_id)))
                       (t2/query {:select [:model :model_id] :from [:revision] :where [:> :id revision]}))}))
 
-(deftest collection-archive-records-only-documents-test
-  (testing "a Collection's archive and restore record a Document update for each Document it carries, and nothing for
-            the Cards, Dashboards and Collections"
+(deftest collection-archive-records-nothing-for-carried-items-test
+  (testing "a Collection's archive and restore record nothing for the rows they carry, whatever their model"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Collection {coll :id}  {}
                      :model/Collection {child :id} {:location (str "/" coll "/")}
@@ -42,18 +40,21 @@
                      :model/Dashboard  {dash :id}  {:collection_id coll}
                      :model/Card       {dq :id}    {:collection_id coll :dashboard_id dash}
                      :model/Document   {doc :id}   {:collection_id coll}
-                     :model/Card       {dc :id}    {:collection_id coll :document_id doc}]
+                     :model/Card       {dc :id}    {:collection_id coll :document_id doc}
+                     :model/Timeline   {tl :id}    {:collection_id coll}
+                     :model/TimelineEvent {te :id} {:timeline_id tl}
+                     :model/Pulse      {pulse :id} {:collection_id coll}]
         (let [entities #{["Collection" coll] ["Collection" child] ["Card" card] ["Card" nested] ["Dashboard" dash]
-                         ["Card" dq] ["Document" doc] ["Card" dc]}
-              expected {:audit     #{["document-update" "Document" doc]}
-                        :revisions #{["Document" doc]}}]
+                         ["Card" dq] ["Document" doc] ["Card" dc] ["Timeline" tl] ["TimelineEvent" te] ["Pulse" pulse]}
+              expected {:audit #{} :revisions #{}}]
           (is (= expected
                  (records entities #(mt/user-http-request :crowberto :put 200 (str "collection/" coll) {:archived true}))))
           (is (= expected
                  (records entities #(mt/user-http-request :crowberto :put 200 (str "collection/" coll) {:archived false})))))))))
 
 (deftest dashboard-archive-records-only-the-dashboard-test
-  (testing "a Dashboard's archive and restore record its Revision and nothing for its dashboard questions"
+  (testing "a Dashboard's archive and restore record its Revision and nothing for its dashboard questions, which they
+            carry"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Dashboard     {dash :id} {}
                      :model/Card          {dq :id}   {:dashboard_id dash}
@@ -66,7 +67,7 @@
                  (records entities #(mt/user-http-request :crowberto :put 200 (str "dashboard/" dash) {:archived false})))))))))
 
 (deftest document-archive-records-only-the-document-test
-  (testing "a Document's archive and restore record it and nothing for its cards"
+  (testing "a Document's archive and restore record it and nothing for its cards, which they carry"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Document {doc :id} {}
                      :model/Card     {dc :id}  {:document_id doc}]

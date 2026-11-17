@@ -27,11 +27,18 @@
   [{:keys [object previous-object] :as event}]
   (and object previous-object (every? bookkeeping-columns (u.events/changed-keys event))))
 
+(defn- carried-by-archive?
+  "Whether `event` is an update that the archive or restore of another entity carried to its row, which the audit log
+  does not record."
+  [event]
+  (some? (get-in event [:context :archived-with])))
+
 (defn- record-lifecycle!
   "Record the lifecycle `event` of a write by a user under `stored-topic`, with the changes of an update when
   `previous?`, and nothing for a write without a user or an update that changes nothing the log records."
   [stored-topic {:keys [user-id object previous-object context] :as event} previous?]
   (when (and user-id
+             (not (carried-by-archive? event))
              (not (bookkeeping-update? event))
              (not (and previous? object previous-object (unchanged-details? stored-topic event))))
     (audit-log/record-event! stored-topic
@@ -45,11 +52,6 @@
 (events/derive! :event/card-update ::card-event)
 (events/derive! :event/card-delete ::card-event)
 
-(defn- carried-by-archive?
-  "Whether `event` is an update that the archive or restore of another entity carried to its row."
-  [event]
-  (some? (get-in event [:context :archived-with])))
-
 (def ^:private audited-card-columns
   "The columns of a Card whose update the audit log records, those of its details."
   #{:name :description :database_id :table_id :type})
@@ -57,7 +59,7 @@
 (methodical/defmethod events/publish-event! ::card-event
   [topic event]
   (when-not (and (= :event/card-update topic)
-                 (or (not (u.events/changed-any? event audited-card-columns)) (carried-by-archive? event)))
+                 (not (u.events/changed-any? event audited-card-columns)))
     (record-lifecycle! topic event true)))
 
 (events/derive! ::dashboard-event ::event)
@@ -405,8 +407,7 @@
   [topic {:keys [object] :as event}]
   (record-lifecycle! (if (and (= :event/document-update topic)
                               (true? (:archived object))
-                              (u.events/changed? event :archived)
-                              (not (carried-by-archive? event)))
+                              (u.events/changed? event :archived))
                        :event/document-delete
                        topic)
                      event

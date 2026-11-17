@@ -30,11 +30,10 @@
 
 (defn- carried-by-archive?
   "Whether `event` is an update that the archive or restore of another entity carried to its row, which records no
-  Revision, but for a Document, whose every update recorded one before its events were published by its model."
-  [{:keys [model operation context]}]
+  Revision."
+  [{:keys [operation context]}]
   (and (= :update operation)
-       (some? (:archived-with context))
-       (not= :model/Document model)))
+       (some? (:archived-with context))))
 
 (defn- entity
   "The `[model id]` of the entity whose Revision the `event` calls for, or nil when it calls for none."

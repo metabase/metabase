@@ -70,11 +70,13 @@
   #{:updated_at :collection_position :entity_id})
 
 (defn- recorded?
-  "Whether `event`, a write of a Pulse or of one of its parts, records a change of the Pulse."
-  [{:keys [model operation] :as event}]
-  (or (not= :model/Pulse model)
-      (not= :update operation)
-      (not (every? unrecorded-pulse-columns (u.events/changed-keys event)))))
+  "Whether `event`, a write of a Pulse or of one of its parts, records a change of the Pulse: not one that changes only
+  bookkeeping columns, nor one that the archive or restore of another entity carried to it."
+  [{:keys [model operation context] :as event}]
+  (and (nil? (:archived-with context))
+       (or (not= :model/Pulse model)
+           (not= :update operation)
+           (not (every? unrecorded-pulse-columns (u.events/changed-keys event))))))
 
 (defn- record-pulse!
   "Publish the creation or the update of the Pulse `pulse-id`, as the Alert or the Subscription it is, once for the
