@@ -30,8 +30,8 @@ import {
   createQueryWithBooleanFilter,
   createQueryWithCoordinateFilter,
   createQueryWithDefaultFilter,
-  createQueryWithExpressions,
   createQueryWithExcludeDateFilter,
+  createQueryWithExpressions,
   createQueryWithNumberFilter,
   createQueryWithRelativeDateFilter,
   createQueryWithSpecificDateFilter,
@@ -470,13 +470,14 @@ describe("FilterPicker", () => {
         ),
       );
 
-      const value = await screen.findByText("3");
-      // Mantine hides the pill's remove button from the accessibility tree
-      await userEvent.click(
-        within(checkNotNull(value.parentElement)).getByRole("button", {
-          hidden: true,
-        }),
+      // remove a value other than the last one, which Backspace would remove
+      const pill = await screen.findByText(
+        (_content, element) =>
+          element?.getAttribute("data-with-remove") === "true" &&
+          element.textContent === "2",
       );
+      // Mantine hides the pill's remove button from the accessibility tree
+      await userEvent.click(within(pill).getByRole("button", { hidden: true }));
       await userEvent.click(
         screen.getByRole("button", { name: "Update filter" }),
       );
@@ -487,7 +488,7 @@ describe("FilterPicker", () => {
       );
       expect(Lib.numberFilterParts(query, 0, filter)).toMatchObject({
         operator: "=",
-        values: [1, 2],
+        values: [1, 3],
       });
     });
 
