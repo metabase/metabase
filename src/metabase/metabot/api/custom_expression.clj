@@ -6,6 +6,7 @@
   (:require
    [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -386,6 +387,15 @@
                                                    (::error-reason (ex-data e))
                                                    "unexpected")))
         (throw e)))))
+
+(defmethod analytics.core/known-labels :metabase-metabot/summary-formula-requests [_]
+  (for [mode summary-formula-modes]
+    {:mode mode}))
+
+(defmethod analytics.core/known-labels :metabase-metabot/summary-formula-errors [_]
+  (for [mode   summary-formula-modes
+        reason summary-formula-error-reasons]
+    {:mode mode :reason reason}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot/custom-expression` routes."
