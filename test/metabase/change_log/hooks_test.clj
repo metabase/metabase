@@ -117,6 +117,32 @@
           (#'change-log.hooks/log! []))
         (is (= 1 @woken))))))
 
+(deftest unsupported-statement-test
+  (when config/ee-available?
+    (mt/with-premium-features #{:change-log}
+      (mt/with-temp [:model/Pulse     pulse {}
+                     :model/Card      card  {}
+                     :model/PulseCard pc    {:pulse_id (:id pulse), :card_id (:id card), :position 0}]
+        (testing "a statement that Toucan compiles and does not run logs nothing"
+          (is (= [] (logged-by #(is (str/starts-with?
+                                     (first (t2/compile (t2/insert! :model/PulseCard {:pulse_id (:id pulse)
+                                                                                      :card_id  (:id card)
+                                                                                      :position 1})))
+                                     "INSERT")))))
+          (is (= [] (logged-by #(is (str/starts-with? (first (t2/compile (t2/delete! :model/PulseCard :id (:id pc))))
+                                                      "DELETE"))))))
+        (testing "a delete whose query is not a key or a `:where` map throws in dev and test"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot select the rows"
+                                (t2/delete! :model/PulseCard ["DELETE FROM pulse_card WHERE id = ?" (:id pc)])))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot select the rows"
+                                (t2/delete! :model/PulseCard {:where [:= :id (:id pc)], :limit 1})))
+          (testing "and in production it still deletes, and warns instead of logging"
+            (with-redefs [config/is-prod? true]
+              (mt/with-log-messages-for-level [messages [metabase.change-log :warn]]
+                (is (= [] (logged-by #(is (= 1 (t2/delete! :model/PulseCard ["DELETE FROM pulse_card WHERE id = ?"
+                                                                             (:id pc)]))))))
+                (is (= 1 (count (messages))))))))))))
+
 (deftest other-hooks-test
   (testing "a model with other hooks is logged, and its other hooks still run"
     (when config/ee-available?

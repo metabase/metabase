@@ -55,6 +55,8 @@
   - migrations, and SQL run outside Metabase
   - a direct table write that opted out, or that does not call [[log-rows!]] and that the lint cannot see: a query
     map built outside the call, or a SQL string
+  - a delete through the model whose query is not a key or a map with only `:where`, such as a SQL vector or a map
+    with `:limit`: the hook cannot select its rows. It throws in dev and test, and warns in production
   - a row that starts to match an update or a delete after the hook read which rows match
   - any change made while the feature is off
 

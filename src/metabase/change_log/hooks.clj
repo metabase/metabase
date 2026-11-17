@@ -34,6 +34,13 @@
     (log/warn message)
     (throw (ex-info message {}))))
 
+(defn- on?
+  "Whether a hook logs this statement: the log is on, and Toucan will run the statement. `t2/compile` and the like
+  rebind `*transduce-execute*` to return the query, and then the hooks must not run or log anything."
+  []
+  (and (premium-features/enable-change-log?)
+       (identical? t2.pipeline/*transduce-execute* #'t2.pipeline/transduce-execute)))
+
 (defn- log!
   "Logs `changes`, a seq of `[table-name row-ids action]`, and wakes the numbering. A row key that is not an integer
   goes to [[throw-or-log]], and gets no entry."
@@ -82,7 +89,7 @@
   "Logs the keys of the inserted rows. An INSERT that returns a count runs as one that returns keys, and the caller
   still gets the count."
   [rf query-type model parsed-args resolved-query]
-  (if (and (not (::logged parsed-args)) (premium-features/enable-change-log?))
+  (if (and (not (::logged parsed-args)) (on?))
     ;; Toucan runs this pipeline again from inside the insert. We mark the args so that we log only once.
     (let [parsed-args (assoc parsed-args ::logged true)]
       ;; One transaction, so the insert and its entries commit together.
@@ -119,7 +126,7 @@
   ;; We log an update that sets a column we do not ignore. With nothing to set, Toucan sends no UPDATE.
   (if (and (not-every? (ignored-columns model) (keys (:changes parsed-args)))
            (not (::logged parsed-args))
-           (premium-features/enable-change-log?))
+           (on?))
     (t2/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
       ;; An UPDATE returns no keys. So first we select the rows it will match, with the update's own conditions.
       (let [rows  (change-log.db/rows-to-change model :toucan.query-type/select.instances.from-update parsed-args
@@ -140,19 +147,39 @@
   [row]
   row)
 
+(defn- selectable?
+  "Whether the hook can select the rows a DELETE matches from its resolved query: a key, or a map with only `:where`.
+  A map with other keys, such as `:limit` or a CTE, can match other rows as a SELECT. Toucan runs a SQL string or
+  vector as written, so the SELECT would run the DELETE."
+  [resolved-query]
+  (or (int? resolved-query)
+      (and (map? resolved-query) (every? #{:where} (keys resolved-query)))))
+
 (methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/delete.* :metabase/model :default]
   "Logs the rows the DELETE removes, and the rows of tracked tables that the database deletes or updates with them. It
   is on every model, because a delete of a model that is not tracked can cascade to a tracked table: removing a
   dashboard card deletes a subscription's `pulse_card`. While the log is off, it only checks the feature. It runs
-  before the model's before-delete, while the child rows still exist."
+  before the model's before-delete, while the child rows still exist. A delete whose rows it cannot select (see
+  [[selectable?]]) goes to [[throw-or-log]], and gets no entry."
   [rf query-type model parsed-args resolved-query]
   (let [tracked?      (isa? model :hook/change-log)
         ;; Nil while the log is off, so everything below falls through to the plain delete.
-        foreign-keys (when (premium-features/enable-change-log?) (change-log.cascade/foreign-keys))
+        foreign-keys (when (on?) (change-log.cascade/foreign-keys))
         ;; The columns of this table that other tables point at, on a path to a tracked table.
         referenced   (when foreign-keys (change-log.cascade/referenced-columns foreign-keys (table model)))]
-    ;; We have something to log if the model is tracked, or if its delete can reach a tracked table.
-    (if (and foreign-keys (or tracked? (seq referenced)))
+    (cond
+      ;; We have something to log if the model is tracked, or if its delete can reach a tracked table.
+      (not (and foreign-keys (or tracked? (seq referenced))))
+      (next-method rf query-type model parsed-args resolved-query)
+
+      (not (selectable? resolved-query))
+      (do
+        (throw-or-log (format (str "Not logging delete on %s to the change log: the hook cannot select the rows of a "
+                                   "delete whose query is not a key or a map with only :where. See %s.")
+                              (table model) "metabase.change-log.core"))
+        (next-method rf query-type model parsed-args resolved-query))
+
+      :else
       (t2/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
         ;; We read the rows before they go: their keys, and the columns that lead us to their children.
         (let [rows (change-log.db/rows-to-change model :toucan.query-type/select.instances parsed-args resolved-query
@@ -160,5 +187,4 @@
           ;; The rows themselves, if the model is tracked. Then what the database deletes or nulls with them.
           (log! (concat (when tracked? [[(table model) (map (pk-of model) rows) "delete"]])
                         (change-log.cascade/changes foreign-keys (table model) rows)))
-          (next-method rf query-type model parsed-args resolved-query)))
-      (next-method rf query-type model parsed-args resolved-query))))
+          (next-method rf query-type model parsed-args resolved-query))))))
