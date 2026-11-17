@@ -265,6 +265,37 @@ const commaMovesOn = /* #__PURE__ */ Prec.highest(
   }),
 );
 
+const CLOSING_BRACKETS: Record<string, string> = {
+  "[": "]",
+  "(": ")",
+  '"': '"',
+  "'": "'",
+};
+
+/**
+ * A bracket or a quote typed on a placeholder replaces it. Bracket closing
+ * would wrap the selected name instead, as in `[condition]`, and the name
+ * would then limit the suggestions.
+ */
+const bracketReplacesPlaceholder = /* #__PURE__ */ Prec.highest(
+  /* #__PURE__ */ EditorView.inputHandler.of((view, from, to, text) => {
+    const closing = CLOSING_BRACKETS[text];
+    if (
+      closing == null ||
+      view.state.selection.ranges.length > 1 ||
+      !isOnPlaceholder(view.state)
+    ) {
+      return false;
+    }
+    view.dispatch({
+      changes: { from, to, insert: text + closing },
+      selection: { anchor: from + text.length },
+      userEvent: "input.type",
+    });
+    return true;
+  }),
+);
+
 /**
  * One rule for the placeholders of functions and templates: Tab and Enter
  * pick the highlighted option and move to the next placeholder, or just move
@@ -315,5 +346,10 @@ const moveOnAfterPick = /* #__PURE__ */ EditorView.updateListener.of(
 
 /** How placeholders behave while typing: Tab, Enter, comma and picking. */
 export function placeholderNavigation(): Extension {
-  return [commaMovesOn, tabAndEnterMoveOn, moveOnAfterPick];
+  return [
+    commaMovesOn,
+    bracketReplacesPlaceholder,
+    tabAndEnterMoveOn,
+    moveOnAfterPick,
+  ];
 }
