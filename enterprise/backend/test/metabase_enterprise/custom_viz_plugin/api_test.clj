@@ -386,7 +386,8 @@
                                                  :icon     "icon.svg"
                                                  :metabase {:version ">=1.59.0"}
                                                  :sdk      {:version "2.0.0"}})]
-                       ["dist/index.js" "console.log('hi')"]])
+                       ["dist/index.js" "console.log('hi')"]
+                       ["dist/assets/icon.svg" "<svg/>"]])
                 resp (multipart-upload! :crowberto 200 "ee/custom-viz-plugin/" zip)
                 row  (t2/select-one :model/CustomVizPlugin :identifier "new-register-viz")]
             (is (= "new-register-viz" (:identifier resp)))
@@ -537,7 +538,8 @@
                       [["metabase-plugin.json" (json/encode
                                                 {:name "replace-viz"
                                                  :icon "new-icon.svg"})]
-                       ["dist/index.js" "console.log('new')"]])
+                       ["dist/index.js" "console.log('new')"]
+                       ["dist/assets/new-icon.svg" "<svg/>"]])
               resp   (multipart-upload! :crowberto 200
                                         (str "ee/custom-viz-plugin/" id "/bundle") zip
                                         :method :put)

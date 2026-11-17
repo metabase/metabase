@@ -92,6 +92,16 @@
     (is (=? {:manifest {:icon "icon.png"}}
             (cache/validate-bundle! (cvp.tu/valid-bundle-bytes "thumbs" {:icon "icon.png"}))))))
 
+(deftest validate-bundle-requires-the-declared-icon-test
+  (testing "an SVG icon the manifest declares must be in the archive"
+    (doseq [icon ["icon.svg" "./icon.svg"]]
+      (testing icon
+        (is (thrown-with-msg? Exception #"^dist/assets/icon\.svg not found in bundle$"
+                              (cache/validate-bundle!
+                               (cvp.tu/make-tgz-bytes
+                                [["metabase-plugin.json" (json/encode {:name "thumbs" :icon icon})]
+                                 ["dist/index.js" "console.log('hi')"]]))))))))
+
 (deftest check-bundle-icon-test
   (testing "an SVG icon, or none, passes through"
     (doseq [manifest [{:name "thumbs" :icon "icon.svg"} {:name "thumbs"}]]

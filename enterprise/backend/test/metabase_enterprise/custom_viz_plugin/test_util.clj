@@ -36,15 +36,16 @@
   "Build a minimal valid plugin tar.gz archive: manifest at the root with the
    given `identifier` as `name`, a trivial `dist/index.js`, and optional
    `:icon` / `:metabase-version` / `:sdk-version` overrides merged into the
-   manifest."
+   manifest. An `:icon` also adds its file under `dist/assets/`."
   ^bytes [identifier & [{:keys [icon metabase-version sdk-version]}]]
   (let [manifest (cond-> {:name identifier}
                    icon             (assoc :icon icon)
                    metabase-version (assoc-in [:metabase :version] metabase-version)
                    sdk-version      (assoc-in [:sdk :version] sdk-version))]
     (make-tgz-bytes
-     [["metabase-plugin.json" (json/encode manifest)]
-      ["dist/index.js" "console.log('hi')"]])))
+     (cond-> [["metabase-plugin.json" (json/encode manifest)]
+              ["dist/index.js" "console.log('hi')"]]
+       icon (conj [(str "dist/assets/" icon) "<svg/>"])))))
 
 (defn bundle-hash
   "The sha256 hex of `bundle-bytes`, as stored in `custom_viz_plugin.bundle_hash`."

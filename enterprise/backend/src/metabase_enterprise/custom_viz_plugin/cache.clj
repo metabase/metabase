@@ -147,6 +147,11 @@
         (when-let [error (manifest/identifier-error (:name parsed))]
           (throw (ex-info (str (manifest/manifest-path) " is invalid: " error)
                           {:status-code 400})))
+        (doseq [asset (manifest/asset-paths parsed)
+                :let  [path (str (.normalize (Path/of (dist-path (asset-rel-path asset)) (into-array String []))))]]
+          (when-not (u.files/regular-file? (.resolve scratch ^String path))
+            (throw (ex-info (str path " not found in bundle")
+                            {:status-code 400}))))
         {:bytes       bundle-bytes
          :hash        (bytes-hash bundle-bytes)
          :manifest    parsed
