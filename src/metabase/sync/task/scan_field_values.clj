@@ -57,7 +57,7 @@
    (triggers/start-now)))
 
 (defn- schedule-scan! [target id]
-  (or (task/schedule-once! (trigger target id))
+  (or (task/schedule-once! job (trigger target id))
       (quick-task/submit-task! #((target->scan! target) id))))
 
 (mu/defn schedule-table-field-values-scan!

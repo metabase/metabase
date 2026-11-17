@@ -17,17 +17,13 @@
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
-   [metabase.sync.sync :as sync.sync]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.upload.core :as upload]
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
-   [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.api.table :as api.table]
-   [toucan2.core :as t2])
-  (:import
-   (java.util.concurrent Executors)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -1072,52 +1068,29 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (format "table/%d/sync_schema" (u/the-id table))))))))
 
-(defn- deliver-when-tbl [promise-to-deliver expected-tbl]
-  (fn [tbl]
-    (when (= (u/the-id tbl) (u/the-id expected-tbl))
-      (deliver promise-to-deliver true))))
-
 (deftest trigger-metadata-sync-for-table-test
   (testing "Can we trigger a metadata sync for a table?"
-    (let [sync-called? (promise)
-          timeout (* 60 1000)]
-      (mt/with-premium-features #{:audit-app}
-        (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
-                       :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
-          ;; `with-redefs` would restore `sync-table!` when the request returns, before the async sync runs.
-          ;; `submit-task!` is stubbed so the sync doesn't queue behind other tasks on the 1-thread executor.
-          (mt/with-dynamic-fn-redefs [quick-task/submit-task! future-call
-                                      sync.sync/sync-table!   (deliver-when-tbl sync-called? table)]
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
+                     :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
+        (let [table-ids (atom [])]
+          (mt/with-dynamic-fn-redefs [sync/schedule-table-sync! #(swap! table-ids conj %)]
             (mt/user-http-request :crowberto :post 200 (format "table/%d/sync_schema" (u/the-id table)))
-            (testing "sync called?"
-              (is (true?
-                   (deref sync-called? timeout :sync-never-called))))))))))
+            (is (= [(u/the-id table)] @table-ids))))))))
 
 (deftest sync-schema-with-manage-table-metadata-permission-test
   (testing "POST /api/table/:id/sync_schema"
     (testing "User with manage-table-metadata permission can sync table"
-      (let [sync-called? (promise)
-            timeout (* 60 1000)
-            ;; Isolated pool: the shared one is process-wide and holds fire-and-forget tasks left behind by
-            ;; earlier tests, each with the default two-hour timeout. One of those still running ahead of
-            ;; this sync starves it past the deref below, which is what happens on driver CI, where those
-            ;; leftover tasks are real syncs over the network.
-            pool (Executors/newSingleThreadExecutor)]
-        (try
-          (mt/with-premium-features #{:audit-app}
-            (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
-                           :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
-              (mt/with-no-data-perms-for-all-users!
-                ;; Grant only manage-table-metadata permission for this table
-                (data-perms/set-table-permission! (perms-group/all-users) (:id table) :perms/manage-table-metadata :yes)
-                (with-redefs [quick-task/executor (delay pool)]
-                  (mt/with-dynamic-fn-redefs [sync.sync/sync-table! (deliver-when-tbl sync-called? table)]
-                    (mt/user-http-request :rasta :post 200 (format "table/%d/sync_schema" (u/the-id table)))
-                    (testing "sync called?"
-                      (is (true?
-                           (deref sync-called? timeout :sync-never-called)))))))))
-          (finally
-            (.shutdownNow pool)))))))
+      (mt/with-premium-features #{:audit-app}
+        (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
+                       :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
+          (mt/with-no-data-perms-for-all-users!
+            ;; Grant only manage-table-metadata permission for this table
+            (data-perms/set-table-permission! (perms-group/all-users) (:id table) :perms/manage-table-metadata :yes)
+            (let [table-ids (atom [])]
+              (mt/with-dynamic-fn-redefs [sync/schedule-table-sync! #(swap! table-ids conj %)]
+                (mt/user-http-request :rasta :post 200 (format "table/%d/sync_schema" (u/the-id table)))
+                (is (= [(u/the-id table)] @table-ids))))))))))
 
 (deftest sync-schema-mirror-database-test
   (testing "POST /api/table/:id/sync_schema"

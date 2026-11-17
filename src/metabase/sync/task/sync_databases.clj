@@ -183,20 +183,6 @@
   [job-context]
   (update-field-values! job-context))
 
-(mu/defn schedule-database-sync!
-  "Queue one user-requested sync and analysis of the Database with `database-id`, unless one is already waiting."
-  [database-id :- ::lib.schema.id/database]
-  (or (task/schedule-once! (sync-databases-trigger/explicit-trigger database-id
-                                                                    sync-databases-trigger/sync-analyze-task-info))
-      (quick-task/submit-task! #(sync-and-analyze-database-explicit! database-id))))
-
-(mu/defn schedule-database-field-values-scan!
-  "Queue one user-requested FieldValues scan of the Database with `database-id`, unless one is already waiting."
-  [database-id :- ::lib.schema.id/database]
-  (or (task/schedule-once! (sync-databases-trigger/explicit-trigger database-id
-                                                                    sync-databases-trigger/field-values-task-info))
-      (quick-task/submit-task! #(update-field-values-explicit! database-id))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                JOB DEFINITIONS                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -217,6 +203,22 @@
 
 (def ^:private sync-analyze-job (job sync-databases-trigger/sync-analyze-task-info SyncAndAnalyzeDatabase))
 (def ^:private field-values-job (job sync-databases-trigger/field-values-task-info UpdateFieldValues))
+
+(mu/defn schedule-database-sync!
+  "Queue one user-requested sync and analysis of the Database with `database-id`, unless one is already waiting."
+  [database-id :- ::lib.schema.id/database]
+  (or (task/schedule-once! sync-analyze-job
+                           (sync-databases-trigger/explicit-trigger database-id
+                                                                    sync-databases-trigger/sync-analyze-task-info))
+      (quick-task/submit-task! #(sync-and-analyze-database-explicit! database-id))))
+
+(mu/defn schedule-database-field-values-scan!
+  "Queue one user-requested FieldValues scan of the Database with `database-id`, unless one is already waiting."
+  [database-id :- ::lib.schema.id/database]
+  (or (task/schedule-once! field-values-job
+                           (sync-databases-trigger/explicit-trigger database-id
+                                                                    sync-databases-trigger/field-values-task-info))
+      (quick-task/submit-task! #(update-field-values-explicit! database-id))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              TASK INITIALIZATION                                               |

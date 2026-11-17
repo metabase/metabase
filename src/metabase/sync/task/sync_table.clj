@@ -45,7 +45,7 @@
 (mu/defn schedule-table-sync!
   "Queue one sync of the Table with `table-id`, unless one is already waiting."
   [table-id :- ::lib.schema.id/table]
-  (or (task/schedule-once! (trigger table-id))
+  (or (task/schedule-once! job (trigger table-id))
       (quick-task/submit-task! #(sync-table! table-id))))
 
 (defmethod task/init! ::SyncTable

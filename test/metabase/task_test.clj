@@ -463,18 +463,13 @@
 (defn- test-schedule-once! []
   (.clear blocking-job-started)
   (.clear blocking-job-release)
-  (task/add-job! (blocking-job))
   (testing "trigger with unused key runs"
-    (is (= :scheduled (task/schedule-once! (one-shot-trigger "first"))))
+    (is (true? (task/schedule-once! (blocking-job) (one-shot-trigger "first"))))
     (is (= "first" (next-blocking-job-start))))
-  (testing "trigger that is running gets one more run queued"
-    (is (= :queued (task/schedule-once! (one-shot-trigger "first"))))
-    (is (= :pending (task/schedule-once! (one-shot-trigger "first"))))
-    (is (= :pending (task/schedule-once! (one-shot-trigger "first")))))
-  (testing "trigger that waits for its job is not scheduled twice"
-    (is (= :scheduled (task/schedule-once! (one-shot-trigger "second"))))
-    (is (= :pending (task/schedule-once! (one-shot-trigger "second")))))
-  (testing "each waiting trigger runs once after running one ends"
+  (dotimes [_ 3]
+    (task/schedule-once! (blocking-job) (one-shot-trigger "first"))
+    (task/schedule-once! (blocking-job) (one-shot-trigger "second")))
+  (testing "triggers scheduled many times during run each run once after it"
     (dotimes [_ 3]
       (.put blocking-job-release :go))
     (is (= #{"first" "second"} (set [(next-blocking-job-start) (next-blocking-job-start)])))
@@ -498,7 +493,6 @@
 (deftest schedule-once-without-running-scheduler-test
   (tu/do-with-unstarted-temp-scheduler!
    (fn []
-     (task/add-job! (blocking-job))
      (is (false? (task/scheduler-running?)))
-     (is (nil? (task/schedule-once! (one-shot-trigger "first"))))
-     (is (empty? (qs/get-triggers-of-job (task/scheduler) blocking-job-key))))))
+     (is (nil? (task/schedule-once! (blocking-job) (one-shot-trigger "first"))))
+     (is (not (task/job-exists? blocking-job-key))))))

@@ -263,32 +263,14 @@
           (not (.isInStandbyMode scheduler))
           (not (.isShutdown scheduler))))))
 
-(defn- schedule-once!*
-  "One attempt at [[schedule-once!]], or nil when the stored trigger changed under it."
-  [^Scheduler scheduler ^Trigger trigger]
-  (let [trigger-key (.getKey trigger)]
-    (try
-      (.scheduleJob scheduler trigger)
-      :scheduled
-      (catch ObjectAlreadyExistsException _
-        (when-let [existing (.getTrigger scheduler trigger-key)]
-          (cond
-            (.getNextFireTime existing)                     :pending
-            (.rescheduleJob scheduler trigger-key trigger) :queued))))))
-
-(mu/defn schedule-once! :- [:maybe [:enum :scheduled :pending :queued]]
-  "Schedule the one-shot `trigger` of an existing job with at most one run waiting per trigger key, returning
-  `:scheduled`, `:pending` when a run was already waiting, `:queued` when it follows the run firing now, or nil when
-  no scheduler is running."
-  [trigger :- (ms/InstanceOfClass Trigger)]
+(mu/defn schedule-once! :- [:maybe :boolean]
+  "Schedule the one-shot `trigger` of `job`, replacing a trigger with its key that waits to fire or is firing now, so
+  that at most one run waits per trigger key; returns nil, scheduling nothing, when no scheduler is running."
+  [job     :- (ms/InstanceOfClass JobDetail)
+   trigger :- (ms/InstanceOfClass Trigger)]
   (when (scheduler-running?)
-    (let [scheduler    (scheduler)
-          trigger-name (.getName (.getKey ^Trigger trigger))
-          result       (some (fn [_] (schedule-once!* scheduler trigger)) (range 10))]
-      (when-not result
-        (throw (ex-info "Could not schedule trigger" {:trigger trigger-name})))
-      (log/infof "Trigger %s is %s" trigger-name (name result))
-      result)))
+    (.scheduleJob (scheduler) ^JobDetail job ^java.util.Set (hash-set trigger) true)
+    true))
 
 (mu/defn delete-task!
   "Delete a task from the scheduler"
