@@ -27,6 +27,7 @@
    [metabase.dashboards-rest.api]
    [metabase.data-studio.api]
    [metabase.documents.api]
+   [metabase.dynamic-goals.api]
    [metabase.eid-translation.api]
    [metabase.embedding-hub.api]
    [metabase.embedding-rest.api]
@@ -101,6 +102,7 @@
          metabase.dashboards-rest.api/keep-me
          metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
+         metabase.dynamic-goals.api/keep-me
          metabase.eid-translation.api/keep-me
          metabase.explorations.api/keep-me
          metabase.frontend-errors.api/keep-me
@@ -236,6 +238,7 @@
                                    (api.macros/ns-handler 'metabase.query-processor.api)))
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
+   "/dynamic-goal"         (+auth 'metabase.dynamic-goals.api)
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
    "/email"                (+auth metabase.channel.rest.api/email-routes)
    "/embed"                (+message-only-exceptions (+without-current-user metabase.embedding-rest.api/embedding-routes))
