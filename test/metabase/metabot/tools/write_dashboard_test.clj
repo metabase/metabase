@@ -379,6 +379,18 @@
              (is (str/includes? (:output result)
                                 (str "The \"Category\" filter is no longer connected to dashcard " dashcard-id "."))))))))))
 
+(deftest ^:parallel dropped-connections-text-test
+  (testing "a series that lost its connection is named apart, without the advice to wire it again"
+    (is (= ["The \"Category\" filter is no longer connected to dashcard 3 or to the series on dashcards 4, 5."
+            "Connect a dashcard again with `wire_parameter` if its card has the field."
+            "You can't connect a filter to a series again."
+            "Tell the user about any you don't connect again."]
+           (flatten (#'write-dashboard/dropped-connections-text
+                     [{:id "cat", :name "Category"}]
+                     [{:parameter_id "cat", :dashcard_id 3, :card_id 30, :series false}
+                      {:parameter_id "cat", :dashcard_id 4, :card_id 41, :series true}
+                      {:parameter_id "cat", :dashcard_id 5, :card_id 51, :series true}]))))))
+
 (deftest replace-chart-on-dashboard-test
   (sales-dashboard!
    (fn [{:keys [card-id dash-id dashcard-id other-id]}]

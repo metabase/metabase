@@ -758,13 +758,27 @@
   #{:internal :internal-sql})
 
 (defn- dropped-connections-text
-  "A sentence for each filter that lost connections in `dropped`, naming the filter from `parameters` and its dashcards."
+  "The lines telling the model which filters lost connections in `dropped`, naming each filter from `parameters`, and
+  what it can do about them."
   [parameters dropped]
-  (let [parameter-name (into {} (map (juxt :id :name)) parameters)]
-    (for [[parameter-id connections] (group-by :parameter_id dropped)
-          :let [dashcard-ids (distinct (map :dashcard_id connections))]]
-      (str "The " (pr-str (or (parameter-name parameter-id) parameter-id)) " filter is no longer connected to "
-           (if (next dashcard-ids) "dashcards " "dashcard ") (ids-text dashcard-ids) "."))))
+  (let [parameter-name (into {} (map (juxt :id :name)) parameters)
+        dashcards-text (fn [connections]
+                         (let [ids (distinct (map :dashcard_id connections))]
+                           (str (if (next ids) "dashcards " "dashcard ") (ids-text ids))))]
+    [(for [[parameter-id connections] (group-by :parameter_id dropped)
+           :let [{series true cards false} (group-by (comp boolean :series) connections)]]
+       (str "The " (pr-str (or (parameter-name parameter-id) parameter-id)) " filter is no longer connected to "
+            (str/join " or to "
+                      (cond-> []
+                        (seq cards)  (conj (dashcards-text cards))
+                        (seq series) (conj (str "the series on " (dashcards-text series)))))
+            "."))
+     (when (some (complement :series) dropped)
+       "Connect a dashcard again with `wire_parameter` if its card has the field.")
+     ;; `write_dashboard` leaves out `patch_dashcard`, the only op that can connect a filter to a series card.
+     (when (some :series dropped)
+       "You can't connect a filter to a series again.")
+     "Tell the user about any you don't connect again."]))
 
 (defn- result
   "The tool result for the saved `dashboard`, with the `effects` [[dashboard-write/write!]] returned for it."
@@ -797,9 +811,7 @@
                        (str (if (next pushed-dashcard-ids) "Cards " "Card ") (ids-text pushed-dashcard-ids)
                             " moved down to make room for the cards you placed. Mention it to the user."))
                      (when (seq dropped-connections)
-                       [(dropped-connections-text parameters dropped-connections)
-                        (str "Connect them again with `wire_parameter` if the cards have the field. "
-                             "Otherwise tell the user which charts these filters no longer change.")])
+                       (dropped-connections-text parameters dropped-connections))
                      (str "Link it as " (te/link name link) "."))]
     {:output            output
      :structured-output {:result-type  :dashboard-saved

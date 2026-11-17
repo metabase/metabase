@@ -1003,14 +1003,21 @@
   (cond-> dc
     (seq (:series dc)) (update :series (partial mapv #(select-keys % [:id])))))
 
+(defn- slot
+  "Where `card-id` shows on `dashcard`: `:card` for the dashcard's own card, its id for one of its series cards, and
+   nil when the dashcard doesn't show it."
+  [{:keys [card_id series]} card-id]
+  (cond
+    (= card-id card_id)                 :card
+    (some #(= card-id (:id %)) series) card-id))
+
 (defn- connections
-  "The filter connections of `dashcards`, as a map of `[parameter-id dashcard-id slot]` to the card each one filters.
-   The slot is `:card` for the dashcard's own card, and the card's id for one of its series cards."
+  "The filter connections of `dashcards`, as a set of `[parameter-id dashcard-id slot]`, with the slot from [[slot]]."
   [dashcards]
-  (into {}
-        (for [{dashcard-id :id card-id :card_id :keys [parameter_mappings]} dashcards
-              {:keys [parameter_id] mapping-card-id :card_id} parameter_mappings]
-          [[parameter_id dashcard-id (if (= mapping-card-id card-id) :card mapping-card-id)] mapping-card-id])))
+  (into #{}
+        (for [{dashcard-id :id :keys [parameter_mappings] :as dashcard} dashcards
+              {:keys [parameter_id card_id]}                            parameter_mappings]
+          [parameter_id dashcard-id (or (slot dashcard card_id) card_id)])))
 
 (defn- unwired?
   "Whether an `unwire_parameter` op in `ops` dropped the connection of `parameter-id` on `dashcard-id`."
@@ -1023,26 +1030,32 @@
         ops))
 
 (defn- dropped-connections
-  "The filter connections of `current` that `payload` no longer has, as `{:parameter_id :dashcard_id :card_id}` maps,
-   with `:card_id` the card that is no longer filtered.
-   A connection counts only when its filter, its dashcard and, for a series card, that series card all survive, and
-   no `unwire_parameter` op in `ops` asked to drop it."
+  "The filter connections of `current` that `payload` no longer has, as `{:parameter_id :dashcard_id :card_id}` maps.
+   The `:card_id` is the card that is no longer filtered, and `:series` is true when that is a series card.
+   A connection counts only when its filter, its dashcard and its card all survive, and no `unwire_parameter` op in
+   `ops` asked to drop it."
   [current payload ops]
   (let [surviving-parameter? (into #{} (map :id) (:parameters payload))
+        stored-dashcards     (u/index-by :id (:dashcards current))
         payload-dashcards    (u/index-by :id (:dashcards payload))
         after                (connections (:dashcards payload))]
-    (->> (for [[[parameter-id dashcard-id slot :as k] card-id] (connections (:dashcards current))
-               :let  [dashcard (get payload-dashcards dashcard-id)]
+    (->> (for [[parameter-id dashcard-id stored-slot] (connections (:dashcards current))
+               :let  [dashcard (get payload-dashcards dashcard-id)
+                      ;; The card a connection filtered may have moved: a replaced card leaves the dashcard's own slot
+                      ;; to the new card, and `replace_card` can promote a series card to it.
+                      card-id  (if (= :card stored-slot) (:card_id (get stored-dashcards dashcard-id)) stored-slot)
+                      new-slot (when dashcard
+                                 (or (slot dashcard card-id)
+                                     (when (= :card stored-slot) :card)))]
                :when (and (surviving-parameter? parameter-id)
-                          dashcard
-                          (or (= :card slot)
-                              (some #(= slot (:id %)) (:series dashcard)))
-                          (not (contains? after k))
+                          new-slot
+                          (not (contains? after [parameter-id dashcard-id new-slot]))
                           (not (unwired? ops parameter-id dashcard-id)))]
-           ;; A replaced card that wasn't connected again is reported under the card it shows now.
            {:parameter_id parameter-id
             :dashcard_id  dashcard-id
-            :card_id      (if (= :card slot) (:card_id dashcard) card-id)})
+            :card_id      (if (= :card new-slot) (:card_id dashcard) new-slot)
+            :series       (not= :card new-slot)})
+         distinct
          (sort-by (juxt :parameter_id :dashcard_id :card_id))
          vec)))
 

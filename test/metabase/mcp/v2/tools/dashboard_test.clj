@@ -256,7 +256,7 @@
                 :ops    [{:op "replace_card" :dashcard_id (:id dc) :card_id (:id new)}]}]
       (doseq [validate-only? [true false]]
         (testing (if validate-only? "dry run" "save")
-          (is (= [{:parameter_id "cat" :dashcard_id (:id dc) :card_id (:id new)}]
+          (is (= [{:parameter_id "cat" :dashcard_id (:id dc) :card_id (:id new) :series false}]
                  (:dropped_connections (tool-result (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
                                                                 (wire (assoc args :validate_only validate-only?))))))))))))
 

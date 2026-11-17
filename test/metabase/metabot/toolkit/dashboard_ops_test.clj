@@ -1454,15 +1454,22 @@
 
 (deftest dropped-connections-test
   (testing "a replaced card that isn't connected again is reported under the card it shows now"
-    (is (= [{:parameter_id "p1" :dashcard_id 7 :card_id 99}]
+    (is (= [{:parameter_id "p1" :dashcard_id 7 :card_id 99 :series false}]
            (dropped-connections (p1-dash a-dashcard) [{:op "replace_card" :dashcard_id 7 :card_id 99}]))))
+  (testing "a series card promoted by replace_card is reported once, in the dashcard's own slot"
+    (is (= [{:parameter_id "p1" :dashcard_id 7 :card_id 11 :series false}]
+           (dropped-connections (p1-dash series-connected-dashcard) [{:op "replace_card" :dashcard_id 7 :card_id 11}]))))
+  (testing "a promoted series card that was the only one connected is reported"
+    (is (= [{:parameter_id "p1" :dashcard_id 7 :card_id 11 :series false}]
+           (dropped-connections (p1-dash (update series-connected-dashcard :parameter_mappings (partial filterv (comp #{11} :card_id))))
+                                [{:op "replace_card" :dashcard_id 7 :card_id 11}]))))
   (testing "a replaced card connected again in the same call reports nothing"
     (is (= []
            (dropped-connections (p1-dash a-dashcard)
                                 [{:op "replace_card" :dashcard_id 7 :card_id 99}
                                  {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}]))))
   (testing "wiring a card replaces its series card's connection to the filter, which is reported"
-    (is (= [{:parameter_id "p1" :dashcard_id 7 :card_id 11}]
+    (is (= [{:parameter_id "p1" :dashcard_id 7 :card_id 11 :series true}]
            (dropped-connections (p1-dash series-connected-dashcard)
                                 [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}]))))
   (testing "a call that removes the card, series card or filter, or unwires it, reports nothing"
