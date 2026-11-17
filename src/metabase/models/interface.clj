@@ -547,7 +547,7 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
 
 (defonce ^:private hook-traits
-  (atom [:hook/search-index]))
+  (atom []))
 
 (defn prefer-hook-trait!
   "Order the hooks of `trait` after the timestamp and entity id traits, so they see the row those complete, and a

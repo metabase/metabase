@@ -286,6 +286,11 @@
              steps))))
 
 ;; Ingestion re-derives what these messages name, and purges a document named by its own id once its row is gone.
+(defn update-changed!
+  "Enqueue re-indexing derived from the updated `instances`, each only for the hooks its changes touch."
+  [instances]
+  (enqueue-hook-selectors! instances false))
+
 (defn bulk-update!
   "Enqueue re-indexing derived from `instances` unconditionally, e.g. the pre-images of deleted rows."
   [instances]

@@ -35,7 +35,8 @@
 (doto :model/ModerationReview
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/search-index))
+  (derive :hook/events)
+  (derive :search/indexed))
 
 (t2/deftransforms :model/ModerationReview
   {:moderated_item_type mi/transform-keyword})

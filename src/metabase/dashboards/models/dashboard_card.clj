@@ -29,10 +29,7 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/events)
-  (derive :hook/events)
-  ;; Disabled for performance reasons, see update-dashboard-card!-call-count-test
-  #_(derive :hook/search-index))
+  (derive :hook/events))
 
 (t2/deftransforms :model/DashboardCard
   {:parameter_mappings     parameters/transform-parameter-mappings

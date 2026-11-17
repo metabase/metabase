@@ -44,7 +44,7 @@
   (derive model :metabase/model))
 
 (doto :model/QueryAction
-  (derive :hook/search-index)
+  (derive :search/indexed)
   (derive :hook/events))
 
 (derive :model/ImplicitAction :hook/events)

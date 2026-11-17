@@ -435,7 +435,8 @@
                      (update :visibility #(or % :all))
                      (update :attrs #(merge ~default-attrs %)))]
        (validate-spec! spec#)
-       (derive (:model spec#) :hook/search-index)
+       (derive (:model spec#) :hook/events)
+       (derive (:model spec#) :search/indexed)
        (defmethod spec* ~search-model [~'_] spec#))))
 
 (def ^:private model-hooks*
@@ -503,11 +504,6 @@
           (get (model-hooks) (t2/model instance)))))
 
 (comment
-  (doseq [d (descendants :hook/search-index)]
-    (underive d :hook/search-index))
-  (doseq [d (keys (model-hooks))]
-    (derive d :hook/search-index))
-
   (methods spec)
   (model-hooks)
 

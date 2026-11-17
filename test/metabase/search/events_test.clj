@@ -1,15 +1,16 @@
-(ns ^:synchronized metabase.search.models-test
-  "Pins the delete-capture wiring in [[metabase.search.models]]: a delete enqueues re-derivation messages through
-  the [[metabase.app-db.dml-capture]] seam."
+(ns ^:synchronized metabase.search.events-test
+  "Pins the wiring of [[metabase.search.events]]: the writes of a batch enqueue re-derivation messages, and a delete
+  captures what it leaves unpurgeable before it runs."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.dml-capture :as dml-capture]
+   [metabase.events.core :as events]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
+   [metabase.search.events :as search.events]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
@@ -69,39 +70,33 @@
                                                        :most_recent         true}]
         (is (= 1 (count (capture-enqueues! #(t2/delete! :model/Card :id id)))))))))
 
-(deftest capture-fields-disabled-without-engine-test
-  (testing "delete capture is skipped entirely, with no pre-select, when no search engine is active"
-    (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
-      (is (nil? (dml-capture/capture-fields :model/Card :delete))))))
+(def ^:private card-delete
+  {:operation :delete, :model :model/Card, :object {:id 1}})
 
-(deftest capture-fields-disabled-with-updates-test
+(deftest capture-disabled-without-engine-test
+  (testing "delete capture enumerates nothing when no search engine is active"
+    (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
+      (is (nil? (#'search.events/capture-dependents card-delete))))))
+
+(deftest capture-disabled-with-updates-test
   (testing "capture is skipped while search updates are disabled, as for tests against an old schema"
     (binding [search.ingestion/*disable-updates* true]
-      (is (nil? (dml-capture/capture-fields :model/Card :delete))))))
+      (is (nil? (#'search.events/capture-dependents card-delete))))))
 
-(deftest only-delete-capture-is-enabled-test
-  (testing "only :delete is captured; inserts and updates keep their row-level hooks"
+(deftest only-deletes-are-captured-test
+  (testing "only a delete is captured"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (is (some? (dml-capture/capture-fields :model/Card :delete)))
-      (is (nil? (dml-capture/capture-fields :model/Card :insert)))
-      (is (nil? (dml-capture/capture-fields :model/Card :update))))))
+      (is (nil? (#'search.events/capture-dependents (assoc card-delete :operation :create))))
+      (is (nil? (#'search.events/capture-dependents (assoc card-delete :operation :update)))))))
 
-(deftest captured-models-have-no-before-select-test
-  (testing "no model with delete capture has a before-select, which the snapshot would run and the DELETE would not"
-    ;; Resolving the hooks loads the namespace of every model that feeds search.
-    (search.spec/model-hooks)
-    ;; `t2/define-before-select` derives the model from this keyword, so inherited hooks count too.
-    (is (= [] (->> (descendants dml-capture/hook)
-                   (filter #(isa? % :toucan2.tools.before-select/model))
-                   (sort-by str))))))
-
-(deftest model-index-gets-delete-capture-test
-  (testing "ModelIndex is captured for deletes despite being kept out of :hook/search-index"
-    (testing "it is still excluded from the row-level hooks, whose update path trips a toucan2 bug"
-      (is (false? (isa? :model/ModelIndex :hook/search-index))))
-    (search.tu/with-appdb-search-if-available-without-fallback
-      (is (some? (dml-capture/capture-fields :model/ModelIndex :delete)))
-      (is (nil? (dml-capture/capture-fields :model/ModelIndex :insert))))))
+(deftest model-index-feeds-the-index-on-delete-only-test
+  (testing "a ModelIndex feeds the index on delete, and its inserts and updates do not"
+    (is (isa? :model/ModelIndex :hook/events))
+    (is (isa? :model/ModelIndex :search/indexed-deletes))
+    (is (false? (isa? :model/ModelIndex :search/indexed)))
+    (is (true? (#'search.events/feeds-index? :model/ModelIndex :delete)))
+    (is (false? (#'search.events/feeds-index? :model/ModelIndex :create)))
+    (is (false? (#'search.events/feeds-index? :model/ModelIndex :update)))))
 
 ;;; Re-derivation on delete
 
@@ -613,7 +608,7 @@
     (is (= {:result nil, :interrupted? true}
            (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances]
                                                                     (throw (InterruptedException. "interrupted")))]
-             (outcome-and-interrupt #(dml-capture/dependents :model/Card [{:id 1}])))))))
+             (outcome-and-interrupt #(#'search.events/capture-dependents card-delete)))))))
 
 (deftest reconcile-interrupt-stops-and-is-restored-test
   (testing "an interrupt while reconciling stops the remaining search-models and reaches the caller"
@@ -665,3 +660,16 @@
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reconcile failed"
                                   (search/reconcile-cascading-documents! cascading))))
           (is (= 0 (indexed-count "action" action-id))))))))
+
+(deftest batch-enqueues-one-ingestion-test
+  (testing "the writes of one batch hand one ingestion call to the index"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (let [ids (atom [])
+            calls (capture-enqueues!
+                   #(events/with-batched-events
+                      (dotimes [_ 3]
+                        (swap! ids conj (t2/insert-returning-pk! :model/Card (mt/with-temp-defaults :model/Card))))))]
+        (try
+          (is (= 1 (count calls)))
+          (finally
+            (t2/delete! :model/Card :id [:in @ids])))))))
