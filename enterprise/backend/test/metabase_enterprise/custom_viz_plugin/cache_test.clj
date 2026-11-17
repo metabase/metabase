@@ -135,7 +135,7 @@
                           [["metabase-plugin.json" (json/encode {:name "big"})]
                            ["dist/index.js" incompressible]])]
       (is (> (alength bytes) cache/max-bundle-bytes))
-      (is (thrown-with-msg? Exception #"Bundle must be less than 5MB"
+      (is (thrown-with-msg? Exception (re-pattern (format "Bundle must be less than %dMB" cache/max-bundle-mib))
                             (cache/validate-bundle! bytes))))))
 
 (deftest validate-bundle-rejects-tar-bomb-test
