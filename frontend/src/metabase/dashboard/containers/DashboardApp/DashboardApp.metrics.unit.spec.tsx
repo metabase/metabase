@@ -344,18 +344,20 @@ function setupMetricSearchEndpoint() {
   fetchMock.get(
     "path:/api/search",
     (call) => {
-      const query = new URL(call.url).searchParams.get("q");
-      const data =
-        query === TIMESERIES_METRIC.name
-          ? [
-              createMockSearchResult({
-                id: TIMESERIES_METRIC.id,
-                name: TIMESERIES_METRIC.name,
-                model: "metric",
-                display: "line",
-              }),
-            ]
-          : [];
+      const params = new URL(call.url).searchParams;
+      const isMetricSearch =
+        params.get("q") === TIMESERIES_METRIC.name &&
+        params.getAll("models").includes("metric");
+      const data = isMetricSearch
+        ? [
+            createMockSearchResult({
+              id: TIMESERIES_METRIC.id,
+              name: TIMESERIES_METRIC.name,
+              model: "metric",
+              display: "line",
+            }),
+          ]
+        : [];
       return { data, total: data.length, models: ["metric"] };
     },
     { name: "metric-search" },
