@@ -73,9 +73,10 @@ describe("ExpressionWidget > format", () => {
 
     await typeText("1+1");
     await blurEditor();
-    expect(await findFormatButton()).toBeInTheDocument();
 
     // leaving the editor does not format the expression
+    expect(getEditorValue()).toBe("1+1");
+    expect(await findFormatButton()).toBeInTheDocument();
     expect(getEditorValue()).toBe("1+1");
 
     // focus moving through the editor (Tab, Shift+Tab) does not format it
