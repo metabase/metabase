@@ -71,7 +71,7 @@ const TIME_VALUES_BY_UNIT: Record<string, RowValue[]> = {
   week: ["2027-01-03T00:00:00Z", "2027-01-10T00:00:00Z"],
 };
 
-function timeDimension(
+export function timeDimension(
   id: string,
   name: string,
   displayName: string,
@@ -89,7 +89,7 @@ function timeDimension(
   };
 }
 
-function textDimension(
+export function textDimension(
   id: string,
   name: string,
   displayName: string,
@@ -109,7 +109,7 @@ function textDimension(
   };
 }
 
-function numberDimension(
+export function numberDimension(
   id: string,
   name: string,
   displayName: string,
@@ -128,12 +128,12 @@ function numberDimension(
   };
 }
 
-const PRODUCT_GROUP = {
+export const PRODUCT_GROUP = {
   id: "product",
   type: "connection" as const,
   display_name: "Product",
 };
-const USER_GROUP = {
+export const USER_GROUP = {
   id: "user",
   type: "connection" as const,
   display_name: "User",
@@ -361,6 +361,7 @@ const DIMENSION_VALUES: Record<string, DimensionValues> = {
   "type/Company": { values: ["Acme", "Globex"] },
   "type/Price": { values: [10, 20] },
   "type/Score": { values: [3, 4, 5] },
+  "type/Currency": { values: [20, 40] },
   "type/Quantity": {
     values: [1, 2, 3, 4, 5, 6],
     valuesWithTimeFilter: [2, 4],
@@ -999,4 +1000,90 @@ export async function enterFormula(
 export async function openPillMenu(pill: HTMLElement) {
   await click(pill);
   return screen.findByRole("menu");
+}
+
+// ── Dimension picker sidebar ──
+
+export function getSidebar() {
+  return screen.getByTestId("metrics-viewer-dimension-picker-sidebar");
+}
+
+export function getColumnPickerButton() {
+  return within(getMetricControls()).getByLabelText("Change column");
+}
+
+export async function openDimensionPickerSidebar() {
+  await click(await waitFor(() => getColumnPickerButton()));
+  return screen.findByTestId("metrics-viewer-dimension-picker-sidebar");
+}
+
+export async function closeDimensionPickerSidebar() {
+  await click(within(getSidebar()).getByLabelText("Close"));
+}
+
+/** Selects a dimension breakout from the sidebar and closes it. */
+export async function selectDimensionBreakout(
+  dimensionName: string,
+  { seeAll = false }: { seeAll?: boolean } = {},
+) {
+  const sidebar = await openDimensionPickerSidebar();
+  if (seeAll) {
+    await click(within(sidebar).getByRole("button", { name: "See all" }));
+  }
+  await click(within(sidebar).getByRole("button", { name: dimensionName }));
+  await closeDimensionPickerSidebar();
+}
+
+export function getExpandedMetricAccordion(metricName: string) {
+  const button = within(getSidebar()).getByRole("button", {
+    name: metricName,
+  });
+  expect(button).toHaveAttribute("aria-expanded", "true");
+  const section = button.parentElement;
+  if (!section) {
+    throw new Error(`No accordion section for ${metricName}`);
+  }
+  return section;
+}
+
+export async function openTimeDimensionConfiguration() {
+  await click(
+    within(getSidebar()).getByRole("button", { name: "Configure Time" }),
+  );
+}
+
+export async function selectMetricDimension(
+  metricName: string,
+  optionName: RegExp,
+) {
+  await click(
+    within(getSidebar()).getByLabelText(`Select dimension for ${metricName}`),
+  );
+  await click(await screen.findByRole("option", { name: optionName }));
+}
+
+export async function showColumnLabels() {
+  await click(
+    within(getMetricControls()).getByLabelText("Column label options"),
+  );
+  await click(
+    await screen.findByRole("switch", { name: "Show column labels" }),
+  );
+}
+
+export function getChartDisplays() {
+  return screen
+    .getAllByTestId("visualization-root")
+    .map((element) => element.getAttribute("data-display"));
+}
+
+/** The dimension ids each dataset request projects, per metric or measure. */
+export function getProjectedDimensionIds() {
+  return getDatasetRequests().flatMap((request) =>
+    (request.definition.projections ?? []).map((projection) =>
+      projection.projection.map((ref) =>
+        Array.isArray(ref) ? String(ref[2]) : "",
+      ),
+    ),
+  );
 }
