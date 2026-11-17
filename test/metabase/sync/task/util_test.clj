@@ -18,9 +18,9 @@
   ^JobExecutionContext [job-name id]
   (reify JobExecutionContext
     (getMergedJobDataMap [_] (JobDataMap. {"id" id}))
-    (getJobDetail [_] (jobs/build (jobs/with-identity (jobs/key job-name))))))
+    (getJobDetail [_] (reify JobDetail (getKey [_] (jobs/key job-name))))))
 
-(defn scheduled-run
+(defn scheduled-run!
   "Call `schedule!`, a thunk that requests one run, and return the job class and the target id that it gave the scheduler."
   [schedule!]
   (let [scheduled (atom nil)]

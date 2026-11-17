@@ -17,13 +17,13 @@
   (doseq [^Class job-class [ScanDatabaseFieldValues ScanTableFieldValues ScanFieldValues]]
     (is (.isAnnotationPresent job-class org.quartz.DisallowConcurrentExecution))))
 
-(deftest ^:parallel schedule-scans-use-own-jobs-test
+(deftest schedule-scans-use-own-jobs-test
   (is (= {:job-class ScanDatabaseFieldValues, :id 7}
-         (sync.task.util-test/scheduled-run #(task.scan-field-values/schedule-database-field-values-scan! 7))))
+         (sync.task.util-test/scheduled-run! #(task.scan-field-values/schedule-database-field-values-scan! 7))))
   (is (= {:job-class ScanTableFieldValues, :id 7}
-         (sync.task.util-test/scheduled-run #(task.scan-field-values/schedule-table-field-values-scan! 7))))
+         (sync.task.util-test/scheduled-run! #(task.scan-field-values/schedule-table-field-values-scan! 7))))
   (is (= {:job-class ScanFieldValues, :id 7}
-         (sync.task.util-test/scheduled-run #(task.scan-field-values/schedule-field-values-scan! 7)))))
+         (sync.task.util-test/scheduled-run! #(task.scan-field-values/schedule-field-values-scan! 7)))))
 
 (deftest scans-run-in-jobs-and-without-scheduler-test
   (let [scanned (atom [])]
@@ -35,11 +35,11 @@
                                   sync.field-values/update-field-values-for-table!   #(swap! scanned conj [:table (:id %)])
                                   field-values/create-or-update-full-field-values! #(swap! scanned conj [:field (:id %)])]
         (testing "job runs scan of its target"
-          (.execute ^Job (task.scan-field-values/->ScanDatabaseFieldValues)
+          (.execute ^Job (ScanDatabaseFieldValues.)
                     (sync.task.util-test/job-context "scan-database" database-id))
-          (.execute ^Job (task.scan-field-values/->ScanTableFieldValues)
+          (.execute ^Job (ScanTableFieldValues.)
                     (sync.task.util-test/job-context "scan-table" table-id))
-          (.execute ^Job (task.scan-field-values/->ScanFieldValues)
+          (.execute ^Job (ScanFieldValues.)
                     (sync.task.util-test/job-context "scan-field" field-id))
           (is (= [[:database database-id] [:table table-id] [:field field-id]] @scanned)))
         (testing "request without scheduler runs scan of its target and skips deleted targets"

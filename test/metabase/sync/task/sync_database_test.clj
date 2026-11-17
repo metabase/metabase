@@ -16,9 +16,9 @@
 (deftest ^:parallel annotations-test
   (is (.isAnnotationPresent SyncDatabase org.quartz.DisallowConcurrentExecution)))
 
-(deftest ^:parallel schedule-database-sync-uses-sync-database-job-test
+(deftest schedule-database-sync-uses-sync-database-job-test
   (is (= {:job-class SyncDatabase, :id 7}
-         (sync.task.util-test/scheduled-run #(task.sync-database/schedule-database-sync! 7)))))
+         (sync.task.util-test/scheduled-run! #(task.sync-database/schedule-database-sync! 7)))))
 
 (deftest sync-database-runs-in-job-and-without-scheduler-test
   (let [calls (atom [])]
@@ -26,7 +26,7 @@
       (mt/with-dynamic-fn-redefs [quick-task/submit-task!                  (fn [task] (task))
                                   sync-metadata/sync-db-metadata-explicit! #(swap! calls conj [:sync %])
                                   analyze/analyze-db-explicit!             #(swap! calls conj [:analyze %])]
-        (.execute ^Job (task.sync-database/->SyncDatabase) (sync.task.util-test/job-context "sync-database" database-id))
+        (.execute ^Job (SyncDatabase.) (sync.task.util-test/job-context "sync-database" database-id))
         (task.sync-database/schedule-database-sync! database-id)
         (testing "deleted Database is skipped"
           (task.sync-database/schedule-database-sync! Integer/MAX_VALUE))
