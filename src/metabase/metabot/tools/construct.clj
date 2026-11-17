@@ -681,7 +681,7 @@
         by-id     (if repr.resolve/*numeric-ids-allowed?*
                     (metabot.db/cards-with-ids (into [] (comp (filter pos-int?) (distinct)) refs))
                     [])
-        readable  (into #{} (comp (filter mi/can-read?) (map :id)) (t2/hydrate (into by-eid by-id) :can_read))
+        readable  (into #{} (map :id) (mi/readable (into by-eid by-id)))
         eid->card (into {} (comp (filter (comp readable :id)) (map (juxt :entity_id identity))) by-eid)
         id->card  (into {} (comp (filter (comp readable :id)) (map (juxt :id identity))) by-id)]
     (fn [ref]

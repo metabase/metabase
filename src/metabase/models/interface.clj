@@ -41,6 +41,7 @@
    [toucan2.model :as t2.model]
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.protocols :as t2.protocols]
+   [toucan2.realize :as t2.realize]
    [toucan2.tools.before-delete :as t2.before-delete]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.before-update :as t2.before-update]
@@ -603,6 +604,48 @@
                         {:model model}
                         e))))))
 
+(defmulti after-archived-change!
+  "Writes what an UPDATE of a `model` row that changed `:archived` takes to the rows that follow it, called by
+  [[define-update-in-transaction]] after the UPDATE with the rows as they were before it, so the parent is written first."
+  {:arglists '([model rows changes])}
+  (fn [model _rows _changes] model))
+
+(defmethod after-archived-change! :default
+  [_model _rows _changes]
+  nil)
+
+(defn rows-changing-archived
+  "The rows `parsed-args`, an UPDATE of `model` with `changes`, will give another value of `:archived`."
+  [model parsed-args resolved-query changes]
+  (filterv #(not= (boolean (:archived %)) (boolean (:archived changes)))
+           (t2.pipeline/transduce-query ((map t2.realize/realize) conj)
+                                        :toucan.query-type/select.instances.from-update
+                                        model parsed-args resolved-query)))
+
+(defmacro define-update-in-transaction
+  "Runs every UPDATE of `model`, with its before-update hooks, in one transaction, which Toucan otherwise opens only
+  after them, so a hook that writes other rows commits or rolls back with the UPDATE, and then calls
+  [[after-archived-change!]] for the rows whose `:archived` it changed."
+  [model]
+  `(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* ~model :default]
+     [rf# query-type# model# parsed-args# resolved-query#]
+     (t2.conn/with-transaction [_conn# nil {:nested-transaction-rule :ignore}]
+       (let [changes# (:changes parsed-args#)
+             rows#    (when (and (contains? changes# :archived)
+                                 (contains? (methods after-archived-change!) model#))
+                        (rows-changing-archived model# parsed-args# resolved-query# changes#))]
+         (u/prog1 (~'next-method rf# query-type# model# parsed-args# resolved-query#)
+           (when (seq rows#)
+             (after-archived-change! model# rows# changes#)))))))
+
+(defn archived-directly
+  "The `archived_directly` of `row`, an update that changes `:archived`: the one the write gives, else true when `row` is
+  archived by itself, which is when `parent-archived?`, a function of no arguments, says that its parent is not."
+  [row parent-archived?]
+  (if (contains? (t2/changes row) :archived_directly)
+    (:archived_directly row)
+    (boolean (and (:archived row) (not (parent-archived?))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -640,6 +683,16 @@
   "Whether the current user runs queries against `instance`, as its `:can_query` hydration answered."
   [instance]
   (hydrated-answer instance :can_query (:can_query instance)))
+
+(defn readable
+  "Those of `instances` the current user can read, in a vector, their `:can_read` hydrated together."
+  [instances]
+  (filterv can-read? (t2/hydrate instances :can_read)))
+
+(defn writable
+  "Those of `instances` the current user can write, in a vector, their `:can_write` hydrated together."
+  [instances]
+  (filterv can-write? (t2/hydrate instances :can_write)))
 
 (methodical/defmethod t2.hydrate/needs-hydration? [:default :can_read]
   "Whether `instance` lacks the answer `:can_read` hydration keeps in its metadata, since `:can_read` is not a key of
@@ -704,6 +757,42 @@
    (NoSuchMethodException.
     (str (format "%s does not yet have an implementation for `can-update?`. " (name (models.dispatch/model instance)))
          "Please consider adding one. See dox for `can-update?` for more details."))))
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *update-check-cache*
+  "An atom holding what [[cached-for-update-check]] computed, or nil outside [[with-update-check-cache]]."
+  nil)
+
+(defmacro ^:private with-update-check-cache
+  "Runs `body`, a permission check of many rows, in which [[cached-for-update-check]] computes each answer once, in the
+  cache of the check it is nested in if there is one."
+  [& body]
+  `(binding [*update-check-cache* (or *update-check-cache* (atom {}))]
+     ~@body))
+
+(defn cached-for-update-check
+  "The value of `(f)`, which a permission check of many rows computes once for the key `k`."
+  [k f]
+  (if-let [cache *update-check-cache*]
+    (get (swap! cache #(if (contains? % k) % (assoc % k (f)))) k)
+    (f)))
+
+(defn changes-archived?
+  "Whether `changes` give `row` another value of `:archived`."
+  [row changes]
+  (and (contains? changes :archived)
+       (not= (boolean (:archived row)) (boolean (:archived changes)))))
+
+(defn can-update-each?
+  "Whether the current user may apply `changes` to each of the `model` `rows`, which are hydrated with `:can_write`
+  once together, with the model's [[can-update?]] or, for a model without one, [[can-write?]]."
+  [model rows changes]
+  (or (empty? rows)
+      (with-update-check-cache
+        (let [rows (t2/hydrate (vec rows) :can_write)]
+          (if (contains? (methods can-update?) model)
+            (every? #(can-update? % changes) rows)
+            (every? can-write? rows))))))
 
 (defn superuser?
   "Is [[metabase.api.common/*current-user*]] is a superuser? Ignores args. Intended for use as an implementation
