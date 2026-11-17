@@ -265,13 +265,13 @@
                       (invalid! :columns (tru "Provide at least one column, metric or measure."))))))
 
 (defn- check-llm-available!
-  "Throw an HTTP exception when Metabot is off or has no usable connection."
-  []
+  "Throw an HTTP exception when Metabot is off or `model` has no usable connection."
+  [model]
   (cond
     (not (metabot.settings/metabot-enabled?))
     (throw (ex-info (tru "AI features are not enabled.") {:status-code 403 ::error-reason "metabot-disabled"}))
 
-    (not (metabot.settings/llm-metabot-configured?))
+    (not (metabot.settings/llm-model-configured? model))
     (throw (ex-info (tru "No AI provider is connected.") {:status-code 503 ::error-reason "no-llm"}))))
 
 (defn- provider-status->response-code
@@ -283,8 +283,8 @@
     :else                    502))
 
 (defn- llm-call-error
-  "Return an HTTP exception for the LLM call's exception `e`."
-  [e]
+  "Return an HTTP exception for the exception `e` of the LLM call to `model`."
+  [model e]
   (let [{:keys [status-code type status]} (ex-data e)
         [response-code reason message]
         (case type
@@ -292,7 +292,7 @@
           :metabot/permission-denied   [403 "permission-denied" (tru "You don''t have access to AI features.")]
           [(provider-status->response-code status)
            "llm-error"
-           (or (:message (metabot.self/provider-error e))
+           (or (:message (metabot.self/provider-error e model))
                ;; An adapter's own HTTP error, like a missing connection or a failed credential refresh, explains a
                ;; setup problem that only an admin can fix.
                (when (and status-code api/*is-superuser?*)
@@ -309,9 +309,9 @@
       (throw (ex-info (ex-message e) (assoc (ex-data e) ::error-reason reason) e)))))
 
 (defn- call-llm
-  [messages]
+  [model messages]
   (metabot.self/call-llm-structured
-   (metabot.settings/llm-mini-model)
+   model
    messages
    formula-json-schema
    nil
@@ -350,16 +350,17 @@
   Throws an HTTP exception when params are invalid, AI is unavailable, access is denied, or the LLM call fails."
   [request :- ::request-schema]
   ;; Drop tagged inputs before checking that enough are left.
-  (let [{:keys [database_id prompt] :as request} (remove-tagged-inputs request)]
+  (let [{:keys [database_id prompt] :as request} (remove-tagged-inputs request)
+        model (metabot.settings/llm-mini-model)]
     (check-inputs! request)
-    (check-llm-available!)
-    (with-error-reason "managed-limit" metabot.usage/check-metabase-managed-free-limit!)
+    (check-llm-available! model)
+    (with-error-reason "managed-limit" #(metabot.usage/check-metabase-managed-free-limit! model))
     (with-error-reason "database-access" #(api/query-check :model/Database database_id))
     (let [{:keys [expression name]} (try
-                                      (call-llm (llm-messages request))
+                                      (call-llm model (llm-messages request))
                                       (catch Exception e
                                         (log/warn e "Summary formula LLM call failed")
-                                        (throw (llm-call-error e))))
+                                        (throw (llm-call-error model e))))
           expression (clean-expression expression)
           ;; a usable expression is still worth returning when its name cleans to blank
           name       (or (clean-name name) (clean-name prompt))]

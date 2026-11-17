@@ -462,16 +462,21 @@
 (defn provider-error
   "A user-facing `{:message :error-code}` for a provider failure we can explain better than the generic error, or nil.
   Takes a provider API exception, or the failure's `provider`, `status` and `error` as [[provider-failure]] reads them.
+  The optional `model-ref` is the model the failed call used, and defaults to [[metabot.settings/llm-metabot-provider]].
 
   On the managed provider only an outage gets one, since billing, rate limits and credentials there are Metabase's to
   fix. Only admins on their own key are told which provider failed and where to fix it."
   ([e]
+   (provider-error e nil))
+  ([e model-ref]
    (let [{:keys [api-error provider status body]} (ex-data e)]
      (when (and api-error provider)
-       (provider-error provider status (:error body)))))
+       (provider-error provider status (:error body) model-ref))))
   ([provider status error]
+   (provider-error provider status error nil))
+  ([provider status error model-ref]
    (when-let [failure (provider-failure status error)]
-     (let [managed?      (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
+     (let [managed?      (llm.provider/managed-model-ref? (or model-ref (metabot.settings/llm-metabot-provider)))
            admin?        (and api/*is-superuser?* (not managed?))
            provider-name (or (some-> (llm.provider/provider-type provider) :label str) provider)]
        (when (or (= :unavailable failure) (not managed?))

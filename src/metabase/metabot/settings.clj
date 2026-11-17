@@ -264,14 +264,18 @@
                   (validate-model-ref! new-value))
                 (setting/set-value-of-type! :string :llm-mini-model (llm.provider/canonical-model-ref new-value))))
 
+(defn llm-model-configured?
+  "Whether the connection that `model-ref` names has the credentials it needs."
+  [model-ref]
+  (llm.provider/connection-usable? (llm.provider/model-ref->connection-key model-ref)))
+
 (defsetting llm-metabot-configured?
   "Whether the connection selected for Metabot has the credentials it needs."
   :type       :boolean
   :visibility :public
   :setter     :none
   :export?    false
-  :getter     #(llm.provider/connection-usable?
-                (llm.provider/model-ref->connection-key (llm-metabot-provider)))
+  :getter     #(llm-model-configured? (llm-metabot-provider))
   :doc        false)
 
 (defsetting llm-metabot-supports-reasoning?

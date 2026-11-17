@@ -9,6 +9,7 @@
    [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as metabot.usage]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.util.log.capture :as log.capture]))
 
@@ -34,12 +35,12 @@
   Passes `f` an atom containing the messages from each recorded LLM call."
   [response f]
   (let [calls (atom [])]
-    (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly true)
-                                metabot.self/call-llm-structured         (fn [_model messages & _]
-                                                                           (swap! calls conj messages)
-                                                                           (if (instance? Exception response)
-                                                                             (throw response)
-                                                                             response))]
+    (mt/with-dynamic-fn-redefs [metabot.settings/llm-model-configured? (constantly true)
+                                metabot.self/call-llm-structured       (fn [_model messages & _]
+                                                                         (swap! calls conj messages)
+                                                                         (if (instance? Exception response)
+                                                                           (throw response)
+                                                                           response))]
       (f calls))))
 
 (defn- llm-prompts
@@ -445,22 +446,6 @@
     (is (= "Unauthenticated"
            (mt/client :post 401 endpoint (request-body))))))
 
-(deftest summary-formula-no-llm-test
-  (testing "summary-formula returns a 503 when no LLM is configured"
-    (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly false)]
-      (is (= "No AI provider is connected."
-             (mt/user-http-request :rasta :post 503 endpoint (request-body)))))))
-
-(deftest summary-formula-managed-lock-test
-  (testing "summary-formula returns the managed AI lock's 402 without calling the LLM"
-    (do-with-llm
-     {:expression "Count" :name "Count"}
-     (fn [calls]
-       (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly true)]
-         (is (=? {:error-code "metabase_ai_managed_locked"}
-                 (mt/user-http-request :rasta :post 402 endpoint (request-body))))
-         (is (empty? @calls)))))))
-
 (deftest summary-formula-usage-limit-test
   (testing "summary-formula returns a 429 with the quota message, looking up the usage limits once"
     (do-before-provider!
@@ -575,6 +560,92 @@
      (fn [_calls]
        (is (= "Could not obtain a Google access token: invalid_grant"
               (mt/user-http-request :crowberto :post 502 endpoint (request-body))))))))
+
+;;; ------------------------------------------------- Mini model -------------------------------------------------
+
+(def ^:private managed-model "metabase/anthropic/claude-sonnet-4-6")
+
+(def ^:private own-key-model "openai/gpt-5.4-mini")
+
+(defn- do-with-models!
+  "Call `f` with Metabot on `metabot-model`, the mini model on `mini-model` and the managed provider locked.
+  The LLM is stubbed to return a formula, and `f` gets an atom with the model of each LLM call."
+  [metabot-model mini-model f]
+  (let [models (atom [])]
+    (llm.tu/with-default-connections
+      ;; The raw form, since the plain one would restore the mini model the getter derives as an explicit value.
+      (mt/with-temporary-raw-setting-values [llm-mini-model mini-model]
+        (mt/with-premium-features #{:metabase-ai-managed}
+          (mt/with-temporary-setting-values [llm-metabot-provider metabot-model
+                                             ;; the managed connection is usable once the proxy is set
+                                             llm-proxy-base-url   "http://llm-proxy.test"]
+            (mt/with-dynamic-fn-redefs [premium-features/token-status
+                                        (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
+                                                                                                   :is-locked   true}}})
+                                        metabot.self/call-llm-structured
+                                        (fn [model & _]
+                                          (swap! models conj model)
+                                          {:expression "Count()" :name "Count"})]
+              (f models))))))))
+
+(deftest summary-formula-mini-model-on-own-key-test
+  (testing "summary-formula can use a mini model with its own key when Metabot's managed provider is locked"
+    (do-with-models!
+     managed-model
+     own-key-model
+     (fn [models]
+       (is (= {:expression "Count()" :name "Count"}
+              (mt/user-http-request :rasta :post 200 endpoint (request-body))))
+       (is (= [own-key-model] @models))))))
+
+(deftest summary-formula-mini-model-on-locked-managed-provider-test
+  (testing "summary-formula returns 402 when the mini model is on the locked managed provider"
+    (do-with-models!
+     own-key-model
+     managed-model
+     (fn [models]
+       (is (=? {:error-code "metabase_ai_managed_locked"}
+               (mt/user-http-request :rasta :post 402 endpoint (request-body))))
+       (is (empty? @models))))))
+
+(deftest summary-formula-derived-mini-model-on-locked-managed-provider-test
+  (testing "summary-formula returns 402 when no mini model is set and the fallback Metabot provider is locked"
+    (do-with-models!
+     managed-model
+     nil
+     (fn [models]
+       (is (=? {:error-code "metabase_ai_managed_locked"}
+               (mt/user-http-request :rasta :post 402 endpoint (request-body))))
+       (is (empty? @models))))))
+
+(deftest summary-formula-mini-model-not-configured-test
+  (testing "summary-formula returns a 503 when the mini model's connection has no credentials, even if Metabot's does"
+    (llm.tu/with-connections [(llm.tu/connection "anthropic") (llm.tu/connection "openai" {:api-key nil})]
+      (mt/with-temporary-raw-setting-values [llm-mini-model own-key-model]
+        (mt/with-temporary-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+          (is (true? (metabot.settings/llm-metabot-configured?)))
+          (is (= "No AI provider is connected."
+                 (mt/user-http-request :rasta :post 503 endpoint (request-body)))))))))
+
+(deftest summary-formula-mini-model-own-key-error-test
+  (testing "summary-formula explains an unmanaged mini model's credentials error to admins while Metabot is managed"
+    (do-with-models!
+     managed-model own-key-model
+     (fn [_models]
+       (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly false)
+                                   metabot.self/call-llm-structured          (fn [& _] (throw (provider-api-error 401)))]
+         (is (= "OpenAI rejected the API key or credentials that Metabase sent. Check them in the AI settings."
+                (mt/user-http-request :crowberto :post 502 endpoint (request-body)))))))))
+
+(deftest summary-formula-mini-model-managed-error-test
+  (testing "summary-formula hides a managed mini model's billing error behind the generic message"
+    (do-with-models!
+     own-key-model managed-model
+     (fn [_models]
+       (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly false)
+                                   metabot.self/call-llm-structured          (fn [& _] (throw (provider-api-error 402)))]
+         (is (= "The AI provider couldn't draft a formula. Please try again."
+                (mt/user-http-request :crowberto :post 502 endpoint (request-body)))))))))
 
 ;;; ------------------------------------------------- Validation -------------------------------------------------
 
