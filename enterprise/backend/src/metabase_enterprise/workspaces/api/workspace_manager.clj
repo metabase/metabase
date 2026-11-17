@@ -14,6 +14,8 @@
    [metabase.api.macros.scope :as scope]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -23,14 +25,24 @@
   [:enum {:decode/api keyword}
    :unprovisioned :provisioning :provisioned :deprovisioning])
 
+(def ^:private WorkspaceName
+  "A workspace name that fits the `workspace.name` column, a `varchar(254)`. Postgres and MySQL count that limit in
+  code points and H2 in UTF-16 code units. `:max` counts UTF-16 code units, the larger count, so a name this schema
+  accepts fits on each of them. The message names the unit, because a reader counts an emoji as one character."
+  [:and
+   ms/NonBlankString
+   (mu/with-api-error-message
+    [:string {:max 254}]
+    (deferred-tru "value must be at most 254 UTF-16 code units; an emoji counts as two."))])
+
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
-   [:name         ms/NonBlankString]
+   [:name         WorkspaceName]
    [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]])
 
 (def ^:private UpdateWorkspaceParams
   [:map {:closed true}
-   [:name {:optional true} ms/NonBlankString]])
+   [:name {:optional true} WorkspaceName]])
 
 (def ^:private WorkspaceDatabaseResponse
   [:map {:closed true}
@@ -104,7 +116,10 @@
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
-   for workspaces) and provision it (blocking)."
+   for workspaces) and provision it (blocking). A failed provisioning is an error,
+   never a 200: the database's status code, or 500, with `message` and
+   `cleanup_required`, true when the workspace was kept and must be deleted to
+   finish the teardown."
   {:scope api-scope.workspace-manager/workspace-manager}
   [_route-params _query-params params :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
@@ -124,11 +139,15 @@
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
-  "Delete a Workspace. Tears down every database's warehouse isolation first
-  (blocking, any state). Each database is either fully torn down (its row is
-  deleted) or kept; when any teardown fails the workspace is kept too — with the
-  failed rows, so the delete can be retried — and the combined failure is
-  returned as the error. 204 on success, no response body."
+  "Delete a Workspace: tear down each database's warehouse isolation (blocking),
+  then delete the workspace. 409 (error code `workspace_busy`, nothing changed)
+  while a create or deprovision is running on any of its databases, meaning a row
+  is `:provisioning` or `:deprovisioning` and any row of the workspace was last
+  updated within the last 15 minutes. Once every row is older, such a row is
+  treated as left by a crashed instance and is torn down. A row whose teardown
+  succeeds is deleted. A row whose teardown fails is kept, the workspace is kept
+  with it, and the combined failure is the error, so the delete can be retried.
+  204 on success, no response body."
   {:scope api-scope.workspace-manager/workspace-manager}
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
@@ -144,8 +163,9 @@
       [:body    :string]]
   "Download the workspace's developer-instance config as a YAML file. 409 if any
   of the workspace's databases is not `:provisioned`; retry later. 422 if a
-  database's connection settings need an admin to fix them, or if any emitted
-  value contains `{{` or `[[`; retrying does not help.
+  database's connection settings need an admin to fix them, if any emitted
+  value contains `{{` or `[[`, or if the workspace has no databases; retrying
+  does not help.
   A scoped credential (an `mb:workspace-manager` API key or token) gets 422 when any
   of the workspace's databases uses an SSH tunnel, because the config would need the
   parent's tunnel secrets; an unscoped admin credential gets them."

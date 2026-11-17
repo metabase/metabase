@@ -4,6 +4,7 @@
   (:require
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -20,13 +21,15 @@
    [:input_schemas    [:sequential :string]]
    [:database_details ::warehouses.schema/database.connection-details]
    [:output_namespace :string]
-   [:status           {:optional true} ::status]])
+   [:status           {:optional true} ::status]
+   [:updated_at       {:optional true} (ms/InstanceOfClass java.time.OffsetDateTime)]])
 
 (mr/def ::workspace-database.update
   [:map {:closed true}
    [:output_namespace {:optional true} :string]
    [:database_details {:optional true} ::warehouses.schema/database.connection-details]
-   [:status           {:optional true} ::status]])
+   [:status           {:optional true} ::status]
+   [:updated_at       {:optional true} (ms/InstanceOfClass java.time.OffsetDateTime)]])
 
 (mr/def ::table-spec
   [:map {:closed true}
@@ -40,6 +43,16 @@
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
+
+(defn all-databases
+  "Every Database."
+  []
+  (t2/select :model/Database))
+
+(defn update-database-settings!
+  "Replace the `:settings` of the Database with `database-id`."
+  [database-id settings]
+  (t2/update! :model/Database :id database-id {:settings settings}))
 
 (mu/defn database-engine
   "The `:engine` of the Database with `database-id`, or nil."
@@ -84,6 +97,11 @@
   "Whether a Workspace with `workspace-id` exists."
   [workspace-id :- ms/PositiveInt]
   (t2/exists? :model/Workspace :id workspace-id))
+
+(defn any-workspace-exists?
+  "Whether any Workspace exists."
+  []
+  (t2/exists? :model/Workspace))
 
 (mu/defn workspace
   "The Workspace with `workspace-id`, or nil."
@@ -157,20 +175,22 @@
   (t2/update! :model/WorkspaceDatabase {:id workspace-database-id} changes))
 
 (mu/defn transition-workspace-database!
-  "Set the status of the WorkspaceDatabase with `workspace-database-id` to `to-status` if it is `from-status`.
-  Returns the number of rows updated."
+  "Set the status of the WorkspaceDatabase with `workspace-database-id` to `to-status` if it is `from-status`, and its
+  `updated_at` to this instance's current time. Returns the number of rows updated."
   [workspace-database-id :- ms/PositiveInt
    from-status           :- ::status
    to-status             :- ::status]
-  (t2/update! :model/WorkspaceDatabase {:id workspace-database-id :status from-status} {:status to-status}))
+  (t2/update! :model/WorkspaceDatabase {:id workspace-database-id :status from-status}
+              {:status to-status :updated_at (mi/current-timestamp)}))
 
 (mu/defn transition-workspace-databases!
   "Set the status of every WorkspaceDatabase of the Workspace with `workspace-id` that is `from-status` to
-  `to-status`. Returns the number of rows updated."
+  `to-status`, and its `updated_at` to this instance's current time. Returns the number of rows updated."
   [workspace-id :- ms/PositiveInt
    from-status  :- ::status
    to-status    :- ::status]
-  (t2/update! :model/WorkspaceDatabase {:workspace_id workspace-id :status from-status} {:status to-status}))
+  (t2/update! :model/WorkspaceDatabase {:workspace_id workspace-id :status from-status}
+              {:status to-status :updated_at (mi/current-timestamp)}))
 
 (mu/defn delete-workspace-database!
   "Delete the WorkspaceDatabase with `workspace-database-id`."
@@ -186,6 +206,20 @@
   "Whether the Workspace with `workspace-id` has a WorkspaceDatabase that is not `:unprovisioned`."
   [workspace-id :- ms/PositiveInt]
   (t2/exists? :model/WorkspaceDatabase :workspace_id workspace-id :status [:not= :unprovisioned]))
+
+(mu/defn workspace-has-in-flight-databases?
+  "Whether the Workspace with `workspace-id` has a WorkspaceDatabase that is `:provisioning` or `:deprovisioning`, and
+  any of its WorkspaceDatabases, whatever its status, was last updated after `since`."
+  [workspace-id :- ms/PositiveInt
+   since        :- (ms/InstanceOfClass java.time.OffsetDateTime)]
+  (t2/exists? :model/WorkspaceDatabase
+              :workspace_id workspace-id
+              :status       [:in [:provisioning :deprovisioning]]
+              {:where [:exists ^:allow-subquery {:select [1]
+                                                 :from   [[:workspace_database :any_wsd]]
+                                                 :where  [:and
+                                                          [:= :any_wsd.workspace_id workspace-id]
+                                                          [:> :any_wsd.updated_at since]]}]}))
 
 (mu/defn database-has-workspace-databases?
   "Whether any WorkspaceDatabase references the Database with `database-id`, whatever its status."
@@ -236,23 +270,25 @@
                  :from_table_name (:table from-spec)))
 
 (mu/defn upsert-table-remapping!
-  "Insert a TableRemapping from `from-spec` to `to-spec` unless one from `from-spec` already exists. Idempotent on the
+  "Make the TableRemapping from `from-spec` point at `to-spec`: insert it, or update one that points elsewhere, such as
+  a row left from an earlier workspace schema. Leaves a row that already points at `to-spec` untouched. Keyed on the
   unique constraint `(database_id, from_db, from_schema, from_table_name)`: [[app-db/update-or-insert!]] retries the
   lookup when a concurrent insert wins the race."
   [database-id :- ::lib.schema.id/database
    from-spec   :- ::table-spec
    to-spec     :- ::table-spec]
-  (app-db/update-or-insert!
-   :model/TableRemapping
-   {:database_id     database-id
-    :from_db         (:db from-spec)
-    :from_schema     (:schema from-spec)
-    :from_table_name (:table from-spec)}
-   (fn [existing]
-     (when-not existing
-       {:to_db         (:db to-spec)
-        :to_schema     (:schema to-spec)
-        :to_table_name (:table to-spec)}))))
+  (let [to-columns {:to_db         (:db to-spec)
+                    :to_schema     (:schema to-spec)
+                    :to_table_name (:table to-spec)}]
+    (app-db/update-or-insert!
+     :model/TableRemapping
+     {:database_id     database-id
+      :from_db         (:db from-spec)
+      :from_schema     (:schema from-spec)
+      :from_table_name (:table from-spec)}
+     (fn [existing]
+       (when (not= to-columns (select-keys existing (keys to-columns)))
+         to-columns)))))
 
 (mu/defn delete-table-remapping!
   "Delete the TableRemapping of the Database with `database-id` whose source is `from-spec`. Returns the number of
