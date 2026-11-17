@@ -701,6 +701,17 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown setting: no-such-setting"
                             (#'setting/write-setting-value {:key "no-such-setting" :value "Sad Can"}))))))
 
+(deftest settings-last-updated-row-written-only-by-cache-test
+  (testing "settings-last-updated row cannot be written through the model"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot update `settings-last-updated` yourself"
+                          (t2/insert! :model/Setting :key setting.cache/settings-last-updated-key :value "2020-01-01")))
+    (setting.cache/update-settings-last-updated!)
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot update `settings-last-updated` yourself"
+                          (t2/update! :model/Setting :key setting.cache/settings-last-updated-key {:value "2020-01-01"})))
+    (testing "nor through the setting framework"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot update `settings-last-updated` yourself"
+                            (setting/set-value-of-type! :string :settings-last-updated "2020-01-01"))))))
+
 (deftest previously-encrypted-settings-test
   (testing "Make sure settings that were encrypted don't cause `user-facing-info` to blow up if encyrption key changed"
     (mt/with-temp-empty-app-db [_conn :h2]
@@ -950,12 +961,16 @@
               database-local-value    [2 nil]
               do-with-site-wide-value [(fn [thunk]
                                          (testing "\nsite-wide value set in application DB"
-                                           ;; Set the setting directly instead of using
-                                           ;; [[mt/with-temporary-setting-values]] because that blows up when the
-                                           ;; Setting is Database-local-only
+                                           ;; Write the row to the table directly, because the model refuses a
+                                           ;; site-wide row for a Database-local-only Setting
                                            (t2/delete! :model/Setting :key (name setting-name))
                                            (when site-wide-value
-                                             (t2/insert! :model/Setting :key (name setting-name), :value (str site-wide-value)))
+                                             (t2/insert! :setting
+                                                         :key            (name setting-name)
+                                                         :value          (str site-wide-value)
+                                                         :value_with_aad (encryption/maybe-encrypt
+                                                                          (str site-wide-value)
+                                                                          {:aad (mdb.setting/setting-aad (name setting-name))})))
                                            (setting.cache/restore-cache!)
                                            (try
                                              (thunk)
@@ -1026,7 +1041,12 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Site-wide values are not allowed for Setting :test-database-local-only-setting"
-         (test-database-local-only-setting! 2))))
+         (test-database-local-only-setting! 2)))
+    (testing "through the model"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Site-wide values are not allowed for Setting :test-database-local-only-setting"
+           (t2/insert! :model/Setting :key "test-database-local-only-setting" :value "2")))))
   (testing "Default values should be allowed for Database-local-only Settings"
     (binding [setting/*database-local-values* {}]
       (is (= "DEFAULT"
@@ -2049,3 +2069,16 @@
     (mt/with-temporary-setting-values [test-setting-1 "DB_VALUE"]
       (mt/with-temp-env-var-value! [mb-test-setting-1 "ENV_VALUE"]
         (is (= :env (setting/get-raw-value-source :test-setting-1)))))))
+
+(deftest set-value-stored-outside-cache-test
+  (testing "Setting a value that is already stored, but missing from the cache, keeps it"
+    (test-setting-1! nil)
+    (try
+      (t2/insert! (t2/table-name :model/Setting) :key "test-setting-1" :value "ABC")
+      (test-setting-1! "ABC")
+      (is (= "ABC" (t2/select-one-fn :value :model/Setting :key "test-setting-1")))
+      (test-setting-1! "DEF")
+      (is (= "DEF" (t2/select-one-fn :value :model/Setting :key "test-setting-1")))
+      (finally
+        (t2/delete! (t2/table-name :model/Setting) :key "test-setting-1")
+        (setting.cache/restore-cache!)))))
