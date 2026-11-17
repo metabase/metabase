@@ -45,15 +45,15 @@
      :rows    [{"id" 1 "name" "paid"} {"id" 2 "name" "paid"}]}))
 
 (defn- write-plan
-  "A [[data-testing.subject/subject-plan]] that runs `sql` with `params` on the test database."
+  "A `::data-testing.subject/subject-plan` that runs `sql` with `params` on the test database."
   [sql params]
   {:database (data-testing.subject/testable-database (mt/id))
    :compiled {:query sql :params params}
    :writes?  true})
 
 (defn- do-with-write-subject!
-  "Call `f` with a card whose plan, for this test, is the write `sql` with `params`, and with a function returning the
-  parameters each plan was asked for."
+  "Call `f` with a card and a function returning the `:parameters` of each definition `subject-plan` was called with.
+  While `f` runs, `subject-plan` returns the write `sql` with `params` for any subject."
   [sql params f]
   (let [asked (atom [])]
     (mt/with-temp [:model/Card card {:dataset_query (lib/native-query (mt/metadata-provider)
@@ -84,7 +84,8 @@
       (:error-type (ex-data e)))))
 
 (defn- refund-1
-  "The write: person 1's `name` becomes `refunded`."
+  "The UPDATE of the people table that sets `name` to the first parameter where `id` is the second. Every test passes
+  `[\"refunded\" 1]`."
   []
   (str "UPDATE " (qualified :people) " SET name = ? WHERE id = ?"))
 
