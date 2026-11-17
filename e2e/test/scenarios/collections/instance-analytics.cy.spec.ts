@@ -59,6 +59,17 @@ describe("scenarios > Metabase Analytics Collection (AuditV2)", () => {
           expect(auditDatabase?.native_permissions).to.eq("none");
         });
       });
+
+      cy.log("Analytics content is reachable from the navigation sidebar");
+      H.openNavigationSidebar();
+      cy.findByRole("link", { name: /Usage analytics/i }).click();
+      H.getPinnedSection()
+        .findByRole("link", { name: /Metabase metrics/i })
+        .click();
+      cy.findByRole("link", { name: /Question views last week/i }).click();
+      H.queryBuilderHeader()
+        .findByDisplayValue("Question views last week")
+        .should("be.visible");
     });
 
     it(

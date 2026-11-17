@@ -69,7 +69,7 @@ describe("DashboardInfoSidebar", () => {
   it("should never show an Insights link in OSS, even to admins", async () => {
     await setup({ user: { is_superuser: true } });
 
-    expect(await screen.findByText("Description")).toBeInTheDocument();
+    expect(await screen.findByText("Details")).toBeVisible();
     expect(
       screen.queryByRole("link", { name: /Insights/i }),
     ).not.toBeInTheDocument();

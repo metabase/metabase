@@ -104,6 +104,7 @@ describe("QuestionInfoSidebar", () => {
       });
 
       // OSS shows an upsell, never a link to usage analytics
+      expect(screen.getByText("Details")).toBeVisible();
       expect(
         screen.queryByRole("link", { name: /Insights/i }),
       ).not.toBeInTheDocument();

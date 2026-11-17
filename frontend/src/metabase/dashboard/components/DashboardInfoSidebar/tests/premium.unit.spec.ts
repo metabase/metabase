@@ -100,7 +100,7 @@ describe("DashboardInfoSidebar > enterprise", () => {
         auditInfo: {},
       });
 
-      expect(await screen.findByText("Description")).toBeInTheDocument();
+      expect(await screen.findByText("Details")).toBeVisible();
       expect(
         screen.queryByRole("link", { name: /Insights/i }),
       ).not.toBeInTheDocument();

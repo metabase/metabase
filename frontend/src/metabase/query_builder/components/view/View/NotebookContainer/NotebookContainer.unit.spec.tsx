@@ -80,7 +80,7 @@ describe("NotebookContainer", () => {
     expect(screen.getByTestId("notebook")).toBeInTheDocument();
     expect(
       await screen.findByTestId("native-query-preview-sidebar"),
-    ).toBeInTheDocument();
+    ).toBeVisible();
   });
 
   it("does not show the native query preview sidebar without native write permissions, like on the instance analytics database (metabase#49904)", () => {
