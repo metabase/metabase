@@ -199,11 +199,13 @@
 
 (mu/defn ensure-single-write :- :string
   "`sql` as SQLGlot rebuilt it, the string the run executes, when it is one INSERT, UPDATE or DELETE statement in
-  `driver`'s dialect that calls no function known to run SQL text or change the session. Throws
-  `::data-testing.errors/not-a-single-write` when it is not, and `::data-testing.errors/uncheckable-write` when the
-  dialect is unknown or the SQL is too large to check.
+  `driver`'s dialect that hides no SQL from the parser and calls no function the check refuses: one that runs SQL
+  text, takes a lock, waits, changes the session or reaches outside the database. Throws
+  `::data-testing.errors/not-a-single-write` when it is not, `::data-testing.errors/unparseable-source` when it does
+  not parse, and `::data-testing.errors/uncheckable-write` when the dialect is unknown or a literal list is too long
+  to parse.
 
-  A function that writes, called by a name the check does not know, passes."
+  Any other function passes, one known to write included: `nextval` and `setval` change a sequence."
   [driver :- :keyword
    sql    :- :string]
   (let [{:keys [verdict error reason detail] checked :sql} (sql-tools/validate-executable-stmt driver sql "write")]
