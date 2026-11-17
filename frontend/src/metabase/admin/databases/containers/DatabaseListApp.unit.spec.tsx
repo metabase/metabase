@@ -25,18 +25,20 @@ const LIST_ERROR_MESSAGE = "Lorem ipsum dolor sit amet, consectetur adip";
 
 interface SetupOpts {
   hasListError?: boolean;
+  listErrorMessage?: string;
   hasAdvancedPermissions?: boolean;
 }
 
 const setup = ({
   hasListError = false,
+  listErrorMessage,
   hasAdvancedPermissions = false,
 }: SetupOpts = {}) => {
   setupEnginesEndpoint(createMockEngines());
-  if (hasListError) {
+  if (hasListError || listErrorMessage) {
     setupDatabaseListEndpointError({
       status: 500,
-      body: { message: LIST_ERROR_MESSAGE },
+      body: { message: listErrorMessage ?? LIST_ERROR_MESSAGE },
     });
   } else {
     setupDatabaseListEndpoint([
@@ -81,6 +83,37 @@ describe("DatabaseListApp", () => {
     expect(getListRequestParams().has("exclude_uneditable_details")).toBe(
       false,
     );
+  });
+
+  it("requests the list without uneditable details with advanced permissions", async () => {
+    setup({ hasAdvancedPermissions: true });
+
+    expect(await screen.findByText("Stubbed DB")).toBeInTheDocument();
+    expect(getListRequestParams().get("exclude_uneditable_details")).toBe(
+      "true",
+    );
+  });
+
+  describe("when listing databases fails (metabase#20471)", () => {
+    const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
+
+    it("shows a generic error with collapsible details", async () => {
+      setup({ listErrorMessage: errorMessage });
+
+      expect(
+        await screen.findByText(/Something.s gone wrong/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /We.ve run into an error\. You can try refreshing the page, or just go back\./,
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByText(errorMessage)).not.toBeVisible();
+
+      await userEvent.click(screen.getByText("Show error details"));
+
+      expect(screen.getByText(errorMessage)).toBeVisible();
+    });
   });
 
   it("excludes databases with uneditable details when advanced permissions are enabled", async () => {

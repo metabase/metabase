@@ -41,6 +41,14 @@ export function setupDatabaseEndpoints(db: Database) {
   setupUpdateDatabaseEndpoint(db);
 }
 
+export function setupDatabaseWithNullDetailsEndpoint(db: Database) {
+  fetchMock.get(
+    `path:/api/database/${db.id}`,
+    { ...db, details: null },
+    { name: `database-${db.id}-null-details` },
+  );
+}
+
 export function setupDatabaseAutocompleteSuggestionsEndpoint({
   databaseId,
   suggestions,
