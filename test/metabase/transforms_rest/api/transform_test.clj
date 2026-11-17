@@ -1279,8 +1279,8 @@
                                                                (t2/hydrate :transform_tag_ids))]
                                              (is (= exp-revisions (t2/count :model/Revision :model "Transform"
                                                                             :model_id transform-id)))
-                                             (let [revision (t2/select-one :model/Revision :model "Transform"
-                                                                           :model_id transform-id :most_recent true)
+                                             (let [revision (t2/select-one :model/Revision :model "Transform" :model_id transform-id
+                                                                           {:order-by [[:id :desc]]})
                                                    rev-transform (:object revision)
                                                    removed #{:id :entity_id :created_at :updated_at}]
                                                (is (every? #(not (contains? rev-transform %)) removed))

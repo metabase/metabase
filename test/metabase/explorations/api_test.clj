@@ -1908,8 +1908,8 @@
           (is (true? (:archived d)))
           (is (true? (:archived_directly d))))))))
 
-(deftest exploration-summary-updates-record-revision-and-event-test
-  (testing "Archiving and moving an exploration records a revision and an event for the Summary it updates"
+(deftest exploration-summary-updates-publish-event-and-record-no-revision-test
+  (testing "Archiving and moving an exploration publishes an event for the Summary it carries and records no revision of it"
     (mt/with-temp [:model/Collection c {}
                    :model/Collection dest {}
                    :model/Exploration e {:name "to-archive"
@@ -1942,7 +1942,7 @@
                                 {:archived true})
           (is (some #{[:event/document-update (:id live)]} @published))
           (is (not-any? #{[:event/document-update (:id user-archived)]} @published)))
-        (is (pos? (t2/count :model/Revision :model "Document" :model_id (:id live))))))))
+        (is (zero? (t2/count :model/Revision :model "Document" :model_id (:id live))))))))
 
 (deftest exploration-get-hydrates-summary-when-trashed-test
   (testing "GET /:id still hydrates the Summary after the exploration is trashed, so Trash view keeps the document."

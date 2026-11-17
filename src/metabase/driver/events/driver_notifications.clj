@@ -22,7 +22,7 @@
   [database]
   (-> (perf/select-keys database [:engine :details :settings])
       (cond-> (map? (:settings database)) (m/dissoc-in [:settings :database-enable-actions]))
-      (update :settings not-empty)))
+      (update :settings perf/not-empty)))
 
 (methodical/defmethod events/publish-event! ::event
   [topic {:keys [object previous-object]}]
