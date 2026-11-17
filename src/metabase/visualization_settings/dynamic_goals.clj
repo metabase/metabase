@@ -209,8 +209,8 @@
   [goal-value referenced-entities]
   (if-let [{entity-type :type, :keys [id column] :as ref} (goal-source goal-value)]
     (let [{:keys [status data error_type] :as result} (get-in referenced-entities [entity-type (str id)])]
-      ;; no entry at all: the entity was never queried (cancelled mid-run, or the caller derived its
-      ;; specs from different settings than the ones being resolved here)
+      ;; no entry at all: the source never ran (cancelled mid-run, or its values were fetched for different
+      ;; settings than the ones being resolved here)
       (when-not result
         (unresolved! :never-ran ref))
       (when-not (and data (some-> status name (= "completed")))

@@ -2,8 +2,8 @@
   "Which goal settings each display draws, shared with the frontend.")
 
 (def display->goal-settings
-  "The goal settings each display draws. A display not listed, such as any `custom:*` one, draws none, so running a card
-  with it runs none of its goal references."
+  "The goal settings each display draws. A display not listed, such as any `custom:*` one, draws none, so none of its goal
+  sources run."
   {:area      #{:graph.goal_value}
    :bar       #{:graph.goal_value}
    :boxplot   #{:graph.goal_value}

@@ -1003,7 +1003,7 @@
                                {:scalar.segments [{:min   {:id measure-id :type "measure" :column "count"}
                                                    :max   nil
                                                    :color "red"}]}}]
-          (testing "the chart response no longer carries goal values"
+          (testing "the chart response carries no goal values"
             (is (not (contains? (:data (client/client :get 202 (card-query-url card ""))) :referenced_entities))))
           (is (=? {:status "completed" :data {:rows [[100]]}}
                   (-> (client/client :get 202 (str (card-url card) "/goal-values"))
@@ -1019,7 +1019,7 @@
                                               {:scalar.segments [{:min   {:id goal-id :type "card" :column "count"}
                                                                   :max   nil
                                                                   :color "red"}]}}}]
-          (testing "the chart response no longer carries goal values"
+          (testing "the chart response carries no goal values"
             (is (not (contains? (:data (client/client :get 202 (dashcard-url dashcard))) :referenced_entities))))
           (is (= [[1000]]
                  (-> (client/client :get 202 (str (dashcard-url dashcard) "/goal-values"))

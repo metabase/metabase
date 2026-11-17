@@ -271,7 +271,7 @@
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
         (embed-test/with-temp-card [card {:display :scalar :visualization_settings (goal-segments goal-id)}]
-          (testing "the chart response no longer carries goal values"
+          (testing "the chart response carries no goal values"
             (is (not (contains? (:data (mt/user-http-request :crowberto :get 202 (card-query-url card)))
                                 :referenced_entities))))
           (is (= [[1000]]
@@ -287,7 +287,7 @@
       (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
         (embed-test/with-temp-dashcard [dashcard {:card {:display                :scalar
                                                          :visualization_settings (goal-segments goal-id)}}]
-          (testing "the chart response no longer carries goal values"
+          (testing "the chart response carries no goal values"
             (is (not (contains? (:data (mt/user-http-request :crowberto :get 202 (dashcard-url dashcard)))
                                 :referenced_entities))))
           (is (= [[1000]]

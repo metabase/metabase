@@ -398,7 +398,7 @@
           (testing "value above goal" (is (false? (goal-met? alert (referenced-timeseries-result 6 goal-part))))))))))
 
 (deftest ^:parallel goal-met-referenced-goal-failed-test
-  (testing "a failed referenced query makes the alert error instead of silently (not) firing"
+  (testing "a failed goal source query makes the alert error instead of silently (not) firing"
     (let [goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal"
                             (goal-met? {:send_condition "goal_above"}
