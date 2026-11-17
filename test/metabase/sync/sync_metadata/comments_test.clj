@@ -65,9 +65,8 @@
             (is (=? {:description "updated description" :description_set true}
                     (t2/select-one :model/FieldUserSettings :field_id field-id)))))))))
 
-;; Not static: the test below drops and re-creates this DB, so it needs a private copy.
 (tx/defdataset ^:private comment-after-sync
-  nil
+  "Not static, because a test changes this dataset."
   [["comment_after_sync"
     [{:field-name "comment_after_sync", :base-type :type/Text}]
     [["foo"]]]]
