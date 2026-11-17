@@ -12,7 +12,7 @@
    [toucan2.core :as t2]))
 
 (mr/def ::status
-  [:enum :unprovisioned :provisioning :provisioned :deprovisioning])
+  [:enum :unprovisioned :provisioning :provisioned :deprovisioning :teardown_failed :never_started])
 
 (mr/def ::workspace-database.insert
   [:map {:closed true}
@@ -148,14 +148,14 @@
   (t2/select-one :model/WorkspaceDatabase :id workspace-database-id))
 
 (mu/defn workspace-databases
-  "The WorkspaceDatabases of the Workspace with `workspace-id`."
+  "The WorkspaceDatabases of the Workspace with `workspace-id`, ordered by id."
   [workspace-id :- ms/PositiveInt]
-  (t2/select :model/WorkspaceDatabase :workspace_id workspace-id))
+  (t2/select :model/WorkspaceDatabase :workspace_id workspace-id {:order-by [[:id :asc]]}))
 
 (mu/defn workspace-databases-of-workspaces
-  "The WorkspaceDatabases of the Workspaces with ids in `workspace-ids`."
+  "The WorkspaceDatabases of the Workspaces with ids in `workspace-ids`, ordered by id."
   [workspace-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/WorkspaceDatabase :workspace_id [:in workspace-ids]))
+  (t2/select :model/WorkspaceDatabase :workspace_id [:in workspace-ids] {:order-by [[:id :asc]]}))
 
 (mu/defn workspace-database-ids-with-status
   "The ids of the WorkspaceDatabases of the Workspace with `workspace-id` whose status is `status`."
@@ -182,6 +182,18 @@
    to-status             :- ::status]
   (t2/update! :model/WorkspaceDatabase {:id workspace-database-id :status from-status}
               {:status to-status :updated_at (mi/current-timestamp)}))
+
+(mu/defn transition-workspace-database-at!
+  "Set the status of the WorkspaceDatabase with `workspace-database-id` to `to-status`, and its `updated_at` to
+  `updated-at`, if its status is `from-status`. The `UPDATE` statement carries the status condition, so of two
+  concurrent calls from the same status only one updates the row. Returns the number of rows updated."
+  [workspace-database-id :- ms/PositiveInt
+   from-status           :- ::status
+   to-status             :- ::status
+   updated-at            :- (ms/InstanceOfClass java.time.OffsetDateTime)]
+  (t2/update! :model/WorkspaceDatabase
+              {:id workspace-database-id :status from-status}
+              {:status to-status :updated_at updated-at}))
 
 (mu/defn transition-workspace-databases!
   "Set the status of every WorkspaceDatabase of the Workspace with `workspace-id` that is `from-status` to

@@ -30,7 +30,7 @@ import { useLocale } from "metabase/common/hooks/use-locale";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { DashboardCard, TokenFeatures } from "metabase-types/api";
+import type { DashboardCard, Dataset, TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -127,6 +127,8 @@ export interface SetupSdkDashboardOptions extends NotificationChannelSetup {
   dashboardName?: string;
   dataPickerProps?: EditableDashboardProps["dataPickerProps"];
   dashcards?: DashboardCard[];
+  /** The response of the table card query, a promise holds it until the test resolves it */
+  tableCardQueryResponse?: Dataset | Promise<Dataset>;
   enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
   tokenFeatures?: Partial<TokenFeatures>;
 }
@@ -148,6 +150,7 @@ export const setupSdkDashboard = async ({
   dashboardName = "Dashboard",
   dataPickerProps,
   dashcards = DEFAULT_DASHCARDS,
+  tableCardQueryResponse = createMockDataset(),
   enterprisePlugins = [],
   tokenFeatures = {},
   isEmailConfigured = false,
@@ -192,7 +195,11 @@ export const setupSdkDashboard = async ({
     }),
   );
 
-  setupDashcardQueryEndpoints(dashboardId, tableDashcard, createMockDataset());
+  setupDashcardQueryEndpoints(
+    dashboardId,
+    tableDashcard,
+    tableCardQueryResponse,
+  );
 
   setupAlertsEndpoints(tableCard, []);
 

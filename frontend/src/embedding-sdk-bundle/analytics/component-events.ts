@@ -11,7 +11,7 @@ import {
   getSdkClient,
   getSdkLocaleUsed,
   trackSdkSimpleEvent,
-} from "./snowplow";
+} from "./event";
 
 export function useIsTrackingEnabled(): boolean {
   // Default false so we don't fire events during the settings-load window for users who opted out.
