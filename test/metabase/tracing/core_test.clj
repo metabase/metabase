@@ -2,9 +2,18 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.config.core :as config]
+   [metabase.test :as mt]
    [metabase.tracing.core :as tracing]
-   [metabase.tracing.test-util :as tracing.tu])
+   [metabase.tracing.settings :as tracing.settings]
+   [metabase.tracing.test-util :as tracing.tu]
+   [steffan-westcott.clj-otel.api.otel :as otel]
+   [steffan-westcott.clj-otel.api.trace.span :as span]
+   [steffan-westcott.clj-otel.sdk.otel-sdk :as otel-sdk])
   (:import
+   (io.opentelemetry.sdk OpenTelemetrySdk)
+   (io.opentelemetry.sdk.testing.exporter InMemorySpanExporter)
+   (io.opentelemetry.sdk.trace SdkTracerProvider)
+   (io.opentelemetry.sdk.trace.export SimpleSpanProcessor)
    (org.apache.logging.log4j ThreadContext)))
 
 (set! *warn-on-reflection* true)
@@ -347,3 +356,51 @@
       (finally
         (tracing/clear-trace-id-from-mdc!)
         (tracing/shutdown-groups!)))))
+
+(deftest failed-init-closes-the-sdk-test
+  (testing "an init that fails after building the SDK closes it and leaves no default behind"
+    (let [closed   (atom [])
+          defaults (atom [])
+          tracers  (atom [])]
+      (mt/with-dynamic-fn-redefs [tracing.settings/tracing-enabled (constantly true)
+                                  tracing/build-otel-sdk          (constantly ::sdk)
+                                  tracing/init-enabled-groups!    (fn [& _] (throw (ex-info "bad groups" {})))
+                                  otel/set-default-otel!          #(swap! defaults conj %)
+                                  span/get-tracer                 (constantly ::tracer)
+                                  span/set-default-tracer!        #(swap! tracers conj %)
+                                  otel-sdk/close-otel-sdk!        #(swap! closed conj %)]
+        (tracing/init!))
+      (is (= {:closed [::sdk], :defaults [::sdk nil], :tracers [::tracer nil]}
+             {:closed @closed, :defaults @defaults, :tracers @tracers})))))
+
+(defn- in-memory-sdk ^OpenTelemetrySdk [exporter]
+  (-> (OpenTelemetrySdk/builder)
+      (.setTracerProvider (-> (SdkTracerProvider/builder)
+                              (.addSpanProcessor (SimpleSpanProcessor/create exporter))
+                              (.build)))
+      (.build)))
+
+(deftest spans-reach-the-running-sdk-test
+  (testing "a span that starts as soon as tracing starts, on the first start or after a restart, reaches the running SDK"
+    (let [[first-exporter second-exporter :as exporters] [(InMemorySpanExporter/create) (InMemorySpanExporter/create)]
+          sdks          (atom (mapv in-memory-sdk exporters))
+          enable-groups (mt/original-fn #'tracing/init-enabled-groups!)
+          ;; read before a stop, which shuts the exporter down and so clears its spans
+          span-names    #(mapv :name (tracing.tu/finished-spans %))]
+      (mt/with-dynamic-fn-redefs [tracing.settings/tracing-enabled (constantly true)
+                                  tracing/build-otel-sdk          (fn [_]
+                                                                    (let [[sdk & more] @sdks]
+                                                                      (reset! sdks more)
+                                                                      sdk))
+                                  tracing/init-enabled-groups!    (fn [& args]
+                                                                    (apply enable-groups args)
+                                                                    (tracing/with-span :tasks "task.during-start" {} nil))]
+        (try
+          (tracing/init!)
+          (let [first-start (span-names first-exporter)]
+            (tracing/shutdown!)
+            (tracing/init!)
+            (is (= {:first-start ["task.during-start"], :restart ["task.during-start"]}
+                   {:first-start first-start, :restart (span-names second-exporter)})))
+          (finally
+            (tracing/shutdown!)))))))

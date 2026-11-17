@@ -28,25 +28,22 @@
 (t2/deftransforms :model/TransformJob
   {:ui_display_type mi/transform-keyword})
 
-(defmethod mi/can-read? :model/TransformJob
-  ([_instance]
-   (api/entitled-data-analyst?))
-  ([_model _pk]
-   (api/entitled-data-analyst?)))
+(methodical/defmethod t2/simple-hydrate [:model/TransformJob :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (api/entitled-data-analyst?))))
 
-(defmethod mi/can-write? :model/TransformJob
-  ([instance]
-   (or api/*is-superuser?*
-       (and (api/entitled-data-analyst?)
-            (let [transforms (or (:transforms instance)
-                                 (when-let [tag-ids (seq (:tag_ids instance))]
-                                   (transform/transforms-with-tags tag-ids)))]
-              (if (seq transforms)
-                (every? mi/can-write? transforms)
-                true)))))
-  ([_model pk]
-   (when-let [job (transforms.db/job pk)]
-     (mi/can-write? job))))
+(methodical/defmethod t2/simple-hydrate [:model/TransformJob :can_write]
+  [_model k instance]
+  (assoc instance k
+         (boolean
+          (or api/*is-superuser?*
+              (and (api/entitled-data-analyst?)
+                   (let [transforms (or (:transforms instance)
+                                        (when-let [tag-ids (seq (:tag_ids instance))]
+                                          (transform/transforms-with-tags tag-ids)))]
+                     (if (seq transforms)
+                       (every? mi/can-write? (t2/hydrate transforms :can_write))
+                       true)))))))
 
 (defmethod mi/can-create? :model/TransformJob
   [_model instance]
@@ -58,7 +55,7 @@
                                 (when-let [tag-ids (seq (:tag_ids instance))]
                                   (transform/transforms-with-tags tag-ids)))]
              (if (seq transforms)
-               (every? mi/can-write? transforms)
+               (every? mi/can-write? (t2/hydrate transforms :can_write))
                true)))))
 
 (mi/define-batched-hydration-method tag-ids

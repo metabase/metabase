@@ -449,7 +449,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (let [a-waiting (promise)
             b-done    (promise)
-            write!    dashboard-write/write!
+            write!    (mt/original-fn #'dashboard-write/write!)
             add-card  (fn [card-id]
                         (future (call {:dashboard_id dash-id
                                        :ops          [{:op "add_card", :id -1, :card_id card-id}]})))]
@@ -497,7 +497,7 @@
    (fn [{:keys [dash-id]}]
      (mt/with-current-user (mt/user->id :rasta)
        ;; A parallel call trashes the dashboard after this call's first read, before it takes the lock.
-       (let [reread metabot.db/dashboard]
+       (let [reread (mt/original-fn #'metabot.db/dashboard)]
          (mt/with-dynamic-fn-redefs [metabot.db/dashboard (fn [id]
                                                             (t2/update! :model/Dashboard :id id {:archived true})
                                                             (reread id))]

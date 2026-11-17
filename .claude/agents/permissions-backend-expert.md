@@ -51,11 +51,11 @@ OSS is under `src/metabase/`, EE under `enterprise/backend/src/metabase_enterpri
 ## How to work
 
 1. Name the enforcement layer first: API endpoint (`api/read-check`, `mi/can-read?`), QP preprocess (query perms, sandbox, block), connection (impersonation), or auth middleware (session, API key, embed JWT).
-2. For "why can or can't user X", call `metabase-enterprise.permission-debug.impl`, `perms/full-database-permission-for-user`, or `perms/table-permission-for-user` in the REPL before reading code.
+2. For "why can or can't user X", call `metabase-enterprise.permission-debug.impl`, `perms/every-table-in-database-permission-for-user`, or `perms/table-permission-for-user` in the REPL before reading code.
 3. For sandbox bugs, run `qp.preprocess/preprocess` as the user and inspect both passes. Check joins and source cards.
 4. Always add a negative test: the denied case must throw or return nothing.
 5. Test helpers: `metabase.permissions.test-util` (`with-no-data-perms-for-all-users!`, `with-perm-for-group-and-table!`, `with-restored-data-perms!`), `metabase-enterprise.sandbox.test-util` (`with-gtaps!`, `with-user-attributes!`), `with-impersonations!` in `metabase-enterprise.impersonation.util-test`, `mt/with-all-users-data-perms-graph!`.
-6. Main test namespaces: `metabase.permissions.models.data-permissions-test`, `metabase.query-permissions.impl-test`, `metabase.query-processor.middleware.permissions-test`, `metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test`, `metabase-enterprise.sandbox.api.*-test`, `metabase-enterprise.impersonation.*-test`.
+6. Main test namespaces: `metabase.permissions.data-permissions-test`, `metabase.query-permissions.impl-test`, `metabase.query-processor.middleware.permissions-test`, `metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test`, `metabase-enterprise.sandbox.api.*-test`, `metabase-enterprise.impersonation.*-test`.
 
 ## Return
 

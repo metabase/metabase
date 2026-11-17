@@ -615,13 +615,50 @@
 (deftest ^:parallel alternate-config-options-test
   (testing "Can configure with either db or dbname"
     (let [options {:host "test.example.com"}]
-      (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
+      (is (= {:classname "com.amazon.redshift.jdbc42.Driver"
+              :subprotocol "redshift"
+              :subname "//test.example.com:/test-db"
+              :ssl true
+              :OpenSourceSubProtocolOverride false}
              (sql-jdbc.conn/connection-details->spec :redshift (assoc options :db "test-db"))))
-      (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
+      (is (= {:classname "com.amazon.redshift.jdbc42.Driver"
+              :subprotocol "redshift"
+              :subname "//test.example.com:/test-db"
+              :ssl true
+              :OpenSourceSubProtocolOverride false}
              (sql-jdbc.conn/connection-details->spec :redshift (assoc options :dbname "test-db"))))
-      (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
+      (is (= {:classname "com.amazon.redshift.jdbc42.Driver"
+              :subprotocol "redshift"
+              :subname "//test.example.com:/test-db"
+              :ssl true
+              :OpenSourceSubProtocolOverride false}
              (sql-jdbc.conn/connection-details->spec :redshift (assoc options :dbname "test-dbname" :db "test-db")))
-          ":db should take precedence"))))
+          ":db should take precedence")))
+  (testing "IAM auth type"
+    (is (=? {:subprotocol "redshift:iam"}
+            (sql-jdbc.conn/connection-details->spec :redshift {:host "test.example.com"
+                                                               :db "test-db"
+                                                               :auth-mode "iam-instance-profile"}))
+        "auth-type should set subprotocol")))
+
+;; Unfortunately testing IAM auth can't be done in CI because it depends on
+;; running on an EC2 instance with a specific IAM role applied. So it's
+;; got to be done manually! What a drag. Anyway these are the steps.
+
+;; Create an IAM role that has AmazonRedshiftFullAccess
+;; Launch an EC2 instance that has that role in the default security group
+;; Create (or find an existing) Redshift "workgroup"
+
+;; (As far as I can tell, "workgroup" is Amazon marketing speak for a database
+;; server in a product they call "serverless" so they can't use the word "server"
+;; for it despite that being obviously what it is.)
+
+;; Make sure the Redshift workgroup is in the same security group as the EC2
+;; instance. The workgroup should have a JDBC URL displayed in the infobox in
+;; the AWS console. Replace "jdbc:redshift://" with "jdbc:redshift:iam//" and
+;; put it in the connection string for metabase running on the EC2 instance.
+;; It should populate the host, database name, and auth method, and if the IAM
+;; role is working right, you should be able to Test Connection successfully.
 
 ;;; ------------------------------------------------ Real Sync Test ------------------------------------------------
 ;; This test uses real sync (not fake sync) to validate that fake sync produces equivalent metadata.
@@ -851,6 +888,19 @@
                                       {:name nm, :schema "s", :type "table", :description nil, :selectable selectable}))]
         (is (= [{:name "readable", :schema "s", :description nil}]
                (into [] (#'redshift/describe-database-tables (driver.u/lib-database (:id db))))))))))
+
+(deftest ^:parallel normalize-details-removes-irrelevant-fields
+  (let [db {:details {:auth-mode "iam-instance-profile"
+                      :username "glitchwitch"
+                      :password "57121092-73d7-4294-a3df-4bd24f50e864"}}
+        db2 {:details {:username "nullCh!LL"
+                       :password "a1b32feb-8c7b-401d-9459-150c9fba9e12"}}
+        normalized (driver/normalize-db-details :redshift db)
+        normalized2 (driver/normalize-db-details :redshift db2)]
+    (is (not (contains? normalized :username)))
+    (is (not (contains? normalized :password)))
+    (is (not (contains? normalized2 :username)))
+    (is (not (contains? normalized2 :password)))))
 
 (deftest ^:parallel url-building-details-reject-separators-test
   (doseq [details [{:host "r.example.com" :port 5439 :user "u" :db "a?b"}]]

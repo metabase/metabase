@@ -1,8 +1,6 @@
 (ns metabase.search.permissions
   (:require
-   [metabase.collections.models.collection :as collection]
    [metabase.data-apps.core :as data-apps]
-   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.search.config :refer [SearchContext]]
    [metabase.util.malli :as mu]))
@@ -20,15 +18,14 @@
 
 (mu/defn permitted-collections-clause
   "Build the WHERE clause corresponding to which collections the given user has access to."
-  [{:keys [archived current-user-id is-superuser?]} :- SearchContext collection-id-col :- :keyword]
+  [{:keys [archived current-user-id is-superuser? is-data-analyst?]} :- SearchContext collection-id-col :- :keyword]
   [:and
-   (collection/visible-collection-filter-clause
-    collection-id-col
-    {:include-archived-items    :all
-     :include-trash-collection? true
-     :permission-level          (if archived :write :read)}
-    {:current-user-id current-user-id
-     :is-superuser?   is-superuser?})
+   (perms/visible-collections-filter-clause collection-id-col {:user-id          current-user-id
+                                                               :is-superuser?    (boolean is-superuser?)
+                                                               :is-data-analyst? (boolean is-data-analyst?)} {:include-archived-items    :all
+                                                                                                              :include-trash-collection? true
+                                                                                                              :permission-level          (if archived :write :read)
+                                                                                                              :root-namespace            nil})
    ;; This is to allow the set of namespaces indexed by the search spec for appdb-based search to also apply to
    ;; legacy search so it performs the same on MySQL
    ;; TODO(edpaget 2025-12-04): this should be a default value of the search context and then search can be restricted
@@ -36,19 +33,16 @@
    (perms/namespace-clause :collection.namespace nil true)])
 
 (mu/defn permitted-tables-clause
-  "Build the WHERE clause and optional CTEs for table permission filtering.
-   Returns a map with :clause (WHERE clause fragment) and :with (optional CTE definitions)."
-  [{:keys [current-user-id is-superuser? is-data-analyst?]} :- SearchContext table-id-col :- [:or :keyword [:vector :keyword]]]
-  (mi/visible-filter-clause
-   :model/Table
+  "The WHERE clause keeping the Tables the user of `search-ctx` can query, by `table-id-col`."
+  [{:keys [current-user-id is-superuser? is-data-analyst?]} :- SearchContext table-id-col :- [:or :keyword vector?]]
+  (perms/visible-tables-filter-clause
    table-id-col
-   {:user-id current-user-id
-    :is-superuser? is-superuser?
+   {:user-id          current-user-id
+    :is-superuser?    is-superuser?
     :is-data-analyst? is-data-analyst?}
-   {:perms/view-data :unrestricted
+   {:perms/view-data      :unrestricted
     :perms/create-queries :query-builder}
-   {:include-published-via-collection? true
-    :active-only? true}))
+   {:active-only? true, :include-published-via-collection? true}))
 
 (mu/defn permitted-data-apps-clause
   "Build the WHERE clause that keeps the data apps the given user can read: none without the data apps feature."

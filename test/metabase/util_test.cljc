@@ -749,3 +749,15 @@
   (let [ids (repeatedly 100 u/generate-nano-id)]
     (is (every? #(re-matches #"[A-Za-z0-9_-]{21}" %) ids))
     (is (= 100 (count (set ids))))))
+
+(deftest run-each!-test
+  (testing "every step runs whatever the earlier ones did, and the ones that threw come back in order"
+    (let [ran      (atom [])
+          failures (u/run-each! [[:a #(swap! ran conj :a)]
+                                 [:b #(throw (ex-info "b failed" {}))]
+                                 [:c #(swap! ran conj :c)]
+                                 [:d #(throw (ex-info "d failed" {}))]])]
+      (is (= {:ran [:a :c], :failures [[:b "b failed"] [:d "d failed"]]}
+             {:ran @ran, :failures (mapv (fn [[label e]] [label (ex-message e)]) failures)}))))
+  (testing "with no failures it returns an empty vector"
+    (is (= [] (u/run-each! [[:a (constantly :ok)]])))))
