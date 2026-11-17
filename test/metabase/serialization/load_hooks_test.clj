@@ -8,6 +8,12 @@
 (defn- export-all [model objects]
   (into [] (serialization/export model objects)))
 
+(defn- load-all [entities & opts]
+  (apply serialization/load-all
+         (map serialization/key-of entities)
+         (partial mapv (into {} (map (juxt serialization/key-of identity)) entities))
+         opts))
+
 (deftest data-model-import-updates-local-rows-test
   (testing "imported Databases, Tables and Fields update the local rows at their paths"
     (mt/with-temp [:model/Database {db-id :id :as db}       {:name "serdes hooks" :engine :postgres}
@@ -18,7 +24,7 @@
                              (export-all :model/Field [field]))]
         (t2/update! :model/Table :id table-id {:description "changed"})
         (t2/update! :model/Field :id (:id field) {:description "changed"})
-        (is (= [] (serialization/load-all (map serialization/key-of exported) (partial mapv (into {} (map (juxt serialization/key-of identity)) exported)))))
+        (is (= [] (load-all exported)))
         (is (= "t" (t2/select-one-fn :description :model/Table :id table-id)))
         (is (= "f" (t2/select-one-fn :description :model/Field :id (:id field))))
         (is (= 1 (t2/count :model/Database :name "serdes hooks")))
@@ -47,6 +53,43 @@
                              (export-all :model/Dashboard [dash])
                              (export-all :model/Card [card]))]
         (t2/delete! :model/DashboardCard :dashboard_id dash-id)
-        (is (= [] (serialization/load-all (map serialization/key-of exported) (partial mapv (into {} (map (juxt serialization/key-of identity)) exported)))))
+        (is (= [] (load-all exported)))
         (is (= dash-id (t2/select-one-fn :dashboard_id :model/Card :id card-id)))
         (is (= [card-id] (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id dash-id)))))))
+
+(deftest document-card-cycle-test
+  (testing "a new document and the card it embeds import together, each pointing at the other, from a card without a
+            card_schema or a type, as an entity written by hand can be"
+    (mt/with-temp [:model/Collection {coll-id :id :as coll} {}
+                   :model/Document   {doc-id :id doc-eid :entity_id} {:collection_id coll-id
+                                                                      :name          "serdes doc"
+                                                                      :content_type  "application/json+vnd.prose-mirror"
+                                                                      :document      {:type "doc" :content []}}
+                   :model/Card       {card-id :id card-eid :entity_id :as card} {:collection_id coll-id
+                                                                                 :document_id   doc-id}]
+      (t2/update! :model/Document :id doc-id {:document {:type    "doc"
+                                                         :content [{:type "cardEmbed" :attrs {"id" card-id}}]}})
+      (let [exported (concat (export-all :model/Collection [coll])
+                             (export-all :model/Document [(t2/select-one :model/Document :id doc-id)])
+                             (map #(dissoc % :card_schema :type) (export-all :model/Card [card])))]
+        (t2/delete! :model/Card :id card-id)
+        (t2/delete! :model/Document :id doc-id)
+        (mt/with-model-cleanup [:model/Card :model/Document]
+          (is (= [] (load-all exported)))
+          (let [new-card-id (t2/select-one-pk :model/Card :entity_id card-eid)]
+            (is (= (t2/select-one-pk :model/Document :entity_id doc-eid)
+                   (t2/select-one-fn :document_id :model/Card :id new-card-id)))
+            (is (=? {:content [{:type "cardEmbed" :attrs {"id" new-card-id}}]}
+                    (t2/select-one-fn :document :model/Document :entity_id doc-eid)))))))))
+
+(deftest card-update-keeps-local-columns-test
+  (testing "a card without a card_schema or a type, as an entity written by hand can be, updates a local model and
+            keeps its type"
+    (mt/with-temp [:model/Collection {coll-id :id :as coll} {}
+                   :model/Card       {card-id :id :as card} {:collection_id coll-id :type :model}]
+      (let [exported (concat (export-all :model/Collection [coll])
+                             (map #(-> % (dissoc :card_schema :type) (assoc :name "changed"))
+                                  (export-all :model/Card [card])))]
+        (is (= [] (load-all exported)))
+        (is (=? {:name "changed" :type :model}
+                (t2/select-one [:model/Card :name :type] :id card-id)))))))

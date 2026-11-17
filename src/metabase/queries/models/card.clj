@@ -1955,16 +1955,19 @@
                   (or (card.metadata/infer-metadata-with-model-overrides query (assoc row :result_metadata overrides))
                       metadata))))))
 
-(defn- keep-local-metadata
-  "The load `item` of a Card without a `:result_metadata` or `:database_id` to import keeping the local ones, which
-  export leaves out of the cards whose query derives them."
+(defn- keep-local-columns
+  "The load `item` of a Card without the nil values of the columns that its entity can lack, so that an update keeps
+  the local ones: the `:result_metadata` and `:database_id` that export leaves out of the cards whose query derives
+  them, and the NOT NULL `:card_schema` and `:type` that an entity written by hand can leave out, which an insert
+  sets. Without `:card_schema`, an update keeps the stored version, and the Card's `before-update` upgrades it as it
+  does for an update through the API."
   [item]
-  (cond-> item
-    (nil? (get-in item [:row :result_metadata])) (update :row dissoc :result_metadata)
-    (nil? (get-in item [:row :database_id]))     (update :row dissoc :database_id)))
+  (update item :row (fn [row]
+                      (apply dissoc row (filter #(nil? (get row %))
+                                                [:result_metadata :database_id :card_schema])))))
 
 (defmethod serialization/before-load :model/Card [_ items]
-  (mapv (comp with-model-metadata keep-local-metadata) items))
+  (mapv (comp with-model-metadata keep-local-columns) items))
 
 (defmethod remote-sync/spec :model/Card
   [_model]
