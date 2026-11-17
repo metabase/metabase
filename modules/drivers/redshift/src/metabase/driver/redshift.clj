@@ -69,10 +69,10 @@
                               ;; statement, not created afterwards. Override the `:postgres`-inherited standalone
                               ;; support.
                               :index/fetch                      true
-                              ;; A query capped with `setMaxRows` inside a transaction leaves the transaction aborted.
-                              :jdbc/set-max-rows                false
                               :index/inline-create              true
                               :index/standalone-create          false
+                              ;; A capped query left a data-test run's transaction aborted; see `:jdbc/set-max-rows`.
+                              :jdbc/set-max-rows                false
                               :metadata/table-existence-check   true
                               :nested-field-columns             false
                               :regex/lookaheads-and-lookbehinds false

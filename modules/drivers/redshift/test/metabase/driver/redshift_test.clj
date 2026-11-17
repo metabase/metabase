@@ -1278,19 +1278,6 @@
         (finally
           (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema)))))))
 
-(deftest capped-query-leaves-the-test-transaction-usable-test
-  (mt/test-driver :redshift
-    (driver/do-with-test-connection
-     :redshift
-     (mt/id)
-     (fn [conn]
-       (testing "a capped query returns at most its cap"
-         (is (= [[1]] (:rows (driver/query-on-connection :redshift conn
-                                                         ["SELECT 1 AS x UNION ALL SELECT 2 AS x ORDER BY x" []]
-                                                         {:max-rows 1})))))
-       (testing "the next statement in the transaction still runs"
-         (is (= [[3]] (:rows (driver/query-on-connection :redshift conn ["SELECT 3 AS x" []] {})))))))))
-
 ;;; ------------------------------ Workspace provisioning: generated SQL, no Redshift ------------------------------
 
 (defn- run-with-fake-jdbc

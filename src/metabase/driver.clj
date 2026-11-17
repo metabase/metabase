@@ -1112,9 +1112,10 @@
     ;; Thrift transport on the server side, causing subsequent statement close() to throw).
     :jdbc/set-query-timeout
     ;;
-    ;; Can a row cap be set with `Statement.setMaxRows`? Defaults to true. False for Redshift, where a capped query inside
-    ;; a transaction returns its rows and then leaves the transaction aborted, so the next statement fails with "current
-    ;; transaction is aborted". Without it, [[query-on-connection]] streams the result and stops reading at the cap.
+    ;; May [[query-on-connection]] cap a query's rows with `Statement.setMaxRows`? Defaults to true. False for Redshift:
+    ;; in a data-test run there, a capped query left the transaction aborted, and the next statement failed with "current
+    ;; transaction is aborted". What triggers it is unknown; the same sequence passes in other tests. Without the flag,
+    ;; [[query-on-connection]] streams the result and stops reading at the cap. Only [[query-on-connection]] consults it.
     :jdbc/set-max-rows
     ;;
     ;; Does this driver provide :database-default on (describe-fields) or (describe-table)

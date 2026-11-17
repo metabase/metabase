@@ -1075,9 +1075,9 @@
   [driver conn [sql params] {:keys [max-rows]}]
   (with-open [stmt (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))]
     (when (and max-rows (pos? max-rows) (driver/database-supports? driver :jdbc/set-max-rows nil))
-      ;; The cap is the statement's only bound: the fetch size is cleared, since a driver may reject a row cap on a
-      ;; cursor, and `setMaxRows` bounds the memory a cursor would have bounded. A driver without
-      ;; `:jdbc/set-max-rows` keeps its cursor, and the loop below stops reading at the cap.
+      ;; With the fetch size cleared, `setMaxRows` is the statement's only bound, and it bounds the memory a cursor's
+      ;; fetch size would have bounded. A driver without `:jdbc/set-max-rows` keeps its cursor, and the loop below stops
+      ;; reading at the cap.
       (try
         (.setFetchSize stmt 0)
         (catch Throwable e
