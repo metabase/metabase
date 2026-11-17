@@ -49,10 +49,7 @@
 
 (def ^:private neighbor-keys
   "JSON Schema keywords whose meaning depends on other keywords of the same schema, mapped to those keywords."
-  {;; a reference resolves against the `$id` of the schema it sits in
-   :$dynamicRef           #{:$id}
-   :$ref                  #{:$id}
-   :additionalItems       #{:items :prefixItems}
+  {:additionalItems       #{:items :prefixItems}
    :additionalProperties  #{:patternProperties :properties}
    ;; OpenAPI's `discriminator` maps values to the branches beside it
    :discriminator         #{:allOf :anyOf :oneOf}
@@ -77,11 +74,13 @@
 
 (defn- merges-cleanly?
   "Whether merging the JSON Schema `branch` into the JSON Schema `node` accepts what both accepted together.
-  False when the branch has a constraining key the node also has, with a different value, or when a keyword on one side
-  depends on a keyword on the other."
+  False when the branch has its own `$id`, has a constraining key the node also has with a different value, or when a
+  keyword on one side depends on a keyword on the other."
   [node branch]
-  ;; an equal value, such as `type: object` on both, merges without losing anything
   (and (map? branch)
+       ;; a branch's `$id` would become the base every `$ref` in the node resolves against
+       (not (contains? branch :$id))
+       ;; an equal value, such as `type: object` on both, merges without losing anything
        (not (mp/some #(and (contains? node %)
                            (not (annotation-keys %))
                            (not= (get node %) (get branch %)))
@@ -164,7 +163,8 @@
 
 (defn replace-one-of
   "Replace the `oneOf` of the JSON Schema `node` with the JSON Schema `replacement`, keeping `node`'s metadata.
-  Where only [[annotation-keys]] sit beside the `oneOf`, `replacement` merges into them (see [[merge-beside]]).
+  Where only [[annotation-keys]] and a `discriminator` sit beside the `oneOf`, `replacement` merges into them (see
+  [[merge-beside]]).
   Where any other keyword does, `replacement` joins those keywords under `allOf`, and its description, if they have
   none, stays on the node."
   [node replacement]
@@ -173,7 +173,8 @@
      ;; A sibling assertion must hold as well, and some read their neighbors (`additionalProperties` reads
      ;; `properties`, `minContains` reads `contains`), so only `allOf` keeps both meanings intact.
      (cond
-       (every? annotation-keys (keys siblings))
+       ;; a `discriminator` belongs beside the alternatives it tells apart
+       (every? (conj annotation-keys :discriminator) (keys siblings))
        (merge-beside replacement siblings)
 
        ;; readers look for a property's description at its top level, not inside `allOf`

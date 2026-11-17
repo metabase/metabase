@@ -83,14 +83,22 @@
     (is (= {:properties {"a" {}}, :additionalProperties {}}
            (mu.json-schema/transform
             [:any {:json-schema {:properties {:a {}}, :allOf [{:additionalProperties {}}]}}]))))
-  (testing "one branch left beside an `$id` or a `discriminator` stays, as both read what sits next to them"
-    ;; the `$id` would change what the node's relative `$ref` resolves to
+  (testing "one branch with its own `$id` stays, as the `$id` would rebase every `$ref` in the node"
     (is (= {:$ref "kind", :allOf [{:$id "nested/base", :type "string"}]}
            (mu.json-schema/transform
             [:any {:json-schema {:$ref "kind", :allOf [{:$id "nested/base", :type "string"}]}}])))
+    ;; including a `$ref` nested under a property
+    (is (= {:properties {"x" {:$ref "kind"}}, :allOf [{:$id "nested/base", :type "object"}]}
+           (mu.json-schema/transform
+            [:any {:json-schema {:properties {:x {:$ref "kind"}}, :allOf [{:$id "nested/base", :type "object"}]}}]))))
+  (testing "a `discriminator` stays beside the alternatives it tells apart"
     (is (= {:discriminator {:propertyName "op"}, :anyOf [{:type "object"}]}
            (mu.json-schema/transform
-            [:any {:json-schema {:discriminator {:propertyName "op"}, :anyOf [{:type "object"}]}}]))))
+            [:any {:json-schema {:discriminator {:propertyName "op"}, :anyOf [{:type "object"}]}}])))
+    ;; also when they arrive as a `oneOf`
+    (is (= {:discriminator {:propertyName "op"}, :anyOf [{:type "object"} {:type "array"}]}
+           (mu.json-schema/transform
+            [:any {:json-schema {:discriminator {:propertyName "op"}, :oneOf [{:type "object"} {:type "array"}]}}]))))
   (testing "a conjunct that constrains nothing goes, but its annotation stays on the node"
     (is (= {:type "integer", :deprecated true}
            (mu.json-schema/transform [:and :int [:any {:json-schema {:deprecated true}}]])))))
