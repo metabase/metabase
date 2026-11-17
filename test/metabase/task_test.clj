@@ -21,7 +21,8 @@
    (java.lang.annotation Annotation)
    (java.time Duration Instant)
    (java.util Date)
-   (org.quartz CronTrigger InterruptableJob Job JobDetail Scheduler)))
+   (java.util.concurrent LinkedBlockingQueue TimeUnit)
+   (org.quartz CronTrigger InterruptableJob Job JobDetail JobExecutionContext Scheduler)))
 
 (set! *warn-on-reflection* true)
 
@@ -430,3 +431,74 @@
                                     (with-meta 'NewJob {:line 1, :column 14})
                                     {:saved-class "a.NewJob"}
                                     '[_])))))
+
+(def ^:private ^LinkedBlockingQueue blocking-job-started (LinkedBlockingQueue.))
+
+(def ^:private ^LinkedBlockingQueue blocking-job-release (LinkedBlockingQueue.))
+
+(task/defjob BlockingJob
+  {:saved-class "metabase.task_test.BlockingJob"
+   :concurrent? false}
+  [job-context]
+  (.put blocking-job-started (.getName (.getKey (.getTrigger ^JobExecutionContext job-context))))
+  (.take blocking-job-release))
+
+(def ^:private blocking-job-key (jobs/key "metabase.task-test.blocking-job"))
+
+(defn- blocking-job ^JobDetail []
+  (jobs/build
+   (jobs/of-type BlockingJob)
+   (jobs/with-identity blocking-job-key)
+   (jobs/store-durably)))
+
+(defn- one-shot-trigger [trigger-name]
+  (triggers/build
+   (triggers/with-identity (triggers/key trigger-name))
+   (triggers/for-job blocking-job-key)
+   (triggers/start-now)))
+
+(defn- next-blocking-job-start []
+  (.poll blocking-job-started 5 TimeUnit/SECONDS))
+
+(defn- test-schedule-once! []
+  (.clear blocking-job-started)
+  (.clear blocking-job-release)
+  (task/add-job! (blocking-job))
+  (testing "trigger with unused key runs"
+    (is (= :scheduled (task/schedule-once! (one-shot-trigger "first"))))
+    (is (= "first" (next-blocking-job-start))))
+  (testing "trigger that is running gets one more run queued"
+    (is (= :queued (task/schedule-once! (one-shot-trigger "first"))))
+    (is (= :pending (task/schedule-once! (one-shot-trigger "first"))))
+    (is (= :pending (task/schedule-once! (one-shot-trigger "first")))))
+  (testing "trigger that waits for its job is not scheduled twice"
+    (is (= :scheduled (task/schedule-once! (one-shot-trigger "second"))))
+    (is (= :pending (task/schedule-once! (one-shot-trigger "second")))))
+  (testing "each waiting trigger runs once after running one ends"
+    (dotimes [_ 3]
+      (.put blocking-job-release :go))
+    (is (= #{"first" "second"} (set [(next-blocking-job-start) (next-blocking-job-start)])))
+    (is (nil? (.poll blocking-job-started 500 TimeUnit/MILLISECONDS)))))
+
+(deftest schedule-once-test
+  (mt/with-temp-scheduler!
+    (test-schedule-once!)))
+
+(deftest schedule-once-with-jdbc-job-store-test
+  (with-jdbc-scheduler!
+    (let [standby? (not (task/scheduler-running?))]
+      (try
+        (qs/start (task/scheduler))
+        (test-schedule-once!)
+        (finally
+          (qs/delete-job (task/scheduler) blocking-job-key)
+          (when standby?
+            (qs/standby (task/scheduler))))))))
+
+(deftest schedule-once-without-running-scheduler-test
+  (tu/do-with-unstarted-temp-scheduler!
+   (fn []
+     (task/add-job! (blocking-job))
+     (is (false? (task/scheduler-running?)))
+     (is (nil? (task/schedule-once! (one-shot-trigger "first"))))
+     (is (empty? (qs/get-triggers-of-job (task/scheduler) blocking-job-key))))))

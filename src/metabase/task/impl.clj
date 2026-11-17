@@ -254,6 +254,42 @@
     (catch Throwable e
       (log/errorf "Failed to trigger immediate execution of task %s: %s" job-key (ex-message e)))))
 
+(defn scheduler-running?
+  "Whether this node has a started scheduler, so that the triggers it stores get fired."
+  []
+  (boolean
+   (when-let [scheduler (scheduler)]
+     (and (.isStarted scheduler)
+          (not (.isInStandbyMode scheduler))
+          (not (.isShutdown scheduler))))))
+
+(defn- schedule-once!*
+  "One attempt at [[schedule-once!]], or nil when the stored trigger changed under it."
+  [^Scheduler scheduler ^Trigger trigger]
+  (let [trigger-key (.getKey trigger)]
+    (try
+      (.scheduleJob scheduler trigger)
+      :scheduled
+      (catch ObjectAlreadyExistsException _
+        (when-let [existing (.getTrigger scheduler trigger-key)]
+          (cond
+            (.getNextFireTime existing)                     :pending
+            (.rescheduleJob scheduler trigger-key trigger) :queued))))))
+
+(mu/defn schedule-once! :- [:maybe [:enum :scheduled :pending :queued]]
+  "Schedule the one-shot `trigger` of an existing job with at most one run waiting per trigger key, returning
+  `:scheduled`, `:pending` when a run was already waiting, `:queued` when it follows the run firing now, or nil when
+  no scheduler is running."
+  [trigger :- (ms/InstanceOfClass Trigger)]
+  (when (scheduler-running?)
+    (let [scheduler    (scheduler)
+          trigger-name (.getName (.getKey ^Trigger trigger))
+          result       (some (fn [_] (schedule-once!* scheduler trigger)) (range 10))]
+      (when-not result
+        (throw (ex-info "Could not schedule trigger" {:trigger trigger-name})))
+      (log/infof "Trigger %s is %s" trigger-name (name result))
+      result)))
+
 (mu/defn delete-task!
   "Delete a task from the scheduler"
   [job-key :- (ms/InstanceOfClass JobKey) trigger-key :- (ms/InstanceOfClass TriggerKey)]

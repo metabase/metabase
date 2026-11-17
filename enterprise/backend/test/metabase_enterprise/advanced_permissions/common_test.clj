@@ -644,7 +644,8 @@
           (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :blocked
                                                          :create-queries :no
                                                          :data-model     {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}
-            (mt/user-http-request :rasta :post 200 (format "field/%d/rescan_values" (mt/id :venues :price))))
+            (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
+              (mt/user-http-request :rasta :post 200 (format "field/%d/rescan_values" (mt/id :venues :price)))))
           (is (= [1 2 3 4] (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price))))))
       (testing "POST /api/field/:id/discard_values"
         (testing "A non-admin can discard field values if they have data model perms for the table"

@@ -17,6 +17,7 @@
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
+   [metabase.sync.sync :as sync.sync]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.upload.core :as upload]
@@ -1086,11 +1087,11 @@
           ;; `with-redefs` would restore `sync-table!` when the request returns, before the async sync runs.
           ;; `submit-task!` is stubbed so the sync doesn't queue behind other tasks on the 1-thread executor.
           (mt/with-dynamic-fn-redefs [quick-task/submit-task! future-call
-                                      sync/sync-table!        (deliver-when-tbl sync-called? table)]
-            (mt/user-http-request :crowberto :post 200 (format "table/%d/sync_schema" (u/the-id table))))))
-      (testing "sync called?"
-        (is (true?
-             (deref sync-called? timeout :sync-never-called)))))))
+                                      sync.sync/sync-table!   (deliver-when-tbl sync-called? table)]
+            (mt/user-http-request :crowberto :post 200 (format "table/%d/sync_schema" (u/the-id table)))
+            (testing "sync called?"
+              (is (true?
+                   (deref sync-called? timeout :sync-never-called))))))))))
 
 (deftest sync-schema-with-manage-table-metadata-permission-test
   (testing "POST /api/table/:id/sync_schema"
@@ -1110,7 +1111,7 @@
                 ;; Grant only manage-table-metadata permission for this table
                 (data-perms/set-table-permission! (perms-group/all-users) (:id table) :perms/manage-table-metadata :yes)
                 (with-redefs [quick-task/executor (delay pool)]
-                  (mt/with-dynamic-fn-redefs [sync/sync-table! (deliver-when-tbl sync-called? table)]
+                  (mt/with-dynamic-fn-redefs [sync.sync/sync-table! (deliver-when-tbl sync-called? table)]
                     (mt/user-http-request :rasta :post 200 (format "table/%d/sync_schema" (u/the-id table)))
                     (testing "sync called?"
                       (is (true?

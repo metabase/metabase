@@ -921,7 +921,6 @@
   {:team "Gadget"
    :api  #{metabase.data-studio.api}
    :uses #{api
-           database-routing
            driver
            events
            lib.schema
@@ -3625,7 +3624,6 @@
            api-scope
            app-db
            collections
-           database-routing
            driver
            events
            lib

@@ -23,10 +23,12 @@
   job-info
   rerun-on-error
   reschedule-trigger!
+  schedule-once!
   schedule-task!
   scheduler
   scheduler-disabled?
   scheduler-info
+  scheduler-running?
   start-scheduler!
   stop-scheduler!
   trigger-now!])

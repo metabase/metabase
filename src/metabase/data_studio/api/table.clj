@@ -6,7 +6,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.data-studio.db :as data-studio.db]
-   [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -17,7 +16,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]))
 
@@ -212,7 +210,7 @@
 (defn- sync-schema-async!
   [table user-id]
   (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
-  (quick-task/submit-task! #(database-routing/with-anonymous-router-access (sync/sync-table! table))))
+  (sync/schedule-table-sync! (:id table)))
 
 (api.macros/defendpoint :post "/sync-schema" :- :nil
   "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.
@@ -247,7 +245,7 @@
     (doseq [table tables]
       (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
       (request/as-admin
-        (quick-task/submit-task! #(sync/update-field-values-for-table! table))))))
+        (sync/schedule-table-field-values-scan! (:id table))))))
 
 (api.macros/defendpoint :post "/discard-values" :- :nil
   "Batch version of /table/:id/discard_values. Takes an abstract table selection as /table/edit does."

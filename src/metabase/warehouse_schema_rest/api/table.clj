@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.core :as collections]
-   [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -367,9 +366,7 @@
     ;; return any actual field values from this API. (#21764)
     (request/as-admin
       ;; async so as not to block the UI
-      (quick-task/submit-task!
-       (fn []
-         (sync/update-field-values-for-table! table))))
+      (sync/schedule-table-field-values-scan! (:id table)))
     {:status :success}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -485,7 +482,7 @@
 (defn- sync-schema-async!
   [table user-id]
   (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
-  (quick-task/submit-task! #(database-routing/with-anonymous-router-access (sync/sync-table! table))))
+  (sync/schedule-table-sync! (:id table)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

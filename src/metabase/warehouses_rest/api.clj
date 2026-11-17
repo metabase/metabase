@@ -34,7 +34,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.db :as warehouses-rest.db]
@@ -1053,12 +1052,7 @@
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do
         (analytics/track-event! :snowplow/simple_event {:event "database_manual_sync" :target_id id})
-        (quick-task/submit-task!
-         (fn []
-           (database-routing/with-anonymous-router-access
-             ;; explicit, user-requested sync — runs even when `disable-auto-sync` is enabled
-             (sync/sync-db-metadata-explicit! (u/the-id db))
-             (sync/analyze-db-explicit! (u/the-id db)))))
+        (sync/schedule-database-sync! (u/the-id db))
         {:status :ok}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -1107,9 +1101,7 @@
     (request/as-admin
       (database-routing/with-anonymous-router-access
         (if *rescan-values-async*
-          (quick-task/submit-task!
-           (fn []
-             (sync/update-field-values! (u/the-id db))))
+          (sync/schedule-database-field-values-scan! (u/the-id db))
           (sync/update-field-values! (u/the-id db))))))
   {:status :ok})
 
