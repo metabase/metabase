@@ -192,7 +192,6 @@
                        (:handlers notification-info)))]
     (when (card-notification? notification)
       (send-you-were-added-card-notification-email! notification))
-    (events/publish-event! :event/notification-create {:object notification :user-id api/*current-user-id*})
     notification))
 
 (api.macros/defendpoint :post "/" :- ::models.notification/FullyHydratedNotification

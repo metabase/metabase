@@ -11,6 +11,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.models.util.spec-update :as models.u.spec-update]
+   [metabase.events.core :as events]
    [metabase.notification.db :as notification.db]
    [metabase.notification.schema :as notification.schema]
    [metabase.notification.task.send-trigger :as notification.task.send-trigger]
@@ -904,7 +905,7 @@
   Return the created notification."
   [notification subscriptions handlers+recipients]
   (validate-email-handlers! handlers+recipients)
-  (t2/with-transaction [_conn]
+  (events/with-batched-events
     (let [payload-id      (case (:payload_type notification)
                             (:notification/system-event :notification/testing)
                             nil

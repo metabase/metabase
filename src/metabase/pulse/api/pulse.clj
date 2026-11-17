@@ -132,7 +132,6 @@
       ;; ok, now create the Pulse
       (let [pulse (api/check-500
                    (models.pulse/create-pulse! (map models.pulse/card->ref cards) channels pulse-data))]
-        (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
         pulse))))
 
 (def ^:private PulseChannelRecipient

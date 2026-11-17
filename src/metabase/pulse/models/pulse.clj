@@ -721,19 +721,17 @@
                 [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
                 [:parameters          {:optional true} [:maybe [:sequential ::pulse.schema/pulse.parameter]]]
                 [:disable_links       {:optional true} [:maybe ms/BooleanValue]]]]
-  (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
-    ;; return the full Pulse (and record our create event).
-    (u/prog1 (retrieve-pulse pulse-id)
-      (events/publish-event! :event/subscription-create {:object <>
-                                                         :user-id api/*current-user-id*}))))
+  (let [pulse-id (events/with-batched-events
+                   (create-notification-and-add-cards-and-channels! kvs cards channels))]
+    (retrieve-pulse pulse-id)))
 
 (defn create-alert!
   "Creates a pulse with the correct fields specified for an alert"
   [alert creator-id card-id channels]
-  (let [id (-> alert
-               (assoc :skip_if_empty true, :creator_id creator-id)
-               (create-notification-and-add-cards-and-channels! [card-id] channels))]
-    ;; return the full Pulse (and record our create event)
+  (let [id (events/with-batched-events
+             (-> alert
+                 (assoc :skip_if_empty true, :creator_id creator-id)
+                 (create-notification-and-add-cards-and-channels! [card-id] channels)))]
     (retrieve-alert id)))
 
 (mu/defn- notification-or-id->existing-card-refs :- [:sequential CardRef]
@@ -772,10 +770,9 @@
 
   Returns the updated Pulse or throws an Exception."
   [pulse]
-  (update-notification! pulse)
-  ;; fetch the fully updated pulse, log an update event, and return it
-  (u/prog1 (retrieve-pulse (u/the-id pulse))
-    (events/publish-event! :event/subscription-update {:object <> :user-id api/*current-user-id*})))
+  (events/with-batched-events
+    (update-notification! pulse))
+  (retrieve-pulse (u/the-id pulse)))
 
 (defn- alert->notification
   "Convert an 'Alert` back into the generic 'Notification' format."
@@ -790,7 +787,6 @@
 (defn update-alert!
   "Updates the given `alert` and returns it"
   [alert]
-  (update-notification! (alert->notification alert))
-  ;; fetch the fully updated pulse, log an update event, and return it
-  (u/prog1 (retrieve-alert (u/the-id alert))
-    (events/publish-event! :event/alert-update {:object <> :user-id api/*current-user-id*})))
+  (events/with-batched-events
+    (update-notification! (alert->notification alert)))
+  (retrieve-alert (u/the-id alert)))
