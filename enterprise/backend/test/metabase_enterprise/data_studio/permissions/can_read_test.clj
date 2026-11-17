@@ -3,7 +3,6 @@
   Published tables should grant database read access via collection permissions."
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -44,14 +43,8 @@
                     ;; Revoke from both groups since user is in All Users automatically
                     (perms/revoke-collection-permissions! group-id collection-id)
                     (perms/revoke-collection-permissions! (perms/all-users-group) collection-id)))
-                (binding [*current-user-id*              user-id
-                          *current-user-permissions-set* (delay (if collection-readable?
-                                                                  #{(perms/collection-read-path collection-id)}
-                                                                  #{}))]
-                  (perms/disable-perms-cache
-                    ;; Database is readable when: library enabled AND collection readable AND table is published
-                    ;; view-data permission should NOT affect can-read? for Database
-                    (is (= (and (contains? features :library)
-                                collection-readable?
-                                table-is-published?)
-                           (mi/can-read? :model/Database (mt/id))))))))))))))
+                (mt/with-current-user user-id
+                  (is (= (and (contains? features :library)
+                              collection-readable?
+                              table-is-published?)
+                         (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id (mt/id)) :can_read)))))))))))))

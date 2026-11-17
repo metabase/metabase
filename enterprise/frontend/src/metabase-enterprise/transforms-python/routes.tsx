@@ -45,12 +45,8 @@ export function getPythonUpsellRoutes() {
   return (
     // Render upsell modal on python transforms routes if feature is not enabled
     <Route path="" lazy={transformListPage}>
-      {modalRoute("library/:path", PythonTransformsUpsellModal, {
-        noWrap: true,
-      })}
-      {modalRoute("new/python", PythonTransformsUpsellModal, {
-        noWrap: true,
-      })}
+      {modalRoute("library/:path", PythonTransformsUpsellModal)}
+      {modalRoute("new/python", PythonTransformsUpsellModal)}
     </Route>
   );
 }

@@ -1,5 +1,6 @@
 ---
 title: "People overview"
+summary: Manage accounts and groups, set up SSO and SCIM provisioning, set password, session, and two-factor rules, and create API keys.
 redirect_from:
   - /docs/latest/administration-guide/sso
   - /docs/latest/people-and-groups
@@ -44,7 +45,7 @@ With [Pro and Enterprise plans](https://www.metabase.com/pricing), you have more
 
 - [JWT][jwt]
 - LDAP advanced features
-  - [Group membership filter](./ldap.md#ldap-group-membership-filter)
+  - [Group membership filter](./ldap.md#group-membership-filter)
   - [Syncing user attributes](./ldap.md#syncing-user-attributes-with-ldap)
 - [OIDC][oidc]
   - [Keycloak][oidc-keycloak]

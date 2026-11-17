@@ -148,30 +148,6 @@
       (is (= {:non_timestamped 1 :included 2 :updated_at (mi/now)}
              (#'mi/add-updated-at-timestamp instance))))))
 
-(deftest ^:parallel upgrade-to-v2-viz-settings-test
-  (let [migrate #(select-keys (#'mi/migrate-viz-settings %)
-                              [:version :pie.percent_visibility])]
-    (testing "show_legend -> inside"
-      (is (= {:version 2
-              :pie.percent_visibility "inside"}
-             (migrate {:pie.show_legend          true
-                       :pie.show_legend_perecent true
-                       :pie.show_data_labels     true}))))
-    (testing "show_legend_percent -> legend"
-      (is (= {:version 2
-              :pie.percent_visibility "legend"}
-             (migrate {:pie.show_legend          false
-                       :pie.show_legend_perecent true
-                       :pie.show_data_labels     true}))))
-    (testing "anything else -> nothing"
-      (doseq [legend  [false nil]
-              percent [false nil]
-              labels  [true false nil]]
-        (is (= {}
-               (migrate {:pie.show_legend          legend
-                         :pie.show_legend_perecent percent
-                         :pie.show_data_labels     labels})))))))
-
 (deftest encrypted-data-with-no-secret-test
   (encryption-test/with-secret-key nil
     (testing "Just parses string normally when there is no key and the string is JSON"
@@ -211,58 +187,6 @@
                             (map (juxt :id (comp even? :id))))
                    things)
             :id)))))
-
-(deftest ^:parallel normalize-mbql-clause-impostor-in-visualization-settings-test
-  (let [viz-settings
-        {"table.pivot_column" "TAX"
-         "graph.metrics" ["expression"]
-         "pivot_table.column_split"
-         {"rows"
-          ["CREATED_AT" "expression" "TAX"]
-          "columns" []
-          "values" ["sum"]}
-         "pivot_table.column_widths" {"leftHeaderWidths" [141 99 80], "totalLeftHeaderWidths" 320, "valueHeaderWidths" {}}
-         "table.cell_column" "expression"
-         "table.column_formatting"
-         [{"columns" ["expression" nil "TAX" "count"]
-           "type" "single"
-           "operator" "is-null"
-           "value" 10
-           "color" "#EF8C8C"
-           "highlight_row" false
-           "id" 0}]
-         "column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {"number_style" "currency"}}
-         "series_settings" {"expression" {"line.interpolate" "step-after", "line.style" "dotted"}}
-         "graph.dimensions" ["CREATED_AT"]}]
-    (is (= {:table.pivot_column "TAX"
-            :graph.metrics ["expression"]
-            :pivot_table.column_split
-            {:rows ["CREATED_AT" "expression" "TAX"]
-             :columns []
-             :values ["sum"]}
-            :pivot_table.column_widths {:leftHeaderWidths [141 99 80], :totalLeftHeaderWidths 320, :valueHeaderWidths {}}
-            :table.cell_column "expression"
-            :table.column_formatting
-            [{:columns ["expression" nil "TAX" "count"]
-              :type "single"
-              :operator "is-null"
-              :value 10
-              :color "#EF8C8C"
-              :highlight_row false
-              :id 0}]
-            :column_settings {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "currency"}}
-            :series_settings {:expression {:line.interpolate "step-after", :line.style "dotted"}}
-            :graph.dimensions ["CREATED_AT"]}
-           (mi/normalize-visualization-settings viz-settings)))))
-
-(deftest ^:parallel normalize-invalid-visualization-settings-test
-  (testing "Unknown keys in `:column_settings` should be removed rather than causing normalization to fail (#69626)"
-    (let [viz-settings {"column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "x"}
-                                           "[\"REF\",[\"expression\",\"expression\"]]" {:number_style "y"}
-                                           "[\"bad-clause\",\"a\"]"                    {:number_style "z"}}}]
-      (is (= {:column_settings
-              {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "x"}}}
-             (mi/normalize-visualization-settings viz-settings))))))
 
 (deftest ^:parallel json-in-with-eliding
   (is (= "{}" (#'mi/json-in-with-eliding {})))
@@ -311,10 +235,10 @@
   (testing "Default implementation falls back to can-read?"
     ;; Use Card model which uses the default can-query? implementation
     (mt/with-temp [:model/Card card {}]
-      (with-redefs [mi/can-read? (constantly true)]
-        (is (true? (mi/can-query? card))))
-      (with-redefs [mi/can-read? (constantly false)]
-        (is (false? (mi/can-query? card)))))))
+      (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)]
+        (is (true? (mi/can-query? (t2/hydrate card :can_query)))))
+      (mt/with-dynamic-fn-redefs [mi/can-read? (constantly false)]
+        (is (false? (mi/can-query? (t2/hydrate card :can_query))))))))
 
 (deftest can-query-hydration-returns-boolean-test
   (testing ":can_query hydration returns a boolean value"

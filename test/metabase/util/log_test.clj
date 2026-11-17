@@ -103,7 +103,7 @@
 
 (deftest ^:parallel nested-module-team-attribution-test
   (testing "nested modules inherit their nearest configured team"
-    (is (= "Querying Platform" (log/ns->team* 'metabase.lib.schema.expression)))
+    (is (= "Querying" (log/ns->team* 'metabase.lib.schema.expression)))
     (is (= "UX West" (log/ns->team* 'metabase-enterprise.analytics.stats))))
   (testing "nested modules can override their ancestor's team"
     (is (= "Metabot" (log/ns->team* 'metabase.agent-lib.core))))

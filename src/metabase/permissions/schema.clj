@@ -241,3 +241,54 @@
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:remark     {:optional true} [:maybe :string]]])
+
+(mr/def ::collection-options
+  "Options of the Collection permission checks taking a nil collection id: `:root-namespace` names the namespace of the
+  root Collection a nil collection id stands for, nil for the default namespace. It is per entity, so the caller
+  checking the entity sets it."
+  [:map {:closed true}
+   [:root-namespace [:maybe [:or :keyword :string]]]])
+
+(mr/def ::collection-user-info
+  "The user a Collection permission question is about: a nil `:user-id` in a context without a user, where only a
+  superuser one, such as `request/as-admin`, has permissions."
+  [:map {:closed true}
+   [:user-id          [:maybe pos-int?]]
+   [:is-superuser?    :boolean]
+   [:is-data-analyst? :boolean]])
+
+(mr/def ::collection-filter-options
+  "Options of the Collection where-clauses:
+
+  - `:permission-level`, `:read` (the default) or `:write`;
+  - `:include-archived-items`, `:exclude` (the default), `:only` or `:all`;
+  - `:include-trash-collection?`, whether the trash counts, false by default;
+  - `:archive-operation-id`, only the Collections archived together by one operation, and the trash;
+  - `:root-namespace`, the namespace whose root Collection a nil collection id stands for, nil for the default one. It
+    is per entity, so the caller filtering the entity sets it."
+  [:map {:closed true}
+   [:permission-level          {:optional true} [:enum :read :write]]
+   [:include-archived-items    {:optional true} [:enum :only :exclude :all]]
+   [:include-trash-collection? {:optional true} :boolean]
+   [:archive-operation-id      {:optional true} [:maybe :string]]
+   [:root-namespace            [:maybe [:or :keyword :string]]]])
+
+(mr/def ::data-user-info
+  "The user a data permission question is about: a nil `:user-id` in a context without a user, where only a superuser
+  one, such as `request/as-admin`, has permissions."
+  [:map {:closed true}
+   [:user-id          [:maybe pos-int?]]
+   [:is-superuser?    :boolean]
+   [:is-data-analyst? :boolean]])
+
+(mr/def ::table-filter-options
+  "The options of the Table filters: with `:active-only?`, the rows of an inactive Table don't count, and with
+  `:include-published-via-collection?`, a Table published into a Collection the user reads grants
+  `:perms/create-queries :query-builder` on EE."
+  [:map {:closed true}
+   [:active-only?                      :boolean]
+   [:include-published-via-collection? :boolean]])
+
+(mr/def ::permission-mapping
+  "Map of permission type to the permission value the user needs, or a more permissive one."
+  [:map-of ::data-permission-type ::data-permission-value])

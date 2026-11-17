@@ -1,5 +1,6 @@
 ---
 title: Plugin manifests
+summary: Write the plugin manifest that tells Metabase what your driver provides and how to load it.
 ---
 
 # Plugin manifests

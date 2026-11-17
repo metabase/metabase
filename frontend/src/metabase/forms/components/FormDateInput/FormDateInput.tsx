@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useField } from "formik";
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";

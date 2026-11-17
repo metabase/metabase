@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.settings :as warehouse-schema.settings]
@@ -65,12 +64,10 @@
       (mt/with-temp [:model/Field {user-set-id :id} {:name "toucansare_cool", :display_name "Toucansare Cool"}
                      :model/Field {custom-id :id} {:name "fussybird_sightings", :display_name "Some Other Name"}
                      :model/Field {synced-id :id} {:name "bird_watchers", :display_name "Bird Watchers"}]
-        (field-user-settings/upsert-user-settings {:id user-set-id} {:display_name "User's Name"})
+        (field-user-settings/upsert-field-user-settings! {:id user-set-id} {:display_name "User's Name"})
         (warehouse-schema.settings/humanization-strategy! "none")
-        (testing "the user-set Field's raw display name is left alone, and their own name is what reads back"
-          (is (= "Toucansare Cool" (t2/select-one-fn :display_name :model/Field, :id user-set-id)))
-          (is (= "User's Name" (t2/select-one-fn :display_name :model/Field, :id user-set-id
-                                                 {:from [(warehouse-schema-overlay/field-query)]}))))
+        (testing "the user-set Field keeps the user's name"
+          (is (= "User's Name" (t2/select-one-fn :display_name :model/Field, :id user-set-id))))
         (testing "a raw display name that differs from the old humanization is left alone"
           (is (= "Some Other Name" (t2/select-one-fn :display_name :model/Field, :id custom-id))))
         (testing "a humanized display name is rewritten to the new strategy"

@@ -1,7 +1,7 @@
 (ns metabase.dashboards.models.dashboard-card-series
   (:require
-   [metabase.dashboards.schema]
-   [metabase.models.serialization :as serdes]
+   [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.serialization.core :as serialization]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -13,14 +13,10 @@
 
 ;; Serialization
 
-(defmethod serdes/generate-path "DashboardCardSeries" [_ _] nil)
-
-;; TODO: this is not used atm as `DashboardCard` has custom :export/:import defined; see comment there
-;; to be implemented.
-(defmethod serdes/make-spec "DashboardCardSeries" [_model-name _opts]
-  ;; We did not have `position` in serialization before, it was inferred from the order, but we're trying to keep
-  ;; code more generic right now - so it's carried over as data rather than implied.
-  {:copy      [:position]
-   :skip      []
-   :transform {:dashboardcard_id (serdes/parent-ref)
-               :card_id          (serdes/fk :model/Card)}})
+(defmethod serialization/spec :model/DashboardCardSeries [_]
+  {:schema    ::dashboards.schema/external-dashboard-card-series
+   :identity  [:dashboardcard_id :position]
+   :copy      [:position]
+   :parent    {:model :model/DashboardCard :key :dashboardcard_id :order :position}
+   :transform {:dashboardcard_id serialization/import-only-transform
+               :card_id (serialization/fk-transform :model/Card)}})

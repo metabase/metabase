@@ -35,7 +35,6 @@ export const createMockCollectionItem = (
   name: "Question",
   description: null,
   collection_position: null,
-  collection_preview: true,
   collection_id: null,
   fully_parameterized: true,
   type: null,

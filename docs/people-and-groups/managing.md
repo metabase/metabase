@@ -1,5 +1,6 @@
 ---
 title: People and groups
+summary: Create, edit, and deactivate accounts, and organize people into the groups that drive your permissions.
 redirect_from:
   - /docs/latest/administration-guide/04-managing-users
 ---
@@ -109,7 +110,7 @@ If you're a Metabase admin and have access to the server console, you can get Me
 1.  Stop the running Metabase application.
 2.  Restart Metabase with `reset-password email@example.com`, where "email@example.com" is the email associated with the admin account:
     ```
-    java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar reset-password email@example.com
+    java -jar metabase.jar reset-password email@example.com
     ```
 3.  Metabase will print out a random token like this:
 

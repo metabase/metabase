@@ -47,7 +47,6 @@ const HYDRATING_ENDPOINTS = [
   "listSyncableDatabaseSchemas",
   "listTableForeignKeys",
   "listTables",
-  "listVirtualDatabaseTables",
   "updateCard",
   "updateSnippet",
 ];

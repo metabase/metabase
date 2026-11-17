@@ -90,7 +90,6 @@
       "include_csv": false,
       "display": "combo",
       "entity_id": "96aPoRqya6kpF6igHHkbw",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.show_trendline": true,
         "graph.dimensions": ["CREATED_AT"],

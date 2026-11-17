@@ -11,7 +11,6 @@
         "graph.dimensions": ["CREATED_AT"],
         "graph.metrics": ["count"]
       },
-      "collection_preview": true,
       "entity_id": "X5ORiUiwibT52ot6mE2jX",
       "display": "bar",
       "parameter_mappings": [],

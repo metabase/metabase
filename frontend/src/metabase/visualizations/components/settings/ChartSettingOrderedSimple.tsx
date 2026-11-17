@@ -1,5 +1,4 @@
 import { arrayMove } from "@dnd-kit/sortable";
-import { updateIn } from "icepick";
 import { useCallback } from "react";
 import { t } from "ttag";
 
@@ -55,7 +54,9 @@ export const ChartSettingOrderedSimple = ({
         (item) => item.key === selectedItem.key,
       );
       onChange(
-        updateIn(orderedItems, [index, "enabled"], (enabled) => !enabled),
+        orderedItems.map((item, i) =>
+          i === index ? { ...item, enabled: !item.enabled } : item,
+        ),
       );
     },
     [orderedItems, onChange],

@@ -1,5 +1,6 @@
 ---
 title: Timezones
+summary: Every place a timezone gets set, from your database to the OS and JVM to Metabase's report timezone, plus the common pitfalls.
 redirect_from:
   - /docs/latest/operations-guide/handling-timezones
 ---

@@ -16,25 +16,19 @@ import {
 } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { Card, Collection, Database, Settings } from "metabase-types/api";
 import {
+  createMockCard,
   createMockCardQueryMetadata,
+  createMockColumn,
   createMockDatabase,
   createMockField,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
-  createMockStructuredDatasetQuery,
-  createMockStructuredQuery,
   createMockTable,
 } from "metabase-types/api/mocks";
-import {
-  createNativeModelCard as _createNativeModelCard,
-  createStructuredModelCard as _createStructuredModelCard,
-  createSavedNativeCard,
-  createSavedStructuredCard,
-} from "metabase-types/api/mocks/presets";
 
 import { ModelUsageDetails } from "./ModelUsageDetails";
 import { DEFAULT_LIST_LIMIT } from "./hooks";
@@ -72,6 +66,27 @@ const TEST_FIELDS = [
   }),
 ];
 
+const TEST_COLUMNS = [
+  createMockColumn({
+    id: 1,
+    display_name: "Field 1",
+    semantic_type: TYPE.PK,
+    table_id: TEST_TABLE_ID,
+  }),
+  createMockColumn({
+    id: 2,
+    display_name: "Field 2",
+    table_id: TEST_TABLE_ID,
+  }),
+  createMockColumn({
+    id: 3,
+    display_name: "Field 3",
+    table_id: TEST_TABLE_ID,
+    semantic_type: TYPE.FK,
+    fk_target_field_id: TEST_FK_FIELD_ID,
+  }),
+];
+
 const TEST_TABLE = createMockTable({
   id: TEST_TABLE_ID,
   name: "TEST_TABLE",
@@ -92,29 +107,45 @@ const TEST_DATABASE = createMockDatabase({
   tables: [TEST_TABLE, TEST_FK_TABLE_1],
 });
 
+const TEST_PROVIDER = createMetadataProvider({
+  databaseId: TEST_DATABASE_ID,
+  metadata: createMockMetadata({ databases: [TEST_DATABASE] }),
+});
+
+function createSavedStructuredCard(card?: Partial<Card>) {
+  return createMockCard({
+    dataset_query: Lib.createTestJsQuery(TEST_PROVIDER, {
+      stages: [{ source: { type: "table", id: TEST_TABLE_ID } }],
+    }),
+    ...card,
+  });
+}
+
+function createSavedNativeCard(card?: Partial<Card>) {
+  return createMockCard({
+    query_type: "native",
+    dataset_query: Lib.createTestJsNativeQuery(TEST_PROVIDER, {
+      query: `SELECT * FROM ${TEST_TABLE.name}`,
+    }),
+    ...card,
+  });
+}
+
 function createStructuredModelCard(card?: Partial<Card>) {
-  return _createStructuredModelCard({
+  return createSavedStructuredCard({
+    type: "model",
     can_write: true,
     ...card,
-    result_metadata: TEST_FIELDS,
-    dataset_query: createMockStructuredDatasetQuery({
-      database: TEST_DATABASE_ID,
-      query: createMockStructuredQuery({ "source-table": TEST_TABLE_ID }),
-    }),
+    result_metadata: TEST_COLUMNS,
   });
 }
 
 function createNativeModelCard(card?: Partial<Card>) {
-  return _createNativeModelCard({
+  return createSavedNativeCard({
+    type: "model",
     can_write: true,
     ...card,
-    result_metadata: TEST_FIELDS,
-    dataset_query: createMockNativeDatasetQuery({
-      database: TEST_DATABASE_ID,
-      native: createMockNativeQuery({
-        query: `SELECT * FROM ${TEST_TABLE.name}`,
-      }),
-    }),
+    result_metadata: TEST_COLUMNS,
   });
 }
 
@@ -143,26 +174,15 @@ async function setup({
     questions: [card, ...usedBy],
   });
 
-  const model = checkNotNull(metadata.question(card.id));
-  const usedByQuestions = usedBy.map((q) =>
-    checkNotNull(metadata.question(q.id)),
-  );
+  const model = new Question(card, metadata);
+  const usedByQuestions = usedBy.map((q) => new Question(q, metadata));
 
   setupDatabasesEndpoints(databases);
   setupCardsUsingModelEndpoint(card, usedBy);
   setupCardsEndpoints([card]);
   setupCardQueryMetadataEndpoint(
     card,
-    createMockCardQueryMetadata({
-      databases,
-      tables: [
-        createMockTable({
-          id: `card__${card.id}`,
-          name: card.name,
-          fields: card.result_metadata ?? [],
-        }),
-      ],
-    }),
+    createMockCardQueryMetadata({ databases }),
   );
   setupCollectionsEndpoints({ collections });
 

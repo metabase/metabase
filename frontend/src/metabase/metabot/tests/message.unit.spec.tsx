@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
 import { checkNotNull } from "metabase/utils/types";
 
@@ -24,8 +25,10 @@ import {
 const LONG_REASONING_WORD_COUNT = 1500;
 // Keep it at most a third of the replay time above, and below the 30 s jest timeout.
 const ANSWER_ARRIVAL_TIMEOUT_MS = 5000;
-// At 10 ms per paced word, this reasoning takes about 2 s to replay.
-const OPEN_REASONING_WORD_COUNT = 200;
+// Each paced word waits 10 ms, and also for the page to render it, which takes
+// longer as the text grows. So this reasoning replays in about 1 s here, and
+// in a few seconds on a slow CI machine.
+const OPEN_REASONING_WORD_COUNT = 50;
 // Well above the replay time above, so the paced stream ends inside the test.
 const OPEN_ANSWER_ARRIVAL_TIMEOUT_MS = 8000;
 
@@ -103,6 +106,29 @@ describe("metabot > message", () => {
     ).toBeInTheDocument();
     expect(await input()).toHaveTextContent("");
     expect(await input()).toHaveFocus();
+  });
+
+  it("should track each sent chat message", async () => {
+    const trackEvent = jest.mocked(Analytics.trackSimpleEvent);
+    trackEvent.mockClear();
+    setup();
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
+
+    await enterChatMessage("Who is your favorite?");
+    expect(
+      await screen.findByText("You, but don't tell anyone."),
+    ).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(trackEvent).toHaveBeenCalledWith({
+        event: "metabot_request_sent",
+      });
+    });
+    expect(
+      trackEvent.mock.calls.filter(
+        ([event]) => event.event === "metabot_request_sent",
+      ),
+    ).toHaveLength(1);
   });
 
   it("should be able to send a message via send button", async () => {

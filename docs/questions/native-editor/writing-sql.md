@@ -1,5 +1,6 @@
 ---
 title: SQL editor
+summary: Write SQL to ask questions the query builder can't express, with auto-formatting, snippets, and filter widgets to help.
 redirect-from:
   - /docs/latest/users-guide/writing-sql
   - /docs/latest/questions/native-editor

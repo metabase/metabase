@@ -9,6 +9,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -973,3 +974,21 @@
           (ctd/exec-statements ["DROP USER IF EXISTS metabase_readonly_user;"
                                 "DROP SETTINGS PROFILE IF EXISTS metabase_readonly_profile;"]
                                {}))))))
+
+(deftest init-workspace-isolation-uses-admin-overlay-test
+  (mt/test-driver :clickhouse
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:workspaces}
+       (testing "a Toucan Database row's admin overlay supplies the canonical database the workspace user may see"
+         (let [database  (assoc (mt/db) :admin_details {:db "system"})
+               workspace {:id (rand-int 1000000) :name "ws-admin-overlay"}
+               workspace (merge workspace (driver/workspace-isolation-details :clickhouse database workspace))
+               spec      (sql-jdbc.conn/connection-details->spec :clickhouse (:details (mt/db)))]
+           (driver.conn/with-admin-connection
+             (try
+               (driver/init-workspace-isolation! :clickhouse database workspace)
+               (is (some #(str/includes? % "GRANT SHOW DATABASES ON system.*")
+                         (map (comp first vals)
+                              (jdbc/query spec [(format "SHOW GRANTS FOR `%s`" (-> workspace :database_details :user))]))))
+               (finally
+                 (driver/destroy-workspace-isolation! :clickhouse database workspace))))))))))
