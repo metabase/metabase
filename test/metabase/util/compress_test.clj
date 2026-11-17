@@ -116,6 +116,8 @@
                   [(doto (TarArchiveEntry. "hard.txt" TarConstants/LF_LINK)
                      (.setLinkName "real.txt")) nil]
                   [(TarArchiveEntry. "pipe" TarConstants/LF_FIFO) nil]
+                  [(TarArchiveEntry. "chr" TarConstants/LF_CHR) nil]
+                  [(TarArchiveEntry. "blk" TarConstants/LF_BLK) nil]
                   [".hidden" content]
                   ["real.txt" content]])
         out     (doto (io/file (System/getProperty "java.io.tmpdir") (mt/random-name)) .mkdirs)]
