@@ -320,10 +320,10 @@
                        (testing "a run by that user is refused"
                          (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :post run-path))))
                        (testing "a test whose parameter values do not fit the action is refused as for any user"
-                         (t2/update! :model/ActionTest test-id {:parameters {"colour" "red"}})
+                         (t2/update! :model/ActionTest :id test-id {:parameters {"colour" "red"}})
                          (is (= "action-test.invalid-parameters"
                                 (:error-code (mt/user-http-request :rasta :post 400 run-path))))
-                         (t2/update! :model/ActionTest test-id {:parameters parameters}))
+                         (t2/update! :model/ActionTest :id test-id {:parameters parameters}))
                        (perms/grant-collection-read-permissions! (perms-group/all-users) hidden-coll-id)
                        (testing "once the included card is readable, the run passes"
                          (is (= "passed" (:status (mt/user-http-request :rasta :post 200 run-path))))))
