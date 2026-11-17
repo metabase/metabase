@@ -608,7 +608,8 @@
            settings
            system
            util
-           util.config}}
+           util.config}
+   :model-imports #{:model/Channel}}
 
   cloud-migration
   {:team "UX West"
