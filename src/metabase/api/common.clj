@@ -92,7 +92,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [potemkin :as p]))
+   [potemkin :as p]
+   [toucan2.core :as t2]))
 
 (declare check-403 check-404)
 
@@ -143,10 +144,13 @@
 
 ;;; TODO -- move this to [[metabase.request.current]]
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *current-user-permissions-set*
-  "Delay to the set of permissions granted to the current user. See documentation in [[metabase.permissions.models.permissions]] for
-  more information about the Metabase permissions system."
-  (atom #{}))
+(defn current-user-info
+  "The current user as the permission functions take one: their id, nil without a user, and whether they are a
+  superuser and a data analyst."
+  []
+  {:user-id          *current-user-id*
+   :is-superuser?    (boolean *is-superuser?*)
+   :is-data-analyst? (boolean *is-data-analyst?*)})
 
 (defn current-user-attributes
   "Returns the attributes that can be used for DB routing, sandboxing, impersonation, etc."
@@ -344,9 +348,11 @@
   [500 (deferred-tru "Internal server error.")])
 
 (defn check-500
-  "Throw a `500` if `arg` is `false` or `nil`, otherwise return as-is."
-  [arg]
-  (check arg generic-500))
+  "Throw a `500`, with `msg` when given, if `arg` is `false` or `nil`, otherwise return as-is."
+  ([arg]
+   (check arg generic-500))
+  ([arg msg]
+   (check arg [500 msg])))
 
 ;;; TODO -- why does this live here but other 'generic' responses live in [[metabase.request.util]]. We should move this
 ;;; so it lives with its friends
@@ -356,8 +362,8 @@
 
 (mr/def ::generic-204-no-content
   "Response schema for an endpoint that returns [[generic-204-no-content]].
-  OpenAPI documents it as an empty body rather than as the Ring response map."
-  [:map {:closed true, :openapi/response-schema :nil}
+  OpenAPI documents it as a 204 response with no body, rather than as the Ring response map."
+  [:map {:closed true, :openapi/response {:status "204", :description "No content"}}
    [:status [:= 204]]
    [:body   :nil]])
 
@@ -382,12 +388,12 @@
 
 (defn read-check
   "Check whether we can read an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
-  don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, and returns
-  `obj` if the check is successful."
+  don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, hydrates its
+  `:can_read`, and returns `obj` if the check is successful."
   ([obj]
    (check-404 obj)
    (try
-     (check-403 (mi/can-read? obj))
+     (check-403 (mi/can-read? (t2/hydrate obj :can_read)))
      (catch clojure.lang.ExceptionInfo e
        (log/errorf "Read permissions failure: %s" (ex-message e))
        (events/publish-event! :event/read-permission-failure {:user-id    *current-user-id*
@@ -404,12 +410,12 @@
 
 (defn write-check
   "Check whether we can write an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
-  don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, and returns
-  `obj` if the check is successful."
+  don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, hydrates its
+  `:can_write`, and returns `obj` if the check is successful."
   ([obj]
    (check-404 obj)
    (try
-     (check-403 (mi/can-write? obj))
+     (check-403 (mi/can-write? (t2/hydrate obj :can_write)))
      (catch clojure.lang.ExceptionInfo e
        (events/publish-event! :event/write-permission-failure {:user-id *current-user-id*
                                                                :object obj})
@@ -428,7 +434,7 @@
   ([obj]
    (check-404 obj)
    (try
-     (check-403 (mi/can-query? obj))
+     (check-403 (mi/can-query? (t2/hydrate obj :can_query)))
      (catch clojure.lang.ExceptionInfo e
        (events/publish-event! :event/read-permission-failure {:user-id *current-user-id*
                                                               :object  obj})
@@ -463,7 +469,7 @@
   {:added "0.36.0"}
   [instance changes]
   (try
-    (check-403 (mi/can-update? instance changes))
+    (check-403 (mi/can-update? (t2/hydrate instance :can_write) changes))
     (catch clojure.lang.ExceptionInfo e
       (events/publish-event! :event/update-permission-failure {:user-id *current-user-id*
                                                                :object instance})

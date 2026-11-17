@@ -30,7 +30,8 @@
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.match :as match]))
+   [metabase.util.match :as match]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -110,6 +111,12 @@
   (request/with-current-user user-id
     (boolean (mi/can-read? model pk))))
 
+(defn- user-can-read-card?
+  "Whether the User with `user-id` can read the Card with `card-id`, checked as that User."
+  [card-id user-id]
+  (request/with-current-user user-id
+    (boolean (some-> (permission-debug.db/card card-id) (t2/hydrate :can_read) mi/can-read?))))
+
 (mu/defn- merge-permission-check :- DebuggerSchema
   "Merges n permissions responses with right most wins semantics. model-type and model-id must match across
   permissions responses. If the decision is denied that should take precedence over limited which should be
@@ -154,7 +161,7 @@
 
 (mu/defmethod debug-permissions :card/read :- DebuggerSchema
   [{:keys [user-id model-id] :as _debug-info} :- DebuggerArguments]
-  (let [can-read? (user-can-read? :model/Card model-id user-id)]
+  (let [can-read? (user-can-read-card? model-id user-id)]
     {:decision    (if can-read? "allow" "denied")
      :model-type  "card"
      :model-id    (str model-id)

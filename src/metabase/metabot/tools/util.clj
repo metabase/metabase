@@ -12,7 +12,8 @@
    [metabase.metabot.tools.error :as tools.error]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (defn handle-agent-error
   "Return an output for legacy agent errors, rethrowing declared tool errors and other exceptions.
@@ -535,8 +536,8 @@
   [card-ids]
   (when (seq card-ids)
     (into {}
-          (comp (filter mi/can-read?) (map (juxt :id identity)))
-          (metabot.db/card-source-rows card-ids))))
+          (u/index-by :id)
+          (filterv mi/can-read? (t2/hydrate (metabot.db/card-source-rows card-ids) :can_read)))))
 
 (defn card-source-table-id
   "Return the ID of the table that the card with `card-id` reads from, following its source cards.
@@ -595,9 +596,7 @@
   A breakout matches a column of the table by field `:id` and FK field id, and keeps its temporal bucket. A breakout
   on a column that only the card has, like an expression or a column from an explicit join, is dropped."
   [definition table-query]
-  (let [table-columns (into {}
-                            (map (juxt (juxt :id :fk-field-id) identity))
-                            (lib/breakoutable-columns table-query))
+  (let [table-columns (u/index-by (juxt :id :fk-field-id) (lib/breakoutable-columns table-query))
         ;; A card column from an implicit join keeps its FK as `:lib/original-fk-field-id`.
         column-key    (juxt :id (some-fn :fk-field-id :lib/original-fk-field-id))]
     (keep (fn [[clause column]]

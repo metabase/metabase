@@ -48,7 +48,9 @@ export function setupRevertableRevisionsEndpoints({
   onRevert: () => void;
 }) {
   let current = revisions;
-  fetchMock.get(`path:/api/revision?entity=${entity}&id=${id}`, () => current);
+  fetchMock.get("path:/api/revision", () => current, {
+    query: { entity, id: String(id) },
+  });
   fetchMock.post(
     "path:/api/revision/revert",
     () => {

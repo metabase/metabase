@@ -45,14 +45,13 @@
    :run_method mi/transform-keyword})
 
 ;; a run is only readable if its transform is; orphaned runs (transform deleted) are superuser-only
-(defmethod mi/can-read? :model/TransformRun
-  ([instance]
-   (or api/*is-superuser?*
-       (boolean (when-let [transform-id (:transform_id instance)]
-                  (mi/can-read? :model/Transform transform-id)))))
-  ([_model pk]
-   (when-let [run (transforms.db/run pk)]
-     (mi/can-read? run))))
+(methodical/defmethod t2/simple-hydrate [:model/TransformRun :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k
+             (boolean
+              (or api/*is-superuser?*
+                  (boolean (when-let [transform-id (:transform_id instance)]
+                             (some-> (transforms.db/transform transform-id) (t2/hydrate :can_read) mi/can-read?)))))))
 
 (mi/define-simple-hydration-method add-transform-runs
   :transform-runs

@@ -16,6 +16,7 @@
   Runs in the enterprise pgvector store via [[metabase.search.entity-retrieval.core]]."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
@@ -72,19 +73,15 @@
   (or (some (fn [s] (when (= :similarity (:name s)) (double (:score s)))) (:scores score)) 0.0))
 
 (defn- dedupe-by-entity
-  "Collapse raw per-document results (sorted best-first) to distinct entities, keeping the best-scoring
-  document for each."
+  "Collapse results (sorted best-first) to one per entity, keeping the best-scoring document."
   [results]
-  (->> results
-       (reduce (fn [[seen acc] r]
-                 ;; collapse every card flavor (question/metric/model) to one class so aliases of the same
-                 ;; Card dedupe together — they all hydrate to one record, so distinct keys would return it
-                 ;; twice. Same equivalence the membership/instructions lookups use below.
-                 (let [{:keys [model id]} (:entity r)
-                       k                   (entity-retrieval/entity-class model id)]
-                   (if (seen k) [seen acc] [(conj seen k) (conj acc r)])))
-               [#{} []])
-       second))
+  (into []
+        ;; collapse every card flavor (question/metric/model) to one class so aliases of the same
+        ;; Card dedupe together — they all hydrate to one record, so distinct keys would return it
+        ;; twice. Same equivalence the membership/instructions lookups use below.
+        (m/distinct-by (fn [{{:keys [model id]} :entity}]
+                         (entity-retrieval/entity-class model id)))
+        results))
 
 (def ^:private search-instead-step
   {:uses #{"search"}

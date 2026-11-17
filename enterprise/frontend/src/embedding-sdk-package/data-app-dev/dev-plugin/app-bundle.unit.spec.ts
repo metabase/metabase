@@ -15,7 +15,12 @@ let onError: jest.Mock;
 const setup = () => {
   onError = jest.fn();
 
-  return createAppBundle({ root: "/app", mode: "development", onError });
+  return createAppBundle({
+    root: "/repo/data_apps/app",
+    envDir: "/repo",
+    mode: "development",
+    onError,
+  });
 };
 
 beforeEach(() => {
@@ -24,6 +29,20 @@ beforeEach(() => {
 });
 
 describe("createAppBundle", () => {
+  it("gives the app the env the preview page gets: only DATA_APP_PUBLIC_ variables, from the repo's .env files", async () => {
+    const bundle = setup();
+
+    await bundle.rebuild();
+
+    // Vite's own defaults would read `VITE_` variables, from the app's folder.
+    expect(mockedBuild).toHaveBeenCalledWith(
+      expect.objectContaining({
+        envDir: "/repo",
+        envPrefix: "DATA_APP_PUBLIC_",
+      }),
+    );
+  });
+
   it("exposes the built chunk and when it was built", async () => {
     const bundle = setup();
 

@@ -11,20 +11,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn row
-  "The row of `model` with the primary key `pk`, or nil."
-  [model :- :keyword
-   pk    :- [:or :int :string]]
-  (t2/select-one model (first (t2/primary-keys model)) pk))
-
-(mu/defn exported-rows
-  "The rows of `model` with the primary keys `pks`, with the columns its export takes."
-  [model :- :keyword
-   pks   :- [:sequential [:or :int :string]]]
-  (if (seq pks)
-    (t2/select (into [model] (serialization/columns model)) (first (t2/primary-keys model)) [:in pks])
-    []))
-
 (mu/defn synced-rows
   "The rows of `model` remote sync syncs with the columns its export takes, ordered by primary key."
   [model :- :keyword]

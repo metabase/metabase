@@ -3,7 +3,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -15,6 +15,7 @@
    ::dimension.update
    [:map {:closed true}
     [:id                      ms/PositiveInt]
+    [:field                   {:optional true} [:maybe [:ref ::field]]]
     [:human_readable_field    {:optional true} [:maybe [:ref ::field]]]]])
 
 (mr/def ::dimension.update
@@ -30,7 +31,7 @@
 
 (mr/def ::field.settings
   "The `:settings` column of a Field, decoded."
-  ::lib.schema.visualization-settings/visualization-settings)
+  ::lib.schema.visualization/visualization-settings)
 
 (mr/def ::field
   "A Field as selected from the app DB: every column of `:metabase_field`."
@@ -41,7 +42,8 @@
     [:unique_field_helper        {:optional true} [:maybe :int]]
     [:dimensions                 {:optional true} [:maybe [:sequential [:ref ::dimension]]]]
     [:name_field                 {:optional true} [:maybe :metabase.queries.schema/param-field.name-field]]
-    [:target                     {:optional true} [:maybe [:ref ::field]]]]])
+    [:target                     {:optional true} [:maybe [:ref ::field]]]
+    [:table                      {:optional true} [:maybe [:ref ::table]]]]])
 
 (mr/def ::field.update
   "What an update (or insert) of a Field accepts: every column of `:metabase_field` except `id`, all optional."
@@ -88,13 +90,15 @@
 
 (mr/def ::field-user-settings.settings
   "The `:settings` column of a FieldUserSettings, decoded."
-  ::lib.schema.visualization-settings/visualization-settings)
+  ::lib.schema.visualization/visualization-settings)
 
 (mr/def ::field-user-settings
   "A FieldUserSettings as selected from the app DB: every column of `:metabase_field_user_settings`."
   [:merge
    ::field-user-settings.update
-   [:map {:closed true}]])
+   [:map {:closed true}
+    [:id    {:optional true} pos-int?]
+    [:field {:optional true} [:maybe [:ref ::field]]]]])
 
 (mr/def ::field-user-settings.update
   "What an update (or insert) of a FieldUserSettings accepts: every column of `:metabase_field_user_settings` except `id`, all optional."
@@ -145,7 +149,10 @@
   "A TableUserSettings as selected from the app DB: every column of `:metabase_table_user_settings`."
   [:merge
    ::table-user-settings.update
-   [:map {:closed true}]])
+   [:map {:closed true}
+    [:id         {:optional true} pos-int?]
+    [:table      {:optional true} [:maybe [:ref ::table]]]
+    [:collection {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]]])
 
 (mr/def ::table-user-settings.update
   "What an update (or insert) of a TableUserSettings accepts: every column of
@@ -186,6 +193,8 @@
     [:db                      {:optional true} [:maybe [:ref :metabase.warehouses.schema/database]]]
     [:fields                  {:optional true} [:maybe [:sequential ::field]]]
     [:transform               {:optional true} [:maybe [:ref :metabase.transforms.schema/transform]]]
+    [:collection              {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
+    [:can_query               {:optional true} [:maybe :boolean]]
     [:owner                   {:optional true} [:maybe [:map {:closed true}
                                                         [:id          {:optional true} ::lib.schema.id/user]
                                                         [:email       {:optional true} :string]

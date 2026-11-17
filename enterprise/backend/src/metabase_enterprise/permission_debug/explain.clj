@@ -385,11 +385,14 @@
                                :yes
 
                                :else
-                               (perms/table-permission-for-groups #{group-id} perm-type database-id table-id))))
+                               (get (perms/table-permissions-for-groups #{group-id} perm-type {table-id database-id})
+                                    table-id))))
         view-data-of     (fn [{group-id :id :as group}]
                            (let [value (if (admin-group? group)
                                          :unrestricted
-                                         (perms/table-permission-for-groups #{group-id} :perms/view-data database-id table-id))]
+                                         (get (perms/table-permissions-for-groups #{group-id} :perms/view-data
+                                                                                  {table-id database-id})
+                                              table-id))]
                              (cond
                                (not= value :unrestricted)   value
                                (sandboxed-ids group-id)     :sandboxed

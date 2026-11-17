@@ -115,6 +115,22 @@
     (let [mem (memory/initialize [] {:queries {"q1" {:id "q1"}}})]
       (is (nil? (memory/turn-state mem))))))
 
+(deftest ^:parallel set-query-redraws-charts-of-that-query-test
+  (testing "a query stored again under its id, as the SQL edit tools do, replaces the copy its charts hold"
+    (let [chart  (fn [query-id sql] {:chart_id "c" :query_id query-id :queries [{:sql sql}]})
+          mem    (memory/initialize [] {:queries {"q1" {:sql "old"} "q2" {:sql "other"}}
+                                        :charts  {"c1" (chart "q1" "old")
+                                                  "c2" (chart "q2" "other")
+                                                  "c3" {:chart_id "c3" :query_id "q1"}}})
+          edited (memory/set-query mem "q1" {:sql "new"})]
+      (is (= {"c1" (chart "q1" "new")
+              "c2" (chart "q2" "other")
+              "c3" {:chart_id "c3" :query_id "q1"}}
+             (:charts (memory/get-state edited))))
+      (testing "and the redrawn chart is part of this turn's delta"
+        (is (= {:queries {"q1" {:sql "new"}} :charts {"c1" (chart "q1" "new")}}
+               (memory/turn-state edited)))))))
+
 (deftest ^:parallel client-ids-survive-the-app-db-round-trip-test
   (testing "JSON has no sets, so state read back out of metabot_message carries a vector here. It
             has to validate in that shape, since the agent entry point checks it before memory is
