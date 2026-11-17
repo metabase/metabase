@@ -946,12 +946,10 @@
    `(defdataset ~dataset-name nil ~definition))
 
   ([dataset-name docstring definition]
-   `(defdataset ~dataset-name ~docstring ~definition {:static true}))
-  ([dataset-name docstring definition options]
    {:pre [(symbol? dataset-name)]}
    `(~(if config/is-dev? 'def 'defonce)
      ~(vary-meta dataset-name assoc :doc docstring, :tag `DatabaseDefinition)
-     (dataset-definition ~(name dataset-name) ~definition ~options))))
+     (dataset-definition ~(name dataset-name) ~definition {:static true}))))
 
 (p.types/deftype+ ^:private NativeDatasetDefinition [dataset-name table-definitions native-ddl]
   pretty/PrettyPrintable

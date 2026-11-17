@@ -65,12 +65,12 @@
             (is (=? {:description "updated description" :description_set true}
                     (t2/select-one :model/FieldUserSettings :field_id field-id)))))))))
 
-(tx/defdataset ^:private comment-after-sync
+(def ^:private comment-after-sync
   "Not static, because [[sync-comment-on-existing-field-test]] changes this dataset."
-  [["comment_after_sync"
-    [{:field-name "comment_after_sync", :base-type :type/Text}]
-    [["foo"]]]]
-  {:static false})
+  (mt/dataset-definition "comment-after-sync"
+                         [["comment_after_sync"
+                           [{:field-name "comment_after_sync", :base-type :type/Text}]
+                           [["foo"]]]]))
 
 (deftest sync-comment-on-existing-field-test
   (testing "test adding a comment to the source data that was initially empty, so we can check that the resync picks it up"
