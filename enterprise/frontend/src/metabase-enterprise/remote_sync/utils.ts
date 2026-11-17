@@ -141,7 +141,7 @@ export function isItemTable(
   item: RemoteSyncItemOrDirtyItem,
   table: RemoteSyncItemTable,
 ): boolean {
-  return item.model === "tableusersettings" && item.id === table.id;
+  return item.model === "tableusersettings" && item.data?.table_id === table.id;
 }
 
 const DATA_SECTION = { key: "data", icon: "database" } as const;
@@ -265,10 +265,13 @@ export function getItemName(item: RemoteSyncItem): string {
 export function getItemUrl(item: RemoteSyncItemOrDirtyItem): string | null {
   switch (item.model) {
     case "tableusersettings":
-      return Urls.dataStudioTable(item.id);
+      return item.data ? Urls.dataStudioTable(item.data.table_id) : null;
     case "fieldusersettings":
       return item.data?.field
-        ? Urls.dataStudioTableFields(item.data.field.table_id, item.id)
+        ? Urls.dataStudioTableFields(
+            item.data.field.table_id,
+            item.data.field_id,
+          )
         : null;
     case "dimension":
       return item.data?.field

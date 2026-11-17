@@ -37,7 +37,7 @@
    {:keys [segment-id]} :- [:map {:closed true}
                             [:segment-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-data-studio-access)
-  (-> (filter mi/can-read? (data-testing.db/segment-tests {:segment-id segment-id}))
+  (-> (filter mi/can-read? (t2/hydrate (data-testing.db/segment-tests {:segment-id segment-id}) :can_read))
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/segment-test.response

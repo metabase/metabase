@@ -514,15 +514,9 @@
                  {:status-code 422})
         (not
          (and
-          (= :unrestricted (perms/full-schema-permission-for-user api/*current-user-id*
-                                                                  :perms/view-data
-                                                                  (u/the-id db)
-                                                                  schema-name))
+          (= :unrestricted (perms/every-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/view-data (u/the-id db) schema-name))
           (contains? #{:query-builder :query-builder-and-native}
-                     (perms/full-schema-permission-for-user api/*current-user-id*
-                                                            :perms/create-queries
-                                                            (u/the-id db)
-                                                            schema-name))))
+                     (perms/every-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/create-queries (u/the-id db) schema-name))))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403})
         (and (some? schema-name)
@@ -903,7 +897,7 @@
         (ex-info (tru "The table must be an uploaded table.")
                  {:status-code 422})
 
-        (not (mi/can-query? table))
+        (not (mi/can-query? (t2/hydrate table :can_query)))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403}))))
 
@@ -931,7 +925,7 @@
       (ex-info (tru "The table must be an uploaded table.")
                {:status-code 422})
 
-      (not (and (mi/can-query? table) (mi/can-write? table)))
+      (not (and (mi/can-query? (t2/hydrate table :can_query)) (mi/can-write? (t2/hydrate table :can_write))))
       (ex-info (tru "You don''t have permissions to do that.")
                {:status-code 403}))))
 
@@ -1006,7 +1000,7 @@
   "Returns the subset of table ids where the user can upload to the table."
   [table-ids]
   (set (when (seq table-ids)
-         (->> (t2/hydrate (upload.db/tables table-ids) :db)
+         (->> (t2/hydrate (upload.db/tables table-ids) :db :can_query)
               (filter #(can-upload-to-table? (:db %) %))
               (map :id)))))
 

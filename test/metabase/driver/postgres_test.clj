@@ -2881,7 +2881,7 @@
                     (testing "fails and names the unmemberable owner"
                       (is (thrown-with-msg?
                            clojure.lang.ExceptionInfo
-                           #"login \"ws_pre_adp_role\" is not a member of 1 role.*`GRANT \"ws_pre_adp_other_owner\" TO \"ws_pre_adp_role\";`"
+                           #"login \"ws_pre_adp_role\" lacks the privileges of 1 role.*`GRANT \"ws_pre_adp_other_owner\" TO \"ws_pre_adp_role\"( WITH INHERIT TRUE)?;`"
                            (postgres/assert-can-alter-default-privileges! user-spec schema))))
                     (testing "passes once the current_user becomes a member of the owner role"
                       (jdbc/execute! admin-spec

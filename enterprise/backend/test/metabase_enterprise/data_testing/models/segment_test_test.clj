@@ -116,13 +116,13 @@
                        :model/SegmentTest {test-id :id :as segment-test} {:segment_id segment-id}]
           (letfn [(permissions []
                     (mt/with-current-user (mt/user->id :lucky)
-                      {:read     (boolean (mi/can-read? segment-test))
-                       :read-pk  (boolean (mi/can-read? :model/SegmentTest test-id))
+                      {:read     (boolean (mi/can-read? (t2/hydrate segment-test :can_read)))
+                       :read-pk  (boolean (mi/can-read? (t2/hydrate (t2/select-one :model/SegmentTest :id test-id) :can_read)))
                        :run      (boolean (data-testing.models.segment-test/can-run? segment-test))
                        :create   (boolean (mi/can-create? :model/SegmentTest {:segment_id segment-id}))
                        :update   (boolean (mi/can-update? segment-test {:name "renamed"}))
-                       :write    (boolean (mi/can-write? segment-test))
-                       :write-pk (boolean (mi/can-write? :model/SegmentTest test-id))}))]
+                       :write    (boolean (mi/can-write? (t2/hydrate segment-test :can_write)))
+                       :write-pk (boolean (mi/can-write? (t2/hydrate (t2/select-one :model/SegmentTest :id test-id) :can_write)))}))]
             (if analyst?
               (mt/with-data-analyst-role! (mt/user->id :lucky) (permissions))
               (permissions))))))))
@@ -181,8 +181,8 @@
                   (mt/with-current-user (mt/user->id :lucky)
                     (testing "premise: the analyst may save tests of the first segment, and may read and edit the other segment but not save its tests, having no native queries on its database"
                       (is (true? (boolean (mi/can-create? :model/SegmentTest {:segment_id writable-id}))))
-                      (is (true? (boolean (mi/can-read? :model/Segment other-id))))
-                      (is (true? (boolean (mi/can-write? :model/Segment other-id))))
+                      (is (true? (boolean (mi/can-read? (t2/hydrate (t2/select-one :model/Segment :id other-id) :can_read)))))
+                      (is (true? (boolean (mi/can-write? (t2/hydrate (t2/select-one :model/Segment :id other-id) :can_write)))))
                       (is (false? (boolean (data-testing.models/can-run-native-query? other-db))))
                       (is (false? (boolean (mi/can-create? :model/SegmentTest {:segment_id other-id})))))
                     (testing "control: the analyst may rename the test of the first segment"
@@ -201,7 +201,7 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (is (= {:run true :write true}
                {:run   (boolean (data-testing.models.segment-test/can-run? segment-test))
-                :write (boolean (mi/can-write? segment-test))}))))
+                :write (boolean (mi/can-write? (t2/hydrate segment-test :can_write)))}))))
     (testing "another user may not run it: the segment has no Database to write native SQL against"
       (mt/with-current-user (mt/user->id :rasta)
         (is (false? (boolean (data-testing.models.segment-test/can-run? segment-test))))))))

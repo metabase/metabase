@@ -73,12 +73,13 @@
   (query-perms/can-run-query? (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")))
 
 (defn query-subject-allows?
-  "Whether `subject-check` holds for `subject`, a card or a segment, and the current user may run `query`, the subject's
-  query, and write the native SQL of a test against the Database of `query`. False when `subject` is nil."
-  [subject-check subject query]
+  "Whether `subject-check` holds for `subject`, a card or a segment, hydrated with `k`, and the current user may run
+  `query`, the subject's query, and write the native SQL of a test against the Database of `query`. False when
+  `subject` is nil."
+  [subject-check k subject query]
   (boolean
    (when subject
-     (and (subject-check subject)
+     (and (subject-check (t2/hydrate subject k))
           ;; A run compiles the query with the cards, snippets and segments it includes, and a run's errors can quote
           ;; their SQL, so the user must be allowed to run the query, not only to read the subject.
           (query-perms/can-run-query? query)
@@ -99,7 +100,7 @@
   "Whether the current user may save or delete a test of the Transform `transform-id` (see [[can-save-for-transform?]])."
   [transform-id :- ::lib.schema.id/transform]
   (let [transform (data-testing.db/transform transform-id)]
-    (can-save-for-transform? transform (some-> transform mi/can-write?) can-run-native-query?)))
+    (can-save-for-transform? transform (some-> transform (t2/hydrate :can_write) mi/can-write?) can-run-native-query?)))
 
 (mu/defn can-run-test? :- :boolean
   "Whether the current user may run a test of the Transform `transform-id`: they may read it, and run the native SQL of
@@ -108,24 +109,13 @@
   (let [transform (data-testing.db/transform transform-id)]
     (boolean
      (and transform
-          (mi/can-read? transform)
+          (mi/can-read? (t2/hydrate transform :can_read))
           (or (mi/superuser?)
               (some-> (transforms-base.i/source-db-id transform) can-run-native-query?))))))
 
-(defmethod mi/can-read? :model/TransformTest
-  ([instance]
-   (mi/can-read? :model/Transform (:transform_id instance)))
-  ([_model pk]
-   (when-let [transform-test (data-testing.db/transform-test pk)]
-     (mi/can-read? transform-test))))
-
-(defmethod mi/can-write? :model/TransformTest
-  ([instance]
-   (and (remote-sync/can-write? :model/TransformTest (:id instance))
-        (can-save? (:transform_id instance))))
-  ([_model pk]
-   (when-let [transform-test (data-testing.db/transform-test pk)]
-     (mi/can-write? transform-test))))
+(methodical/defmethod t2/simple-hydrate [:model/TransformTest :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (some-> (data-testing.db/transform (:transform_id instance)) (t2/hydrate :can_read) mi/can-read?))))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_write]
   "Add whether the current user can write each transform test, loading their transforms at once and checking each
@@ -139,7 +129,7 @@
           native?    (memoize can-run-native-query?)]
       (into {}
             (map (fn [{:keys [id transform_id]}]
-                   [id (and (remote-sync/can-write? :model/TransformTest id)
+                   [id (and (not (remote-sync/read-only?))
                             (let [transform (get transforms transform_id)]
                               (can-save-for-transform? transform (:can_write transform) native?)))]))
             (remove nil? transform-tests)))
@@ -155,7 +145,7 @@
   (and (can-save? (:transform_id instance))
        (can-save? (:transform_id changes (:transform_id instance)))
        (or (not (remote-sync/synced-changes? :model/TransformTest instance changes))
-           (remote-sync/can-write? :model/TransformTest (:id instance)))))
+           (not (remote-sync/read-only?)))))
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
@@ -166,9 +156,9 @@
   [_model _id transform-test]
   (select-keys transform-test revision-columns))
 
-(defmethod revision/revision-readable? :model/TransformTest
-  [_model object]
-  (mi/can-read? (t2/instance :model/TransformTest object)))
+(defmethod revision/revisions-readable? :model/TransformTest
+  [_model objects]
+  (mapv mi/can-read? (t2/hydrate (mapv #(t2/instance :model/TransformTest %) objects) :can_read)))
 
 (defmethod revision/check-revert-available ::saved-test
   [_model]

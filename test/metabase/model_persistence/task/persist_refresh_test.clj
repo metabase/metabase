@@ -7,16 +7,18 @@
    [metabase.channel.email.messages :as messages]
    [metabase.channel.init]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.events.core :as events]
    [metabase.model-persistence.init]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.workspaces.core :as workspaces]
    [potemkin.types :as p]
    [toucan2.core :as t2])
   (:import
-   (org.quartz CronScheduleBuilder CronTrigger)))
+   (org.quartz CronScheduleBuilder CronTrigger JobDataMap JobExecutionContext)))
 
 (set! *warn-on-reflection* true)
 
@@ -267,6 +269,67 @@
                         (t2/select-one :model/TaskHistory
                                        :task "unpersist-tables"
                                        {:order-by [[:id :desc]]}))))))))
+(defn- job-context ^JobExecutionContext [job-data]
+  (reify JobExecutionContext
+    (getMergedJobDataMap [_] (JobDataMap. ^java.util.Map job-data))
+    (getTrigger [_] nil)))
+
+(deftest workspace-mode-skips-refresh-and-prune-jobs-test
+  (mt/with-model-cleanup [:model/TaskHistory]
+    (mt/with-temp [:model/Database      db {:settings {:persist-models-enabled true}}
+                   :model/Card          model {:type          :model
+                                               :database_id   (u/the-id db)
+                                               :dataset_query {:database (u/the-id db)
+                                                               :type     :native
+                                                               :native   {:query "SELECT 1"}}}
+                   :model/PersistedInfo refreshable {:card_id (u/the-id model) :database_id (u/the-id db)}
+                   :model/Card          model2 {:type :model :database_id (u/the-id db)}
+                   :model/PersistedInfo deletable {:card_id         (u/the-id model2)
+                                                   :database_id     (u/the-id db)
+                                                   :state           "deletable"
+                                                   :state_change_at (t/minus (t/local-date-time) (t/hours 2))}]
+      (let [refreshed (atom [])
+            dropped   (atom [])
+            state     #(t2/select-one-fn :state :model/PersistedInfo :id (u/the-id %))
+            run-jobs! (fn []
+                        (#'task.persist-refresh/refresh-job-fn! (job-context {"type" "database" "db-id" (u/the-id db)}))
+                        (#'task.persist-refresh/refresh-job-fn! (job-context {"type"         "individual"
+                                                                              "persisted-id" (u/the-id refreshable)}))
+                        (#'task.persist-refresh/prune-job-fn! nil))]
+        (mt/with-temporary-setting-values [persisted-models-enabled true]
+          ;; only prune this test's row
+          (mt/with-dynamic-fn-redefs [task.persist-refresh/deletable-models (constantly [deletable])]
+            ;; the driver methods are multimethods, which with-dynamic-fn-redefs refuses
+            #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+            (with-redefs [ddl.i/refresh!   (fn [_driver _database definition _query]
+                                             (swap! refreshed conj (:table-name definition))
+                                             {:state :success})
+                          ddl.i/unpersist! (fn [_driver _database persisted-info]
+                                             (swap! dropped conj (u/the-id persisted-info)))]
+              (testing "on a workspace instance the jobs make no warehouse call and leave each row as it was"
+                (mt/with-dynamic-fn-redefs [workspaces/workspace-mode? (constantly true)]
+                  (run-jobs!)
+                  (is (= [] @refreshed))
+                  (is (= [] @dropped))
+                  (is (= "persisted" (state refreshable)))
+                  (is (= "deletable" (state deletable)))
+                  (testing "and the refresher that calls the driver refuses"
+                    (let [refresher @#'task.persist-refresh/dispatching-refresher]
+                      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                            #"Model persistence is not supported on a workspace instance\."
+                                            (task.persist-refresh/refresh! refresher db {} model)))
+                      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                            #"Model persistence is not supported on a workspace instance\."
+                                            (task.persist-refresh/unpersist! refresher db deletable)))
+                      (is (= [] @refreshed))
+                      (is (= [] @dropped))))))
+              (testing "outside workspace mode the same jobs call the driver"
+                (run-jobs!)
+                (is (= [(:table_name refreshable) (:table_name refreshable)] @refreshed))
+                (is (= [(u/the-id deletable)] @dropped))
+                (is (= "persisted" (state refreshable)))
+                (is (nil? (state deletable)))))))))))
+
 (deftest save-task-history-test
   (mt/with-model-cleanup [:model/TaskHistory]
     (testing "if tasks succeed, task_details should be saved and status is sucecss"

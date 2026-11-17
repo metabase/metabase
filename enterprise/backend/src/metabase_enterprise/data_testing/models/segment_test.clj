@@ -76,17 +76,17 @@
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
 (defn- segment-allows?
-  "Whether `segment-check` holds for the Segment `segment-id`, and the current user may run the segment's definition
-  and write the native SQL of a test against its Database."
-  [segment-check segment-id]
+  "Whether `segment-check` holds for the Segment `segment-id`, hydrated with `k`, and the current user may run the
+  segment's definition and write the native SQL of a test against its Database."
+  [segment-check k segment-id]
   (let [segment (data-testing.db/segment segment-id)]
-    (data-testing.models/query-subject-allows? segment-check segment (:definition segment))))
+    (data-testing.models/query-subject-allows? segment-check k segment (:definition segment))))
 
 (mu/defn- can-save-test? :- :boolean
   "Whether the current user may save or delete a test of the Segment `segment-id`: they may edit the segment and run
   its definition, and write the native SQL of a test against its Database."
   [segment-id :- ::lib.schema.id/segment]
-  (segment-allows? mi/can-write? segment-id))
+  (segment-allows? mi/can-write? :can_write segment-id))
 
 (mu/defn can-run? :- :boolean
   "Whether the current user may run the saved `segment-test`: they may read its segment and run the segment's
@@ -94,21 +94,17 @@
   [segment-test :- ::data-testing.schema/segment-test]
   ;; Input SQL can read any table of the Database, and the guards do not check what it reads, so reading the
   ;; segment is not enough.
-  (segment-allows? mi/can-read? (:segment_id segment-test)))
+  (segment-allows? mi/can-read? :can_read (:segment_id segment-test)))
 
-(defmethod mi/can-read? :model/SegmentTest
-  ([instance]
-   (boolean (some-> (data-testing.db/segment (:segment_id instance)) mi/can-read?)))
-  ([_model pk]
-   (when-let [segment-test (data-testing.db/segment-test pk)]
-     (mi/can-read? segment-test))))
+(methodical/defmethod t2/simple-hydrate [:model/SegmentTest :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (some-> (data-testing.db/segment (:segment_id instance))
+                                               (t2/hydrate :can_read)
+                                               mi/can-read?))))
 
-(defmethod mi/can-write? :model/SegmentTest
-  ([instance]
-   (can-save-test? (:segment_id instance)))
-  ([_model pk]
-   (when-let [segment-test (data-testing.db/segment-test pk)]
-     (mi/can-write? segment-test))))
+(methodical/defmethod t2/simple-hydrate [:model/SegmentTest :can_write]
+  [_model k instance]
+  (assoc instance k (boolean (can-save-test? (:segment_id instance)))))
 
 (defmethod mi/can-create? :model/SegmentTest
   [_model instance]
@@ -128,10 +124,15 @@
   [_model _id segment-test]
   (select-keys segment-test revision-columns))
 
-(defmethod revision/revision-readable? :model/SegmentTest
-  [_model object]
+(defmethod revision/revisions-readable? :model/SegmentTest
+  [_model objects]
   ;; An older revision can name a segment that has since been deleted; nobody may read a revision about it.
-  (boolean (some-> (data-testing.db/segment (:segment_id object)) mi/can-read?)))
+  (let [readable-ids (into #{}
+                           (comp (filter mi/can-read?) (map :id))
+                           (t2/hydrate (data-testing.db/segments-by-ids
+                                        (into [] (comp (keep :segment_id) (distinct)) objects))
+                                       :can_read))]
+    (mapv #(contains? readable-ids (:segment_id %)) objects)))
 
 (defmethod revision/revert-to-revision! :model/SegmentTest
   [_model id _user-id serialized-instance]

@@ -9,6 +9,7 @@ import {
   createMockRemoteSyncDirtyItem,
   createMockRemoteSyncSegmentData,
   createMockRemoteSyncSegmentTestData,
+  createMockRemoteSyncTableUserSettingsData,
   createMockSegment,
   createMockTable,
 } from "metabase-types/api/mocks";
@@ -46,7 +47,14 @@ describe("getItemUrl", () => {
   it("links table settings to their table in Data Studio", () => {
     expect(
       getItemUrl(
-        createMockRemoteSyncDirtyItem({ id: 5, model: "tableusersettings" }),
+        createMockRemoteSyncDirtyItem({
+          id: 9,
+          model: "tableusersettings",
+          data: createMockRemoteSyncTableUserSettingsData({
+            id: 9,
+            table_id: 5,
+          }),
+        }),
       ),
     ).toBe(Urls.dataStudioTable(5));
   });

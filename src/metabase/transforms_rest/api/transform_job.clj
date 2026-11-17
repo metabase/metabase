@@ -279,7 +279,7 @@
   (log/info "Getting the transforms of transform job" job-id)
   (api/check-404 (transforms-rest.db/job-pk job-id))
   (-> (transforms.core/job-transforms job-id)
-      (#(do (api/check-403 (every? mi/can-read? %)) %))
+      (#(do (api/check-403 (every? mi/can-read? (t2/hydrate % :can_read))) %))
       (t2/hydrate :creator)
       transforms.u/add-source-readable))
 

@@ -13,6 +13,7 @@
    [metabase.permissions.test-util :as perms.tu]
    [metabase.revisions.core :as revisions]
    [metabase.revisions.events]
+   [metabase.revisions.models.revision :as revision]
    [metabase.revisions.models.revision.diff :as revision.diff]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -210,7 +211,7 @@
               (let [creation (last (revisions/revisions :model/CardTest card-test-id))]
                 (testing "premise: rasta may edit the test as it is now"
                   (mt/with-current-user (mt/user->id :rasta)
-                    (is (true? (boolean (mi/can-write? :model/CardTest card-test-id))))))
+                    (is (true? (boolean (mi/can-write? (t2/hydrate (t2/select-one :model/CardTest :id card-test-id) :can_write)))))))
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :post 403 "revision/revert"
                                              {:entity      "card-test"
@@ -393,7 +394,7 @@
                 (testing "premise: the card has no query and rasta may edit the card"
                   (is (= {} (t2/select-one-fn :dataset_query :model/Card :id card-id)))
                   (mt/with-current-user (mt/user->id :rasta)
-                    (is (true? (boolean (mi/can-write? :model/Card card-id))))))
+                    (is (true? (boolean (mi/can-write? (t2/hydrate (t2/select-one :model/Card :id card-id) :can_write)))))))
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :post 403 "revision/revert" body)))
                 (is (= "Renamed" (t2/select-one-fn :name :model/CardTest :id card-test-id)))
@@ -422,7 +423,7 @@
                                     (apply mt/user-http-request :rasta method status args))))]
               (testing "premise: rasta may not read the test, and the missing id names no test"
                 (mt/with-current-user (mt/user->id :rasta)
-                  (is (false? (boolean (mi/can-read? :model/CardTest card-test-id)))))
+                  (is (false? (boolean (mi/can-read? (t2/hydrate (t2/select-one :model/CardTest :id card-test-id) :can_read))))))
                 (is (not (t2/exists? :model/CardTest :id missing-id))))
               (testing "control: with the feature, the read and write checks refuse rasta"
                 (mt/with-premium-features #{:transforms-testing}
@@ -500,7 +501,9 @@
                    ["CardTest"      :card_id      [card-1 "Revenue"]               [card-2 "Refunds"]]
                    ["SegmentTest"   :segment_id   [segment-1 "From Google"]        [segment-2 "From Twitter"]]]
                   :let [before  {subject-key from :name "t" :description nil :inputs [] :expectations []}
-                        strings #(mapv str (revision.diff/diff-strings* model before (merge before %)))]]
+                        strings #(let [after (merge before %)]
+                                   (mapv str (revision.diff/diff-strings* model before after
+                                                                          (revision/readable-names [before after]))))]]
             (testing model
               (testing "a change of the inputs"
                 (is (= ["changed the inputs"] (strings {:inputs one-input}))))
@@ -515,9 +518,10 @@
 
 (deftest a-moved-test-names-only-the-subjects-the-reader-may-read-test
   (let [moved (fn [from to]
-                (mapv str (revision.diff/diff-strings* "SegmentTest"
-                                                       {:segment_id from :name "t"}
-                                                       {:segment_id to :name "t"})))]
+                (let [before {:segment_id from :name "t"}
+                      after  {:segment_id to :name "t"}]
+                  (mapv str (revision.diff/diff-strings* "SegmentTest" before after
+                                                         (revision/readable-names [before after])))))]
     (testing "a reader sees the id of a segment they may not read, and the name of one they may"
       (perms.tu/with-no-data-perms-for-all-users!
         (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
@@ -527,8 +531,8 @@
                            :model/Segment {visible :id} {:name "From Google" :table_id (mt/id :people)}]
               (mt/with-current-user (mt/user->id :rasta)
                 (testing "premise: rasta may read only the segment on the people table"
-                  (is (false? (boolean (mi/can-read? :model/Segment hidden))))
-                  (is (true? (boolean (mi/can-read? :model/Segment visible)))))
+                  (is (false? (boolean (mi/can-read? (t2/hydrate (t2/select-one :model/Segment :id hidden) :can_read)))))
+                  (is (true? (boolean (mi/can-read? (t2/hydrate (t2/select-one :model/Segment :id visible) :can_read))))))
                 (is (= [(str "moved this Segment test from #" hidden " to From Google")]
                        (moved hidden visible))))
               (testing "control: an admin sees both names"

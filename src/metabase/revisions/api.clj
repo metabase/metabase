@@ -15,6 +15,7 @@
    [metabase.revisions.models.revision :as revision]
    [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]
+   [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
 (def ^:private entity->model
@@ -109,9 +110,11 @@
 
 (defn- check-new-revision-card-references
   [model id revision]
-  (doseq [card-id (set/difference (revision-card-references revision)
-                                  (stored-card-references model id))]
-    (api/read-check :model/Card card-id))
+  (let [card-ids (vec (set/difference (revision-card-references revision)
+                                      (stored-card-references model id)))
+        id->card (into {} (map (juxt :id identity)) (t2/hydrate (revisions.db/cards-by-ids card-ids) :can_read))]
+    (doseq [card-id card-ids]
+      (api/read-check (get id->card card-id))))
   (query-perms/check-parameter-field-permissions (revision-parameter-field-ids model revision)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -140,7 +143,7 @@
       (query-perms/check-run-permissions-for-query (dissoc (get-in revision [:object :dataset_query]) :query-permissions/perms)
                                                    {:allow-sensitive-fields? true}))
     (when (contains? #{:model/Transform :model/TransformTest :model/CardTest :model/SegmentTest} model)
-      (api/check-403 (mi/can-write? (merge instance (:object revision)))))
+      (api/check-403 (mi/can-write? (t2/hydrate (merge instance (:object revision)) :can_write))))
     ;; for Segments and Measures `table_id` is re-derived from `definition` on update, so when the restored definition
     ;; specifies a source table, check write perms against that table rather than the revision's stored `table_id`
     (when (contains? #{:model/Segment :model/Measure} model)
@@ -148,14 +151,18 @@
                              not-empty
                              lib-be/normalize-query
                              lib/primary-source-table-id)]
-        (api/check-403 (mi/can-write? (cond-> (merge instance (:object revision))
-                                        table-id (assoc :table_id table-id))))))
+        (api/check-403 (mi/can-write? (t2/hydrate (cond-> (merge instance (:object revision))
+                                                    table-id (assoc :table_id table-id)) :can_write)))))
     (when (contains? #{:model/Dashboard :model/Card} model)
       (collection/check-allowed-to-change-collection instance (:object revision))
       (when (api/column-will-change? (:dashboard_id instance) (get (:object revision) :dashboard_id ::api/not-provided))
-        (doseq [dashboard-id (keep identity [(:dashboard_id instance)
-                                             (:dashboard_id (:object revision))])]
-          (api/write-check :model/Dashboard dashboard-id)))
+        (let [dashboard-ids (vec (keep identity [(:dashboard_id instance)
+                                                 (:dashboard_id (:object revision))]))
+              id->dashboard (into {}
+                                  (map (juxt :id identity))
+                                  (t2/hydrate (revisions.db/dashboards-by-ids dashboard-ids) :can_write))]
+          (doseq [dashboard-id dashboard-ids]
+            (api/write-check (get id->dashboard dashboard-id)))))
       (check-new-revision-card-references model id revision))
     ;; ok, we're g2g
     (revision/revert!

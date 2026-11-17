@@ -98,7 +98,7 @@ export function createMockRemoteSyncDocumentData(
 export function createMockRemoteSyncFieldUserSettingsData(
   opts?: Partial<RemoteSyncFieldUserSettingsData>,
 ): RemoteSyncFieldUserSettingsData {
-  return { field_id: 1, display_name: null, ...opts };
+  return { id: 1, field_id: 1, display_name: null, ...opts };
 }
 
 export function createMockRemoteSyncGlossaryData(
@@ -140,7 +140,13 @@ export function createMockRemoteSyncSegmentTestData(
 export function createMockRemoteSyncTableUserSettingsData(
   opts?: Partial<RemoteSyncTableUserSettingsData>,
 ): RemoteSyncTableUserSettingsData {
-  return { table_id: 1, display_name: null, collection_id: null, ...opts };
+  return {
+    id: 1,
+    table_id: 1,
+    display_name: null,
+    collection_id: null,
+    ...opts,
+  };
 }
 
 export function createMockRemoteSyncTimelineData(

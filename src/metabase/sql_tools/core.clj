@@ -186,8 +186,9 @@
       (interface/simple-query?-impl parser sql-string))))
 
 (mu/defn add-into-clause :- :string
-  "Rewrite a SELECT into a SQL Server `SELECT ... INTO` statement, wrapping each base table in a
-  self-UNION subquery so the created table doesn't inherit a source column's IDENTITY property.
+  "Rewrite a SELECT, or a set operation (UNION, INTERSECT, EXCEPT) whose first query is a SELECT, into a SQL Server
+  `SELECT ... INTO` statement, wrapping each base table in a self-UNION subquery so the created table doesn't inherit a
+  source column's IDENTITY property. A set operation takes the INTO in its first SELECT.
 
   Transforms: 'SELECT * FROM products'
   Into:       'SELECT * INTO \"TABLE\" FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products'

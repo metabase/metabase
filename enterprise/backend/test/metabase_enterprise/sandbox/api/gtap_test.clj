@@ -5,7 +5,7 @@
    [metabase.api.response :as api.response]
    [metabase.driver.util :as driver.util]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
@@ -312,7 +312,7 @@
             (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)
             (is (t2/exists? :model/Sandbox :table_id tid :group_id gid))
             (is (= :query-builder
-                   (data-perms/table-permission-for-groups #{gid} :perms/create-queries (mt/id) tid)))))))))
+                   (get (data-perms/table-permissions-for-groups #{gid} :perms/create-queries {tid (mt/id)}) tid)))))))))
 
 (deftest bulk-upsert-sandboxes-error-test
   (testing "PUT /api/permissions/graph"
