@@ -16,20 +16,13 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private test-type->model
-  {:transform :model/TransformTest
-   :card      :model/CardTest})
-
 (mu/defn- readable-test-ids :- [:set ms/PositiveInt]
   "The ids of the `test-type` tests the current user can read."
   [test-type :- ::data-testing.schema/test-type]
   (into #{}
         (comp (filter mi/can-read?)
               (map :id))
-        (t2/hydrate (case test-type
-                      :transform (data-testing.db/transform-tests {})
-                      :card      (data-testing.db/card-tests {}))
-                    :can_read)))
+        (t2/hydrate (data-testing.db/saved-tests test-type) :can_read)))
 
 (mu/defn- timestamp-range :- [:maybe [:tuple [:maybe ms/TemporalInstant] [:maybe ms/TemporalInstant]]]
   "The `[start end]` instants of the date filter `date-string`, or nil when it is nil."
@@ -55,7 +48,7 @@
        [:start-time {:optional true} [:maybe ms/NonBlankString]]
        [:end-time   {:optional true} [:maybe ms/NonBlankString]]]]
   (let [test-ids                          (if test-id
-                                            (do (api/read-check (test-type->model test-type) test-id)
+                                            (do (api/read-check (data-testing.db/test-type->model test-type) test-id)
                                                 #{test-id})
                                             (do (api/check-data-studio-access)
                                                 (readable-test-ids test-type)))

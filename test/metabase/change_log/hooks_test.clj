@@ -419,6 +419,7 @@
     :model/Secret
     :model/SecurityAdvisory
     :model/Segment
+    :model/SegmentTest
     :model/SemanticSearchTokenTracking
     :model/Session
     :model/Setting

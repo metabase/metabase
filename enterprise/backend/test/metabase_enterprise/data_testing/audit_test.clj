@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.data-testing.models]
    [metabase-enterprise.data-testing.models.data-test-run]
+   [metabase-enterprise.data-testing.models.segment-test]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase.audit-app.events.audit-log]
    [metabase.test :as mt]
@@ -173,3 +174,53 @@
           (t2/delete! :model/CardTest :id card-test-id)
           (is (=? {:user_id (mt/user->id :rasta)}
                   (mt/latest-audit-log-entry :card-test-delete card-test-id))))))))
+
+(deftest segment-test-audit-events-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Segment     {segment-id :id}      {:table_id (mt/id :people)}
+                   :model/SegmentTest {segment-test-id :id} {:segment_id  segment-id
+                                                             :creator_id  (mt/user->id :crowberto)
+                                                             :name        "Original"
+                                                             :description "Checks output"}]
+      (let [entry (fn [topic test-name]
+                    {:model_id segment-test-id
+                     :user_id  (mt/user->id :crowberto)
+                     :details  {:segment_id segment-id :name test-name :description "Checks output"}
+                     :topic    topic
+                     :model    "SegmentTest"})]
+        (testing "create"
+          (is (= (entry :segment-test-create "Original")
+                 (mt/latest-audit-log-entry :segment-test-create segment-test-id))))
+        (testing "update"
+          (t2/update! :model/SegmentTest :id segment-test-id {:name "Renamed"})
+          (is (= (entry :segment-test-update "Renamed")
+                 (mt/latest-audit-log-entry :segment-test-update segment-test-id))))
+        (testing "delete"
+          (t2/delete! :model/SegmentTest :id segment-test-id)
+          (is (= (entry :segment-test-delete "Renamed")
+                 (mt/latest-audit-log-entry :segment-test-delete segment-test-id))))))))
+
+(deftest segment-test-run-audit-events-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Segment     {segment-id :id}      {:table_id (mt/id :people)}
+                   :model/SegmentTest {segment-test-id :id} {:segment_id segment-id}]
+      (let [initiated-by (mt/user->id :rasta)
+            {run-id :id} (data-testing.run-tracking/start-run! :segment segment-test-id initiated-by)
+            entry        (fn [topic status]
+                           {:model_id run-id
+                            :user_id  initiated-by
+                            :details  {:test_type "segment" :test_id segment-test-id :status status}
+                            :topic    topic
+                            :model    "DataTestRun"})]
+        (try
+          (testing "start, under the segment-test topic"
+            (is (= (entry :segment-test-run-start "started")
+                   (mt/latest-audit-log-entry :segment-test-run-start run-id))))
+          (testing "cluster reaping records the timeout under the segment-test topic"
+            (t2/update! :model/DataTestRun :id run-id {:last_heartbeat (minutes-ago 10)})
+            (is (= [run-id] (mapv :id (data-testing.run-tracking/reap-orphaned-runs! 5))))
+            (is (= (entry :segment-test-run-timeout "timeout")
+                   (mt/latest-audit-log-entry :segment-test-run-timeout run-id))))
+          (finally
+            (data-testing.run-tracking/finish-run! run-id :timeout)
+            (t2/delete! :model/DataTestRun :id run-id)))))))

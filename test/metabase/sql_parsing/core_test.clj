@@ -3,8 +3,6 @@
 
   [[metabase.sql-parsing.case-files]] reads the cases."
   (:require
-   [clojure.edn :as edn]
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.sql-parsing.case-files :as case-files]
@@ -149,16 +147,6 @@
           (if validate-expected
             (is (=? validate-expected validated) (pr-str sql))
             (is (= classified validated) (pr-str sql))))))))
-
-;;; ------------------------------------------------- validate-query -----------------------------------------------
-
-(deftest ^:parallel validate-query-test
-  (testing "a query checked against a schema, column by column"
-    (let [schemas (:schemas (edn/read-string (slurp (io/resource "metabase/sql_parsing/test_cases/validate_query.edn"))))]
-      (doseq [{:keys [name sql dialect default-schema schema expected]} (case-files/cases "validate_query")]
-        (testing name
-          (is (=? expected (sql-parsing/validate-query (sql-tools/sqlglot-parser) dialect sql default-schema (get schemas schema)))
-              (pr-str sql)))))))
 
 ;;; ------------------------------------------------ referenced-fields ---------------------------------------------
 

@@ -233,6 +233,12 @@
   [driver mp col-spec]
   (common/resolve-field driver mp col-spec))
 
+(defn field-candidates
+  "Every candidate column for `col-spec`, a `:single-column` field reference; [[resolve-field]] picks the first.
+  See [[metabase.sql-tools.common/field-candidates]] for details."
+  [driver mp col-spec]
+  (common/field-candidates driver mp col-spec))
+
 (def ^:private TranspilationResult
   [:map
    [:status [:enum :success :error :skipped]]
