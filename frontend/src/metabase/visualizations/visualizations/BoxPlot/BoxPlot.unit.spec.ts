@@ -144,7 +144,6 @@ describe("BoxPlot", () => {
         setting?.getProps?.(series, GOAL_SETTINGS, jest.fn(), {}, jest.fn()),
       ).toEqual({
         data: series[0].data,
-        datasetQuery: series[0].card.dataset_query,
         display: "boxplot",
         formatOptions: expect.any(Object),
         showSelfColumns: false,

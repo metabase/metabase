@@ -3,8 +3,8 @@ import fetchMock from "fetch-mock";
 import { useState } from "react";
 
 import {
-  setupCardDataset,
   setupCardEndpoints,
+  setupGoalValuesEndpoint,
   setupMeasureEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
@@ -24,8 +24,6 @@ import { isEmbedding } from "metabase/embedding/config";
 import { METAKEY } from "metabase/utils/browser";
 import { type Deferred, defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
-import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   Card,
   ColumnSettings,
@@ -73,11 +71,6 @@ const DATA = createMockDatasetData({
   rows: [[10, 42]],
 });
 
-const DATASET_QUERY = Lib.createTestJsQuery(
-  SAMPLE_PROVIDER,
-  DEFAULT_TEST_QUERY,
-);
-
 const GOAL_SOURCES = [
   createMockSearchResult({ id: 4, model: "measure", name: "Goal measure" }),
   createMockSearchResult({ id: 12, model: "metric", name: "Goal metric" }),
@@ -106,7 +99,6 @@ function setup({
     <GoalValueInput
       aria-label="Min"
       data={data}
-      datasetQuery={DATASET_QUERY}
       display="progress"
       excludedSelfColumn={excludedSelfColumn}
       formatOptions={formatOptions}
@@ -246,7 +238,7 @@ describe("GoalValueInput", () => {
         ],
       }),
     );
-    setupCardDatasetWithReferencedEntities({});
+    setupGoalValuesEndpoint({});
     setup({ value: { type: "card", id: 9, column: "total" } });
 
     await userEvent.click(
@@ -287,7 +279,7 @@ describe("GoalValueInput", () => {
         ],
       }),
     );
-    setupCardDatasetWithReferencedEntities({});
+    setupGoalValuesEndpoint({});
     setup();
 
     await openMenuWithKeyboard();
@@ -370,7 +362,7 @@ describe("GoalValueInput", () => {
         ],
       }),
     );
-    setupCardDatasetWithReferencedEntities({});
+    setupGoalValuesEndpoint({});
     setup();
 
     await openMenu();
@@ -409,7 +401,7 @@ describe("GoalValueInput", () => {
         ],
       }),
     );
-    setupCardDatasetWithReferencedEntities(
+    setupGoalValuesEndpoint(
       createMockFailedReferencedEntitiesResults({
         error: "Referenced card 9 uses variables, so it can't run on its own.",
         error_type: "has-parameters",
@@ -420,7 +412,9 @@ describe("GoalValueInput", () => {
     await openMenu();
     await pickEntity("Orders");
     await waitFor(() =>
-      expect(fetchMock.callHistory.called("path:/api/dataset")).toBe(true),
+      expect(
+        fetchMock.callHistory.called("path:/api/dynamic-goal/values"),
+      ).toBe(true),
     );
 
     const average = await screen.findByRole("menuitem", { name: /Average/ });
@@ -566,9 +560,7 @@ describe("GoalValueInput", () => {
 
     it("shows an error for a column the source no longer has, even though its other columns resolve", async () => {
       setupMultiColumnSourceCard();
-      setupCardDatasetWithReferencedEntities(
-        createMultiColumnSourceResults([[300, 600]]),
-      );
+      setupGoalValuesEndpoint(createMultiColumnSourceResults([[300, 600]]));
       setup({
         data: createMockDatasetData({
           ...DATA,
@@ -588,7 +580,7 @@ describe("GoalValueInput", () => {
 
   it("resolves a reference the dataset can't answer by re-running the query with it attached", async () => {
     setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
-    setupCardDatasetWithReferencedEntities(
+    setupGoalValuesEndpoint(
       createMockReferencedEntitiesResults({ column: "total", value: 250 }),
     );
     setup({
@@ -615,7 +607,7 @@ describe("GoalValueInput", () => {
       ],
     });
     setupCardEndpoints(card);
-    setupCardDatasetWithReferencedEntities({
+    setupGoalValuesEndpoint({
       card: {
         9: {
           status: "completed",
@@ -650,7 +642,7 @@ describe("GoalValueInput", () => {
 
   it("shows an error instead of spinning forever when the resolving query fails", async () => {
     setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
-    fetchMock.post("path:/api/dataset", 500);
+    setupGoalValuesEndpoint(500);
     setup({
       referencedEntities: [{ type: "card", id: 9 }],
       value: { type: "card", id: 9, column: "total" },
@@ -784,7 +776,7 @@ describe("GoalValueInput", () => {
 
   it("shows an empty pill and an error for a referenced column that no longer exists", async () => {
     setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
-    setupCardDatasetWithReferencedEntities(
+    setupGoalValuesEndpoint(
       createMockReferencedEntitiesResults({ column: "total", value: 250 }),
     );
     setup({
@@ -864,9 +856,7 @@ describe("GoalValueInput", () => {
         ],
       }),
     );
-    setupCardDatasetWithReferencedEntities(
-      createMultiColumnSourceResults([[300, 600]]),
-    );
+    setupGoalValuesEndpoint(createMultiColumnSourceResults([[300, 600]]));
     setup({
       data: createMockDatasetData({
         ...DATA,
@@ -1134,7 +1124,7 @@ describe("GoalValueInput", () => {
       ],
     });
     setupCardEndpoints(otherCard);
-    setupCardDatasetWithReferencedEntities({
+    setupGoalValuesEndpoint({
       card: {
         15: {
           status: "completed",
@@ -1399,7 +1389,7 @@ describe("GoalValueInput", () => {
       ],
     });
     setupCardEndpoints(card);
-    setupCardDatasetWithReferencedEntities({
+    setupGoalValuesEndpoint({
       card: {
         9: {
           status: "completed",
@@ -1478,7 +1468,7 @@ describe("GoalValueInput", () => {
           ],
         }),
       );
-      setupCardDatasetWithReferencedEntities({
+      setupGoalValuesEndpoint({
         card: {
           9: {
             status: "completed",
@@ -1993,7 +1983,7 @@ describe("GoalValueInput", () => {
           ],
         }),
       );
-      setupCardDatasetWithReferencedEntities({});
+      setupGoalValuesEndpoint({});
       const { onChange } = setup();
 
       await openMenu();
@@ -2035,7 +2025,7 @@ describe("GoalValueInput", () => {
           ],
         }),
       );
-      setupCardDatasetWithReferencedEntities({});
+      setupGoalValuesEndpoint({});
       const { onChange } = setup();
 
       await openMenu();
@@ -2092,7 +2082,7 @@ describe("GoalValueInput", () => {
           ],
         }),
       );
-      setupCardDatasetWithReferencedEntities({});
+      setupGoalValuesEndpoint({});
       const { onChange } = setup({
         value: { type: "card", id: 9, column: "total" },
       });
@@ -2275,16 +2265,6 @@ describe("GoalValueInput", () => {
   });
 });
 
-function setupCardDatasetWithReferencedEntities(
-  referencedEntities: ReferencedEntitiesResults,
-) {
-  setupCardDataset({
-    dataset: {
-      data: createMockDatasetData({ referenced_entities: referencedEntities }),
-    },
-  });
-}
-
 function setupMultiColumnSourceCard() {
   setupCardEndpoints(
     createMockCard({
@@ -2436,7 +2416,6 @@ function ControlledGoalValueInput() {
     <GoalValueInput
       aria-label="Min"
       data={DATA}
-      datasetQuery={DATASET_QUERY}
       display="progress"
       id="goal-value"
       referencedEntities={[]}

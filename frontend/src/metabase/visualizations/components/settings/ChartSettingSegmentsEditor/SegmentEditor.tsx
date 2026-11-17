@@ -7,7 +7,6 @@ import { getSegmentColor } from "metabase/viz-core";
 import type {
   ColumnSettings,
   DatasetData,
-  DatasetQuery,
   GoalSegment,
   ReferencedEntity,
   VisualizationDisplay,
@@ -22,7 +21,6 @@ type Props = {
   canRemove: boolean;
   colors: string[];
   data: DatasetData | undefined;
-  datasetQuery: DatasetQuery | undefined;
   display: VisualizationDisplay;
   formatOptions: ColumnSettings | undefined;
   index: number;
@@ -36,7 +34,6 @@ export function SegmentEditor({
   canRemove,
   colors,
   data,
-  datasetQuery,
   display,
   formatOptions,
   index,
@@ -97,7 +94,6 @@ export function SegmentEditor({
         <SegmentBoundInput
           aria-label={t`Range ${index + 1} minimum`}
           data={data}
-          datasetQuery={datasetQuery}
           display={display}
           formatOptions={formatOptions}
           id={`segment-min-${index}`}
@@ -114,7 +110,6 @@ export function SegmentEditor({
         <SegmentBoundInput
           aria-label={t`Range ${index + 1} maximum`}
           data={data}
-          datasetQuery={datasetQuery}
           display={display}
           formatOptions={formatOptions}
           id={`segment-max-${index}`}

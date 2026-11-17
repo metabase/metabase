@@ -4,7 +4,6 @@ import type {
   ColumnSettings,
   DatasetColumn,
   DatasetData,
-  DatasetQuery,
   GoalSegment,
   GoalValue,
   IconName,
@@ -59,7 +58,6 @@ export type ChartSettingSegmentedControlProps = {
 
 export type ChartSettingGoalValueProps = {
   data: DatasetData;
-  datasetQuery?: DatasetQuery;
   display: VisualizationDisplay;
   excludedSelfColumn?: string;
   formatOptions?: ColumnSettings;
@@ -83,7 +81,6 @@ export type ChartSettingMaxCategoriesProps = ChartSettingWidgetProps<number> & {
 export type ChartSettingSegmentsEditorProps = {
   canRemoveAll?: boolean;
   data?: DatasetData;
-  datasetQuery?: DatasetQuery;
   display: VisualizationDisplay;
   formatOptions?: ColumnSettings;
   value: GoalSegment[];

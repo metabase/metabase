@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { queryEChartsGoalLine } from "__support__/dynamic-goals";
-import { setupCardDataset } from "__support__/server-mocks";
+import { setupGoalValuesEndpoint } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -11,7 +11,6 @@ import type { DatasetData, RawSeries } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
-  createMockDataset,
   createMockDatasetData,
   createMockFailedReferencedEntitiesResults,
   createMockReferencedEntitiesResults,
@@ -80,19 +79,15 @@ describe("box plot dynamic goal", () => {
     // the goal is far above every data point, so it stretches the y-axis up to it
     expect(screen.getByText("250")).toBeInTheDocument();
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    expect(
+      fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+    ).toHaveLength(0);
   });
 
   it("shows a loader until an unanswered reference is fetched, then draws the goal", async () => {
-    fetchMock.post(
-      "path:/api/dataset",
-      createMockDataset({
-        data: createMockDatasetData({ referenced_entities: ANSWERED }),
-      }),
-      {
-        delay: 100, // long enough to see the loader
-      },
-    );
+    fetchMock.post("path:/api/dynamic-goal/values", ANSWERED, {
+      delay: 100, // long enough to see the loader
+    });
 
     await setup();
 
@@ -103,14 +98,14 @@ describe("box plot dynamic goal", () => {
     expect(screen.getByText("250")).toBeInTheDocument();
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
 
-    const [call] = fetchMock.callHistory.calls("path:/api/dataset");
+    const [call] = fetchMock.callHistory.calls("path:/api/dynamic-goal/values");
     expect(await call.request?.json()).toMatchObject({
-      referenced_entities: [{ type: "card", id: 9 }],
+      sources: [{ type: "card", id: 9 }],
     });
   });
 
   it("draws no goal line when fetching the reference fails", async () => {
-    setupCardDataset({ status: 500 });
+    setupGoalValuesEndpoint(500);
 
     await setup();
 
@@ -125,7 +120,9 @@ describe("box plot dynamic goal", () => {
     expect(screen.getByText("Gadget")).toBeInTheDocument();
     expect(queryEChartsGoalLine()).not.toBeInTheDocument();
     expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    expect(
+      fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+    ).toHaveLength(0);
   });
 
   it("reports a goal warning when the reference cannot be resolved", async () => {

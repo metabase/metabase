@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 
+import { setupGoalValuesEndpoint } from "__support__/server-mocks";
 import { act, screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -46,24 +47,16 @@ const COUNT_DATA = {
   rows: [[50]],
 };
 
-const CARD_DATASET = createMockDataset({
-  data: {
-    ...COUNT_DATA,
-    referenced_entities: createMockReferencedEntitiesResults({
-      id: 9,
-      value: 250,
-    }),
-  },
+const CARD_DATASET = createMockDataset({ data: COUNT_DATA });
+
+const CARD_9_GOAL_VALUES = createMockReferencedEntitiesResults({
+  id: 9,
+  value: 250,
 });
 
-const NEW_GOAL_SOURCE_DATASET = createMockDataset({
-  data: {
-    ...COUNT_DATA,
-    referenced_entities: createMockReferencedEntitiesResults({
-      id: 10,
-      value: 300,
-    }),
-  },
+const CARD_10_GOAL_VALUES = createMockReferencedEntitiesResults({
+  id: 10,
+  value: 300,
 });
 
 type SetupOpts = {
@@ -71,13 +64,14 @@ type SetupOpts = {
 };
 
 async function setup({ database }: SetupOpts) {
+  setupGoalValuesEndpoint(async (call) => {
+    const body = await call.request?.clone().text();
+    return body?.includes(`"id":10`) ? CARD_10_GOAL_VALUES : CARD_9_GOAL_VALUES;
+  });
   const { store } = await setupQueryBuilder({
     card: CARD,
     database,
     dataset: CARD_DATASET,
-  });
-  fetchMock.modifyRoute("dataset-post", {
-    response: NEW_GOAL_SOURCE_DATASET,
   });
   await screen.findByText("Goal 250");
 
@@ -95,35 +89,39 @@ async function setup({ database }: SetupOpts) {
 }
 
 describe("QueryBuilder > dynamic goals", () => {
+  it("fetches the goal values of a saved question next to its card query", async () => {
+    await setup({ database: createSampleDatabase() });
+
+    expect(getCardQueryCalls()).toHaveLength(1);
+    expect(await getGoalValuesBodies()).toEqual([
+      { sources: [{ type: "card", id: 9, columns: ["goal"] }] },
+    ]);
+  });
+
   describe("saved question when a new goal source is picked", () => {
-    it("runs the question as an ad-hoc query instead of the card query, next to the goal source query", async () => {
+    it("runs the question as an ad-hoc query, next to the goal values of the new source", async () => {
       const { pickNewGoalSource } = await setup({
         database: createSampleDatabase({ auto_run_queries: true }),
       });
-      expect(getCardQueryCalls()).toHaveLength(1);
       expect(getDatasetCalls()).toHaveLength(0);
 
       await pickNewGoalSource();
 
       expect(await screen.findByText("Goal 300")).toBeInTheDocument();
-      await waitFor(() => expect(getDatasetCalls()).toHaveLength(2));
-      expect(await getDatasetBodies()).toEqual(
+      await waitFor(() => expect(getDatasetCalls()).toHaveLength(1));
+      expect(await getDatasetBodies()).toEqual([
+        // the re-run of the question, which turned ad-hoc with the settings change
+        expect.not.objectContaining({ referenced_entities: expect.anything() }),
+      ]);
+      expect(await getGoalValuesBodies()).toEqual(
         expect.arrayContaining([
-          // the re-run of the question, which turned ad-hoc with the settings change
-          expect.objectContaining({
-            parameters: [],
-            referenced_entities: [{ type: "card", id: 10, columns: ["goal"] }],
-          }),
-          // the goal source query, for the result that is still on screen
-          expect.objectContaining({
-            referenced_entities: [{ type: "card", id: 10 }],
-          }),
+          { sources: [{ type: "card", id: 10, columns: ["goal"] }] },
         ]),
       );
       expect(getCardQueryCalls()).toHaveLength(1);
     });
 
-    it("answers the new goal source with only the goal source query when the database does not auto-run queries", async () => {
+    it("answers the new goal source with only its goal values when the database does not auto-run queries", async () => {
       const { pickNewGoalSource } = await setup({
         database: createSampleDatabase({ auto_run_queries: false }),
       });
@@ -131,10 +129,10 @@ describe("QueryBuilder > dynamic goals", () => {
       await pickNewGoalSource();
 
       expect(await screen.findByText("Goal 300")).toBeInTheDocument();
-      expect(await getDatasetBodies()).toEqual([
-        expect.objectContaining({
-          referenced_entities: [{ type: "card", id: 10 }],
-        }),
+      expect(getDatasetCalls()).toHaveLength(0);
+      expect(await getGoalValuesBodies()).toEqual([
+        { sources: [{ type: "card", id: 9, columns: ["goal"] }] },
+        { sources: [{ type: "card", id: 10 }] },
       ]);
       expect(getCardQueryCalls()).toHaveLength(1);
     });
@@ -150,7 +148,17 @@ function getDatasetCalls() {
 }
 
 function getDatasetBodies(): Promise<unknown[]> {
+  return getRequestBodies("path:/api/dataset");
+}
+
+function getGoalValuesBodies(): Promise<unknown[]> {
+  return getRequestBodies("path:/api/dynamic-goal/values");
+}
+
+function getRequestBodies(path: string): Promise<unknown[]> {
   return Promise.all(
-    getDatasetCalls().map((call) => checkNotNull(call.request).json()),
+    fetchMock.callHistory
+      .calls(path)
+      .map((call) => checkNotNull(call.request).json()),
   );
 }

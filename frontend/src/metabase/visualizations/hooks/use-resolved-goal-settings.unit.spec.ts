@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { DYNAMIC_GOAL_DISPLAYS } from "__support__/dynamic-goals";
-import { setupCardDataset } from "__support__/server-mocks";
+import { setupGoalValuesEndpoint } from "__support__/server-mocks";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { Card, DatasetData } from "metabase-types/api";
@@ -67,7 +67,9 @@ describe("useResolvedGoalSettings", () => {
       settings: REFERENCED_SETTINGS,
       errors: [],
     });
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    expect(
+      fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+    ).toHaveLength(0);
   });
 
   describe.each(DYNAMIC_GOAL_DISPLAYS)("for a %s chart", (display) => {
@@ -83,7 +85,9 @@ describe("useResolvedGoalSettings", () => {
         errors: [],
       });
       expect(result.current.settings).toBe(settings);
-      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+      expect(
+        fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+      ).toHaveLength(0);
     });
 
     it("substitutes an answer the dataset already has", () => {
@@ -104,17 +108,10 @@ describe("useResolvedGoalSettings", () => {
       });
     });
 
-    it("resolves the reference by re-running the query", async () => {
-      setupCardDataset({
-        dataset: {
-          data: createMockDatasetData({
-            referenced_entities: createMockReferencedEntitiesResults({
-              column: "goal",
-              value: 250,
-            }),
-          }),
-        },
-      });
+    it("resolves the reference by fetching its goal value", async () => {
+      setupGoalValuesEndpoint(
+        createMockReferencedEntitiesResults({ column: "goal", value: 250 }),
+      );
 
       const { result } = setup(card, REFERENCED_SETTINGS);
       expect(result.current).toEqual({
@@ -133,7 +130,7 @@ describe("useResolvedGoalSettings", () => {
     });
 
     it("hides the goal line and reports the error when the reference cannot be resolved", async () => {
-      setupCardDataset({ status: 500 });
+      setupGoalValuesEndpoint(500);
 
       const { result } = setup(card, REFERENCED_SETTINGS);
 
@@ -169,7 +166,9 @@ describe("useResolvedGoalSettings", () => {
           },
         ],
       });
-      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+      expect(
+        fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+      ).toHaveLength(0);
     });
   });
 });

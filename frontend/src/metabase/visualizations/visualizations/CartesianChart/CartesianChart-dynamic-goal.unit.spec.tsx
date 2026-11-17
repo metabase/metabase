@@ -6,7 +6,7 @@ import {
   queryAllEChartsGoalLines,
   queryEChartsGoalLine,
 } from "__support__/dynamic-goals";
-import { setupCardDataset } from "__support__/server-mocks";
+import { setupGoalValuesEndpoint } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { api } from "metabase/api/client";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -24,7 +24,6 @@ import type {
 import {
   createMockCard,
   createMockColumn,
-  createMockDataset,
   createMockDatasetData,
   createMockFailedReferencedEntitiesResults,
   createMockReferencedEntitiesResults,
@@ -126,19 +125,15 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
       // the goal is far above every data point, so it stretches the y-axis up to it
       expect(screen.getByText("250")).toBeInTheDocument();
       expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+      expect(
+        fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+      ).toHaveLength(0);
     });
 
     it("shows a loader until an unanswered reference is fetched, then draws the goal", async () => {
-      fetchMock.post(
-        "path:/api/dataset",
-        createMockDataset({
-          data: createMockDatasetData({ referenced_entities: ANSWERED }),
-        }),
-        {
-          delay: 100, // long enough to see the loader
-        },
-      );
+      fetchMock.post("path:/api/dynamic-goal/values", ANSWERED, {
+        delay: 100, // long enough to see the loader
+      });
 
       await setup({ display });
 
@@ -149,14 +144,16 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
       expect(screen.getByText("250")).toBeInTheDocument();
       expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
 
-      const [call] = fetchMock.callHistory.calls("path:/api/dataset");
+      const [call] = fetchMock.callHistory.calls(
+        "path:/api/dynamic-goal/values",
+      );
       expect(await call.request?.json()).toMatchObject({
-        referenced_entities: [{ type: "card", id: 9 }],
+        sources: [{ type: "card", id: 9 }],
       });
     });
 
     it("draws no goal line when fetching the reference fails", async () => {
-      setupCardDataset({ status: 500 });
+      setupGoalValuesEndpoint(500);
 
       await setup({ display });
 
@@ -171,7 +168,9 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
       expect(screen.getByText("Jan")).toBeInTheDocument();
       expect(queryEChartsGoalLine()).not.toBeInTheDocument();
       expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
-      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+      expect(
+        fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+      ).toHaveLength(0);
     });
 
     it("draws no goal line when the goal is withheld", async () => {
@@ -185,7 +184,9 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
       expect(screen.getByText("Jan")).toBeInTheDocument();
       expect(queryEChartsGoalLine()).not.toBeInTheDocument();
       expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
-      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+      expect(
+        fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+      ).toHaveLength(0);
     });
 
     it("reports a goal warning when the reference cannot be resolved", async () => {
@@ -329,7 +330,7 @@ describe("line chart without a session whose goal column no longer exists", () =
   });
 
   it("renders the chart without the goal and keeps the 401 from the app's login redirect", async () => {
-    setupCardDataset({ status: 401 });
+    setupGoalValuesEndpoint(401);
     const onUpdateGoalWarning = jest.fn<void, [boolean]>();
 
     await setup({
@@ -342,7 +343,9 @@ describe("line chart without a session whose goal column no longer exists", () =
     });
 
     expect(await screen.findByText("Jan")).toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(1);
+    expect(
+      fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+    ).toHaveLength(1);
     expect(queryEChartsGoalLine()).not.toBeInTheDocument();
     expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
     expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(true);

@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
-  setupCardDataset,
   setupCardEndpoints,
+  setupGoalValuesEndpoint,
   setupMeasureEndpoint,
 } from "__support__/server-mocks";
 import {
@@ -15,8 +15,6 @@ import {
 } from "__support__/ui";
 import type * as Analytics from "metabase/analytics";
 import { checkNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
-import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   Card,
   ColumnSettings,
@@ -53,10 +51,6 @@ const DEFAULT_VALUE = [
 
 const CARD_ID = 9;
 const MEASURE_ID = 4;
-const DATASET_QUERY = Lib.createTestJsQuery(
-  SAMPLE_PROVIDER,
-  DEFAULT_TEST_QUERY,
-);
 
 type SetupOpts = {
   canRemoveAll?: boolean;
@@ -84,7 +78,6 @@ function setup({
     <ChartSettingSegmentsEditor
       canRemoveAll={canRemoveAll}
       data={data}
-      datasetQuery={DATASET_QUERY}
       display="gauge"
       formatOptions={formatOptions}
       value={value}
@@ -241,18 +234,14 @@ describe("ChartSettingSegmentsEditor", () => {
         });
 
         it("resolves a reference the dataset can't answer by re-running the query with it attached", async () => {
-          setupCardDataset({
-            dataset: {
-              data: createMockDatasetData({
-                referenced_entities: createReferencedEntities(
-                  createMockReferencedEntityResult({
-                    column: "total",
-                    value: 999,
-                  }),
-                ),
+          setupGoalValuesEndpoint(
+            createReferencedEntities(
+              createMockReferencedEntityResult({
+                column: "total",
+                value: 999,
               }),
-            },
-          });
+            ),
+          );
           setup({
             value: [createMockSegment({ min: { type, id, column: "total" } })],
             data,
@@ -266,22 +255,18 @@ describe("ChartSettingSegmentsEditor", () => {
         });
 
         it("resolves a column the dataset predates from the fresh answer", async () => {
-          setupCardDataset({
-            dataset: {
-              data: createMockDatasetData({
-                referenced_entities: createReferencedEntities({
-                  status: "completed",
-                  data: {
-                    cols: [
-                      createMockColumn({ name: "total" }),
-                      createMockColumn({ name: "avg" }),
-                    ],
-                    rows: [[250, 12]],
-                  },
-                }),
-              }),
-            },
-          });
+          setupGoalValuesEndpoint(
+            createReferencedEntities({
+              status: "completed",
+              data: {
+                cols: [
+                  createMockColumn({ name: "total" }),
+                  createMockColumn({ name: "avg" }),
+                ],
+                rows: [[250, 12]],
+              },
+            }),
+          );
           setupReference(
             "avg",
             createMockReferencedEntityResult({ column: "total", value: 250 }),
@@ -297,18 +282,14 @@ describe("ChartSettingSegmentsEditor", () => {
         });
 
         it("reports a referenced column that no longer exists", async () => {
-          setupCardDataset({
-            dataset: {
-              data: createMockDatasetData({
-                referenced_entities: createReferencedEntities(
-                  createMockReferencedEntityResult({
-                    column: "total",
-                    value: 250,
-                  }),
-                ),
+          setupGoalValuesEndpoint(
+            createReferencedEntities(
+              createMockReferencedEntityResult({
+                column: "total",
+                value: 250,
               }),
-            },
-          });
+            ),
+          );
           setup({
             value: [createMockSegment({ min: { type, id, column: "gone" } })],
             data,
@@ -320,7 +301,7 @@ describe("ChartSettingSegmentsEditor", () => {
         });
 
         it("reports a failure instead of spinning forever when the resolving query fails", async () => {
-          fetchMock.post("path:/api/dataset", 500);
+          fetchMock.post("path:/api/dynamic-goal/values", 500);
           setup({
             value: [createMockSegment({ min: { type, id, column: "total" } })],
             data,
@@ -335,23 +316,17 @@ describe("ChartSettingSegmentsEditor", () => {
   });
 
   it("collapses sibling bound requests into one query for all unanswered references", async () => {
-    setupCardDataset({
-      dataset: {
-        data: createMockDatasetData({
-          referenced_entities: {
-            card: {
-              [CARD_ID]: createMockReferencedEntityResult({
-                column: "total",
-                value: 250,
-              }),
-            },
-            measure: {
-              [MEASURE_ID]: createMockReferencedEntityResult({
-                column: "revenue",
-                value: 999,
-              }),
-            },
-          },
+    setupGoalValuesEndpoint({
+      card: {
+        [CARD_ID]: createMockReferencedEntityResult({
+          column: "total",
+          value: 250,
+        }),
+      },
+      measure: {
+        [MEASURE_ID]: createMockReferencedEntityResult({
+          column: "revenue",
+          value: 999,
         }),
       },
     });
@@ -374,10 +349,10 @@ describe("ChartSettingSegmentsEditor", () => {
     expect(await within(pills[0]).findByText("250")).toBeInTheDocument();
     expect(await within(pills[1]).findByText("999")).toBeInTheDocument();
 
-    const calls = fetchMock.callHistory.calls("path:/api/dataset");
+    const calls = fetchMock.callHistory.calls("path:/api/dynamic-goal/values");
     expect(calls).toHaveLength(1);
     expect(await calls[0].request?.json()).toMatchObject({
-      referenced_entities: [
+      sources: [
         { type: "card", id: CARD_ID },
         { type: "measure", id: MEASURE_ID },
       ],

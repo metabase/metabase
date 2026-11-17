@@ -34,7 +34,6 @@ import type {
   CardId,
   ColumnSettings,
   DatasetData,
-  DatasetQuery,
   GoalForeignColumnRef,
   GoalForeignEntityRef,
   GoalValue,
@@ -71,7 +70,6 @@ type SoleColumn = { name: string; kind: ReferencedEntityKind };
 export type GoalValueInputProps = {
   "aria-label"?: string;
   data: DatasetData;
-  datasetQuery: DatasetQuery | undefined;
   display: VisualizationDisplay;
   excludedSelfColumn?: string;
   /**
@@ -92,7 +90,6 @@ export type GoalValueInputProps = {
 export const GoalValueInput = ({
   "aria-label": ariaLabel,
   data,
-  datasetQuery,
   display,
   excludedSelfColumn,
   formatOptions,
@@ -132,18 +129,12 @@ export const GoalValueInput = ({
   const sourceInfo = useReferencedEntity(foreignRef);
   const currentSource = useDynamicGoalSource(value);
   const sourceUrl = isEmbedding() ? undefined : sourceInfo.url;
-  const resolveEntityColumnValue = useEntityColumnValues(
-    datasetQuery,
-    data,
-    entity,
-    {
-      enabled: menuLevel === "entity" && entityInfo.columns.length > 0,
-    },
-  );
+  const resolveEntityColumnValue = useEntityColumnValues(data, entity, {
+    enabled: menuLevel === "entity" && entityInfo.columns.length > 0,
+  });
 
   const resolved = useAnsweredGoalValue({
     data,
-    datasetQuery,
     referencedEntities,
     value,
   });

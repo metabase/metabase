@@ -1,44 +1,35 @@
 import fetchMock from "fetch-mock";
 
-import { setupCardDataset } from "__support__/server-mocks";
+import { setupGoalValuesEndpoint } from "__support__/server-mocks";
 import { act, renderHookWithProviders, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
-import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { ReferencedEntity } from "metabase-types/api";
 
 import { useReferencedEntitiesQuery } from "./use-referenced-entities-query";
-
-const DATASET_QUERY = Lib.createTestJsQuery(
-  SAMPLE_PROVIDER,
-  DEFAULT_TEST_QUERY,
-);
 
 const MEASURE: ReferencedEntity = { type: "measure", id: 4 };
 const FIRST_CARD: ReferencedEntity = { type: "card", id: 9 };
 const SECOND_CARD: ReferencedEntity = { type: "card", id: 12 };
 
 function setup() {
-  setupCardDataset();
+  setupGoalValuesEndpoint();
 
   return renderHookWithProviders(
     ({ entities }: { entities: ReferencedEntity[] }) =>
-      useReferencedEntitiesQuery(DATASET_QUERY, entities),
+      useReferencedEntitiesQuery(entities),
     { initialProps: { entities: [SECOND_CARD, MEASURE, FIRST_CARD] } },
   );
 }
 
 describe("useReferencedEntitiesQuery", () => {
-  it("asks for the referenced entities in a stable order", async () => {
+  it("asks for the goal values of the referenced entities in a stable order", async () => {
     setup();
 
-    await waitFor(() => expect(getDatasetCalls()).toHaveLength(1));
+    await waitFor(() => expect(getGoalValuesCalls()).toHaveLength(1));
     const body: unknown = await checkNotNull(
-      getDatasetCalls()[0].request,
+      getGoalValuesCalls()[0].request,
     ).json();
-    expect(body).toMatchObject({
-      referenced_entities: [FIRST_CARD, SECOND_CARD, MEASURE],
-    });
+    expect(body).toEqual({ sources: [FIRST_CARD, SECOND_CARD, MEASURE] });
   });
 
   it("reuses the request for the same entities in another order", async () => {
@@ -50,21 +41,18 @@ describe("useReferencedEntitiesQuery", () => {
     await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 
     expect(result.current.isSuccess).toBe(true);
-    expect(getDatasetCalls()).toHaveLength(1);
+    expect(getGoalValuesCalls()).toHaveLength(1);
   });
 
   it("asks for nothing without referenced entities", () => {
-    setupCardDataset();
+    setupGoalValuesEndpoint();
 
-    renderHookWithProviders(
-      () => useReferencedEntitiesQuery(DATASET_QUERY, []),
-      {},
-    );
+    renderHookWithProviders(() => useReferencedEntitiesQuery([]), {});
 
-    expect(getDatasetCalls()).toHaveLength(0);
+    expect(getGoalValuesCalls()).toHaveLength(0);
   });
 });
 
-function getDatasetCalls() {
-  return fetchMock.callHistory.calls("path:/api/dataset");
+function getGoalValuesCalls() {
+  return fetchMock.callHistory.calls("path:/api/dynamic-goal/values");
 }

@@ -37,7 +37,7 @@ function ProgressComponent(props: VisualizationProps) {
     className,
     isMobile,
     isQueryBuilder,
-    series: [{ card, data }],
+    series: [{ data }],
     settings,
     onOpenChartSettings,
     onVisualizationClick,
@@ -46,9 +46,7 @@ function ProgressComponent(props: VisualizationProps) {
   const { rows, cols } = data;
 
   const goalSetting = settings["progress.goal"];
-  const goalData = useResolvedGoalData(card.dataset_query, data, [
-    goalSetting ?? null,
-  ]);
+  const goalData = useResolvedGoalData(data, [goalSetting ?? null]);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);

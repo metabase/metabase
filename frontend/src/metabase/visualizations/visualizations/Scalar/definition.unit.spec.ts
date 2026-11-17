@@ -12,9 +12,9 @@ const COLS = [createMockColumn({ name: "count", base_type: "type/Integer" })];
 
 describe("SCALAR_CHART_DEFINITION", () => {
   describe("scalar.segments widget", () => {
-    it("hands the segments editor the data and query its dynamic bounds resolve against", () => {
+    it("hands the segments editor the data its dynamic bounds resolve against", () => {
       const series = createSeries();
-      const [{ card, data }] = series;
+      const [{ data }] = series;
 
       const props = SCALAR_CHART_DEFINITION.settings?.[
         "scalar.segments"
@@ -23,7 +23,6 @@ describe("SCALAR_CHART_DEFINITION", () => {
       expect(props).toEqual({
         canRemoveAll: true,
         data,
-        datasetQuery: card.dataset_query,
         display: "scalar",
       });
     });

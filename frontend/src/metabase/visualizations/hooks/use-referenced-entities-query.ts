@@ -1,18 +1,9 @@
-import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
-import type { DatasetQuery, ReferencedEntity } from "metabase-types/api";
+import { skipToken, useGetGoalValuesQuery } from "metabase/api";
+import type { ReferencedEntity } from "metabase-types/api";
 
-export function useReferencedEntitiesQuery(
-  datasetQuery: DatasetQuery | undefined,
-  entities: ReferencedEntity[],
-) {
-  return useGetAdhocQueryQuery(
-    entities.length > 0 && datasetQuery != null
-      ? {
-          ...datasetQuery,
-          referenced_entities: sortEntities(entities),
-          ignore_error: true,
-        }
-      : skipToken,
+export function useReferencedEntitiesQuery(entities: ReferencedEntity[]) {
+  return useGetGoalValuesQuery(
+    entities.length > 0 ? { sources: sortEntities(entities) } : skipToken,
   );
 }
 

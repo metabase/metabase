@@ -1,27 +1,15 @@
 import fetchMock from "fetch-mock";
 
-import { setupCardDataset } from "__support__/server-mocks";
+import { setupGoalValuesEndpoint } from "__support__/server-mocks";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import * as Lib from "metabase-lib";
-import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type {
-  DatasetData,
-  DatasetQuery,
-  ReferencedEntity,
-} from "metabase-types/api";
+import type { DatasetData, ReferencedEntity } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
-  createMockReferencedEntitiesResults,
   createMockReferencedEntityResult,
 } from "metabase-types/api/mocks";
 
 import { useAnsweredGoalData } from "./use-answered-goal-data";
-
-const DATASET_QUERY = Lib.createTestJsQuery(
-  SAMPLE_PROVIDER,
-  DEFAULT_TEST_QUERY,
-);
 
 const DATA = createMockDatasetData({
   cols: [createMockColumn({ name: "count" })],
@@ -36,21 +24,13 @@ const CARD_9_ANSWER = {
 
 interface SetupOpts {
   data?: DatasetData;
-  datasetQuery?: DatasetQuery;
   entities?: ReferencedEntity[];
 }
 
-function setup(opts: SetupOpts = {}) {
-  const { datasetQuery, data, entities } = {
-    datasetQuery: DATASET_QUERY,
-    data: DATA,
-    entities: [],
-    ...opts,
-  };
-
+function setup({ data = DATA, entities = [] }: SetupOpts = {}) {
   return renderHookWithProviders(
     ({ entities }: { entities: ReferencedEntity[] }) => {
-      return useAnsweredGoalData(datasetQuery, data, entities);
+      return useAnsweredGoalData(data, entities);
     },
     { initialProps: { entities } },
   );
@@ -61,17 +41,11 @@ describe("useAnsweredGoalData", () => {
     const { result } = setup();
 
     expect(result.current).toEqual({ status: "resolved", data: DATA });
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    expect(getGoalValuesCalls()).toHaveLength(0);
   });
 
-  it("re-runs the query with the unanswered references attached and merges the answers", async () => {
-    setupCardDataset({
-      dataset: {
-        data: createMockDatasetData({
-          referenced_entities: { card: CARD_9_ANSWER },
-        }),
-      },
-    });
+  it("fetches the goal values of the unanswered references and merges the answers", async () => {
+    setupGoalValuesEndpoint({ card: CARD_9_ANSWER });
 
     const { result } = setup({ entities: [CARD_9] });
     expect(result.current).toEqual({ status: "resolving" });
@@ -86,10 +60,10 @@ describe("useAnsweredGoalData", () => {
       }),
     );
 
-    const call = fetchMock.callHistory.lastCall("path:/api/dataset");
-    expect(await call?.request?.json()).toMatchObject({
-      referenced_entities: [CARD_9],
-    });
+    const call = fetchMock.callHistory.lastCall(
+      "path:/api/dynamic-goal/values",
+    );
+    expect(await call?.request?.json()).toEqual({ sources: [CARD_9] });
   });
 
   it("keeps answers the dataset already has when merging in fresh ones", async () => {
@@ -100,13 +74,7 @@ describe("useAnsweredGoalData", () => {
       ...DATA,
       referenced_entities: { measure: measureAnswer },
     });
-    setupCardDataset({
-      dataset: {
-        data: createMockDatasetData({
-          referenced_entities: { card: CARD_9_ANSWER },
-        }),
-      },
-    });
+    setupGoalValuesEndpoint({ card: CARD_9_ANSWER });
 
     const { result } = setup({ data, entities: [CARD_9] });
 
@@ -121,63 +89,21 @@ describe("useAnsweredGoalData", () => {
     );
   });
 
-  it("fails without fetching when there is no query to re-run", () => {
-    const { result } = setup({ datasetQuery: undefined, entities: [CARD_9] });
-
-    expect(result.current).toEqual({ status: "failed" });
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
-  });
-
-  it("fails when the resolving query fails", async () => {
-    setupCardDataset({ status: 500 });
-
-    const { result } = setup({ entities: [CARD_9] });
-
-    await waitFor(() => expect(result.current).toEqual({ status: "failed" }));
-  });
-
-  it("fails when the query comes back with an error, even if it carries the answers", async () => {
-    setupCardDataset({
-      dataset: {
-        data: createMockDatasetData({
-          referenced_entities: { card: CARD_9_ANSWER },
-        }),
-        error: "boom",
-      },
-      status: 202,
-    });
+  it("fails when the goal values request fails", async () => {
+    setupGoalValuesEndpoint(500);
 
     const { result } = setup({ entities: [CARD_9] });
     expect(result.current).toEqual({ status: "resolving" });
 
     await waitFor(() => expect(result.current).toEqual({ status: "failed" }));
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(1);
-  });
-
-  it("fails when the response carries no referenced entities", async () => {
-    setupCardDataset({ dataset: { data: createMockDatasetData({}) } });
-
-    const { result } = setup({ entities: [CARD_9] });
-
-    await waitFor(() => expect(result.current).toEqual({ status: "failed" }));
   });
 
   it("keeps resolving while a retargeted reference's answer is in flight", async () => {
-    fetchMock.post("path:/api/dataset", async (call) => {
-      const body = await fetchMock.callHistory
-        .lastCall(call.url)
-        ?.request?.json();
-      const [entity] = body.referenced_entities;
-
-      return {
-        data: createMockDatasetData({
-          referenced_entities: createMockReferencedEntitiesResults({
-            id: entity.id,
-            column: "goal",
-            value: entity.id,
-          }),
-        }),
-      };
+    setupGoalValuesEndpoint({
+      card: {
+        ...CARD_9_ANSWER,
+        10: createMockReferencedEntityResult({ column: "goal", value: 10 }),
+      },
     });
 
     const { result, rerender } = setup({ entities: [CARD_9] });
@@ -198,3 +124,7 @@ describe("useAnsweredGoalData", () => {
     );
   });
 });
+
+function getGoalValuesCalls() {
+  return fetchMock.callHistory.calls("path:/api/dynamic-goal/values");
+}

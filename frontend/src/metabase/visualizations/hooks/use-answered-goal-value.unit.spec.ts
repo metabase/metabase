@@ -1,10 +1,12 @@
 import fetchMock from "fetch-mock";
 
-import { setupCardDataset } from "__support__/server-mocks";
+import { setupGoalValuesEndpoint } from "__support__/server-mocks";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import * as Lib from "metabase-lib";
-import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { DatasetData, GoalValue } from "metabase-types/api";
+import type {
+  DatasetData,
+  GoalValue,
+  ReferencedEntitiesResults,
+} from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -12,11 +14,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { useAnsweredGoalValue } from "./use-answered-goal-value";
-
-const DATASET_QUERY = Lib.createTestJsQuery(
-  SAMPLE_PROVIDER,
-  DEFAULT_TEST_QUERY,
-);
 
 const DATA = createMockDatasetData({
   cols: [createMockColumn({ name: "count" })],
@@ -29,7 +26,7 @@ const RESOLVING = { value: null, isUnanswered: true };
 
 function setup(data: DatasetData, value: GoalValue | null | undefined) {
   return renderHookWithProviders(
-    () => useAnsweredGoalValue({ data, datasetQuery: DATASET_QUERY, value }),
+    () => useAnsweredGoalValue({ data, value }),
     {},
   );
 }
@@ -39,7 +36,9 @@ describe("useAnsweredGoalValue", () => {
     const { result } = setup(DATA, 100);
 
     expect(result.current).toEqual({ value: 100 });
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    expect(
+      fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+    ).toHaveLength(0);
   });
 
   it("resolves an unset goal to null", () => {
@@ -61,33 +60,32 @@ describe("useAnsweredGoalValue", () => {
   it("resolves a foreign reference the dataset already answers", () => {
     const data = {
       ...DATA,
-      referenced_entities: createReferencedEntitiesAnswer(["goal"], [250])
-        .referenced_entities,
+      referenced_entities: createReferencedEntitiesAnswer(["goal"], [250]),
     };
 
     expect(setup(data, CARD_REF).result.current).toEqual({ value: 250 });
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    expect(
+      fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+    ).toHaveLength(0);
   });
 
-  it("answers a foreign reference by re-running the query with it attached", async () => {
-    setupCardDataset({
-      dataset: { data: createReferencedEntitiesAnswer(["goal"], [250]) },
-    });
+  it("answers a foreign reference by fetching its goal value", async () => {
+    setupGoalValuesEndpoint(createReferencedEntitiesAnswer(["goal"], [250]));
 
     const { result } = setup(DATA, CARD_REF);
     expect(result.current).toEqual(RESOLVING);
 
     await waitFor(() => expect(result.current).toEqual({ value: 250 }));
-    const call = fetchMock.callHistory.lastCall("path:/api/dataset");
-    expect(await call?.request?.json()).toMatchObject({
-      referenced_entities: [{ type: "card", id: 9 }],
+    const call = fetchMock.callHistory.lastCall(
+      "path:/api/dynamic-goal/values",
+    );
+    expect(await call?.request?.json()).toEqual({
+      sources: [{ type: "card", id: 9 }],
     });
   });
 
   it("fails when the fresh answer lacks the referenced column", async () => {
-    setupCardDataset({
-      dataset: { data: createReferencedEntitiesAnswer(["other"], [1]) },
-    });
+    setupGoalValuesEndpoint(createReferencedEntitiesAnswer(["other"], [1]));
 
     const { result } = setup(DATA, CARD_REF);
 
@@ -100,9 +98,7 @@ describe("useAnsweredGoalValue", () => {
   });
 
   it("fails when the referenced value is not a number", async () => {
-    setupCardDataset({
-      dataset: { data: createReferencedEntitiesAnswer(["goal"], ["nope"]) },
-    });
+    setupGoalValuesEndpoint(createReferencedEntitiesAnswer(["goal"], ["nope"]));
 
     const { result } = setup(DATA, CARD_REF);
 
@@ -126,11 +122,13 @@ describe("useAnsweredGoalValue", () => {
       value: null,
       error: { ...CARD_REF, reason: "query-failed", message: "boom" },
     });
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    expect(
+      fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+    ).toHaveLength(0);
   });
 
-  it("fails when the resolving query fails", async () => {
-    setupCardDataset({ status: 500 });
+  it("fails when the goal values request fails", async () => {
+    setupGoalValuesEndpoint(500);
 
     const { result } = setup(DATA, CARD_REF);
 
@@ -146,12 +144,11 @@ describe("useAnsweredGoalValue", () => {
     );
   });
 
-  it("keeps the dataset's column-not-found error when re-running for the column fails", async () => {
-    setupCardDataset({ status: 500 });
+  it("keeps the dataset's column-not-found error when fetching the column fails", async () => {
+    setupGoalValuesEndpoint(500);
     const data = {
       ...DATA,
-      referenced_entities: createReferencedEntitiesAnswer(["other"], [1])
-        .referenced_entities,
+      referenced_entities: createReferencedEntitiesAnswer(["other"], [1]),
     };
 
     const { result } = setup(data, CARD_REF);
@@ -163,25 +160,25 @@ describe("useAnsweredGoalValue", () => {
         error: { ...CARD_REF, reason: "column-not-found" },
       }),
     );
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(1);
+    expect(
+      fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+    ).toHaveLength(1);
   });
 });
 
 function createReferencedEntitiesAnswer(
   cols: string[],
   row: (number | string)[],
-) {
-  return createMockDatasetData({
-    referenced_entities: {
-      card: {
-        9: {
-          status: "completed",
-          data: {
-            cols: cols.map((name) => createMockColumn({ name })),
-            rows: [row],
-          },
+): ReferencedEntitiesResults {
+  return {
+    card: {
+      9: {
+        status: "completed",
+        data: {
+          cols: cols.map((name) => createMockColumn({ name })),
+          rows: [row],
         },
       },
     },
-  });
+  };
 }

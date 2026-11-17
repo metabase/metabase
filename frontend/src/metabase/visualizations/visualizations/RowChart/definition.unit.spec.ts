@@ -43,7 +43,6 @@ describe("ROW_CHART_DEFINITION", () => {
         setting?.getProps?.(series, SETTINGS, jest.fn(), {}, jest.fn()),
       ).toEqual({
         data: series[0].data,
-        datasetQuery: series[0].card.dataset_query,
         display: "row",
         formatOptions: expect.any(Object),
         showSelfColumns: false,

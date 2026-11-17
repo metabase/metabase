@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupCardDataset } from "__support__/server-mocks";
+import { setupGoalValuesEndpoint } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -177,16 +177,12 @@ describe("gauge dynamic goal", () => {
   });
 
   it("shows a loader until an unanswered bound is fetched, then draws the ranges", async () => {
-    setupCardDataset({
-      dataset: {
-        data: createMockDatasetData({
-          referenced_entities: createMockReferencedEntitiesResults({
-            column: "goal",
-            value: 75,
-          }),
-        }),
-      },
-    });
+    setupGoalValuesEndpoint(
+      createMockReferencedEntitiesResults({
+        column: "goal",
+        value: 75,
+      }),
+    );
 
     setup({ referencedEntities: {}, segments: SEGMENTS });
 
@@ -196,9 +192,9 @@ describe("gauge dynamic goal", () => {
     expect(await screen.findByTestId("gauge-arc-2")).toBeInTheDocument();
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
 
-    const [call] = fetchMock.callHistory.calls("path:/api/dataset");
+    const [call] = fetchMock.callHistory.calls("path:/api/dynamic-goal/values");
     expect(await call.request?.json()).toMatchObject({
-      referenced_entities: [{ type: "card", id: 9 }],
+      sources: [{ type: "card", id: 9 }],
     });
   });
 
@@ -282,6 +278,8 @@ describe("gauge dynamic goal", () => {
     expect(await screen.findByTestId("gauge-arc-0")).toBeInTheDocument();
     expect(screen.queryByTestId("gauge-arc-1")).not.toBeInTheDocument();
     expect(screen.queryByText("100")).not.toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    expect(
+      fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+    ).toHaveLength(0);
   });
 });

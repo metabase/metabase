@@ -9,7 +9,6 @@ import {
 } from "metabase/viz-core";
 import type {
   DatasetData,
-  DatasetQuery,
   GoalForeignColumnRef,
   GoalValue,
   ReferencedEntity,
@@ -27,24 +26,21 @@ const RESOLVING: GoalValueResult = {
 };
 
 /**
- * Like `resolveGoalValue`, but a foreign reference the query can't answer is
- * answered by re-running the query with the referenced entities attached.
+ * Like `resolveGoalValue`, but a foreign reference the dataset can't answer is
+ * answered by fetching its goal value.
  */
 export function useAnsweredGoalValue({
   data,
-  datasetQuery,
   referencedEntities,
   value,
 }: {
   data: DatasetData;
-  datasetQuery: DatasetQuery | undefined;
   referencedEntities?: ReferencedEntity[];
   value: GoalValue | null | undefined;
 }): GoalValueResult {
   const unansweredRef = getUnansweredRef(data, value);
 
   const answered = useAnsweredGoalData(
-    datasetQuery,
     data,
     unansweredRef !== null
       ? (referencedEntities ?? getUnansweredGoalEntities(data, [value]))

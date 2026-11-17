@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { ComponentProps } from "react";
 
-import { setupCardDataset } from "__support__/server-mocks";
+import { setupGoalValuesEndpoint } from "__support__/server-mocks";
 import {
   act,
   fireEvent,
@@ -474,11 +474,13 @@ describe("Scalar conditional colors", () => {
   });
 
   it("shows a loader until an unanswered reference is fetched, then colors the value", async () => {
-    setupCardDataset({
-      dataset: {
-        data: createMockDatasetData(createReferencedEntitiesAnswer(10000)),
-      },
-    });
+    setupGoalValuesEndpoint(
+      createMockReferencedEntitiesResults({
+        id: GOAL_REF.id,
+        column: GOAL_REF.column,
+        value: 10000,
+      }),
+    );
 
     setup(createScalarSeries(), [
       { min: GOAL_REF, max: null, color: "green", label: "above goal" },
@@ -650,7 +652,7 @@ describe("Scalar with multiple series", () => {
   }
 
   it("draws the bar chart without fetching an unanswered range bound", async () => {
-    setupCardDataset();
+    setupGoalValuesEndpoint();
 
     await setup({
       segments: [
@@ -660,7 +662,9 @@ describe("Scalar with multiple series", () => {
 
     expect(screen.getAllByText("Orders").length).toBeGreaterThan(0);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    expect(
+      fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+    ).toHaveLength(0);
   });
 });
 

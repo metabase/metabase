@@ -35,7 +35,6 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
     useRawSeries: true, // see getRawSeries
     getProps: ([{ card, data }], settings) => ({
       data,
-      datasetQuery: card.dataset_query,
       display: card.display,
       formatOptions: getGoalFormatOptions(data.cols, settings),
       showSelfColumns: false,

@@ -2,7 +2,7 @@ import {
   type GoalValueResult,
   getUnansweredGoalEntities,
 } from "metabase/viz-core";
-import type { DatasetData, DatasetQuery, GoalValue } from "metabase-types/api";
+import type { DatasetData, GoalValue } from "metabase-types/api";
 
 import { useAnsweredGoalData } from "./use-answered-goal-data";
 import { getAnsweredGoalValue } from "./use-answered-goal-value";
@@ -20,12 +20,10 @@ export type ResolvedGoalData =
  * every goal value against the answered data.
  */
 export function useResolvedGoalData(
-  datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   goalValues: (GoalValue | null)[],
 ): ResolvedGoalData {
   const answered = useAnsweredGoalData(
-    datasetQuery,
     data,
     getUnansweredGoalEntities(data, goalValues),
   );

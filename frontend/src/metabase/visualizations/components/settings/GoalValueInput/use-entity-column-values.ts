@@ -1,29 +1,21 @@
 import { useReferencedEntitiesQuery } from "metabase/visualizations/hooks/use-referenced-entities-query";
 import { resolveGoalValue, toReferencedEntity } from "metabase/viz-core";
-import type {
-  DatasetData,
-  DatasetQuery,
-  GoalForeignEntityRef,
-} from "metabase-types/api";
+import type { DatasetData, GoalForeignEntityRef } from "metabase-types/api";
 
 type ResolveColumnValue = (column: string) => number | null;
 
 export function useEntityColumnValues(
-  datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   entity: GoalForeignEntityRef | null,
   { enabled }: { enabled: boolean },
 ): ResolveColumnValue {
-  const { currentData: freshDataset } = useReferencedEntitiesQuery(
-    datasetQuery,
+  const { currentData: goalValues } = useReferencedEntitiesQuery(
     enabled && entity != null ? [toReferencedEntity(entity)] : [],
   );
 
-  const freshData = freshDataset?.data;
   const sourceData =
-    entity != null &&
-    freshData?.referenced_entities?.[entity.type]?.[entity.id]?.data != null
-      ? freshData
+    entity != null && goalValues?.[entity.type]?.[entity.id]?.data != null
+      ? { ...data, referenced_entities: goalValues }
       : data;
 
   return (column) => {
