@@ -159,3 +159,26 @@
                  (catch ExceptionInfo e e))]
       (is (= {:error-type ::errors/not-a-single-write :reason "session-function" :detail "pg_sleep"}
              (select-keys (ex-data e) [:error-type :reason :detail]))))))
+
+(defn- write-refusal
+  "The `:error-type`, `:reason` and `:detail` of the refusal [[validator/ensure-single-write]] gives the Postgres `sql`,
+  or the SQL it returns when it is not refused."
+  [sql]
+  (try
+    (validator/ensure-single-write :postgres sql)
+    (catch ExceptionInfo e
+      (select-keys (ex-data e) [:error-type :reason :detail]))))
+
+(deftest write-calling-a-known-writing-function-is-refused-test
+  (testing "control: a plain UPDATE comes back as the SQL to run"
+    (is (= "UPDATE t SET name = 'x' WHERE id = 1"
+           (write-refusal "UPDATE t SET name = 'x' WHERE id = 1"))))
+  (testing "a write that sets a sequence with `setval` is refused, naming the function"
+    (is (= {:error-type ::errors/not-a-single-write :reason "write-function" :detail "setval"}
+           (write-refusal "UPDATE t SET name = (SELECT setval('s', 1))::text"))))
+  (testing "a write that advances a sequence with `nextval` is refused, naming the function"
+    (is (= {:error-type ::errors/not-a-single-write :reason "write-function" :detail "nextval"}
+           (write-refusal "INSERT INTO t (id) VALUES (nextval('s'))"))))
+  (testing "a write that deletes a large object is refused, naming the function"
+    (is (= {:error-type ::errors/not-a-single-write :reason "write-function" :detail "lo_unlink"}
+           (write-refusal "DELETE FROM t WHERE lo_unlink(id) = 1")))))

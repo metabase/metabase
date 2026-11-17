@@ -255,7 +255,8 @@
   "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that will
   **execute** the `:sql` the verdict carries: `\"read\"` = SELECT, `\"write\"` = INSERT, UPDATE, or
   DELETE, `\"read-only\"` = a read statement that also holds nothing that writes or locks anywhere in its
-  tree (see [[read-only-select?]]).
+  tree (see [[read-only-select?]]), `\"confined-write\"` = a write statement that also calls no function known to
+  write outside the tables it names (`nextval`, `setval`, Postgres large objects).
 
   The `:sql` is reconstructed from the parsed AST, and only ever from `sql` itself — SQL that cannot be
   parsed as it stands (`driver` has no known dialect, or a literal list is large enough to risk a GraalPy

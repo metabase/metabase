@@ -2132,6 +2132,20 @@ def _writes_or_locks(node: exp.Expression) -> bool:
 # names the built-in ones known to matter, and no list of names can be complete. Grants on the database credential
 # are what keep such a function from writing. The read-only flag on the QP's connection does not on every driver:
 # the Postgres driver applies it only to a transaction, and the QP runs a read under autocommit.
+def _write_function(stmt: exp.Expression):
+    """The name of the first function in `stmt` that is one of `_WRITE_FUNCTIONS`, or advances a sequence in another
+    spelling (`NEXT VALUE FOR s`, `s.nextval`), or None."""
+    for node in stmt.walk():
+        if isinstance(node, exp.NextValueFor):
+            return "next value for"
+        if isinstance(node, exp.Column) and node.table and node.name.lower() == "nextval":
+            return "nextval"
+        name = _function_name(node)
+        if name in _WRITE_FUNCTIONS:
+            return name
+    return None
+
+
 def _read_only(stmt: exp.Expression) -> bool:
     return not any(_writes_or_locks(node) for node in stmt.walk())
 
@@ -2240,8 +2254,10 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
 
     Every mode applies the checks the statement types share.
     `stmt_type` "read-only" is stricter than "read": the SELECT must also hold nothing that writes or locks anywhere in
-    its tree, and statements holding only a comment after the last semicolon are not counted. When the statement is
-    refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
+    its tree, and statements holding only a comment after the last semicolon are not counted. "confined-write" is
+    stricter than "write": the statement must also call none of `_WRITE_FUNCTIONS`, which write outside the table the
+    statement names (a sequence, a large object). When the statement is refused for what it holds, `reason` says why,
+    with `reason_detail` for the reasons that have one.
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
@@ -2255,6 +2271,10 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
             problem = _not_read_only_reason(stmts, sql, dialect)
         elif len(stmts) == 1:
             problem = _statement_reason(stmts[0], sql, dialect)
+            if problem is None and stmt_type == "confined-write":
+                function = _write_function(stmts[0])
+                if function is not None:
+                    problem = ("write-function", function)
         else:
             problem = None
         if problem is not None:

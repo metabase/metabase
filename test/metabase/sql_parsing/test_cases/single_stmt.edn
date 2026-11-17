@@ -35,6 +35,42 @@
    :stmt-type  "write"
    :expected   {:verdict :allowed    :single-stmt? true}}
 
+  {:name       "a write that advances a sequence is still a write"
+   :dialect    "postgres"
+   :sql        "INSERT INTO orders (id) VALUES (nextval('orders_id_seq'))"
+   :stmt-type  "write"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a confined write is a write"
+   :dialect    "postgres"
+   :sql        "UPDATE orders SET total = 0 WHERE id = 1"
+   :stmt-type  "confined-write"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a confined write advances no sequence"
+   :dialect    "postgres"
+   :sql        "INSERT INTO orders (id) VALUES (nextval('orders_id_seq'))"
+   :stmt-type  "confined-write"
+   :expected   {:verdict :disallowed :single-stmt? true :reason "write-function" :detail "nextval"}}
+
+  {:name       "nor one spelled as a pseudo-column"
+   :dialect    "snowflake"
+   :sql        "INSERT INTO orders (id) SELECT orders_seq.nextval"
+   :stmt-type  "confined-write"
+   :expected   {:verdict :disallowed :single-stmt? true :reason "write-function" :detail "nextval"}}
+
+  {:name       "nor one spelled the SQL standard's way"
+   :dialect    "tsql"
+   :sql        "INSERT INTO orders (id) VALUES (NEXT VALUE FOR orders_seq)"
+   :stmt-type  "confined-write"
+   :expected   {:verdict :disallowed :single-stmt? true :reason "write-function" :detail "next value for"}}
+
+  {:name       "a SELECT is not a confined write"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM orders"
+   :stmt-type  "confined-write"
+   :expected   {:verdict :disallowed :single-stmt? true}}
+
   {:name       "a CTE ahead of a select is still one read"
    :dialect    "postgres"
    :sql        "WITH c AS (SELECT id FROM people) SELECT * FROM c"
