@@ -86,9 +86,9 @@
   [:fn #(satisfies? expectations.protocol/Expectation %)])
 
 (mr/def ::context
-  "What an expectation is given to build its queries and read their answers: the driver, the output temp table and
-  the columns it has (nil when the subject modifies tables), the input-table replacements, the token its SQL may write
-  for the output, and the expectation's own temp tables and their columns once they exist."
+  "What an expectation is given to build its queries and read their answers: the driver; the output temp table and
+  the columns it has, or a nil table and no columns when the subject modifies tables; the input-table replacements;
+  the token its SQL may write for the output; and the expectation's own temp tables and their columns once they exist."
   [:map {:closed true}
    [:driver             :keyword]
    [:output-table       [:maybe :string]]
