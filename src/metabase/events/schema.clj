@@ -128,6 +128,27 @@
                 [:email                       ms/Email]
                 [:first_name {:optional true} [:maybe :string]]]]]]])
 
+(mr/def :event/permissions-preview
+  [:map {:closed true}
+   ;; the admin who previewed, and the user whose view they previewed
+   [:user-id  pos-int?]
+   [:model    [:= :model/User]]
+   [:model-id pos-int?]
+   [:details  [:map {:closed true}
+               [:card-id        {:optional true} pos-int?]
+               ;; "start" and "end" of a preview, linked by `:preview-id`; "query" for each query run in it
+               [:action         {:optional true} [:enum "start" "end" "query"]]
+               [:preview-id     {:optional true} :string]
+               [:uri            {:optional true} :string]
+               ;; who was previewed (a group or tenant through its hidden preview user), and the attribute values the rules read
+               [:principal-type {:optional true} [:enum "user" "group" "tenant"]]
+               [:principal-id   {:optional true} pos-int?]
+               [:attributes     {:optional true} [:map-of :string :string]]
+               ;; a user preview's values in place of their own ("" for no value)
+               [:overrides      {:optional true} [:map-of :string :string]]
+               ;; the admin's unsaved permission edits the preview read as if saved, as "See changes" lists them
+               [:unsaved-edits  {:optional true} [:sequential :map]]]]])
+
 ;; action events
 
 (mr/def ::action

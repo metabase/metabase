@@ -38,6 +38,7 @@ function getOnBeforeRequestHandlers(): OnBeforeRequestHandler[] {
     PLUGIN_API.onBeforeRequestHandlers.reactSdkReactVersion,
     PLUGIN_API.onBeforeRequestHandlers.embedReferrer,
     PLUGIN_API.onBeforeRequestHandlers.setDataAppDevHeader,
+    PLUGIN_API.onBeforeRequestHandlers.setPreviewAsHeader,
   ];
 }
 

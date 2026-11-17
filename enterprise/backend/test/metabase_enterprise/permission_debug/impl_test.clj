@@ -390,3 +390,68 @@
             (is (= {:download-limited-tables {"test-data (h2).PUBLIC.CHECKINS" #{"test other group"}}}
                    (:data result)))
             (is (= {} (:suggestions result)))))))))
+
+(deftest debug-permissions-dashboard-read-test
+  (mt/with-temp [:model/Collection collection {}
+                 :model/Dashboard dashboard {:collection_id (:id collection)}]
+    (let [check #(permission-debug.impl/debug-permissions
+                  {:user-id (mt/user->id :rasta) :model-id (:id dashboard) :action-type :dashboard/read})]
+      (testing "a dashboard opens when its collection does"
+        (is (= {:decision "allow" :model-type "dashboard" :data {}}
+               (select-keys (check) [:decision :model-type :data]))))
+      (testing "and not when the user's groups can't open the collection"
+        (mt/with-non-admin-groups-no-collection-perms collection
+          (is (= "denied" (:decision (check)))))))))
+
+(deftest debug-permissions-dashboard-query-test
+  (mt/with-temp [:model/Collection collection {}
+                 :model/Dashboard dashboard {:collection_id (:id collection)}
+                 :model/Card checkins-card {:collection_id (:id collection)
+                                            :dataset_query (mt/mbql-query checkins)}
+                 :model/Card venues-card {:collection_id (:id collection)
+                                          :dataset_query (mt/mbql-query venues)}
+                 :model/DashboardCard _ {:dashboard_id (:id dashboard) :card_id (:id checkins-card)}
+                 :model/DashboardCard _ {:dashboard_id (:id dashboard) :card_id (:id venues-card)}]
+    (let [check #(permission-debug.impl/debug-permissions
+                  {:user-id (mt/user->id :rasta) :model-id (:id dashboard) :action-type :dashboard/query})]
+      (testing "every card loads"
+        (is (= {:decision "allow" :data {:card-count 2 :blocked-card-count 0}}
+               (select-keys (check) [:decision :data]))))
+      (mt/with-restored-data-perms!
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :blocked)
+        (testing "one card of two reads a blocked table"
+          (is (= {:decision "limited"
+                  :data     {:card-count         2
+                             :blocked-card-count 1
+                             :blocked-tables     {"test-data (h2).PUBLIC.CHECKINS" #{"All Users"}}}}
+                 (select-keys (check) [:decision :data]))))
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :blocked)
+        (testing "every card reads a blocked table"
+          (let [result (check)]
+            (is (= "denied" (:decision result)))
+            (is (= 2 (get-in result [:data :blocked-card-count])))))))))
+
+(deftest debug-permissions-collection-read-test
+  (mt/with-temp [:model/Collection collection {}]
+    (let [check #(permission-debug.impl/debug-permissions
+                  {:user-id (mt/user->id :rasta) :model-id (:id collection) :action-type :collection/read})]
+      (testing "a collection the user's groups can open"
+        (is (= {:decision "allow" :model-type "collection"}
+               (select-keys (check) [:decision :model-type]))))
+      (testing "a collection none of them can"
+        (mt/with-non-admin-groups-no-collection-perms collection
+          (is (= "denied" (:decision (check)))))))))
+
+;; a guard: Explain access calls this as the admin, about the previewed user
+(deftest debug-permissions-read-checks-the-user-not-the-admin-caller-test
+  (testing "an admin asking about a user gets the user's answer, not the admin's own"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Dashboard dashboard {:collection_id (:id collection)}]
+      (mt/with-non-admin-groups-no-collection-perms collection
+        (mt/with-current-user (mt/user->id :crowberto)
+          (doseq [[action-type model-id] [[:dashboard/read (:id dashboard)]
+                                          [:collection/read (:id collection)]]]
+            (testing action-type
+              (is (= "denied"
+                     (:decision (permission-debug.impl/debug-permissions
+                                 {:user-id (mt/user->id :rasta) :model-id model-id :action-type action-type})))))))))))

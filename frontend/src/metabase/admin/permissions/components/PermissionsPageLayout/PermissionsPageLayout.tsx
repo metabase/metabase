@@ -18,6 +18,7 @@ import {
   showRevisionChangedModal,
   toggleHelpReference,
 } from "metabase/permissions";
+import { PLUGIN_PERMISSION_PREVIEW } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useUserSetting } from "metabase/settings";
@@ -38,7 +39,8 @@ export type PermissionsPageTab =
   | "collections"
   | "application"
   | "tenant-collections"
-  | "tenant-specific-collections";
+  | "tenant-specific-collections"
+  | "troubleshoot";
 type PermissionsPageLayoutProps = {
   children: ReactNode;
   tab: PermissionsPageTab;
@@ -138,6 +140,9 @@ export function PermissionsPageLayout({
                 : "lg"
             }
           >
+            {PLUGIN_PERMISSION_PREVIEW.PermissionsToolbarButtons && (
+              <PLUGIN_PERMISSION_PREVIEW.PermissionsToolbarButtons />
+            )}
             {helpContent && !isHelpReferenceOpen && (
               <ToolbarButton
                 text={t`Permissions help`}

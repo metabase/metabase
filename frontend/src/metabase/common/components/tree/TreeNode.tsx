@@ -12,6 +12,7 @@ import {
   type FlexProps,
   Icon,
   type IconProps,
+  Text,
 } from "metabase/ui";
 
 import S from "./TreeNode.module.css";
@@ -176,7 +177,14 @@ const BaseTreeNode = React.forwardRef<HTMLLIElement, TreeNodeProps>(
             <Icon {...iconProps} />
           </IconContainer>
         )}
-        <NameContainer data-testid="tree-item-name">{name}</NameContainer>
+        <NameContainer data-testid="tree-item-name">
+          {name}
+          {item.secondaryText && (
+            <Text fz="sm" fw="normal" c="inherit" opacity={0.7} truncate>
+              {item.secondaryText}
+            </Text>
+          )}
+        </NameContainer>
         {rightSection?.(item)}
       </TreeNodeRoot>
     );

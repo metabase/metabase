@@ -44,6 +44,7 @@
   as-admin
   do-as-admin
   do-with-current-user
+  with-attribute-overrides
   with-current-user]
  [metabase.request.settings
   session-timeout
@@ -69,6 +70,9 @@
   host-names
   https-state
   internal-data-app?
+  permission-preview?
+  permission-preview-content?
+  permission-preview-host-request?
   public?
   referer])
 

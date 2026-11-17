@@ -45,6 +45,7 @@ export * from "./native-query-snippet";
 export * from "./oauth";
 export * from "./performance";
 export * from "./permissions";
+export * from "./permission-preview";
 export * from "./premium-features";
 export * from "./public";
 export * from "./pulse";

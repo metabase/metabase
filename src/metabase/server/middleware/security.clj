@@ -311,8 +311,10 @@
                                         (into ["'self'"] data-app-connect-hosts)
                                         (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts)))
                                       ;; Every page needs it: the main app opens `/apps/<slug>` without a reload, under
-                                      ;; the policy of the page it loaded first.
-                                      (some-> (server.settings/isolated-origin) vector))
+                                      ;; the policy of the page it loaded first. The same goes for the permission
+                                      ;; troubleshooting page (EE), which frames the preview host.
+                                      (keep identity [(server.settings/isolated-origin)
+                                                      (config/config-str :mb-permission-preview-host)]))
                   :font-src     (into (cond-> always-allowed-resource-hosts
                                         config/is-dev? (conj frontend-address))
                                       (application-font-files->hosts))
@@ -407,6 +409,10 @@
     :main-app (if-let [{:keys [protocol domain port]} (site-origin)]
                 (str protocol "://" domain (some->> port (str ":")))
                 "'self'")
+    ;; the main app's own pages, which the permission troubleshooting page (EE) frames on the same origin
+    :self-or-embedding (if-let [origins (interactive-embedding-origins)]
+                         (str "'self' " origins)
+                         "'self'")
     (or (interactive-embedding-origins) "'none'")))
 
 (defn- content-security-policy-header-with-frame-ancestors
@@ -428,7 +434,7 @@
     :self {"X-Frame-Options" "SAMEORIGIN"}
     {"X-Frame-Options" (if-let [eao (interactive-embedding-origins)]
                          (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
-                         "DENY")}))
+                         (if (= :self-or-embedding mode) "SAMEORIGIN" "DENY"))}))
 
 (defn approved-domain?
   "Checks if the domain is compatible with the reference one"
@@ -561,8 +567,10 @@
            (contains? #{400 402} (:status response)))))
 
 (defn- data-app-iframe-request?
+  "The permission preview documents serve the data-app runtime too, so they get the same policy, with no connect hosts
+  of their own: their requests go through the top page's broker, or to this origin with a preview session token."
   [request]
-  (boolean (request/data-app? request)))
+  (boolean ((some-fn request/data-app? request/permission-preview? request/permission-preview-content?) request)))
 
 (def ^:private data-app-slug-regex
   (re-pattern (str "(?:/" request/data-app-url-segment "|" request/data-app-embed-prefix "|" request/embedded-data-app-prefix ")/([^/]+).*")))
@@ -665,18 +673,25 @@
   data-app iframe: `'self'` when same-origin, the site URL when served from the isolated origin."
   [request]
   (cond
+    ;; the troubleshooting page (EE) on the site URL frames the preview host, and nothing else may
+    (request/permission-preview-host-request? request)
+    :main-app
+
     ;; Both before the broader `embed?`, which `/embed/...` also matches.
     (request/embedded-data-app? request)
     :any
 
-    (request/internal-data-app? request)
+    ((some-fn request/internal-data-app? request/permission-preview? request/permission-preview-content?) request)
     (if (mw.isolated-origin/isolated-origin-request? request) :main-app :self)
 
     ((some-fn request/public? request/embed?) request)
     :any
 
+    (mw.isolated-origin/isolated-origin-request? request)
+    :none
+
     :else
-    :none))
+    :self-or-embedding))
 
 (defn- add-security-headers* [cors request response]
   ;; merge is other way around so that handler can override headers

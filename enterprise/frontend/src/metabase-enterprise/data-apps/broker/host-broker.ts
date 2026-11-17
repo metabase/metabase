@@ -69,10 +69,28 @@ const refusal = (
   body: new TextEncoder().encode(JSON.stringify({ message })).buffer,
 });
 
+export type HostBrokerOptions = {
+  /**
+   * Headers this page stamps on every brokered request. The default confines it to the `data-apps:base` scope; a
+   * permissions preview stamps its grant instead.
+   */
+  stampHeaders: () => Promise<Record<string, string>>;
+  /** Paths answered here with an empty 204 and never sent. */
+  isDropped?: (pathname: string) => boolean;
+};
+
+const DATA_APP_OPTIONS: HostBrokerOptions = {
+  stampHeaders: async () => ({
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
+    "X-Metabase-Client": DATA_APP_CLIENT,
+  }),
+};
+
 /** Make the app's request on this window's origin, where the session cookie is. */
 export async function handleBrokerRequest(
   request: BrokerRequestMessage,
   signal?: AbortSignal,
+  { stampHeaders, isDropped }: HostBrokerOptions = DATA_APP_OPTIONS,
 ): Promise<BrokerResponseMessage> {
   const { id, method, url, headers, body, redirect, cache } = request;
 
@@ -92,6 +110,16 @@ export async function handleBrokerRequest(
     );
   }
 
+  if (isDropped?.(parsed.pathname)) {
+    return {
+      id,
+      status: 204,
+      statusText: "No Content",
+      headers: {},
+      body: null,
+    };
+  }
+
   try {
     // The marker is stamped here rather than forwarded: it confines the request to the
     // `data-apps:base` scope, so letting the app choose its own client would let a
@@ -102,8 +130,7 @@ export async function handleBrokerRequest(
         method,
         headers: {
           ...safeRequestHeaders(headers),
-          // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
-          "X-Metabase-Client": DATA_APP_CLIENT,
+          ...(await stampHeaders()),
         },
         body: body ?? undefined,
         credentials: "include",
@@ -154,6 +181,7 @@ export async function handleBrokerRequest(
 export function installHostBroker(
   iframe: HTMLIFrameElement,
   frameOrigin: string,
+  options?: HostBrokerOptions,
 ): () => void {
   let current: {
     port: MessagePort;
@@ -196,7 +224,11 @@ export function installHostBroker(
 
       const controller = new AbortController();
       inFlight.set(data.id, controller);
-      const response = await handleBrokerRequest(data, controller.signal);
+      const response = await handleBrokerRequest(
+        data,
+        controller.signal,
+        options,
+      );
       inFlight.delete(data.id);
 
       if (!controller.signal.aborted) {

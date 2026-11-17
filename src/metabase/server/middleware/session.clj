@@ -23,10 +23,11 @@
    [metabase.api-keys.core :as api-key]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.api-scope.workspace-manager :as api-scope.workspace-manager]
+   [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.request.schema :as request.schema]
    [metabase.server.db :as server.db]
@@ -69,28 +70,61 @@
     (when (seq session)
       (assoc request :metabase-session-key session :metabase-session-type :normal))))
 
+(def ^:private preview-session-token-prefix
+  "What a permission preview's session token starts with (EE `permission-debug.preview-session`)."
+  "mb_preview_")
+
 (defmethod wrap-session-key-with-strategy :header
   [_ {:keys [headers], :as request}]
   (when-let [session (get headers metabase-session-header)]
-    (when (seq session)
+    (cond
+      ;; never an ordinary session key: resolved in [[bind-current-user]] (EE)
+      (str/starts-with? session preview-session-token-prefix)
+      (assoc request :metabase/preview-session {:session-key (subs session (count preview-session-token-prefix))})
+
+      (seq session)
       (assoc request :metabase-session-key session))))
+
+(def ^:private preview-host-session-cookie
+  "The preview host's own session cookie (EE `permission-debug.preview-session`), host-only, so the main host never
+  receives it."
+  "metabase.PREVIEW_SESSION")
+
+(defmethod wrap-session-key-with-strategy :preview-host
+  [_ {:keys [cookies], :as request}]
+  ;; on the preview host the preview cookie is the only credential, even when there is none
+  (when (request/permission-preview-host-request? request)
+    (assoc request :metabase/preview-session {:session-key (not-empty (get-in cookies [preview-host-session-cookie :value]))
+                                              :host?       true})))
 
 (defmethod wrap-session-key-with-strategy :best
   [_ request]
   (some
    (fn [strategy]
      (wrap-session-key-with-strategy strategy request))
-   [:header :embedded-cookie :normal-cookie]))
+   [:preview-host :header :embedded-cookie :normal-cookie]))
+
+(defenterprise preview-host-exchange
+  "The preview host's `GET /preview-session?code=…&to=<path>`: trade a preview code for the host's preview cookie and
+  redirect to `to`. OSS: not found, since there is nothing to preview with."
+  metabase-enterprise.permission-debug.preview-session
+  [_request]
+  {:status 404 :headers {"Content-Type" "text/plain; charset=utf-8"} :body "Not found."})
 
 (defn wrap-session-key
   "Middleware that sets the `:metabase-session-key` keyword on the request if a session id can be found.
   We first check the http headers for `X-METABASE-SESSION`, then if no header is found we look in the request
-  :cookies for `metabase.SESSION`. If neither is found then no keyword is bound to the request."
+  :cookies for `metabase.SESSION`. If neither is found then no keyword is bound to the request.
+
+  On the permission preview host (EE) only the preview cookie counts, under `:metabase/preview-session`, and the
+  host's `/preview-session` exchange is answered here."
   [handler]
   (fn [request respond raise]
-    (let [request (or (wrap-session-key-with-strategy :best request)
-                      request)]
-      (handler request respond raise))))
+    (if (and (= "/preview-session" (:uri request)) (request/permission-preview-host-request? request))
+      (respond (preview-host-exchange request))
+      (let [request (or (wrap-session-key-with-strategy :best request)
+                        request)]
+        (handler request respond raise)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             wrap-current-user-info                                             |
@@ -301,9 +335,11 @@
   [{:keys [oauth-bearer] :as options} {:keys [uri], {:strs [x-metabase-locale]} :headers, :as request}]
   (merge
    request
-   (if (bearer-only-path? (:bearer-only-paths oauth-bearer) uri)
-     (current-user-info-for-oauth-token oauth-bearer request)
-     (credentials options request))
+   (cond
+     ;; resolved in [[bind-current-user]] (EE), and nothing else on the request counts
+     (:metabase/preview-session request)            nil
+     (bearer-only-path? (:bearer-only-paths oauth-bearer) uri) (current-user-info-for-oauth-token oauth-bearer request)
+     :else                                          (credentials options request))
    (when x-metabase-locale
      (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
      {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
@@ -334,6 +370,44 @@
   [request & body]
   `(request/do-with-current-user ~request (fn [] ~@body)))
 
+(defenterprise preview-as-request
+  "Returns `{:request request}` to bind and handle, possibly rebound to another user (then with `:admin-id`, the admin
+  previewing, and optionally `:run-with`, a function that runs the thunk it's given with the preview's own bindings),
+  or `{:response response}` to answer without handling the request. OSS: the request, unchanged."
+  metabase-enterprise.permission-debug.preview
+  [request]
+  {:request request})
+
+(defenterprise preview-grant-request
+  "Called only for a request carrying `X-Metabase-Preview-Grant`. Returns `{:request request :admin-id admin-id}` with
+  the request rebound to the previewed user, or `{:response response}` to refuse it. OSS: refused, since there is
+  nothing to preview with."
+  metabase-enterprise.permission-debug.preview-grant
+  [_request]
+  {:response {:status 403 :body "Previewing as another user isn't available."}})
+
+(defenterprise preview-session-request
+  "Called only for a request carrying a preview session (`:metabase/preview-session`). Returns `{:request request
+  :admin-id admin-id}` with the request bound to the previewed user, or `{:response response}` to refuse it. OSS:
+  refused, since there is nothing to preview with."
+  metabase-enterprise.permission-debug.preview-session
+  [_request]
+  {:response {:status 403 :body "Previewing as another user isn't available."}})
+
+(defn wrap-preview-grant
+  "Middleware that runs a request carrying `X-Metabase-Preview-Grant` as the user the grant previews, with
+  [[metabase.api.common/*previewing-admin-id*]] bound to the admin, or refuses it. Must run after
+  `wrap-data-app-scope` and before [[bind-current-user]]."
+  [handler]
+  (fn [request respond raise]
+    (if-not (get-in request [:headers "x-metabase-preview-grant"])
+      (handler request respond raise)
+      (let [{request :request, response :response, admin-id :admin-id} (preview-grant-request request)]
+        (if response
+          (respond response)
+          (binding [api/*previewing-admin-id* admin-id]
+            (handler request respond raise)))))))
+
 (defn bind-current-user
   "Middleware that binds [[metabase.api.common/*current-user*]], [[*current-user-id*]], [[*is-superuser?*]], and
   [[metabase.settings.models.setting/*user-local-values*]].
@@ -347,8 +421,26 @@
   *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]
   (fn [request respond raise]
-    (with-current-user-for-request request
-      (handler request respond raise))))
+    (let [{request :request, response :response, admin-id :admin-id, overrides :attributes, run-with :run-with}
+          (if (:metabase/preview-session request)
+            (preview-session-request request)
+            (preview-as-request request))]
+      (if response
+        (respond response)
+        (let [handle (cond->> (fn []
+                                (with-current-user-for-request request
+                                  (if (seq overrides)
+                                    ;; a preview's attribute values (EE): every security rule reads them from the current user
+                                    (binding [api/*current-user* (let [user api/*current-user*]
+                                                                   (delay (some-> @user (update :attributes request/with-attribute-overrides overrides))))]
+                                      (handler request respond raise))
+                                    (handler request respond raise))))
+                       ;; a preview's own bindings (EE: its unsaved permission edits)
+                       run-with (partial run-with))]
+          ;; only when this preview rebinds: a grant preview has bound its admin already
+          (if admin-id
+            (binding [api/*previewing-admin-id* admin-id] (handle))
+            (handle)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         session activity tracking                                              |

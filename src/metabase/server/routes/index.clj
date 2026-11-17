@@ -199,3 +199,33 @@
 
       :else
       (respond (login-redirect request)))))
+
+(defn permission-preview
+  "`/embed/permission-preview/:name` iframe entrypoint, where an admin previews the app as another user (EE
+  `permission-debug`): the data-app runtime, whose requests the top page's broker makes with a preview grant. Served
+  only on the isolated origin, to a request with no session; the isolated-origin middleware already refuses one that
+  carries a session, so the user check is a second line. Answers 404 itself rather than falling through to the generic
+  embed page."
+  [request respond raise]
+  (if (and (premium-features/enable-advanced-permissions?)
+           (mw.isolated-origin/isolated-origin-request? request)
+           (request/permission-preview? request)
+           (nil? (:metabase-user-id request)))
+    (data-app-shell request respond raise)
+    (respond {:status 404 :body "Not found."})))
+
+(defn permission-preview-content
+  "`/embed/permission-preview-content` iframe entrypoint, where an admin previews one item as another user (EE
+  `permission-debug`): the data-app runtime, whose API requests send a preview session token in place of the admin's
+  cookie. Served on the main host to a superuser's session, and on the preview host to a preview session the
+  preview cookie signed in; the document carries only public settings. Answers 404 itself rather than falling through
+  to the generic embed page."
+  [request respond raise]
+  (if (and (premium-features/enable-advanced-permissions?)
+           (not (mw.isolated-origin/isolated-origin-request? request))
+           (:metabase-user-id request)
+           (if (request/permission-preview-host-request? request)
+             (:metabase/preview-session request)
+             (:is-superuser? request)))
+    (data-app-shell request respond raise)
+    (respond {:status 404 :body "Not found."})))

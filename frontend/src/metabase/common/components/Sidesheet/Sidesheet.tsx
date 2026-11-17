@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { t } from "ttag";
@@ -73,6 +74,11 @@ interface SidesheetProps {
   /** Keyboard shortcut that closes the sheet the way its close button does */
   closeHotkey?: string;
   offset?: boolean;
+  /**
+   * `false` leaves the page usable behind the sheet: no focus trap or scroll lock. Focus still moves to the title on
+   * open and back to where it was on close.
+   */
+  isModal?: boolean;
   /** icon actions shown before the close button */
   actions?: React.ReactNode;
   /** pinned below the scrolling body */
@@ -109,10 +115,12 @@ export function Sidesheet({
   closeOnEscape = true,
   closeHotkey,
   offset,
+  isModal = true,
   actions,
   footer,
 }: SidesheetProps) {
   const titleId = useMemo(() => uniqueId("sidesheet-title"), []);
+  const titleRef = useNonModalFocus(isOpen && !isModal);
 
   // Mantine's portal renders a commit late, so wait a frame for a sheet that mounts open to slide in.
   const [isReady, setIsReady] = useState(false);
@@ -164,6 +172,8 @@ export function Sidesheet({
         onClose={requestClose}
         onExitTransitionEnd={handleExitTransitionEnd}
         closeOnEscape={closeOnEscape}
+        trapFocus={isModal}
+        lockScroll={isModal}
         shadow="xs_outline"
         h="100dvh"
         transitionProps={transitionProps}
@@ -190,6 +200,13 @@ export function Sidesheet({
           data-offset={offset || undefined}
           classNames={{ content: Styles.SidesheetContent }}
           aria-labelledby={titleId}
+          // Mantine writes aria-modal="true" after the props it's given, so a non-modal sheet sets its own
+          ref={
+            isModal
+              ? undefined
+              : (node: HTMLElement | null) =>
+                  node?.setAttribute("aria-modal", "false")
+          }
         >
           <Modal.Header
             className={Styles.SidesheetHeader}
@@ -199,7 +216,14 @@ export function Sidesheet({
             pb="lg"
           >
             {title && (
-              <Modal.Title pr="sm" id={titleId} fz={titleSize} lh={titleSize}>
+              <Modal.Title
+                ref={titleRef}
+                pr="sm"
+                id={titleId}
+                fz={titleSize}
+                lh={titleSize}
+                tabIndex={isModal ? undefined : -1}
+              >
                 {title}
               </Modal.Title>
             )}
@@ -232,4 +256,39 @@ export function Sidesheet({
       </Modal.Root>
     </SidesheetCloseContext.Provider>
   );
+}
+
+/**
+ * Mantine moves and returns focus only while it traps it, so a non-modal sheet does it itself: the title takes focus
+ * when it mounts, and the element focused before it gets it back when the sheet closes, if it's still on the page.
+ */
+function useNonModalFocus(isActive: boolean) {
+  const openerRef = useRef<HTMLElement | null>(null);
+
+  const titleRef = useCallback(
+    (node: HTMLHeadingElement | null) => {
+      if (isActive && node != null) {
+        const activeElement = document.activeElement;
+        openerRef.current =
+          activeElement instanceof HTMLElement ? activeElement : null;
+        node.focus();
+      }
+    },
+    [isActive],
+  );
+
+  useEffect(() => {
+    if (!isActive) {
+      return;
+    }
+    return () => {
+      const opener = openerRef.current;
+      openerRef.current = null;
+      if (opener?.isConnected) {
+        opener.focus();
+      }
+    };
+  }, [isActive]);
+
+  return titleRef;
 }

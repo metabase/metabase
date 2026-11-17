@@ -1,11 +1,11 @@
 import cx from "classnames";
-import { memo } from "react";
+import { type ComponentProps, type ReactNode, memo } from "react";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 
-import { EntityViewSwitch } from "../EntityViewSwitch";
+import { type EntityView, EntityViewSwitch } from "../EntityViewSwitch";
 import { FilterableTree } from "../FilterableTree";
 
 import S from "./PermissionsSidebarContent.module.css";
@@ -18,8 +18,18 @@ export interface PermissionsSidebarContentProps {
   onBack?: () => void;
   selectedId?: ITreeNodeItem["id"];
   entityGroups: ITreeNodeItem[][];
-  onEntityChange?: (entity: string) => void;
-  entityViewFocus?: "database" | "group";
+  /** A heading per entity group, shown in place of the dividers. */
+  entityGroupTitles?: (string | undefined)[];
+  rightSection?: (item: ITreeNodeItem) => ReactNode;
+  /** What the search matches, the name by default. */
+  getSearchText?: (item: ITreeNodeItem) => string;
+  onEntityChange?: (entity: EntityView) => void;
+  entityViewFocus?: EntityView;
+  entityViews?: EntityView[];
+  /** Shown between the view switch and the searchable list. */
+  headerContent?: ReactNode;
+  /** Shown when the search matches nothing, "Nothing here" by default. */
+  emptyState?: ComponentProps<typeof FilterableTree>["emptyState"];
 }
 
 export const PermissionsSidebarContent = memo(
@@ -28,7 +38,13 @@ export const PermissionsSidebarContent = memo(
     description,
     filterPlaceholder,
     entityGroups,
+    entityGroupTitles,
+    rightSection,
+    getSearchText,
     entityViewFocus,
+    entityViews,
+    headerContent,
+    emptyState,
     selectedId,
     onEntityChange,
     onSelect,
@@ -62,14 +78,20 @@ export const PermissionsSidebarContent = memo(
           {entityViewFocus && onEntityChange && (
             <EntityViewSwitch
               value={entityViewFocus}
+              views={entityViews}
               onChange={onEntityChange}
             />
           )}
+          {headerContent}
         </Box>
         <FilterableTree
           placeholder={filterPlaceholder}
           onSelect={onSelect}
           itemGroups={entityGroups}
+          itemGroupTitles={entityGroupTitles}
+          rightSection={rightSection}
+          getSearchText={getSearchText}
+          emptyState={emptyState}
           selectedId={selectedId}
         />
       </>

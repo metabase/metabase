@@ -17,6 +17,8 @@
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
+   [metabase.util.log :as log]
+   [ring.middleware.cookies :as cookies]
    [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
@@ -62,10 +64,42 @@
   (cond-> path
     (not (str/blank? query-string)) (str "?" query-string)))
 
+(defn- isolated-document?
+  "The documents the isolated origin serves: the internal data app and the permission preview."
+  [request]
+  (or (request/internal-data-app? request)
+      (request/permission-preview? request)))
+
+(defn- carries-session?
+  "Whether `request` carries a credential that could resolve a user. Checked on the raw headers: this runs before the
+  cookies are parsed and the session is looked up."
+  [{:keys [headers] :as request}]
+  (or (some (fn [[cookie-name _value]]
+              (#{request/metabase-session-cookie request/metabase-embedded-session-cookie} cookie-name))
+            (request/cookie-header-entries request))
+      (contains? headers "x-metabase-session")
+      (contains? headers "x-api-key")))
+
+(defn- session-refusal
+  "A session cookie left from when this host served Metabase is host-only here, so this deletes it and the next load
+  works. One the main host leaks with a `Domain` stays, and keeps the document refused."
+  []
+  (log/error (str "Refusing to serve a document on the isolated origin (MB_ISOLATED_ORIGIN): a Metabase session "
+                  "reached it. The session cookie must be host-only; check that no cookie Domain or reverse proxy "
+                  "makes it visible there."))
+  ;; this runs outside `wrap-cookies`, so the cleared cookies are written to `Set-Cookie` here
+  (cookies/cookies-response
+   (request/clear-session-cookie
+    (refusal 403 (str "This page is misconfigured: a Metabase session reached the isolated origin. Reload the page. "
+                      "If this message comes back, ask your Metabase administrator.")))))
+
 (defn- isolated-origin-response [handler {:keys [uri request-method] :as request} respond raise]
   (let [request (assoc request ::isolated-origin? true)]
     (cond
-      (request/internal-data-app? request)
+      (and (isolated-document? request) (carries-session? request))
+      (respond (session-refusal))
+
+      (isolated-document? request)
       (handler request respond raise)
 
       ;; A link into an app page (`DataAppLink`) resolves against the app document's host.
@@ -105,7 +139,7 @@
     (= isolated-origin (some-> (get headers "origin") u/lower-case-en))
     (respond (refusal 403 "Requests from the isolated origin are refused."))
 
-    (request/internal-data-app? request)
+    (isolated-document? request)
     (respond (redirect (with-query-string (str isolated-origin (system/site-path) uri) request)))
 
     ;; Such a write may be app code on a same-site isolated origin, so it runs without the session. It isn't refused:
@@ -125,7 +159,14 @@
       (if (on-isolated-origin? request isolated-origin)
         (isolated-origin-response handler request respond raise)
         (main-host-response handler request respond raise isolated-origin))
-      (if (and (request/internal-data-app? request)
-               (server.settings/isolated-origin-misconfigured?))
+      (cond
+        (and (request/internal-data-app? request)
+             (server.settings/isolated-origin-misconfigured?))
         (respond (refusal 503 "Data apps are unavailable: MB_ISOLATED_ORIGIN is set to a value that can't be used."))
+
+        ;; served from the main host, the preview document would hold the admin's session
+        (request/permission-preview? request)
+        (respond (refusal 503 "Previewing as another user needs MB_ISOLATED_ORIGIN set to a usable value."))
+
+        :else
         (handler request respond raise)))))

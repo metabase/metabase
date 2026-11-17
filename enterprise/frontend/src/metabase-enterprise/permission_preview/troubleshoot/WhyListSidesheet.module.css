@@ -1,0 +1,44 @@
+.row {
+  display: block;
+  width: calc(100% + 1rem);
+  margin: 0 -0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+}
+
+.row:hover {
+  background-color: var(--mb-color-background_surface-hover);
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--mb-color-input-focus);
+}
+
+/* a row that opens in place, beside its own status button */
+.toggleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: calc(100% + 1rem);
+  margin: 0 -0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+}
+
+.toggleRow:hover {
+  background-color: var(--mb-color-background_surface-hover);
+}
+
+.toggle {
+  flex: 1;
+  min-width: 0;
+}
+
+.status {
+  flex-shrink: 0;
+}
+
+.toggle:focus-visible,
+.status:focus-visible {
+  outline: 2px solid var(--mb-color-input-focus);
+}

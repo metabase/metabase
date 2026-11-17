@@ -48,6 +48,8 @@
   some-collection-permission-for-user
   visible-collections-filter-clause]
  [metabase.permissions.db
+  data-permissions-source
+  do-with-unsaved-data-permissions
   group-tenant-flags
   groups-by-ids
   select-tables-and-groups-granting-perm]

@@ -5,6 +5,7 @@ import { useListCollectionsTreeQuery } from "metabase/api";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import {
   CollectionPermissionsHelp,
+  type EntityView,
   type PermissionEditorEntity,
   PermissionsSidebar,
   assertNumericId,
@@ -27,6 +28,8 @@ import {
   PermissionsEditorEmptyState,
 } from "../../components/PermissionsEditor";
 import { PermissionsPageLayout } from "../../components/PermissionsPageLayout";
+
+const COLLECTION_VIEWS: EntityView[] = ["collection"];
 
 export function CollectionPermissionsPage() {
   const dispatch = useDispatch();
@@ -92,7 +95,16 @@ export function CollectionPermissionsPage() {
       helpContent={<CollectionPermissionsHelp />}
       key={collection?.id}
     >
-      <PermissionsSidebar {...sidebar} onSelect={navigateToItem} />
+      <PermissionsSidebar
+        {...sidebar}
+        onSelect={navigateToItem}
+        entityViewFocus="collection"
+        entityViews={COLLECTION_VIEWS}
+        onEntityChange={(view) =>
+          view === "preview" &&
+          navigate(`${getPermissionsBasePath()}/collections/preview`)
+        }
+      />
 
       {!permissionEditor && (
         <PermissionsEditorEmptyState

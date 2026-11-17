@@ -9,6 +9,7 @@ import {
 import { setDataApp } from "metabase/embedding/config";
 import { setBasename } from "metabase/utils/basename";
 import { applyDocumentLocales } from "metabase/utils/boot-locale";
+import { isContentPreviewPath } from "metabase-enterprise/permission_preview/content-preview";
 
 import {
   getDataAppUserLocale,
@@ -17,6 +18,7 @@ import {
   installDataAppRouteReporter,
 } from "../broker/iframe-broker";
 
+import { isPermissionPreviewPath } from "./lib/is-permission-preview-path";
 import { readSlugFromUrl } from "./lib/read-slug-from-url";
 
 /**
@@ -58,7 +60,18 @@ const init = async () => {
 
   const isEmbedded = isEmbeddedDataAppPath(window.location.pathname);
 
-  if (isEmbedded) {
+  if (isContentPreviewPath(window.location.pathname)) {
+    const { PermissionPreviewContentApp, installContentPreviewFetch } =
+      await import("./components/PermissionPreviewContentApp/PermissionPreviewContentApp");
+
+    installContentPreviewFetch();
+    createRoot(rootElement).render(<PermissionPreviewContentApp />);
+  } else if (isPermissionPreviewPath(window.location.pathname)) {
+    const { PermissionPreviewApp } =
+      await import("./components/PermissionPreviewApp/PermissionPreviewApp");
+
+    createRoot(rootElement).render(<PermissionPreviewApp />);
+  } else if (isEmbedded) {
     EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = true;
     EMBEDDING_SDK_CONFIG.enableEmbeddingSettingKey = "enable-embedding-modular";
     EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";

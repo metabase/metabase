@@ -139,4 +139,77 @@ describe("PermissionSelect", () => {
 
     expect(await screen.findByText(WARNING)).toBeInTheDocument();
   });
+
+  it("calls onValueClick instead of opening the options when the value is read-only", async () => {
+    const onValueClick = jest.fn();
+    render(
+      <PermissionsSelect
+        options={options}
+        value={DataPermissionValue.ALL}
+        onChange={jest.fn()}
+        onValueClick={onValueClick}
+        isDisabled={false}
+        disabledTooltip={"disabled"}
+        permission={DataPermission.VIEW_DATA}
+        type={DataPermissionType.ACCESS}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "check icon Allowed" }),
+    );
+
+    expect(onValueClick).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("closes a read-only value's tooltip when the value is clicked", async () => {
+    setupReadOnlyValue();
+    const value = screen.getByRole("button", { name: "check icon Allowed" });
+
+    await userEvent.hover(value);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Why: All");
+    await userEvent.click(value);
+
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("closes a read-only value's tooltip on Escape", async () => {
+    setupReadOnlyValue();
+
+    await userEvent.hover(
+      screen.getByRole("button", { name: "check icon Allowed" }),
+    );
+    expect(await screen.findByRole("tooltip")).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("marks the read-only value being explained as pressed, without its tooltip", async () => {
+    setupReadOnlyValue({ isValueSelected: true });
+    const value = screen.getByRole("button", { name: "check icon Allowed" });
+
+    expect(value).toHaveAttribute("aria-pressed", "true");
+    await userEvent.hover(value);
+
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
 });
+
+function setupReadOnlyValue({ isValueSelected = false } = {}) {
+  render(
+    <PermissionsSelect
+      options={options}
+      value={DataPermissionValue.ALL}
+      onChange={jest.fn()}
+      onValueClick={jest.fn()}
+      valueTooltip="Why: All"
+      isValueSelected={isValueSelected}
+      isDisabled={false}
+      disabledTooltip={"disabled"}
+      permission={DataPermission.VIEW_DATA}
+      type={DataPermissionType.ACCESS}
+    />,
+  );
+}

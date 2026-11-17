@@ -10,6 +10,7 @@ import { useListCollectionsTreeQuery } from "metabase/api";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import {
   CollectionPermissionsHelp,
+  type EntityView,
   type PermissionEditorEntity,
   PermissionsSidebar,
   assertNumericId,
@@ -29,6 +30,8 @@ import {
   getTenantCollectionsSidebar,
   tenantCollectionsQuery,
 } from "./selectors";
+
+const COLLECTION_VIEWS: EntityView[] = ["collection"];
 
 export function TenantCollectionPermissionsPage() {
   const dispatch = useDispatch();
@@ -87,7 +90,16 @@ export function TenantCollectionPermissionsPage() {
       onLoad={() => dispatch(loadTenantCollectionPermissions())}
       helpContent={<CollectionPermissionsHelp />}
     >
-      <PermissionsSidebar {...sidebar} onSelect={navigateToItem} />
+      <PermissionsSidebar
+        {...sidebar}
+        onSelect={navigateToItem}
+        entityViewFocus="collection"
+        entityViews={COLLECTION_VIEWS}
+        onEntityChange={(view) =>
+          view === "preview" &&
+          navigate(`${getPermissionsBasePath()}/tenant-collections/preview`)
+        }
+      />
 
       {!permissionEditor && (
         <PermissionsEditorEmptyState

@@ -129,6 +129,13 @@
   "Is the current user a group manager of at least one group?"
   false)
 
+;; next to [[*current-user-id*]] so the audit log can read it: `metabase.request.core` is in a load cycle with it
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic ^Integer *previewing-admin-id*
+  "While an admin previews the app as another user (EE `permission-debug`), the admin's ID; [[*current-user-id*]] is
+  the previewed one. Otherwise nil."
+  nil)
+
 ;;; TODO -- move this to [[metabase.request.current]]
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Boolean *is-data-analyst?*

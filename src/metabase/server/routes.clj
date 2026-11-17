@@ -48,6 +48,10 @@
   ;; have to serve the SPA shell.
   (GET [(str "/" request/data-app-url-segment "/:name"), :name #"[^/]+"] [] index/data-app)
   (GET [(str "/" request/data-app-url-segment "/:name/*"), :name #"[^/]+"] [] index/data-app)
+  (GET ["/permission-preview/:name", :name #"[^/]+"] [] index/permission-preview)
+  (GET ["/permission-preview/:name/*", :name #"[^/]+"] [] index/permission-preview)
+  (GET "/permission-preview-content" [] index/permission-preview-content)
+  (GET "/permission-preview-content/*" [] index/permission-preview-content)
   (GET ["/question/:token.:export-format", :export-format qp.schema/export-formats-regex]
     [token export-format]
     (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (system/site-url) token export-format)))

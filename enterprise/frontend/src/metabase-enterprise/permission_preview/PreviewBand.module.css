@@ -1,0 +1,29 @@
+/* Troubleshoot's band: one row while everything fits, else who you're viewing as on top and the controls below */
+.wrapping {
+  flex-wrap: wrap;
+  row-gap: var(--mantine-spacing-xs);
+}
+
+.who {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--mantine-spacing-sm);
+  row-gap: var(--mantine-spacing-xs);
+  min-width: 0;
+}
+
+/* on a row of its own, How it works sits at the right end */
+.sentenceSection {
+  margin-inline-start: auto;
+}
+
+/* takes the row's free space: on a shared row nearly all of it goes here, so the address stays wide */
+.controls {
+  display: flex;
+  flex: 1000 1 22rem;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  min-width: 0;
+}

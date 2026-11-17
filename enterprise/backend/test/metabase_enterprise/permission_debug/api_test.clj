@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.permission-debug.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.test :as met]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -102,8 +103,8 @@
   (testing "GET /api/ee/permission_debug for invalid scenarios"
     (testing "should handle unknown permission types"
       (is (= {:specific-errors
-              {:action_type ["should be either :card/read, :card/query or :card/download-data, received: :unknown/permission"]},
-              :errors {:action_type "enum of :card/read, :card/query, :card/download-data"}}
+              {:action_type ["should be either :card/read, :card/query, :card/download-data, :dashboard/read, :dashboard/query or :collection/read, received: :unknown/permission"]},
+              :errors {:action_type "enum of :card/read, :card/query, :card/download-data, :dashboard/read, :dashboard/query, :collection/read"}}
              (mt/user-http-request :crowberto :get 400 "ee/permission_debug"
                                    :user_id "1"
                                    :model_id "999"
@@ -153,3 +154,27 @@
         (testing "data and suggestions should be maps"
           (is (map? (:data response)))
           (is (map? (:suggestions response))))))))
+
+(deftest preview-card-query-test
+  (testing "POST /api/ee/permission_debug/preview/card/:card-id"
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
+                      :attributes {"cat" 50}}
+      (mt/with-additional-premium-features #{:audit-app}
+        (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+          (let [preview-url (format "ee/permission_debug/preview/card/%d" (:id card))]
+            (testing "the admin's own run of the card is not sandboxed"
+              (is (= [[100]]
+                     (mt/rows (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card)))))))
+            (testing "the admin's preview as a sandboxed user applies that user's sandbox and attributes"
+              (is (= [[10]]
+                     (mt/rows (mt/user-http-request :crowberto :post 200 preview-url {:user_id (mt/user->id :rasta)}))))
+              (testing "and is recorded in the audit log with the admin as the actor and the previewed user as the target"
+                (is (= {:topic    :permissions-preview
+                        :user_id  (mt/user->id :crowberto)
+                        :model    "User"
+                        :model_id (mt/user->id :rasta)
+                        :details  {:card-id (:id card)}}
+                       (mt/latest-audit-log-entry :permissions-preview)))))
+            (testing "a non-admin is refused"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 preview-url {:user_id (mt/user->id :crowberto)}))))))))))

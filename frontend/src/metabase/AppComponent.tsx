@@ -27,6 +27,7 @@ import CS from "metabase/css/core/index.css";
 import { EmbedSetupModals } from "metabase/embedding/embedding-iframe-sdk-setup/components/EmbedSetupModals";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
+import { PLUGIN_PERMISSION_PREVIEW } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor } from "metabase/redux/store";
@@ -120,6 +121,9 @@ export function App() {
           <KeyboardTriggeredErrorModal />
           <Flex className={CS.spread} direction="column">
             <AppBanner />
+            {PLUGIN_PERMISSION_PREVIEW.PreviewBanner && (
+              <PLUGIN_PERMISSION_PREVIEW.PreviewBanner />
+            )}
             {isAppBarVisible && <AppBarContainer />}
             <Flex
               className={cx(

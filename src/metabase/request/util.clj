@@ -67,6 +67,21 @@
   [{:keys [uri]}]
   (boolean (and uri (str/starts-with? uri (str data-app-embed-prefix "/")))))
 
+(defn permission-preview?
+  "Whether the request targets `/embed/permission-preview/<name>`, the document of the frame an admin previews the app
+  in as another user (EE `permission-debug`), served from the isolated origin like the internal data app. The name
+  can't be `.` or `..`."
+  [{:keys [uri]}]
+  (boolean (when-let [[_ preview-name] (and uri (re-matches #"^/embed/permission-preview/([^/]+)(?:/.*)?$" uri))]
+             (not (#{"." ".."} preview-name)))))
+
+(defn permission-preview-content?
+  "Whether the request targets `/embed/permission-preview-content` or a path under it, the document of the frame that
+  renders one item with the SDK as another user (EE `permission-debug`). Served from the main host: the frame signs in
+  with a preview session token, not the admin's cookie."
+  [{:keys [uri]}]
+  (boolean (and uri (re-matches #"^/embed/permission-preview-content(?:/.*)?$" uri))))
+
 (defn embedded-data-app?
   "Whether the request targets the dedicated SSO embedding route."
   [{:keys [uri]}]
@@ -118,6 +133,15 @@
   [{:keys [headers]}]
   (keep u.http/host-name [(some-> (get headers "x-forwarded-host") (str/split #",") first)
                           (get headers "host")]))
+
+(defn permission-preview-host-request?
+  "Whether `request` came in through the permission preview host named by `MB_PERMISSION_PREVIEW_HOST` (EE
+  `permission-debug`), where an admin's preview runs signed in as the previewed person only. Either host name counts:
+  a forged `X-Forwarded-Host` only puts a request under that host's stricter rules."
+  [request]
+  (boolean
+   (when-let [preview-host (some-> (config/config-str :mb-permission-preview-host) u.http/host-name)]
+     (some #{preview-host} (host-names request)))))
 
 (defn cookie-header-entries
   "The `[name value]` pairs of `request`'s `Cookie` header in order, or nil when it has none. Ring's `:cookies` keeps

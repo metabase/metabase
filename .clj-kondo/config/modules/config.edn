@@ -2092,7 +2092,8 @@
   permissions.rest
   {:team "Security Engineering"
    :ns-prefix "metabase.permissions-rest"
-   :api  #{metabase.permissions-rest.api}
+   :api  #{metabase.permissions-rest.api
+           metabase.permissions-rest.data-permissions.graph}
    :uses #{api
            audit-app
            events
@@ -4421,14 +4422,37 @@
    :ns-prefix "metabase-enterprise.permission-debug"
    :api #{metabase-enterprise.permission-debug.api}
    :uses #{api
+           events
            lib
            lib.schema
            models
            permissions
+           permissions.rest
+           premium-features
            query-processor
            request
-           util}
-   :model-imports #{:model/Card :model/Table :model/User}}
+           session
+           system
+           users.tenants
+           util
+           util.config}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/ConnectionImpersonation
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Database
+                    :model/DatabaseRouter
+                    :model/Field
+                    :model/FieldValues
+                    :model/Permissions
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/Sandbox
+                    :model/Session
+                    :model/Table
+                    :model/Tenant
+                    :model/User}}
 
   enterprise/permissions.impersonation
   {:team "Security Engineering"

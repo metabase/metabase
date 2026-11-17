@@ -78,6 +78,9 @@ const getDefaultPluginApi = () => ({
     // Mark requests from a data app's dev preview. Installed by the data app
     // runtime.
     setDataAppDevHeader: noop,
+    // Send `X-Metabase-Preview-As` from a browser tab that previews the app as
+    // another user. Installed by the permission preview plugin.
+    setPreviewAsHeader: noop,
   },
 });
 

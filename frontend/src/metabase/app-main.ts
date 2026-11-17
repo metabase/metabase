@@ -6,6 +6,7 @@ import { PLUGIN_API, api } from "metabase/api/client";
 import { init } from "metabase/app";
 import { getUser, loadCurrentUser } from "metabase/current-user";
 import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
+import { PLUGIN_PERMISSION_PREVIEW } from "metabase/plugins";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
 import { navigate, prefetchRegisteredPages } from "metabase/router";
@@ -71,8 +72,11 @@ init(mainReducers, getRoutes, (store) => {
   });
 
   // received a 403 response
-  api.on(403, (url) => {
-    if (NOT_AUTHORIZED_TRIGGERS.some((regex) => regex.test(url))) {
+  api.on(403, (url, body) => {
+    if (
+      NOT_AUTHORIZED_TRIGGERS.some((regex) => regex.test(url)) &&
+      !PLUGIN_PERMISSION_PREVIEW.isReadOnlyRefusal(body)
+    ) {
       store.dispatch(setErrorPage({ status: 403 }));
     }
   });

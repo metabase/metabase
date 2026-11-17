@@ -25,6 +25,44 @@
 
 ;;; --------------------------------------------- DataPermissions ---------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic ^:private *unsaved-data-permissions*
+  "A preview's unsaved permission edits (EE `permission-debug`): `{:to-delete [id …] :to-insert [row …]}`, read in
+  place of the saved rows, or nil."
+  nil)
+
+(defn do-with-unsaved-data-permissions
+  "Run `thunk` with the permission checks below reading the DataPermissions rows as if `changes` (from
+  `metabase.permissions-rest.data-permissions.graph/unsaved-graph-changes`) were saved. Nothing is written."
+  [changes thunk]
+  (binding [*unsaved-data-permissions* changes]
+    (thunk)))
+
+(def ^:private data-permissions-columns
+  [:id :group_id :perm_type :db_id :schema_name :table_id :perm_value])
+
+(defn data-permissions-source
+  "What to read DataPermissions rows from: the table, or with [[do-with-unsaved-data-permissions]] a subquery of the
+  saved rows minus the deleted ones, plus the inserted ones. Alias it like the table."
+  []
+  (if-let [{:keys [to-delete to-insert]} *unsaved-data-permissions*]
+    ^:allow-subquery
+    {:union-all (into [^:allow-subquery
+                       {:select data-permissions-columns
+                        :from   [(t2/table-name :model/DataPermissions)]
+                        :where  (if (seq to-delete) [:not-in :id to-delete] true)}]
+                      (for [{:keys [group_id perm_type db_id schema_name table_id perm_value]} to-insert]
+                        ;; typed NULLs, since a UNION can't tell an untyped one's column type
+                        ^:allow-subquery
+                        {:select [[[:cast nil :integer] :id]
+                                  [group_id :group_id]
+                                  [(u/qualified-name perm_type) :perm_type]
+                                  [db_id :db_id]
+                                  [(or schema_name [:cast nil :text]) :schema_name]
+                                  [(or table_id [:cast nil :integer]) :table_id]
+                                  [(u/qualified-name perm_value) :perm_value]]}))}
+    (t2/table-name :model/DataPermissions)))
+
 (mr/def ::scope
   "Which `perm-type` rows count, never those of inactive Tables: within `:db-id`, outside `:exclude-db-ids`, and of the
   Database itself plus the Tables in one `:schema-name`, nil and the empty string being one schema unless
@@ -61,7 +99,7 @@
 (defn- user-rows-query
   "The `perm-type` rows in `scope` of the User with `user-id`'s groups."
   [user-id perm-type scope]
-  ^:allow-subquery {:from      [[(t2/table-name :model/DataPermissions) :p]]
+  ^:allow-subquery {:from      [[(data-permissions-source) :p]]
                     :left-join [[(t2/table-name :model/Table) :mt] [:= :mt.id :p.table_id]]
                     :where     (into [:and [:in :p.group_id (user-group-ids-query user-id)]]
                                      (scope-clauses perm-type scope))})
@@ -100,7 +138,7 @@
   (let [has-value (fn [v]
                     [:exists ^:allow-subquery
                      {:select    [1]
-                      :from      [[(t2/table-name :model/DataPermissions) :p]]
+                      :from      [[(data-permissions-source) :p]]
                       :left-join [[(t2/table-name :model/Table) :mt] [:= :mt.id :p.table_id]]
                       :where     (into [:and
                                         [:= :p.group_id :pgm.group_id]
@@ -110,6 +148,23 @@
           cat
           (reverse (for [[i v] (map-indexed vector (-> permissions.schema/data-permissions perm-type :values))]
                      [(has-value v) [:inline i]])))))
+
+(mu/defn table-permission-values-for-groups
+  "The set of `perm-type` values `group-ids` hold for the Table with `table-id` or for its whole Database."
+  [group-ids   :- [:set ms/PositiveInt]
+   perm-type   :- [:or :keyword :string]
+   database-id :- ::lib.schema.id/database
+   table-id    :- [:maybe ms/IntGreaterThanOrEqualToZero]]
+  (t2/select-fn-set :value :model/DataPermissions
+                    {:select [[:p.perm_value :value]]
+                     :from   [[(data-permissions-source) :p]]
+                     :where  [:and
+                              [:in :p.group_id group-ids]
+                              [:= :p.perm_type perm-type]
+                              [:= :p.db_id database-id]
+                              [:or
+                               [:= :table_id table-id]
+                               [:= :table_id nil]]]}))
 
 (mu/defn most-restrictive-rank-pair :- [:map [:mn [:maybe :int]] [:mx [:maybe :int]]]
   "The lowest and highest, across the User with `user-id`'s groups, of each group's most restrictive value rank among
@@ -143,7 +198,7 @@
   the Databases with `db-ids`."
   [group-ids-clause perm-type db-ids]
   {:select-distinct [:p.db_id :p.perm_value]
-   :from            [[(t2/table-name :model/DataPermissions) :p]]
+   :from            [[(data-permissions-source) :p]]
    :where           [:and
                      [:= :p.perm_type (u/qualified-name perm-type)]
                      [:in :p.db_id db-ids]
@@ -173,7 +228,7 @@
    perm-type :- ::permissions.schema/data-permission-type
    table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/query {:select-distinct [:p.table_id :mt.db_id :p.perm_value]
-             :from            [[(t2/table-name :model/DataPermissions) :p]]
+             :from            [[(data-permissions-source) :p]]
              :join            [[(t2/table-name :model/Table) :mt] [:and [:= :mt.id :p.table_id] [:= :mt.active true]]]
              :where           [:and
                                [:= :p.perm_type (u/qualified-name perm-type)]
@@ -187,7 +242,7 @@
    perm-type :- ::permissions.schema/data-permission-type
    table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/query {:select-distinct [:p.table_id :p.db_id :p.perm_value]
-             :from            [[(t2/table-name :model/DataPermissions) :p]]
+             :from            [[(data-permissions-source) :p]]
              :where           [:and
                                [:= :p.perm_type (u/qualified-name perm-type)]
                                [:in :p.table_id table-ids]
@@ -207,7 +262,7 @@
                        [:p.table_id :table-id]]
               :from   [[:permissions_group_membership :pgm]]
               :join   [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                       [:data_permissions :p]   [:= :p.group_id :pg.id]]
+                       [(data-permissions-source) :p] [:= :p.group_id :pg.id]]
               :where  [:and
                        [:= :pgm.user_id user-id]
                        (when database-id [:= :db_id database-id])

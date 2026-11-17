@@ -1,25 +1,37 @@
+/* `--mb-sidesheet-top` is unset (0) except while a permissions preview's band spans the top of the tab. */
 .SidesheetContent {
-  inset-block: 0;
+  inset-block: var(--mb-sidesheet-top, 0) 0;
   inset-inline-end: 0;
   flex-direction: column;
 
   /* Mantine's content height rules must lose regardless of stylesheet order. */
   &:not([data-css-specificity-hack="🤷‍♀️"]) {
-    height: 100dvh;
-    max-height: 100dvh;
+    height: calc(100dvh - var(--mb-sidesheet-top, 0px));
+    max-height: calc(100dvh - var(--mb-sidesheet-top, 0px));
     border-radius: 0;
 
     &[data-offset] {
       height: calc(
-        100dvh - var(--mantine-spacing-lg) - var(--mantine-spacing-lg)
+        100dvh - var(--mb-sidesheet-top, 0px) - var(--mantine-spacing-lg) -
+          var(--mantine-spacing-lg)
       );
       max-height: calc(
-        100dvh - var(--mantine-spacing-lg) - var(--mantine-spacing-lg)
+        100dvh - var(--mb-sidesheet-top, 0px) - var(--mantine-spacing-lg) -
+          var(--mantine-spacing-lg)
       );
-      inset-block: var(--mantine-spacing-lg);
+      inset-block: calc(
+          var(--mb-sidesheet-top, 0px) + var(--mantine-spacing-lg)
+        )
+        var(--mantine-spacing-lg);
       inset-inline-end: var(--mantine-spacing-lg);
       border-radius: var(--mantine-radius-lg);
     }
+  }
+}
+
+.SidesheetOverlay {
+  &:not([data-css-specificity-hack="🤷‍♀️"]) {
+    inset-block-start: var(--mb-sidesheet-top, 0);
   }
 }
 

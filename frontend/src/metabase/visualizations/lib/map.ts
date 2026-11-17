@@ -1,4 +1,5 @@
 import { isEmbedPreview as getIsEmbedPreview } from "metabase/embedding/config";
+import { PLUGIN_PERMISSION_PREVIEW } from "metabase/plugins";
 import { isJWT } from "metabase/utils/jwt";
 import { isUuid } from "metabase/utils/uuid";
 import type {
@@ -164,6 +165,7 @@ function adhocQueryTileUrl(
     latField,
     lonField,
   });
+  setPreviewParam(params);
   return `/api/tiles/${zoom}/${coord.x}/${coord.y}?${params.toString()}`;
 }
 
@@ -182,6 +184,7 @@ function savedQuestionTileUrl(
   if (parameters && parameters.length > 0) {
     params.set("parameters", JSON.stringify(parameters));
   }
+  setPreviewParam(params);
   return `/api/tiles/${cardId}/${zoom}/${coord.x}/${coord.y}?${params.toString()}`;
 }
 
@@ -202,7 +205,16 @@ function dashboardTileUrl(
   if (parameters && parameters.length > 0) {
     params.set("parameters", JSON.stringify(parameters));
   }
+  setPreviewParam(params);
   return `/api/tiles/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/${zoom}/${coord.x}/${coord.y}?${params.toString()}`;
+}
+
+// Leaflet loads tiles as images, without the API client that sends the preview header.
+function setPreviewParam(params: URLSearchParams) {
+  const previewUserId = PLUGIN_PERMISSION_PREVIEW.getActivePreviewUserId();
+  if (previewUserId != null) {
+    params.set("preview_as", String(previewUserId));
+  }
 }
 
 function publicCardTileUrl(
