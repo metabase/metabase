@@ -1660,7 +1660,7 @@
                    :model/PulseChannel {channel-id :id} {:pulse_id      pulse-id
                                                          :channel_type  "email"
                                                          :schedule_type "daily"
-                                                         :details       {:emails ["foo@bar.com"]}}]
+                                                         :details       {:emails ["user@example.com"]}}]
       (testing "Should be able to delete your own subscription"
         (mt/with-temp [:model/PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= nil

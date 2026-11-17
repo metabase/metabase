@@ -88,10 +88,7 @@
   (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms)))
 
 (defn check-allowed-to-create-card!
-  "The full pre-write permission/validation stack for creating a card, mirroring `POST /api/card`.
-   `card` is the create body (with `:dataset_query`, and `:collection_id` and/or `:dashboard_id`);
-   `card-type` its keyword type. Runs metric validity, run-permissions on the query, create-permission on the
-   target collection, and cycle detection. Throws on any failure."
+  "Throws unless `card` can be saved as `card-type` and the current user may create it and run its query."
   [card card-type]
   (check-card-can-be-saved! (:dataset_query card) card-type)
   (check-allowed-to-run-query! (:dataset_query card))
@@ -100,11 +97,7 @@
   (check-no-save-cycle (:dataset_query card)))
 
 (mu/defn check-allowed-to-update-card!
-  "The post-write permission/validation stack for updating a card, mirroring `PUT /api/card/:id`.
-   Run *after* the card's write-check: `card-before-update` is the existing card, `card-updates`
-   the patch (after [[metabase.api.common/updates-without-collection-when-archiving]]). Checks
-   that embedding is enabled when it changes, the update permission, which covers collection and dashboard moves,
-   result-metadata data perms, and query-run perms."
+  "Throws unless the current user may apply `card-updates` to `card-before-update`."
   [card-before-update :- ::queries.schema/card
    card-updates       :- ::queries.schema/card]
   (check-embedding-enabled-to-change-embedding card-before-update card-updates)

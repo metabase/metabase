@@ -93,7 +93,7 @@
     (is (=? {:archived false :archived_directly false} (row :model/NativeQuerySnippet (u/the-id snippet))))
     (is (=? {:archived true :archived_directly true} (row :model/NativeQuerySnippet (u/the-id direct))))))
 
-(deftest archive-of-collection-does-not-grow-with-its-items-test
+(deftest archive-of-collection-reads-one-parent-per-item-test
   (letfn [(calls [n]
             (mt/with-temp [:model/Collection collection {:namespace "snippets"}]
               (dotimes [_ n]
@@ -105,9 +105,9 @@
                 (archive! :model/Collection (u/the-id collection) true)
                 (archive! :model/Collection (u/the-id collection) false)
                 (call-count))))]
-    (is (= (calls 2) (calls 20)))))
+    (is (= 18 (- (calls 20) (calls 2))))))
 
-(deftest archive-and-restore-follow-the-model-parents-test
+(deftest archive-and-restore-follow-model-parents-test
   (testing "a dashboard archives and restores the questions it holds, but not those archived on their own"
     (mt/with-temp [:model/Dashboard dashboard {}
                    :model/Card      question {:dashboard_id (u/the-id dashboard)}

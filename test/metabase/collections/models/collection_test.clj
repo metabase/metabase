@@ -2149,7 +2149,7 @@
                       nil
                       (catch clojure.lang.ExceptionInfo e e))]
           (is (= 400 (:status-code (ex-data ex))))
-          (is (= "Cannot update properties on a semantic layer collection" (ex-message ex))))))))
+          (is (= "Cannot update properties on a semantic layer collection." (ex-message ex))))))))
 
 (deftest only-one-library-test
   (mt/with-premium-features #{}

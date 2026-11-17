@@ -1676,14 +1676,14 @@
   "Throws a 400 when `row-archived?` is false and the Collection with `collection-id`, if any, is archived."
   [row-archived? collection-id]
   (when (and (not row-archived?) (archived? collection-id))
-    (throw (ex-info (tru "An archived Collection cannot hold what is not archived.")
+    (throw (ex-info (tru "You cannot put an unarchived item in an archived Collection.")
                     {:status-code 400, :errors {:collection_id (tru "archived Collection")}}))))
 
 (defn- check-parent-not-archived
   "Throws a 400 when `row`, which is not archived, is in `parent`, which is."
   [row parent]
   (when (and parent (:archived parent) (not (:archived row)))
-    (throw (ex-info (tru "An archived Collection cannot hold what is not archived.")
+    (throw (ex-info (tru "You cannot put an unarchived item in an archived Collection.")
                     {:status-code 400, :errors {:location (tru "archived Collection")}}))))
 
 (defn- check-valid-location
@@ -1991,12 +1991,12 @@
     (when (and (library-root-collection? row)
                (seq (set/intersection change-keys
                                       #{:name :description :archived :location :personal_owner_id :slug :namespace :type :authority_level :is_sample})))
-      (throw (ex-info "Cannot update properties on a semantic layer collection" {:status-code 400})))
+      (throw (ex-info (tru "Cannot update properties on a semantic layer collection.") {:status-code 400})))
     (when (and (contains? library-collection-types (:type (t2/original row)))
                (contains? change-keys :location)
                parent
                (not= (:type row) (:type parent)))
-      (throw (ex-info "Cannot move a semantic layer collection outside the semantic layer" {:status-code 400})))))
+      (throw (ex-info (tru "Cannot move a semantic layer collection outside the semantic layer.") {:status-code 400})))))
 
 (defn- check-update-allowed
   "Throws a 400 when `changes` can't be made to `collection-before-updates`: the Trash, a data app's collection, a
@@ -2042,8 +2042,8 @@
     row))
 
 (defn- archive-subtree!
-  "Archives the Collections under `row` and the items in them, along with `row`, in one operation: a statement for the
-  descendants and one for each kind of item."
+  "Archives the Collections under `row` and the items in them, along with `row`, and unpublishes the tables of its
+  library Data collections."
   [row]
   (let [operation-id (:archive_operation_id row)
         descendants  (collections.db/unarchived-collection-ids-with-location-like (str (children-location row) "%"))

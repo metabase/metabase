@@ -488,8 +488,8 @@
       (collection/check-collection-namespace :model/Card (:collection_id card)))))
 
 (defenterprise pre-update-check-sandbox-constraints
-  "Checks that a change of the result metadata of a Card keeps it matching the Tables sandboxes are built out of it, in
-  Metabase Enterprise Edition. The OSS implementation is a no-op."
+  "Throws when a change of the result metadata of a Card stops it matching the Tables of its sandboxes, which OSS never
+  does."
   metabase-enterprise.sandbox.models.sandbox
   [_ _])
 
@@ -1009,11 +1009,10 @@
         new-card-ids      (into #{} (comp exposed-card-ids (remove existing-card-ids)) new-dashcards)]
     (check-shared-dashboard-timeline-permissions-for-card-ids! dashboard new-card-ids)))
 
-;; the create permission check takes only the new Card, so the copy source is passed through a binding
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *copy-source-card*
-  "The Card a new Card is being copied from, if any. Its timeline visibility settings count as the previous state, so
-  copying a Card does not require read access to the timelines it already selects."
+  "The Card a new Card is being copied from, if any, bound because the create check takes only the new Card, so that
+  the timelines the source already selects need no read access."
   nil)
 
 (defmacro with-copy-source-card
@@ -1224,7 +1223,7 @@
   (when (and (not archived)
              (or (and dashboard_id (queries.db/dashboard-archived? dashboard_id))
                  (and document_id (queries.db/document-archived? document_id))))
-    (throw (ex-info (tru "An archived Dashboard or Document cannot hold a Card that is not archived.")
+    (throw (ex-info (tru "You cannot put an unarchived Card in an archived Dashboard or Document.")
                     {:status-code 400}))))
 
 (defn- card-parent-archived?

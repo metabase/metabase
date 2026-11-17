@@ -189,26 +189,26 @@
   #{:schedule_type :schedule_hour :schedule_day :schedule_frame})
 
 (defn- check-channel-type
-  "Throw a 400 unless `channel-type` is one of the [[channel-types]]."
+  "Throws a 400 unless `channel-type` is one of the [[channel-types]]."
   [channel-type]
   (when-not (channel-type? (some-> channel-type keyword))
-    (throw (ex-info (tru "Invalid channel type: {0}" (pr-str channel-type)) {:status-code 400}))))
+    (throw (ex-info (tru "Invalid channel type: {0}." (pr-str channel-type)) {:status-code 400}))))
 
 (defn- check-schedule
-  "Throw a 400 unless the schedule columns of `pulse-channel` have a schedule type and the hour, day and frame it
+  "Throws a 400 unless the schedule columns of `pulse-channel` have a schedule type and the hour, day and frame it
   requires."
   [{:keys [schedule_type schedule_hour schedule_day schedule_frame]}]
   (let [schedule-type  (some-> schedule_type keyword)
         schedule-frame (some-> schedule_frame keyword)]
     (when-not (schedule-type? schedule-type)
-      (throw (ex-info (tru "Invalid schedule type: {0}" (pr-str schedule_type)) {:status-code 400})))
+      (throw (ex-info (tru "Invalid schedule type: {0}." (pr-str schedule_type)) {:status-code 400})))
     (when-not (valid-schedule? schedule-type schedule_hour schedule_day schedule-frame)
-      (throw (ex-info (tru "Invalid schedule: a {0} schedule does not take this hour, day and frame"
+      (throw (ex-info (tru "Invalid schedule: a {0} schedule does not take this hour, day and frame."
                            (name schedule-type))
                       {:status-code 400})))))
 
 (defn- check-details
-  "Throw a 400 unless `details` of a PulseChannel has the shape of [[pulse.schema/pulse-channel.details]]."
+  "Throws a 400 unless `details` of a PulseChannel has the shape of [[pulse.schema/pulse-channel.details]]."
   [{:keys [details]}]
   (when-not (mr/validate [:maybe ::pulse.schema/pulse-channel.details] details)
     (throw (ex-info (tru "Invalid channel details") {:status-code 400}))))
@@ -234,7 +234,7 @@
       (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse_id pulse-channel :add-pc-ids #{id}))))
 
 (defn- check-channel-update
-  "Throw unless the changes `pulse-channel`, a row an UPDATE writes, leave it with valid columns."
+  "Throws unless `pulse-channel`, a row an UPDATE writes, has valid columns after its changes."
   [pulse-channel]
   (let [changes (t2/changes pulse-channel)]
     (when (contains? changes :channel_type)

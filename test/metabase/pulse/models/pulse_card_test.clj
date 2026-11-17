@@ -32,12 +32,12 @@
                                                            :dashboard_card_id dashcard-id
                                                            :position          0}]
     (testing "a position cannot be negative"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"non-negative"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must not be negative"
                             (t2/insert! :model/PulseCard {:pulse_id          pulse-id
                                                           :card_id           card-id
                                                           :dashboard_card_id dashcard-id
                                                           :position          -1})))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"non-negative"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must not be negative"
                             (t2/update! :model/PulseCard :id pulse-card-id {:position -1})))
       (is (= 0 (t2/select-one-fn :position :model/PulseCard :id pulse-card-id))))
     (testing "any other position goes"

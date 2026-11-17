@@ -55,9 +55,7 @@
         (select-keys (malli.util/keys NewCollectionArguments)))))
 
 (mu/defn create-collection!
-  "Create a new collection. Checks that the user can create it, runs the authority-level
-  superuser/feature check, and publishes both the create and touch events. The single source of
-  truth for collection creation; REST and agent callers both go through here."
+  "Creates a Collection after its create check and publishes its create and touch events."
   [coll-data :- CreateCollectionArguments]
   (api/create-check :model/Collection coll-data)
   (u/prog1 (collections.db/insert-collection!

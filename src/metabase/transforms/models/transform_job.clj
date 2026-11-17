@@ -55,7 +55,7 @@
     {:name name :description description}))
 
 (mu/defn- check-schedule
-  "Throw a 400 unless `schedule` is a valid cron expression."
+  "Throws a 400 unless `schedule` is a valid cron expression."
   [schedule :- [:maybe :string]]
   (when-not (transforms.schedule/validate-cron-expression (str schedule))
     (throw (ex-info (i18n/tru "Invalid cron expression: {0}" schedule) {:status-code 400}))))

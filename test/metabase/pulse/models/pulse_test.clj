@@ -60,7 +60,7 @@
   (testing "this should cover all the basic Pulse attributes"
     (mt/with-temp [:model/Pulse        {pulse-id :id}   {:name "Lodi Dodi"}
                    :model/PulseChannel {channel-id :id} {:pulse_id pulse-id
-                                                         :details  {:emails ["foo@bar.com"]}}
+                                                         :details  {:emails ["user@example.com"]}}
                    :model/Card         {card-id :id}    {:name "Test Card"}]
       (t2/insert! :model/PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
       (t2/insert! :model/PulseChannelRecipient, :pulse_channel_id channel-id, :user_id (mt/user->id :rasta))
@@ -85,7 +85,7 @@
                                    {:schedule_type :daily
                                     :schedule_hour 15
                                     :channel_type  :email
-                                    :recipients    [{:email "foo@bar.com"}
+                                    :recipients    [{:email "user@example.com"}
                                                     (dissoc (user-details :rasta) :is_superuser :is_qbnewb :is_data_analyst)]})]})
              (-> (dissoc (models.pulse/retrieve-pulse pulse-id) :id :pulse_id :created_at :updated_at)
                  (update :creator  dissoc :date_joined :last_login :tenant_id)

@@ -56,7 +56,6 @@ that needs the row as stored.
 - Checks first, as a flat list of `(when ...)` that throw `(ex-info (tru "...") {:status-code 400})`; then
   derivations; then cascades, which see the derived values; return the row. A key `assoc`ed onto the returned row
   is written.
-- Word a message like others of its kind: "You cannot change the {column} of a {Thing}.", "A {Thing} needs a name."
 - The hook is where an allowed value set (an enum column) is enforced; the request schema repeats it for the message.
 - `before-update` receives the stored row with the changes merged in. `(t2/changes row)` holds only columns whose
   value differs from the stored one, and `(t2/original row)` the stored row as `after-select` returned it. Run a
@@ -68,8 +67,8 @@ that needs the row as stored.
 - A hook may read another row through a `<module>.db` function. It sees stored rows, not the other rows of its own
   statement, so a writer whose rows depend on each other writes them in separate statements, dependency first.
 - A check that needs the row's id (cycle detection) runs in `before-update` only.
-- Name helpers for what they return and `assoc` the result in the hook. `with-` is for macros only.
-- Publish no event and record no revision in a hook (the one exception: Transform's `before-delete`, for its tests).
+- Publish no event and record no revision in a hook. The one exception is Transform's `before-delete`, which deletes
+  its tests through `delete-transform-tests!`, and that publishes a delete event for each.
 - **Derived column.** Never trusted from the caller: compute and overwrite on insert; recompute when its source
   changes; a change to it alone is a 400; leave it out of the request schema. A column derived only in some states
   (a model's `display` is `:table`) is overwritten in those states and keeps the caller's value in the others.
@@ -79,8 +78,7 @@ that needs the row as stored.
   queries. A legacy stored shape is rewritten by a data migration, never by `after-select`.
 - **Rule over several rows.** Uniqueness needs a unique index, added after a changeset that renames existing
   duplicates (" (2)", " (3)"); decide what a NULL parent means, since an index treats NULLs as distinct. A hook check
-  may add the 400 message; the index is the enforcement. A test that provokes the index inside `mt/with-temp`
-  wraps the write in `t2/with-transaction`, or Postgres aborts the test's transaction.
+  may add the 400 message; the index is the enforcement.
 - **Cascade.** The model whose change causes it writes the followers through their models, so their hooks run and may
   refuse: in `mi/after-archived-change!` when it follows `archived` (see Archiving), else in `before-update` or
   `before-delete`, only when the causing column is in `(t2/changes row)`. `before-update` runs before Toucan opens its
@@ -125,10 +123,8 @@ endpoint's own helper.
 - A bulk endpoint hydrates `:can_write` on all rows once, then checks each.
 - The write function publishes the events (`events/publish-event!`); the audit log and revisions are written from
   them. SerDes and remote sync call no write function and publish nothing.
-- The caller sets provenance (`creator_id`); a hook may forbid changing it.
 - The request schema is closed and lists only what a caller may set: no derived columns, no `archived_directly`.
 - App-DB queries live in `<module>.db`, with caller-supplied values bound: `(t2/select-one :model/X :id [:auto/param id])`.
-- A changeset follows the `app-db-migrations` skill.
 
 ## Archiving
 
@@ -145,7 +141,7 @@ endpoint's own helper.
   derive their cause from it.
 - Collection archives its subtree in a fixed number of statements; a collection that inherits an archive does not
   cascade again. Dashboard carries its dashboard questions, Document its cards, Exploration its summary documents,
-  Timeline its events (a follower without `archived_directly` always follows).
+  Timeline its events. The Card hooks delete the alerts of a Card only when it is archived directly.
 - A live row (a row that is not archived) cannot be inserted into or moved into an archived parent
   (`collection/check-collection-not-archived`), checked only when the parent changes.
 - A user-facing writer asks `api/update-check` on the parent with `{:archived x}`: the parent's `mi/can-update?` also
@@ -165,7 +161,6 @@ Banners of the form `;;; ---- Hooks ----`, padded with dashes to 120 columns, in
   hooks. A fixture overrides a column only when the test depends on it. Build queries with `metabase.lib`.
 - Test a hook through `t2/insert!` / `t2/update!`: the rejection, the derivation, the cascade. Test a permission
   rule through `api/create-check` / `api/update-check` as each kind of user, and once through the endpoint.
-- Before moving a per-user rule, pin today's answers in a user-by-change table test on the unmodified code.
 - Assert a list endpoint stays batched with `t2/with-call-count` at two sizes.
 - A new model or column breaks the enumeration tests (entity ids, SerDes specs, stats): run them.
 

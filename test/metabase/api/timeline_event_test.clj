@@ -101,7 +101,7 @@
         (is (= "Not found."
                (mt/user-http-request :crowberto :put 404 (str "timeline-event/" ev-id) {:timeline_id Integer/MAX_VALUE})))))))
 
-(deftest timeline-event-timezone-must-name-a-time-zone-test
+(deftest timeline-event-timezone-must-name-time-zone-test
   (mt/with-temp [:model/Timeline      {tl-id :id} {}
                  :model/TimelineEvent {id :id}    {:timeline_id tl-id}]
     (testing "POST /api/timeline-event"

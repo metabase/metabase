@@ -19,10 +19,10 @@
 ;;; ------------------------------------------------------- Hooks --------------------------------------------------------
 
 (defn- check-position
-  "Throw a 400 unless the `:position` of `pulse-card` is a non-negative integer."
+  "Throws a 400 unless the `:position` of `pulse-card` is a non-negative integer."
   [{:keys [position]}]
   (when-not (nat-int? position)
-    (throw (ex-info (tru "A PulseCard position must be a non-negative integer.") {:status-code 400}))))
+    (throw (ex-info (tru "The position of a subscription card must not be negative.") {:status-code 400}))))
 
 (t2/define-before-insert :model/PulseCard
   [pulse-card]

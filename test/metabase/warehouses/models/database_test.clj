@@ -1323,7 +1323,7 @@
         (testing "a change to it alone is refused"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"provider_name is derived from the engine and the host"
+               #"provider_name follows the engine and the host"
                (t2/update! :model/Database :id db-id {:provider_name "Neon"}))))
         (finally
           (t2/delete! :model/Database :id db-id))))))

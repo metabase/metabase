@@ -405,16 +405,15 @@
     0))
 
 (mu/defn archive-pulses-in-collections!
-  "Archive the unarchived Pulses in the Collections with `collection-ids` along with them, returning the number
-  updated. Dashboard subscriptions are skipped: they follow their Dashboard's `archived` flag, and their own
-  `archived` flag records only that the user deleted them."
+  "Archive the unarchived Pulses in the Collections with `collection-ids` along with them, returning the number updated
+  and skipping dashboard subscriptions, which follow their Dashboard's `archived` flag."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/update! :model/Pulse {:collection_id [:in collection-ids], :dashboard_id nil, :archived false}
               {:archived true}))
 
 (mu/defn restore-pulses-in-collections!
-  "Restore the Pulses in the Collections with `collection-ids` that were archived along with them, returning the
-  number updated. Dashboard subscriptions are skipped, see [[archive-pulses-in-collections!]]."
+  "Restore the Pulses in the Collections with `collection-ids` that were archived along with them, returning the number
+  updated and skipping dashboard subscriptions as [[archive-pulses-in-collections!]] does."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/update! :model/Pulse {:collection_id [:in collection-ids], :dashboard_id nil, :archived true, :archived_directly false}
               {:archived false}))

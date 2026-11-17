@@ -65,7 +65,7 @@
 ;;; ------------------------------------------------------- Hooks ----------------------------------------------------------
 
 (defn- check-parameters
-  "Throw a 400 unless the `:parameters` of `pulse` are a sequence of maps with String `:id` keys."
+  "Throws a 400 unless the `:parameters` of `pulse` are a sequence of maps with String `:id` keys."
   [{:keys [parameters]}]
   (when-not (mr/validate [:maybe
                           [:sequential
@@ -78,7 +78,7 @@
                      :parameters  parameters}))))
 
 (defn- check-dashboard-subscription
-  "Throw a 400 when `pulse` is a dashboard subscription with a column of an alert or a collection position."
+  "Throws a 400 when `pulse` is a dashboard subscription with a column of an alert or a collection position."
   [{:keys [dashboard_id collection_position alert_condition alert_first_only alert_above_goal]}]
   (when (and dashboard_id (some some? [alert_condition alert_first_only alert_above_goal]))
     (throw (ex-info (tru "A dashboard subscription cannot have the columns of an alert.")

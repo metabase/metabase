@@ -98,13 +98,13 @@
   "Throws a 400 unless the `:width` of `dashboard` is one a Dashboard takes."
   [{:keys [width]}]
   (when-not (contains? widths width)
-    (throw (ex-info (tru "A Dashboard''s width is fixed or full.") {:status-code 400}))))
+    (throw (ex-info (tru "Dashboard width must be fixed or full.") {:status-code 400}))))
 
 (defn- check-auto-apply-filters
   "Throws a 400 unless the `:auto_apply_filters` of `dashboard` is a boolean."
   [{:keys [auto_apply_filters]}]
   (when-not (boolean? auto_apply_filters)
-    (throw (ex-info (tru "A Dashboard''s auto_apply_filters is true or false.") {:status-code 400}))))
+    (throw (ex-info (tru "Dashboard auto_apply_filters must be true or false.") {:status-code 400}))))
 
 (t2/define-before-insert :model/Dashboard
   [dashboard]

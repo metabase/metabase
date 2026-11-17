@@ -197,10 +197,10 @@
     (when (and (or (contains? changes :source_type)
                    (and (contains? changes :source_database_id) (source-database-id transform)))
                (not (contains? changes :source)))
-      (throw (ex-info (tru "source_type and source_database_id are derived from the source and cannot be set.")
+      (throw (ex-info (tru "source_type and source_database_id follow the source; change the source instead.")
                       {:status-code 400})))
     (when (and (contains? changes :target_db_id) (not definition))
-      (throw (ex-info (tru "target_db_id is derived from the source and the target and cannot be set.")
+      (throw (ex-info (tru "target_db_id follows the source and the target; change them instead.")
                       {:status-code 400})))
     (when definition
       (check-cycle definition)
@@ -225,11 +225,8 @@
     transform))
 
 (defenterprise delete-transform-tests!
-  "Hook called from the `:model/Transform` before-delete: delete the tests of the transform `transform-id` through
-  Toucan, so that each one's own delete hook runs. The database would take them with the transform either way -- the
-  `transform_test.transform_id` FK is `ON DELETE CASCADE` -- but a cascade runs no hook, and remote sync learns a
-  test is gone only from the event that hook publishes, so it would go on serving a test whose transform no longer
-  exists. OSS is a no-op (no data-testing module)."
+  "Deletes the tests of the transform `transform-id` through their model and publishes a delete event for each, which a
+  database cascade would not; a no-op in OSS."
   metabase-enterprise.data-testing.models
   [_transform-id]
   nil)

@@ -174,7 +174,7 @@
       (testing (str "changing only " (pr-str (keys changes)))
         (is (= 400 (status-code-of #(t2/update! :model/Transform :id id changes))))))))
 
-(deftest source-database-id-is-the-callers-when-source-names-none-test
+(deftest source-database-id-is-callers-when-source-names-none-test
   (testing "a Python source without a database leaves source_database_id to the writer"
     (let [defaults (mt/with-temp-defaults :model/Transform)]
       (mt/with-temp [:model/Database {other-db :id} {}

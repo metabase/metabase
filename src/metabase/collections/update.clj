@@ -119,10 +119,8 @@
         (move-collection! (collections.db/collection id) collection-updates)))))
 
 (mu/defn update-collection!
-  "Modify the collection with `id`, including archiving or unarchiving it, or moving it. Checks that the user can update the collection,
-  gates `authority_level` behind superuser plus the Official Collections feature, applies the plain column updates,
-  then archives, restores or moves as `collection-updates` asks, and publishes the update and touch events. Returns the
-  updated collection. The single source of truth for collection updates; REST and agent callers both go through here."
+  "Applies `collection-updates` to the Collection with `id` after its update check, archiving, restoring or moving it as
+  they ask, and returns it."
   [id                 :- ms/PositiveInt
    collection-updates :- UpdateCollectionArguments]
   (let [collection-before-update (t2/hydrate (api/check-404 (collections.db/collection id)) :parent_id)

@@ -389,7 +389,7 @@
   [database changes]
   (when (and (contains? changes :provider_name)
              (not= (:provider_name changes) (provider-name database)))
-    (throw (ex-info (tru "provider_name is derived from the engine and the host and cannot be set.")
+    (throw (ex-info (tru "provider_name follows the engine and the host; change them instead.")
                     {:status-code 400}))))
 
 (defn- stub-cleared
