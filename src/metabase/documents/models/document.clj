@@ -50,6 +50,12 @@
   (derive :hook/events)
   (derive :hook/events))
 
+(defmethod events/spec :model/Document
+  [_model]
+  {:create :event/document-create
+   :update :event/document-update
+   :delete :event/document-delete})
+
 ;;; ---------- Hooks ---------------------------------------------------------------------------------------------
 
 (defn- document-parent-archived?

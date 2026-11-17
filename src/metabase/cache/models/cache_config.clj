@@ -32,6 +32,12 @@
   (derive :hook/events)
   (derive :hook/timestamped?))
 
+(defmethod events/spec :model/CacheConfig
+  [_model]
+  {:create :event/cache-config-create
+   :update :event/cache-config-update
+   :delete :event/cache-config-delete})
+
 (methodical/defmethod t2/table-name :model/CacheConfig [_model] :cache_config)
 
 (t2/deftransforms :model/CacheConfig

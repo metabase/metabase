@@ -28,6 +28,12 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
+(defmethod events/spec :model/NativeQuerySnippet
+  [_model]
+  {:create :event/snippet-create
+   :update :event/snippet-update
+   :delete :event/snippet-delete})
+
 ;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
 (t2/deftransforms :model/NativeQuerySnippet
   {:template_tags {:in mi/json-in

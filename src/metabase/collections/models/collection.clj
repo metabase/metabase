@@ -334,6 +334,12 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
+(defmethod events/spec :model/Collection
+  [_model]
+  {:create :event/collection-create
+   :update :event/collection-update
+   :delete :event/collection-delete})
+
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]
   (when-not (audit/analytics-dev-mode)

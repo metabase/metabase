@@ -4,7 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.events.core]
+   [metabase.events.core :as events]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -44,6 +44,12 @@
 
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/events :hook/events]]
   (derive :model/Transform trait))
+
+(defmethod events/spec :model/Transform
+  [_model]
+  {:create :event/transform-create
+   :update :event/transform-update
+   :delete :event/transform-delete})
 
 (mu/defn transform-source-out :- ::transforms.schema/transform-source
   "Deserialize a transform source map from JSON storage format, normalized to its schema."

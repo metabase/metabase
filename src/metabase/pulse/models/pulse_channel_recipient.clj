@@ -1,5 +1,6 @@
 (ns metabase.pulse.models.pulse-channel-recipient
   (:require
+   [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -10,6 +11,12 @@
 
 (derive :model/PulseChannelRecipient :metabase/model)
 (derive :model/PulseChannelRecipient :hook/events)
+
+(defmethod events/spec :model/PulseChannelRecipient
+  [_model]
+  {:create :event/pulse-channel-recipient-create
+   :update :event/pulse-channel-recipient-update
+   :delete :event/pulse-channel-recipient-delete})
 
 ;;; ------------------------------------------------------- Hooks --------------------------------------------------------
 

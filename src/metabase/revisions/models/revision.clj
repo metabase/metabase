@@ -135,6 +135,12 @@
   (derive :hook/events)
   (derive :search/indexed))
 
+(defmethod events/spec :model/Revision
+  [_model]
+  {:create :event/revision-create
+   :update :event/revision-update
+   :delete :event/revision-delete})
+
 (t2/deftransforms :model/Revision
   {:object mi/transform-json})
 

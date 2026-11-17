@@ -3,6 +3,7 @@
    [metabase-enterprise.database-routing.common :refer [router-db->destination-db-id]]
    [metabase-enterprise.database-routing.db :as database-routing.db]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
@@ -17,6 +18,12 @@
 (doto :model/DatabaseRouter
   (derive :metabase/model)
   (derive :hook/events))
+
+(defmethod events/spec :model/DatabaseRouter
+  [_model]
+  {:create :event/database-router-create
+   :update :event/database-router-update
+   :delete :event/database-router-delete})
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 

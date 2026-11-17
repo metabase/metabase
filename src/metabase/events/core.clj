@@ -19,6 +19,7 @@
   register-capture!
   register-owned-consumer!
   register-statement-capture!
+  spec
   with-batched-events
   with-event-context]
  [metabase.events.hierarchy

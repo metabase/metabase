@@ -48,6 +48,36 @@
               :hook/created-at-timestamped?
               :hook/timestamped?))))
 
+(defmethod events/spec :model/Notification
+  [_model]
+  {:create :event/notification-row-create
+   :update :event/notification-row-update
+   :delete :event/notification-row-delete})
+
+(defmethod events/spec :model/NotificationCard
+  [_model]
+  {:create :event/notification-card-create
+   :update :event/notification-card-update
+   :delete :event/notification-card-delete})
+
+(defmethod events/spec :model/NotificationHandler
+  [_model]
+  {:create :event/notification-handler-create
+   :update :event/notification-handler-update
+   :delete :event/notification-handler-delete})
+
+(defmethod events/spec :model/NotificationRecipient
+  [_model]
+  {:create :event/notification-recipient-create
+   :update :event/notification-recipient-update
+   :delete :event/notification-recipient-delete})
+
+(defmethod events/spec :model/NotificationSubscription
+  [_model]
+  {:create :event/notification-subscription-create
+   :update :event/notification-subscription-update
+   :delete :event/notification-subscription-delete})
+
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                       :model/Notification                                       ;;
 ;; ------------------------------------------------------------------------------------------------;;

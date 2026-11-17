@@ -6,7 +6,7 @@
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
-   [metabase.events.core]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -100,6 +100,12 @@
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
+
+(defmethod events/spec :model/Table
+  [_model]
+  {:create :event/table-create
+   :update :event/table-update
+   :delete :event/table-delete})
 
 (methodical/defmethod change-log/ignored-columns :model/Table [_model]
   #{:initial_sync_status :view_count})

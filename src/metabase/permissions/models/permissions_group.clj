@@ -12,6 +12,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
@@ -35,6 +36,12 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/events))
+
+(defmethod events/spec :model/PermissionsGroup
+  [_model]
+  {:create :event/group-create
+   :update :event/group-update
+   :delete :event/group-delete})
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 

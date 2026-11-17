@@ -5,7 +5,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.events.core]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
@@ -30,6 +30,12 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
+
+(defmethod events/spec :model/DashboardCard
+  [_model]
+  {:create :event/dashboard-card-create
+   :update :event/dashboard-card-update
+   :delete :event/dashboard-card-delete})
 
 (t2/deftransforms :model/DashboardCard
   {:parameter_mappings     parameters/transform-parameter-mappings

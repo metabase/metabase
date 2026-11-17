@@ -1,6 +1,6 @@
 (ns metabase.warehouse-schema.models.field-user-settings
   (:require
-   [metabase.events.core]
+   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
@@ -31,6 +31,12 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/events))
+
+(defmethod events/spec :model/FieldUserSettings
+  [_model]
+  {:create :event/field-user-settings-create
+   :update :event/field-user-settings-update
+   :delete :event/field-user-settings-delete})
 
 (defn- with-set-flags
   "Set the `_set` flag of every flagged column `effective` writes, unless `effective` sets the flag itself."

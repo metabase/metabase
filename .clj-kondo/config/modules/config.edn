@@ -321,6 +321,7 @@
            metabase.api-keys.usage}
    :uses #{api
            app-db
+           events
            lib.schema
            models
            permissions
@@ -773,6 +774,7 @@
    :api  #{metabase.content-verification.core metabase.content-verification.init metabase.content-verification.schema}
    :uses #{api
            app-db
+           events
            lib.schema
            models
            permissions
@@ -1124,10 +1126,6 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/NativeQuerySnippet
-                    :model/Notification
-                    :model/PermissionsGroup
-                    :model/PermissionsGroupMembership
                     :model/Pulse
                     :model/SecurityAdvisory
                     :model/Table
@@ -1247,6 +1245,7 @@
            metabase.glossary.init
            metabase.glossary.schema}
    :uses #{api
+           events
            lib.schema
            models
            remote-sync
@@ -1275,6 +1274,7 @@
    :uses #{analytics
            api
            driver
+           events
            lib.legacy-mbql
            lib.schema
            models
@@ -2085,6 +2085,7 @@
            app-db
            audit-app
            collections
+           events
            lib.metadata
            lib.schema
            models
@@ -4003,6 +4004,7 @@
    :api  #{metabase-enterprise.custom-viz-plugin.api metabase-enterprise.custom-viz-plugin.init}
    :uses #{api
            api-scope
+           events
            lib.schema
            models
            premium-features
@@ -4803,6 +4805,7 @@
    :uses #{api
            audit-app
            collections
+           events
            lib.schema
            models
            permissions

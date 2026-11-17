@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.models :as notification.models]
    [metabase.pulse.db :as pulse.db]
@@ -108,6 +109,12 @@
   (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.superuser)
   (derive :hook/events))
+
+(defmethod events/spec :model/PulseChannel
+  [_model]
+  {:create :event/pulse-channel-create
+   :update :event/pulse-channel-update
+   :delete :event/pulse-channel-delete})
 
 (t2/deftransforms :model/PulseChannel
   {:details (mi/transform-encrypted-json "pulse_channel.details")

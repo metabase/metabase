@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -24,6 +25,12 @@
   (derive :hook/events)
   (derive ::mi/write-policy.superuser)
   (derive ::mi/create-policy.superuser))
+
+(defmethod events/spec :model/Tenant
+  [_model]
+  {:create :event/tenant-create
+   :update :event/tenant-update
+   :delete :event/tenant-delete})
 
 (defmethod audit-app/model-details :model/Tenant
   [entity _event-type]

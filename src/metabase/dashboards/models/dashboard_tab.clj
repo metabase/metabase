@@ -6,7 +6,7 @@
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.events.core]
+   [metabase.events.core :as events]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
@@ -27,6 +27,12 @@
   (derive :hook/entity-id)
   (derive :hook/events)
   (derive :hook/events))
+
+(defmethod events/spec :model/DashboardTab
+  [_model]
+  {:create :event/dashboard-tab-create
+   :update :event/dashboard-tab-update
+   :delete :event/dashboard-tab-delete})
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

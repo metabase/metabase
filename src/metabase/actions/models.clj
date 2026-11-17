@@ -6,7 +6,7 @@
    [metabase.actions.schema :as actions.schema]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.events.core]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -40,6 +40,12 @@
   (derive :hook/timestamped?)
   (derive :hook/events))
 
+(defmethod events/spec :model/Action
+  [_model]
+  {:create :event/action-create
+   :update :event/action-update
+   :delete :event/action-delete})
+
 (doseq [model action-sub-models]
   (derive model :metabase/model))
 
@@ -47,7 +53,19 @@
   (derive :search/indexed)
   (derive :hook/events))
 
+(defmethod events/spec :model/QueryAction
+  [_model]
+  {:create :event/query-action-create
+   :update :event/query-action-update
+   :delete :event/query-action-delete})
+
 (derive :model/ImplicitAction :hook/events)
+
+(defmethod events/spec :model/ImplicitAction
+  [_model]
+  {:create :event/implicit-action-create
+   :update :event/implicit-action-update
+   :delete :event/implicit-action-delete})
 
 (methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
 (methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])

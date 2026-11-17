@@ -40,6 +40,12 @@
   (derive :hook/timestamped?)
   (derive :hook/events))
 
+(defmethod events/spec :model/TableUserSettings
+  [_model]
+  {:create :event/table-user-settings-create
+   :update :event/table-user-settings-update
+   :delete :event/table-user-settings-delete})
+
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (defn- complete-pairs

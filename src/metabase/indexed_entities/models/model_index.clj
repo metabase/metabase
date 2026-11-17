@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.events.core :as events]
    [metabase.indexed-entities.db :as indexed-entities.db]
    [metabase.indexed-entities.schema :as indexed-entities.schema]
    ;; legacy usage, do not use this in new code
@@ -34,6 +35,12 @@
 (doto :model/ModelIndex
   (derive :hook/events)
   (derive :search/indexed-deletes))
+
+(defmethod events/spec :model/ModelIndex
+  [_model]
+  {:create :event/model-index-create
+   :update :event/model-index-update
+   :delete :event/model-index-delete})
 
 (t2/deftransforms :model/ModelIndex
   ;; TODO (Cam 10/1/25) -- update these to normalize to MBQL 5 Field refs (or stop storing field refs like this in the

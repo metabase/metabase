@@ -1,6 +1,7 @@
 (ns metabase.permissions.models.permissions-group-membership
   (:require
    [medley.core :as m]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -16,6 +17,12 @@
 
 (derive :model/PermissionsGroupMembership :metabase/model)
 (derive :model/PermissionsGroupMembership :hook/events)
+
+(defmethod events/spec :model/PermissionsGroupMembership
+  [_model]
+  {:create :event/group-membership-create
+   :update :event/group-membership-update
+   :delete :event/group-membership-delete})
 
 (def fail-to-remove-last-admin-msg
   "Exception message when try to remove the last admin."

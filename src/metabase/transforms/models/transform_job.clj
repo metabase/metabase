@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
    [metabase.transforms.db :as transforms.db]
@@ -27,6 +28,12 @@
   (derive :hook/events)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
+
+(defmethod events/spec :model/TransformJob
+  [_model]
+  {:create :event/transform-job-create
+   :update :event/transform-job-update
+   :delete :event/transform-job-delete})
 
 (t2/deftransforms :model/TransformJob
   {:ui_display_type mi/transform-keyword})

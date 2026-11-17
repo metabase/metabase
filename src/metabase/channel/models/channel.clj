@@ -5,6 +5,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.channel.db :as channel.db]
    [metabase.channel.schema :as channel.schema]
+   [metabase.events.core :as events]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -31,10 +32,22 @@
   (derive :hook/events)
   (derive :hook/timestamped?))
 
+(defmethod events/spec :model/Channel
+  [_model]
+  {:create :event/channel-create
+   :update :event/channel-update
+   :delete :event/channel-delete})
+
 (doto :model/ChannelTemplate
   (derive :metabase/model)
   (derive :hook/events)
   (derive :hook/timestamped?))
+
+(defmethod events/spec :model/ChannelTemplate
+  [_model]
+  {:create :event/channel-template-create
+   :update :event/channel-template-update
+   :delete :event/channel-template-delete})
 
 ;;; ------------------------------------------------------- Setup --------------------------------------------------------
 

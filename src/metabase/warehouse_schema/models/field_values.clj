@@ -28,7 +28,7 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.database-routing.core :as database-routing]
-   [metabase.events.core]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -105,6 +105,12 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/events))
+
+(defmethod events/spec :model/FieldValues
+  [_model]
+  {:create :event/field-values-create
+   :update :event/field-values-update
+   :delete :event/field-values-delete})
 
 (t2/deftransforms :model/FieldValues
   {:human_readable_values mi/transform-json-no-keywordization

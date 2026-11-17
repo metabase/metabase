@@ -1,9 +1,12 @@
 (ns metabase.events.batch-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.events.models.events-test-timeline]
+   [metabase.models.resolution :as models.resolution]
    [metabase.test :as mt]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -21,7 +24,8 @@
                         :in-tx?      (mdb/in-transaction?)}))
 
 (def ^:private topic-names
-  [:event/events-test-timeline-create :event/events-test-timeline-update :event/events-test-timeline-delete])
+  [:event/events-test-timeline-create :event/events-test-timeline-update :event/events-test-timeline-delete
+   :event/events-test-timeline-update-only-update])
 
 (doseq [topic topic-names]
   (events/derive! topic ::capture))
@@ -107,3 +111,32 @@
     (t2/delete! :model/EventsTestTimeline :name "same" :id [:in ids])
     (testing "a delete by column publishes one event per row"
       (is (= 3 (count (filter #(= :event/events-test-timeline-delete (:topic %)) @received)))))))
+
+(defn- trait-models
+  "The models deriving `:hook/events`, once the namespace of every model has loaded."
+  []
+  (doseq [[model nspace] models.resolution/model->namespace
+          :when (or config/ee-available? (not (str/starts-with? (str nspace) "metabase-enterprise")))]
+    (t2/resolve-model model))
+  (filterv #(and (keyword? %) (= "model" (namespace %))) (descendants :hook/events)))
+
+(deftest every-trait-model-has-a-spec-test
+  (let [models (trait-models)
+        specs  (dissoc (methods events/spec) :default)]
+    (testing "every model deriving :hook/events names its topics in events/spec"
+      (doseq [model models]
+        (is (seq (when-let [f (get specs model)] (f model)))
+            (str model " derives :hook/events but has no events/spec method"))))
+    (testing "every model with an events/spec method derives :hook/events"
+      (doseq [model (keys specs)]
+        (is (isa? model :hook/events) (str model " has an events/spec method but does not derive :hook/events"))))
+    (testing "no two models share a topic"
+      (let [topics (mapcat (fn [[model f]] (vals (f model))) specs)]
+        (is (= [] (keep (fn [[topic n]] (when (< 1 n) topic)) (frequencies topics))))))))
+
+(deftest spec-operations-test
+  (testing "a model whose spec lists only :update publishes nothing on insert or delete"
+    (let [id (t2/insert-returning-pk! :model/EventsTestTimelineUpdateOnly {:name "o" :icon "cake" :creator_id (mt/user->id :rasta)})]
+      (t2/update! :model/EventsTestTimelineUpdateOnly :id id {:name "p"})
+      (t2/delete! :model/EventsTestTimelineUpdateOnly :id id)
+      (is (= [:event/events-test-timeline-update-only-update] (topics))))))

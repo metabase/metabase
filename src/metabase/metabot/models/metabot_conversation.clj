@@ -1,6 +1,7 @@
 (ns metabase.metabot.models.metabot-conversation
   (:require
    [metabase.api.common :as api]
+   [metabase.events.core :as events]
    [metabase.metabot.db :as metabot.db]
    [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [tru]]
@@ -12,6 +13,12 @@
 (doto :model/MetabotConversation
   (derive :metabase/model)
   (derive :hook/events))
+
+(defmethod events/spec :model/MetabotConversation
+  [_model]
+  {:create :event/metabot-conversation-create
+   :update :event/metabot-conversation-update
+   :delete :event/metabot-conversation-delete})
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

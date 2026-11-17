@@ -53,6 +53,12 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
+(defmethod events/spec :model/Pulse
+  [_model]
+  {:create :event/pulse-row-create
+   :update :event/pulse-row-update
+   :delete :event/pulse-row-delete})
+
 (def ^:private transform-pulse-parameters
   "Toucan 2 transform for a Pulse's `:parameters`, normalized like a Dashboard's but with each `:type` optional."
   {:in  (comp mi/json-in #(lib/normalize ::parameters.schema/parameters-with-optional-types %))

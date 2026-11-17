@@ -1,6 +1,7 @@
 (ns metabase.transforms.models.transform-tag
   (:require
    [metabase.api.common :as api]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -21,6 +22,12 @@
   (derive :hook/events)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
+
+(defmethod events/spec :model/TransformTag
+  [_model]
+  {:create :event/transform-tag-create
+   :update :event/transform-tag-update
+   :delete :event/transform-tag-delete})
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 

@@ -1,6 +1,7 @@
 (ns metabase.timeline.models.timeline-event
   (:require
    [metabase.api.common :as api]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -22,6 +23,12 @@
   (derive :hook/events)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defmethod events/spec :model/TimelineEvent
+  [_model]
+  {:create :event/timeline-event-create
+   :update :event/timeline-event-update
+   :delete :event/timeline-event-delete})
 
 (def default-icon
   "The default icon for Timeline and TimelineEvents."

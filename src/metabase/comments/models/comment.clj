@@ -6,6 +6,7 @@
    [metabase.comments.db :as comments.db]
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.comments.schema :as comments.schema]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [ring.util.codec :as codec]
@@ -17,6 +18,12 @@
   (derive :metabase/model)
   (derive :hook/events)
   (derive :hook/timestamped?))
+
+(defmethod events/spec :model/Comment
+  [_model]
+  {:create :event/comment-create
+   :update :event/comment-update
+   :delete :event/comment-delete})
 
 ;; NOTE: the `content_html` column is deprecated and no longer written to.
 ;; HTML for email notifications is now rendered server-side from the `content` JSON

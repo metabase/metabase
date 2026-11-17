@@ -1,6 +1,7 @@
 (ns metabase.glossary.models.glossary
   (:require
    [metabase.api.common :as api]
+   [metabase.events.core :as events]
    [metabase.glossary.db :as glossary.db]
    [metabase.glossary.schema :as glossary.schema]
    [metabase.models.interface :as mi]
@@ -17,6 +18,12 @@
   (derive :hook/events)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defmethod events/spec :model/Glossary
+  [_model]
+  {:create :event/glossary-create
+   :update :event/glossary-update
+   :delete :event/glossary-delete})
 
 (def GlossaryEntry
   "Schema for a glossary entry."

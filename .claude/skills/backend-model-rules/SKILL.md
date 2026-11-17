@@ -116,8 +116,8 @@ An endpoint or tool: parse the request, load the row with `api/check-404`, call 
   revert, copy; a bulk endpoint hydrates `:can_write` once); `events/with-batched-events` around a write of several rows
   of one aggregate, so its reactions happen once per owner (nothing on a throw; nested batches join); and
   `(events/with-event-context {:revision-message m} ...)` for the records the write causes.
-- Nobody publishes a lifecycle event by hand: a model deriving `:hook/events` publishes
-  `:event/<name>-create|update|delete` for every write, in its transaction. A moment that is a column change
+- Nobody publishes a lifecycle event by hand: a model that publishes derives `:hook/events` and implements
+  `events/spec` with its full topic keywords, and publishes them for every write, in its transaction. A moment that is a column change
   (public link, publish) is derived by its consumer with `u.events/changed?`; only a moment that is no row write
   (login, read, sync begin, transform run, user invited) is published by hand.
 
@@ -126,8 +126,8 @@ An endpoint or tool: parse the request, load the row with `api/check-404`, call 
 - The payload is `{:object <after> :previous-object <before> :user-id <current user or nil> :context {...}}`
   (`::events.schema/lifecycle`): a create has `:object` only, a delete `:previous-object` only. Compare columns with
   `u.events/changed?`, `changed-any?` and `changed-keys` (`metabase.util.events`): a merged batch has no "changes".
-- `events/register-capture!` runs a function at the write, in its transaction and before a DELETE runs, so it can read
-  rows that `ON DELETE CASCADE` removes; its value reaches the consumer's batch handler under `:captures`. The change
+- `events/register-capture!` (a DELETE's events, after its before-delete hooks) and `register-statement-capture!` (its
+  rows, before them) run once per statement to read rows `ON DELETE CASCADE` removes, for the handler's `:captures`. The change
   log and the search index are consumers: they list their models by tag and derive `:hook/events` on them.
 - A consumer lives in `<module>/events.clj` or `<module>/events/<topic>.clj`, required from `init.clj`, as a
   `methodical/defmethod events/publish-event!` on a topic it derives; `events/register-owned-consumer!` gives it one

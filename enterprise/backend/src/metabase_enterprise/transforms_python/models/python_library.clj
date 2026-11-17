@@ -18,6 +18,12 @@
 (doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id :hook/events]]
   (derive :model/PythonLibrary trait))
 
+(defmethod events/spec :model/PythonLibrary
+  [_model]
+  {:create :event/python-library-create
+   :update :event/python-library-update
+   :delete :event/python-library-delete})
+
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (defn- normalize-path

@@ -55,6 +55,12 @@
   (derive :hook/events)
   (derive :hook/events))
 
+(defmethod events/spec :model/Dashboard
+  [_model]
+  {:create :event/dashboard-create
+   :update :event/dashboard-update
+   :delete :event/dashboard-delete})
+
 (methodical/defmethod change-log/ignored-columns :model/Dashboard [_model]
   #{:last_viewed_at :view_count})
 

@@ -1,5 +1,6 @@
 (ns metabase.pulse.models.pulse-card
   (:require
+   [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.util :as u]
@@ -16,6 +17,12 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/events))
+
+(defmethod events/spec :model/PulseCard
+  [_model]
+  {:create :event/pulse-card-create
+   :update :event/pulse-card-update
+   :delete :event/pulse-card-delete})
 
 ;;; ------------------------------------------------- Persistence Functions -------------------------------------------------
 

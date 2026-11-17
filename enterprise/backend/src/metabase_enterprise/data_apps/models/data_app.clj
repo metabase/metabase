@@ -48,6 +48,12 @@
   (derive :hook/timestamped?)
   (derive :hook/events))
 
+(defmethod events/spec :model/DataApp
+  [_model]
+  {:create :event/data-app-create
+   :update :event/data-app-update
+   :delete :event/data-app-delete})
+
 (t2.default-fields/define-default-fields :model/DataApp
   data-apps.db/non-blob-columns)
 

@@ -2,6 +2,7 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -20,6 +21,12 @@
   (derive :hook/events)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defmethod events/spec :model/Timeline
+  [_model]
+  {:create :event/timeline-create
+   :update :event/timeline-update
+   :delete :event/timeline-delete})
 
 (t2/define-after-select :model/Timeline
   [timeline]

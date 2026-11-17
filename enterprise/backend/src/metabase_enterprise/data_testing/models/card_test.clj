@@ -5,7 +5,7 @@
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.audit-app.core :as audit-app]
-   [metabase.events.core]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -27,6 +27,12 @@
   (derive :hook/timestamped?)
   (derive :hook/events)
   (derive ::data-testing.models/saved-test))
+
+(defmethod events/spec :model/CardTest
+  [_model]
+  {:create :event/card-test-create
+   :update :event/card-test-update
+   :delete :event/card-test-delete})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/CardTest :card]
   [_original-model _k]

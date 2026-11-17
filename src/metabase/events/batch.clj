@@ -17,23 +17,31 @@
   :captures {[model id] {consumer-key value}}}`."
   nil)
 
-(def ^:private topic-stems
-  "The stem of the lifecycle topics of the models whose name is not it."
-  {:model/Notification              "notification-row"
-   :model/Pulse                     "pulse-row"
-   :model/NativeQuerySnippet        "snippet"
-   :model/PermissionsGroup          "group"
-   :model/PermissionsGroupMembership "group-membership"})
-
 (def ^:private Operation
   "The kind of a write of a row."
   [:enum :create :update :delete])
 
-(mu/defn lifecycle-topic :- qualified-keyword?
-  "The topic of the event for `operation` on a row of `model`, such as `:event/card-create`."
+(defmulti spec
+  "The lifecycle topics of a model deriving `:hook/events`, as `{operation topic}`, such as
+  `{:create :event/card-create, :update :event/card-update, :delete :event/card-delete}`, where a write whose operation
+  is missing publishes nothing."
+  {:arglists '([model])}
+  identity)
+
+(defmethod spec :default
+  [_model]
+  nil)
+
+(mu/defn lifecycle-topic :- [:maybe qualified-keyword?]
+  "The topic of the event for `operation` on a row of `model`, such as `:event/card-create`, from its [[spec]], or nil
+  when the spec leaves the operation out."
   [model     :- :keyword
    operation :- Operation]
-  (keyword "event" (str (get topic-stems model (u/->kebab-case-en (name model))) "-" (name operation))))
+  (if-let [model-spec (get (methods spec) model)]
+    (get (model-spec model) operation)
+    (throw (ex-info (format "%s derives :hook/events but has no metabase.events.core/spec method naming its topics"
+                            model)
+                    {:model model}))))
 
 (def ^:private CollectedEvent
   "A write of a row: its model, its kind, the row after it for a create or an update, and the row before it for an
@@ -133,7 +141,7 @@
   [model       :- :keyword
    pk          :- :keyword
    select-rows :- ifn?]
-  (when-let [batch *batch*]
+  (when-let [batch (and (lifecycle-topic model :delete) *batch*)]
     (let [selected (atom nil)
           select   (fn [columns]
                      (reset! selected (select-rows (vec (distinct (cons pk columns))))))
@@ -227,16 +235,17 @@
         (recur)))))
 
 (mu/defn collect!
-  "Collect the event of a write of a row, or deliver it at once outside a batch."
+  "Collect the event of a write of a row, or deliver it at once outside a batch, when the spec of its model names a
+  topic for its operation."
   [event :- CollectedEvent]
-  (let [topic   (lifecycle-topic (:model event) (:operation event))
-        event   (assoc event :context *context*)
-        delete? (= :delete (:operation event))]
-    (ensure-topic! topic)
-    (if-let [batch *batch*]
-      (swap! batch #(cond-> (update % :events conj event)
-                      delete? (update :pending conj event)))
-      (deliver! [(cond-> event delete? (assoc :captures (capture [event])))] {}))))
+  (when-let [topic (lifecycle-topic (:model event) (:operation event))]
+    (let [event   (assoc event :context *context*)
+          delete? (= :delete (:operation event))]
+      (ensure-topic! topic)
+      (if-let [batch *batch*]
+        (swap! batch #(cond-> (update % :events conj event)
+                        delete? (update :pending conj event)))
+        (deliver! [(cond-> event delete? (assoc :captures (capture [event])))] {})))))
 
 (defn- run-batch
   "Run `thunk` in a batch, joining the batch there already is, in its transaction when `join-transaction?` and in a

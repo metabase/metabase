@@ -40,6 +40,12 @@
   (derive :hook/events)
   (derive ::mi/create-policy.superuser))
 
+(defmethod events/spec :model/User
+  [_model]
+  {:create :event/user-create
+   :update :event/user-update
+   :delete :event/user-delete})
+
 (defn- stringify-keys-and-values
   "Given a map, convert all the keys and values to strings."
   [m]

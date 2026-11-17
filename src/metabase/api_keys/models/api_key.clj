@@ -11,6 +11,7 @@
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.users.models.user :as user]
@@ -51,6 +52,12 @@
   (derive :metabase/model)
   (derive :hook/events)
   (derive :hook/timestamped?))
+
+(defmethod events/spec :model/ApiKey
+  [_model]
+  {:create :event/api-key-create
+   :update :event/api-key-update
+   :delete :event/api-key-delete})
 
 (t2/deftransforms :model/ApiKey
   {:scope mi/transform-keyword

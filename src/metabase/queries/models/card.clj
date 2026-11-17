@@ -139,6 +139,12 @@
   (derive :hook/events)
   (derive :hook/events))
 
+(defmethod events/spec :model/Card
+  [_model]
+  {:create :event/card-create
+   :update :event/card-update
+   :delete :event/card-delete})
+
 (methodical/defmethod change-log/ignored-columns :model/Card [_model]
   #{:last_used_at :view_count})
 

@@ -4,6 +4,7 @@
    [metabase.content-verification.db :as content-verification.db]
    [metabase.content-verification.impl :as moderation]
    [metabase.content-verification.schema :as content-verification.schema]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
@@ -37,6 +38,12 @@
   (derive :hook/timestamped?)
   (derive :hook/events)
   (derive :search/indexed))
+
+(defmethod events/spec :model/ModerationReview
+  [_model]
+  {:create :event/moderation-review-create
+   :update :event/moderation-review-update
+   :delete :event/moderation-review-delete})
 
 (t2/deftransforms :model/ModerationReview
   {:moderated_item_type mi/transform-keyword})
