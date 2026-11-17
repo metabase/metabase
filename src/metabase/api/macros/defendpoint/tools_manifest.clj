@@ -238,14 +238,11 @@
 (defn- one-of-replacement
   "What replaces the `oneOf` `branches`.
   For `[X {:type \"null\"}]`, Malli's rendering of `[:maybe X]`, returns [[nullable]] X.
-  For no branches, returns `{:not {}}`, which accepts nothing.
-  For any other branches, returns an `anyOf` of the same branches."
+  For any other branches, returns [[mu.json-schema/branches->any-of]]."
   [[x y :as branches]]
-  (cond
-    (and (= 2 (count branches)) (= {:type "null"} y)) (nullable x)
-    ;; JSON Schema requires at least one branch in a `oneOf` or an `anyOf`
-    (empty? branches)                                 {:not {}}
-    :else                                             {:anyOf branches}))
+  (if (and (= 2 (count branches)) (= {:type "null"} y))
+    (nullable x)
+    (mu.json-schema/branches->any-of branches)))
 
 (defn- without-one-of
   "Rewrite every `oneOf` in a JSON Schema as its [[one-of-replacement]], keeping the keywords beside it as

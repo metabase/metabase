@@ -54,22 +54,47 @@
     (with-meta (merge (dissoc schema k) branch)
                (merge (meta schema) (select-keys (meta branch) [::declared])))))
 
+(def ^:private neighbor-keys
+  "JSON Schema keywords whose meaning depends on other keywords of the same schema, mapped to those keywords."
+  {:additionalItems       #{:items :prefixItems}
+   :additionalProperties  #{:patternProperties :properties}
+   :else                  #{:if}
+   :items                 #{:prefixItems}
+   :maxContains           #{:contains}
+   :minContains           #{:contains}
+   :then                  #{:if}
+   :unevaluatedItems      #{:contains :items :prefixItems}
+   :unevaluatedProperties #{:additionalProperties :patternProperties :properties}})
+
+(defn- reads-neighbor?
+  "Whether a keyword of the JSON Schema `a` depends on a keyword of `b`, so that merging the two changes its meaning."
+  [a b]
+  ;; a keyword that accepts anything, such as `additionalProperties: {}`, means the same whatever sits beside it
+  (mp/some (fn [[k v]]
+             (and (not (or (true? v) (empty-schema? v)))
+                  (mp/some #(contains? b %) (neighbor-keys k))))
+           a))
+
 (defn- clashes?
-  "Whether the one branch left of the branching node `schema` under `k` has a constraining key the node also has, with
-  a different value."
+  "Whether merging the one branch left of the branching node `schema` under `k` into the node would change what it
+  accepts: the branch has a constraining key the node also has, with a different value, or a keyword on one side
+  depends on a keyword on the other."
   [schema k]
   (let [branch   (first (k schema))
         siblings (dissoc schema k)]
     ;; an equal value, such as `type: object` on both, merges without losing anything
     (and (map? branch)
-         (mp/some #(and (contains? siblings %)
-                        (not (annotation-keys %))
-                        (not= (get siblings %) (get branch %)))
-                  (keys branch)))))
+         (boolean
+          (or (mp/some #(and (contains? siblings %)
+                             (not (annotation-keys %))
+                             (not= (get siblings %) (get branch %)))
+                       (keys branch))
+              (reads-neighbor? branch siblings)
+              (reads-neighbor? siblings branch))))))
 
 (defn- collapse-branches
   "Drop the conjuncts that accept anything and the alternatives that accept nothing, and unwrap a branching node that
-  has one branch left, unless the branch shares a constraining key with the node."
+  has one branch left, unless merging it would change what the node accepts (see [[clashes?]])."
   [schema k]
   (let [schema (cond-> schema
                  (= k :allOf)
@@ -84,7 +109,6 @@
       (and (seq (k schema)) (mp/every? empty-schema? (k schema)))
       (dissoc schema k)
 
-      ;; merging a branch into a key the node already has would drop one of the two constraints
       (and (= 1 (count (k schema))) (not (clashes? schema k)))
       (unwrap-branch schema k)
 
@@ -145,12 +169,20 @@
        (update siblings :allOf (fnil conj []) replacement))
      (meta node))))
 
+(defn branches->any-of
+  "The JSON Schema accepting what any of the JSON Schemas `branches` accepts.
+  Returns their `anyOf`, or `{:not {}}`, which accepts nothing, for no branches."
+  [branches]
+  ;; JSON Schema requires at least one branch in an `anyOf`
+  (if (seq branches)
+    {:anyOf (vec branches)}
+    {:not {}}))
+
 (defn- any-of
   "Malli's branching schemas pass when any branch does, so a `oneOf` whose branches overlap is an `anyOf`."
   [node]
   (if-let [branches (:oneOf node)]
-    ;; JSON Schema requires a branch in an `anyOf`, and an empty `oneOf` accepts nothing
-    (replace-one-of node (if (seq branches) {:anyOf (vec branches)} {:not {}}))
+    (replace-one-of node (branches->any-of branches))
     node))
 
 (defn- definition-name

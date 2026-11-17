@@ -58,7 +58,19 @@
            (mu.json-schema/transform [:any {:json-schema {:type "string", :allOf [{:type "string", :minLength 1}]}}]))))
   (testing "one branch left sharing a constraining key with the node stays, as merging would drop a constraint"
     (is (= {:type "string", :allOf [{:type "integer"}]}
-           (mu.json-schema/transform [:any {:json-schema {:type "string", :allOf [{:type "integer"}]}}])))))
+           (mu.json-schema/transform [:any {:json-schema {:type "string", :allOf [{:type "integer"}]}}]))))
+  (testing "one branch left with a keyword that reads a keyword of the node stays, as merging would change it"
+    ;; `additionalProperties` would start allowing the node's `properties`, in either direction
+    (is (= {:properties {"a" {}}, :allOf [{:additionalProperties false}]}
+           (mu.json-schema/transform
+            [:any {:json-schema {:properties {:a {}}, :allOf [{:additionalProperties false}]}}])))
+    (is (= {:additionalProperties false, :allOf [{:properties {"a" {}}}]}
+           (mu.json-schema/transform
+            [:any {:json-schema {:additionalProperties false, :allOf [{:properties {:a {}}}]}}]))))
+  (testing "one branch left whose neighbor-reading keyword accepts anything merges, as nothing it reads changes"
+    (is (= {:properties {"a" {}}, :additionalProperties {}}
+           (mu.json-schema/transform
+            [:any {:json-schema {:properties {:a {}}, :allOf [{:additionalProperties {}}]}}])))))
 
 (deftest ^:parallel tuple-test
   (testing "every tuple item is required"
