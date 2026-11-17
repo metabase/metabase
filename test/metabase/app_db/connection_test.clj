@@ -981,26 +981,24 @@
               {:answer (mdb.connection/mariadb?), :calls (calls)}))))))
 
 (deftest mariadb?-concurrent-first-calls-test
-  (testing "a second first caller waits for the read in progress rather than opening its own connection"
-    ;; The first caller is held inside `getConnection` until `release`. A second caller that got past the lock would
-    ;; enter `getConnection` too, and count down `second-entered`.
-    (let [calls          (atom 0)
-          first-entered  (CountDownLatch. 1)
-          second-entered (CountDownLatch. 1)
-          release        (CountDownLatch. 1)
-          held-ds        (reify DataSource
-                           (getConnection [_]
-                             (.countDown (if (= 1 (swap! calls inc)) first-entered second-entered))
-                             (.await release 5 TimeUnit/SECONDS)
-                             (reify Connection
-                               (getMetaData [_] (reify DatabaseMetaData (getDatabaseProductName [_] "MariaDB")))
-                               (close [_]))))]
+  (testing "concurrent first callers share one read"
+    ;; Callers are held inside `getConnection` until `release`, so with the lock only one of them gets there.
+    (let [calls   (atom 0)
+          entered (CountDownLatch. 2)
+          release (CountDownLatch. 1)
+          held-ds (reify DataSource
+                    (getConnection [_]
+                      (swap! calls inc)
+                      (.countDown entered)
+                      (.await release 5 TimeUnit/SECONDS)
+                      (reify Connection
+                        (getMetaData [_] (reify DatabaseMetaData (getDatabaseProductName [_] "MariaDB")))
+                        (close [_]))))]
       (mdb.connection/with-application-db (mdb.connection/application-db :mysql held-ds)
         (let [first-call  (future (mdb.connection/mariadb?))
-              _           (.await first-entered 5 TimeUnit/SECONDS)
               second-call (future (mdb.connection/mariadb?))]
           (try
-            (is (false? (.await second-entered 300 TimeUnit/MILLISECONDS)))
+            (is (false? (.await entered 300 TimeUnit/MILLISECONDS)))
             (finally
               (.countDown release)))
           (is (= {:answers [true true], :calls 1}
