@@ -498,7 +498,8 @@
                          (comp (mapcat dynamic-goals/goal-card-ids) (remove decided?))
                          (concat (map :visualization_settings (vals copy))
                                  (map :visualization_settings (filter kept? dashcards))))]
-      (update cards :copy merge (m/index-by :id (filter copyable-goal-source? (dashboards.db/cards goal-ids)))))))
+      (update cards :copy merge (m/index-by :id (filter copyable-goal-source?
+                                                        (t2/hydrate (dashboards.db/cards goal-ids) :can_read)))))))
 
 (defn remap-copied-goal-sources!
   "Points the goals of the copies in `id->new-card` (old card id -> its copy) that read a copied card at that copy,
