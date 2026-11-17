@@ -1,21 +1,19 @@
 (ns metabase-enterprise.serialization.v2.dependency-validation
   "Export-time dependency validation for serialization.
 
-  Before an export is written, every entity that will be extracted is checked to make sure all of its references are
-  satisfiable in the resulting archive: content references (Cards, Dashboards, …) must themselves be part of the
-  export, and data-model references (Database, Table, Field) must exist in the source appdb. An unsatisfied reference
-  would otherwise become a dangling reference or a malformed portable id in the archive, breaking the import.
-
-  Historically this was the collection-id, Card-only \"escape analysis\"; it is now a general dependency-satisfaction
-  check driven by [[metabase.models.serialization/serialization-dependencies]]."
+  Before an export is written, every entity it takes is checked to make sure all of its references are satisfiable in
+  the resulting archive: content references (Cards, Dashboards, …) must themselves be part of the export, and
+  data-model references (Database, Table, Field) must exist in the source app DB. An unsatisfied reference would
+  otherwise become a dangling reference in the archive, breaking the import. The references come from
+  [[metabase.serialization.core/export-dependencies]]."
   (:require
    [medley.core :as m]
    [metabase-enterprise.serialization.db :as serialization.db]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
-   [metabase.models.serialization :as serdes]
+   [metabase-enterprise.serialization.v2.select :as select]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,100 +22,78 @@
     (str coll-id)
     "[no collection]"))
 
-(defn- entity-label [{:keys [model id]}]
+(defn- entity-label [[model id]]
   (let [entity (serialization.db/collection-id-row model id)]
     (format "%s %d (from collection %s)" (name model) id (collection-label (:collection_id entity)))))
 
-(defn- resize-batch
-  [[model batch]]
-  (for [batch (partition-all serdes/query-batch-size batch)]
-    [model batch]))
-
-(defn- entity-deps
-  "The dependency contribution of a single entity.
-
-  Returns a `{:visited :deps}`. `serialization-dependencies` yields `:serdes/meta` paths (each a vector whose last
-  element identifies the referenced entity), so we take that last element and tag it with the `:via` entity."
-  [entity]
-  (let [model (name (t2/model entity))
-        via   [model (:id entity)]]
-    {:visited #{via}
-     :deps    (into #{}
-                    (map #(assoc (peek %) :via via))
-                    (serdes/serialization-dependencies model entity))}))
-
-(defn- merge-entity-deps
-  "Monoid merging [[entity-deps]] contributions: unions the `:visited` and `:deps` sets. Identity is empty sets."
-  ([] {:visited #{} :deps #{}})
-  ([acc] acc)
-  ([acc contribution] (merge-with into acc contribution)))
-
-(defn- collect-dependencies
-  "Take the model/ids and return {:visited :deps}. Entities are streamed in batches, not held in memory."
-  [by-model coll-set opts]
-  (let [content-models (set serdes.models/content)]
-    (transduce
-     (comp
-      (filter (comp content-models key))
-      (mapcat resize-batch)
-      (mapcat (fn [[model batch]]
-                (serdes/extract-query model (merge opts {:collection-set coll-set
-                                                         :filter-column  :id
-                                                         :filter-ids     batch}))))
-      (map entity-deps))
-     merge-entity-deps
-     by-model)))
+(defn- escaping-dependencies
+  "The references of the content entities `by-model`, a map of model to ids, as an export of `opts` selects them, to
+  entities the export does not take, each `{:node [model id] :via [model id]}`."
+  [by-model opts]
+  (let [content (set serdes.models/content)]
+    (for [[node vias] (serialization/export-escapes
+                       (into {}
+                             (comp (filter (comp content key))
+                                   (map (fn [[model ids]]
+                                          [model (eduction (partition-all serialization/batch-size)
+                                                           (mapcat #(select/select-rows model (assoc opts :ids (vec %))))
+                                                           ids)])))
+                             by-model))
+          via vias]
+      {:node node :via via})))
 
 (defn- existing-ids
-  "The subset of `ids` that exist as rows of `model` (a model-name string), queried in bounded `:in` batches."
+  "The subset of `ids` that exist as rows of `model`, queried in bounded `:in` batches."
   [model ids]
   (into #{}
         (comp (distinct)
-              (partition-all serdes/query-batch-size)
-              (mapcat #(serialization.db/existing-ids (keyword "model" model) %)))
+              (partition-all serialization/batch-size)
+              (mapcat #(serialization.db/existing-ids model (vec %))))
         ids))
 
 (def ^:private optional-content-models
   "Content models whose absence from the archive is tolerated on import, so a reference to one is never a completeness
    failure. Omitted Collections resolve to the target root; [[serdes.models/elidable-content-models]] are dropped."
-  (conj serdes.models/elidable-content-models "Collection"))
+  (conj serdes.models/elidable-content-models :model/Collection))
 
 (defn- unsatisfied-dependencies
-  "The `deps` that won't be satisfied in the archive, each tagged with a `:reason` (see the namespace docstring for the
-   data-model vs content classification). Two subtleties are encoded below: a content reference to a *deleted* entity
-   is not a failure (export can't emit a portable id for a gone row, so `fk-elide` just drops it), and
-   [[optional-content-models]] references are ignored entirely."
-  [deps visited analytics-cards]
-  (let [content-models (set serdes.models/content)
-        {content-deps true data-deps false} (group-by #(contains? content-models (:model %)) deps)
-        content-deps   (remove (comp optional-content-models :model) content-deps)
-        existing-data    (m/map-kv-vals existing-ids (u/group-by :model :id data-deps))
-        existing-content (m/map-kv-vals existing-ids (u/group-by :model :id content-deps))]
+  "The escaping `deps` that won't be satisfied in the archive, each tagged with a `:reason`, leaving out content
+  references to deleted entities, to [[optional-content-models]], and to the analytics Cards that `analytics-card-ids`,
+  a fn of Card ids, picks."
+  [deps analytics-card-ids]
+  (let [content                             (set serdes.models/content)
+        {content-deps true data-deps false} (group-by #(contains? content (first (:node %))) deps)
+        content-deps                        (remove (comp optional-content-models first :node) content-deps)
+        existing                            #(m/map-kv-vals existing-ids (u/group-by (comp first :node) (comp second :node) %))
+        existing-data                       (existing data-deps)
+        existing-content                    (existing content-deps)
+        analytics-cards                     (analytics-card-ids (vec (distinct (for [{[model id] :node} content-deps
+                                                                                     :when (= model :model/Card)]
+                                                                                 id))))]
     (concat
-     (for [{:keys [model id] :as dep} content-deps
+     (for [{[model id] :node :as dep} content-deps
            :when (and (contains? (get existing-content model) id)
-                      (not (contains? visited [model id]))
-                      (not (and (= model "Card") (contains? analytics-cards id))))]
+                      (not (and (= model :model/Card) (contains? analytics-cards id))))]
        (assoc dep :reason :not-in-export))
-     (for [{:keys [model id] :as dep} data-deps
+     (for [{[model id] :node :as dep} data-deps
            :when (not (contains? (get existing-data model) id))]
        (assoc dep :reason :missing-in-appdb)))))
 
-(defn- unsatisfied-label [{:keys [model id via reason]}]
+(defn- unsatisfied-label [{[model id] :node :keys [via reason]}]
   (format "%s references %s %s which %s"
-          (entity-label {:model (keyword "model" (first via)) :id (second via)})
-          model id
+          (entity-label via)
+          (name model) id
           (case reason
             :not-in-export    "is not included in the export"
             :missing-in-appdb "is missing from the source database")))
 
 (defn validate-dependencies!
-  "Validates that every entity to be extracted has all of its references satisfied (see the namespace docstring). Logs
-  a warning per unsatisfied reference and, unless `:continue-on-error`, throws to abort the export before any archive
-  is produced. `by-model` is a map of `{model-name [ids ...]}`."
-  [by-model coll-set analytics-cards opts]
-  (let [{:keys [visited deps]} (collect-dependencies by-model coll-set opts)
-        missing                (unsatisfied-dependencies deps visited analytics-cards)]
+  "Validates that every entity an export of `opts` takes has all of its references satisfied (see the namespace
+  docstring). Logs a warning per unsatisfied reference and, unless `:continue-on-error`, throws to abort the export
+  before any archive is produced. `by-model` is a map of model to ids, and `analytics-card-ids` a fn picking the
+  analytics Cards of Card ids."
+  [by-model analytics-card-ids opts]
+  (let [missing (unsatisfied-dependencies (escaping-dependencies by-model opts) analytics-card-ids)]
     (when (seq missing)
       (doseq [dep missing]
         (log/warnf "Failed to export: %s" (unsatisfied-label dep)))

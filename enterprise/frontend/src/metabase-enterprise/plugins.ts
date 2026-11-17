@@ -20,6 +20,7 @@ import { initializePlugin as initializeContentVerification } from "./content_ver
 import { initializePlugin as initializeCustomViz } from "./custom_viz";
 import { initializePlugin as initializeDataApps } from "./data-apps";
 import { initializePlugin as initializeLibrary } from "./data-studio/library";
+import { initializePlugin as initializeDataTesting } from "./data-testing";
 import { initializePlugin as initializeDatabaseReplication } from "./database_replication";
 import { initializePlugin as initializeDatabaseRouting } from "./database_routing";
 import { initializePlugin as initializeDependencies } from "./dependencies";
@@ -54,7 +55,6 @@ import { initializePlugin as initializeTenants } from "./tenants";
 import { initializePlugin as initializeTransforms } from "./transforms";
 import { initializePlugin as initializeTransformsInspector } from "./transforms-inspector";
 import { initializePlugin as initializeTransformsPython } from "./transforms-python";
-import { initializePlugin as initializeTransformsTesting } from "./transforms-testing";
 import { initializePlugin as initializeUploadManagement } from "./upload_management";
 import { initializePlugin as initializeUserProvisioning } from "./user_provisioning";
 import { initializePlugin as initializeWhitelabel } from "./whitelabel";
@@ -112,7 +112,7 @@ export function initializePlugins() {
   initializeTools();
   initializeTransforms();
   initializeTransformsInspector();
-  initializeTransformsTesting();
+  initializeDataTesting();
   initializeTransformsPython();
   initializeUploadManagement();
   initializeUserProvisioning();

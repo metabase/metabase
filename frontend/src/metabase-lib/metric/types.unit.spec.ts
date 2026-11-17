@@ -1,7 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import {
-  createMockMetric,
   createMockMetricDimension,
+  createMockNormalizedMetric,
 } from "metabase-types/api/mocks/metric";
 
 import * as LibMetric from "./core";
@@ -15,10 +15,8 @@ import type {
  * Creates test metrics with dimensions of specific types for testing type predicates.
  */
 function createTestMetadata() {
-  const metadata = createMockMetadata();
-
   // Create a metric with various dimension types
-  const testMetric = createMockMetric({
+  const testMetric = createMockNormalizedMetric({
     id: 1,
     name: "Test Metric",
     dimensions: [
@@ -104,11 +102,10 @@ function createTestMetadata() {
     ],
   });
 
-  metadata.metrics = {
-    [testMetric.id]: testMetric,
+  return {
+    ...createMockMetadata(),
+    metrics: { [testMetric.id]: testMetric },
   };
-
-  return metadata;
 }
 
 function setupDefinition(): {

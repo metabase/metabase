@@ -1,14 +1,14 @@
 ```ts
-function CreateQuestion(props: CreateQuestionProps | undefined): Element;
+function CreateQuestion(props: CreateQuestionProps): Element;
 ```
 
 ## Parameters
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                          |
-| :-------- | :-------------------------------------------------------------------------------------------- |
-| `props`   | [`CreateQuestionProps`](/docs/latest/embedding/sdk/api/CreateQuestionProps.md) \| `undefined` |
+| Parameter | Type                                                                           |
+| :-------- | :----------------------------------------------------------------------------- |
+| `props`   | [`CreateQuestionProps`](/docs/latest/embedding/sdk/api/CreateQuestionProps.md) |
 
 <!-- [<endsnippet parameters>] -->
 

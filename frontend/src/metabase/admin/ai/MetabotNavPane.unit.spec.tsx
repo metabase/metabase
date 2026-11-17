@@ -173,6 +173,27 @@ describe("MetabotNavPane", () => {
     ]);
   });
 
+  it("links each system prompt page from the System prompts folder", async () => {
+    setup({
+      aiControlsEnabled: true,
+      isConfigured: true,
+      initialRoute: "/admin/metabot/system-prompts/metabot-chat",
+    });
+
+    expect(
+      await screen.findByRole("link", { name: "AI chat" }),
+    ).toHaveAttribute("href", "/admin/metabot/system-prompts/metabot-chat");
+    expect(
+      screen.getByRole("link", { name: "Natural language queries" }),
+    ).toHaveAttribute(
+      "href",
+      "/admin/metabot/system-prompts/natural-language-queries",
+    );
+    expect(
+      screen.getByRole("link", { name: "SQL generation" }),
+    ).toHaveAttribute("href", "/admin/metabot/system-prompts/sql-generation");
+  });
+
   it("no longer exposes the Auditing folder or CLI analytics with audit_app", async () => {
     setup({ aiControlsEnabled: true, auditAppEnabled: true });
 

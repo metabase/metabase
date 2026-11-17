@@ -96,7 +96,6 @@
       "include_csv": false,
       "display": "waterfall",
       "entity_id": "0uniUMuf0VeFG5X6hDdER",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.dimensions": ["category"],
         "graph.series_order_dimension": null,

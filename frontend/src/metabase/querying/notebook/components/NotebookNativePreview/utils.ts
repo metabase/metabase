@@ -8,13 +8,18 @@ export function createNativeQuestion(
   response: NativeDatasetResponse | undefined,
   metadataProvider: Lib.MetadataProvider,
 ): Question | undefined {
-  const database = question.database();
-  if (response == null || database == null || database.engine == null) {
+  const query = question.query();
+  const databaseId = Lib.databaseID(query);
+  if (
+    response == null ||
+    databaseId == null ||
+    Lib.databaseMetadata(query) == null
+  ) {
     return;
   }
 
   const rawQuery = formatNativeQuery(response.query);
-  const newQuery = Lib.nativeQuery(database.id, metadataProvider, rawQuery);
+  const newQuery = Lib.nativeQuery(databaseId, metadataProvider, rawQuery);
   const newQueryWithCollection =
     response.collection != null
       ? Lib.withNativeExtras(newQuery, { collection: response.collection })

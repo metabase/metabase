@@ -85,11 +85,6 @@
   [channel-id :- ms/PositiveInt]
   (t2/delete! :model/PulseChannel :channel_id channel-id))
 
-(mu/defn channel-by-name
-  "The Channel named `channel-name`, or nil."
-  [channel-name :- :string]
-  (t2/select-one :model/Channel :name channel-name))
-
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]

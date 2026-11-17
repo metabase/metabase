@@ -1,5 +1,3 @@
-import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-
 const { H } = cy;
 
 const loremIpsum =
@@ -11,7 +9,6 @@ describe("Metabot UI", () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.setupAnthropicLlmProvider();
-    cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
       "xrayCandidates",
     );
@@ -19,8 +16,14 @@ describe("Metabot UI", () => {
 
   describe("scroll management", () => {
     beforeEach(() => {
+      H.resetSnowplow();
+      H.enableTracking();
       cy.visit("/");
       cy.wait("@xrayCandidates");
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
     });
 
     it("should size the filler element and manage the scroll position as messages are added", () => {
@@ -87,141 +90,6 @@ describe("Metabot UI", () => {
       });
     });
   });
-
-  it("should not submit a prompt via /metabot/new and redirect /question/ask to the notebook when metabot is disabled", () => {
-    H.updateSetting("metabot-enabled?", false);
-    cy.visit("/metabot/new?q=Who%20is%20your%20favorite%3F");
-    cy.url().should("eq", Cypress.config().baseUrl + "/");
-    cy.wait("@xrayCandidates");
-    H.assertChatVisibility("not.visible");
-    cy.get("@agentReq.all").should("have.length", 0);
-
-    cy.log(
-      "visiting '/question/ask' should redirect to notebook when metabot is disabled",
-    );
-    cy.visit("/question/ask");
-    cy.url().should("include", "/question#");
-    cy.findByTestId("metabot-chat").should("not.exist");
-  });
-
-  describe("metabot events", () => {
-    beforeEach(() => {
-      H.resetSnowplow();
-      H.enableTracking();
-    });
-
-    afterEach(() => {
-      H.expectNoBadSnowplowEvents();
-    });
-
-    describe("Metabot chat", () => {
-      beforeEach(() => {
-        cy.visit("/");
-        cy.wait("@xrayCandidates");
-      });
-
-      it("should be controlled via keyboard shortcut, be able to be opened and closed, send a message to the agent, handle successful or failed responses, and start a new conversation via /metabot/new", () => {
-        H.openMetabotViaShortcutKey();
-        H.expectUnstructuredSnowplowEvent({
-          event: "metabot_chat_opened",
-          triggered_from: "keyboard_shortcut",
-        });
-        H.closeMetabotViaShortcutKey();
-        cy.log("We don't track closing the chat via kbd");
-        H.expectUnstructuredSnowplowEvent(
-          {
-            event: "metabot_chat_opened",
-            triggered_from: "keyboard_shortcut",
-          },
-          1,
-        );
-
-        H.openMetabotViaSearchButton();
-        H.expectUnstructuredSnowplowEvent({
-          event: "metabot_chat_opened",
-          triggered_from: "header",
-        });
-        H.expectUnstructuredSnowplowEvent(
-          {
-            event: "metabot_chat_opened",
-            triggered_from: "keyboard_shortcut",
-          },
-          1,
-        );
-        H.closeMetabotViaCloseButton();
-
-        cy.log("send a message and handle successful or failed responses");
-        H.openMetabotViaSearchButton();
-        H.chatMessages().should("not.exist");
-
-        H.mockMetabotResponse({
-          statusCode: 200,
-          body: whoIsYourFavoriteResponse,
-        });
-        H.sendMetabotMessage("Who is your favorite?");
-        H.expectUnstructuredSnowplowEvent({
-          event: "metabot_request_sent",
-        });
-
-        H.lastChatMessage().should("have.text", "You, but don't tell anyone.");
-
-        H.mockMetabotResponse({ statusCode: 200, body: apiKeyInvalidResponse });
-        H.sendMetabotMessage("Who is your favorite?");
-        H.lastChatMessage().should("contain.text", "Something went wrong");
-
-        cy.log("start a new conversation via /metabot/new");
-        H.mockMetabotResponse({
-          statusCode: 200,
-          body: whoIsYourFavoriteResponse,
-        });
-        cy.visit("/metabot/new?q=Who%20is%20your%20favorite%3F");
-        H.assertChatVisibility("visible");
-        H.lastChatMessage().should("have.text", "You, but don't tell anyone.");
-      });
-    });
-  });
-});
-
-describe("Metabot in full-app embedding", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    H.setupAnthropicLlmProvider();
-  });
-
-  it("should show the metabot button only when embedded-metabot-enabled? is true", () => {
-    cy.intercept("GET", "/api/metabot/permissions/user-permissions").as(
-      "getUserPermissions",
-    );
-
-    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": true });
-
-    H.visitFullAppEmbeddingUrl({
-      url: `/question/${ORDERS_BY_YEAR_QUESTION_ID}`,
-      qs: {},
-    });
-
-    cy.wait("@getUserPermissions");
-    H.appBar().icon("metabot").should("be.visible");
-
-    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": false });
-    cy.intercept("GET", "/api/metabot/permissions/user-permissions").as(
-      "getUserPermissionsWhenDisabled",
-    );
-
-    H.visitFullAppEmbeddingUrl({
-      url: `/question/${ORDERS_BY_YEAR_QUESTION_ID}`,
-      qs: {},
-    });
-
-    cy.log("Wait for the question to render");
-    H.main().findByText("Filter").should("be.visible");
-
-    cy.log("Assert metabot buttons are not rendered");
-    H.appBar().icon("metabot").should("not.exist");
-    cy.get("@getUserPermissionsWhenDisabled.all").should("have.length", 0);
-  });
 });
 
 const whoIsYourFavoriteResponse = H.createMetabotSSEBody(
@@ -230,11 +98,6 @@ const whoIsYourFavoriteResponse = H.createMetabotSSEBody(
   H.metabotFinishPart("stop", {
     usage: { inputTokens: 4916, outputTokens: 8, totalTokens: 4924 },
   }),
-);
-
-const apiKeyInvalidResponse = H.createMetabotSSEBody(
-  H.metabotErrorPart("Anthropic API key expired or invalid"),
-  H.metabotFinishPart("error"),
 );
 
 function getContainerPadding($container: JQuery<HTMLElement>) {

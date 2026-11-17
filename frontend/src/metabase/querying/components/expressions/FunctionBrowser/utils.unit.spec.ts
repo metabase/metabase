@@ -1,4 +1,3 @@
-import { createMockMetadata } from "__support__/metadata";
 import { getHelpText } from "metabase/querying/expressions";
 import type * as Lib from "metabase-lib";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -36,18 +35,14 @@ function setup({
       "window-functions/offset",
     ],
   });
-  const metadata = createMockMetadata({ databases: [sampleDatabase] });
-  const database = metadata.database(sampleDatabase.id);
-  if (!database) {
-    throw new Error("Error in test: sample database not found");
-  }
+  const database = sampleDatabase;
 
   const results = getFilteredClauses({
     filter,
     expressionMode,
     database,
   });
-  return { results, database, metadata };
+  return { results, database };
 }
 
 describe("getFilteredClauses", () => {

@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -552,7 +553,7 @@
   ;; Note that these refer to the table names, not the search-model names.
   {"core_user"          #{"action" "collection" "document" "exploration" "measure" "model_index_value" "report_card" "report_dashboard" "segment" "transform"}
    "model_index"        #{"model_index_value"}
-   "metabase_database"  #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment"}
+   "metabase_database"  #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment" "transform"}
    "metabase_table"     #{"action" "measure" "model_index_value" "report_card" "segment"}
    "document"           #{"action" "model_index_value" "report_card"}
    "exploration"        #{"action" "document" "model_index_value" "report_card"}
@@ -579,7 +580,7 @@
 (deftest auto-refresh-test
   (when (search/supports-index?)
     (with-temp-index-version "auto-refresh-test"
-      (reset! @#'search.index/next-sync-at nil)
+      (mc/swap! (search.index/indexes-handle) assoc :next-sync-at nil)
       (search.index/reset-index!)
       (let [active-before (search.index/active-table)
             active-after  (search.index/gen-table-name)
@@ -600,7 +601,7 @@
 (deftest pending-table-expiry-test
   (when (search/supports-index?)
     (with-temp-index-version "pending-timeout-test"
-      (reset! @#'search.index/next-sync-at nil)
+      (mc/swap! (search.index/indexes-handle) assoc :next-sync-at nil)
       (search.index/reset-index!)
       (let [active-table (search.index/active-table)
             pending-old  (search.index/gen-table-name)
@@ -628,7 +629,7 @@
 (deftest failed-reindex-drops-orphaned-tables-test
   (when (search/supports-index?)
     (with-temp-index-version "orphan-cleanup-test"
-      (reset! @#'search.index/next-sync-at nil)
+      (mc/swap! (search.index/indexes-handle) assoc :next-sync-at nil)
       (search.index/reset-index!)
       (let [orphan (search.index/gen-table-name)]
         (search.index/create-table! orphan)

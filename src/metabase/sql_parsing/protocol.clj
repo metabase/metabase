@@ -1,14 +1,15 @@
 (ns metabase.sql-parsing.protocol
   "The strongly-typed protocol implemented by the sqlglot SQL parsers (currently
   [[metabase.sql-parsing.graal]]). Callers go through [[metabase.sql-parsing.core]], which owns the
-  JVM-side pre/post-processing and invokes these methods on the implementation.")
+  JVM-side pre/post-processing and invokes these methods on the implementation. Every parser throws [[call-failed-ex]] when a
+  call fails.")
 
 (set! *warn-on-reflection* true)
 
 (defprotocol SqlParser
   "Dialect-aware SQL parsing via sqlglot. Each method calls the corresponding `sql_tools` Python function
   and returns its result parsed from JSON into Clojure data, except the SQL-rewriting methods
-  ([[add-into-clause]], [[replace-names]]) which return the rewritten SQL string. `dialect` is a sqlglot
+  ([[add-into-clause]], [[add-insert-clause]], [[replace-names]]) which return the rewritten SQL string. `dialect` is a sqlglot
   dialect string, or nil for sqlglot's default dialect."
   (referenced-tables [parser dialect sql]
     "Table references literally present in the SQL, as a vector of `[catalog schema table]` 3-tuples.")
@@ -26,6 +27,9 @@
   (add-into-clause [parser dialect sql table-name]
     "Add an `INTO table-name` clause to a SELECT statement (SQL Server SELECT INTO syntax). Returns the
     rewritten SQL string.")
+  (add-insert-clause [parser dialect sql table-name]
+    "Make an `INSERT INTO table-name` statement from a SELECT statement, with any `WITH` clause before
+    `INSERT INTO`. Returns the rewritten SQL string.")
   (field-references [parser dialect sql]
     "Used and returned field specs, as a keywordized map of `:used_fields`, `:returned_fields`, and
     `:errors` in the raw Python shape.")
@@ -37,3 +41,15 @@
     reconstructed from the parsed AST.")
   (transpile-sql [parser sql from-dialect to-dialect]
     "Transpile the SQL from one dialect to another, as a keywordized result map."))
+
+(defn call-failed-ex
+  "The uniform exception for a Python-side sqlglot failure, thrown by every transport so callers can
+  handle parse errors without knowing which backend ran ([[metabase.sql-parsing.core/parse-error?]]).
+  `error` is the Python error rendered as `ErrorType: message`."
+  ([error]
+   (call-failed-ex error nil))
+  ([error cause]
+   (ex-info (str "sqlglot call failed: " error)
+            {:sql-parsing/error             true
+             :sql-parsing/python-error-type (some->> error (re-find #"^\w+"))}
+            cause)))

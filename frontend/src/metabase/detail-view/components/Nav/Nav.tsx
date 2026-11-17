@@ -1,22 +1,29 @@
-import type { ReactNode } from "react";
-
+import type { DetailViewState } from "metabase/redux/store";
 import type { GroupProps } from "metabase/ui";
-import type { Table } from "metabase-types/api";
 
 import { ModelNav } from "./ModelNav";
 import { TableNav } from "./TableNav";
 
 interface Props extends GroupProps {
-  rowName: ReactNode;
-  table: Table;
+  detailView: DetailViewState;
 }
 
-export const Nav = (props: Props) => {
-  const { table } = props;
-
-  if (table.type === "model") {
-    return <ModelNav {...props} />;
+export const Nav = ({ detailView, ...props }: Props) => {
+  if (detailView.type === "model") {
+    return (
+      <ModelNav
+        rowName={detailView.rowName}
+        card={detailView.card}
+        {...props}
+      />
+    );
   }
 
-  return <TableNav {...props} />;
+  return (
+    <TableNav
+      rowName={detailView.rowName}
+      table={detailView.table}
+      {...props}
+    />
+  );
 };

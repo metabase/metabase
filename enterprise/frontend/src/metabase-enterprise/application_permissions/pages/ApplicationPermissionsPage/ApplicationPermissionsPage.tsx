@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- FIXME: any-typed values */
 import { useCallback, useEffect } from "react";
 
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";

@@ -3,68 +3,84 @@ import { useState } from "react";
 import { useMount } from "react-use";
 
 import {
+  DetailsRow,
+  DetailsTable,
+  SidebarSection,
+} from "metabase/common/components/DetailSidebar";
+import {
   SIDESHEET_HORIZONTAL_PADDING,
   Sidesheet,
   SidesheetCard,
 } from "metabase/common/components/Sidesheet";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet/SidesheetCardSection";
-import SideSheetStyles from "metabase/common/components/Sidesheet/sidesheet.module.css";
-import { Flex, Icon, Stack, Switch, Tabs } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Flex,
+  Icon,
+  Stack,
+  Switch,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 
 import { SidesheetButtonWithChevron } from "./SidesheetButton";
 import { SidesheetSubPage } from "./SidesheetSubPage";
-import { SidesheetTabPanelContainer } from "./SidesheetTabPanelContainer";
 
-export const TestTabbedSidesheet = () => {
+export const TestSectionedSidesheet = () => {
   const [isSheetOpen, setIsSheetOpen] = useState(true);
 
   return (
     <Sidesheet
-      title="My side sheet"
+      title="Info"
+      titleSize="h3"
       isOpen={isSheetOpen}
       onClose={() => setIsSheetOpen(false)}
-      removeBodyPadding
+      actions={
+        <Tooltip label="Insights">
+          <ActionIcon
+            variant="subtle"
+            size="md"
+            c="text-primary"
+            aria-label="Insights"
+          >
+            <Icon name="insight" />
+          </ActionIcon>
+        </Tooltip>
+      }
+      footer={
+        <Box
+          px={SIDESHEET_HORIZONTAL_PADDING}
+          py="md"
+          bg="background_page-secondary"
+        >
+          <Text c="text-secondary" size="sm">
+            Pinned below the scrolling body: entity IDs, for one.
+          </Text>
+        </Box>
+      }
     >
-      <Tabs defaultValue="two" className={SideSheetStyles.FlexScrollContainer}>
-        <Tabs.List mx={SIDESHEET_HORIZONTAL_PADDING}>
-          <Tabs.Tab value="one">One</Tabs.Tab>
-          <Tabs.Tab value="two">Two</Tabs.Tab>
-          <Tabs.Tab value="three">Three</Tabs.Tab>
-        </Tabs.List>
-        <SidesheetTabPanelContainer>
-          <Tabs.Panel value="one">
-            <SidesheetCard>Tab 1 content</SidesheetCard>
-          </Tabs.Panel>
-          <Tabs.Panel value="two" h="100%">
-            <Stack gap="xl">
-              <SidesheetCard title="Sidesheets with tabs">
-                Lots of side sheets have tabs, which can be tricky to set up to
-                handle scrolling properly. Fortunately, there are a couple
-                helper components that make this easy.
-              </SidesheetCard>
-              <SidesheetCard title="SidesheetTabPanelContainer">
-                <p>
-                  Wrap all your tab panels in{" "}
-                  <code>SidesheetTabPanelContainer</code> to get them scrolling
-                  internally so that the tabs remain visible at all times.
-                </p>
-              </SidesheetCard>
-
-              <SidesheetCard title="removeBodyPadding prop">
-                <p>
-                  You&apos;ll need to pass the{" "}
-                  <code>removeBodyPadding prop</code> to any sidesheet with tabs
-                  so that you can keep the scrollbar on the outer container when
-                  you have tabs.
-                </p>
-              </SidesheetCard>
-            </Stack>
-          </Tabs.Panel>
-          <Tabs.Panel value="three">
-            <SidesheetCard>Tab 3 content</SidesheetCard>
-          </Tabs.Panel>
-        </SidesheetTabPanelContainer>
-      </Tabs>
+      <Stack gap="xxl">
+        <SidebarSection title="Description">
+          <Text>
+            Info panels are one scrolling column of titled sections. Each
+            section is a <code>SidebarSection</code>.
+          </Text>
+        </SidebarSection>
+        <SidebarSection title="Details">
+          <DetailsTable>
+            <DetailsRow label="Created" value="March 3, 2024 by Ishmael" />
+            <DetailsRow label="Last edited" value="Yesterday by Queequeg" />
+            <DetailsRow label="Saved in" value="Whaling" />
+          </DetailsTable>
+        </SidebarSection>
+        <SidebarSection title="Header actions">
+          <Text>
+            The <code>actions</code> prop renders icon buttons before the close
+            button, and <code>footer</code> pins content below the body.
+          </Text>
+        </SidebarSection>
+      </Stack>
     </Sidesheet>
   );
 };

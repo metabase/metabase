@@ -3,7 +3,8 @@
   (:require
    [clojure.string :as str]
    [metabase.driver.connection :as driver.conn]
-   [metabase.driver.util :as driver.u])
+   [metabase.driver.util :as driver.u]
+   [metabase.workspaces.core :as workspaces])
   (:import
    (java.util.regex Pattern)))
 
@@ -74,11 +75,20 @@
 (defn include-schema?
   "Returns true if the given `schema-name` should be included/synced, considering the given `inclusion-patterns` and
   `exclusion-patterns` (either provided explicitly or taken from the driver's connection properties). Patterns are
-  comma-separated, and can contain wildcard characters (`*`)."
+  comma-separated, and can contain wildcard characters (`*`).
+
+  Workspace isolation schemas (`mb__isolation_*`) are excluded on **parent (stats) instances** -- they are
+  local-side state created by workspace provisioning and must not bleed into stats's view of the warehouse.
+  On **child (workspace-mode) instances** they are NOT excluded -- those are the schemas the local instance
+  needs to sync (with table remapping) to surface its workspace's data. The gate is
+  `(metabase.workspaces.core/workspace-mode?)`: false on parent (OSS fallback) or any EE instance that
+  didn't load a `:workspace` section, true on child instances that did. See GHY-3489 for context."
   {:added "0.42.0"}
   ([database schema-name]
    (let [[inclusion-patterns exclusion-patterns] (db-details->schema-filter-patterns database)]
      (include-schema? inclusion-patterns exclusion-patterns schema-name)))
   ([inclusion-patterns exclusion-patterns schema-name]
-   (let [filter-fn (schema-patterns->filter-fn inclusion-patterns exclusion-patterns)]
-     (filter-fn schema-name))))
+   (and (or (workspaces/workspace-mode?)
+            (not (driver.u/workspace-isolated-schema? schema-name)))
+        (let [filter-fn (schema-patterns->filter-fn inclusion-patterns exclusion-patterns)]
+          (filter-fn schema-name)))))

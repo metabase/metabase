@@ -167,9 +167,7 @@
   ([advisory triggered-from]
    (log/infof "Sending notification for advisory %s (severity=%s, status=%s)"
               (:advisory_id advisory) (name (:severity advisory)) (name (:match_status advisory)))
-   ;; Publish event for audit log
-   (events/publish-event! :event/security-advisory-match
-                          (advisory-event-info advisory))
+   (events/publish-event! :event/security-advisory-match {:object advisory})
    ;; Send email + Slack via notification pipeline
    ;; sync, so a failure on every channel doesn't set last_notified_at and the next sync retries
    (let [notif (build-notification advisory (saved-config))]

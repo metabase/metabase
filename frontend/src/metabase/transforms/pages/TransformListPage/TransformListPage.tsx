@@ -20,7 +20,11 @@ import { UpsellGem } from "metabase/common/components/upsells/components/UpsellG
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import {
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_REPLACEMENT,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -54,7 +58,7 @@ import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
 import {
   buildTreeData,
   getDefaultExpandedIds,
-  useGetNodeSyncColor,
+  getRemoteSyncChangesTarget,
   useGetTransformWarnings,
 } from "./utils";
 
@@ -162,7 +166,6 @@ export const TransformListPage = () => {
   );
 
   const warningsByTransformId = useGetTransformWarnings(transforms);
-  const getNodeSyncColor = useGetNodeSyncColor();
 
   const treeData = useMemo(() => {
     const data = buildTreeData(collections, transforms);
@@ -211,7 +214,6 @@ export const TransformListPage = () => {
             row,
             hasPythonTransformsFeature,
             warningsByTransformId,
-            syncColor: getNodeSyncColor(row.original),
           }),
       },
       {
@@ -286,7 +288,7 @@ export const TransformListPage = () => {
           ) : null,
       },
     ];
-  }, [hasPythonTransformsFeature, warningsByTransformId, getNodeSyncColor]);
+  }, [hasPythonTransformsFeature, warningsByTransformId]);
 
   const treeTableInstance = useTreeTableInstance({
     data: treeData,
@@ -381,12 +383,10 @@ function getNameCell({
   row,
   hasPythonTransformsFeature,
   warningsByTransformId,
-  syncColor,
 }: {
   row: Row<TreeNode>;
   hasPythonTransformsFeature: boolean;
   warningsByTransformId: Map<number, string>;
-  syncColor: ColorName | undefined;
 }) {
   const getTooltipProps = (message: string | undefined) => {
     if (!message) {
@@ -419,7 +419,8 @@ function getNameCell({
   const hasWarning = !!getWarningMessage();
   const iconColor = hasWarning
     ? "feedback-warning"
-    : (syncColor ?? getNodeIconColor(row.original));
+    : getNodeIconColor(row.original);
+  const changesTarget = getRemoteSyncChangesTarget(row.original);
 
   return (
     <Group gap="sm" wrap="nowrap" miw={0}>
@@ -427,10 +428,12 @@ function getNameCell({
         data-testid="tree-node-name"
         icon={hasWarning ? "warning" : row.original.icon}
         iconColor={iconColor}
-        nameColor={syncColor}
         name={row.original.name}
         ellipsifiedProps={{ ...getTooltipProps(getWarningMessage()) }}
       />
+      {changesTarget && (
+        <PLUGIN_REMOTE_SYNC.ChangesBadge target={changesTarget} />
+      )}
       {isLibraryWithoutFeature && <UpsellGem.New size={14} />}
     </Group>
   );

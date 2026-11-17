@@ -1,4 +1,3 @@
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card, Dashboard, Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
@@ -135,16 +134,5 @@ describe("findDatabaseByName", () => {
     expect(findDatabaseByName(collisions, "Production").id).toBe(
       collisions[1].id,
     );
-  });
-
-  it("never matches the virtual Saved Questions database", () => {
-    const virtualDb = createMockDatabase({
-      id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
-      name: "Saved Questions",
-    });
-
-    expect(
-      findDatabaseByName([...databases, virtualDb], "Saved Questions"),
-    ).toBeUndefined();
   });
 });

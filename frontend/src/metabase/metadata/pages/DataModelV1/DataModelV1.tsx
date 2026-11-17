@@ -8,7 +8,6 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Outlet, useLocation, useParams } from "metabase/router";
 import { Box, Flex, Stack, rem } from "metabase/ui";
@@ -181,7 +180,7 @@ export const DataModelV1 = () => {
                        * Make sure internal component state is reset when changing fields.
                        * This is to avoid state mix-up with optimistic updates.
                        */
-                      key={getRawTableFieldId(field)}
+                      key={field.id}
                       field={field}
                       table={table}
                       parent={parentField}

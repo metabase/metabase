@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useListRecentsQuery } from "metabase/api";
 import { RecentsListContent } from "metabase/nav/components/search/RecentsList/RecentsListContent";
 import { useNavigate } from "metabase/router";

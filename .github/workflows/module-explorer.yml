@@ -1,0 +1,63 @@
+name: Module explorer
+
+# Publishes the data `./bin/mage modules-tree --json` writes to the module-explorer site in metabase/micro-sites
+# (apps/module-explorer), which renders the module tree, cycles and hotspots from it and keeps a snapshot per week.
+# The upload carries this run's GitHub OIDC token instead of a stored secret: the site accepts only a token GitHub
+# issued to this workflow on master of metabase/metabase, so nothing needs to be shared or rotated.
+
+on:
+  schedule:
+    - cron: 20 6 * * * # every day at 6:20 UTC
+  push:
+    branches: [master]
+    paths:
+      - .clj-kondo/config/modules/**
+      # the code that builds the data
+      - .clj-kondo/src/hooks/common/modules.clj
+      - dev/src/dev/module_cycle_names.clj
+      - dev/src/dev/module_explorer.clj
+      - dev/src/dev/module_graph.clj
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # the OIDC token that proves to the site which repository, workflow and branch the upload comes from
+  id-token: write
+
+concurrency:
+  group: module-explorer
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Publish module data
+    # The site accepts uploads only from this repository's master, so a run anywhere else would fail at the end.
+    if: ${{ github.repository == 'metabase/metabase' && github.ref == 'refs/heads/master' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    env:
+      SITE_URL: https://module-explorer.metabase.workers.dev
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The per-module commit counts come from the full history.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Write modules.json
+        run: ./bin/mage modules-tree --json --output "$RUNNER_TEMP/modules.json"
+      - name: Publish modules.json
+        # Named, so the step runs with pipefail and a failed token request stops it here.
+        shell: bash
+        run: |
+          token=$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=module-explorer" | jq -r '.value // empty')
+          if [ -z "$token" ]; then
+            echo "::error::GitHub did not issue an OIDC token. Does the job have id-token: write?"
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error --retry 3 \
+            -X PUT "$SITE_URL/publish" \
+            -H "Authorization: Bearer $token" \
+            -H "Content-Type: application/json" \
+            --data-binary @"$RUNNER_TEMP/modules.json"

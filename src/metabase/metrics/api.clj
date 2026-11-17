@@ -8,6 +8,9 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.metrics.core :as metrics]
    [metabase.metrics.db :as metrics.db]
    [metabase.metrics.dimension :as metrics.dimension]
@@ -165,18 +168,28 @@
 (defn- check-expression-permissions
   "Verify permissions for each expression leaf and return metric card IDs keyed by UUID."
   [expression]
-  (into {}
-        (keep (fn [leaf]
-                (let [source-type (lib-metric/expression-leaf-type leaf)
-                      source-id   (lib-metric/expression-leaf-id leaf)]
-                  (case source-type
-                    :metric  (do
-                               (api/read-check (metrics.db/metric-card source-id))
-                               [(lib-metric/expression-leaf-uuid leaf) source-id])
-                    :measure (do
-                               (api/query-check (metrics.db/measure source-id))
-                               nil))))
-              (lib-metric/expression-leaves expression))))
+  (let [leaves         (lib-metric/expression-leaves expression)
+        leaf-ids       (fn [leaf-type]
+                         (into [] (comp (filter #(= leaf-type (lib-metric/expression-leaf-type %)))
+                                        (map lib-metric/expression-leaf-id)
+                                        (distinct))
+                               leaves))
+        id->metric     (into {} (map (juxt :id identity))
+                             (t2/hydrate (metrics.db/metric-cards-by-ids (leaf-ids :metric)) :can_read))
+        id->measure    (into {} (map (juxt :id identity))
+                             (t2/hydrate (metrics.db/measures-by-ids (leaf-ids :measure)) :can_query))]
+    (into {}
+          (keep (fn [leaf]
+                  (let [source-type (lib-metric/expression-leaf-type leaf)
+                        source-id   (lib-metric/expression-leaf-id leaf)]
+                    (case source-type
+                      :metric  (do
+                                 (api/read-check (get id->metric source-id))
+                                 [(lib-metric/expression-leaf-uuid leaf) source-id])
+                      :measure (do
+                                 (api/query-check (get id->measure source-id))
+                                 nil)))))
+          leaves)))
 
 (defn- from-api-definition
   "Create a MetricDefinition from API definition parameters.
@@ -393,7 +406,13 @@
                                                        [:id             ms/NonBlankString]
                                                        [:display_name   {:optional true} ms/NonBlankString]
                                                        [:description    {:optional true} [:maybe :string]]
-                                                       [:mapping_target ::lib-metric.schema/dimension-mapping.target]]]]]]
+                                                       ;; This is not `::lib-metric.schema/dimension-mapping.target`
+                                                       ;; because `field-ref->key` strips `:base-type`, which is
+                                                       ;; required for name-based refs (#85634).
+                                                       [:mapping_target [:tuple
+                                                                         [:= {:decode/normalize lib.schema.common/normalize-keyword} :field]
+                                                                         [:ref ::lib.schema.ref/field.options]
+                                                                         [:or ::lib.schema.common/non-blank-string ::lib.schema.id/field]]]]]]]]
   (let [before (write-check-metric! id)]
     (u/prog1 (metrics/add-dimensions! :metadata/metric id dimensions)
       (notify-dimensions-changed! id before))))

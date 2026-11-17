@@ -1,14 +1,7 @@
 (ns hooks.clojure.core.with-redefs
   (:require
-   [clj-kondo.hooks-api :as hooks]))
-
-(defn- ns-analysis
-  "Like `hooks/ns-analysis`, but nil when kondo can't read the namespace's cache entry."
-  [ns-sym]
-  ;; kondo throws on the cache of a cljc namespace with `:deprecated` metadata, e.g. `metabase.legacy-mbql.util`.
-  (try
-    (hooks/ns-analysis ns-sym)
-    (catch Exception _ nil)))
+   [clj-kondo.hooks-api :as hooks]
+   [hooks.common :as common]))
 
 (defn- defn-arity?
   "Whether `var-sym` is a `defn`-style function on the `:clj` side of `analysis`, the result of `hooks/ns-analysis`.
@@ -25,18 +18,11 @@
           ;; The `seq` keeps an empty `:fixed-arities` set from counting as an arity.
           (or (seq (:fixed-arities v))
               (:varargs-min-arity v)))
-        ;; Kondo's `hooks/ns-analysis` strips each var's `:imported-ns`, so search every namespace this one re-exports
-        ;; from. Any of them could be the one the var was imported from, so all must be readable, and all that define
+        ;; Any namespace this one re-exports from could be the source, so all must be readable, and all that define
         ;; the name must be defns.
         ;; Only the namespaces on the current path are in `seen`, so a source reached by two routes is still followed.
-        (let [proxied (into {} (for [ns-sym (get-in analysis [:clj :proxied-namespaces])
-                                     :when  (not (seen ns-sym))]
-                                 [ns-sym (:clj (ns-analysis ns-sym))]))
-              ;; Skip private vars: a renamed import can share its name with an unrelated private var in a source.
-              sources (for [[ns-sym vars] proxied
-                            :let  [v (get vars var-sym)]
-                            :when (and v (not (:private v)))]
-                        ns-sym)]
+        (let [proxied (common/proxied-analyses analysis seen)
+              sources (common/reexport-sources proxied var-sym)]
           (and (every? some? (vals proxied))
                (seq sources)
                (every? #(defn-arity? {:clj (proxied %)} var-sym (conj seen %)) sources)))))))
@@ -61,7 +47,7 @@
        (let [resolved (hooks/resolve {:name (hooks/sexpr lhs)})
              ns-sym   (:ns resolved)]
          (and (symbol? ns-sym) ; not :clj-kondo/unknown-namespace
-              (defn-arity? (ns-analysis ns-sym) (:name resolved))))))
+              (defn-arity? (common/ns-analysis ns-sym) (:name resolved))))))
 
 (defn lint-with-redefs
   "Suggest `with-dynamic-fn-redefs` when every LHS is known to be a `defn`-style var.
@@ -87,6 +73,7 @@
            (assoc (meta node)
                   :message (str "Every binding here redefines a defn-style var — prefer "
                                 "metabase.test/with-dynamic-fn-redefs for thread-safe "
-                                "redefs. [:metabase/prefer-with-dynamic-fn-redefs]")
+                                "redefs. If a replacement calls the original, capture it with "
+                                "(mt/original-fn #'the/var). [:metabase/prefer-with-dynamic-fn-redefs]")
                   :type    :metabase/prefer-with-dynamic-fn-redefs))))))
   {:node node})

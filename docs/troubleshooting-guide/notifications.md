@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting notifications
+summary: Fix alerts and dashboard subscriptions that fail to send.
 ---
 
 # Troubleshooting notifications

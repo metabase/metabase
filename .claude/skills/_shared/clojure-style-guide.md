@@ -212,6 +212,25 @@ destructuring in particular, since it names the local after the key. kondo's `:s
 
 - Mark pure function tests `^:parallel`
 
+**Build queries with Lib:**
+
+Every query in a test, fixture data included (`mt/with-temp` sources, `:dataset_query`, request bodies), is built with
+`metabase.lib`: `lib/query`, `lib/native-query`, `lib/with-template-tags`, and columns from the metadata provider. Never
+a hand-written map, neither legacy (`{:database … :type :native …}`, `:source-table`) nor MBQL 5
+(`{:lib/type :mbql/query :stages […]}`).
+
+```clojure
+;; bad
+{:lib/type :mbql/query :database (mt/id) :stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
+{:database (mt/id) :type :native :native {:query "SELECT 1"}}
+
+;; good
+(lib/native-query (mt/metadata-provider) "SELECT 1")
+(lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")
+(let [mp (mt/metadata-provider)]
+  (lib/query mp (lib.metadata/table mp (mt/id :orders))))
+```
+
 **Redefining `defn`-vars under test:**
 
 Use `mt/with-dynamic-fn-redefs` instead of `with-redefs` when stubbing `defn`/`defn-` vars — plain `with-redefs` is not parallel-test-safe and a clj-kondo hook (`:metabase/prefer-with-dynamic-fn-redefs`, see `.clj-kondo/config.edn`) will warn. `with-redefs` is still fine for `def` / dynamic var rebinding.

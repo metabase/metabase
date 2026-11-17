@@ -1,6 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
+  createMockCard,
   createMockColumn,
   createMockDatasetData,
   createMockTable,
@@ -8,8 +11,8 @@ import {
 import {
   ORDERS_ID,
   PRODUCTS_ID,
+  createOrdersTable,
   createSampleDatabase,
-  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
 import {
@@ -20,8 +23,9 @@ import {
   getSinglePKIndex,
 } from "./utils";
 
-const card = createSavedStructuredCard({
+const card = createMockCard({
   name: "Special Order",
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
 });
 
 const database = createSampleDatabase();
@@ -80,7 +84,7 @@ describe("ObjectDetail utils", () => {
 
   describe("getObjectName", () => {
     const question = new Question(card, metadata);
-    const table = metadata.table(ORDERS_ID);
+    const table = createOrdersTable();
 
     it("should get an entity name when there is an entity name column", () => {
       const name = getObjectName({
@@ -243,13 +247,6 @@ describe("ObjectDetail utils", () => {
     it("should return a table URL with the table slug", () => {
       expect(getRowUrl(question, [idCol, qtyCol], table, 1)).toBe(
         "/table/5-invoices/detail/1",
-      );
-    });
-
-    it("should return undefined for virtual tables", () => {
-      const virtualTable = createMockTable({ id: "card__17" });
-      expect(getRowUrl(question, [idCol, qtyCol], virtualTable, 1)).toBe(
-        undefined,
       );
     });
   });

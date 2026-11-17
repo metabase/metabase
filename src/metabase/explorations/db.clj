@@ -4,12 +4,13 @@
   and transactions."
   (:require
    [malli.util :as mut]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.models.collection :as collection]
    [metabase.documents.schema :as documents.schema]
    [metabase.explorations.schema :as explorations.schema]
    [metabase.interestingness.chart.types :as chart.types]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
@@ -73,7 +74,7 @@
              :join     [[agg :agg] [:= :agg.eid :exploration.id]]
              :where    [:and
                         [:= :exploration.archived false]
-                        (collection/visible-collection-filter-clause :exploration.collection_id)]
+                        (perms/visible-collections-filter-clause :exploration.collection_id (api/current-user-info) {:root-namespace nil})]
              :order-by [[:current_user_last_touched_at :desc] [:exploration.id :desc]]}
       limit  (assoc :limit limit)
       offset (assoc :offset offset))))
@@ -115,6 +116,14 @@
   "The ExplorationThread with `thread-id`, or nil."
   [thread-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationThread :id thread-id))
+
+(mu/defn rows
+  "The rows of `model` with the ids `ids`."
+  [model :- :keyword
+   ids   :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select model :id [:in ids])
+    []))
 
 (mu/defn thread-exploration-id-row
   "The `:exploration_id` row of the ExplorationThread with `thread-id`, or nil."
@@ -170,9 +179,9 @@
   (t2/select-pks-set :model/ExplorationThread :exploration_id exploration-id))
 
 (mu/defn lens-stamped-threads
-  "The ID and data-access token of the ExplorationThreads among `thread-ids` that carry a token."
+  "The ExplorationThreads among `thread-ids` that carry a data-access token, with what the content gate reads."
   [thread-ids :- [:set ms/PositiveInt]]
-  (t2/select [:model/ExplorationThread :id :data_access_token]
+  (t2/select [:model/ExplorationThread :id :data_access_token :resolved_source_ids]
              :id [:in thread-ids]
              :data_access_token [:not= nil]))
 
@@ -322,6 +331,13 @@
   [page-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationPage :id page-id))
 
+(mu/defn pages-by-ids
+  "The ExplorationPages with `page-ids`."
+  [page-ids :- [:sequential ms/PositiveInt]]
+  (if (seq page-ids)
+    (t2/select :model/ExplorationPage :id [:in page-ids])
+    []))
+
 (mu/defn page-block-id-row
   "The `:exploration_block_id` row of the ExplorationPage with `page-id`, or nil."
   [page-id :- ms/PositiveInt]
@@ -432,10 +448,11 @@
              {:order-by [[:position :asc] [:id :asc]]}))
 
 (mu/defn lens-stamped-queries
-  "The ID, thread, Database, query, and data-access token of the ExplorationQueries with a query on the
-  ExplorationThreads with `thread-ids`, in ID order."
+  "The ExplorationQueries with a query on the ExplorationThreads with `thread-ids`, with what the content gate reads,
+  in ID order."
   [thread-ids :- [:set ms/PositiveInt]]
-  (t2/select [:model/ExplorationQuery :id :exploration_thread_id :database_id :dataset_query :data_access_token]
+  (t2/select [:model/ExplorationQuery :id :exploration_thread_id :database_id :dataset_query :data_access_token
+              :resolved_source_ids]
              :exploration_thread_id [:in thread-ids]
              :dataset_query [:not= nil]
              {:order-by [[:id :asc]]}))
@@ -500,7 +517,11 @@
 (mu/defn update-query!
   "Apply `changes` to the ExplorationQuery with `query-id`."
   [query-id :- ms/PositiveInt
-   changes  :- (mut/select-keys ::explorations.schema/exploration-query.update [:dataset_query :name :data_access_token :status :started_at :finished_at])]
+   changes  :- [:and
+                (mut/select-keys ::explorations.schema/exploration-query.update
+                                 [:dataset_query :name :data_access_token :resolved_source_ids
+                                  :status :started_at :finished_at])
+                ::explorations.schema/exploration-query.update.stamped-together]]
   (t2/update! :model/ExplorationQuery :id query-id changes))
 
 (mu/defn fail-pending-query!
@@ -755,6 +776,13 @@
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
+
+(mu/defn cards-by-ids
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
 
 (mu/defn card-names
   "The ID and name of the Cards with `card-ids`."

@@ -6,6 +6,7 @@ import {
   createMockCollection,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 import type { SetupOpts } from "./setup";
 import { assertIndicatorHidden, assertIndicatorVisible, setup } from "./setup";
@@ -68,6 +69,20 @@ describe("CollectionMenu", () => {
     expect(
       screen.queryByText("Make collection official"),
     ).not.toBeInTheDocument();
+  });
+
+  it("should not be able to remove the official badge if not an admin", async () => {
+    setupPremium({
+      collection: createMockCollection({
+        can_write: true,
+        authority_level: "official",
+      }),
+      isAdmin: false,
+    });
+
+    await userEvent.click(getIcon("ellipsis"));
+    expect(await screen.findByText("Move")).toBeInTheDocument();
+    expect(screen.queryByText("Remove Official badge")).not.toBeInTheDocument();
   });
 
   it("should not be able to make the collection official if it's the root collection", async () => {
@@ -134,9 +149,11 @@ describe("CollectionMenu", () => {
         ),
       ).toHaveLength(1);
 
-      expect(
-        await screen.findByRole("menuitem", { name: /Clear out unused items/ }),
-      ).toHaveTextContent("Recommended");
+      await waitFor(() =>
+        expect(
+          screen.getByRole("menuitem", { name: /Clear out unused items/ }),
+        ).toHaveTextContent("Recommended"),
+      );
     });
 
     it("should not show an indicator if it has previously been dismissed, even if we recommend cleaning the collection", async () => {
@@ -144,6 +161,7 @@ describe("CollectionMenu", () => {
         collection: createMockCollection({ can_write: true }),
         isAdmin: true,
         numberOfStaleItems: 10,
+        seenBadges: ["clean-stale-items"],
       });
 
       await assertIndicatorHidden();
@@ -151,14 +169,16 @@ describe("CollectionMenu", () => {
 
       expect(
         fetchMock.callHistory.calls(
-          "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
+          "http://localhost/api/user-key-value/namespace/indicator-menu/key/collection-menu",
           { method: "PUT" },
         ),
       ).toHaveLength(0);
 
-      expect(
-        await screen.findByRole("menuitem", { name: /Clear out unused items/ }),
-      ).toHaveTextContent("Recommended");
+      await waitFor(() =>
+        expect(
+          screen.getByRole("menuitem", { name: /Clear out unused items/ }),
+        ).toHaveTextContent("Recommended"),
+      );
     });
 
     it("should recommend cleaning collections to non-admins with write access", async () => {
@@ -170,9 +190,11 @@ describe("CollectionMenu", () => {
 
       await userEvent.click(getIcon("ellipsis"));
 
-      expect(
-        await screen.findByRole("menuitem", { name: /Clear out unused items/ }),
-      ).toHaveTextContent("Recommended");
+      await waitFor(() =>
+        expect(
+          screen.getByRole("menuitem", { name: /Clear out unused items/ }),
+        ).toHaveTextContent("Recommended"),
+      );
     });
 
     it("should not show an indicator if there are no stale items in the collection", async () => {
@@ -252,13 +274,69 @@ describe("CollectionMenu", () => {
         numberOfStaleItems: 0,
       });
 
+      await waitFor(() =>
+        expect(fetchMock.callHistory.called("collection-item-count")).toBe(
+          true,
+        ),
+      );
+      await fetchMock.callHistory.flush(true);
+      const itemCountUrl = new URL(
+        fetchMock.callHistory.lastCall("collection-item-count")?.url ?? "",
+      );
+      expect(itemCountUrl.searchParams.get("limit")).toBe("0");
+
       await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));
+      expect(await screen.findByText("Edit permissions")).toBeVisible();
 
       expect(
         fetchMock.callHistory.calls("express:/api/ee/stale/:id"),
       ).toHaveLength(0);
 
+      expect(
+        screen.queryByRole("menuitem", { name: /Clear out unused items/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show the clean up collection option in the custom reports collection", async () => {
+      setup({
+        collection: createMockCollection({
+          can_write: true,
+          entity_id: createMockEntityId("okNLSZKdSxaoG58JSQY54"),
+        }),
+        isAdmin: true,
+        numberOfStaleItems: 10,
+        tokenFeatures: createMockTokenFeatures({
+          audit_app: true,
+          official_collections: true,
+          collection_cleanup: true,
+        }),
+        enterprisePlugins: ["collections", "clean_up"],
+      });
+
+      await userEvent.click(getIcon("ellipsis"));
+      expect(await screen.findByText("Edit permissions")).toBeVisible();
+      expect(fetchMock.callHistory.calls("collection-item-count")).toHaveLength(
+        0,
+      );
+      expect(
+        screen.queryByRole("menuitem", { name: /Clear out unused items/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show the clean up collection option in a sample collection", async () => {
+      setupPremium({
+        collection: createMockCollection({ can_write: true, is_sample: true }),
+        isAdmin: true,
+        numberOfStaleItems: 10,
+      });
+
+      await userEvent.click(getIcon("ellipsis"));
+      expect(await screen.findByText("Edit permissions")).toBeVisible();
+      expect(fetchMock.callHistory.calls("collection-item-count")).toHaveLength(
+        0,
+      );
+      expect(fetchMock.callHistory.calls("stale-items")).toHaveLength(0);
       expect(
         screen.queryByRole("menuitem", { name: /Clear out unused items/ }),
       ).not.toBeInTheDocument();
