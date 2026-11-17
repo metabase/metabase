@@ -655,8 +655,12 @@
                            (lib/aggregate (lib/cum-count))
                            (lib/breakout (lib/with-temporal-bucket created-at :month))
                            lib/append-stage
-                           (lib/expression "Foo Bar" (lib/+ 57910 1)))]
-        (is (seq (mt/rows (qp/process-query query))))))))
+                           (lib/expression "Foo Bar" (lib/+ 57910 1)))
+            results    (qp/process-query query)]
+        (is (= ["Created At: Month" "Cumulative count" "Foo Bar"]
+               (map :display_name (mt/cols results))))
+        (is (seq (mt/rows results)))
+        (is (every? #{57911} (map (comp long last) (mt/rows results))))))))
 
 (deftest ^:parallel cumulative-count-with-post-aggregation-filter-test
   (testing "a cum-count + month breakout query wrapped in an outer filter stage still returns rows (#33330)"

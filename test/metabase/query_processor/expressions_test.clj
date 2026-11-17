@@ -1023,6 +1023,52 @@
                                                        [:field "max" {:base-type :type/Number}]
                                                        [:field "min" {:base-type :type/Number}]]}}))))))))
 
+(deftest ^:parallel expression-using-named-aggregations-from-previous-stage-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :nested-queries)
+    (testing "A custom column on the next stage combines the aggregations of the previous stage (#12762)"
+      (mt/dataset test-data
+        (let [mp         (mt/metadata-provider)
+              created-at (lib.metadata/field mp (mt/id :orders :created_at))
+              base       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                             (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :subtotal))))
+                             (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total))))
+                             (lib/breakout (lib/with-temporal-bucket created-at :month))
+                             lib/append-stage)
+              [_ sum-subtotal sum-total] (lib/returned-columns base)
+              query      (-> base
+                             (lib/expression "MegaTotal" (lib/+ sum-subtotal sum-total))
+                             (lib/limit 3))
+              results    (qp/process-query query)]
+          (is (= ["Created At: Month" "Sum of Subtotal" "Sum of Total" "MegaTotal"]
+                 (map :display_name (mt/cols results))))
+          (is (= 3 (count (mt/rows results))))
+          (doseq [[_ subtotal total mega-total] (mt/formatted-rows [identity 2.0 2.0 2.0] results)]
+            (is (< (abs (- (+ subtotal total) mega-total)) 0.02))))))))
+
+(deftest ^:parallel expressions-using-aggregations-from-filtered-previous-stage-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :nested-queries :expression-aggregations)
+    (testing "Custom columns on the next stage use a plain and a named aggregation of a filtered stage (#13857, #14193)"
+      (mt/dataset test-data
+        (let [mp         (mt/metadata-provider)
+              created-at (lib.metadata/field mp (mt/id :orders :created_at))
+              base       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                             (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :subtotal)) 0))
+                             (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total))))
+                             (lib/aggregate (lib/with-expression-name (lib/* (lib/count) 1) "13857_CE"))
+                             (lib/breakout (lib/with-temporal-bucket created-at :year))
+                             lib/append-stage)
+              [_ sum-total ce] (lib/returned-columns base)
+              query      (-> base
+                             (lib/expression "Double the fun" (lib/* sum-total 2))
+                             (lib/expression "13857_CC" (lib/* ce 1234)))
+              results    (qp/process-query query)]
+          (is (= ["Created At: Year" "Sum of Total" "13857_CE" "Double the fun" "13857_CC"]
+                 (map :display_name (mt/cols results))))
+          (is (seq (mt/rows results)))
+          (doseq [[_ total ce double-the-fun cc] (mt/formatted-rows [identity 2.0 int 2.0 int] results)]
+            (is (< (abs (- (* total 2) double-the-fun)) 0.02))
+            (is (= (* ce 1234) cc))))))))
+
 (deftest ^:parallel expression-with-duplicate-column-name
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we use expression with same column name as table (#14267)"
@@ -1034,10 +1080,13 @@
                        :order-by    [[:asc [:expression :CATEGORY]]]
                        :limit       1})]
           (mt/with-native-query-testing-context query
-            (is (= [["Doohickey2" 42]]
-                   (mt/formatted-rows
-                    [str int]
-                    (qp/process-query query))))))))))
+            (let [results (qp/process-query query)]
+              (is (= ["CATEGORY" "Count"]
+                     (map :display_name (mt/cols results))))
+              (is (= [["Doohickey2" 42]]
+                     (mt/formatted-rows
+                      [str int]
+                      results))))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::fk-field-and-duplicate-names-test]
   [_driver _feature _database]
@@ -1350,7 +1399,32 @@
           (is (= 197 (->> (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                               (lib/filter (lib/not-in id 1 2 3))
                               (lib/aggregate (lib/count)))
+                          qp/process-query mt/rows ffirst long)))
+          (is (= 2 (->> (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                            (lib/filter (lib/in id 1 2))
+                            (lib/aggregate (lib/count)))
+                        qp/process-query mt/rows ffirst long)))
+          (is (= 198 (->> (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                              (lib/aggregate (lib/count-where (lib/not-in id 1 2))))
                           qp/process-query mt/rows ffirst long))))))))
+
+;; Comparing a boolean expression with `true` has the same driver limits as selecting one: see
+;; [[boolean-function-as-selected-column-test]] for why `:expressions/date` and `:distinct-where` stand in for them.
+(deftest ^:parallel in-and-not-in-custom-column-filter-test
+  (testing "a boolean custom column that uses `in` or `notIn` with a literal value filters the rows"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :basic-aggregations :expressions/date :distinct-where)
+      (mt/dataset test-data
+        (let [mp       (mt/metadata-provider)
+              vendor   (lib.metadata/field mp (mt/id :products :vendor))
+              category (lib.metadata/field mp (mt/id :products :category))
+              count-of (fn [f]
+                         (let [query (as-> (lib/query mp (lib.metadata/table mp (mt/id :products))) q
+                                       (lib/expression q "InColumn" (f "Gadget" vendor category))
+                                       (lib/filter q (lib/= (lib/expression-ref q "InColumn") true))
+                                       (lib/aggregate q (lib/count)))]
+                           (->> (qp/process-query query) mt/rows ffirst long)))]
+          (is (= 53 (count-of lib/in)))
+          (is (= 147 (count-of lib/not-in))))))))
 
 (deftest ^:parallel temporal-filter-on-date-expression-test
   ;; the case() default resolves an implicit-join column (products.created_at), which compiles to a LEFT JOIN
@@ -1362,13 +1436,18 @@
             created-at (lib.metadata/field mp (mt/id :orders :created_at))
             discount   (lib.metadata/field mp (mt/id :orders :discount))
             id         (lib.metadata/field mp (mt/id :orders :id))]
-        (testing "absolute range filter on a date passthrough expression runs"
-          (let [query (as-> oq q
-                        (lib/expression q "CustomDate" created-at)
-                        (lib/filter q (lib/between (lib/expression-ref q "CustomDate")
-                                                   "2019-01-01" "2019-06-30"))
-                        (lib/aggregate q (lib/count)))]
-            (is (seq (mt/rows (qp/process-query query))))))
+        (testing "absolute range filter on a date passthrough expression matches the same filter on the column"
+          (let [query    (as-> oq q
+                           (lib/expression q "CustomDate" created-at)
+                           (lib/filter q (lib/between (lib/expression-ref q "CustomDate")
+                                                      "2019-01-01" "2019-06-30"))
+                           (lib/aggregate q (lib/count)))
+                expected (-> oq
+                             (lib/filter (lib/between created-at "2019-01-01" "2019-06-30"))
+                             (lib/aggregate (lib/count)))
+                count-of (fn [query] (->> (qp/process-query query) (mt/formatted-rows [int]) ffirst))]
+            (is (pos? (count-of expected)))
+            (is (= (count-of expected) (count-of query)))))
         (testing "#16273 relative-date filter on a case()-typed date expression runs"
           (let [products-created (m/find-first #(= (mt/id :products :created_at) (:id %))
                                                (lib/visible-columns oq))
@@ -1380,8 +1459,12 @@
                                           (lib/time-interval (lib/expression-ref q "MiscDate") -30 :year)
                                           assoc :include-current true))
                            (lib/with-fields q [id (lib/expression-ref q "MiscDate")])
-                           (lib/limit q 5))]
-            (is (seq (mt/rows (qp/process-query query))))))))))
+                           (lib/limit q 5))
+                results  (qp/process-query query)]
+            (is (= ["ID" "MiscDate"]
+                   (map :display_name (mt/cols results))))
+            (is (= 5 (count (mt/rows results))))
+            (is (every? some? (map second (mt/rows results))))))))))
 
 (deftest ^:parallel sum-of-expression-with-implicit-join-distinct-test
   (testing "#14080 sum([expr]) + distinct(fk->) + temporal breakout compiles and runs"
@@ -1399,8 +1482,20 @@
               query       (-> base
                               (lib/aggregate (lib/distinct products-id))
                               (lib/aggregate (lib/sum (lib/expression-ref base "OneisOne")))
-                              (lib/breakout (lib/with-temporal-bucket created-at :year)))]
-          (is (seq (mt/rows (qp/process-query query)))))))))
+                              (lib/breakout (lib/with-temporal-bucket created-at :year)))
+              results     (qp/process-query query)
+              counts      (->> (-> (lib/query mp orders)
+                                   (lib/aggregate (lib/count))
+                                   (lib/breakout (lib/with-temporal-bucket created-at :year)))
+                               qp/process-query
+                               (mt/formatted-rows [str int])
+                               (map second))]
+          (is (= ["Created At: Year" "Distinct values of Product → ID" "Sum of OneisOne"]
+                 (map :display_name (mt/cols results))))
+          (is (seq counts))
+          (testing "sum of 1 * 1 is the row count of each year"
+            (is (= counts
+                   (map last (mt/formatted-rows [str int int] results))))))))))
 
 (deftest ^:parallel literal-column-across-clauses-test
   (testing "a literal expression column can be filtered, aggregated, broken out and sorted in one query"
