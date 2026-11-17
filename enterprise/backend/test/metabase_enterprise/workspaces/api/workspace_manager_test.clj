@@ -6,6 +6,7 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
+   [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.permissions.test-util :as perms.test-util]
@@ -110,9 +111,12 @@
                                                   :settings {:database-enable-workspaces true}}
                      :model/Table _ {:db_id db-id :schema "public" :active true}]
         (mt/with-model-cleanup [:model/Workspace]
-          (let [{ws-id :id} (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-                              (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+          (let [create!     (fn [expected-status]
+                              (mt/user-http-request :crowberto :post expected-status "ee/workspace-manager/"
+                                                    {:request-options {:headers {"idempotency-key" "slow-delete"}}}
                                                     {:name "Slow delete" :database_ids [db-id]}))
+                {ws-id :id} (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                              (create! 200))
                 in-destroy  (promise)
                 release     (promise)
                 destroys    (atom 0)
@@ -145,6 +149,11 @@
                                      5000 ::still-waiting))))
                     (testing "the config download"
                       (mt/user-http-request :crowberto :get 409 (str "ee/workspace-manager/" ws-id "/config")))
+                    (testing "a create with the same Idempotency-Key"
+                      (is (=? {:error-code "workspace_busy"
+                               :message    "A create or delete of the workspace with this idempotency key is still running. Retry once it finishes."}
+                              (create! 409)))
+                      (is (= [ws-id] (t2/select-pks-vec :model/Workspace :idempotency_key "slow-delete"))))
                     (is (= during (row)) "the refused requests changed nothing")
                     (is (= 1 @destroys) "and reached no warehouse"))
                   (deliver release true)
@@ -486,6 +495,438 @@
                 (mt/user-http-request :crowberto :put 400 (str "ee/workspace-manager/" ws-id)
                                       {:name (apply str (repeat 128 "\uD83D\uDE00"))}))))
       (is (= 254 (count (t2/select-one-fn :name :model/Workspace :id ws-id)))))))
+
+;;; ------------------------------------------ Idempotency-Key -------------------------------------------------
+
+(defn- counting-provisioner
+  "A stub provisioner whose `init!` (one call per provisioned database) counts its
+  calls in `inits` and then runs `on-init`."
+  [inits on-init]
+  (reify provisioning/Provisioner
+    (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+    (init!    [_ _ _ _]   (swap! inits inc) (on-init) nil)
+    (grant!   [_ _ _ _ _] nil)
+    (destroy! [_ _ _ _]   nil)))
+
+(defn- create-with-key [expected-status idempotency-key ws-name db-id]
+  (mt/user-http-request :crowberto :post expected-status "ee/workspace-manager/"
+                        {:request-options {:headers {"idempotency-key" idempotency-key}}}
+                        {:name ws-name :database_ids [db-id]}))
+
+(defn- do-with-eligible-database!
+  "Call `f` with the id of a committed Database that is eligible for workspaces.
+  Afterwards, delete that Database and every Workspace that `f` created. Not
+  `mt/with-temp`: that runs its body in a rollback-only transaction which the request
+  threads of these tests would inherit and share, so concurrent creates would not race
+  in separate transactions."
+  [f]
+  (let [db-id (t2/insert-returning-pk! :model/Database {:name     (mt/random-name)
+                                                        :engine   :postgres
+                                                        :details  {}
+                                                        :settings {:database-enable-workspaces true}})]
+    ;; a synced table, so the database has an input schema and create does not refuse it
+    (t2/insert! :model/Table {:db_id db-id :schema "public" :name "t" :active true})
+    (try
+      (mt/with-model-cleanup [:model/Workspace]
+        (f db-id))
+      (finally
+        (t2/delete! :model/Database :id db-id)))))
+
+(deftest create-idempotency-retry-after-success-test
+  (testing "a retry with the same Idempotency-Key returns the first workspace and provisions nothing"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (let [inits (atom 0)]
+         (with-redefs [provisioning/dispatching-provisioner (counting-provisioner inits (constantly nil))]
+           (let [first-ws (create-with-key 200 "retry-after-success" "Retried" db-id)
+                 retry-ws (create-with-key 200 "retry-after-success" "Retried" db-id)]
+             (is (=? {:id pos-int? :databases [{:status "provisioned"}]} first-ws))
+             (is (= first-ws retry-ws)
+                 "the retry gets the same response as the original create")
+             (is (= 1 @inits))
+             (is (= 1 (t2/count :model/Workspace :idempotency_key "retry-after-success"))))))))))
+
+(deftest create-idempotency-retry-while-in-flight-test
+  (testing "a retry while the first create is still provisioning answers 409 workspace_busy and provisions nothing"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (let [inits   (atom 0)
+             started (promise)
+             release (promise)]
+         (with-redefs [provisioning/dispatching-provisioner (counting-provisioner
+                                                             inits
+                                                             #(do (deliver started true)
+                                                                  (deref release 30000 nil)))]
+           (let [create (future (create-with-key 200 "retry-in-flight" "Slow" db-id))]
+             (try
+               (is (true? (deref started 10000 false)) "the first create reached the warehouse step")
+               (is (=? {:error-code "workspace_busy"}
+                       (create-with-key 409 "retry-in-flight" "Slow" db-id)))
+               (deliver release true)
+               (is (=? {:databases [{:status "provisioned"}]}
+                       (deref create 10000 ::timed-out))
+                   "the refused retry left the first create alone")
+               (is (= 1 @inits))
+               (finally
+                 (deliver release true)
+                 (deref create 10000 nil))))))))))
+
+(deftest create-idempotency-retry-after-failure-test
+  (testing "a create that failed and deleted its workspace frees the key: a retry provisions again"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (let [inits (atom 0)]
+         (with-redefs [provisioning/dispatching-provisioner (counting-provisioner
+                                                             inits
+                                                             #(throw (ex-info "Connection refused" {})))]
+           (is (=? {:message "Connection refused"}
+                   (create-with-key 500 "retry-after-failure" "Flaky" db-id)))
+           (is (zero? (t2/count :model/Workspace :idempotency_key "retry-after-failure"))))
+         (with-redefs [provisioning/dispatching-provisioner (counting-provisioner inits (constantly nil))]
+           (is (=? {:databases [{:status "provisioned"}]}
+                   (create-with-key 200 "retry-after-failure" "Flaky" db-id))))
+         (is (= 2 @inits))
+         (is (= 1 (t2/count :model/Workspace :idempotency_key "retry-after-failure"))
+             "the retry's workspace holds the freed key"))))))
+
+(deftest create-idempotency-retry-of-kept-empty-workspace-test
+  (testing "a kept workspace with no databases (cleanup removed them, deleting the row failed) is a failed create: the retry answers 500"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (mt/with-temp [:model/Workspace {ws-id :id} {:name            "Kept empty"
+                                                    :creator_id      (mt/user->id :crowberto)
+                                                    :idempotency_key "kept-empty"}]
+         (is (=? {:workspace_id ws-id :cleanup_required true}
+                 (create-with-key 500 "kept-empty" "Kept empty" db-id))))))))
+
+(deftest create-idempotency-retry-after-failed-cleanup-test
+  (testing "a retry of a create whose provisioning and cleanup both failed answers 500 with the same workspace_id, and provisions nothing"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (let [inits  (atom 0)
+             wedged (reify provisioning/Provisioner
+                      (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                      (init!    [_ _ _ _]   (swap! inits inc) (throw (ex-info "Connection refused" {})))
+                      (grant!   [_ _ _ _ _] nil)
+                      (destroy! [_ _ _ _]   (throw (ex-info "warehouse down" {}))))]
+         (with-redefs [provisioning/dispatching-provisioner wedged]
+           (let [{ws-id :workspace_id :as failed} (create-with-key 500 "retry-after-failed-cleanup" "Wedged" db-id)]
+             (is (=? {:workspace_id pos-int? :cleanup_required true} failed)
+                 "the first create kept the workspace and says so")
+             (is (=? {:databases [{:status "teardown_failed"}]}
+                     (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))
+             ;; no busy check counts a `teardown_failed` row, so the retry is not a 409, at any age of the row
+             (is (=? {:workspace_id ws-id :cleanup_required true}
+                     (create-with-key 500 "retry-after-failed-cleanup" "Wedged" db-id)))
+             (is (= 1 @inits) "the retry provisioned nothing")
+             (is (= 1 (t2/count :model/Workspace :idempotency_key "retry-after-failed-cleanup"))
+                 "the key stays on the kept workspace")
+             (testing "deleting the kept workspace finishes the cleanup"
+               (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                 (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))))))))))
+
+(defn- lock-that-fails-once
+  "A stand-in for [[provisioning/do-with-workspace-database-lock]]. It throws on the `n`th lock of the row of the
+  Database `db-id`, as a lock timeout does, and takes the real lock every other time."
+  [db-id n]
+  (let [lock! provisioning/do-with-workspace-database-lock
+        locks (atom 0)]
+    (fn [wsd-id thunk]
+      (if (and (= db-id (t2/select-one-fn :database_id :model/WorkspaceDatabase :id wsd-id))
+               (= n (swap! locks inc)))
+        (throw (ex-info "lock timed out" {}))
+        (lock! wsd-id thunk)))))
+
+(deftest create-idempotency-retry-after-cleanup-failed-before-a-destroy-test
+  (testing "a retry of a create whose cleanup failed without a failed destroy answers the 500 that says to delete the workspace, never 200 and never 409"
+    (do-with-eligible-database!
+     (fn [db1-id]
+       (do-with-eligible-database!
+        (fn [db2-id]
+          (letfn [(failing-init [failing-db-id details-calls failing-details-call]
+                    (reify provisioning/Provisioner
+                      (details  [_ _ _ _]
+                        (when (= failing-details-call (swap! details-calls inc))
+                          (throw (ex-info "details failed" {})))
+                        {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                      (init!    [_ _ db _]  (when (= failing-db-id (:id db))
+                                              (throw (ex-info "Connection refused" {}))))
+                      (grant!   [_ _ _ _ _] nil)
+                      (destroy! [_ _ _ _]   nil)))
+                  (create! [idempotency-key]
+                    (mt/user-http-request-full-response
+                     :crowberto :post "ee/workspace-manager/"
+                     {:request-options {:headers {"idempotency-key" idempotency-key}}}
+                     {:name "Half cleaned" :database_ids [db1-id db2-id]}))
+                  (check! [idempotency-key provisioner lock expected-statuses]
+                    (let [{ws-id :workspace_id :as failed}
+                          (with-redefs [provisioning/dispatching-provisioner          provisioner
+                                        provisioning/do-with-workspace-database-lock lock]
+                            (:body (create! idempotency-key)))]
+                      (is (=? {:workspace_id pos-int? :cleanup_required true} failed)
+                          "the first create kept the workspace and says so")
+                      (is (= expected-statuses
+                             (t2/select-fn->fn :database_id :status :model/WorkspaceDatabase :workspace_id ws-id)))
+                      (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                        (let [{:keys [status body]} (create! idempotency-key)]
+                          (is (= 500 status) (str "body " (pr-str body)))
+                          (is (=? {:workspace_id ws-id :cleanup_required true} body))
+                          (is (not= "workspace_busy" (:error-code body))))
+                        (testing "a delete is not refused as busy"
+                          (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id))))))]
+            (testing "the teardown of a provisioned row fails at its lock"
+              ;; the first lock of the first database's row is its provisioning, the second is its teardown
+              (check! "cleanup-lock-provisioned"
+                      (failing-init db2-id (atom 0) nil)
+                      (lock-that-fails-once db1-id 2)
+                      {db1-id :teardown_failed}))
+            (testing "the delete of a never-started row fails at its lock"
+              (check! "cleanup-lock-never-started"
+                      (failing-init db1-id (atom 0) nil)
+                      (lock-that-fails-once db2-id 1)
+                      {db2-id :never_started}))
+            (testing "the teardown of the row whose provisioning failed cannot compute its identifiers"
+              ;; the first details call is the first database's provisioning, the second is its teardown
+              (check! "cleanup-details"
+                      (failing-init db1-id (atom 0) 2)
+                      provisioning/do-with-workspace-database-lock
+                      {db1-id :teardown_failed})))))))))
+
+(deftest create-without-idempotency-key-test
+  (testing "without an Idempotency-Key, two identical creates make two workspaces"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (let [inits (atom 0)]
+         (with-redefs [provisioning/dispatching-provisioner (counting-provisioner inits (constantly nil))]
+           (let [a (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                         {:name "Twin" :database_ids [db-id]})
+                 b (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                         {:name "Twin" :database_ids [db-id]})]
+             (is (not= (:id a) (:id b)))
+             (is (= 2 @inits)))))))))
+
+(deftest create-idempotency-concurrent-test
+  (testing "two concurrent creates with the same Idempotency-Key provision once"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (let [inits   (atom 0)
+             go      (promise)
+             release (promise)]
+         (with-redefs [provisioning/dispatching-provisioner (counting-provisioner
+                                                             inits
+                                                             #(deref release 30000 nil))]
+           (let [first-done (promise)
+                 request    #(do @go
+                                 (let [response (mt/user-http-request-full-response
+                                                 :crowberto :post "ee/workspace-manager/"
+                                                 {:request-options {:headers {"idempotency-key" "concurrent"}}}
+                                                 {:name "Concurrent" :database_ids [db-id]})]
+                                   (deliver first-done true)
+                                   response))
+                 creates    [(future (request)) (future (request))]
+                 _          (deliver go true)
+                 ;; the winner blocks in provisioning until released, so the request
+                 ;; that answers first is the loser; then let the winner finish
+                 _          (deref first-done 10000 nil)
+                 _          (deliver release true)
+                 statuses   (mapv #(:status (deref % 30000 nil)) creates)
+                 ids        (into #{} (keep #(get-in (deref %) [:body :id])) creates)]
+             (is (every? #{200 409} statuses))
+             (is (some #{200} statuses))
+             (is (= 1 (count ids)) "every 200 is the same workspace")
+             (is (= 1 @inits))
+             (is (= 1 (t2/count :model/Workspace :idempotency_key "concurrent"))))))))))
+
+(deftest create-idempotency-retry-racing-a-failed-create-hides-the-app-db-error-test
+  (testing "a same-key retry whose insert hits the key of a create that then fails and deletes its workspace answers 409 workspace_busy, without the app-DB constraint error"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (let [k              (str "race-" (random-uuid))
+             inits          (atom 0)
+             in-init        (promise)
+             release-init   (promise)
+             lookup-waiting (promise)
+             first-done     (promise)
+             lookup         ws.db/workspace-id-by-idempotency-key
+             request        #(mt/user-http-request-full-response
+                              :crowberto :post "ee/workspace-manager/"
+                              {:request-options {:headers {"idempotency-key" k}}}
+                              {:name "Raced" :database_ids [db-id]})]
+         (with-redefs [provisioning/dispatching-provisioner  (counting-provisioner
+                                                              inits
+                                                              #(when (= 1 @inits)
+                                                                 (deliver in-init true)
+                                                                 (deref release-init 30000 nil)
+                                                                 (throw (ex-info "Connection refused" {}))))
+                       ws.db/workspace-id-by-idempotency-key (fn [creator-id idempotency-key]
+                                                               (deliver lookup-waiting true)
+                                                               (deref first-done 30000 nil)
+                                                               (lookup creator-id idempotency-key))]
+           (let [first-create (future (try (request) (finally (deliver first-done true))))]
+             (try
+               (is (true? (deref in-init 10000 false)) "the first create reached the warehouse step")
+               (let [retry (future (request))]
+                 (is (true? (deref lookup-waiting 10000 false)) "the retry's insert hit the key")
+                 (deliver release-init true)
+                 (is (=? {:status 500 :body {:message "Connection refused" :cleanup_required false}}
+                         (deref first-create 30000 nil))
+                     "the first create failed and deleted its workspace")
+                 (let [{:keys [status body]} (deref retry 30000 nil)]
+                   (is (= 409 status) (str "body " (pr-str body)))
+                   (is (=? {:error-code "workspace_busy"} body))
+                   (is (not (re-find (re-pattern (str "(?i)duplicate key|unique index|idx_workspace_idempotency_key|" k))
+                                     (pr-str body)))
+                       "the answer names neither the index nor the key")))
+               (is (= 1 @inits) "the retry provisioned nothing")
+               (testing "the key is free, so the next retry creates the workspace"
+                 (is (=? {:status 200 :body {:databases [{:status "provisioned"}]}} (request))))
+               (finally
+                 (deliver release-init true)
+                 (deliver first-done true)))))))))
+  (testing "a duplicate key on another unique index is not answered as workspace_busy"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+         ;; the same database twice violates the unique index on (workspace_id, database_id)
+         (let [{:keys [status body]} (mt/user-http-request-full-response
+                                      :crowberto :post "ee/workspace-manager/"
+                                      {:request-options {:headers {"idempotency-key" "other-index"}}}
+                                      {:name "Twice" :database_ids [db-id db-id]})]
+           (is (= 500 status))
+           (is (not= "workspace_busy" (:error-code body)))
+           (is (zero? (t2/count :model/Workspace :idempotency_key "other-index")))))))))
+
+(deftest create-idempotency-key-validation-test
+  (testing "a blank or overlong Idempotency-Key, or one with surrounding whitespace, is a 400 and creates nothing"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (with-redefs [provisioning/dispatching-provisioner (counting-provisioner (atom 0) (constantly nil))]
+         (doseq [bad-key ["   " (apply str (repeat 256 "k")) "k " " k"]]
+           (create-with-key 400 bad-key "Bad key" db-id))
+         (is (zero? (t2/count :model/Workspace :name "Bad key")))
+         (testing "255 characters is allowed"
+           (create-with-key 200 (apply str (repeat 255 "k")) "Long key" db-id)))))))
+
+(defn- pausing-before-nth-provision!
+  "A replacement for `provisioning/provision-workspace-database!` whose `n`th call delivers
+  its row id to `paused`, then waits for `resume`, before the row's provisioning starts."
+  [n paused resume]
+  (let [provision! provisioning/provision-workspace-database!
+        calls      (atom 0)]
+    (fn [wsd-id provisioner]
+      (when (= n (swap! calls inc))
+        (deliver paused wsd-id)
+        (deref resume 30000 nil))
+      (provision! wsd-id provisioner))))
+
+(deftest create-idempotency-retry-before-database-provisioning-test
+  (testing "a same-key retry before a database's provisioning starts in the first create gets 409 workspace_busy, never the 500 that says to delete the workspace"
+    (doseq [[n window] [[1 "before the first database's provisioning starts"]
+                        [2 "after the first database is provisioned, before the second's starts"]]]
+      (testing window
+        (do-with-eligible-database!
+         (fn [db1-id]
+           (do-with-eligible-database!
+            (fn [db2-id]
+              (let [idempotency-key (str "retry-before-provisioning-" n)
+                    paused          (promise)
+                    resume          (promise)
+                    create!         #(mt/user-http-request-full-response
+                                      :crowberto :post "ee/workspace-manager/"
+                                      {:request-options {:headers {"idempotency-key" idempotency-key}}}
+                                      {:name "Gated" :database_ids [db1-id db2-id]})]
+                (with-redefs [provisioning/dispatching-provisioner       (stub-provisioner)
+                              provisioning/provision-workspace-database! (pausing-before-nth-provision! n paused resume)]
+                  (let [create (future (create!))]
+                    (try
+                      (is (some? (deref paused 10000 nil)) "the first create paused before a database's provisioning started")
+                      (let [{:keys [status body]} (create!)]
+                        (is (= 409 status) (str "body " (pr-str body)))
+                        (is (=? {:error-code "workspace_busy"} body)))
+                      (deliver resume true)
+                      (is (=? {:status 200 :body {:databases [{:status "provisioned"} {:status "provisioned"}]}}
+                              (deref create 10000 ::timed-out))
+                          "the first create still finishes")
+                      (finally
+                        (deliver resume true)
+                        (deref create 10000 nil))))))))))))))
+
+(deftest create-idempotency-retry-during-a-create-longer-than-the-busy-window-test
+  (testing "a same-key retry after the first database is provisioned, before the second's starts"
+    (do-with-eligible-database!
+     (fn [db1-id]
+       (do-with-eligible-database!
+        (fn [db2-id]
+          (let [paused  (promise)
+                resume  (promise)
+                create! #(mt/user-http-request-full-response
+                          :crowberto :post "ee/workspace-manager/"
+                          {:request-options {:headers {"idempotency-key" "retry-long-create"}}}
+                          {:name "Long create" :database_ids [db1-id db2-id]})
+                old     (t/minus (t/offset-date-time) (t/minutes 16))]
+            (with-redefs [provisioning/dispatching-provisioner       (stub-provisioner)
+                          provisioning/provision-workspace-database! (pausing-before-nth-provision! 2 paused resume)]
+              (let [create (future (create!))]
+                (try
+                  (let [wsd2-id (deref paused 20000 nil)
+                        ws-id   (t2/select-one-fn :workspace_id :model/WorkspaceDatabase :id wsd2-id)]
+                    (is (some? wsd2-id) "the first create paused before the second database's provisioning started")
+                    (testing "when only the unfinished database's row is older than the busy window, answers 409 workspace_busy"
+                      ;; the create wrote the second database's row only at the insert
+                      (t2/update! :model/WorkspaceDatabase {:id wsd2-id} {:updated_at old})
+                      (let [{:keys [status body]} (create!)]
+                        (is (= 409 status) (str "body " (pr-str body)))
+                        (is (=? {:error-code "workspace_busy"} body))))
+                    (testing "when every row of the workspace is older than the busy window, the create counts as crashed"
+                      (t2/update! :model/WorkspaceDatabase {:workspace_id ws-id} {:updated_at old})
+                      (is (=? {:status 500 :body {:workspace_id ws-id :cleanup_required true}}
+                              (create!)))))
+                  (deliver resume true)
+                  (is (=? {:status 200 :body {:databases [{:status "provisioned"} {:status "provisioned"}]}}
+                          (deref create 10000 ::timed-out))
+                      "the first create still finishes")
+                  (finally
+                    (deliver resume true)
+                    (deref create 10000 nil))))))))))))
+
+(deftest create-idempotency-retry-while-database-turns-unprovisioned-test
+  (testing "a same-key retry whose database turns unprovisioned right after the retry's first status query still gets 409, never the 500 that says to delete the workspace"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+         (let [{ws-id :id} (create-with-key 200 "retry-turns-unprovisioned" "Racing" db-id)
+               exists?     t2/exists?
+               failed?     (atom false)]
+           ;; the first create has inserted the row and is provisioning it
+           (t2/update! :model/WorkspaceDatabase {:workspace_id ws-id}
+                       {:status :provisioning :updated_at (t/offset-date-time)})
+           ;; the provisioning fails and `provision-workspace-database!` commits `:unprovisioned` just after
+           ;; the retry's first WorkspaceDatabase status query
+           (with-redefs [t2/exists? (fn [model & args]
+                                      (let [result (apply exists? model args)]
+                                        (when (and (= :model/WorkspaceDatabase model)
+                                                   (compare-and-set! failed? false true))
+                                          (t2/update! :model/WorkspaceDatabase {:workspace_id ws-id}
+                                                      {:status :unprovisioned}))
+                                        result))]
+             (is (=? {:error-code "workspace_busy"}
+                     (create-with-key 409 "retry-turns-unprovisioned" "Racing" db-id))))
+           (is (true? @failed?) "the row turned unprovisioned during the retry")))))))
+
+(deftest create-idempotency-retry-of-stale-workspace-test
+  (testing "a retry whose workspace has only rows older than 15 minutes that are not provisioned answers the 500 that says to delete the workspace"
+    (doseq [status [:provisioning :unprovisioned]]
+      (testing status
+        (do-with-eligible-database!
+         (fn [db-id]
+           (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+             (let [idempotency-key (str "retry-stale-" (name status))
+                   {ws-id :id}     (create-with-key 200 idempotency-key "Crashed" db-id)]
+               (t2/update! :model/WorkspaceDatabase {:workspace_id ws-id}
+                           {:status     status
+                            :updated_at (t/minus (t/offset-date-time) (t/hours 1))})
+               (is (=? {:workspace_id ws-id :cleanup_required true}
+                       (create-with-key 500 idempotency-key "Crashed" db-id)))))))))))
 
 (deftest rename-workspace-test
   (testing "PUT /:id renames a workspace and returns the updated WorkspaceResponse"

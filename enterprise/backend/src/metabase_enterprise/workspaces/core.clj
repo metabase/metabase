@@ -70,12 +70,14 @@
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.settings :as ws.settings]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -312,13 +314,15 @@
                     {:status-code 404 :workspace_id workspace-id}))))
 
 (def ^:private in-flight-stale-after
-  "How long after the last write to any of a workspace's database rows a
-  `:provisioning` or `:deprovisioning` row of that workspace still counts as in
-  flight. After that, such a row is treated as left behind by a crashed instance,
-  so a delete tears it down instead of refusing. A create or deprovision that
-  spends longer than this on one database also looks crashed. Each status write
-  sets the row's `updated_at` from this instance's clock when the write runs, and
-  the cutoff uses the same clock."
+  "How long after the last write to any of a workspace's database rows a row of
+  that workspace that marks running work still counts as in flight. After that,
+  such a row is treated as left behind by a crashed instance, so a delete tears
+  it down instead of refusing. A create or deprovision that spends longer than
+  this on one database also looks crashed. The two busy checks share this
+  window and count different statuses: see [[assert-workspace-not-busy]] and
+  [[assert-create-not-running]]. Each status write sets the row's `updated_at`
+  from this instance's clock when the write runs, and the cutoff uses the same
+  clock."
   (t/minutes 15))
 
 (defn- workspace-busy-exception
@@ -333,7 +337,11 @@
   "Refuse (409, error code `workspace_busy`) while a create or deprovision is still
   running on any of the workspace's databases. Without this, a delete waits on
   the row lock that the running provisioning holds, then fails, or wins the lock
-  and makes the create fail."
+  and makes the create fail. It counts a `:provisioning` or `:deprovisioning` row
+  while any row of the workspace was last updated within
+  [[in-flight-stale-after]]. It does not count an
+  `:unprovisioned` row: a failed create can leave one, and its 500 asks for a
+  delete."
   [workspace-id]
   (when (ws.db/workspace-has-in-flight-databases? workspace-id
                                                   (t/minus (t/offset-date-time) in-flight-stale-after))
@@ -517,6 +525,86 @@
     (when (seq failures)
       (throw (combined-exception failures {:status-code 500})))))
 
+(defn- create-running-exception
+  "The 409 with error code `workspace_busy` for a same-key retry while a create or a delete of the workspace with that
+  key is still running. `ws-id` is that workspace, or nil when a failed create has already deleted it."
+  [ws-id]
+  (ex-info "A create or delete of the workspace with this idempotency key is still running. Retry once it finishes."
+           (cond-> {:status-code 409
+                    :error-code  "workspace_busy"}
+             ws-id (assoc :workspace_id ws-id))))
+
+(defn- idempotency-key-violation?
+  "Whether `t` is a duplicate-key error on the unique index `idx_workspace_idempotency_key_creator_id`. H2, PostgreSQL,
+  MySQL and MariaDB all name the violated index in the error message; H2 writes it in upper case."
+  [^Throwable t]
+  (and (= :duplicate-key (sql-errors/error-kind t))
+       (boolean (some #(some-> (ex-message %)
+                               u/lower-case-en
+                               (str/includes? "idx_workspace_idempotency_key_creator_id"))
+                      (take-while some? (iterate ex-cause t))))))
+
+(defn- insert-workspace-or-find-retried!
+  "Insert the Workspace and its WorkspaceDatabase rows. Returns `{:created ws}`, or
+  `{:retried ws-id}` when the creator already has a Workspace with `idempotency_key`.
+  The unique index on (idempotency_key, creator_id) decides which of two concurrent
+  requests inserts; the other inserts nothing. When the workspace with this key was
+  deleted, by a failed create, between the insert and the lookup, refuses (409,
+  error code `workspace_busy`) as for a create that is still running: the database's
+  error names the index, the key and the creator. Rethrows a duplicate-key error
+  that comes from another constraint."
+  [{:keys [creator_id idempotency_key] :as params}]
+  (try
+    {:created (workspace/create-workspace! params)}
+    (catch Throwable t
+      (if-let [ws-id (and idempotency_key
+                          (= :duplicate-key (sql-errors/error-kind t))
+                          (ws.db/workspace-id-by-idempotency-key creator_id idempotency_key))]
+        {:retried ws-id}
+        (throw (if (and idempotency_key (idempotency-key-violation? t))
+                 (create-running-exception nil)
+                 t))))))
+
+(defn- assert-create-not-running
+  "Refuse (409, error code `workspace_busy`) while a database of workspace `ws-id` is
+  `:unprovisioned`, `:provisioning` or `:deprovisioning` and any database of the
+  workspace was last updated within [[in-flight-stale-after]]. A create inserts
+  all its rows `:provisioning`, then provisions them one at a time. A row whose
+  provisioning fails turns `:unprovisioned` before the create's cleanup tears it
+  down, so an `:unprovisioned` row counts too while any database of the workspace
+  was last updated within the window. One query checks all three statuses: with
+  one query per status, a row that changes status between the queries could be
+  seen by neither. A running delete sets its rows `:deprovisioning`, so a retry
+  during a delete is refused too."
+  [ws-id]
+  (when (ws.db/workspace-has-unfinished-databases-since? ws-id
+                                                         (t/minus (t/offset-date-time) in-flight-stale-after))
+    (throw (create-running-exception ws-id))))
+
+(defn- retried-workspace
+  "Returns the hydrated workspace `ws-id`, which an earlier create with the same
+  idempotency key made. Refuses (409, `workspace_busy`) while that create, or a
+  delete of the workspace, is still running, see [[assert-create-not-running]]. When the workspace has no databases,
+  or a database that is not `:provisioned`, the retry answers 500 with `workspace_id`
+  and `cleanup_required`: the create failed and kept the workspace, the create
+  stopped (a crash) and no database of the workspace was updated within
+  [[in-flight-stale-after]], or a later delete failed. The key stays taken until
+  the workspace is deleted."
+  [ws-id]
+  (assert-create-not-running ws-id)
+  (let [ws (workspace/get-workspace ws-id)]
+    (when (or (empty? (:databases ws))
+              (not-every? #(= :provisioned (:status %)) (:databases ws)))
+      (let [message "The workspace created with this idempotency key is not fully provisioned: its create failed or stopped, or a later delete failed. Delete the workspace (`workspace_id`), then create again with a new key."]
+        (throw (ex-info message
+                        {:status-code      500
+                         :message          message
+                         :errors           {:_error message}
+                         :workspace_id     ws-id
+                         :cleanup_required true
+                         :response/keys    #{:workspace_id :cleanup_required}}))))
+    ws))
+
 (defn create-workspace!
   "Create a new Workspace, attach the databases with ids `database_ids` — each must
    exist (404) and be eligible for workspaces (400, see
@@ -543,8 +631,17 @@
    When the status write fails, or the read of the rows, a row keeps the status
    it had.
    Either way the error's `:cleanup_required` says whether the workspace was kept
-   and still needs that delete."
-  [{:keys [name creator_id database_ids]}]
+   and still needs that delete.
+
+   An optional `idempotency_key` makes the create safe to retry. It is stored on the
+   Workspace row, unique per creator. When the creator already has a workspace with
+   that key, nothing is provisioned: the call returns that workspace, refuses with
+   409 (`workspace_busy`) while a create or delete of that workspace is still running, or
+   answers 500 with `workspace_id` and `cleanup_required` when that workspace has
+   no databases or one that is not `:provisioned`. The rest of a retry's params
+   are not compared with the original's. A failed create whose cleanup deleted its
+   workspace frees the key."
+  [{:keys [name creator_id database_ids idempotency_key]}]
   (let [databases (mapv (fn [db-id]
                           (let [database (assert-database-exists db-id)]
                             (assert-database-eligible-for-workspaces database)
@@ -556,39 +653,44 @@
                                              (workspace-database/database-input-schemas database))
                              :status        :provisioning}))
                         database_ids)
-        ws        (workspace/create-workspace! {:name       name
-                                                :creator_id creator_id
-                                                :databases  databases})]
-    (when-let [{t :error, never-started :never-started} (provision-workspace-databases! ws)]
-      (let [cleanup-error (try
-                            (clean-up-failed-create! (:id ws) never-started)
-                            nil
-                            ;; Cleanup failed: the workspace and the failed rows are
-                            ;; kept so the teardown can be retried via delete. The
-                            ;; errors are not logged (raw warehouse errors are
-                            ;; sensitive), but the caller gets them in the
-                            ;; response, as it does from a failed delete.
-                            (catch Throwable cleanup-t cleanup-t))
-            delete-error  (when-not cleanup-error
-                            (try
-                              (workspace/delete-workspace! (:id ws))
-                              nil
-                              ;; a fixed message: a raw app-DB error can name tables
-                              (catch Throwable delete-t
-                                (ex-info "Could not delete the workspace row." {} delete-t))))
-            ;; either way the Workspace row survives, and only a delete removes it
-            kept-error    (or cleanup-error delete-error)]
-        ;; a single failure keeps its status, like a driver's 409 for a role it refuses
-        ;; a kept workspace's id goes to the client, which must delete it
-        (throw (combined-exception (cond-> [t] kept-error (conj kept-error))
-                                   (cond-> {:status-code      (if kept-error
-                                                                500
-                                                                (or (:status-code (ex-data t)) 500))
-                                            :cleanup_required (some? kept-error)
-                                            :response/keys    #{:cleanup_required}}
-                                     kept-error (-> (assoc :workspace_id (:id ws))
-                                                    (update :response/keys conj :workspace_id)))))))
-    (workspace/get-workspace (:id ws))))
+        {ws :created retried-id :retried}
+        (insert-workspace-or-find-retried! {:name            name
+                                            :creator_id      creator_id
+                                            :idempotency_key idempotency_key
+                                            :databases       databases})]
+    (if retried-id
+      (retried-workspace retried-id)
+      (do
+        (when-let [{t :error, never-started :never-started} (provision-workspace-databases! ws)]
+          (let [cleanup-error (try
+                                (clean-up-failed-create! (:id ws) never-started)
+                                nil
+                                ;; Cleanup failed: the workspace and the failed rows are
+                                ;; kept so the teardown can be retried via delete. The
+                                ;; errors are not logged (raw warehouse errors are
+                                ;; sensitive), but the caller gets them in the
+                                ;; response, as it does from a failed delete.
+                                (catch Throwable cleanup-t cleanup-t))
+                delete-error  (when-not cleanup-error
+                                (try
+                                  (workspace/delete-workspace! (:id ws))
+                                  nil
+                                  ;; a fixed message: a raw app-DB error can name tables
+                                  (catch Throwable delete-t
+                                    (ex-info "Could not delete the workspace row." {} delete-t))))
+                ;; either way the Workspace row survives, and only a delete removes it
+                kept-error    (or cleanup-error delete-error)]
+            ;; a single failure keeps its status, like a driver's 409 for a role it refuses
+            ;; a kept workspace's id goes to the client, which must delete it
+            (throw (combined-exception (cond-> [t] kept-error (conj kept-error))
+                                       (cond-> {:status-code      (if kept-error
+                                                                    500
+                                                                    (or (:status-code (ex-data t)) 500))
+                                                :cleanup_required (some? kept-error)
+                                                :response/keys    #{:cleanup_required}}
+                                         kept-error (-> (assoc :workspace_id (:id ws))
+                                                        (update :response/keys conj :workspace_id)))))))
+        (workspace/get-workspace (:id ws))))))
 
 (defn abandon-teardown-failed-databases!
   "Delete every `:teardown_failed` WorkspaceDatabase of workspace `id` without a

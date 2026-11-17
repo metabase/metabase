@@ -1267,9 +1267,11 @@
   (str sql "\n\n-- " remark))
 
 (defmethod driver-api/query->remark :snowflake
-  [_ {query-type :type, :as query}]
+  [_ query]
   (let [{:keys [context user-id pulse-id card-id dashboard-id database-id query-hash account-id]}
-        (driver-api/query->remark-data query)]
+        (driver-api/query->remark-data query)
+        ;; `query` is a native-only MBQL 5 query; it has `:qp/original-stages` if it was compiled from MBQL
+        query-type (if (:qp/original-stages query) :query :native)]
     (json/encode {:client      "Metabase"
                   :context     context
                   :queryType   query-type
