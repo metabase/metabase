@@ -424,9 +424,6 @@
   ;; publish side effects for. (The endpoint schema also enforces `:min 1`.)
   (if (empty? ids)
     []
-    ;; The endpoint is superuser-gated (`api/check-superuser`), which is what the model's
-    ;; before-update hook checks before permitting a `creator_id` change. (Harmless for the
-    ;; archive action, whose update-map never touches creator_id.)
     (t2/with-transaction [_conn]
       (let [before (-> (notification.db/card-notifications ids)
                        models.notification/hydrate-notification

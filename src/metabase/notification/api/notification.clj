@@ -117,8 +117,7 @@
          :legacy-active            legacy-active
          :legacy-user-id           legacy-user-id})
        (into [] (map t2.realize/realize))
-       (#(t2/hydrate % :can_read))
-       (filterv mi/can-read?)
+       mi/readable
        models.notification/hydrate-notification))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -279,8 +278,8 @@
   Return the updated notification.
 
   `creator_id` (owner) can be reassigned here only by superusers (e.g. the admin 'Edit alert'
-  modal's owner picker). `mi/can-update?` rejects a non-superuser reassignment attempt with 403;
-  the model's `before-update` hook is the backstop. Echoing back the unchanged value is fine."
+  modal's owner picker). `mi/can-update?` rejects a non-superuser reassignment attempt with 403.
+  Echoing back the unchanged value is fine."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query
    body :- ::NotificationApiUpdateInput]
