@@ -50,7 +50,7 @@
   - a model that does not derive the hook
   - an update that sets only a model's [[ignored-columns]]: usage stats that reads update (view
     counts, last viewed and last used times), and what sync works out for Metabase's own use, such as a field's
-    fingerprint
+    fingerprint or a table's estimated row count
   - an update that changes no row: the model's before-update makes Toucan send no UPDATE
   - migrations, and SQL run outside Metabase
   - a direct table write that opted out, or that does not call [[log-rows!]] and that the lint cannot see: a query

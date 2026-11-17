@@ -99,7 +99,7 @@
   #_(derive :hook/entity-id))
 
 (methodical/defmethod change-log/ignored-columns :model/Table [_model]
-  #{:initial_sync_status :view_count})
+  #{:estimated_row_count :initial_sync_status :view_count})
 
 (def transform-data-authority
   "Transform for a `data_authority` column. NULL passes through: the column is NOT NULL on `metabase_table`, but

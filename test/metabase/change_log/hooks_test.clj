@@ -74,6 +74,7 @@
             (is (= [["pulse_card" (:id pc) "update"]]
                    (logged-by #(t2/update! :model/PulseCard :id (:id pc) {:include_csv true}))))))
         (testing "an update that sets only ignored columns logs nothing"
+          (is (= [] (logged-by #(t2/update! :model/Table :id (:id t) {:estimated_row_count 5}))))
           (mt/with-temp [:model/Field f {:table_id (:id t)}]
             (is (= [] (logged-by #(t2/update! :model/Field :id (:id f) {:fingerprint_version 99}))))
             (is (= 99 (t2/select-one-fn :fingerprint_version :model/Field :id (:id f))))

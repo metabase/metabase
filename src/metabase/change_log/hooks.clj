@@ -4,8 +4,8 @@
   before-delete and after-insert hooks would select the rows on every write, also while the log is off.
 
   Toucan calls `transduce-query` again from inside a write (after-insert, after-update, and before-update's one UPDATE
-  per row). The insert and update hooks add `::logged` to the `parsed-args` of a call they log and skip a call that
-  has it. `metabase.change-log.hooks-test` fails if a Toucan upgrade changes this."
+  per row). The insert and update hooks add `::seen` to the `parsed-args` of the first call and skip a call that has
+  it. `metabase.change-log.hooks-test` fails if a Toucan upgrade changes this."
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.change-log.cascade :as change-log.cascade]
@@ -90,9 +90,9 @@
   "Logs the keys of the inserted rows. An INSERT that returns a count runs as one that returns keys, and the caller
   still gets the count."
   [rf query-type model parsed-args resolved-query]
-  (if (and (not (::logged parsed-args)) (on?))
+  (if (and (not (::seen parsed-args)) (on?))
     ;; Toucan runs this pipeline again from inside the insert. We mark the args so that we log only once.
-    (let [parsed-args (assoc parsed-args ::logged true)]
+    (let [parsed-args (assoc parsed-args ::seen true)]
       ;; One transaction, so the insert and its entries commit together.
       (t2/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
         (if (isa? query-type :toucan.result-type/update-count)
@@ -124,10 +124,16 @@
   "Logs the keys of the rows the UPDATE matches, if Toucan sends one. It sends none when no row would change, because
   each tracked model has a before-update. An update that sets only [[ignored-columns]] logs nothing."
   [rf query-type model parsed-args resolved-query]
-  ;; We log an update that sets a column we do not ignore. With nothing to set, Toucan sends no UPDATE.
-  (if (and (not-every? (ignored-columns model) (keys (:changes parsed-args)))
-           (not (::logged parsed-args))
-           (on?))
+  (cond
+    (or (::seen parsed-args) (not (on?)))
+    (next-method rf query-type model parsed-args resolved-query)
+
+    ;; The caller sets only columns we ignore. We mark the args, so that the UPDATE that the model's before-update
+    ;; sends for each row logs nothing either. That one can set more columns, such as `updated_at`.
+    (every? (ignored-columns model) (keys (:changes parsed-args)))
+    (next-method rf query-type model (assoc parsed-args ::seen true) resolved-query)
+
+    :else
     (t2/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
       ;; An UPDATE returns no keys. So first we select the rows it will match, with the update's own conditions.
       (let [rows  (change-log.db/rows-to-change model :toucan.query-type/select.instances.from-update parsed-args
@@ -136,10 +142,9 @@
             ;; The result of each UPDATE that Toucan sends passes through here.
             rf    ((map (fn [result] (vreset! sent? true) result)) rf)]
         ;; Toucan can run this pipeline again from inside the update. The mark keeps those runs from logging twice.
-        (u/prog1 (next-method rf query-type model (assoc parsed-args ::logged true) resolved-query)
+        (u/prog1 (next-method rf query-type model (assoc parsed-args ::seen true) resolved-query)
           (when @sent?
-            (log! [[(table model) (map (pk-of model) rows) "update"]])))))
-    (next-method rf query-type model parsed-args resolved-query)))
+            (log! [[(table model) (map (pk-of model) rows) "update"]])))))))
 
 ;; A tracked model needs a before-update. With one, Toucan sends no UPDATE when no row would change, and the hook above
 ;; logs nothing. A model that has none derives this one, which does nothing. Remove that derive when the model gets a
