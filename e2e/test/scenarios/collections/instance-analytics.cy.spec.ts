@@ -69,8 +69,8 @@ describe("scenarios > Metabase Analytics Collection (AuditV2)", () => {
         .findByRole("link", { name: /Metabase metrics/i })
         .click();
       cy.findByRole("link", { name: /Question views last week/i }).click();
-      H.queryBuilderHeader()
-        .findByDisplayValue("Question views last week")
+      H.appBar()
+        .findByRole("link", { name: "Question views last week" })
         .should("be.visible");
     });
 
