@@ -57,7 +57,7 @@ export function initializePlugin() {
   }
 
   PLUGIN_PERMISSION_PREVIEW.tabs = [
-    { name: t`Troubleshoot`, value: "troubleshoot" },
+    { name: t`Preview access`, value: "troubleshoot" },
   ];
   PLUGIN_PERMISSION_PREVIEW.getTabRoutes = getTabRoutes;
   PLUGIN_PERMISSION_PREVIEW.PermissionsToolbarButtons =

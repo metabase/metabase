@@ -50,7 +50,7 @@ export function PermissionPreviewApp() {
 export function OpenedDirectly() {
   return (
     <Center h="100vh">
-      <Text c="text-secondary">{t`Open this preview from the Troubleshoot tab in the permissions settings.`}</Text>
+      <Text c="text-secondary">{t`Open this preview from the Preview access tab in the permissions settings.`}</Text>
     </Center>
   );
 }

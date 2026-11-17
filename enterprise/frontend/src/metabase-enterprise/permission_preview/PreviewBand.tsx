@@ -40,7 +40,7 @@ export function PreviewBand({
     return (
       <Banner
         role="status"
-        aria-label={t`Viewing as`}
+        aria-label={t`Previewing as`}
         bg="feedback-warning"
         px="md"
         py="xs"
@@ -80,7 +80,7 @@ export function PreviewBand({
   return (
     <Banner
       role="status"
-      aria-label={t`Viewing as`}
+      aria-label={t`Previewing as`}
       bg="feedback-warning"
       px="md"
       py="xs"
@@ -122,7 +122,7 @@ export function isNarrowPreview() {
 
 type ExplainAccessButtonProps = {
   isOpen: boolean;
-  /** An icon with a tooltip, so the band keeps "Viewing as <name>" on narrow screens. */
+  /** An icon with a tooltip, so the band keeps "Previewing as <name>" on narrow screens. */
   isCompact: boolean;
   disabled?: boolean;
   onClick: () => void;
@@ -167,7 +167,7 @@ function getSentence(whoName: string) {
 }
 
 function getWhoSentence(whoName: string) {
-  return t`Viewing as ${whoName}`;
+  return t`Previewing as ${whoName}`;
 }
 
 function getReadOnlySentence() {

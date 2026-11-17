@@ -142,7 +142,7 @@ async function setup({ widthPx }: SetupOpts) {
   });
 
   renderWithProviders(<PreviewBanner state={STATE} />, { withRouter: true });
-  await screen.findByRole("status", { name: "Viewing as" });
+  await screen.findByRole("status", { name: "Previewing as" });
 }
 
 /** Answers `(max-width: <n>em)` queries as a window this wide would, at 16px per em. */

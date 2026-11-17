@@ -41,7 +41,7 @@ describe("TroubleshootPage", () => {
     setup({ isNarrow: true });
 
     expect(
-      await screen.findByText("Viewing as Sandy Sales"),
+      await screen.findByText("Previewing as Sandy Sales"),
     ).toBeInTheDocument();
     expect(screen.getByText("· Read-only · Audited")).toBeInTheDocument();
     expect(
