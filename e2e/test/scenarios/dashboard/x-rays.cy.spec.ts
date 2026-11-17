@@ -28,7 +28,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     cy.wait(["@settings", "@databases"]);
 
     cy.findByTestId("home-page").within(() => {
-      cy.findByRole("button", { name: "Customize" }).should("be.visible");
+      cy.findByRole("button", { name: /Customize/ }).should("be.visible");
       cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText(xrayCaption).should("not.exist");
       cy.findByText(/^A summary of/).should("not.exist");
