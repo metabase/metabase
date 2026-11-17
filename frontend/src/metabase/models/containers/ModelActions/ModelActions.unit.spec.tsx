@@ -8,50 +8,51 @@ import {
   setupCardsUsingModelEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupExecuteActionEndpoint,
   setupModelActionsEndpoints,
 } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import {
+  act,
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { getDefaultFieldSettings } from "metabase/actions/utils";
 import { modalRoute } from "metabase/common/components/ModalRoute";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
-import { Route, redirect } from "metabase/router";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import { Outlet, Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
-import { checkNotNull } from "metabase/utils/types";
+import { defer } from "metabase/utils/promise";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
   Card,
   Collection,
   Database,
+  ListDatabasesResponse,
   Settings,
+  Table,
   WritebackAction,
   WritebackQueryAction,
 } from "metabase-types/api";
 import {
   createMockQueryAction as _createMockQueryAction,
+  createMockActionParameter,
+  createMockCard,
   createMockCardQueryMetadata,
+  createMockColumn,
   createMockDatabase,
   createMockField,
   createMockImplicitCUDActions,
   createMockImplicitQueryAction,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
-  createMockStructuredDatasetQuery,
-  createMockStructuredQuery,
   createMockTable,
+  createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createNativeModelCard as _createNativeModelCard,
-  createStructuredModelCard as _createStructuredModelCard,
-  createSavedStructuredCard,
-} from "metabase-types/api/mocks/presets";
 
 import ActionCreatorModal from "../ActionCreatorModal";
 
@@ -94,6 +95,27 @@ const TEST_FIELDS = [
   }),
 ];
 
+const TEST_COLUMNS = [
+  createMockColumn({
+    id: 1,
+    display_name: "Field 1",
+    semantic_type: TYPE.PK,
+    table_id: TEST_TABLE_ID,
+  }),
+  createMockColumn({
+    id: 2,
+    display_name: "Field 2",
+    table_id: TEST_TABLE_ID,
+  }),
+  createMockColumn({
+    id: 3,
+    display_name: "Field 3",
+    table_id: TEST_TABLE_ID,
+    semantic_type: TYPE.FK,
+    fk_target_field_id: TEST_FK_FIELD_ID,
+  }),
+];
+
 const TEST_TABLE = createMockTable({
   id: TEST_TABLE_ID,
   name: "TEST_TABLE",
@@ -114,6 +136,11 @@ const TEST_DATABASE = createMockDatabase({
   tables: [TEST_TABLE, TEST_FK_TABLE_1],
 });
 
+const TEST_PROVIDER = createMetadataProvider({
+  databaseId: TEST_DATABASE_ID,
+  metadata: createMockMetadata({ databases: [TEST_DATABASE] }),
+});
+
 const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
   ...TEST_DATABASE,
   settings: { "database-enable-actions": true },
@@ -124,29 +151,38 @@ const TEST_DATABASE_WITH_ACTIONS_READONLY = createMockDatabase({
   native_permissions: "none",
 });
 
+const TEST_DATABASE_WITH_ACTIONS_LIST_ITEM = createMockDatabase({
+  ...TEST_DATABASE_WITH_ACTIONS,
+  tables: [],
+});
+
 function createStructuredModelCard(card?: Partial<Card>) {
-  return _createStructuredModelCard({
+  return createMockCard({
+    type: "model",
+    display: "table",
     can_write: true,
     ...card,
-    result_metadata: TEST_FIELDS,
-    dataset_query: createMockStructuredDatasetQuery({
-      database: TEST_DATABASE_ID,
-      query: createMockStructuredQuery({ "source-table": TEST_TABLE_ID }),
-    }),
+    result_metadata: TEST_COLUMNS,
+    dataset_query: Lib.toJsQuery(
+      Lib.createTestQuery(TEST_PROVIDER, {
+        stages: [{ source: { type: "table", id: TEST_TABLE_ID } }],
+      }),
+    ),
   });
 }
 
 function createNativeModelCard(card?: Partial<Card>) {
-  return _createNativeModelCard({
+  return createMockCard({
+    type: "model",
+    display: "table",
     can_write: true,
     ...card,
-    result_metadata: TEST_FIELDS,
-    dataset_query: createMockNativeDatasetQuery({
-      database: TEST_DATABASE_ID,
-      native: createMockNativeQuery({
+    result_metadata: TEST_COLUMNS,
+    dataset_query: Lib.toJsQuery(
+      Lib.createTestNativeQuery(TEST_PROVIDER, {
         query: `SELECT * FROM ${TEST_TABLE.name}`,
       }),
-    }),
+    ),
   });
 }
 
@@ -156,10 +192,11 @@ function createMockQueryAction(
   opts?: Partial<WritebackQueryAction>,
 ): WritebackQueryAction {
   return _createMockQueryAction({
+    can_write: true,
     ...opts,
-    dataset_query: createMockNativeDatasetQuery({
-      native: createMockNativeQuery({ query: TEST_QUERY }),
-    }),
+    dataset_query: Lib.toLegacyQuery(
+      Lib.createTestNativeQuery(TEST_PROVIDER, { query: TEST_QUERY }),
+    ),
   });
 }
 
@@ -171,6 +208,8 @@ type SetupOpts = {
   collections?: Collection[];
   usedBy?: Card[];
   settings?: Partial<Settings>;
+  deferDatabaseList?: boolean;
+  isAdmin?: boolean;
 };
 
 async function setup({
@@ -180,8 +219,11 @@ async function setup({
   collections = [],
   usedBy = [],
   settings = {},
+  deferDatabaseList = false,
+  isAdmin = true,
 }: SetupOpts) {
   const storeInitialState = createMockState({
+    currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: createMockSettingsState(settings),
   });
   const metadata = createMockMetadata({
@@ -191,26 +233,32 @@ async function setup({
     questions: [card, ...usedBy],
   });
 
-  const model = checkNotNull(metadata.question(card.id));
-  const usedByQuestions = usedBy.map((q) =>
-    checkNotNull(metadata.question(q.id)),
-  );
+  const model = new Question(card, metadata);
+  const usedByQuestions = usedBy.map((q) => new Question(q, metadata));
 
-  setupDatabasesEndpoints(databases);
+  const databaseList = defer<ListDatabasesResponse>();
+  const mainTable = defer<Table>();
+  if (deferDatabaseList) {
+    fetchMock.get("path:/api/database", () => databaseList.promise, {
+      name: "deferred-database-list",
+    });
+    fetchMock.get(`path:/api/table/${TEST_TABLE_ID}`, () => mainTable.promise, {
+      name: "deferred-main-table",
+    });
+    fetchMock.get(`path:/api/table/${TEST_TABLE_ID}/fks`, []);
+  } else {
+    setupDatabasesEndpoints(databases);
+  }
+  if (databases.length === 0) {
+    // The page reads the model's source table to decide whether to load its
+    // foreign keys. With no data permissions the server refuses it.
+    fetchMock.get(`path:/api/table/${TEST_TABLE_ID}`, 403);
+  }
   setupCardsUsingModelEndpoint(card, usedBy);
   setupCardsEndpoints([card]);
   setupCardQueryMetadataEndpoint(
     card,
-    createMockCardQueryMetadata({
-      databases,
-      tables: [
-        createMockTable({
-          id: `card__${card.id}`,
-          name: card.name,
-          fields: card.result_metadata ?? [],
-        }),
-      ],
-    }),
+    createMockCardQueryMetadata({ databases }),
   );
   setupModelActionsEndpoints(actions, model.id());
   setupCollectionsEndpoints({ collections });
@@ -220,26 +268,37 @@ async function setup({
   const baseUrl = `/model/${slug}/detail`;
 
   const { router } = renderWithProviders(
-    <>
+    <Route
+      element={
+        <>
+          <Outlet />
+          <UndoListing />
+        </>
+      }
+    >
       <Route path="/model/:slug/detail">
         <Route index element={redirect("actions")} />
         <Route path="actions" element={<ModelActions />}>
-          {modalRoute("new", ActionCreatorModal, {
-            modalProps: { transitionProps: { duration: 0 } },
-          })}
-          {modalRoute(":actionId", ActionCreatorModal, {
-            modalProps: { transitionProps: { duration: 0 } },
-          })}
+          {modalRoute("new", ActionCreatorModal)}
+          {modalRoute(":actionId", ActionCreatorModal)}
         </Route>
       </Route>
       <Route path="/question/:slug" element={null} />
-    </>,
+    </Route>,
     { withRouter: true, initialRoute: baseUrl, storeInitialState },
   );
 
   await waitForLoaderToBeRemoved();
 
-  return { model, router, baseUrl, metadata, usedByQuestions };
+  return {
+    model,
+    router,
+    baseUrl,
+    metadata,
+    usedByQuestions,
+    databaseList,
+    mainTable,
+  };
 }
 
 async function setupActions({
@@ -412,19 +471,19 @@ describe("ModelActions", () => {
         expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
       });
 
-      it("allows to archive a query action", async () => {
+      it("allows to delete a query action", async () => {
         const model = getModel();
         const action = createMockQueryAction({ model_id: model.id });
         await setupActions({ model, actions: [action] });
 
         const listItem = screen.getByRole("listitem", { name: action.name });
         await userEvent.click(within(listItem).getByLabelText("ellipsis icon"));
-        await userEvent.click(await screen.findByText("Archive"));
+        await userEvent.click(await screen.findByText("Delete"));
 
         expect(
-          screen.getByRole("heading", { name: /Archive/ }),
+          screen.getByRole("heading", { name: /Delete/ }),
         ).toBeInTheDocument();
-        await userEvent.click(screen.getByRole("button", { name: "Archive" }));
+        await userEvent.click(screen.getByRole("button", { name: "Delete" }));
 
         await waitFor(() =>
           expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
@@ -432,22 +491,17 @@ describe("ModelActions", () => {
 
         expect(
           fetchMock.callHistory.calls(`path:/api/action/${action.id}`, {
-            method: "PUT",
+            method: "DELETE",
           }),
         ).toHaveLength(1);
-        const call = fetchMock.callHistory.lastCall(
-          `path:/api/action/${action.id}`,
-          {
+        expect(
+          fetchMock.callHistory.calls(`path:/api/action/${action.id}`, {
             method: "PUT",
-          },
-        );
-        expect(await call?.request?.json()).toEqual({
-          id: action.id,
-          archived: true,
-        });
+          }),
+        ).toHaveLength(0);
       });
 
-      it("doesn't allow to archive an implicit action", async () => {
+      it("doesn't allow to delete an implicit action", async () => {
         const model = getModel();
         const action = createMockImplicitQueryAction({
           model_id: model.id,
@@ -456,7 +510,7 @@ describe("ModelActions", () => {
 
         await openActionMenu(action);
 
-        expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+        expect(screen.queryByText("Delete")).not.toBeInTheDocument();
       });
 
       it("allows to disable implicit actions", async () => {
@@ -491,7 +545,10 @@ describe("ModelActions", () => {
       });
 
       it("doesn't allow to edit actions", async () => {
-        const action = createMockQueryAction({ model_id: modelCard.id });
+        const action = createMockQueryAction({
+          model_id: modelCard.id,
+          can_write: false,
+        });
         await setupActions({ model: modelCard, actions: [action] });
 
         await openActionMenu(action);
@@ -499,13 +556,46 @@ describe("ModelActions", () => {
         expect(await screen.findByText("View")).toBeInTheDocument();
       });
 
-      it("doesn't allow to archive actions", async () => {
-        const action = createMockQueryAction({ model_id: modelCard.id });
+      it("doesn't allow to delete actions", async () => {
+        const action = createMockQueryAction({
+          model_id: modelCard.id,
+          can_write: false,
+        });
         await setupActions({ model: modelCard, actions: [action] });
 
         await openActionMenu(action);
 
-        expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+        expect(screen.queryByText("Delete")).not.toBeInTheDocument();
+      });
+    });
+
+    describe("non-admin with write permissions on the model", () => {
+      const modelCard = getModel();
+
+      it("doesn't allow to create actions", async () => {
+        await setupActions({ model: modelCard, actions: [], isAdmin: false });
+        expect(screen.queryByText("New action")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("Create basic actions"),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByTestId("actions-menu")).not.toBeInTheDocument();
+      });
+
+      it("doesn't allow to edit or delete actions", async () => {
+        const action = createMockQueryAction({
+          model_id: modelCard.id,
+          can_write: false,
+        });
+        await setupActions({
+          model: modelCard,
+          actions: [action],
+          isAdmin: false,
+        });
+
+        await openActionMenu(action);
+
+        expect(await screen.findByText("View")).toBeInTheDocument();
+        expect(screen.queryByText("Delete")).not.toBeInTheDocument();
       });
     });
 
@@ -574,6 +664,45 @@ describe("ModelActions", () => {
 
   describe("structured model", () => {
     const modelCard = createStructuredModelCard();
+
+    it("shows the actions menu when database metadata becomes available after mount", async () => {
+      const { databaseList, mainTable } = await setupActions({
+        model: modelCard,
+        actions: [],
+        deferDatabaseList: true,
+      });
+
+      const databaseResponse = {
+        data: [TEST_DATABASE_WITH_ACTIONS_LIST_ITEM],
+        total: 1,
+      };
+
+      await waitFor(() => {
+        expect(fetchMock.callHistory.called("deferred-database-list")).toBe(
+          true,
+        );
+        expect(fetchMock.callHistory.called("deferred-main-table")).toBe(true);
+      });
+
+      await act(async () => {
+        databaseList.resolve(databaseResponse);
+      });
+
+      try {
+        expect(
+          await screen.findByRole("button", { name: "Actions" }),
+        ).toBeInTheDocument();
+      } finally {
+        await act(async () => {
+          mainTable.resolve(
+            createMockTable({
+              ...TEST_TABLE,
+              fields: [],
+            }),
+          );
+        });
+      }
+    });
 
     it("allows to create implicit actions", async () => {
       const action = createMockQueryAction({ model_id: modelCard.id });
@@ -680,6 +809,328 @@ describe("ModelActions", () => {
     });
   });
 
+  describe("action list changes", () => {
+    const modelCard = createStructuredModelCard();
+
+    it("lists the most recently created actions first", async () => {
+      const actions = [
+        createMockImplicitQueryAction({
+          id: 1,
+          name: "Delete",
+          kind: "row/delete",
+          model_id: modelCard.id,
+          created_at: "2024-01-01T00:00:00Z",
+        }),
+        createMockImplicitQueryAction({
+          id: 2,
+          name: "Update",
+          kind: "row/update",
+          model_id: modelCard.id,
+          created_at: "2024-01-02T00:00:00Z",
+        }),
+        createMockImplicitQueryAction({
+          id: 3,
+          name: "Create",
+          kind: "row/create",
+          model_id: modelCard.id,
+          created_at: "2024-01-03T00:00:00Z",
+        }),
+      ];
+      await setupActions({ model: modelCard, actions });
+
+      const listItems = within(
+        screen.getByRole("list", { name: "Action list" }),
+      ).getAllByRole("listitem");
+      expect(listItems.map((item) => item.getAttribute("aria-label"))).toEqual([
+        "Create",
+        "Update",
+        "Delete",
+      ]);
+    });
+
+    it("names the action in the delete confirmation and removes it from the list", async () => {
+      const action = createMockQueryAction({
+        name: "Delete Order",
+        model_id: modelCard.id,
+      });
+      await setupActions({ model: modelCard, actions: [action] });
+
+      await openActionMenu(action);
+      await userEvent.click(await screen.findByText("Delete"));
+      const dialog = await screen.findByRole("dialog");
+      expect(
+        within(dialog).getByText("Delete Delete Order?"),
+      ).toBeInTheDocument();
+
+      fetchMock.modifyRoute(`model-${modelCard.id}-actions-list`, {
+        response: [],
+      });
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Delete" }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("listitem", { name: action.name }),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it("asks for confirmation and shows the empty state after disabling basic actions", async () => {
+      const actions = createMockImplicitCUDActions(modelCard.id);
+      await setupActions({ model: modelCard, actions });
+
+      await openHeaderActionsMenu();
+      await userEvent.click(await screen.findByText("Disable basic actions"));
+      const dialog = await screen.findByRole("dialog");
+      expect(
+        within(dialog).getByText("Disable basic actions?"),
+      ).toBeInTheDocument();
+
+      fetchMock.modifyRoute(`model-${modelCard.id}-actions-list`, {
+        response: [],
+      });
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Disable" }),
+      );
+
+      expect(
+        await screen.findByText("No actions have been created yet."),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("list", { name: "Action list" }),
+      ).not.toBeInTheDocument();
+      for (const action of actions) {
+        expect(
+          screen.queryByRole("listitem", { name: action.name }),
+        ).not.toBeInTheDocument();
+      }
+    });
+  });
+
+  describe("running actions", () => {
+    const modelCard = createStructuredModelCard();
+
+    const ID_PARAMETER = createMockActionParameter({
+      id: "id",
+      "display-name": "ID",
+      type: "type/Integer",
+    });
+    const USER_ID_PARAMETER = createMockActionParameter({
+      id: "user_id",
+      "display-name": "User ID",
+      type: "type/Integer",
+    });
+    const TEAM_NAME_PARAMETER = createMockActionParameter({
+      id: "team_name",
+      "display-name": "Team Name",
+      type: "type/Text",
+    });
+    const CREATED_AT_PARAMETER = createMockActionParameter({
+      id: "created_at",
+      "display-name": "Created At",
+      type: "type/Text",
+      required: false,
+    });
+    const TOTAL_PARAMETER = createMockActionParameter({
+      id: "total",
+      "display-name": "Total",
+      type: "type/Text",
+      required: true,
+    });
+    const STATUS_PARAMETER = createMockActionParameter({
+      id: "current_status",
+      "display-name": "Current Status",
+      type: "type/Text",
+    });
+
+    async function runAction(action: WritebackAction) {
+      const listItem = screen.getByRole("listitem", { name: action.name });
+      await userEvent.click(within(listItem).getByLabelText("Run"));
+      const modal = await screen.findByTestId("action-execute-modal");
+      await waitForLoaderToBeRemoved();
+      return modal;
+    }
+
+    function createQueryActionWithStatus(statusSettings: {
+      hidden: boolean;
+      required: boolean;
+    }) {
+      return createMockQueryAction({
+        id: 10,
+        name: "Demo Action",
+        model_id: modelCard.id,
+        database_id: TEST_DATABASE_WITH_ACTIONS.id,
+        parameters: [TOTAL_PARAMETER, STATUS_PARAMETER],
+        visualization_settings: {
+          type: "form",
+          fields: {
+            [TOTAL_PARAMETER.id]: getDefaultFieldSettings({
+              id: TOTAL_PARAMETER.id,
+              required: true,
+            }),
+            [STATUS_PARAMETER.id]: getDefaultFieldSettings({
+              id: STATUS_PARAMETER.id,
+              ...statusSettings,
+            }),
+          },
+        },
+      });
+    }
+
+    it("shows field and form errors when an implicit action violates a constraint", async () => {
+      const action = createMockImplicitQueryAction({
+        id: 2,
+        name: "Update",
+        kind: "row/update",
+        model_id: modelCard.id,
+        database_id: TEST_DATABASE_WITH_ACTIONS.id,
+        parameters: [ID_PARAMETER, USER_ID_PARAMETER],
+      });
+      setupExecuteActionEndpoint(action.id, {
+        status: 400,
+        body: {
+          message: "Unable to update the record.",
+          errors: {
+            user_id: 'This value does not exist in table "people".',
+          },
+        },
+      });
+      await setupActions({ model: modelCard, actions: [action] });
+
+      const modal = await runAction(action);
+      await userEvent.type(within(modal).getByLabelText("ID"), "1");
+      await userEvent.type(within(modal).getByLabelText("User ID"), "999999");
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Update" }),
+      );
+
+      expect(
+        await within(modal).findByText(
+          'This value does not exist in table "people".',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(modal).getByText("Unable to update the record."),
+      ).toBeInTheDocument();
+      expect(within(modal).getByLabelText("User ID")).toBeInTheDocument();
+
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Cancel" }),
+      );
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("action-execute-modal"),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it("hides hidden fields and shows a success toast after running an implicit create action", async () => {
+      const action = createMockImplicitQueryAction({
+        id: 1,
+        name: "Create",
+        kind: "row/create",
+        model_id: modelCard.id,
+        database_id: TEST_DATABASE_WITH_ACTIONS.id,
+        parameters: [TEAM_NAME_PARAMETER, CREATED_AT_PARAMETER],
+        visualization_settings: {
+          type: "form",
+          fields: {
+            [TEAM_NAME_PARAMETER.id]: getDefaultFieldSettings({
+              id: TEAM_NAME_PARAMETER.id,
+            }),
+            [CREATED_AT_PARAMETER.id]: getDefaultFieldSettings({
+              id: CREATED_AT_PARAMETER.id,
+              hidden: true,
+              required: false,
+            }),
+          },
+        },
+      });
+      setupExecuteActionEndpoint(action.id, {
+        body: { "created-row": { id: 1, team_name: "Zebras" } },
+      });
+      await setupActions({ model: modelCard, actions: [action] });
+
+      const modal = await runAction(action);
+      expect(
+        within(modal).queryByLabelText("Created At"),
+      ).not.toBeInTheDocument();
+      await userEvent.type(within(modal).getByLabelText("Team Name"), "Zebras");
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Save" }),
+      );
+
+      expect(await screen.findByText("Successfully saved")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("action-execute-modal"),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it("hides an optional hidden field and shows a success toast after running a query action", async () => {
+      const action = createQueryActionWithStatus({
+        hidden: true,
+        required: false,
+      });
+      setupExecuteActionEndpoint(action.id, { body: { "rows-affected": 1 } });
+      await setupActions({ model: modelCard, actions: [action] });
+
+      const modal = await runAction(action);
+      expect(
+        within(modal).queryByLabelText("Current Status"),
+      ).not.toBeInTheDocument();
+      await userEvent.type(within(modal).getByLabelText("Total"), "1");
+      await userEvent.click(
+        within(modal).getByRole("button", { name: action.name }),
+      );
+
+      expect(
+        await screen.findByText(`${action.name} ran successfully`),
+      ).toBeInTheDocument();
+    });
+
+    it("can't be submitted when a required field is hidden", async () => {
+      const action = createQueryActionWithStatus({
+        hidden: true,
+        required: true,
+      });
+      await setupActions({ model: modelCard, actions: [action] });
+
+      const modal = await runAction(action);
+      expect(
+        within(modal).queryByLabelText("Current Status"),
+      ).not.toBeInTheDocument();
+      await userEvent.type(within(modal).getByLabelText("Total"), "1");
+
+      expect(
+        within(modal).getByRole("button", { name: action.name }),
+      ).toBeDisabled();
+    });
+
+    it("requires a visible required field before it can be submitted", async () => {
+      const action = createQueryActionWithStatus({
+        hidden: false,
+        required: true,
+      });
+      await setupActions({ model: modelCard, actions: [action] });
+
+      const modal = await runAction(action);
+      await userEvent.type(within(modal).getByLabelText("Total"), "1");
+      const submitButton = within(modal).getByRole("button", {
+        name: action.name,
+      });
+      expect(submitButton).toBeDisabled();
+
+      await userEvent.type(
+        within(modal).getByLabelText("Current Status"),
+        "active",
+      );
+      await waitFor(() => expect(submitButton).toBeEnabled());
+    });
+  });
+
   describe("native model", () => {
     const modelCard = createNativeModelCard();
 
@@ -696,7 +1147,7 @@ describe("ModelActions", () => {
   describe("navigation", () => {
     it("redirects to query builder when trying to open a question", async () => {
       const { model: question, router } = await setup({
-        model: createSavedStructuredCard(),
+        model: createStructuredModelCard({ type: "question" }),
       });
 
       expect(router?.location.pathname).toBe(Urls.question(question));

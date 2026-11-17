@@ -13,11 +13,12 @@ import {
   Title,
 } from "metabase/ui";
 import {
+  type DependencyNodeField,
   getNodeFields,
   getNodeFieldsLabel,
 } from "metabase-enterprise/dependencies/utils";
 import * as Lib from "metabase-lib";
-import type { DependencyNode, Field } from "metabase-types/api";
+import type { DependencyNode } from "metabase-types/api";
 
 import S from "./FieldsSection.module.css";
 
@@ -51,7 +52,7 @@ export function FieldsSection({ node }: FieldsSectionProps) {
 }
 
 type FieldListItemProps = {
-  field: Field;
+  field: DependencyNodeField;
 };
 
 function FieldListItem({ field }: FieldListItemProps) {
@@ -59,8 +60,8 @@ function FieldListItem({ field }: FieldListItemProps) {
   const fieldIcon = getColumnIcon(fieldInfo);
 
   return (
-    <Stack className={S.item} p="md" gap="xs">
-      <Group gap="xs" wrap="nowrap">
+    <Stack className={S.item} p="lg" gap="xxs">
+      <Group gap="xxs" wrap="nowrap">
         <FixedSizeIcon name={fieldIcon} c="core-brand" />
         <Box className={CS.textWrap} lh="1rem">
           {field.display_name}
@@ -69,8 +70,8 @@ function FieldListItem({ field }: FieldListItemProps) {
       <Box
         className={cx(CS.textWrap, CS.textMonospace)}
         c="text-secondary"
-        ml="md"
-        pl="xs"
+        ml="lg"
+        pl="xxs"
         fz="sm"
         lh="1rem"
       >

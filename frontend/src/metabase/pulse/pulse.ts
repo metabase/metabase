@@ -16,6 +16,7 @@ import type {
   Alert,
   Channel,
   ChannelApiResponse,
+  ChannelRecipient,
   ChannelSpec,
   ChannelSpecs,
   DashboardSubscription,
@@ -24,6 +25,7 @@ import type {
   ScheduleSettings,
   User,
 } from "metabase-types/api";
+import { isUserRecipient } from "metabase-types/guards";
 
 export const NEW_PULSE_TEMPLATE = {
   name: null,
@@ -112,7 +114,7 @@ function pulseChannelsAreValid(
   );
 }
 
-export type RecipientPickerValue = (User | { email: string }) & {
+export type RecipientPickerValue = ChannelRecipient & {
   entityId?: number;
 };
 
@@ -180,7 +182,6 @@ export function createChannel(
     recipients: [],
     schedule_type: channelSpec.schedules[0],
     schedule_day: "mon",
-    schedule_hour: 8,
     schedule_frame: "first",
     ...opts,
   };
@@ -326,7 +327,9 @@ export const canArchiveLegacyAlert = (
 ): boolean => {
   const recipients = item.channels.flatMap((channel) => {
     if (channel.recipients) {
-      return channel.recipients.map((recipient) => recipient.id);
+      return channel.recipients.map((recipient) =>
+        isUserRecipient(recipient) ? recipient.id : null,
+      );
     } else {
       return [];
     }

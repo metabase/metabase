@@ -15,10 +15,10 @@ import { DashboardName } from "metabase/common/components/DashboardName";
 import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers";
 import { MoveModal } from "metabase/common/components/Pickers";
 import { useDispatch } from "metabase/redux";
-import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
+import { questionUpdated } from "metabase/redux/query-builder";
 import { addUndo } from "metabase/redux/undo";
 import { useNavigate } from "metabase/router";
-import { Box, Icon, Radio, Title } from "metabase/ui";
+import { Icon, Radio, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Card } from "metabase-types/api";
 
@@ -74,11 +74,12 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
       .then(async (updatedCard) => {
         // HACK: entity framework would previously keep the qb in sync
         // with changing where the question lived
-        dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
+        dispatch(questionUpdated(updatedCard));
 
         dispatch(
           addUndo({
             message: <MoveCardToast card={card} destination={destination} />,
+            variant: destination ? undefined : "negative",
           }),
         );
 
@@ -172,9 +173,9 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
         }
         message={
           <>
-            <Box mt="-1.5rem">
+            <Text mt="-1.5rem">
               {t`It can still appear there even though you’re moving it into a collection.`}
-            </Box>
+            </Text>
             <Radio.Group
               value={`${!deleteOldDashcardsState}`}
               onChange={(val) => setDeleteOldDashcardsState(val !== "true")}
@@ -185,14 +186,14 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
                 value={"true"}
               />
               <Radio
-                mt="md"
+                mt="lg"
                 label={t`No, remove it from that dashboard`}
                 value={"false"}
               />
             </Radio.Group>
           </>
         }
-        confirmButtonProps={{ color: "core-brand", variant: "filled" }}
+        confirmButtonProps={{ color: "brand", variant: "filled" }}
         confirmButtonText={t`Done`}
       />
     );
@@ -223,7 +224,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
         }
         message={t`You can move it to a collection if you want to use it in both dashboards.`}
         confirmButtonText={t`Okay`}
-        confirmButtonProps={{ color: "core-brand", variant: "filled" }}
+        confirmButtonProps={{ color: "brand", variant: "filled" }}
       />
     );
   }

@@ -42,7 +42,7 @@
     (events/publish-event! :event/exploration-create
                            {:object  (t2/select-one :model/Exploration :id expl-id)
                             :user-id (mt/user->id :crowberto)})
-    (t2/update! :model/Exploration expl-id {:name "renamed"})
+    (t2/update! :model/Exploration :id expl-id {:name "renamed"})
     (events/publish-event! :event/exploration-update
                            {:object  (t2/select-one :model/Exploration :id expl-id)
                             :user-id (mt/user->id :rasta)})
@@ -75,7 +75,7 @@
     (let [first-rev-id (t2/select-one-pk :model/Revision
                                          :model "Exploration" :model_id expl-id
                                          {:order-by [[:id :asc]]})]
-      (t2/update! :model/Exploration expl-id {:name "renamed" :description "later"})
+      (t2/update! :model/Exploration :id expl-id {:name "renamed" :description "later"})
       (events/publish-event! :event/exploration-update
                              {:object  (t2/select-one :model/Exploration :id expl-id)
                               :user-id (mt/user->id :crowberto)})

@@ -130,6 +130,8 @@ export type ListTableIndexesRequest = {
 
 export type ListTableIndexesResponse = {
   data: TableIndexEntry[];
+  /** Present when the warehouse couldn't be read, so every entry's presence is unverified. */
+  warehouse_error?: string | null;
 };
 
 export type CreateTableIndexRequest = {

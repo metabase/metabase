@@ -1,0 +1,7 @@
+name: Library
+entity_id: librarylibrarylibrary
+slug: library
+type: library
+serdes/meta:
+- model: Collection
+is_remote_synced: true

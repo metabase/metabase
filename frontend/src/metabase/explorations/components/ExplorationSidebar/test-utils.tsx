@@ -77,6 +77,7 @@ interface SetupOpts {
   sortOrder?: ExplorationSortOrder;
   readPageIds?: ReadonlySet<string>;
   tab?: ExplorationSidebarTab;
+  withUndos?: boolean;
 }
 
 export function setup({
@@ -91,6 +92,7 @@ export function setup({
   sortOrder = DEFAULT_SORT_ORDER,
   readPageIds = new Set<string>(),
   tab = "all",
+  withUndos = false,
 }: SetupOpts) {
   const onPreviousPage = jest.fn();
   const onNextPage = jest.fn();
@@ -136,6 +138,7 @@ export function setup({
 
   const getSelectedPageUrl = (pageId: string) =>
     `${Urls.exploration(exploration.id)}/page/${encodeURIComponent(pageId)}`;
+  const getSelectedSummaryUrl = () => Urls.explorationSummary(exploration.id);
 
   const explorationPath = Urls.exploration(exploration.id);
   const {
@@ -157,8 +160,11 @@ export function setup({
       selectedSidebarTab={selectedSidebarTab}
       getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
       tree={displayTree}
-      selectedPageId={resolvedPageId}
+      selectedEntity={
+        resolvedPageId != null ? { type: "page", id: resolvedPageId } : null
+      }
       getSelectedPageUrl={getSelectedPageUrl}
+      getSelectedSummaryUrl={getSelectedSummaryUrl}
       shouldScrollSelectionRef={{ current: true }}
       isOpen
       readPageIds={readPageIds}
@@ -175,6 +181,7 @@ export function setup({
 
   renderWithProviders(<Route path={explorationPath} element={sidebar} />, {
     withRouter: true,
+    withUndos,
     initialRoute: explorationPath,
   });
   return {
@@ -184,6 +191,7 @@ export function setup({
     onToggleShowHidden,
     onChangeSortOrder,
     getSelectedPageUrl,
+    getSelectedSummaryUrl,
     exploration,
   };
 }

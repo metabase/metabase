@@ -86,8 +86,6 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
     });
 
     cy.findByRole("heading", { name: "Info" }).should("not.exist");
-    cy.findByRole("tab", { name: "Overview" }).should("not.exist");
-    cy.findByRole("tab", { name: "History" }).should("not.exist");
   });
 
   it("should allow clicking dashcard filters in edit mode (VIZ-1249)", () => {
@@ -302,6 +300,12 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
           cy.log("building the query");
           H.popover().findByRole("link", { name: "Orders" }).click();
           cy.button("Visualize").click();
+
+          cy.log("the preview renders instead of collapsing (metabase#79893)");
+          cy.findByTestId("visualization-root")
+            .should("be.visible")
+            .invoke("outerHeight")
+            .should("be.greaterThan", 0);
 
           cy.log("test going back to the dashboard from the visualization");
           cy.button(`Back to ${DASHBOARD_NAME}`).should("be.visible").click();

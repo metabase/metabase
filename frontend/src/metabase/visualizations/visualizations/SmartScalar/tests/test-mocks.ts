@@ -1,12 +1,15 @@
 import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   RowValues,
   Series,
   SmartScalarComparison,
+  VisualizationSettings,
 } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 export const PREVIOUS_PERIOD_COMPARISON = {
   id: "1",
@@ -24,11 +27,21 @@ export const getPeriodsAgoComparison = (value: number) => ({
   value,
 });
 
+export const STATIC_NUMBER_COMPARISON = {
+  id: "2",
+  type: COMPARISON_TYPES.STATIC_NUMBER,
+  value: 80,
+  label: "Goal",
+};
+
 interface MockSeriesOptions {
   rows: RowValues[];
   insights?: Partial<Insight>[];
   field?: string;
   comparisonType?: SmartScalarComparison;
+  comparisonTypes?: SmartScalarComparison[];
+  name?: string;
+  settings?: VisualizationSettings;
 }
 
 export const mockSeries = ({
@@ -36,6 +49,9 @@ export const mockSeries = ({
   insights,
   field,
   comparisonType = PREVIOUS_PERIOD_COMPARISON,
+  comparisonTypes,
+  name,
+  settings,
 }: MockSeriesOptions) => {
   const cols = [
     DateTimeColumn({ name: "Month", source: "breakout" }),
@@ -47,12 +63,18 @@ export const mockSeries = ({
   return [
     {
       card: {
+        name,
         display: "smartscalar",
         visualization_settings: {
           "scalar.field": field,
-          "scalar.comparisons": [comparisonType],
+          "scalar.comparisons": comparisonTypes ?? [comparisonType],
+          ...settings,
         },
-        dataset_query: createMockStructuredDatasetQuery(),
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestQuery(SAMPLE_PROVIDER, {
+            stages: [{ source: { type: "table", id: ORDERS_ID } }],
+          }),
+        ),
       },
       data: { cols, rows, insights },
     },

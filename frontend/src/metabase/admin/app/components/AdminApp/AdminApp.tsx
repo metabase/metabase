@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { Outlet } from "metabase/router";
 import { Box, Flex } from "metabase/ui";
 

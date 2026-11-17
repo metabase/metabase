@@ -10,10 +10,16 @@ import {
   removeInternalClickBehaviors,
 } from "metabase/embedding-sdk/lib/links";
 import {
+  type ChartSettingColorRangeProps,
+  type ComputedVisualizationSettings,
+  type SettingsExtra,
+  loadVisualizationComponents,
   registerSettingWidgets,
   registerVisualization,
+  setComputedSettingsTransform,
   setDefaultVisualization,
-} from "metabase/visualizations";
+  setTooltipRootProvider,
+} from "metabase/viz-core";
 
 import { ChartNestedSettingColumns } from "./components/settings/ChartNestedSettingColumns";
 import ChartNestedSettingSeries from "./components/settings/ChartNestedSettingSeries";
@@ -42,14 +48,7 @@ import { ChartSettingTableColumns } from "./components/settings/ChartSettingTabl
 import { ChartSettingToggle } from "./components/settings/ChartSettingToggle";
 import { ChartSettingsTableFormatting } from "./components/settings/ChartSettingsTableFormatting";
 import { ColorRangeSelector } from "./components/settings/ColorRangeSelector";
-import { setTooltipRootProvider } from "./echarts/tooltip";
 import { registerJsxFormatting } from "./lib/register-jsx-formatting";
-import { setComputedSettingsTransform } from "./lib/settings";
-import type {
-  ChartSettingColorRangeProps,
-  ComputedVisualizationSettings,
-  SettingsExtra,
-} from "./types";
 import { AREA_CHART_DEFINITION } from "./visualizations/AreaChart/definition";
 import { BAR_CHART_DEFINITION } from "./visualizations/BarChart/definition";
 import { BOXPLOT_CHART_DEFINITION } from "./visualizations/BoxPlot/definition";
@@ -58,6 +57,7 @@ import { FUNNEL_CHART_DEFINITION } from "./visualizations/Funnel/definition";
 import { GAUGE_CHART_DEFINITION } from "./visualizations/Gauge/definition";
 import { LINE_CHART_DEFINITION } from "./visualizations/LineChart/definition";
 import { LIST_DEFINITION } from "./visualizations/List/definition";
+import { MapRegionWidget } from "./visualizations/Map/MapRegionWidget";
 import { MAP_VIZ_DEFINITION } from "./visualizations/Map/definition";
 import { OBJECT_DETAIL_DEFINITION } from "./visualizations/ObjectDetail/definition";
 import { DimensionsWidget } from "./visualizations/PieChart/DimensionsWidget";
@@ -219,6 +219,7 @@ function registerVisualizationSettingWidgets() {
     tableColumns: ChartSettingTableColumns,
     nestedColumns: chartSettingNestedSettings(ChartNestedSettingColumns),
     nestedSeries: chartSettingNestedSettings(ChartNestedSettingSeries),
+    mapRegion: MapRegionWidget,
     pieDimensions: DimensionsWidget,
     pieSliceName: SliceNameWidget,
     smartScalarComparison: SmartScalarComparisonWidget,
@@ -252,9 +253,26 @@ function registerSdkAwareBehaviors() {
   );
 }
 
+declare global {
+  interface Window {
+    METABASE_LOAD_ALL_VISUALIZATIONS?: boolean;
+  }
+}
+
 export function registerVisualizations() {
   registerVisualizationComponents();
   registerVisualizationSettingWidgets();
   registerJsxFormatting();
   registerSdkAwareBehaviors();
+
+  // Charts render through a `lazy` boundary that suspends on first render. A
+  // test that freezes the clock strands that boundary on its fallback, because
+  // React 19 schedules the lazy retry on a timer the fake clock never advances.
+  // When a spec opts in, load every chart up front so no boundary suspends.
+  if (
+    typeof window !== "undefined" &&
+    window.METABASE_LOAD_ALL_VISUALIZATIONS
+  ) {
+    loadVisualizationComponents();
+  }
 }

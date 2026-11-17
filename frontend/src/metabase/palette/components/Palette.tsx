@@ -60,7 +60,7 @@ export const PaletteContainer = ({
   locationQuery: SearchQuery;
 }) => {
   const { query } = useKBar();
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement>(null);
   const searchText = typeof locationQuery.q === "string" ? locationQuery.q : "";
 
   const {
@@ -85,7 +85,7 @@ export const PaletteContainer = ({
       data-testid="command-palette"
       bd="1px solid var(--mb-color-border-neutral)"
     >
-      <Stack gap={rem(4)} pb="lg">
+      <Stack gap={rem(4)} pb="xl">
         <Box pos="relative">
           <HydratedKBarSearch searchText={searchText} />
 

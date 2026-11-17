@@ -4,15 +4,18 @@
    like running MBQL queries and fetching values to do things like determine Table row counts
    and infer field semantic types."
   (:require
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.analyze.classify :as classify]
+   [metabase.sync.analyze.data-sensitivity :as sync.data-sensitivity]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.analyze.interestingness :as sync.interestingness]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 ;; How does analysis decide which Fields should get analyzed?
 ;;
@@ -55,21 +58,12 @@
 (mu/defn- update-fields-last-analyzed!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `table`."
   [table :- i/TableInstance]
-  (t2/update! :model/Field
-              (merge (sync.fingerprint/incomplete-analysis-kvs)
-                     {:table_id (:id table)})
-              {:last_analyzed :%now}))
+  (sync.db/mark-incomplete-fields-analyzed-for-table! (:id table) i/*latest-fingerprint-version*))
 
 (mu/defn- update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `database`."
   [database :- i/DatabaseInstance]
-  (t2/update! :model/Field
-              (merge (sync.fingerprint/incomplete-analysis-kvs)
-                     {:table_id [:in ^:allow-subquery
-                                 {:select [:id]
-                                  :from   [(t2/table-name :model/Table)]
-                                  :where  [:and sync-util/sync-tables-clause [:= :db_id (:id database)]]}]})
-              {:last_analyzed :%now}))
+  (sync.db/mark-incomplete-fields-analyzed-for-database! (:id database) i/*latest-fingerprint-version*))
 
 (mu/defn analyze-table!
   "Perform in-depth analysis for a `table`."
@@ -78,6 +72,7 @@
   (classify/classify-fields! table)
   (classify/classify-table! table)
   (sync.interestingness/score-fields! table)
+  (sync.data-sensitivity/scan-table! table)
   (update-fields-last-analyzed! table))
 
 (defn- maybe-log-progress [progress-bar-fn]
@@ -98,9 +93,15 @@
   (format "Total number of tables classified %d, %d updated"
           total-tables tables-classified))
 
-(defn- interestingness-summary [{:keys [fields-scored fields-failed]}]
-  (format "Interestingness scored %d fields, %d failed"
-          fields-scored fields-failed))
+(defn- interestingness-summary [{:keys [fields-scored fields-failed fields-remaining]}]
+  (str (format "Interestingness scored %d fields, %d failed" fields-scored fields-failed)
+       ;; only present when the per-sync limit truncated the leftovers pass
+       (when (and fields-remaining (pos? fields-remaining))
+         (format ", %d still unscored" fields-remaining))))
+
+(defn- data-sensitivity-summary [{:keys [fields-scanned fields-labeled fields-failed]}]
+  (format "Data sensitivity scanned %d fields, labeled %d, %d failed"
+          fields-scanned fields-labeled fields-failed))
 
 (defn- make-analyze-steps [log-fn]
   [(sync-util/create-sync-step "fingerprint-fields"
@@ -114,7 +115,10 @@
                                classify-tables-summary)
    (sync-util/create-sync-step "score-interestingness"
                                #(sync.interestingness/score-fields-for-db! % log-fn)
-                               interestingness-summary)])
+                               interestingness-summary)
+   (sync-util/create-sync-step "classify-data-sensitivity"
+                               #(sync.data-sensitivity/scan-fields-for-db! % log-fn)
+                               data-sensitivity-summary)])
 
 (mu/defn- analyze-db!*
   "Shared core of [[analyze-db!]] and [[analyze-db-explicit!]]: the analysis work, without the
@@ -129,26 +133,29 @@
   driver supports, but includes things like cardinality testing and table row counting. This also updates the
   `:last_analyzed` value for each affected Field. Subject to the `disable-auto-sync` setting; for an
   explicit user-requested analysis use [[analyze-db-explicit!]]."
-  [database :- i/DatabaseInstance]
-  (sync-util/sync-operation :analyze database (format "Analyze data for %s" (sync-util/name-for-logging database))
-    (analyze-db!* database)))
+  [database-id :- ::lib.schema.id/database]
+  (let [database (driver.u/lib-database database-id)]
+    (sync-util/sync-operation :analyze database (format "Analyze data for %s" (sync-util/name-for-logging database))
+      (analyze-db!* database))))
 
 (mu/defn analyze-db-explicit!
   "Like [[analyze-db!]], but for an explicit, user-requested sync (e.g. the Sync-now button): runs even
   when the `disable-auto-sync` setting is enabled."
-  [database :- i/DatabaseInstance]
-  (sync-util/explicit-sync-operation :analyze database (format "Analyze data for %s" (sync-util/name-for-logging database))
-                                     (analyze-db!* database)))
+  [database-id :- ::lib.schema.id/database]
+  (let [database (driver.u/lib-database database-id)]
+    (sync-util/explicit-sync-operation :analyze database (format "Analyze data for %s" (sync-util/name-for-logging database))
+                                       (analyze-db!* database))))
 
 (mu/defn refingerprint-db!
   "Refingerprint a subset of tables in a given `database`. This will re-fingerprint tables up to a threshold amount of
   [[fingerprint/max-refingerprint-field-count]]."
-  [database :- i/DatabaseInstance]
-  (sync-util/sync-operation :refingerprint database (format "Refingerprinting tables for %s" (sync-util/name-for-logging database))
-    (let [log-fn (fn [step table]
-                   (log/info (u/format-color 'blue "%s Analyzed %s" step (sync-util/name-for-logging table))))]
-      (sync-util/run-sync-operation "refingerprint database"
-                                    database
-                                    [(sync-util/create-sync-step "refingerprinting fields"
-                                                                 #(sync.fingerprint/refingerprint-fields-for-db! % log-fn)
-                                                                 fingerprint-fields-summary)]))))
+  [database-id :- ::lib.schema.id/database]
+  (let [database (driver.u/lib-database database-id)]
+    (sync-util/sync-operation :refingerprint database (format "Refingerprinting tables for %s" (sync-util/name-for-logging database))
+      (let [log-fn (fn [step table]
+                     (log/info (u/format-color 'blue "%s Analyzed %s" step (sync-util/name-for-logging table))))]
+        (sync-util/run-sync-operation "refingerprint database"
+                                      database
+                                      [(sync-util/create-sync-step "refingerprinting fields"
+                                                                   #(sync.fingerprint/refingerprint-fields-for-db! % log-fn)
+                                                                   fingerprint-fields-summary)])))))

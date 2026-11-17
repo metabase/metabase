@@ -7,7 +7,6 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 const { admin, normal } = USERS;
 
@@ -23,17 +22,6 @@ describe("URLs", () => {
       cy.visit(url);
       cy.findByTestId("browse-schemas").should("exist");
       cy.location("pathname").should("eq", url);
-    });
-
-    [
-      `/browse/databases/${SAVED_QUESTIONS_VIRTUAL_DB_ID}`,
-      `/browse/databases/${SAVED_QUESTIONS_VIRTUAL_DB_ID}-saved-questions`,
-    ].forEach((url) => {
-      it("should open 'Saved Questions' database correctly", () => {
-        cy.visit(url);
-        cy.findByRole("heading", { name: "Databases" });
-        cy.location("pathname").should("eq", url);
-      });
     });
   });
 

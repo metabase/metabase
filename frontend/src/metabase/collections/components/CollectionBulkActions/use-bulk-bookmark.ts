@@ -8,7 +8,7 @@ import {
   getItemBookmarkType,
   isItemBookmarked,
 } from "metabase/common/collections/utils";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type { Bookmark, CollectionItem } from "metabase-types/api";
 
 export const useBulkBookmark = (
@@ -32,10 +32,11 @@ export const useBulkBookmark = (
     try {
       await Promise.all(
         itemsToBookmark.map(async (item) => {
-          await createBookmark({
-            id: item.id,
-            type: getItemBookmarkType(item),
-          }).unwrap();
+          const type = getItemBookmarkType(item);
+          if (type == null) {
+            return;
+          }
+          await createBookmark({ id: item.id, type }).unwrap();
           trackCollectionItemBookmarked(item);
         }),
       );

@@ -177,7 +177,7 @@
                               {:template-tags {"timestamp" {:name         "timestamp"
                                                             :display-name "Sighting Timestamp"
                                                             :type         :dimension
-                                                            :dimension    $timestamp
+                                                            :field-id     %timestamp
                                                             :widget-type  :date/range}}
                                :parameters    [{:type   :date/range
                                                 :target [:dimension [:template-tag "timestamp"]]
@@ -404,13 +404,14 @@
               :effective-type :type/Text
               :base-type :type/Text}
              {:field-name "as_bytes"
-              :base-type {:natives {:postgres "BYTEA"
-                                    :h2       "BYTEA"
-                                    :mysql    "VARBINARY(100)"
-                                    :redshift "VARBYTE"
-                                    :presto-jdbc "VARBINARY"
-                                    :oracle "BLOB"
-                                    :sqlite "BLOB"}}
+              :base-type {:natives {"postgres" "BYTEA"
+                                    "h2"       "BYTEA"
+                                    "motherduck" "BLOB"
+                                    "mysql"    "VARBINARY(100)"
+                                    "redshift" "VARBYTE"
+                                    "presto-jdbc" "VARBINARY"
+                                    "oracle" "BLOB"
+                                    "sqlite" "BLOB"}}
               :effective-type :type/DateTime
               :coercion-strategy :Coercion/YYYYMMDDHHMMSSBytes->Temporal}]
     [["foo" (.getBytes "20190421164300")]
@@ -444,7 +445,7 @@
   [_driver]
   :not-implemented)
 
-(doseq [driver [:h2 :postgres :databricks]]
+(doseq [driver [:h2 :postgres :databricks :motherduck]]
   (defmethod yyyymmddhhmmss-binary-dates-expected-rows driver
     [_driver]
     [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
@@ -524,7 +525,7 @@
      [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z[UTC]")]
      [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z[UTC]")]]))
 
-(doseq [driver [:h2 :postgres :clickhouse :databricks]]
+(doseq [driver [:h2 :postgres :clickhouse :databricks :motherduck]]
   (defmethod yyyymmddhhmmss-dates-expected-rows driver
     [_driver]
     [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
@@ -564,13 +565,14 @@
               :effective-type :type/Text
               :base-type :type/Text}
              {:field-name "as_bytes"
-              :base-type {:natives {:postgres "BYTEA"
-                                    :h2       "BYTEA"
-                                    :mysql    "VARBINARY(100)"
-                                    :redshift "VARBYTE"
-                                    :presto-jdbc "VARBINARY"
-                                    :oracle "BLOB"
-                                    :sqlite "BLOB"}}
+              :base-type {:natives {"postgres" "BYTEA"
+                                    "h2"       "BYTEA"
+                                    "motherduck" "BLOB"
+                                    "mysql"    "VARBINARY(100)"
+                                    "redshift" "VARBYTE"
+                                    "presto-jdbc" "VARBINARY"
+                                    "oracle" "BLOB"
+                                    "sqlite" "BLOB"}}
               :effective-type :type/DateTime
               :coercion-strategy :Coercion/ISO8601Bytes->Temporal}]
     [["foo" (.getBytes "2019-04-21 16:43:00")]
@@ -594,7 +596,7 @@
      [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
      [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]))
 
-(doseq [driver [:mysql :sqlserver :presto-jdbc :postgres :h2]]
+(doseq [driver [:mysql :sqlserver :presto-jdbc :postgres :h2 :motherduck]]
   (defmethod binary-dates-expected-rows-iso driver
     [_driver]
     [[1 "foo" #t "2019-04-21T16:43"]

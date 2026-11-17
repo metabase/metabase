@@ -1,9 +1,9 @@
 (ns metabase.queries.models.parameter-card
   (:require
-   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.queries.db :as queries.db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -52,11 +52,11 @@
    (delete-all-for-parameterized-object! parameterized-object-type parameterized-object-id []))
 
   ([parameterized-object-type parameterized-object-id parameter-ids-still-in-use]
-   (let [conditions (concat [:parameterized_object_type parameterized-object-type
-                             :parameterized_object_id parameterized-object-id]
-                            (when (seq parameter-ids-still-in-use)
-                              [:parameter_id [:not-in parameter-ids-still-in-use]]))]
-     (apply t2/delete! :model/ParameterCard conditions))))
+   (if (seq parameter-ids-still-in-use)
+     (queries.db/delete-parameter-cards-for-object-except! parameterized-object-type
+                                                           parameterized-object-id
+                                                           parameter-ids-still-in-use)
+     (queries.db/delete-parameter-cards-for-object! parameterized-object-type parameterized-object-id))))
 
 (defn- upsert-from-parameters!
   [parameterized-object-type parameterized-object-id parameters]
@@ -67,9 +67,9 @@
                       :parameter_id              id}]
       ;; TODO: Maybe update! should return different values for no rows to update vs
       ;; no changes to be made
-      (if (m/mapply t2/exists? :model/ParameterCard conditions)
-        (t2/update! :model/ParameterCard conditions {:card_id card-id})
-        (t2/insert! :model/ParameterCard (merge conditions {:card_id card-id}))))))
+      (if (queries.db/parameter-card-exists? parameterized-object-type parameterized-object-id id)
+        (queries.db/set-parameter-card-card-id! parameterized-object-type parameterized-object-id id card-id)
+        (queries.db/insert-parameter-card! (merge conditions {:card_id card-id}))))))
 
 (defn values-source-card-ids
   "Returns the ids of the Cards `parameters` draw their values from."
@@ -80,11 +80,17 @@
                   (:card_id values_source_config))))
         parameters))
 
+(defn- read-check-cards
+  "Throws unless the current user can read every Card of `card-ids`, with a 404 for an id without a Card."
+  [card-ids]
+  (let [id->card (into {} (map (juxt :id identity)) (t2/hydrate (queries.db/cards card-ids) :can_read))]
+    (doseq [card-id card-ids]
+      (api/read-check (get id->card card-id)))))
+
 (mu/defn check-parameter-source-card-permissions
   "Read-check the Cards `parameters` draw their values from."
-  [parameters :- [:maybe [:sequential :map]]]
-  (doseq [card-id (values-source-card-ids parameters)]
-    (api/read-check :model/Card card-id)))
+  [parameters :- [:maybe [:sequential ::parameters.schema/parameter]]]
+  (read-check-cards (values-source-card-ids parameters)))
 
 (mu/defn check-new-parameter-source-card-permissions
   "Read-check the source Cards newly referenced by `parameters` that are not already stored for this object."
@@ -93,12 +99,8 @@
    parameters                :- [:maybe [:sequential ::parameters.schema/parameter]]]
   (when-not mi/*deserializing?*
     (when-let [wanted (not-empty (values-source-card-ids parameters))]
-      (let [existing (t2/select-fn-set :card_id :model/ParameterCard
-                                       :parameterized_object_type parameterized-object-type
-                                       :parameterized_object_id   parameterized-object-id)]
-        (doseq [card-id wanted
-                :when   (not (contains? existing card-id))]
-          (api/read-check :model/Card card-id))))))
+      (let [existing (queries.db/parameter-card-card-ids parameterized-object-type parameterized-object-id)]
+        (read-check-cards (into #{} (remove #(contains? existing %)) wanted))))))
 
 (mu/defn upsert-or-delete-from-parameters!
   "From a parameters list on card or dashboard, create, update,

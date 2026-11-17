@@ -15,6 +15,10 @@
   &[data-disabled="true"] {
     color: var(--mb-color-text-disabled);
     opacity: 1;
+
+    .itemSection[data-position="right"] {
+      color: inherit;
+    }
   }
 
   &:hover:not([data-disabled="true"]) {
@@ -35,21 +39,21 @@
   }
 
   &[data-position="right"] {
-    color: var(--mb-color-text-disabled);
-    margin-left: var(--mantine-spacing-md);
+    color: var(--mb-color-text-secondary);
+    margin-left: var(--mantine-spacing-lg);
   }
 }
 
 .label {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-secondary);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height);
-  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-sm);
 }
 
 .divider {
-  margin-top: calc(var(--mantine-spacing-xs) - 1px);
-  margin-bottom: var(--mantine-spacing-xs);
+  margin-top: calc(var(--mantine-spacing-xxs) - 1px);
+  margin-bottom: var(--mantine-spacing-xxs);
   margin-left: var(--mantine-spacing-sm);
   margin-right: var(--mantine-spacing-sm);
   border-top-color: var(--mb-color-border-neutral);

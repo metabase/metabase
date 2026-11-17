@@ -1,7 +1,7 @@
 {
   "name": "vite-6-host-app",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "start": "./entrypoint.sh",
@@ -11,13 +11,13 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19",
+    "react-dom": "^19",
     "wouter": "^3.7.0"
   },
   "devDependencies": {
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.5.1",
     "vite": "^6.3.5"
   }

@@ -5,7 +5,6 @@ import { usePrevious } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   Api,
   useCreateBookmarkMutation,
@@ -20,6 +19,7 @@ import { CollectionHeader } from "metabase/collections/components/CollectionHead
 import { PinnedItemsGrid } from "metabase/collections/components/PinnedItemsGrid";
 import {
   trackCollectionBookmarked,
+  trackCollectionItemsFiltered,
   trackCollectionSelectModeEntered,
 } from "metabase/common/collections/analytics";
 import { getComposedDragProps } from "metabase/common/collections/dropzone";
@@ -28,6 +28,7 @@ import type {
   OnFileUpload,
 } from "metabase/common/collections/types";
 import { isTrashedCollection } from "metabase/common/collections/utils";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { ItemsDragLayer } from "metabase/common/components/dnd/ItemsDragLayer";
 import { useSetCollection, useToast } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
@@ -45,6 +46,7 @@ import type {
   Collection,
   CollectionId,
   CollectionItem,
+  CollectionItemModel,
   Database,
 } from "metabase-types/api";
 
@@ -106,6 +108,30 @@ export const CollectionContentView = ({
     useListSelect(itemKeyFn);
   const previousCollection = usePrevious(collection);
   const previousSelectedCount = usePrevious(selected.length);
+  // Owned here so the info panel's Contents counts can filter the items table.
+  // Keyed by collection, so a selection made in another collection never applies.
+  const [typeFilterSelection, setTypeFilterSelection] = useState<{
+    collectionId: CollectionId;
+    models: CollectionItemModel[] | null;
+  }>({ collectionId, models: null });
+  const typeFilter =
+    typeFilterSelection.collectionId === collectionId
+      ? typeFilterSelection.models
+      : null;
+  const handleTypeFilterChange = useCallback(
+    (models: CollectionItemModel[] | null) =>
+      setTypeFilterSelection({ collectionId, models }),
+    [collectionId],
+  );
+  // The toolbar tracks its own filtering; a count in the info panel is one
+  // filter action each time it is clicked.
+  const handleFilterByTypeFromInfo = useCallback(
+    (model: CollectionItemModel) => {
+      trackCollectionItemsFiltered({ collectionId, filter: "type" });
+      handleTypeFilterChange([model]);
+    },
+    [collectionId, handleTypeFilterChange],
+  );
 
   useEffect(() => {
     if (previousCollection && previousCollection.id !== collection.id) {
@@ -147,8 +173,7 @@ export const CollectionContentView = ({
       if (rejected.length > 1) {
         sendToast({
           message: t`Please upload files individually`,
-          toastColor: "feedback-negative",
-          icon: "warning",
+          variant: "warning",
         });
         return;
       }
@@ -168,8 +193,7 @@ export const CollectionContentView = ({
 
       sendToast({
         message: errorMessage,
-        toastColor: "feedback-negative",
-        icon: "warning",
+        variant: "warning",
       });
     },
     [sendToast],
@@ -270,6 +294,7 @@ export const CollectionContentView = ({
               dispatch(
                 addUndo({
                   message: t`There was an error permanently deleting this item.`,
+                  variant: "negative",
                 }),
               );
             }
@@ -277,7 +302,7 @@ export const CollectionContentView = ({
         />
       )}
 
-      <Box className={S.main} mx="auto" mah="100%" px="5%" py="md">
+      <Box className={S.main} mx="auto" mah="100%" px="5%" py="lg">
         <ErrorBoundary>
           <CollectionHeader
             collection={collection}
@@ -288,6 +313,7 @@ export const CollectionContentView = ({
             canUpload={canCreateUpload}
             uploadsEnabled={uploadsEnabled}
             onSaveFile={saveFile}
+            onFilterByType={handleFilterByTypeFromInfo}
           />
         </ErrorBoundary>
 
@@ -322,6 +348,8 @@ export const CollectionContentView = ({
             clear={clear}
             handleMove={handleMove}
             handleCopy={handleCopy}
+            typeFilter={typeFilter}
+            onTypeFilterChange={handleTypeFilterChange}
           />
           <CollectionBulkActions
             collection={collection}

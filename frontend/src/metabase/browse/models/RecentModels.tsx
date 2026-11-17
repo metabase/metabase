@@ -23,7 +23,7 @@ export function RecentModels({
   return (
     <Box
       w="auto"
-      my="lg"
+      my="xl"
       role="grid"
       aria-labelledby={skeleton ? undefined : headingId}
       mah={skeleton ? "11rem" : undefined}
@@ -34,10 +34,10 @@ export function RecentModels({
         fw="bold"
         fz={16}
         color="text-primary"
-        mb="lg"
+        mb="xl"
         style={{ visibility: skeleton ? "hidden" : undefined }}
       >{t`Recents`}</Text>
-      <SimpleGrid cols={{ base: 1, md: 2, lg: 3 }} mb="sm" spacing="md">
+      <SimpleGrid cols={{ base: 1, md: 2, lg: 3 }} mb="sm" spacing="lg">
         {skeleton ? (
           <Repeat times={2}>
             <CompactPinnedItemCardSkeleton icon="model" />

@@ -2,7 +2,7 @@ import { useDebouncedCallback } from "@mantine/hooks";
 import { useCallback } from "react";
 import { c } from "ttag";
 
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { useAdminSetting } from "metabase/settings";
 import type {
   EnterpriseSettingKey,

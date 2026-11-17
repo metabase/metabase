@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 /**
  * Early auth initialization that runs in the bootstrap chunk.
  *
@@ -9,15 +10,15 @@
  * bundle since the bootstrap entry is excluded from splitChunks.
  */
 
+import type { MetabaseProviderPropsStoreExternalProps } from "embedding-sdk-bundle/components/public/ComponentProvider";
+import * as MetabaseError from "embedding-sdk-shared/errors";
+import type { MetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import {
   connectToInstanceAuthSso,
   jwtDefaultRefreshTokenFunction,
   validateSession,
 } from "embedding/auth-common";
-import type { MetabaseProviderPropsStoreExternalProps } from "embedding-sdk-bundle/components/public/ComponentProvider";
-import * as MetabaseError from "embedding-sdk-shared/errors";
-import type { MetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
-import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 
 const SDK_AUTH_STATE_KEY = "METABASE_EMBEDDING_SDK_AUTH_STATE";
 
@@ -109,7 +110,8 @@ function startJwtAuth(authConfig: any) {
     return;
   }
 
-  setAuthState({ status: "in-progress" });
+  const startedAtMs = performance.now();
+  setAuthState({ status: "in-progress", startedAtMs });
 
   performFullAuthFlow({
     metabaseInstanceUrl: authConfig.metabaseInstanceUrl,
@@ -135,11 +137,16 @@ function startJwtAuth(authConfig: any) {
         session: result.session,
         user: result.user,
         siteSettings: result.siteSettings,
+        startedAtMs,
+        completedAtMs: performance.now(),
+        isJwtProviderUriPassed: Boolean(
+          "jwtProviderUri" in authConfig && authConfig.jwtProviderUri,
+        ),
       });
     })
     .catch((error) => {
       console.error("SDK Bootstrap Auth: Auth failed:", error);
-      setAuthState({ status: "error", error });
+      setAuthState({ status: "error", error, startedAtMs });
     });
 }
 

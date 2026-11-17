@@ -2,18 +2,23 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupGroupsEndpoint,
   setupTenantEntpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
-import { AUDIT_DB_ID } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
+import {
+  AUDIT_DB_ID,
+  VIEW_CONVERSATIONS,
+  VIEW_USAGE_LOG,
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
 import {
   ADMIN_GROUP,
   ALL_USERS_GROUP,
@@ -24,6 +29,7 @@ import {
   ROBERT_TENANT,
   selectFilterOption,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/tests/fixtures";
+import * as Lib from "metabase-lib";
 import type { ClickObject } from "metabase-lib";
 import type { Dataset, RawSeries, RowValue } from "metabase-types/api";
 import {
@@ -79,35 +85,20 @@ jest.mock("metabase/visualizations/components/Visualization", () => {
   return { __esModule: true, default: StubVisualization };
 });
 
-const STATS_PATH = Urls.monitorAiAuditingUsage();
+const STATS_PATH = Urls.monitorAiAuditingUsageMetric("conversations");
 const CONVERSATIONS_PATH = Urls.monitorAiAuditingConversations();
 
 const { database: auditDatabase } = buildAuditViewsFixture();
 
-const FIELD_NAME_BY_ID = new Map(
-  (auditDatabase.tables ?? []).flatMap((table) =>
-    (table.fields ?? []).map(
-      (field) => [Number(field.id), field.name] as const,
-    ),
+const TABLE_NAME_BY_ID = new Map(
+  (auditDatabase.tables ?? []).map(
+    (table) => [Number(table.id), table.name] as const,
   ),
 );
 
-function fieldIdByName(tableName: string, fieldName: string): number {
-  const table = auditDatabase.tables?.find(({ name }) => name === tableName);
-  const field = table?.fields?.find(({ name }) => name === fieldName);
-  if (field == null) {
-    throw new Error(`No field ${tableName}.${fieldName} in the audit fixture`);
-  }
-  return Number(field.id);
-}
-
-const CONVERSATIONS_USER_ID_FIELD_ID = fieldIdByName(
-  "v_metabot_conversations",
-  "user_id",
-);
-const CONVERSATIONS_TENANT_ID_FIELD_ID = fieldIdByName(
-  "v_metabot_conversations",
-  "tenant_id",
+const AUDIT_PROVIDER = Lib.metadataProvider(
+  AUDIT_DB_ID,
+  createMockMetadata({ databases: [auditDatabase] }),
 );
 
 const DAY_BUCKETS = ["2026-04-15T00:00:00", "2026-04-16T00:00:00"];
@@ -123,47 +114,63 @@ const BREAKOUT_VALUES: Record<string, RowValue[]> = {
   group_name: ["Administrators", "data"],
 };
 
-type FieldRef = [string, { "temporal-unit"?: string }, number];
-type FilterClause = [string, object, FieldRef, ...unknown[]];
-type RequestStage = {
-  aggregation?: unknown[];
-  breakout?: FieldRef[];
-  filters?: FilterClause[];
-  joins?: unknown[];
-};
-
-function parseStage(body: unknown): RequestStage | null {
+function parseQuery(body: unknown): Lib.Query | null {
   if (typeof body !== "string") {
     return null;
   }
-  return JSON.parse(body).stages?.[0] ?? null;
+  return Lib.fromJsQuery(AUDIT_PROVIDER, JSON.parse(body));
 }
 
-function getBreakoutValues(stage: RequestStage): RowValue[] {
-  const [breakout] = stage.breakout ?? [];
+function getBreakout(query: Lib.Query) {
+  return Lib.breakouts(query, -1)[0];
+}
+
+function getBreakoutValues(query: Lib.Query): RowValue[] {
+  const breakout = getBreakout(query);
   if (!breakout) {
     return [];
   }
-  const columnName = FIELD_NAME_BY_ID.get(breakout[2]);
+  const columnName = Lib.displayInfo(query, -1, breakout).name;
   if (columnName === "created_at") {
-    return breakout[1]?.["temporal-unit"] === "hour"
+    const bucket = Lib.temporalBucket(breakout);
+    return bucket && Lib.displayInfo(query, -1, bucket).shortName === "hour"
       ? HOUR_BUCKETS
       : DAY_BUCKETS;
   }
-  const values = BREAKOUT_VALUES[columnName ?? ""];
+  const values = BREAKOUT_VALUES[columnName];
   if (!values) {
     throw new Error(
-      `Unexpected breakout column in dataset request: ${String(columnName)}`,
+      `Unexpected breakout column in dataset request: ${columnName}`,
     );
   }
   return values;
 }
 
-function buildDatasetResponse(body: unknown): Dataset {
-  const stage = parseStage(body);
-  const values = stage ? getBreakoutValues(stage) : [];
+function buildCountResponse(count: number): Dataset {
+  return createMockDataset({
+    data: createMockDatasetData({
+      cols: [createMockColumn({ source: "aggregation", name: "count" })],
+      rows: [[count]],
+    }),
+    database_id: AUDIT_DB_ID,
+    row_count: 1,
+  });
+}
+
+function getViewName(query: Lib.Query): string {
+  return TABLE_NAME_BY_ID.get(Number(Lib.primarySourceTableId(query))) ?? "";
+}
+
+function buildDatasetResponse(body: unknown, emptyViews: string[]): Dataset {
+  const query = parseQuery(body);
+  if (query && !getBreakout(query)) {
+    return buildCountResponse(emptyViews.includes(getViewName(query)) ? 0 : 2);
+  }
+  const values = query ? getBreakoutValues(query) : [];
   const aggregationNames =
-    (stage?.aggregation ?? []).length > 1 ? ["sum", "sum_2"] : ["count"];
+    query && Lib.aggregations(query, -1).length > 1
+      ? ["sum", "sum_2"]
+      : ["count"];
 
   return createMockDataset({
     data: createMockDatasetData({
@@ -183,49 +190,80 @@ function buildDatasetResponse(body: unknown): Dataset {
   });
 }
 
-function getDatasetStages(): RequestStage[] {
+function getDatasetQueries(): Lib.Query[] {
   return fetchMock.callHistory
     .calls("dataset")
-    .map((call) => parseStage(call.options?.body))
-    .filter((stage): stage is RequestStage => stage != null);
+    .map((call) => parseQuery(call.options?.body))
+    .filter((query): query is Lib.Query => query != null);
 }
 
-function getFilteredFieldIds(): number[] {
-  return getDatasetStages().flatMap((stage) =>
-    (stage.filters ?? []).map((filter) => filter[2]?.[2]),
+function getFilteredColumns(): string[] {
+  return getDatasetQueries().flatMap((query) =>
+    Lib.filters(query, -1).flatMap((filter) => {
+      const parts = Lib.filterParts(query, -1, filter);
+      if (!parts || !("column" in parts)) {
+        return [];
+      }
+      const info = Lib.displayInfo(query, -1, parts.column);
+      return [`${getViewName(query)}.${info.name}`];
+    }),
   );
 }
 
 type SetupOpts = {
   initialRoute?: string;
   hasTenants?: boolean;
+  emptyViews?: string[];
+  heldView?: string;
 };
 
 function setup({
   initialRoute = STATS_PATH,
   hasTenants = false,
+  emptyViews = [],
+  heldView,
 }: SetupOpts = {}) {
   setupEnterprisePlugins();
 
+  const heldMetadata = Promise.withResolvers<void>();
+  const heldCount = Promise.withResolvers<void>();
+
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
   // useAuditTable pulls the table's fields (and its FK targets') from here.
-  fetchMock.post("path:/api/dataset/query_metadata", {
-    databases: [auditDatabase],
-    tables: auditDatabase.tables ?? [],
-    fields: (auditDatabase.tables ?? []).flatMap((table) => table.fields ?? []),
+  fetchMock.post("path:/api/dataset/query_metadata", async (call) => {
+    const query = parseQuery(call.options.body);
+    if (query && getViewName(query) === heldView) {
+      await heldMetadata.promise;
+    }
+    return {
+      databases: [auditDatabase],
+      tables: auditDatabase.tables ?? [],
+      fields: (auditDatabase.tables ?? []).flatMap(
+        (table) => table.fields ?? [],
+      ),
+    };
   });
   fetchMock.post(
     "path:/api/dataset",
-    (call) => buildDatasetResponse(call?.options.body),
+    async (call) => {
+      const query = parseQuery(call.options.body);
+      if (query && !getBreakout(query) && getViewName(query) === heldView) {
+        await heldCount.promise;
+      }
+      return buildDatasetResponse(call.options.body, emptyViews);
+    },
     { name: "dataset" },
   );
   setupUsersEndpoints([BOBBY, ROBERT]);
   setupGroupsEndpoint([ALL_USERS_GROUP, ADMIN_GROUP, DATA_GROUP]);
   setupTenantEntpoints([BOBBY_TENANT, ROBERT_TENANT]);
 
-  return renderWithProviders(
+  const view = renderWithProviders(
     <>
-      <Route path={STATS_PATH} element={<ConversationStatsPage />} />
+      <Route
+        path={`${Urls.monitorAiAuditingUsage()}/:metric`}
+        element={<ConversationStatsPage />}
+      />
       <Route
         path={CONVERSATIONS_PATH}
         element={<div data-testid="conversations-page" />}
@@ -245,6 +283,12 @@ function setup({
       }),
     },
   );
+
+  return {
+    ...view,
+    releaseHeldMetadata: heldMetadata.resolve,
+    releaseHeldCount: heldCount.resolve,
+  };
 }
 
 async function findChartCard(title: string): Promise<HTMLElement> {
@@ -295,9 +339,11 @@ describe("ConversationStatsPage", () => {
       { tab: "Tokens", metric: "tokens" },
       { tab: "Messages", metric: "messages" },
     ])(
-      "switches to the $metric charts and records the metric in the url",
+      "switches to the $metric charts at the $metric route, keeping the filters",
       async ({ tab, metric }) => {
-        const { router } = setup();
+        const { router } = setup({
+          initialRoute: `${STATS_PATH}?date=past6days~`,
+        });
 
         await screen.findByText("Conversations by day");
         await userEvent.click(screen.getByRole("tab", { name: tab }));
@@ -310,14 +356,29 @@ describe("ConversationStatsPage", () => {
           expect(await screen.findByText(title)).toBeInTheDocument();
         }
         await waitFor(() => {
-          expect(parseSearchQuery(router?.location.search ?? "")).toMatchObject(
-            {
-              metric,
-            },
-          );
+          expect(router?.location).toMatchObject({
+            pathname: Urls.monitorAiAuditingUsageMetric(metric),
+            search: "?date=past6days~",
+          });
         });
       },
     );
+
+    it("redirects an unknown metric to the Conversations tab, keeping the filters", async () => {
+      const { router } = setup({
+        initialRoute: `${Urls.monitorAiAuditingUsage()}/unknown?date=past6days~`,
+      });
+
+      await waitFor(() => {
+        expect(router?.location).toMatchObject({
+          pathname: STATS_PATH,
+          search: "?date=past6days~",
+        });
+      });
+      expect(
+        await screen.findByRole("tab", { name: "Conversations" }),
+      ).toHaveAttribute("aria-selected", "true");
+    });
 
     it("buckets the timeseries by hour for a single-day date filter", async () => {
       setup({ initialRoute: `${STATS_PATH}?date=${SINGLE_DAY}` });
@@ -356,6 +417,61 @@ describe("ConversationStatsPage", () => {
       expect(
         await screen.findByText("Conversations by day"),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("empty state", () => {
+    it("shows one empty state instead of the charts when nothing matches the filters", async () => {
+      setup({ emptyViews: [VIEW_CONVERSATIONS] });
+
+      expect(await screen.findByText("No conversations")).toBeInTheDocument();
+      expect(
+        screen.getByRole("tab", { name: "Conversations" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("conversation-filters-date-select"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Conversations by day"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the token charts when there is token usage but no conversations", async () => {
+      setup({
+        initialRoute: Urls.monitorAiAuditingUsageMetric("tokens"),
+        emptyViews: [VIEW_CONVERSATIONS],
+      });
+
+      expect(await screen.findByText("Tokens by day")).toBeInTheDocument();
+    });
+
+    it("keeps the loader up until the Tokens count comes back", async () => {
+      const { releaseHeldMetadata, releaseHeldCount } = setup({
+        emptyViews: [VIEW_CONVERSATIONS, VIEW_USAGE_LOG],
+        heldView: VIEW_USAGE_LOG,
+      });
+
+      await screen.findByText("No conversations");
+      await userEvent.click(screen.getByRole("tab", { name: "Tokens" }));
+
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+      expect(screen.queryByText("No token usage")).not.toBeInTheDocument();
+
+      releaseHeldMetadata();
+      await waitFor(() =>
+        expect(
+          getDatasetQueries().some(
+            (query) =>
+              !getBreakout(query) && getViewName(query) === VIEW_USAGE_LOG,
+          ),
+        ).toBe(true),
+      );
+
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+
+      releaseHeldCount();
+
+      expect(await screen.findByText("No token usage")).toBeInTheDocument();
     });
   });
 
@@ -404,8 +520,8 @@ describe("ConversationStatsPage", () => {
         });
       });
       await waitFor(() => {
-        expect(getFilteredFieldIds()).toContain(
-          CONVERSATIONS_TENANT_ID_FIELD_ID,
+        expect(getFilteredColumns()).toContain(
+          `${VIEW_CONVERSATIONS}.tenant_id`,
         );
       });
     });
@@ -427,7 +543,7 @@ describe("ConversationStatsPage", () => {
         });
       });
       await waitFor(() => {
-        expect(getFilteredFieldIds()).toContain(CONVERSATIONS_USER_ID_FIELD_ID);
+        expect(getFilteredColumns()).toContain(`${VIEW_CONVERSATIONS}.user_id`);
       });
     });
 
@@ -443,10 +559,10 @@ describe("ConversationStatsPage", () => {
         });
       });
       await waitFor(() => {
-        const joinedStages = getDatasetStages().filter(
-          (stage) => (stage.joins ?? []).length > 0,
+        const joinedQueries = getDatasetQueries().filter(
+          (query) => Lib.joins(query, -1).length > 0,
         );
-        expect(joinedStages.length).toBeGreaterThan(0);
+        expect(joinedQueries.length).toBeGreaterThan(0);
       });
     });
   });

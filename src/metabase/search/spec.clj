@@ -5,37 +5,39 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.error :as me]
    [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]
    [toucan2.tools.transformed :as t2.transformed]))
 
 (def search-models
   "Search model string names, ordered by indexing priority.
    Important / cheaper models come first so partial index is usable as soon as possible during a full index."
-  ["collection"
-   "dashboard"
-   "segment"
-   "measure"
-   "database"
-   "action"
-   "document"
-   "exploration"
-   "transform"
-   ;; The following come last as they can be slow to index due to:
-   ;; - cardinality (table, indexed-entity),
-   ;; - cost (e.g. large text payloads and native-query parsing for cards)
-   "table"
-   "metric"
-   "card"
-   "dataset"
-   ;; These can easily dwarf the cardinality of other entities, hence being dead last.
-   "indexed-entity"])
+  (-> ["collection"
+       "dashboard"
+       "segment"
+       "measure"
+       "database"
+       "action"
+       "document"
+       "exploration"
+       "transform"]
+      ;; An OSS build has no model namespace to resolve data apps from.
+      (cond-> config/ee-available? (conj "data-app"))
+      (into [;; The following come last as they can be slow to index due to:
+             ;; - cardinality (table, indexed-entity),
+             ;; - cost (e.g. large text payloads and native-query parsing for cards)
+             "table"
+             "metric"
+             "card"
+             "dataset"
+             ;; These can easily dwarf the cardinality of other entities, hence being dead last.
+             "indexed-entity"])))
 
 (def raw-spec-forms
   "Stores the raw (unevaluated) spec forms captured at macro expansion time.
@@ -90,7 +92,19 @@
   ;; `:document` is the document model's prose-mirror body: it's indexed as searchable text (via
   ;; ast->text) but the raw JSON should never be echoed back in the search response or bloat the index row.
   ;; `:data_layer` also stays IN: Metabot surfaces it on table results so the LLM sees a table's data layer.
-  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document})
+  ;; The `:table_collection_*` and `:table_is_published` render terms only feed the measure and segment specs'
+  ;; `:root-collection-type` function and their reindex hooks, so they stay out of the response.
+  #{:dataset_query
+    :document
+    :exploration_id
+    :last_viewed_at
+    :native_query
+    :pinned
+    :table_collection_id
+    :table_collection_location
+    :table_collection_type
+    :table_is_published
+    :view_count})
 
 (def attr-types
   "The abstract types of each attribute."
@@ -101,6 +115,7 @@
    :dashboard-id            :int
    :dashboardcard-count     :int
    :database-id             :pk
+   :exploration-id          :int
    :id                      :text
    :last-edited-at          :timestamp
    :last-editor-id          :pk
@@ -139,6 +154,7 @@
          :official-collection
          :dashboard-id
          :dashboardcard-count
+         :exploration-id
          :last-viewed-at
          :pinned
          :verified                                          ;;  in addition to being a filter, this is also a ranker
@@ -311,12 +327,8 @@
     expr))
 
 (defn- insert-values [expr table m]
-  (walk/postwalk
-   (fn [x]
-     (if (and (keyword? x) (has-table? table x))
-       (get m (remove-table table x))
-       x))
-   expr))
+  (match/replace-all expr
+    (kw :guard (and (keyword? kw) (has-table? table kw))) (get m (remove-table table kw))))
 
 (defn- construct-source-where [id-fields]
   (cond
@@ -404,7 +416,7 @@
      embedding text (they remain in full-text search). Use for fields whose raw value is
      not suitable for semantic search.
    - `:render-terms` - Additional attributes needed for display (required)
-   - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated users only)
+   - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated, non-routed users only)
    - `:where` - HoneySQL where clause to filter indexed records
    - `:bookmark` - HoneySQL join expression to detect if entity is bookmarked by current user
    - `:joins` - Map of join aliases to [model join-condition] tuples
@@ -445,12 +457,33 @@
   []
   (model-hooks* (methods spec*)))
 
+(defn- collect-updated-columns
+  "The `:updated`-qualified columns `expr` references, without their table qualifier."
+  [expr]
+  (into #{}
+        (comp (filter #(and (keyword? %) (has-table? :updated %)))
+              (map #(remove-table :updated %)))
+        (tree-seq coll? seq expr)))
+
+(defn hook-where-fields
+  "The columns of `model` whose row values parameterize the where-clauses of the search hooks it feeds.
+  A capture layer must snapshot (at least) these for [[search-models-to-update]] to work on a row that no
+  longer exists, e.g. the pre-image of a deleted row."
+  [model]
+  (not-empty
+   (into #{}
+         (mapcat (comp collect-updated-columns :where))
+         (get (model-hooks) model))))
+
 (defn- instance->db-values
   "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
   [instance]
   (let [xforms (try
-                 (#'t2.transformed/in-transforms (t2/model instance))
-                 (catch Exception _     ; this happens for :model/ModelIndexValue, which has no transforms
+                 (let [model (t2/model instance)]
+                   ;; We know ModelIndexValue to have no transforms.
+                   (when-not (and (keyword? model) (= (name model) "ModelIndexValue"))
+                     (#'t2.transformed/in-transforms model)))
+                 (catch Exception _     ; may happen for other models that have no transforms
                    nil))]
     (reduce-kv
      (fn [m k v]
@@ -475,7 +508,6 @@
   (doseq [d (keys (model-hooks))]
     (derive d :hook/search-index))
 
-  (search-models-to-update (t2/select-one :model/Card))
   (methods spec)
   (model-hooks)
 
@@ -504,6 +536,7 @@
     (sequential? form) (mapv canonicalize form)
     :else form))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *testing-only-index-version-hash*
   "Override for tests that need a specific index version."
   nil)

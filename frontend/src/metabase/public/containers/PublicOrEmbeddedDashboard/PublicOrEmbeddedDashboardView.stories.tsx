@@ -2,11 +2,19 @@
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { HttpResponse, http } from "msw";
-import { useEffect, useMemo } from "react";
+import { type ComponentType, useEffect, useMemo } from "react";
 import _ from "underscore";
 
 import { getPublicStore } from "__support__/entities-store";
-import { createWaitForResizeToStopDecorator } from "__support__/storybook";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+} from "__support__/state";
+import {
+  createWaitForChartsDecorator,
+  createWaitForResizeToStopDecorator,
+} from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
@@ -15,17 +23,12 @@ import {
   type MockDashboardContextProps,
 } from "metabase/dashboard/context/mock-context";
 import { MetabaseReduxProvider } from "metabase/redux";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
-import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { ObjectDetail } from "metabase/visualizations/visualizations/ObjectDetail";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
+import { registerVisualization } from "metabase/viz-core";
 import type {
   Dashboard,
   DashboardCard,
@@ -50,7 +53,11 @@ registerVisualization(BarChart);
 export default {
   title: "App/Embed/PublicOrEmbeddedDashboardView",
   component: PublicOrEmbeddedDashboardView,
-  decorators: [ReduxDecorator, createWaitForResizeToStopDecorator()],
+  decorators: [
+    ReduxDecorator,
+    createWaitForChartsDecorator(),
+    createWaitForResizeToStopDecorator(),
+  ],
   parameters: {
     layout: "fullscreen",
     msw: {
@@ -63,7 +70,7 @@ export default {
   },
 };
 
-function ReduxDecorator(Story: StoryFn, context: StoryContext) {
+function ReduxDecorator(Story: ComponentType, context: StoryContext) {
   // Unjustified type cast. FIXME
   const dashboard = (context.args.dashboard as Dashboard) ?? createDashboard();
   const initialState = createMockState({
@@ -220,6 +227,15 @@ export const NarrowWithManyTabs = {
     }),
   },
   decorators: [NarrowDecorator],
+};
+
+export const NarrowWithManyTabsDarkTheme = {
+  render: Template,
+  args: {
+    ...NarrowWithManyTabs.args,
+    theme: "night",
+  },
+  decorators: [NarrowDecorator, DarkBackgroundDecorator],
 };
 
 export const LightThemeDefault = {
@@ -381,7 +397,7 @@ export function ComponentCompatibility() {
           Mantine Tooltip
         </Card>
       </Tooltip>
-      <Popover withArrow shadow="md" opened>
+      <Popover withArrow shadow="sm" opened>
         <Popover.Target>
           <Card withBorder display="inline-block">
             Mantine Popover
@@ -433,7 +449,7 @@ export const CardVisualizationsDarkTheme = {
   },
 };
 
-function ScrollDecorator(Story: StoryFn) {
+function ScrollDecorator(Story: ComponentType) {
   const asyncCallback = useMemo(() => createAsyncCallback(), []);
 
   useEffect(() => {
@@ -455,7 +471,7 @@ function ScrollDecorator(Story: StoryFn) {
   return <Story />;
 }
 
-function DarkBackgroundDecorator(Story: StoryFn) {
+function DarkBackgroundDecorator(Story: ComponentType) {
   return (
     <Box style={{ backgroundColor: "#434e56" }} mih="100vh">
       <Story />
@@ -463,7 +479,7 @@ function DarkBackgroundDecorator(Story: StoryFn) {
   );
 }
 
-function LightBackgroundDecorator(Story: StoryFn) {
+function LightBackgroundDecorator(Story: ComponentType) {
   return (
     <Box style={{ backgroundColor: "#ddd" }} mih="100vh">
       <Story />
@@ -471,7 +487,7 @@ function LightBackgroundDecorator(Story: StoryFn) {
   );
 }
 
-function NarrowDecorator(Story: StoryFn) {
+function NarrowDecorator(Story: ComponentType) {
   return (
     <Box w={800} h={600} style={{ position: "relative" }}>
       <Story />

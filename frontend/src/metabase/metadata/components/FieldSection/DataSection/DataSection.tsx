@@ -2,12 +2,11 @@ import { type ChangeEvent, memo, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import {
   canCoerceFieldType,
   getFieldRawName,
-  getRawTableFieldId,
 } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, Switch, rem } from "metabase/ui";
 import type { Field } from "metabase-types/api";
@@ -22,14 +21,16 @@ import SubInputIllustration from "./illustrations/sub-input.svg?component";
 
 type DataSectionBaseProps = {
   field: Field;
+  disabled?: boolean;
   onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 };
 
 const DataSectionBase = ({
   field,
+  disabled,
   onTrackMetadataChange,
 }: DataSectionBaseProps) => {
-  const id = getRawTableFieldId(field);
+  const id = field.id;
   const [isCasting, setIsCasting] = useState(
     field ? field.coercion_strategy != null : false,
   );
@@ -124,7 +125,7 @@ const DataSectionBase = ({
 
           {canCoerceFieldType(field) && (
             <>
-              <Flex gap="xs" ml={rem(12)} wrap="nowrap">
+              <Flex gap="xxs" ml={rem(12)} wrap="nowrap">
                 {isCasting ? (
                   <SubInputFollowIllustration />
                 ) : (
@@ -134,19 +135,20 @@ const DataSectionBase = ({
                 <Stack>
                   <Switch
                     checked={isCasting}
+                    disabled={disabled}
                     classNames={{
                       body: S.switchBody,
                     }}
                     flex="1"
                     label={t`Cast to a specific data type`}
-                    mt="md"
-                    size="xs"
+                    mt="lg"
                     onChange={handleCastingChange}
                   />
                   {isCasting && (
                     <CoercionStrategyPicker
                       autoFocus={autoFocusCoercionPicker}
                       baseType={field.base_type}
+                      disabled={disabled}
                       dropdownOpened={isCoercionPickerOpen}
                       value={field.coercion_strategy ?? undefined}
                       onChange={handleCoercionStrategyChange}

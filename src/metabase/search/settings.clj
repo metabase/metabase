@@ -32,7 +32,7 @@
   :type       :keyword)
 
 (defsetting additional-search-engines
-  (i18n/deferred-tru "Engines to keep active (indexed and queryable per-request) in addition to the default engine.")
+  "Engines to keep active (indexed and queryable per-request) in addition to the default engine."
   :visibility :internal
   :export?    false
   :encryption :no
@@ -54,7 +54,7 @@
   :doc        false)
 
 (defsetting experimental-search-weight-overrides
-  (i18n/deferred-tru "Used to override weights used for search ranking")
+  "Used to override weights used for search ranking"
   :visibility :internal
   :encryption :no
   :export?    false
@@ -63,10 +63,10 @@
   :doc        false)
 
 (defsetting search-language
-  (i18n/deferred-tru "When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.
-  Value must be a valid configured language option in your database such as ''english'' or ''simple''")
+  "When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.
+  Value must be a valid configured language option in your database such as 'english' or 'simple'"
   :visibility :internal
   :export?    false
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default    nil
   :type       :string)

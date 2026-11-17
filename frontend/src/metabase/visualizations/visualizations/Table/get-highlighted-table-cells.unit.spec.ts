@@ -1,8 +1,8 @@
+import { getHighlightedTableCells } from "metabase/visualizations/visualizations/Table/get-highlighted-table-cells";
 import type {
   HighlightedObject,
   PivotedDatasetColumn,
-} from "metabase/visualizations/types";
-import { getHighlightedTableCells } from "metabase/visualizations/visualizations/Table/get-highlighted-table-cells";
+} from "metabase/viz-core";
 import {
   createMockCard,
   createMockColumn,

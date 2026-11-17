@@ -1,14 +1,12 @@
 import type {
-  ChartBoundsCoords,
-  ChartLayout,
-  TicksDimensions,
-} from "metabase/visualizations/echarts/cartesian/layout/types";
-import type {
   BaseCartesianChartModel,
   BreakoutSeriesModel,
+  ChartBoundsCoords,
+  ChartLayout,
+  Padding,
   SeriesModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
-import type { Padding } from "metabase/visualizations/types";
+  TicksDimensions,
+} from "metabase/viz-core";
 import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
 
 type MockChartLayoutOpts = Partial<
@@ -28,6 +26,7 @@ export const createMockChartLayout = (
     outerHeight: 0,
     outerWidth: 800,
     padding: { top: 0, left: 0, bottom: 0, right: 0, ...padding },
+    internalInset: { left: 0, right: 0 },
     bounds: { top: 0, left: 0, bottom: 0, right: 0, ...bounds },
     ticksDimensions: {
       yTicksWidthLeft: 0,
@@ -83,6 +82,7 @@ export const createMockCartesianChartModel = (
       column,
       columnIndex: 0,
       columnByCardId: {},
+      columns: [column],
     },
     seriesModels: [],
     dataset: [],

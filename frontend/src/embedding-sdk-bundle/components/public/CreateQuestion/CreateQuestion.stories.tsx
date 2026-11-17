@@ -19,7 +19,7 @@ export default {
 
 const Template: StoryFn<CreateQuestionComponentProps> = (args) => {
   return (
-    <Flex p="xl">
+    <Flex p="xxl">
       <CreateQuestion {...args} />
     </Flex>
   );

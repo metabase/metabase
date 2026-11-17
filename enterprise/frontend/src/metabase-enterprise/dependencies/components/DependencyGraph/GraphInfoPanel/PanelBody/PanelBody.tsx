@@ -18,6 +18,8 @@ import {
   getNodeLastEditedAt,
   getNodeLastEditedBy,
   getNodeOwner,
+  getNodeParameters,
+  getParameterIcon,
 } from "../../../../utils";
 import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
 import { GraphExternalLink } from "../../GraphExternalLink";
@@ -33,10 +35,11 @@ type PanelBodyProps = {
 
 export function PanelBody({ node, getGraphUrl }: PanelBodyProps) {
   return (
-    <Stack className={S.body} p="lg" gap="lg">
+    <Stack className={S.body} p="xl" gap="xl">
       <DescriptionSection node={node} />
       <OwnerSection node={node} />
       <CreatorAndLastEditorSection node={node} />
+      <ParametersSection node={node} />
       <TableSection node={node} getGraphUrl={getGraphUrl} />
       <FieldsSection node={node} />
     </Stack>
@@ -72,7 +75,7 @@ function OwnerSection({ node }: SectionProps) {
 
   const owner = getNodeOwner(node);
   return (
-    <Stack gap="xs" lh="1rem">
+    <Stack gap="xxs" lh="1rem">
       <Title order={6}>{t`Owner`}</Title>
       {owner != null ? (
         <Text lh="h4">{getUserName(owner)}</Text>
@@ -102,6 +105,37 @@ function CreatorAndLastEditorSection({ node }: SectionProps) {
       lastEditedAt={editedAt}
       lastEditor={editedBy}
     />
+  );
+}
+
+function ParametersSection({ node }: SectionProps) {
+  const parameters = getNodeParameters(node);
+  if (parameters == null) {
+    return null;
+  }
+
+  return (
+    <Stack gap="lg" lh="1rem">
+      <Title order={6}>{t`Parameters`}</Title>
+      {parameters.length > 0 ? (
+        parameters.map((parameter) => (
+          <Group
+            className={CS.textWrap}
+            key={parameter.id}
+            gap="sm"
+            wrap="nowrap"
+          >
+            <FixedSizeIcon
+              name={getParameterIcon(parameter)}
+              c="text-secondary"
+            />
+            {parameter.name}
+          </Group>
+        ))
+      ) : (
+        <Text lh="h4" c="text-secondary">{t`No parameters`}</Text>
+      )}
+    </Stack>
   );
 }
 
@@ -141,7 +175,7 @@ function FieldsSection({ node }: SectionProps) {
   }
 
   return (
-    <Stack gap="md" lh="1rem">
+    <Stack gap="lg" lh="1rem">
       <Title className={CS.textWrap} order={6}>
         {getNodeFieldsLabelWithCount(fields.length)}
       </Title>

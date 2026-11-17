@@ -47,14 +47,17 @@
   `{:name ... :description ... :parameters <JSON Schema>}`. Adapters wrap this in their provider's envelope.
 
   Filters feature-gated properties from the parameter schema (see [[filter-schema-by-features]]) and strips the
-  `Inputs: ...` block that `mu/defn` appends to the docstring."
-  [{:keys [tool-name doc schema]}]
-  (let [[_:=> [_:cat params] _out] schema
-        params                     (filter-schema-by-features params)
-        doc                        (if (str/starts-with? (or doc "") "Inputs: ")
-                                     ;; Strip the text that mu/defn adds.
-                                     (second (str/split doc #"\n\n  " 2))
-                                     doc)]
-    {:name        tool-name
-     :description doc
-     :parameters  (mjs/transform params {:additionalProperties false})}))
+  `Inputs: ...` block that `mu/defn` appends to the docstring. An entry carrying a `:declaration` delay, which the
+  agent creates once per turn, returns its value instead."
+  [{:keys [tool-name doc schema declaration]}]
+  (if declaration
+    @declaration
+    (let [[_:=> [_:cat params] _out] schema
+          params                     (filter-schema-by-features params)
+          doc                        (if (str/starts-with? (or doc "") "Inputs: ")
+                                       ;; Strip the text that mu/defn adds.
+                                       (second (str/split doc #"\n\n  " 2))
+                                       doc)]
+      {:name        tool-name
+       :description doc
+       :parameters  (mjs/transform params {:additionalProperties false})})))

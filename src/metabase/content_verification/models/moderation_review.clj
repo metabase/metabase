@@ -1,8 +1,10 @@
 (ns metabase.content-verification.models.moderation-review
   (:require
-   [metabase.app-db.core :as app-db]
+   [metabase.api.common :as api]
+   [metabase.content-verification.db :as content-verification.db]
    [metabase.content-verification.impl :as moderation]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -31,10 +33,34 @@
 
 (doto :model/ModerationReview
   (derive :metabase/model)
-  ;;; TODO: this is wrong, but what should it be?
-  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/search-index))
+
+(defn- root-collection-permission-at-least?
+  "Whether the current user has `permission` or more on the default root Collection, which a ModerationReview, having
+  no Collection of its own, is checked against."
+  [permission]
+  (perms/collection-permission-at-least?
+   (get (perms/collection-permissions-for-user (api/current-user-info) [nil] {:root-namespace nil}) nil)
+   permission))
+
+(methodical/defmethod t2/batched-hydrate [:model/ModerationReview :can_read]
+  [_model _k reviews]
+  (let [can-read (root-collection-permission-at-least? :read)]
+    (for [review reviews]
+      (when review
+        (vary-meta review assoc :can_read can-read)))))
+
+(methodical/defmethod t2/batched-hydrate [:model/ModerationReview :can_write]
+  [_model _k reviews]
+  (let [can-write (root-collection-permission-at-least? :read-and-write)]
+    (for [review reviews]
+      (when review
+        (assoc review :can_write can-write)))))
+
+(defmethod mi/can-create? :model/ModerationReview
+  [_model _review]
+  (root-collection-permission-at-least? :read-and-write))
 
 (t2/deftransforms :model/ModerationReview
   {:moderated_item_type mi/transform-keyword})
@@ -48,25 +74,19 @@
   ensures there are one fewer than that so you can add afterwards."
   [item-id   :- :int
    item-type :- :string]
-  (let [ids (into #{} (comp (map :id)
+  (let [;; cannot put the offset in this query as mysql doesn't play nice. It requires a limit as well which we do
+        ;; not want to give. The offset is only 10 though so its not a huge savings and we run this on every entry so
+        ;; the max number is 10, delete the extra, and insert a new one to arrive at 10 again, our invariant.
+        ids (into #{} (comp (map :id)
                             (drop (dec max-moderation-reviews)))
-                  (app-db/query {:select   [:id]
-                                 :from     [:moderation_review]
-                                 :where    [:and
-                                            [:= :moderated_item_id item-id]
-                                            [:= :moderated_item_type item-type]]
-                                 ;; cannot put the offset in this query as mysql doesn't play nice. It requires a limit
-                                 ;; as well which we do not want to give. The offset is only 10 though so its not a huge
-                                 ;; savings and we run this on every entry so the max number is 10, delete the extra,
-                                 ;; and insert a new one to arrive at 10 again, our invariant.
-                                 :order-by [[:id :desc]]}))]
+                  (content-verification.db/moderation-review-ids-for-item item-id item-type))]
     (when (seq ids)
-      (t2/delete! :model/ModerationReview :id [:in ids]))))
+      (content-verification.db/delete-moderation-reviews! ids))))
 
 (mu/defn create-review!
   "Create a new ModerationReview"
   [params :-
-   [:map
+   [:map {:closed true}
     [:moderated_item_id       ms/PositiveInt]
     [:moderated_item_type     moderation/moderated-item-types]
     [:moderator_id            ms/PositiveInt]
@@ -74,7 +94,6 @@
     [:text                {:optional true} [:maybe :string]]]]
   (t2/with-transaction [_conn]
     (delete-extra-reviews! (:moderated_item_id params) (:moderated_item_type params))
-    (t2/update! :model/ModerationReview {:moderated_item_id   (:moderated_item_id params)
-                                         :moderated_item_type (:moderated_item_type params)}
-                {:most_recent false})
-    (first (t2/insert-returning-instances! :model/ModerationReview (assoc params :most_recent true)))))
+    (content-verification.db/unmark-most-recent-moderation-reviews! (:moderated_item_id params)
+                                                                    (:moderated_item_type params))
+    (content-verification.db/insert-moderation-review! (assoc params :most_recent true))))

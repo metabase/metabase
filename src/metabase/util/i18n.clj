@@ -2,12 +2,12 @@
   "i18n functionality."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase.util.i18n.common :as i18n.common]
    [metabase.util.i18n.impl :as i18n.impl]
    [metabase.util.i18n.validation :as i18n.validation]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [net.cgrand.macrovich :as macros]
    [potemkin :as p]
    [potemkin.types :as p.types])
@@ -21,17 +21,20 @@
  [i18n.common
   join-strings-with-conjunction]
  [i18n.impl
+  available-locale-names
   available-locale?
   fallback-locale
   locale
   normalized-locale-string
   translate])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *user-locale*
   "Bind this to a string, keyword, or `Locale` to set the locale for the current User. To get the locale we should
   *use*, use the `user-locale` function instead."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *site-locale-override*
   "Bind this to a string, keyword to override the value returned by `site-locale`. For testing purposes,
   such as when swapping out an application database temporarily, when the setting table may not even exist."
@@ -146,6 +149,7 @@
              {:error/message (str "instance of " (.getCanonicalName klass))}
              (partial instance? klass)])]
     [:or
+     {:json-schema {:type "string"}}
      (instance-of UserLocalizedString)
      (instance-of SiteLocalizedString)]))
 
@@ -306,10 +310,8 @@
 (defn localized-strings->strings
   "Walks the datastructure `x` and converts any localized strings to regular string"
   [x]
-  (walk/postwalk (fn [node]
-                   (cond-> node
-                     (localized-string? node) str))
-                 x))
+  (match/replace-all x
+    #'localized-string? (str &match)))
 
 ;;;; Clojure/ClojureScript macros
 

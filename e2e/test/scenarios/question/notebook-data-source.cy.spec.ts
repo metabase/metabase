@@ -26,7 +26,7 @@ describe("scenarios > notebook > data source", () => {
 
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        // databases is selected already
+        assertDataPickerEntitySelected(0, "Databases");
         H.entityPickerModalLevel(1).findByText("Sample Database").click();
         assertDataPickerEntityNotSelected(2, "Accounts");
         assertDataPickerEntityNotSelected(2, "Analytic Events");
@@ -70,6 +70,18 @@ describe("scenarios > notebook > data source", () => {
       assertDataPickerEntitySelected(2, "Orders");
     });
 
+    it("should correctly display a table as the model's source when editing simple model's query", () => {
+      cy.visit(`/model/${ORDERS_MODEL_ID}/query`);
+
+      cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
+      H.miniPicker().within(() => {
+        H.miniPickerHeader().should("contain", "Sample Database");
+        cy.findByText("Orders").should("exist");
+      });
+    });
+  });
+
+  describe("multi-schema table as a source", () => {
     it(
       "should correctly display a table from a multi-schema database (metabase#39807,metabase#11958)",
       { tags: "@external" },
@@ -130,22 +142,29 @@ describe("scenarios > notebook > data source", () => {
         H.miniPicker().within(() => {
           cy.findByText(dbName).click();
           cy.findByText("Domestic").click();
+          cy.findByText("Animals").should("be.visible");
+          cy.findByText("Birds").should("not.exist");
           cy.findByText("Animals").click();
         });
         H.popover().findByText("Name").click();
         H.popover().findByText("Name").click();
+
+        cy.log("select a table that only exists in the first schema");
+        H.join();
+        H.miniPicker().within(() => {
+          cy.findByText(dbName).click();
+          cy.findByText(schemaName).click();
+          cy.findByText("Animals").should("be.visible");
+          cy.findByText("Birds").click();
+        });
+        H.popover().findByText("Name").click();
+        H.popover().findByText("Name").click();
+        H.getNotebookStep("join", { stage: 0, index: 2 })
+          .findByLabelText("Right table")
+          .findByText("Birds")
+          .should("be.visible");
       },
     );
-
-    it("should correctly display a table as the model's source when editing simple model's query", () => {
-      cy.visit(`/model/${ORDERS_MODEL_ID}/query`);
-
-      cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
-      H.miniPicker().within(() => {
-        H.miniPickerHeader().should("contain", "Sample Database");
-        cy.findByText("Orders").should("exist");
-      });
-    });
   });
 
   describe("library table as a source", () => {
@@ -156,11 +175,11 @@ describe("scenarios > notebook > data source", () => {
       H.createLibrary();
     });
 
-    it("should allow to pick a published table from the mini picker", () => {
+    it("should allow to pick a published table from the mini picker and the data picker", () => {
       H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
       H.startNewQuestion();
 
-      cy.log("verify the picker when nothing is selected");
+      cy.log("mini picker: verify the picker when nothing is selected");
       H.popover().findByText("Orders").click();
       H.join();
       H.popover().findByText("Products").click();
@@ -168,37 +187,7 @@ describe("scenarios > notebook > data source", () => {
       H.tableHeaderColumn("User ID").should("be.visible");
       H.tableHeaderColumn("Products → ID").should("be.visible");
 
-      cy.log("verify the picker when there is a selected item");
-      H.openNotebook();
-      H.getNotebookStep("data").findByText("Orders").click();
-      H.popover().findByText("Products").click();
-      H.getNotebookStep("data").findByText("Products").should("be.visible");
-    });
-
-    it("should allow to pick a publish table from the data picker", () => {
-      H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
-      H.startNewQuestion();
-
-      cy.log("verify the picker when nothing is selected");
-      H.popover().findByText("Browse all").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalLevel(0).findByText("Library").click();
-        H.entityPickerModalLevel(1).findByText("Data").click();
-        cy.findByText("Orders").click();
-      });
-
-      H.join();
-      H.popover().findByText("Browse all").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalLevel(0).findByText("Library").click();
-        H.entityPickerModalLevel(1).findByText("Data").click();
-        cy.findByText("Products").click();
-      });
-
-      H.visualize();
-      H.tableHeaderColumn("User ID").should("be.visible");
-      H.tableHeaderColumn("Products → ID").should("be.visible");
-
+      cy.log("data picker: verify the picker when there is a selected item");
       H.openNotebook();
       H.getNotebookStep("data").findByText("Orders").click();
       H.popover().within(() => {
@@ -223,6 +212,34 @@ describe("scenarios > notebook > data source", () => {
           "true",
         );
       });
+      H.entityPickerModal().button("Close").click();
+
+      cy.log("mini picker: verify the picker when there is a selected item");
+      H.getNotebookStep("data").findByText("Orders").click();
+      H.popover().findByText("Products").click();
+      H.getNotebookStep("data").findByText("Products").should("be.visible");
+
+      H.startNewQuestion();
+
+      cy.log("data picker: verify the picker when nothing is selected");
+      H.popover().findByText("Browse all").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalLevel(0).findByText("Library").click();
+        H.entityPickerModalLevel(1).findByText("Data").click();
+        cy.findByText("Orders").click();
+      });
+
+      H.join();
+      H.popover().findByText("Browse all").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalLevel(0).findByText("Library").click();
+        H.entityPickerModalLevel(1).findByText("Data").click();
+        cy.findByText("Products").click();
+      });
+
+      H.visualize();
+      H.tableHeaderColumn("User ID").should("be.visible");
+      H.tableHeaderColumn("Products → ID").should("be.visible");
     });
   });
 
@@ -364,10 +381,10 @@ describe("issue 34350", { tags: "@external" }, () => {
 
     H.visualize();
 
+    cy.findAllByTestId("cell-data").should("contain", "37.65");
     H.queryBuilderMain()
       .findByText("There was a problem with your question")
       .should("not.exist");
-    cy.findAllByTestId("cell-data").should("contain", "37.65");
   });
 });
 
@@ -460,7 +477,11 @@ describe("issue 32252", () => {
     cy.findByTestId("sidebar-toggle").click();
     H.navigationSidebar().findByText("Our analytics").click();
 
-    cy.findAllByRole("button", { name: "Actions" }).eq(0).click();
+    // The items table renders with zero rows while the items query is in flight, so
+    // the row's Actions button mounts late. Anchor on the row before opening its menu,
+    // otherwise the click lands on a freshly mounted Mantine Menu target and is dropped.
+    H.getUnpinnedSection().findByText("My collection").should("be.visible");
+    H.openUnpinnedItemMenu("My collection");
     H.popover().findByText("Move to trash").click();
     cy.findByTestId("toast-undo")
       .findByText("Trashed collection")
@@ -469,6 +490,8 @@ describe("issue 32252", () => {
     H.newButton("Question").click();
     H.miniPicker().within(() => {
       cy.findByText("Our analytics").click();
+      H.miniPickerHeader().should("contain", "Our analytics");
+      cy.findByTestId("mini-picker-list-loader").should("not.exist");
       cy.findByText("My collection").should("not.exist");
       cy.findByText("My question").should("not.exist");
     });
@@ -490,7 +513,8 @@ describe("issue 32252", () => {
     cy.findAllByTestId("collection-entry-name")
       .findByText("My collection")
       .click();
-    cy.button("Actions").click();
+    H.getUnpinnedSection().findByText("My question").should("be.visible");
+    H.openUnpinnedItemMenu("My question");
     H.popover().findByText("Move to trash").click();
     cy.findByTestId("toast-undo")
       .findByText("Trashed question")
@@ -499,6 +523,8 @@ describe("issue 32252", () => {
     H.newButton("Question").click();
     H.miniPicker().within(() => {
       cy.findByText("Our analytics").click();
+      H.miniPickerHeader().should("contain", "Our analytics");
+      cy.findByTestId("mini-picker-list-loader").should("not.exist");
       cy.findByText("My collection").should("not.exist");
       cy.findByText("My question").should("not.exist");
     });

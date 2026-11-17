@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import onboardingInviteImage from "assets/img/onboarding_invite.png";
+import onboardingInviteImage2x from "assets/img/onboarding_invite@2x.png";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Text } from "metabase/ui";
@@ -40,8 +42,8 @@ export const InviteItem = ({ value, itemRef }: OnboardingItemProps) => {
     >
       <ChecklistImage
         alt={t`Admin panel with the "Invite someone" button`}
-        src="app/assets/img/onboarding_invite.png"
-        srcSet="app/assets/img/onboarding_invite@2x.png 2x"
+        src={onboardingInviteImage}
+        srcSet={`${onboardingInviteImage2x} 2x`}
         style={ILLUSTRATION_STYLE}
       />
       <Text>

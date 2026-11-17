@@ -37,7 +37,7 @@ export function MetricAccordionList({
   };
 
   return (
-    <Stack gap="xs">
+    <Stack gap="xxs">
       {groups.map((group) => (
         <MetricAccordionItem
           key={group.key}

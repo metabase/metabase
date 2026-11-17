@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { FieldPanel } from "metabase/querying/fields/components/FieldPanel";
 import { Button } from "metabase/ui";
-import type { ChartSettingTableColumnsProps } from "metabase/visualizations/types";
+import type { ChartSettingTableColumnsProps } from "metabase/viz-core";
 import type * as Lib from "metabase-lib";
 
+import { FieldPanel } from "./FieldPanel";
 import { TableColumnPanel } from "./TableColumnPanel";
 import { canEditQuery } from "./utils";
 
@@ -31,8 +31,8 @@ export const ChartSettingTableColumns = ({
     <div>
       {hasEditButton && (
         <Button
-          pl="0"
-          variant="subtle"
+          variant="transparent"
+          size="compact-md"
           onClick={() => setIsEditingQuery(!isEditingQuery)}
         >
           {isEditingQuery ? t`Done picking columns` : t`Add or remove columns`}

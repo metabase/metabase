@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import _ from "underscore";
 
 import { DEFAULT_CARD_SIZE } from "metabase/utils/dashboard_grid";
-import { getVisualizationRaw } from "metabase/visualizations";
+import { getVisualizationRaw } from "metabase/viz-core";
 import type {
   BaseDashboardCard,
   DashboardTabId,

@@ -2,9 +2,9 @@
   (:require
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
+   [metabase.permissions.db :as permissions.db]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; v50 Permissions Tutorial settings
@@ -15,11 +15,12 @@
 ;; We should come back around and delete them from the master branch in a few months.
 
 (defn- instance-create-time []
-  (->> (t2/select-one [:model/User [:%min.date_joined :min]]) :min t/local-date-time))
+  (t/local-date-time (permissions.db/earliest-user-join-date)))
 
 (defn- v-fifty-migration-time []
   (let [v50-migration-id "v50.2024-01-04T13:52:51"]
-    (->> (mdb/changelog-by-id (mdb/app-db) v50-migration-id) :dateexecuted)))
+    ;; :dateexecuted is expected to be a datetime already. Convert with t/local-date-time to fix cases like #65043
+    (->> (mdb/changelog-by-id (mdb/app-db) v50-migration-id) :dateexecuted t/local-date-time)))
 
 (defn- -show-updated-permission-modal []
   (if (t/after? (instance-create-time) (v-fifty-migration-time))
@@ -56,12 +57,9 @@
 (defn- update-use-tenants! [new-val]
   (when-not new-val
     ;; deactivate all tenants
-    (t2/query {:update :tenant
-               :set {:is_active false}})
+    (permissions.db/deactivate-all-tenants!)
     ;; deactivate all tenant users, so if the tenant is reactivated someday they'll come back too
-    (t2/update! :model/User :tenant_id [:not= nil]
-                :is_active true
-                {:is_active false :deactivated_with_tenant true}))
+    (permissions.db/deactivate-active-tenant-users!))
   (setting/set-value-of-type! :boolean :use-tenants new-val))
 
 (defsetting use-tenants

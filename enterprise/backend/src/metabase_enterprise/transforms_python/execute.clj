@@ -3,10 +3,12 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.base :as base]
+   [metabase-enterprise.transforms-python.db :as transforms-python.db]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -14,8 +16,7 @@
    [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :as i18n]
    [metabase.util.jvm :as u.jvm]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.io Closeable)
    (java.net SocketException SocketTimeoutException)
@@ -26,9 +27,7 @@
 (defn- save-log-to-transform-run-message!
   "Saves the content of the log into the transform_run's message field. Lossy, string contains user facing information only."
   [run-id message-log]
-  (t2/update! :model/TransformRun
-              :id run-id
-              {:message (base/message-log->string message-log)}))
+  (transforms-python.db/update-run-message! run-id (base/message-log->string message-log)))
 
 (def ^:private ^Duration python-message-loop-sleep-duration
   (Duration/ofMillis 1000))
@@ -107,7 +106,7 @@
   (try
     (let [message-log                                                (base/empty-message-log)
           {:keys [target owner_user_id creator_id] transform-id :id} transform
-          {driver :engine :as db}                                    (t2/select-one :model/Database (transforms-base.i/target-db-id transform))
+          {driver :engine :as db}                                    (driver.u/lib-database (transforms-base.i/target-db-id transform))
           run-user-id                                                (if (and (= run-method :manual) user-id)
                                                                        user-id
                                                                        (or owner_user_id creator_id))
@@ -148,5 +147,5 @@
                 (transforms-base.u/complete-execution! transform {})
                 {:run_id run-id :result result}))))))
     (catch Throwable t
-      (log/errorf "Error executing Python transform: %s" (ex-message t))
+      (log/errorf "Error executing Python transform %s: %s" (pr-str (:id transform)) (ex-message t))
       (throw t))))

@@ -2,6 +2,14 @@
 name: e2e-test-review
 description: Review Cypress E2E spec files for Metabase conventions, common gotchas, and flakiness/performance issues. Use when reviewing pull requests or diffs containing Cypress spec files in e2e/test/scenarios/.
 allowed-tools: Read, Grep, Bash, Glob
+metadata:
+  metareview:
+    title: E2E review
+    kind: agent
+    rule: Cypress specs changed
+    watches: ["e2e/**/*.cy.spec.{js,ts}"]
+    icon: eye
+    color: orange
 ---
 
 # E2E Test Review Skill
@@ -46,6 +54,16 @@ The checklist mirrors the order of the conventions file. Items marked **(lint)**
 - [ ] Instance data IDs imported from `cypress_sample_instance_data`
 - [ ] **No hardcoded numeric IDs anywhere** — including for entities the test creates itself. Capture from the create response or alias the intercept.
 - [ ] Existing navigation helpers used (`H.openOrdersTable`, `H.visitDashboard(id)`, etc.) instead of raw `cy.visit()` chains
+
+### Shared helper changes
+
+When a diff changes a shared helper, inspect its callers rather than reviewing the helper in isolation:
+
+- [ ] Default behavior changes are justified for every caller; otherwise the new behavior is explicit and opt-in.
+- [ ] Repeated calls with identical and different arguments are safe.
+- [ ] Mandatory network waits account for cache hits, request deduplication, unchanged query arguments, and conditional fetches where no request occurs.
+- [ ] Intercepts and aliases cannot accumulate, collide, or resolve against the wrong request.
+- [ ] Verification covers both an affected caller and a representative caller using unchanged defaults.
 
 ### Selectors
 

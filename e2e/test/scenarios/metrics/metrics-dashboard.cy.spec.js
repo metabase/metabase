@@ -85,6 +85,26 @@ function curateMetricDimension(metricId, displayName) {
     });
 }
 
+function assertDashboardHasTwoScalarMetricsAndATimeseriesMetric() {
+  H.getDashboardCards().should("have.length", 4);
+  H.dashboardGrid()
+    .findAllByText(ORDERS_SCALAR_METRIC.name)
+    .should("have.length", 2);
+  H.dashboardGrid()
+    .findAllByTestId("scalar-value")
+    .should("have.length", 2)
+    .each(($value) => {
+      cy.wrap($value).should("be.visible").and("have.text", "18,760");
+    });
+  H.getDashboardCards()
+    .filter(`:contains("${ORDERS_TIMESERIES_METRIC.name}")`)
+    .should("have.length", 1)
+    .within(() => {
+      cy.findByText(ORDERS_TIMESERIES_METRIC.name).should("be.visible");
+      H.echartsContainer().should("be.visible");
+    });
+}
+
 describe("scenarios > metrics > dashboard", () => {
   beforeEach(() => {
     H.restore();
@@ -151,7 +171,8 @@ describe("scenarios > metrics > dashboard", () => {
     });
   });
 
-  it("should be possible to add metric to a dashboard via context menu (metabase#44220)", () => {
+  it("should be possible to add metrics to a dashboard via the context menu (metabase#44220) and via the questions sidebar", () => {
+    H.createQuestion(ORDERS_TIMESERIES_METRIC);
     H.createQuestion(ORDERS_SCALAR_METRIC).then(
       ({ body: { id: metricId } }) => {
         H.visitMetric(metricId);
@@ -193,29 +214,23 @@ describe("scenarios > metrics > dashboard", () => {
         });
       },
     );
-  });
 
-  it("should be possible to add metrics to a dashboard", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC);
-    H.createQuestion(ORDERS_TIMESERIES_METRIC);
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.log("Add scalar and timeseries metrics via the questions sidebar");
+    cy.intercept("GET", "/api/search?*").as("sidebarSearch");
     H.editDashboard();
     H.openQuestionsSidebar();
     cy.findByTestId("add-card-sidebar").within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       cy.findByPlaceholderText("Search…").type(ORDERS_TIMESERIES_METRIC.name);
-      cy.wait("@search");
+      cy.wait("@sidebarSearch");
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
       cy.findByText(ORDERS_TIMESERIES_METRIC.name).click();
     });
-    H.getDashboardCard(1).within(() => {
-      cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
-      cy.findByText("18,760").should("be.visible");
-    });
-    H.getDashboardCard(2).within(() => {
-      cy.findByText(ORDERS_TIMESERIES_METRIC.name).should("be.visible");
-      H.echartsContainer().should("be.visible");
-    });
+    assertDashboardHasTwoScalarMetricsAndATimeseriesMetric();
+
+    cy.log("Assert the sidebar-added metrics persist after saving");
+    H.saveDashboard();
+    assertDashboardHasTwoScalarMetricsAndATimeseriesMetric();
   });
 
   it("should use curated metric dimensions for dashboard filters (UXW-4770)", () => {
@@ -303,7 +318,7 @@ describe("scenarios > metrics > dashboard", () => {
     H.saveDashboard();
     H.getDashboardCard().within(() => {
       H.cartesianChartCircle()
-        .eq(5) // random dot
+        .eq(5) // sixth point, whose Count of 92 is passed as the User ID
         .click({ force: true });
     });
     cy.wait("@dataset");
@@ -338,9 +353,6 @@ describe("scenarios > metrics > dashboard default dimension", () => {
           );
 
           expect(totalDimension, "Total metric dimension").not.to.be.undefined;
-          if (!totalDimension) {
-            return;
-          }
 
           return cy.request(
             "POST",

@@ -1,35 +1,33 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { fieldApi, tableApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { updateMetadata } from "metabase/redux/metadata";
-import type { Dispatch, GetState } from "metabase/redux/store";
-import { TableSchema } from "metabase/schema";
-import { getMetadataUnfiltered } from "metabase/selectors/metadata";
-import type { FieldId, TableId } from "metabase-types/api";
+import {
+  type MetadataSelectorOpts,
+  getShallowFields,
+  getShallowTables,
+  tableForeignKeysFetched,
+} from "metabase/metadata-store";
+import type { Dispatch, GetState, State } from "metabase/redux/store";
+import { isNotNull } from "metabase/utils/types";
+import type { FieldId, NormalizedField, TableId } from "metabase-types/api";
+
+// Matches `getMetadataUnfiltered`, which this module read before: a table is
+// worth loading whether or not it is hidden.
+const UNFILTERED: MetadataSelectorOpts = {
+  includeHiddenTables: true,
+  includeSensitiveFields: true,
+};
 
 type FetchOptions = {
   reload?: boolean;
   params?: Record<string, unknown>;
 };
 
-// Minimal structural view of a table's foreign-key-bearing fields. Avoids
-// pulling the heavy `Table` class type into this module's inference, which keeps
-// the project under TypeScript's instantiation-depth limit.
-type ForeignKeyField = {
-  target?: { table_id?: TableId } | null;
-  fk_target_field_id?: FieldId | null;
-};
-type ForeignKeyHost =
-  | { fields?: ForeignKeyField[]; fks?: unknown[] }
-  | null
-  | undefined;
-
 /**
  * Loads `query_metadata` for a single table, so `getMetadata` can read it.
- * Replaces the `Tables.actions.fetchMetadata` entity action.
  *
- * Normalization into `state.entities` happens in the endpoint's own
- * `onQueryStarted` (it dispatches `updateMetadata(data, TableSchema)`), so this
- * thunk just initiates the request and returns the unwrapped result.
+ * `metadataHydrationMiddleware` mirrors the response into `state.entities`, so
+ * this thunk only starts the request and returns the unwrapped result.
  */
 export const fetchTableMetadata =
   (
@@ -46,15 +44,14 @@ export const fetchTableMetadata =
 
 /**
  * Loads a table's foreign keys and normalizes them onto the table in
- * `state.entities`. Replaces the `Tables.actions.fetchForeignKeys` entity
- * action.
+ * `state.entities`.
  */
 export const fetchTableForeignKeys =
   ({ id }: { id: TableId }) =>
   async (dispatch: Dispatch, getState: GetState) => {
-    // Already loaded — skip, so callers that fire this from an effect don't
-    // churn the store on every re-render (mirrors the cached entity action).
-    const table = getMetadataUnfiltered(getState()).table(id) as ForeignKeyHost;
+    // Already loaded, so callers that fire this from an effect do not churn
+    // the store on every re-render.
+    const table = getShallowTables(getState(), UNFILTERED)[id];
     if (table?.fks != null) {
       return { id, fks: table.fks };
     }
@@ -64,29 +61,30 @@ export const fetchTableForeignKeys =
       tableApi.endpoints.listTableForeignKeys,
       { forceRefetch: false },
     );
-    dispatch(updateMetadata({ id, fks }, TableSchema));
+    dispatch(tableForeignKeysFetched(id, fks));
     return { id, fks };
   };
 
 /**
- * Loads a table's metadata along with the metadata of any tables/fields it
- * links to via foreign key. Replaces the
- * `Tables.actions.fetchMetadataAndForeignTables` entity action.
+ * Loads a table's metadata along with the metadata of any tables or fields it
+ * links to via foreign key.
  */
 export const fetchTableMetadataAndForeignKeys =
   ({ id }: { id: TableId }, options: FetchOptions = {}) =>
   async (dispatch: Dispatch, getState: GetState) => {
     await dispatch(fetchTableMetadata({ id }, options));
 
-    // Unjustified type cast. FIXME
-    const table = getMetadataUnfiltered(getState()).table(id) as ForeignKeyHost;
+    const state = getState();
+    const fields = getTableFields(state, id);
+    const storeFields = getShallowFields(state, UNFILTERED);
+
     await Promise.allSettled([
-      ...getTableForeignKeyTableIds(table).map((tableId) =>
+      ...getForeignKeyTableIds(fields, storeFields).map((tableId) =>
         dispatch(fetchTableMetadata({ id: tableId }, options)),
       ),
-      // overridden model FK columns have fk_target_field_id but don't have a
-      // target — in this case we load the field instead of the table
-      ...getTableForeignKeyFieldIds(table).map((fieldId) =>
+      // overridden model FK columns have fk_target_field_id but the target
+      // field is not in the store — load the field instead of the table
+      ...getMissingTargetFieldIds(fields, storeFields).map((fieldId) =>
         runRtkEndpoint({ id: fieldId }, dispatch, fieldApi.endpoints.getField, {
           forceRefetch: options.reload ?? false,
         }),
@@ -94,23 +92,50 @@ export const fetchTableMetadataAndForeignKeys =
     ]);
   };
 
-function getTableForeignKeyTableIds(table: ForeignKeyHost): TableId[] {
-  const tableIds: TableId[] = [];
-  for (const field of table?.fields ?? []) {
-    const tableId = field.target?.table_id;
-    if (tableId != null) {
-      tableIds.push(tableId);
-    }
+// Structural views rather than the API types, which keeps this module's
+// inference under TypeScript's instantiation-depth limit.
+type FkSourceField = { fk_target_field_id?: FieldId | null };
+type FieldsById = Record<string, NormalizedField | undefined>;
+
+/**
+ * A table's fields come either inline as `original_fields` or as ids into the
+ * field map, the same two sources the v1 `Table` wrapper reads.
+ */
+function getTableFields(state: State, id: TableId): FkSourceField[] {
+  const table = getShallowTables(state, UNFILTERED)[id];
+  if (table?.original_fields) {
+    return table.original_fields;
   }
+  const storeFields = getShallowFields(state, UNFILTERED);
+  return (table?.fields ?? [])
+    .map((fieldId) => storeFields[fieldId])
+    .filter(isNotNull);
+}
+
+function getForeignKeyTableIds(
+  fields: FkSourceField[],
+  storeFields: FieldsById,
+): TableId[] {
+  const tableIds = fields
+    .map((field) => targetField(field, storeFields))
+    .filter(isNotNull)
+    .map((field) => field.table_id);
   return Array.from(new Set(tableIds));
 }
 
-function getTableForeignKeyFieldIds(table: ForeignKeyHost): FieldId[] {
-  const fieldIds: FieldId[] = [];
-  for (const field of table?.fields ?? []) {
-    if (field.target == null && field.fk_target_field_id != null) {
-      fieldIds.push(field.fk_target_field_id);
-    }
-  }
+function getMissingTargetFieldIds(
+  fields: FkSourceField[],
+  storeFields: FieldsById,
+): FieldId[] {
+  const fieldIds = fields
+    .filter((field) => targetField(field, storeFields) == null)
+    .map((field) => field.fk_target_field_id)
+    .filter(isNotNull);
   return Array.from(new Set(fieldIds));
+}
+
+function targetField(field: FkSourceField, storeFields: FieldsById) {
+  return field.fk_target_field_id != null
+    ? storeFields[field.fk_target_field_id]
+    : undefined;
 }

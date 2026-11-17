@@ -1,8 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -15,6 +15,7 @@ import {
 } from "metabase/common/hooks/use-url-state";
 import CS from "metabase/css/core/index.css";
 import { useLocation } from "metabase/router";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import {
   Badge,
   type BadgeColor,
@@ -34,7 +35,6 @@ import type {
 
 import { useListOAuthAuthorizationsQuery } from "../settings/api/oauth";
 
-import S from "./OAuthAuthorizationsPage.module.css";
 import {
   OAUTH_EVENT_TYPES,
   OAUTH_PAGE_SIZE,
@@ -106,7 +106,7 @@ export const OAuthAuthorizationsPage = () => {
       w="100%"
       maw="60rem"
       mx="auto"
-      p="xl"
+      p="xxl"
     >
       <Select
         data={[
@@ -236,10 +236,10 @@ function AuthorizationsTable({
       <TreeTable
         instance={instance}
         hierarchical={false}
-        classNames={{ row: S.staticRow }}
+        static
         ariaLabel={t`OAuth authorizations`}
         emptyState={
-          <Box p="xl" ta="center" data-testid="oauth-authorizations-empty">
+          <Box p="xxl" ta="center" data-testid="oauth-authorizations-empty">
             <EmptyState
               title={t`No events`}
               illustrationElement={<img src={NoResults} />}

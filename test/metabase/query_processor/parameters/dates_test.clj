@@ -10,6 +10,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.parameters.dates :as params.dates]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
@@ -96,6 +97,18 @@
             (params.dates/date-string->filter
              "2019-04-01~"
              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
+(deftest ^:parallel date-string->filter-before-after-datetime-test
+  (testing "before and after datetime"
+    (are [date-string op] (=? [op
+                               {}
+                               [:field {:base-type :type/DateTime, :temporal-unit :minute} "field"]
+                               "2019-04-01T12:30:00"]
+                              (params.dates/date-string->filter
+                               date-string
+                               [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"]))
+      "~2019-04-01T12:30:00" :<
+      "2019-04-01T12:30:00~" :>)))
 
 (deftest ^:parallel date-string->filter-test-8
   (testing "relative (past) exclusive"

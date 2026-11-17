@@ -1,12 +1,12 @@
-import { renderWithProviders, screen, within } from "__support__/ui";
-import { UpsellTenants } from "metabase/admin/upsells/UpsellTenants";
-import { createTenantsRouteGuard } from "metabase/admin/utils";
 import {
   createMockAdminAppState,
   createMockAdminState,
   createMockSettingsState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { renderWithProviders, screen, within } from "__support__/ui";
+import { UpsellTenants } from "metabase/admin/upsells/UpsellTenants";
+import { createTenantsRouteGuard } from "metabase/admin/utils";
 import { Route } from "metabase/router";
 import type { EmbeddingHomepageStatus } from "metabase-types/api";
 import {
@@ -71,7 +71,9 @@ const setupTenantRoute = async (initialRoute: string) => {
   const state = createMockState({
     admin: createMockAdminState({
       app: createMockAdminAppState({
-        paths: [{ key: "people", name: "People", path: "/admin/people" }],
+        paths: [
+          { key: "people", getName: () => "People", path: "/admin/people" },
+        ],
       }),
     }),
     currentUser: createMockUser({
@@ -152,7 +154,7 @@ describe("AdminPeopleApp", () => {
       await setupTenantRoute("/admin/people/tenants");
 
       expect(
-        await screen.findByText("Manage customer-facing analytics at scale"),
+        await screen.findByText("Use a multi-tenant user strategy"),
       ).toBeInTheDocument();
     });
   });
@@ -160,8 +162,8 @@ describe("AdminPeopleApp", () => {
   describe("nudge to pro", () => {
     const nudgeText = /tired of manually managing people/i;
 
-    it("should be visible when user is admin, has 50 active users, and SSO is not available", () => {
-      setup();
+    it("should be visible when user is admin, has 50 active users, and SSO is not available", async () => {
+      await setup();
       expect(screen.getByText(nudgeText)).toBeInTheDocument();
       const link = screen.getByRole("link", { name: /try metabase pro/i });
       expect(link).toBeInTheDocument();
@@ -171,18 +173,18 @@ describe("AdminPeopleApp", () => {
       );
     });
 
-    it("should not be visible with less than 50 users", () => {
-      setup({ activeUsersCount: 10 });
+    it("should not be visible with less than 50 users", async () => {
+      await setup({ activeUsersCount: 10 });
       expect(screen.queryByText(nudgeText)).not.toBeInTheDocument();
     });
 
-    it("should not be visible when user is not admin", () => {
-      setup({ isSuperUser: false });
+    it("should not be visible when user is not admin", async () => {
+      await setup({ isSuperUser: false });
       expect(screen.queryByText(nudgeText)).not.toBeInTheDocument();
     });
 
-    it("should not be visible when SSO is already available", () => {
-      setup({ ssoEnabled: true });
+    it("should not be visible when SSO is already available", async () => {
+      await setup({ ssoEnabled: true });
       expect(screen.queryByText(nudgeText)).not.toBeInTheDocument();
     });
   });

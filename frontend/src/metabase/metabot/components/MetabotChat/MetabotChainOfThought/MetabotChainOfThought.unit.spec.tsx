@@ -3,12 +3,17 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "__support__/state";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { MetabotAgentChainOfThoughtMessage } from "metabase/metabot/state";
-import { createMockState } from "metabase/redux/store/mocks";
+import { isReasoningVisible } from "metabase/metabot/utils/reasoning-visibility";
+import { checkNotNull } from "metabase/utils/types";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
 import { MetabotChainOfThought } from "./MetabotChainOfThought";
+
+const TEST_CONVERSATION_ID = "c1";
+const OTHER_CONVERSATION_ID = "c2";
 
 const chain = (
   overrides: Partial<MetabotAgentChainOfThoughtMessage>,
@@ -17,6 +22,7 @@ const chain = (
   role: "agent",
   type: "chain_of_thought",
   steps: [],
+  finished: false,
   ...overrides,
 });
 
@@ -31,7 +37,10 @@ const setup = (
     createMockDashboard({ id: 123, name: "Orders" }),
   );
   return renderWithProviders(
-    <MetabotChainOfThought message={message} isStreaming={isStreaming} />,
+    <MetabotChainOfThought
+      part={{ ...message, finished: !isStreaming }}
+      conversationId={TEST_CONVERSATION_ID}
+    />,
     { storeInitialState: createMockState({ settings }) },
   );
 };
@@ -39,6 +48,23 @@ const setup = (
 const expandChain = async () => {
   await userEvent.click(screen.getByTestId("metabot-chain-of-thought-header"));
 };
+
+const toggleReasoningStep = async (label: RegExp) => {
+  const header = screen.getByTestId("metabot-chain-of-thought-header");
+  const stepToggle = await waitFor(() =>
+    checkNotNull(
+      screen
+        .getAllByRole("button", { name: label })
+        .find((button) => button !== header),
+    ),
+  );
+  await userEvent.click(stepToggle);
+  return stepToggle;
+};
+
+afterEach(() => {
+  delete window.overrideIsWithinIframe;
+});
 
 describe("MetabotChainOfThought", () => {
   it("shows Thinking for the empty shell while the turn is live", () => {
@@ -144,6 +170,34 @@ describe("MetabotChainOfThought", () => {
     expect(screen.queryByText(/Worked/)).not.toBeInTheDocument();
   });
 
+  it("displays thinking >= 60 seconds in minutes and seconds", () => {
+    setup(
+      chain({
+        steps: [{ kind: "reasoning", text: "Weighing the join order" }],
+        startedAtMs: 1000,
+        endedAtMs: 697000,
+      }),
+      false,
+    );
+    expect(
+      screen.getAllByText("Thought for 11 minutes 36 seconds").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("displays even minute thinking durations without seconds", () => {
+    setup(
+      chain({
+        steps: [
+          { kind: "tool", id: "t1", name: "analyze_data", status: "ended" },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 61000,
+      }),
+      false,
+    );
+    expect(screen.getByText("Worked for 1 minute")).toBeInTheDocument();
+  });
+
   it("rolls a sub-5s thinking-only turn up to Thought briefly", () => {
     setup(
       chain({
@@ -231,7 +285,7 @@ describe("MetabotChainOfThought", () => {
     expect(screen.getByText("Searched for sales data")).toBeInTheDocument();
   });
 
-  it("renders a metabase:// link title as a clickable entity link with an icon", async () => {
+  it("renders a metabase:// link title as a clickable entity link", async () => {
     setup(
       chain({
         steps: [
@@ -251,10 +305,10 @@ describe("MetabotChainOfThought", () => {
     await userEvent.click(screen.getByRole("button"));
     // the row reads past tense with the entity inline ("Read Orders")
     expect(await screen.findByText("Read")).toHaveTextContent("Read Orders");
-    expect(await screen.findByText("Orders")).toBeInTheDocument();
-    expect(
-      await screen.findByRole("img", { name: /dashboard icon/ }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Orders" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/dashboard/123"),
+    );
   });
 
   it("labels a settled save_entity step with a clickable Saved link", async () => {
@@ -376,6 +430,52 @@ describe("MetabotChainOfThought", () => {
     expect(screen.getByText("PUBLIC", { exact: false })).toBeInTheDocument();
   });
 
+  it("links measures to the explorer and segments through their base table", async () => {
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "search",
+            title: "revenue",
+            status: "ended",
+            searchResults: {
+              totalCount: 2,
+              results: [
+                {
+                  id: 7,
+                  type: "measure",
+                  name: "Total revenue",
+                  database_id: 1,
+                  table_id: 9,
+                },
+                {
+                  id: 8,
+                  type: "segment",
+                  name: "Big orders",
+                  database_id: 1,
+                  table_id: 9,
+                },
+              ],
+            },
+          },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 2000,
+      }),
+      false,
+    );
+    await expandChain();
+    await userEvent.click(screen.getByText("2 results"));
+    expect(
+      screen.getByRole("link", { name: /Total revenue/, hidden: true }),
+    ).toHaveAttribute("href", "/explore?measureId=7");
+    expect(
+      screen.getByRole("link", { name: /Big orders/, hidden: true }),
+    ).not.toHaveAttribute("href", "/404");
+  });
+
   it("labels an empty search with No results", async () => {
     setup(
       chain({
@@ -489,5 +589,134 @@ describe("MetabotChainOfThought", () => {
     await expandChain();
     expect(screen.getByText("Read 3 resources")).toBeInTheDocument();
     expect(screen.queryByText("Reading resource")).not.toBeInTheDocument();
+  });
+
+  it("keeps a failed resource read out of the aggregated row", async () => {
+    setup(
+      chain({
+        steps: [
+          { kind: "tool", id: "r1", name: "read_resource", status: "ended" },
+          { kind: "tool", id: "r2", name: "read_resource", status: "ended" },
+          { kind: "tool", id: "r3", name: "read_resource", status: "errored" },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 2000,
+      }),
+      false,
+    );
+    await expandChain();
+    expect(screen.getByText("Read 2 resources")).toBeInTheDocument();
+    expect(screen.getByText("Reading resource")).toBeInTheDocument();
+    expect(screen.getByText("Failed")).toBeInTheDocument();
+  });
+
+  it("keeps reasoning and entity names out of embedded sessions", async () => {
+    const message = chain({
+      steps: [
+        { kind: "reasoning", text: "Weighing the join order" },
+        {
+          kind: "tool",
+          id: "t1",
+          name: "search",
+          title: "revenue",
+          status: "ended",
+          searchResults: {
+            totalCount: 1,
+            results: [
+              {
+                id: 9,
+                type: "table",
+                name: "orders",
+                display_name: "Orders",
+                database_id: 1,
+                database_name: "Sample DB",
+                database_schema: "PUBLIC",
+              },
+            ],
+          },
+        },
+        {
+          kind: "tool",
+          id: "t2",
+          name: "read_resource",
+          title: "Orders",
+          status: "ended",
+        },
+      ],
+      startedAtMs: 1000,
+      endedAtMs: 2000,
+    });
+
+    window.overrideIsWithinIframe = true;
+    const { unmount } = setup(message, false);
+    await expandChain();
+    expect(screen.getByText("Searched")).toBeInTheDocument();
+    expect(screen.getByText("Read resource")).toBeInTheDocument();
+    expect(screen.queryByText("Thought briefly")).not.toBeInTheDocument();
+    expect(screen.queryByText("1 result")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Orders/)).not.toBeInTheDocument();
+    unmount();
+
+    delete window.overrideIsWithinIframe;
+    setup(message, false);
+    await expandChain();
+    await userEvent.click(screen.getByText("Thought briefly"));
+    expect(screen.getByText("Weighing the join order")).toBeInTheDocument();
+    expect(screen.getByText(/Searched for revenue/)).toBeInTheDocument();
+    expect(screen.getByText("Read Orders")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("1 result"));
+    expect(screen.getByText("Sample DB", { exact: false })).toBeInTheDocument();
+  });
+
+  describe("reasoning visibility", () => {
+    it("marks reasoning visible only while the header and the active step are open", async () => {
+      const message = chain({
+        steps: [{ kind: "reasoning", text: "Weighing the join order" }],
+      });
+      const { rerender, unmount } = setup(message, true);
+      expect(isReasoningVisible(TEST_CONVERSATION_ID)).toBe(false);
+
+      await expandChain();
+      expect(isReasoningVisible(TEST_CONVERSATION_ID)).toBe(false);
+
+      await toggleReasoningStep(/Thinking/);
+      expect(isReasoningVisible(TEST_CONVERSATION_ID)).toBe(true);
+      expect(isReasoningVisible(OTHER_CONVERSATION_ID)).toBe(false);
+
+      await expandChain();
+      expect(isReasoningVisible(TEST_CONVERSATION_ID)).toBe(false);
+
+      await expandChain();
+      expect(isReasoningVisible(TEST_CONVERSATION_ID)).toBe(true);
+
+      rerender(
+        <MetabotChainOfThought
+          part={{ ...message, finished: true }}
+          conversationId={TEST_CONVERSATION_ID}
+        />,
+      );
+      expect(isReasoningVisible(TEST_CONVERSATION_ID)).toBe(false);
+
+      unmount();
+      expect(isReasoningVisible(TEST_CONVERSATION_ID)).toBe(false);
+    });
+
+    it("does not mark an inactive reasoning step visible", async () => {
+      setup(
+        chain({
+          steps: [
+            { kind: "reasoning", text: "First thought" },
+            { kind: "tool", id: "t1", name: "analyze_data", status: "ended" },
+            { kind: "reasoning", text: "Second thought" },
+          ],
+        }),
+        true,
+      );
+
+      await expandChain();
+      const firstStep = await toggleReasoningStep(/Thought briefly/);
+      expect(firstStep).toHaveAttribute("aria-expanded", "true");
+      expect(isReasoningVisible(TEST_CONVERSATION_ID)).toBe(false);
+    });
   });
 });

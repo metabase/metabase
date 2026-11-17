@@ -53,6 +53,22 @@
   [topic event]
   (push-revision! :model/Transform event {:is-creation? (= topic :event/transform-create)}))
 
+(events/derive! ::transform-test-event ::event)
+(events/derive! :event/transform-test-create ::transform-test-event)
+(events/derive! :event/transform-test-update ::transform-test-event)
+
+(methodical/defmethod events/publish-event! ::transform-test-event
+  [topic event]
+  (push-revision! :model/TransformTest event {:is-creation? (= topic :event/transform-test-create)}))
+
+(events/derive! ::card-test-event ::event)
+(events/derive! :event/card-test-create ::card-test-event)
+(events/derive! :event/card-test-update ::card-test-event)
+
+(methodical/defmethod events/publish-event! ::card-test-event
+  [topic event]
+  (push-revision! :model/CardTest event {:is-creation? (= topic :event/card-test-create)}))
+
 (events/derive! ::segment-event ::event)
 (events/derive! :event/segment-create ::segment-event)
 (events/derive! :event/segment-update ::segment-event)

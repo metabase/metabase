@@ -21,8 +21,9 @@ import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { parseChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { markChartSaved } from "metabase/metabot/state";
 import { Route } from "metabase/router";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { MetabotInlineChart } from "./MetabotInlineChart";
 
@@ -33,7 +34,7 @@ jest.mock("metabase/visualizations/components/Visualization", () => ({
   default: () => <div data-testid="visualization" />,
 }));
 
-const datasetQuery = createMockStructuredDatasetQuery();
+const datasetQuery = Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
 
 const PERSONAL_COLLECTION = createMockCollection({
   id: 1,
@@ -84,6 +85,7 @@ function setup(
       value={{ ...value, ...valueOverrides }}
       readonly={readonly}
       conversationId="convo-1"
+      size="md"
     />,
   );
 }
@@ -107,6 +109,17 @@ describe("MetabotInlineChart", () => {
   it("runs the embedded query and renders the visualization", async () => {
     setup();
     expect(screen.getByTestId("metabot-inline-chart")).toBeInTheDocument();
+    expect(await screen.findByTestId("visualization")).toBeInTheDocument();
+    expect(fetchMock.callHistory.called("path:/api/dataset")).toBe(true);
+  });
+
+  it("waits for Run query to be clicked before running in readonly mode", async () => {
+    setup({}, {}, { readonly: true });
+    expect(fetchMock.callHistory.called("path:/api/dataset")).toBe(false);
+    expect(screen.queryByTestId("visualization")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Run query" }));
+
     expect(await screen.findByTestId("visualization")).toBeInTheDocument();
     expect(fetchMock.callHistory.called("path:/api/dataset")).toBe(true);
   });
@@ -258,6 +271,7 @@ describe("MetabotInlineChart", () => {
               value={value}
               readonly={false}
               conversationId="convo-1"
+              size="md"
             />
           }
         />,

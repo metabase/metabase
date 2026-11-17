@@ -1,6 +1,9 @@
 import * as DataGrid from "metabase/visualizations/lib/data_grid";
-import { isPivoted } from "metabase/visualizations/lib/settings/column";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  type ComputedVisualizationSettings,
+  type ShowWarning,
+  isPivoted,
+} from "metabase/viz-core";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import type { DatasetData, RawSeries } from "metabase-types/api";
 
@@ -30,11 +33,13 @@ export function getVisibleTableData({
   settings,
   isShowingDetailsOnlyColumns = false,
   isShowingDisabledColumns = isShowingDetailsOnlyColumns,
+  showWarning,
 }: {
   series: RawSeries;
   settings: ComputedVisualizationSettings;
   isShowingDetailsOnlyColumns?: boolean;
   isShowingDisabledColumns?: boolean;
+  showWarning?: ShowWarning;
 }): VisibleTableData {
   const [{ data }] = series;
 
@@ -44,7 +49,14 @@ export function getVisibleTableData({
       settings,
     );
     return {
-      ...DataGrid.pivot(data, normalIndex, pivotIndex, cellIndex, settings),
+      ...DataGrid.pivot(
+        data,
+        normalIndex,
+        pivotIndex,
+        cellIndex,
+        settings,
+        showWarning,
+      ),
       results_timezone: data.results_timezone,
     };
   }

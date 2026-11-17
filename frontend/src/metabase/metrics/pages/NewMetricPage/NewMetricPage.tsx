@@ -17,7 +17,6 @@ import { NAME_MAX_LENGTH } from "metabase/metrics/constants";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
 import { useLocation, useNavigate } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Breadcrumbs, Card, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
@@ -43,10 +42,10 @@ export function NewMetricPage({
   triggeredFrom = "main_app",
 }: NewMetricPageProps) {
   const location = useLocation();
-  const metadata = useSelector(getMetadata);
+  const initialQuery = useSelector(getInitialQuery);
   const [name, setName] = useState("");
   const [datasetQuery, setDatasetQuery] = useState(() =>
-    Lib.toJsQuery(getInitialQuery(metadata)),
+    Lib.toJsQuery(initialQuery),
   );
   const [uiState, setUiState] = useState(getInitialUiState);
   const [isModalOpened, { open: openModal, close: closeModal }] =
@@ -57,10 +56,7 @@ export function NewMetricPage({
   const defaultCollectionId = useGetDefaultCollectionId();
   const navigate = useNavigate();
 
-  const query = useMemo(
-    () => getQuery(datasetQuery, metadata),
-    [datasetQuery, metadata],
-  );
+  const query = useSelector((state) => getQuery(state, datasetQuery));
 
   const resultMetadata = useMemo(() => {
     return getResultMetadata(

@@ -11,8 +11,8 @@ import {
   setupTableSelectionInfoEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type {
   BulkTableSelectionInfo,
   DatabaseId,
@@ -58,7 +58,7 @@ function setup({
   });
 
   setupEnterpriseOnlyPlugin("library");
-  setupLibraryEndpoints(true);
+  setupLibraryEndpoints({ hasLibrary: true });
   setupCollectionItemsEndpoint({
     collection: { id: 6464 },
     collectionItems: [

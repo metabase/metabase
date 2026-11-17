@@ -30,7 +30,7 @@ export function NavbarPromoCard({
   external,
 }: Props) {
   return (
-    <Paper p="md" shadow="md" withBorder>
+    <Paper p="lg" shadow="sm" withBorder>
       <Stack gap="sm">
         <Flex justify="space-between" align="flex-start">
           <span className={S.IconWrapper}>{icon}</span>

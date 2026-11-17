@@ -5,6 +5,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase-enterprise.billing.db :as billing.db]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.premium-features.core :as premium-features]
@@ -12,8 +13,7 @@
    [metabase.util :as u]
    [metabase.util.date-2.parse :as u.date.parse]
    [metabase.util.i18n :as i18n]
-   [metabase.util.json :as json]
-   [toucan2.core :as t2])
+   [metabase.util.json :as json])
   (:import
    [com.fasterxml.jackson.core JsonParseException]))
 
@@ -50,7 +50,7 @@
   (let [max-users (premium-features/max-users-allowed)
         ;; There is a defsetting for user count, but it is only updated every 5 minutes, and this should be exactly up
         ;; to date here:
-        total-users (t2/count :model/User :is_active true, :type :personal)]
+        total-users (billing.db/active-personal-user-count)]
     {:version "v1"
      :content [{:name "Users included in your plan" :value max-users :format "integer" :display "value"}
                {:name "Users available" :value (- max-users total-users) :format "integer" :display "value"}
@@ -66,7 +66,7 @@
    using the embedding token and signed in user's email to fetch the billing information."
   []
   (let [token    (premium-features/premium-embedding-token)
-        email    (t2/select-one-fn :email :model/User :id api/*current-user-id*)
+        email    (billing.db/user-email api/*current-user-id*)
         language (i18n/user-locale-string)]
     (if (and token (str/starts-with? token "airgap_"))
       (billing-status)

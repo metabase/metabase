@@ -1,6 +1,30 @@
 import { t } from "ttag";
 
-import { Button, Flex, Icon, Stack, Text, Title } from "metabase/ui";
+import {
+  Button,
+  Flex,
+  Icon,
+  Modal,
+  type ModalStepProps,
+  Text,
+} from "metabase/ui";
+
+export const getUpgradeErrorModalProps = (): ModalStepProps => ({
+  layout: "centered",
+  title: t`Something went wrong`,
+  illustration: (
+    <Flex
+      align="center"
+      justify="center"
+      w={64}
+      h={64}
+      bg="feedback-negative"
+      bdrs="50%"
+    >
+      <Icon name="warning" c="core-white" size={32} />
+    </Flex>
+  ),
+});
 
 interface UpgradeModalErrorProps {
   onClose: () => void;
@@ -8,32 +32,13 @@ interface UpgradeModalErrorProps {
 
 export function UpgradeModalError({ onClose }: UpgradeModalErrorProps) {
   return (
-    <Stack align="center" gap="lg" py="xl">
-      <Flex
-        align="center"
-        justify="center"
-        w={64}
-        h={64}
-        bg="feedback-negative"
-        style={{ borderRadius: "50%" }}
-      >
-        <Icon name="warning" c="core-white" size={32} />
-      </Flex>
-
-      <Stack align="center" gap="xs">
-        <Title order={3} ta="center">
-          {t`Something went wrong`}
-        </Title>
-        <Text c="text-secondary" ta="center">
-          {t`Please try again later.`}
-        </Text>
-      </Stack>
-
-      <Flex justify="center" w="100%">
-        <Button variant="filled" color="core-brand" onClick={onClose}>
+    <>
+      <Text c="text-secondary">{t`Please try again later.`}</Text>
+      <Modal.Footer>
+        <Button variant="filled" color="brand" onClick={onClose}>
           {t`Close`}
         </Button>
-      </Flex>
-    </Stack>
+      </Modal.Footer>
+    </>
   );
 }

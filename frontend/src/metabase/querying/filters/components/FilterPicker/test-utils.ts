@@ -1,15 +1,15 @@
 /* istanbul ignore file */
 
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { dayjs } from "metabase/dayjs";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
   columnFinder,
-  createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockField, createMockSegment } from "metabase-types/api/mocks";
@@ -29,14 +29,20 @@ const SEGMENT_1 = createMockSegment({
   table_id: ORDERS_ID,
   name: "Discounted",
   description: "Discounted",
-  definition: {
-    type: "query",
-    database: 1,
-    query: {
-      "source-table": ORDERS_ID,
-      filter: ["not-null", ["field", ORDERS.DISCOUNT, null]],
-    },
-  },
+  definition: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        filters: [
+          {
+            type: "operator",
+            operator: "not-null",
+            args: [{ type: "column", fieldId: ORDERS.DISCOUNT }],
+          },
+        ],
+      },
+    ],
+  }),
 });
 
 const SEGMENT_2 = createMockSegment({
@@ -44,14 +50,23 @@ const SEGMENT_2 = createMockSegment({
   table_id: ORDERS_ID,
   name: "Many items",
   description: "Orders with more than 5 items",
-  definition: {
-    type: "query",
-    database: 1,
-    query: {
-      "source-table": ORDERS_ID,
-      filter: [">", ["field", ORDERS.QUANTITY, null], 20],
-    },
-  },
+  definition: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        filters: [
+          {
+            type: "operator",
+            operator: ">",
+            args: [
+              { type: "column", fieldId: ORDERS.QUANTITY },
+              { type: "literal", value: 20 },
+            ],
+          },
+        ],
+      },
+    ],
+  }),
 });
 
 const BOOLEAN_FIELD = createMockField({
@@ -124,8 +139,7 @@ export const storeInitialState = createMockState({
   }),
 });
 
-export const metadata = getMetadata(storeInitialState);
-const provider = createMetadataProvider({ metadata });
+const provider = selectMetadataProvider(storeInitialState, database.id);
 
 export function createQuery() {
   return Lib.createTestQuery(provider, DEFAULT_TEST_QUERY);

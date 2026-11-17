@@ -16,17 +16,16 @@ describe("Reference utils.js", () => {
   describe("tablesToSchemaSeparatedTables()", () => {
     it("should add schema separator to appropriate locations and sort tables by name", () => {
       const tables = {
-        1: { id: 1, name: "Toucan", schema_name: "foo" },
-        2: { id: 2, name: "Elephant", schema_name: "bar" },
-        3: { id: 3, name: "Giraffe", schema_name: "boo" },
-        4: { id: 4, name: "Wombat", schema_name: "bar" },
-        5: { id: 5, name: "Anaconda", schema_name: "foo" },
-        6: { id: 6, name: "Buffalo", schema_name: "bar" },
+        1: { id: 1, name: "Toucan", schema: "foo" },
+        2: { id: 2, name: "Elephant", schema: "bar" },
+        3: { id: 3, name: "Giraffe", schema: "boo" },
+        4: { id: 4, name: "Wombat", schema: "bar" },
+        5: { id: 5, name: "Anaconda", schema: "foo" },
+        6: { id: 6, name: "Buffalo", schema: "bar" },
       };
 
-      const createSchemaSeparator = (table: { schema_name: string }) =>
-        table.schema_name;
-      const createListItem = (table: { schema_name: string }) => table;
+      const createSchemaSeparator = (table: { schema: string }) => table.schema;
+      const createListItem = (table: { schema: string }) => table;
 
       const schemaSeparatedTables = separateTablesBySchema(
         tables,
@@ -35,12 +34,12 @@ describe("Reference utils.js", () => {
       );
 
       expect(schemaSeparatedTables).toEqual([
-        ["bar", { id: 6, name: "Buffalo", schema_name: "bar" }],
-        { id: 2, name: "Elephant", schema_name: "bar" },
-        { id: 4, name: "Wombat", schema_name: "bar" },
-        ["boo", { id: 3, name: "Giraffe", schema_name: "boo" }],
-        ["foo", { id: 5, name: "Anaconda", schema_name: "foo" }],
-        { id: 1, name: "Toucan", schema_name: "foo" },
+        ["bar", { id: 6, name: "Buffalo", schema: "bar" }],
+        { id: 2, name: "Elephant", schema: "bar" },
+        { id: 4, name: "Wombat", schema: "bar" },
+        ["boo", { id: 3, name: "Giraffe", schema: "boo" }],
+        ["foo", { id: 5, name: "Anaconda", schema: "foo" }],
+        { id: 1, name: "Toucan", schema: "foo" },
       ]);
     });
   });
@@ -52,7 +51,6 @@ describe("Reference utils.js", () => {
     const segmentId = segment.id;
     const field = createMockField({ table_id: tableId });
     // Unjustified type cast. FIXME
-    const fieldId = field.id as number;
     const table = createMockTable({
       id: tableId,
       db_id: dbId,
@@ -61,53 +59,50 @@ describe("Reference utils.js", () => {
     });
     const database = createMockDatabase({ id: dbId, tables: [table] });
     const metadata = createMockMetadata({ databases: [database] });
+    const metadataProvider = Lib.metadataProvider(dbId, metadata);
 
     it("should generate correct question for table raw data", () => {
       const card = getQuestion({
-        dbId,
+        metadataProvider,
         tableId,
-        metadata,
       });
 
-      const query = new Question(card).query();
-      expect(Lib.sourceTableOrCardId(query)).toBe(tableId);
+      const query = new Question(card, createMockMetadata()).query();
+      expect(Lib.primarySourceTableId(query)).toBe(tableId);
     });
 
     it("should generate correct question for table counts", () => {
       const card = getQuestion({
-        dbId,
+        metadataProvider,
         tableId,
         getCount: true,
-        metadata,
       });
 
-      const query = new Question(card).query();
+      const query = new Question(card, createMockMetadata()).query();
       expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
     });
 
     it("should generate correct question for field raw data", () => {
       const card = getQuestion({
-        dbId,
+        metadataProvider,
         tableId,
-        fieldId,
-        metadata,
+        breakoutField: field,
       });
 
-      const query = new Question(card).query();
+      const query = new Question(card, createMockMetadata()).query();
       expect(Lib.breakouts(query, stageIndex)).toHaveLength(1);
     });
 
     it("should generate correct question for field group by bar chart", () => {
       const card = getQuestion({
-        dbId,
+        metadataProvider,
         tableId,
-        fieldId,
+        breakoutField: field,
         getCount: true,
         visualization: "bar",
-        metadata,
       });
 
-      const query = new Question(card).query();
+      const query = new Question(card, createMockMetadata()).query();
       expect(card?.display).toBe("bar");
       expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
       expect(Lib.breakouts(query, stageIndex)).toHaveLength(1);
@@ -115,15 +110,14 @@ describe("Reference utils.js", () => {
 
     it("should generate correct question for field group by pie chart", () => {
       const card = getQuestion({
-        dbId,
+        metadataProvider,
         tableId,
-        fieldId,
+        breakoutField: field,
         getCount: true,
         visualization: "pie",
-        metadata,
       });
 
-      const query = new Question(card).query();
+      const query = new Question(card, createMockMetadata()).query();
       expect(card?.display).toBe("pie");
       expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
       expect(Lib.breakouts(query, stageIndex)).toHaveLength(1);
@@ -131,26 +125,24 @@ describe("Reference utils.js", () => {
 
     it("should generate correct question for segment raw data", () => {
       const card = getQuestion({
-        dbId,
+        metadataProvider,
         tableId,
         segmentId,
-        metadata,
       });
 
-      const query = new Question(card).query();
+      const query = new Question(card, createMockMetadata()).query();
       expect(Lib.filters(query, stageIndex)).toHaveLength(1);
     });
 
     it("should generate correct question for segment counts", () => {
       const card = getQuestion({
-        dbId,
+        metadataProvider,
         tableId,
         segmentId,
         getCount: true,
-        metadata,
       });
 
-      const query = new Question(card).query();
+      const query = new Question(card, createMockMetadata()).query();
       expect(Lib.filters(query, stageIndex)).toHaveLength(1);
       expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
     });

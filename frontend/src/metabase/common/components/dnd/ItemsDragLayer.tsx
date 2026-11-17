@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { Component } from "react";
 import { DragLayer, type XYCoord } from "react-dnd";
 import { msgid, ngettext } from "ttag";
@@ -20,10 +21,10 @@ export function MoveItemsDragPreview({ count }: { count: number }) {
       bg="background_surface-brand-subtle"
       className={S.preview}
       data-testid="items-drag-preview"
-      px="md"
+      px="lg"
       py="sm"
-      radius="sm"
-      shadow="md"
+      radius="xs"
+      shadow="sm"
       withBorder
     >
       <Text fw={700}>

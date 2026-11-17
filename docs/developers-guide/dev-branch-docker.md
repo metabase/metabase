@@ -1,5 +1,6 @@
 ---
 title: How to run a development branch of Metabase using Docker
+summary: Run a development branch of Metabase from a pre-built Docker image, without compiling it yourself.
 ---
 
 # How to run a development branch of Metabase using Docker
@@ -12,7 +13,7 @@ If you're looking to download and run the latest official open source version of
 
 The only thing you’ll need to get started is Docker itself.
 
-- [Install Docker Desktop](https://www.docker.com/products/docker-desktop)
+- [Install Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
 OR
 
@@ -33,7 +34,7 @@ Once Docker is installed, you’re ready to go.
 2. Copy and paste this command, switching out `<branch-name>` for the name of the branch you’d like to test:
 
 ```bash
-docker run --platform linux/amd64 -d -p 3000:3000 --name metabase-dev metabase/metabase-dev:<branch-name>
+docker run --platform linux/amd64 -d -p 127.0.0.1:3000:3000 --name metabase-dev metabase/metabase-dev:<branch-name>
 ```
 
 3. In your browser, navigate to `http://localhost:3000`, where you should see Metabase. It may take a minute or two to start up depending on your computer.
@@ -51,7 +52,7 @@ docker pull metabase/metabase-enterprise-head:latest
 Then:
 
 ```
-docker run --platform linux/amd64 -d -p 3000:3000 --name metabase metabase/metabase-enterprise-head:latest
+docker run --platform linux/amd64 -d -p 127.0.0.1:3000:3000 --name metabase metabase/metabase-enterprise-head:latest
 ```
 
 The “latest” tag is not automatically upgraded on your local machine, so the above commands ensure that you’re pulling the latest changes.

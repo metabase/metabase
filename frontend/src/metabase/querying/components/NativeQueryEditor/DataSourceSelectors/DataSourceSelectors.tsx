@@ -2,32 +2,40 @@ import cx from "classnames";
 import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
+import {
+  skipToken,
+  useListDatabasesQuery,
+  useListTablesQuery,
+} from "metabase/api";
+import { hasActionsEnabled } from "metabase/common/utils/database";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getNativeQueryLanguage } from "metabase/databases/utils/engine";
 import {
+  type DataSelectorDatabase,
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
 } from "metabase/querying/common/components/DataSelector";
+import { requiresNativeCollection } from "metabase/querying/native";
 import { Flex } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { DatabaseId, TableId } from "metabase-types/api";
+import type { Database, DatabaseId, TableId } from "metabase-types/api";
 
 type EditorContext = "action" | "question";
 
 interface DataSourceSelectorsProps {
   isNativeEditorOpen: boolean;
-  query: NativeQuery;
+  query: Lib.Query;
   question: Question;
   readOnly?: boolean;
   setDatabaseId: (databaseId: DatabaseId) => void;
   setTableId: (tableId: TableId) => void;
   editorContext?: EditorContext;
-  databaseIsDisabled?: (database: Database) => boolean;
-  databaseDisabledTooltip?: (database: Database) => string | undefined;
+  databaseIsDisabled?: (database: DataSelectorDatabase) => boolean;
+  databaseDisabledTooltip?: (
+    database: DataSelectorDatabase,
+  ) => string | undefined;
 }
 
 export const DataSourceSelectors = ({
@@ -41,20 +49,22 @@ export const DataSourceSelectors = ({
   databaseIsDisabled,
   databaseDisabledTooltip,
 }: DataSourceSelectorsProps) => {
-  const database = question.database();
+  const { data: databasesResponse } = useListDatabasesQuery();
+  const allDatabases = databasesResponse?.data;
+  const database =
+    allDatabases?.find((db) => db.id === question.databaseId()) ?? null;
 
   const databases = useMemo(() => {
-    const allDatabases = query
-      .metadata()
-      .databasesList({ savedQuestions: false })
-      .filter((db) => db.canWrite() && !db.is_audit);
+    const writableDatabases = (allDatabases ?? []).filter(
+      (db) => db.native_permissions === "write" && !db.is_audit,
+    );
 
     if (editorContext === "action") {
-      return allDatabases.filter((database) => database.hasActionsEnabled());
+      return writableDatabases.filter(hasActionsEnabled);
     }
 
-    return allDatabases;
-  }, [query, editorContext]);
+    return writableDatabases;
+  }, [allDatabases, editorContext]);
 
   if (
     !isNativeEditorOpen ||
@@ -83,12 +93,14 @@ interface PopulatedDataSourceSelectorsProps {
   database: Database | null;
   databases: Database[];
   isNativeEditorOpen: boolean;
-  query: NativeQuery;
+  query: Lib.Query;
   readOnly?: boolean;
   setDatabaseId: (databaseId: DatabaseId) => void;
   setTableId: (tableId: TableId) => void;
-  databaseIsDisabled?: (database: Database) => boolean;
-  databaseDisabledTooltip?: (database: Database) => string | undefined;
+  databaseIsDisabled?: (database: DataSelectorDatabase) => boolean;
+  databaseDisabledTooltip?: (
+    database: DataSelectorDatabase,
+  ) => string | undefined;
 }
 
 const PopulatedDataSourceSelectors = ({
@@ -102,6 +114,16 @@ const PopulatedDataSourceSelectors = ({
   databaseDisabledTooltip,
 }: PopulatedDataSourceSelectorsProps) => {
   const dataSourceSelectors: ReactNode[] = [];
+  const isCollectionRequired = requiresNativeCollection(query);
+  const databaseId = Lib.databaseID(query);
+  const collection = Lib.nativeExtras(query)?.collection;
+  const { data: tables } = useListTablesQuery(
+    isCollectionRequired && databaseId != null
+      ? { dbId: databaseId }
+      : skipToken,
+  );
+  const selectedTableId =
+    tables?.find((table) => table.name === collection)?.id ?? null;
 
   const areThereMultipleDatabases = checkIfThereAreMultipleDatabases(
     database,
@@ -126,13 +148,13 @@ const PopulatedDataSourceSelectors = ({
     );
   }
 
-  if (query.requiresTable()) {
+  if (isCollectionRequired) {
     dataSourceSelectors.push(
       <TableSelector
         database={database}
         key="table_selector"
         readOnly={readOnly}
-        selectedTable={query.table()}
+        selectedTableId={selectedTableId}
         setTableId={setTableId}
       />,
     );
@@ -153,8 +175,10 @@ interface DatabaseSelectorProps {
   databases: Database[];
   readOnly?: boolean;
   setDatabaseId: (databaseId: DatabaseId) => void;
-  databaseIsDisabled?: (database: Database) => boolean;
-  databaseDisabledTooltip?: (database: Database) => string | undefined;
+  databaseIsDisabled?: (database: DataSelectorDatabase) => boolean;
+  databaseDisabledTooltip?: (
+    database: DataSelectorDatabase,
+  ) => string | undefined;
 }
 
 const DatabaseSelector = ({
@@ -195,7 +219,7 @@ interface SingleDatabaseNameProps {
 const SingleDatabaseName = ({ database }: SingleDatabaseNameProps) => (
   <Flex
     h="3rem"
-    px="md"
+    px="lg"
     align="center"
     fw="bold"
     data-testid="selected-database"
@@ -207,14 +231,14 @@ const SingleDatabaseName = ({ database }: SingleDatabaseNameProps) => (
 interface TableSelectorProps {
   database: Database | null;
   readOnly?: boolean;
-  selectedTable: Table | null;
+  selectedTableId: TableId | null;
   setTableId: (tableId: TableId) => void;
 }
 
 const TableSelector = ({
   database,
   readOnly,
-  selectedTable,
+  selectedTableId,
   setTableId,
 }: TableSelectorProps) => (
   <div
@@ -228,7 +252,7 @@ const TableSelector = ({
     data-testid="gui-builder-data"
   >
     <SchemaAndTableDataSelector
-      selectedTableId={selectedTable?.id || null}
+      selectedTableId={selectedTableId}
       selectedDatabaseId={database?.id}
       databases={database ? [database] : []}
       setSourceTableFn={setTableId}
@@ -239,7 +263,7 @@ const TableSelector = ({
 );
 
 interface PlaceholderProps {
-  query: NativeQuery;
+  query: Lib.Query;
   editorContext?: EditorContext;
 }
 
@@ -248,7 +272,7 @@ const Placeholder = ({ query, editorContext }: PlaceholderProps) => {
     return null;
   }
 
-  const language = getNativeQueryLanguage(query.engine() ?? undefined);
+  const language = getNativeQueryLanguage(Lib.engine(query) ?? undefined);
   return (
     <Flex
       align="center"

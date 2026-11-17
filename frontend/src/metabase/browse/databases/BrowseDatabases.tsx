@@ -1,8 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { useListDatabasesQuery } from "metabase/api";
+import { BrowseCard } from "metabase/common/components/BrowseCard";
+import { BrowseGrid } from "metabase/common/components/BrowseGrid";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -14,10 +17,9 @@ import { Box, Flex, Group, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { newDatabase } from "metabase/urls";
 
-import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
-import { BrowseGrid } from "../components/BrowseGrid";
+import { DatabaseQuickLinksMenu } from "../components/DatabaseQuickLinksMenu";
 
 import DB from "./BrowseDatabases.module.css";
 import { trackAddDatabaseDBList } from "./analytics";
@@ -56,7 +58,7 @@ export const BrowseDatabases = () => {
       flex={1}
       direction="column"
       wrap="nowrap"
-      pt="md"
+      pt="lg"
     >
       <BrowseDataHeader />
       <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
@@ -81,7 +83,13 @@ export const BrowseDatabases = () => {
                     title={database.name}
                     icon="database"
                     size="lg"
-                  />
+                    className={DB.databaseCard}
+                  >
+                    <DatabaseQuickLinksMenu
+                      databaseId={database.id}
+                      className={DB.quickLinksTrigger}
+                    />
+                  </BrowseCard>
                 );
               })}
             {isAdmin && <AddDatabaseCard />}
@@ -96,8 +104,8 @@ const CardImageWrapper = ({ database }: { database: string }) => {
   return (
     <Box
       bg="core-white"
-      h="xl"
-      w="xl"
+      h="xxl"
+      w="xxl"
       className={CS.rounded}
       style={{
         boxShadow:
@@ -109,9 +117,9 @@ const CardImageWrapper = ({ database }: { database: string }) => {
         component="img"
         src={getEngineLogo(database)}
         alt={t`${database} database logo`}
-        h="xl"
-        w="xl"
-        p="xs"
+        h="xxl"
+        w="xxl"
+        p="xxs"
       />
     </Box>
   );
@@ -122,10 +130,10 @@ const AddDatabaseCard = () => (
     <Stack
       h="8.5rem"
       justify="space-between"
-      p="lg"
+      p="xl"
       className={cx(CS.rounded, CS.bordered, DB.addCard)}
     >
-      <Group gap="xs">
+      <Group gap="xxs">
         <CardImageWrapper database={"postgres"} />
         <CardImageWrapper database={"mysql"} />
         <CardImageWrapper database={"snowflake"} />

@@ -1,0 +1,139 @@
+{
+  "getter-return": [
+    {
+      "allowImplicit": false
+    }
+  ],
+  "no-cond-assign": ["except-parens"],
+  "no-constant-condition": [
+    {
+      "checkLoops": "allExceptWhileTrue"
+    }
+  ],
+  "no-empty": [
+    {
+      "allowEmptyCatch": false
+    }
+  ],
+  "no-empty-pattern": [
+    {
+      "allowObjectPatternsAsParameters": false
+    }
+  ],
+  "no-extra-boolean-cast": [{}],
+  "no-fallthrough": [
+    {
+      "allowEmptyCase": false,
+      "reportUnusedFallthroughComment": false
+    }
+  ],
+  "no-global-assign": [
+    {
+      "exceptions": []
+    }
+  ],
+  "no-invalid-regexp": [{}],
+  "no-irregular-whitespace": [
+    {
+      "skipComments": false,
+      "skipJSXText": false,
+      "skipRegExps": false,
+      "skipStrings": true,
+      "skipTemplates": false
+    }
+  ],
+  "no-misleading-character-class": [
+    {
+      "allowEscape": false
+    }
+  ],
+  "no-redeclare": [
+    {
+      "builtinGlobals": true
+    }
+  ],
+  "no-self-assign": [
+    {
+      "props": true
+    }
+  ],
+  "no-shadow-restricted-names": [
+    {
+      "reportGlobalThis": false
+    }
+  ],
+  "no-undef": [
+    {
+      "typeof": false
+    }
+  ],
+  "no-unsafe-negation": [
+    {
+      "enforceForOrderingRelations": false
+    }
+  ],
+  "no-unsafe-optional-chaining": [
+    {
+      "disallowArithmeticOperators": false
+    }
+  ],
+  "no-useless-escape": [
+    {
+      "allowRegexCharacters": []
+    }
+  ],
+  "use-isnan": [
+    {
+      "enforceForIndexOf": false,
+      "enforceForSwitchCase": true
+    }
+  ],
+  "valid-typeof": [
+    {
+      "requireStringLiterals": false
+    }
+  ],
+  "strict": ["safe"],
+  "curly": ["all"],
+  "prefer-const": [
+    {
+      "destructuring": "any",
+      "ignoreReadBeforeAssign": false
+    }
+  ],
+  "complexity": [20],
+  "sort-imports": [
+    {
+      "allowSeparatedGroups": false,
+      "ignoreCase": false,
+      "ignoreDeclarationSort": false,
+      "ignoreMemberSort": false,
+      "memberSyntaxSortOrder": ["none", "all", "multiple", "single"]
+    }
+  ],
+  "depend/ban-dependencies": [{}],
+  "no-console": [{}],
+  "@typescript-eslint/no-unused-expressions": [
+    {
+      "allowShortCircuit": false,
+      "allowTaggedTemplates": false,
+      "allowTernary": false
+    }
+  ],
+  "storybook/await-interactions": [],
+  "storybook/context-in-play-function": [],
+  "storybook/default-exports": [],
+  "storybook/hierarchy-separator": [],
+  "storybook/no-redundant-story-name": [],
+  "storybook/prefer-pascal-case": [],
+  "storybook/story-exports": [],
+  "storybook/use-storybook-expect": [],
+  "storybook/use-storybook-testing-library": [],
+  "storybook/no-renderer-packages": [],
+  "storybook/no-uninstalled-addons": [
+    {
+      "packageJsonLocation": "",
+      "ignore": []
+    }
+  ]
+}

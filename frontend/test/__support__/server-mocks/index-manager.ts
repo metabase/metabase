@@ -5,16 +5,23 @@ import type {
   TableIndexRequest,
   TransformId,
 } from "metabase-types/api";
-import { createMockTableIndexRequest } from "metabase-types/api/mocks";
+import {
+  createMockListTableIndexesResponse,
+  createMockTableIndexRequest,
+} from "metabase-types/api/mocks";
 
 export function setupListTableIndexesEndpoint(
   transformId: TransformId,
   indexes: TableIndexEntry[] = [],
+  warehouseError: string | null = null,
 ) {
   fetchMock.get({
     url: `path:/api/index`,
     query: { "transform-id": transformId },
-    response: { data: indexes },
+    response: createMockListTableIndexesResponse({
+      data: indexes,
+      warehouse_error: warehouseError,
+    }),
     name: `listTableIndexes-${transformId}`,
   });
 }

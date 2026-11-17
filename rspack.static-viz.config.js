@@ -1,5 +1,5 @@
 const rspack = require("@rspack/core");
-const YAML = require("json-to-pretty-yaml");
+const yaml = require("js-yaml");
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
 
 const { WEBPACK_BUNDLE } = require("./frontend/build/shared/constants");
@@ -65,7 +65,7 @@ module.exports = (env) => {
         },
         {
           test: /\.(tsx?|jsx?)$/,
-          exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
+          exclude: /node_modules|cljs/,
           use: [
             {
               loader: "builtin:swc-loader",
@@ -173,7 +173,7 @@ module.exports = (env) => {
         },
         filename: "../../../../.github/static-viz-sources.yaml",
         transform: (stats) =>
-          YAML.stringify({
+          yaml.dump({
             static_viz: stats.modules
               .filter(
                 (module) =>

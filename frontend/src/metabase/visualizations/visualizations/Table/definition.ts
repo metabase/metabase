@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { isNative } from "metabase/common/utils/card";
 import { displayNameForColumn } from "metabase/value-formatting";
 import {
   trackTableFreezeColumnsEnabled,
@@ -8,23 +7,19 @@ import {
 } from "metabase/visualizations/analytics";
 import * as DataGrid from "metabase/visualizations/lib/data_grid";
 import {
+  type ColumnSettingDefinition,
+  type ComputedVisualizationSettings,
+  type FormattableColumn,
+  type VisualizationDefinition,
   columnSettings,
-  isPivoted,
-  tableColumnSettings,
-} from "metabase/visualizations/lib/settings/column";
-import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import { getDefaultPivotColumn } from "metabase/visualizations/lib/utils";
-import {
+  getDefaultPivotColumn,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type {
-  ColumnSettingDefinition,
-  ComputedVisualizationSettings,
-  FormattableColumn,
-  VisualizationDefinition,
-} from "metabase/visualizations/types";
+  getOptionFromColumn,
+  isPivoted,
+  makeCellBackgroundGetter,
+  tableColumnSettings,
+} from "metabase/viz-core";
 import {
   isAvatarURL,
   isCoordinate,
@@ -77,6 +72,15 @@ export const TABLE_DEFINITION = {
       getSection: () => t`Display`,
       get title() {
         return t`Show row index`;
+      },
+      inline: true,
+      widget: "toggle",
+      getDefault: () => false,
+    },
+    "table.striped": {
+      getSection: () => t`Display`,
+      get title() {
+        return t`Striped rows`;
       },
       inline: true,
       widget: "toggle",
@@ -151,20 +155,13 @@ export const TABLE_DEFINITION = {
       },
       widget: "toggle",
       inline: true,
-      getHidden: ([{ data }]: Series) => data && data.cols.length !== 3,
+      getHidden: ([{ data }]: Series) => data && data.cols.length < 3,
       getDefault: ([series]: Series) => {
-        const { card, data } = series;
-        let native: boolean;
-        try {
-          native = isNative(card);
-        } catch (error) {
-          // isNative throws when used in the visualizer
-          native = false;
-        }
+        const { data } = series;
         if (
           !data ||
           data.cols.length !== 3 ||
-          native ||
+          data.cols.some((col) => col.source === "native") ||
           data.cols.filter(isMetric).length !== 1 ||
           data.cols.filter(isDimension).length !== 2
         ) {
@@ -172,13 +169,6 @@ export const TABLE_DEFINITION = {
         }
 
         return getDefaultPivotColumn(series) != null;
-      },
-      isValid: (
-        [{ data }]: Series,
-        settings: ComputedVisualizationSettings,
-      ) => {
-        const isInvalid = settings["table.pivot"] && data?.cols.length !== 3; // must have exactly 3 columns to pivot
-        return !isInvalid;
       },
       persistDefault: true,
     },
@@ -264,7 +254,7 @@ export const TABLE_DEFINITION = {
           rows,
           cols,
           settings[DataGrid.COLUMN_FORMATTING_SETTING] ?? [],
-          settings["table.pivot"],
+          settings["table.pivot"] ?? false,
         );
       },
       readDependencies: [DataGrid.COLUMN_FORMATTING_SETTING, "table.pivot"],
@@ -283,8 +273,8 @@ export const TABLE_DEFINITION = {
       },
       click_behavior: {},
       text_align: {
-        title: t`Align`,
-        widget: "select",
+        title: t`Alignment`,
+        widget: "segmentedControl",
         getDefault: (column) => {
           const baseColumn = column?.remapped_to_column ?? column;
           return isNumber(baseColumn) || isCoordinate(baseColumn)
@@ -294,8 +284,8 @@ export const TABLE_DEFINITION = {
         getProps: () => ({
           options: [
             { name: t`Left`, value: "left" },
-            { name: t`Right`, value: "right" },
             { name: t`Middle`, value: "middle" },
+            { name: t`Right`, value: "right" },
           ],
         }),
       },
@@ -344,12 +334,12 @@ export const TABLE_DEFINITION = {
     }
     if (!column.semantic_type) {
       defaultValue = "auto";
-      options.push({ name: t`Automatic`, value: "auto" });
+      options.push({ name: t`Choose automatically`, value: "auto" });
     }
 
     if (options.length > 1) {
       settings["view_as"] = {
-        title: t`Display as`,
+        title: t`Display as text, link, or image`,
         widget: options.length === 2 ? "radio" : "select",
         getDefault: () => defaultValue,
         getProps: () => ({

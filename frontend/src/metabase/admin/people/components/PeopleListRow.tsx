@@ -27,6 +27,7 @@ import type {
 } from "metabase-types/api";
 
 import { userToColor } from "../colors";
+import { getIsSsoOnlyUser } from "../selectors";
 
 import { MembershipSelect } from "./MembershipSelect";
 import { ReactivateUserButton } from "./ReactivateUserButton";
@@ -71,10 +72,12 @@ export const PeopleListRow = ({
   const isPasswordLoginEnabled = useSelector((state) =>
     getSetting(state, enablePasswordLoginKey),
   );
+  const isSsoOnlyUser = useSelector((state) => getIsSsoOnlyUser(state, user));
+  const canResetPassword = isPasswordLoginEnabled && !isSsoOnlyUser;
 
   return (
     <tr key={user.id}>
-      <Flex component="td" align="center" gap="md" c="text-primary-inverse">
+      <Flex component="td" align="center" gap="lg" c="text-primary-inverse">
         <UserAvatar bg={userToColor(user)} user={user} />
         <Text fw="700">{getFullName(user) ?? "-"}</Text>
       </Flex>
@@ -130,7 +133,7 @@ export const PeopleListRow = ({
           </td>
           <Box component="td" ta="right">
             {isAdmin && (
-              <Menu shadow="md" position="bottom-end">
+              <Menu shadow="sm" position="bottom-end">
                 <Menu.Target>
                   <UnstyledButton>
                     <Icon name="ellipsis" />
@@ -145,7 +148,7 @@ export const PeopleListRow = ({
                     {t`Edit user`}
                   </Menu.Item>
 
-                  {isPasswordLoginEnabled && (
+                  {canResetPassword && (
                     <Menu.Item
                       component={ForwardRefLink}
                       to={Urls.resetPassword(user)}

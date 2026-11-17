@@ -8,6 +8,7 @@
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.settings :as server.settings]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
@@ -18,6 +19,12 @@
 
 (declare api-exception-response)
 
+(def ^:private cors-key ::cors)
+
+(defn- security-headers [request]
+  (mw.security/security-headers :origin (get-in request [:headers "origin"])
+                                :cors (get request cors-key)))
+
 (defmulti api-exception-response
   "Convert an uncaught exception from an API endpoint into an appropriate format to be returned by the REST API (e.g. a
   map, which eventually gets serialized to JSON, or a plain string message). `request` is the Ring request that
@@ -27,38 +34,44 @@
     (class e)))
 
 (defmethod api-exception-response Throwable
-  [^Throwable e _request]
+  [^Throwable e request]
   (let [{:keys [status-code], :as info} (ex-data e)
-        other-info                      (dissoc info :status-code :schema :type :toucan2/context-trace ::log/context)
+        ;; only the keys the throw site listed go to the client; the rest is server-side context. See
+        ;; [[metabase.util.api-error]]
+        api-data                        (api-error/response-data info)
         body                            (cond
-                                          (and status-code (not= status-code 500) (empty? other-info))
-                                          ;; If status code was specified (but not a 500 -- an unexpected error, and
-                                          ;; other data wasn't, it's something like a 404. Return message as
-                                          ;; the (plain-text) body.
+                                          (and status-code (not= status-code 500) (empty? api-data))
+                                          ;; If status code was specified (but not a 500 -- an unexpected error), and
+                                          ;; there is nothing client-facing in the ex-data, it's something like a 404.
+                                          ;; Return message as the (plain-text) body.
                                           (.getMessage e)
 
                                           ;; if the response includes `:errors`, (e.g., it's something like a generic
-                                          ;; parameter validation exception), just return the `other-info` from the
-                                          ;; ex-data.
-                                          (and status-code (:errors other-info))
-                                          other-info
+                                          ;; parameter validation exception), just return the client-facing data.
+                                          (and status-code (:errors api-data))
+                                          api-data
+
+                                          ;; a machine-readable error code means the throw site authored this as an
+                                          ;; API response; return it without a stacktrace
+                                          (and status-code (not= status-code 500) (:error-code api-data))
+                                          (merge {:message (ex-message e)} api-data)
 
                                           ;; allow administrators to configure their instances to suppress stacktraces
                                           ;; returns 500 with a generic message
                                           (server.settings/hide-stacktraces)
                                           {:message (tru "Something went wrong")}
 
-                                          ;; Otherwise return the full `Throwable->map` representation with Stacktrace
-                                          ;; and ex-data
+                                          ;; Otherwise return the `Throwable->map` representation with Stacktrace
+                                          ;; and the client-facing ex-data
                                           :else
                                           (merge
-                                           (Throwable->map e)
+                                           (api-error/throwable->map e)
                                            {:message (.getMessage e)}
-                                           other-info))]
+                                           api-data))]
     (when (nil? status-code)
       (analytics/inc! :metabase-api/unhandled-errors))
     {:status  (or status-code 500)
-     :headers (mw.security/security-headers)
+     :headers (security-headers request)
      :body    body}))
 
 (defmethod api-exception-response SQLException
@@ -73,17 +86,19 @@
              (or (some-> request-method name u/upper-case-en) "?")
              uri
              (or (request/ip-address request) "unknown"))
-  {:status-code 204, :body nil, :headers (mw.security/security-headers)})
+  {:status-code 204, :body nil, :headers (security-headers request)})
 
 (defn catch-api-exceptions
   "Middleware (with `[request respond raise]`) that catches API Exceptions and returns them in our normal-style format rather than the Jetty 500
   Stacktrace page, which is not so useful for our frontend."
-  [handler]
-  (fn [request respond _raise]
-    (handler
-     request
-     respond
-     #(respond (api-exception-response % request)))))
+  ([handler]
+   (catch-api-exceptions handler nil))
+  ([handler cors]
+   (fn [request respond _raise]
+     (handler
+      request
+      respond
+      #(respond (api-exception-response % (assoc request cors-key cors)))))))
 
 (defn catch-uncaught-exceptions
   "Middleware (with `[request respond raise]`) that catches any unexpected Exceptions and reroutes them through `raise`

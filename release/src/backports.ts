@@ -1,6 +1,6 @@
 import "dotenv/config";
 import type { Octokit } from "@octokit/rest";
-import dayjs from 'dayjs';
+import dayjs from "dayjs";
 
 import { sendBackportReminder } from "./slack";
 import type { Issue } from "./types";
@@ -8,24 +8,32 @@ import type { Issue } from "./types";
 const RECENT_BACKPORT_THRESHOLD_HOURS = 25;
 
 /** check open backports and send slack reminders about stale ones */
-export const checkOpenBackports = async ({ github, owner, repo, channelName }: {
-  github: Octokit,
-  owner: string,
-  repo: string,
-  channelName: string,
+export const checkOpenBackports = async ({
+  github,
+  owner,
+  repo,
+  channelName,
+}: {
+  github: Octokit;
+  owner: string;
+  repo: string;
+  channelName: string;
 }) => {
-
-  const { data: openBackports } = await github.rest.issues.listForRepo({
+  const openBackports = (await github.paginate(github.rest.issues.listForRepo, {
     owner,
     repo,
     labels: "was-backported",
     state: "open",
-  }) as { data: Issue[] };
+    per_page: 100,
+  })) as Issue[];
 
   console.log(`Found ${openBackports.length} open backports`);
 
-  const staleBackports = openBackports
-    .filter(issue => dayjs().diff(dayjs(issue.created_at), 'hours') > RECENT_BACKPORT_THRESHOLD_HOURS);
+  const staleBackports = openBackports.filter(
+    (issue) =>
+      dayjs().diff(dayjs(issue.created_at), "hours") >
+      RECENT_BACKPORT_THRESHOLD_HOURS,
+  );
 
   if (!staleBackports.length) {
     console.log("No recent backports to remind about");
@@ -38,5 +46,4 @@ export const checkOpenBackports = async ({ github, owner, repo, channelName }: {
     channelName,
     backports: staleBackports,
   });
-}
-
+};

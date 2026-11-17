@@ -4,6 +4,8 @@ import type { NotificationRunSummary } from "metabase-types/api";
 
 import { formatRelativeDate } from "../NotificationsAdminPage/utils";
 
+import S from "./NotificationSummary.module.css";
+
 type Props = {
   run: NotificationRunSummary | null;
   isCompact?: boolean;
@@ -18,7 +20,7 @@ export const NotificationSummary = ({ run, isCompact }: Props) => {
   }
 
   return (
-    <Stack gap="xs">
+    <Stack gap="xxs">
       <Flex gap="sm" align="center">
         <Tooltip label={dayjs(run.at).fromNow()}>
           <Text size="md" c="text-primary" component="span">
@@ -32,9 +34,9 @@ export const NotificationSummary = ({ run, isCompact }: Props) => {
         )}
       </Flex>
       {!isCompact && isFailing && (
-        <Flex align="center" gap="xs">
+        <Flex align="center" gap="xxs">
           {error && (
-            <Text size="sm" c="feedback-negative">
+            <Text size="sm" c="feedback-negative" className={S.ErrorText}>
               {error}
             </Text>
           )}

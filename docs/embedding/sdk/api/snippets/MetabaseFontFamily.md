@@ -13,6 +13,7 @@ type MetabaseFontFamily =
   | "PT Sans"
   | "Poppins"
   | "PT Serif"
+  | "JetBrains Mono"
   | "Roboto Mono"
   | "Roboto Condensed"
   | "Playfair Display"

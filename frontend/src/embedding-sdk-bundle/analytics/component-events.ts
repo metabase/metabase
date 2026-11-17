@@ -6,10 +6,12 @@ import { isEmbeddingEajs, isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useSetting } from "metabase/settings";
 
 import {
+  getHostReactVersion,
   getSdkAuthMethod,
+  getSdkClient,
   getSdkLocaleUsed,
   trackSdkSimpleEvent,
-} from "./snowplow";
+} from "./event";
 
 export function useIsTrackingEnabled(): boolean {
   // Default false so we don't fire events during the settings-load window for users who opted out.
@@ -188,6 +190,8 @@ export function useTrackSdkComponentMount<C extends SdkComponentName>(
           auth_method: getSdkAuthMethod(),
           sdk_version: sdkVersion,
           locale_used: getSdkLocaleUsed(),
+          react_version: getHostReactVersion(),
+          client: getSdkClient(),
         },
       }),
     });

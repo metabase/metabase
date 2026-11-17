@@ -14,14 +14,16 @@ export const useCollectionPath = ({
   collectionId,
   namespace,
 }: UseCollectionPathOptions) => {
-  const { currentData: collection, isLoading: isLoadingPath } =
-    useGetCollectionQuery({ id: collectionId ?? "root", namespace });
+  const { currentData: collection, isFetching } = useGetCollectionQuery({
+    id: collectionId ?? "root",
+    namespace,
+  });
 
   const ancestors =
     collection?.effective_ancestors?.filter((c) => !isRootCollection(c)) ?? [];
 
   return {
-    isLoadingPath,
+    isLoadingPath: collection == null && isFetching,
     path: collection ? [...ancestors, collection] : null,
   };
 };

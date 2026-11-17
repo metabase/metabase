@@ -6,14 +6,16 @@ import { AreaNavbarHeader } from "./AreaNavbarHeader";
 
 interface SetupOpts {
   isNavbarOpened?: boolean;
+  title?: string;
 }
 
-const setup = ({ isNavbarOpened = true }: SetupOpts = {}) => {
+const setup = ({ isNavbarOpened = true, title }: SetupOpts = {}) => {
   const onNavbarToggle = jest.fn();
 
   renderWithProviders(
     <AreaNavbarHeader
       logo={<div>{"Logo"}</div>}
+      title={title}
       headerControls={<div>{"Header controls"}</div>}
       isNavbarOpened={isNavbarOpened}
       onNavbarToggle={onNavbarToggle}
@@ -28,6 +30,18 @@ describe("AreaNavbarHeader", () => {
     setup();
 
     expect(screen.getByText("Logo")).toBeInTheDocument();
+  });
+
+  it("renders the title when the navbar is open", () => {
+    setup({ isNavbarOpened: true, title: "Embedding hub" });
+
+    expect(screen.getByText("Embedding hub")).toBeInTheDocument();
+  });
+
+  it("hides the title when the navbar is closed, leaving room for the logo alone", () => {
+    setup({ isNavbarOpened: false, title: "Embedding hub" });
+
+    expect(screen.queryByText("Embedding hub")).not.toBeInTheDocument();
   });
 
   it("renders header controls when the navbar is open", () => {

@@ -8,6 +8,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
@@ -18,7 +19,7 @@
 
 (defn- normalize-mbql
   [query]
-  (case (lib/normalized-query-type query)
+  (case (when (map? query) (lib/normalized-query-type query))
     :mbql/query      (lib.schema.common/normalize-map-no-kebab-case query)
     (:query :native) (mbql.normalize/normalize query)
     (lib.schema.common/normalize-map-no-kebab-case query)))
@@ -28,14 +29,15 @@
                               [true  [:= {:description "empty map"} {}]]
                               [false ::lib.schema/query]]]
   "Normalize an MBQL `query` to MBQL 5 and attach a metadata provider."
-  ([query]
+  ([query :- [:maybe :metabase.lib.util/query-like]]
    (normalize-query nil query))
 
-  ([metadata-providerable query]
+  ([metadata-providerable :- [:maybe ::lib.metadata.protocols/metadata-providerable]
+    query                 :- [:maybe :metabase.lib.util/query-like]]
    (normalize-query metadata-providerable query nil))
 
   ([metadata-providerable :- [:maybe ::lib.metadata.protocols/metadata-providerable]
-    query                 :- [:maybe :map]
+    query                 :- [:maybe :metabase.lib.util/query-like]
     {:keys [strict?]}     :- [:maybe
                               [:map
                                {:closed true}
@@ -112,3 +114,9 @@
 (def transform-query
   "Toucan 2 transform spec for Card `dataset_query` and other columns that store MBQL."
   {:in transform-query-in, :out transform-query-out})
+
+(def transform-visualization-settings
+  "Toucan 2 transform spec for the `visualization_settings` of Cards and DashboardCards, normalized both ways."
+  (let [normalize #(lib/normalize ::lib.schema.visualization/visualization-settings %)]
+    {:in  (comp mi/json-in normalize)
+     :out (comp normalize mi/json-out-without-keywordization)}))

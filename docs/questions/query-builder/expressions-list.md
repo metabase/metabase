@@ -1,5 +1,6 @@
 ---
 title: List of expressions
+summary: Every aggregation and function you can use in custom expressions, with syntax and examples.
 redirect_from:
   - /docs/latest/users-guide/expressions-list
 ---
@@ -150,7 +151,7 @@ Only counts rows where the condition is true.
 
 Syntax: `CountIf(condition)`
 
-Example: `CountIf([Subtotal] > 100)` would return the number of rows where the subtotal were greater than 100.
+Example: `CountIf([Subtotal] > 100)` would return the number of rows where the subtotal was greater than 100.
 
 ### Distinct
 
@@ -186,7 +187,9 @@ Syntax: `Median(column)`
 
 Example: `Median([Age])` would find the midpoint age where half of the ages are older, and half of the ages are younger.
 
-Databases that don't support `median`: Druid, MariaDB, MongoDB, MySQL, SQLite, Vertica, and SQL Server. Presto only provides approximate results.
+Databases that don't support `median`: Druid, MariaDB, MongoDB, MySQL, SQLite, Vertica, and SQL Server.
+
+Presto only provides approximate results. BigQuery uses the lower of the middle 2 values, rather than their mean, when there is an even number of values.
 
 Related: [Min](#min), [Max](#max), [Average](#average).
 
@@ -1050,6 +1053,8 @@ Limitations are noted for each aggregation and function above, and here they are
 
 **Athena**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
+**BigQuery**: `Median`.
+
 **Databricks**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
 **Druid**: `Median`, `Percentile`, `StandardDeviation`, `power`, `log`, `exp`, `sqrt`, `Offset`, `datetime`, `float`, `splitPart`. Function `regexExtract` and some [type casting functions](#type-casting-functions) are only available for the Druid-JDBC driver.
@@ -1072,7 +1077,7 @@ Limitations are noted for each aggregation and function above, and here they are
 
 **Vertica**: `Median`, `Percentile`, `datetime`, `float`, `splitPart`.
 
-If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
+If you're using or maintaining a third-party database driver, check the [driver changelog](../../developers-guide/driver-changelog.md) to see how your driver might be impacted.
 
 Check out our tutorial on [custom expressions in the query builder](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions) to learn more.
 

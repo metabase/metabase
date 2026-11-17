@@ -8,14 +8,36 @@
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]))
 
 (mu/defn normalize-dimension :- ::lib-metric.schema/persisted-dimension
   "Normalize a dimension after JSON parsing. Keys are kebab-case and type values are keywords.
   See [[lib-metric.schema/persisted-dimension]]."
-  [dim :- :map]
+  [dim :- [:map {:closed true}
+           [:id                    [:maybe ::lib-metric.schema/dimension-id]]
+           [:lib/source            {:optional true} [:maybe [:or :keyword :string]]]
+           [:name                  {:optional true} [:maybe :string]]
+           [:display-name          {:optional true} [:maybe :string]]
+           [:description           {:optional true} [:maybe :string]]
+           [:effective-type        {:optional true} [:maybe [:or :string :keyword]]]
+           [:semantic-type         {:optional true} [:maybe [:or :string :keyword]]]
+           [:has-field-values      {:optional true} [:maybe [:or :string :keyword]]]
+           [:status                {:optional true} [:maybe [:or :string :keyword]]]
+           [:status-message        {:optional true} [:maybe :string]]
+           [:sources               {:optional true} [:maybe [:sequential
+                                                             [:map {:closed true}
+                                                              [:type     [:or :string :keyword]]
+                                                              [:field-id {:optional true} [:maybe :int]]
+                                                              [:binning  {:optional true} [:maybe :boolean]]]]]]
+           [:group                 {:optional true} [:maybe ::lib-metric.schema/dimension-group]]
+           [:default-temporal-unit {:optional true} [:or :string :keyword]]
+           [:default               {:optional true} [:maybe :boolean]]]]
   (cond-> dim
+    ;; `:lib/source` arrives as a keyword on a computed dimension and as a string once it has been through the
+    ;; JSON column. Keywordizing it here, like every other enum below, is what keeps a metric's serialization the
+    ;; same before and after the backfill is persisted.
+    (:lib/source dim)            (update :lib/source keyword)
     (:status dim)                (update :status keyword)
     (:effective-type dim)        (update :effective-type keyword)
     (:semantic-type dim)         (update :semantic-type keyword)
@@ -42,6 +64,7 @@
    :out (fn [dims]
           (some->> dims
                    mi/json-out-with-keywordization
+                   (remove nil?)
                    (mapv normalize-dimension)))})
 
 (def transform-dimension-mappings
@@ -53,75 +76,72 @@
                    (mapv normalize-dimension-mapping)))})
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
-;;; Dimensions and dimension-mappings embed instance-specific Field and Table IDs that must be turned into portable
+;;; Dimensions and dimension-mappings embed instance-specific Field and Table IDs that must be turned into
 ;;; references on export and resolved back to local IDs on import. Only curated (metric v2) entities serialize these;
 ;;; others re-derive them from their query on the far side.
 
-(defn- export-dimension
-  "Convert the Field IDs embedded in a persisted dimension's `:sources` to portable references."
-  [dimension]
+(defn- walk-export-dimension
+  "Convert the Field IDs embedded in a persisted dimension's `:sources` to the references `visit` returns."
+  [visit dimension]
   (cond-> dimension
     (seq (:sources dimension))
     (update :sources (fn [sources]
                        (mapv (fn [source]
                                (cond-> source
                                  (pos-int? (:field-id source))
-                                 (update :field-id serdes/*export-field-fk*)))
+                                 (update :field-id #(serialization/visit-some :model/Field % visit))))
                              sources)))))
 
-(defn- import-dimension
-  "Inverse of [[export-dimension]]."
-  [dimension]
+(defn- walk-import-dimension
+  "Inverse of [[walk-export-dimension]]."
+  [visit dimension]
   (cond-> dimension
     (seq (:sources dimension))
     (update :sources (fn [sources]
                        (mapv (fn [source]
                                (cond-> source
                                  (vector? (:field-id source))
-                                 (update :field-id serdes/*import-field-fk*)))
+                                 (update :field-id #(serialization/visit-some :model/Field % visit))))
                              sources)))))
 
-(defn export-dimensions
+(defn walk-export-dimensions
   "Serialize a curated entity's `:dimensions`: convert the Field IDs embedded in each dimension's `:sources` to
-   portable references. `nil` in, `nil` out (so the column is elided for non-curated entities); an empty vector is
-   preserved, so a fully cleared dimension set round-trips as cleared rather than being re-seeded on import."
-  [dimensions]
+   the references `visit` returns. `nil` in, `nil` out (so the column is elided for non-curated entities);
+   an empty vector is preserved, so a fully cleared dimension set round-trips as cleared rather than being re-seeded
+   on import."
+  [visit dimensions]
   (when (some? dimensions)
-    (mapv export-dimension dimensions)))
+    (mapv (partial walk-export-dimension visit) dimensions)))
 
-(defn import-dimensions
-  "Inverse of [[export-dimensions]]."
-  [dimensions]
+(defn walk-import-dimensions
+  "Inverse of [[walk-export-dimensions]]. Normalized like [[transform-dimensions]] output, since a file-based import
+  reads keyword values back as strings."
+  [visit dimensions]
   (when (some? dimensions)
-    (mapv import-dimension dimensions)))
+    (mapv #(cond-> (walk-import-dimension visit %)
+             (not (serialization/collecting? visit)) normalize-dimension)
+          dimensions)))
 
-(defn export-dimension-mappings
+(defn walk-export-dimension-mappings
   "Serialize a curated entity's `:dimension_mappings`: convert `:table-id` and the Field IDs inside each mapping's
-   `:target` field ref to portable references. `nil`/empty handled as in [[export-dimensions]]."
-  [mappings]
+   `:target` field ref to the references `visit` returns. `nil`/empty handled as in
+   [[walk-export-dimensions]]."
+  [visit mappings]
   (when (some? mappings)
     (mapv (fn [mapping]
             (cond-> mapping
-              (pos-int? (:table-id mapping)) (update :table-id serdes/*export-table-fk*)
-              (:target mapping)              (update :target serdes/export-mbql)))
+              (pos-int? (:table-id mapping)) (update :table-id #(serialization/visit-some :model/Table % visit))
+              (:target mapping)              (update :target (partial serialization/walk-export visit))))
           mappings)))
 
-(defn import-dimension-mappings
-  "Inverse of [[export-dimension-mappings]]."
-  [mappings]
+(defn walk-import-dimension-mappings
+  "Inverse of [[walk-export-dimension-mappings]]. Normalized like [[transform-dimension-mappings]] output, for the same
+  reason as [[walk-import-dimensions]]."
+  [visit mappings]
   (when (some? mappings)
     (mapv (fn [mapping]
-            (cond-> mapping
-              (vector? (:table-id mapping)) (update :table-id serdes/*import-table-fk*)
-              (:target mapping)             (update :target serdes/import-mbql)))
+            (cond-> (cond-> mapping
+                      (vector? (:table-id mapping)) (update :table-id #(serialization/visit-some :model/Table % visit))
+                      (:target mapping)             (update :target (partial serialization/walk-import visit)))
+              (not (serialization/collecting? visit)) normalize-dimension-mapping))
           mappings)))
-
-(defn dimension-mappings-deps
-  "Serdes dependencies contributed by an entity's `:dimension_mappings` — the Fields/Tables referenced by each
-   mapping's `:target`."
-  ([mappings]
-   (dimension-mappings-deps false mappings))
-  ([allow-int-ids? mappings]
-   (into #{} (comp (map :target)
-                   (mapcat #(serdes/mbql-deps allow-int-ids? %)))
-         mappings)))

@@ -1,34 +1,34 @@
 import fetchMock from "fetch-mock";
 
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupNativeQuerySnippetEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { DatasetEditor } from "metabase/query_builder/components/DatasetEditor";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { Card, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
-  createMockNativeDatasetQuery,
   createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+import { DatasetEditor } from ".";
 
 const TEST_DB = createSampleDatabase();
 const ROOT_COLLECTION = createMockCollection({ id: "root" });
 
 const mockSavedCard = createMockCard({
-  dataset_query: createMockNativeDatasetQuery({
-    type: "native",
-    database: TEST_DB.id,
-    native: {
-      query: "select * from orders",
-      "template-tags": undefined,
-    },
+  query_type: "native",
+  dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+    query: "select * from orders",
   }),
 });
 const mockSavedModel = { ...mockSavedCard, type: "model" };
@@ -75,7 +75,8 @@ const renderDatasetEditor = async (card: Card | UnsavedCard) => {
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupNativeQuerySnippetEndpoints();
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
-  const question = new Question(card);
+  setupUserMetabotPermissionsEndpoint();
+  const question = new Question(card, createMockMetadata());
 
   fetchMock.get("path:/api/search", { body: { data: [] } });
   fetchMock.get("path:/api/model-index", { body: [] });

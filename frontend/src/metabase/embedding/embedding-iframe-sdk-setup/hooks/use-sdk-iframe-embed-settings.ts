@@ -7,7 +7,7 @@ import type {
   SdkIframeEmbedSetupSettings,
 } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { determineDashboardId } from "metabase/embedding/embedding-iframe-sdk-setup/utils/determine-dashboard-id";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
 import { useSetting, useUserSetting } from "metabase/settings";
 
 import { getAdjustedSdkIframeEmbedSetting } from "../utils/get-adjusted-sdk-iframe-embed-setting";
@@ -97,6 +97,19 @@ export const useSdkIframeEmbedSettings = ({
         : "guest";
 
     return match(initialState)
+      .with(
+        { resourceType: "data-app", resourceId: P.nonNullable },
+        (initialState) =>
+          getDefaultSdkIframeEmbedSettings({
+            experience: "data-app",
+            resourceId: initialState.resourceId,
+            isSimpleEmbedFeatureAvailable,
+            isGuestEmbedsEnabled,
+            isSsoEnabledAndConfigured,
+            isGuest: false,
+            useExistingUserSession: false,
+          }),
+      )
       .with(
         { resourceType: "dashboard", resourceId: P.nonNullable },
         (initialState) =>

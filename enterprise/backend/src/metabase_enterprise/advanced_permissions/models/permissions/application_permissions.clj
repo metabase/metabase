@@ -3,8 +3,8 @@
   for more details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
+   [metabase-enterprise.advanced-permissions.db :as advanced-permissions.db]
    [metabase.permissions.core :as perms]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -34,22 +34,19 @@
   "Returns a map of group-id -> application permissions paths.
   Only groups that has at least one application permission enabled will be included."
   []
-  (let [application-permissions (t2/select :model/Permissions
-                                           {:where [:or
-                                                    [:= :object "/"]
-                                                    [:like :object (h2x/literal "/application/%")]]})]
+  (let [application-permissions (advanced-permissions.db/application-permissions)]
     (into {} (for [[group-id perms] (group-by :group_id application-permissions)]
                {group-id (set (map :object perms))}))))
 
 (defn- permission-for-type
   [permissions-set perm-type]
-  (if (perms/set-has-full-permissions? permissions-set (perms/application-perms-path perm-type))
+  (if (some (set permissions-set) ["/" "/application/" (perms/application-perms-path perm-type)])
     :yes
     :no))
 
 (mu/defn permissions-set->application-perms :- GroupPermissionsGraph
   "Get a map of all application permissions for a group."
-  [permission-set]
+  [permission-set :- [:maybe [:set :string]]]
   {:setting      (permission-for-type permission-set :setting)
    :monitoring   (permission-for-type permission-set :monitoring)
    :subscription (permission-for-type permission-set :subscription)})

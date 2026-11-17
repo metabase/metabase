@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { ModalHeader } from "metabase/common/components/ModalContent";
 import { StaticEmbedSetupPane } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane";
 import type {
   EmbedResource,
@@ -36,20 +35,12 @@ export const EmbedModal = ({
 }: EmbedModalProps) => (
   <Modal
     opened={opened}
-    onClose={onClose}
+    title={t`Static embedding`}
     size="auto"
-    withCloseButton={false}
-    padding={0}
+    classNames={{ content: S.content, header: S.header, body: S.body }}
+    onBack={onBack}
+    onClose={onClose}
   >
-    <ModalHeader
-      py="lg"
-      className={S.embedModalHeader}
-      onClose={onClose}
-      onBack={onBack}
-    >
-      {t`Static embedding`}
-    </ModalHeader>
-
     <StaticEmbedSetupPane
       resource={resource}
       resourceType={resourceType}

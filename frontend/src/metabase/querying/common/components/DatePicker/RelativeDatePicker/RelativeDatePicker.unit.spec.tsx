@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   DATE_PICKER_DIRECTIONS,
@@ -40,6 +41,11 @@ function setup({
       onChange={onChange}
       onBack={onBack}
     />,
+    {
+      storeInitialState: {
+        settings: createMockSettingsState({ "start-of-week": "sunday" }),
+      },
+    },
   );
 
   return { onChange, onBack };
@@ -60,6 +66,63 @@ describe("RelativeDatePicker", () => {
       expect(toTab).toHaveAttribute("aria-selected", "true");
     },
   );
+
+  it("should default to the past tab with a day unit", () => {
+    setup();
+
+    expect(screen.getByRole("tab", { name: "Previous" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("textbox", { name: "Unit" })).toHaveValue("days");
+  });
+
+  it("should update an existing value to a single unit with an offset", async () => {
+    const { onChange } = setup({
+      value: { type: "relative", value: -30, unit: "day" },
+    });
+
+    const input = screen.getByLabelText("Interval");
+    await userEvent.clear(input);
+    await userEvent.type(input, "1");
+    await userEvent.click(screen.getByRole("textbox", { name: "Unit" }));
+    await userEvent.click(screen.getByRole("option", { name: "year" }));
+    await userEvent.click(await screen.findByLabelText("Starting from…"));
+    const offsetInput = screen.getByLabelText("Starting from interval");
+    await userEvent.clear(offsetInput);
+    await userEvent.type(offsetInput, "2");
+    await userEvent.click(screen.getByText("Apply"));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith({
+      type: "relative",
+      value: -1,
+      unit: "year",
+      offsetValue: -2,
+      offsetUnit: "year",
+      options: undefined,
+    });
+  });
+
+  it("should not lose the 'Include current' switch state when navigating from Past to Next tab", async () => {
+    setup({
+      value: {
+        type: "relative",
+        value: -30,
+        unit: "day",
+        options: { includeCurrent: true },
+      },
+    });
+
+    expect(screen.getByRole("tab", { name: "Previous" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByLabelText("Include today")).toBeChecked();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Next" }));
+    expect(screen.getByLabelText("Include today")).toBeChecked();
+  });
 
   it("should not lose values when navigating from Past to Next tab", async () => {
     setup();

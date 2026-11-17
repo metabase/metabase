@@ -1,6 +1,6 @@
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -18,13 +18,22 @@ const getUser = (opts?: Partial<User>) =>
 type SetupOpts = {
   user?: User;
   isMfaEnabled?: boolean;
+  path?: string;
 };
 
-function setup({ user = getUser(), isMfaEnabled = false }: SetupOpts = {}) {
-  const onChangeLocation = jest.fn();
+function setup({
+  user = getUser(),
+  isMfaEnabled = false,
+  path,
+}: SetupOpts = {}) {
+  const onChangeLocation = jest.fn<void, [string]>();
 
   renderWithProviders(
-    <AccountHeader user={user} onChangeLocation={onChangeLocation} />,
+    <AccountHeader
+      user={user}
+      path={path}
+      onChangeLocation={onChangeLocation}
+    />,
     {
       storeInitialState: createMockState({
         settings: mockSettings({
@@ -53,6 +62,17 @@ describe("AccountHeader", () => {
     ).toBeInTheDocument();
   });
 
+  it.each(["ldap", "google"] as const)(
+    "login history tab should be available with sso_source %s (metabase#15558)",
+    (ssoSource) => {
+      setup({ user: getUser({ sso_source: ssoSource }) });
+
+      expect(
+        screen.getByRole("tab", { name: "Login History" }),
+      ).toBeInTheDocument();
+    },
+  );
+
   it("should change location when a tab is selected", () => {
     const { onChangeLocation } = setup();
 
@@ -61,6 +81,27 @@ describe("AccountHeader", () => {
   });
 
   describe("authentication tab", () => {
+    it("should be selected on the authentication page", () => {
+      setup({ path: "/account/authentication" });
+
+      expect(
+        screen.getByRole("tab", { name: "Authentication" }),
+      ).toHaveAttribute("aria-selected", "true");
+    });
+
+    it.each(["active", "inactive"] as const)(
+      "should show the tab for an SSO user with an %s Slack account",
+      (status) => {
+        setup({
+          user: getUser({ sso_source: "google", slack_account_status: status }),
+        });
+
+        expect(
+          screen.getByRole("tab", { name: "Authentication" }),
+        ).toBeInTheDocument();
+      },
+    );
+
     it("should show the tab for a user who can change their password", () => {
       setup({ user: getUser({ sso_source: null }) });
 
@@ -100,6 +141,25 @@ describe("AccountHeader", () => {
         screen.getByRole("tab", { name: "Authentication" }),
       ).toBeInTheDocument();
     });
+
+    it.each(["ldap", "google", "jwt", "saml"] as const)(
+      "should prevent %s users from editing SSO credentials (metabase#23298)",
+      (ssoSource) => {
+        setup({
+          user: getUser({
+            sso_source: ssoSource,
+            has_used_password: false,
+            slack_account_status: null,
+          }),
+          isMfaEnabled: false,
+        });
+
+        expect(screen.getByText("john@metabase.test")).toBeInTheDocument();
+        expect(
+          screen.queryByRole("tab", { name: "Authentication" }),
+        ).not.toBeInTheDocument();
+      },
+    );
 
     it("should hide the tab for an LDAP user when two-factor authentication is disabled for the instance", () => {
       setup({ user: getUser({ sso_source: "ldap" }), isMfaEnabled: false });

@@ -39,7 +39,7 @@ const ChecklistItemAction = ({
   value: ChecklistItemValue;
   action: ChecklistAction;
 }) => {
-  const variant = cta === "primary" ? "outline" : "subtle";
+  const variant = cta === "primary" ? "default" : "subtle";
   const handleClick = () => {
     trackChecklistItemCTAClicked(value, cta);
     onClick?.();

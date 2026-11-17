@@ -1,5 +1,5 @@
-import { useSelector } from "metabase/redux";
-import { getMetadataUnfiltered } from "metabase/selectors/metadata";
+import { useMetadataProviderUnfiltered } from "metabase/metadata-store";
+import { getPrimarySourceMetadata } from "metabase/querying/common/utils";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -7,13 +7,8 @@ export function useHiddenSourceTables(
   question: Question,
 ): Lib.TableDisplayInfo[] {
   const datasetQuery = question.datasetQuery();
-  const metadata = useSelector(getMetadataUnfiltered);
-  const metadataProvider = Lib.metadataProvider(
-    datasetQuery.database,
-    metadata,
-  );
+  const metadataProvider = useMetadataProviderUnfiltered(datasetQuery.database);
   const query = Lib.fromJsQuery(metadataProvider, datasetQuery);
-  const sourceTableId = Lib.sourceTableOrCardId(query);
 
   const joinTablesInfo = Lib.stageIndexes(query).flatMap((stageIndex) =>
     Lib.joins(query, stageIndex)
@@ -22,15 +17,10 @@ export function useHiddenSourceTables(
       .map((joinTable) => Lib.displayInfo(query, stageIndex, joinTable)),
   );
 
-  if (sourceTableId) {
-    const sourceTableMetadata = Lib.tableOrCardMetadata(
-      metadataProvider,
-      sourceTableId,
-    );
-    if (sourceTableMetadata) {
-      const sourceTableInfo = Lib.displayInfo(query, -1, sourceTableMetadata);
-      joinTablesInfo.unshift(sourceTableInfo);
-    }
+  const sourceMetadata = getPrimarySourceMetadata(query);
+  if (sourceMetadata) {
+    const sourceInfo = Lib.displayInfo(query, -1, sourceMetadata);
+    joinTablesInfo.unshift(sourceInfo);
   }
 
   return joinTablesInfo.filter(

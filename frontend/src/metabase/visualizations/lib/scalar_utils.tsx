@@ -8,21 +8,46 @@ import type {
   ScalarSegment,
 } from "metabase-types/api";
 
-export const COMPACT_MAX_WIDTH = 250;
-export const COMPACT_WIDTH_PER_DIGIT = 25;
-export const COMPACT_MIN_LENGTH = 6;
+// slight overestimates of Lato Bold character widths (digits ≈0.58em,
+// separators ≈0.22em), so borderline values compact instead of overflowing
+const CHAR_WIDTH_EM = 0.6;
+const THIN_CHAR_WIDTH_EM = 0.25;
+const THIN_CHARS_PATTERN = /[.,'\u2019\u00A0\u202F ]/;
 
-function checkShouldCompact(fullValue: string, width: number) {
-  const expectedCompactWidth = fullValue.length * COMPACT_WIDTH_PER_DIGIT;
-  return (
-    fullValue.length > COMPACT_MIN_LENGTH &&
-    (width < COMPACT_MAX_WIDTH || width < expectedCompactWidth)
+// font sizes render in rem, so the effective pixel size follows the root font
+// scale while the measured container width stays in device pixels
+export function getRootFontScale() {
+  if (typeof document === "undefined") {
+    return 1;
+  }
+  const rootFontSize = parseFloat(
+    getComputedStyle(document.documentElement).fontSize,
   );
+  return Number.isFinite(rootFontSize) ? rootFontSize / 16 : 1;
+}
+
+export function estimateScalarValueWidth(text: string, fontSize: number) {
+  const widthEm = [...text].reduce(
+    (total, char) =>
+      total +
+      (THIN_CHARS_PATTERN.test(char) ? THIN_CHAR_WIDTH_EM : CHAR_WIDTH_EM),
+    0,
+  );
+  return widthEm * fontSize * getRootFontScale();
+}
+
+function checkShouldCompact(
+  fullValue: string,
+  width: number,
+  fontSize: number,
+) {
+  return estimateScalarValueWidth(fullValue, fontSize) > width;
 }
 
 export function compactifyValue(
   value: RowValue,
   width: number,
+  fontSize: number,
   formatOptions: ColumnSettings = {},
 ) {
   const fullScalarValue = formatValue(value, {
@@ -35,7 +60,8 @@ export function compactifyValue(
   }
 
   const displayValue =
-    formatOptions.compact || checkShouldCompact(fullScalarValue, width)
+    formatOptions.compact ||
+    checkShouldCompact(fullScalarValue, width, fontSize)
       ? formatValue(value, {
           ...formatOptions,
           compact: true,

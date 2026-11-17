@@ -4,7 +4,7 @@
    [metabase-enterprise.impersonation.util :as impersonation.util]
    [metabase-enterprise.sandbox.test-util :as met]
    [metabase.api.common :as api]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -76,3 +76,10 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"No current user found"
                               (impersonation.util/impersonated-user?)))))))
+
+(deftest impersonated-user-without-advanced-permissions-feature-test
+  (testing "A configured impersonation policy is still reported when the `:advanced-permissions` feature is unavailable (e.g. token check failing)"
+    (with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "KEY"}]
+                           :attributes     {"KEY" "VAL"}}
+      (mt/with-premium-features #{}
+        (is (impersonation.util/impersonated-user?))))))

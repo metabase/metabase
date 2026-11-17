@@ -1,6 +1,5 @@
 name: Window Function - Offset
 entity_id: ErQY8K5Tep4xBc3VY_-1e
-created_at: '2026-04-02T02:59:02.778668Z'
 creator_id: admin@example.com
 display: line
 collection_id: cOlQuErIeS0ExAmPlE2x1
@@ -105,12 +104,9 @@ result_metadata:
   lib/original-name: offset
   lib/source: source/aggregations
   lib/source-column-alias: offset
-visualization_settings:
-  column_settings: null
+visualization_settings: {}
 card_schema: 24
 serdes/meta:
-- id: ErQY8K5Tep4xBc3VY_-1e
-  label: window_function___offset
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question

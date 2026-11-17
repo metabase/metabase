@@ -292,9 +292,9 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
       className={S.root}
       component="aside"
       data-testid="metrics-viewer-dimension-picker-sidebar"
-      pl="lg"
+      pl="xl"
     >
-      <Flex align="center" justify="space-between" pt="xs" pb="md">
+      <Flex align="center" justify="space-between" pt="xxs" pb="lg">
         <Flex align="center" gap="sm" miw={0}>
           {showAllFields && (
             <ActionIcon
@@ -318,7 +318,7 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
         </ActionIcon>
       </Flex>
 
-      <Box pb="md">
+      <Box pb="lg">
         <TextInput
           aria-label={t`Search fields`}
           classNames={{ input: S.searchInput }}
@@ -330,7 +330,7 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
         />
       </Box>
 
-      <ScrollArea pb="lg" offsetScrollbars="present">
+      <ScrollArea pb="xl" offsetScrollbars="present">
         {showAllFields && (
           <AllFieldsList
             key={isSearching ? "searching" : "browsing"}
@@ -343,13 +343,17 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
           />
         )}
         {showDefaultView && (
-          <Stack gap="xs">
+          <Stack gap="xxs">
             <Flex align="center" justify="space-between" my="sm">
               <Text size="md" c="text-secondary">
                 {defaultSectionHeader}
               </Text>
               {showSeeAll && (
-                <Button onClick={handleSeeAll} p={0} size="xs" variant="subtle">
+                <Button
+                  onClick={handleSeeAll}
+                  variant="transparent"
+                  size="compact-md"
+                >
                   {t`See all`}
                 </Button>
               )}
@@ -364,7 +368,7 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
                 onSelect={handleStandaloneMetricSelect}
               />
             ) : showFieldsByCategory ? (
-              <Stack gap="xs">
+              <Stack gap="xxs">
                 {categories.map((category) => {
                   const isSelected =
                     category.key === selectedDimensionBreakoutCategoryKey;
@@ -396,7 +400,7 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
                 })}
               </Stack>
             ) : (
-              <Text c="text-secondary" ta="center" py="lg">
+              <Text c="text-secondary" ta="center" py="xl">
                 {defaultEmptyStateText}
               </Text>
             )}

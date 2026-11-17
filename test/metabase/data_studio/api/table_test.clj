@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.data-studio.api.table :as api.table]
+   [metabase.data-studio.db :as data-studio.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -15,6 +16,11 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(defn- user-table-fn
+  "The value of `column` on the Table with `table-id`."
+  [column table-id]
+  (t2/select-one-fn column :model/Table :id table-id))
+
 (deftest bulk-edit-visibility-sync-test
   (testing "POST /api/data-studio/table/edit visibility field synchronization"
     (mt/with-temp [:model/Database {db-id :id} {}
@@ -25,25 +31,25 @@
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids  [table-1-id table-2-id]
                                :data_layer "internal"})
-        (is (= :internal (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
-        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-1-id)))
-        (is (= :internal (t2/select-one-fn :data_layer :model/Table :id table-2-id)))
-        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-2-id))))
+        (is (= :internal (user-table-fn :data_layer table-1-id)))
+        (is (= nil (user-table-fn :visibility_type table-1-id)))
+        (is (= :internal (user-table-fn :data_layer table-2-id)))
+        (is (= nil (user-table-fn :visibility_type table-2-id))))
       (testing "updating data_layer to hidden syncs to hidden visibility_type"
         ;; Update one table back to hidden, which should sync to :hidden
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids  [table-1-id]
                                :data_layer "hidden"})
-        (is (= :hidden (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
-        (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id table-1-id))))
+        (is (= :hidden (user-table-fn :data_layer table-1-id)))
+        (is (= :hidden (user-table-fn :visibility_type table-1-id))))
       (testing "visibility_type is not part of this endpoint, so it is dropped and data_layer alone applies"
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids       [table-1-id]
                                :visibility_type "hidden"
                                :data_layer      "final"})
         ;; had visibility_type been honoured, the model would have refused to update both at once
-        (is (= :final (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
-        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-1-id)))))))
+        (is (= :final (user-table-fn :data_layer table-1-id)))
+        (is (= nil (user-table-fn :visibility_type table-1-id)))))))
 
 (deftest bulk-edit-does-not-allow-changing-data-source-away-from-transform-test
   (testing "POST /api/data-studio/table/edit cannot change a transform-created table's data_source"
@@ -52,10 +58,10 @@
       (mt/user-http-request :crowberto :post 400 "data-studio/table/edit"
                             {:table_ids   [table-id]
                              :data_source "ingested"})
-      (is (= :metabase-transform (t2/select-one-fn :data_source :model/Table :id table-id))))))
+      (is (= :metabase-transform (user-table-fn :data_source table-id))))))
 
 (deftest data-analyst-can-access-endpoints-test
-  (testing "Data analysts (members of Data Analysts group) can access data studio endpoints"
+  (testing "Data analysts (members of Data Analysts group) can access data studio endpoints with advanced-permissions"
     (let [data-analyst-group-id (:id (perms-group/data-analyst))]
       (mt/with-temp [:model/User {analyst-id :id} {:first_name "Data"
                                                    :last_name "Analyst"
@@ -64,13 +70,20 @@
                      :model/PermissionsGroupMembership _ {:user_id analyst-id :group_id data-analyst-group-id}
                      :model/Database {db-id :id} {}
                      :model/Table {table-id :id} {:db_id db-id}]
-        (testing "data analyst can edit tables"
-          (is (= {} (mt/user-http-request analyst-id :post 200 "data-studio/table/edit"
-                                          {:table_ids [table-id]
-                                           :data_layer "final"}))))
-        (testing "data analyst can get selection info"
-          (is (map? (mt/user-http-request analyst-id :post 200 "data-studio/table/selection"
-                                          {:table_ids [table-id]}))))))))
+        (mt/when-ee-evailable
+         (mt/with-premium-features #{:advanced-permissions}
+           (testing "data analyst can edit tables"
+             (is (= {} (mt/user-http-request analyst-id :post 200 "data-studio/table/edit"
+                                             {:table_ids [table-id]
+                                              :data_layer "final"}))))
+           (testing "data analyst can get selection info"
+             (is (map? (mt/user-http-request analyst-id :post 200 "data-studio/table/selection"
+                                             {:table_ids [table-id]}))))))
+        (mt/with-premium-features #{}
+          (testing "without advanced-permissions the data analyst is refused"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request analyst-id :post 403 "data-studio/table/selection"
+                                         {:table_ids [table-id]})))))))))
 
 (deftest regular-user-cannot-access-data-studio-test
   (testing "Regular users (not in Data Analysts group) cannot access data studio endpoints"
@@ -211,11 +224,10 @@
             (testing "Selected FieldValues should be gone"
               (is (= [v3] (get-field-values))))))))))
 
-(deftest ^:parallel table-selectors->filter-test
-  (testing "table-selectors->filter function generates correct WHERE clauses"
+(deftest ^:parallel tables-matching-selectors-test
+  (testing "data-studio.db/tables-matching-selectors picks out the correct Tables"
     (let [selectors->table-ids (fn [selectors]
-                                 (let [where (#'api.table/table-selectors->filter selectors)]
-                                   (t2/select-pks-set :model/Table {:where where})))]
+                                 (not-empty (set (map :id (data-studio.db/tables-matching-selectors selectors)))))]
       (mt/with-temp [:model/Database {db-1 :id}      {}
                      :model/Database {db-2 :id}      {}
                      :model/Table    {table-1 :id}   {:db_id db-1}
@@ -419,7 +431,7 @@
                                                   :schema       "PUBLIC"}]}
                   response))))
       (testing "if products is already published, it appears in published_downstream when selecting it"
-        (t2/update! :model/Table products-id {:is_published true})
+        (t2/update! :model/Table :id products-id {:is_published true})
         (let [response (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
                                              {:table_ids [products-id]})]
           (is (=? {:selected_table               {:id           products-id
@@ -434,8 +446,8 @@
           ;; but orders is already unpublished, so published_downstream_tables should be empty
           (is (= [] (:published_downstream_tables response)))))
       (testing "when orders is published and we select products, orders appears in published_downstream"
-        (t2/update! :model/Table orders-id {:is_published true})
-        (t2/update! :model/Table products-id {:is_published true})
+        (t2/update! :model/Table :id orders-id {:is_published true})
+        (t2/update! :model/Table :id products-id {:is_published true})
         (let [response (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
                                              {:table_ids [products-id]})]
           (is (=? {:selected_table               {:id           products-id

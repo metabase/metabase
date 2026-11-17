@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting database connections
+summary: Figure out whether a failed database connection is coming from Metabase or your database server, and fix the common connection errors.
 redirect_from:
   - /docs/latest/troubleshooting-guide/datawarehouse
 ---
@@ -8,7 +9,7 @@ redirect_from:
 
 If you can't connect to your database, you'll need to figure out if the problem is happening with Metabase or your database server.
 
-If your database connection is successful, but the tables aren't showing up in the [Data Browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser), go to [Troubleshooting missing tables](./cant-see-tables.md).
+If your database connection is successful, but the tables aren't showing up in the [Data Browser](../exploration-and-organization/data-model-reference.md), go to [Troubleshooting missing tables](./cant-see-tables.md).
 
 ## Troubleshooting connections to Metabase
 
@@ -32,7 +33,7 @@ If you don't have access to the Metabase Admin panel, you'll need to ask the per
 
    - If you can access the server from a bastion host or another machine, [check if your Metabase's IP address has access to your database server](#checking-your-server-access).
 
-   - If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](../cloud/ip-addresses-to-whitelist.md).
+   - If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist).
 
 3. Make sure that Metabase is using a role with the necessary privileges to connect to your data warehouse. See [Granting database privileges](../databases/users-roles-privileges.md).
 
@@ -52,7 +53,7 @@ If you see this error message in the Metabase interface, go to [Troubleshooting 
 
 ### Connections cannot be acquired from the underlying database
 
-If you see this error messages in the [logs](./server-logs.md) (**Admin** > **Tools** > **Logs**):
+If you see this error message in the [logs](./server-logs.md) (**Admin** > **Tools** > **Logs**):
 
 1. Go to **Admin** > **Databases** and select your database.
 2. Go to **Advanced options** > **Additional JDBC connection string options** and add `trustServerCertificate=true`.
@@ -80,7 +81,7 @@ To verify that your Metabase's IP address can access the database server:
 
 1. Use the [netcat](https://en.wikipedia.org/wiki/Netcat) command `nc` (or your operating system’s equivalent) to check if you can connect to the host on a given port. Note that different databases use different ports by default.
 
-2. If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](../cloud/ip-addresses-to-whitelist.md).
+2. If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist).
 
 3. Check that your database credentials are correct.
 
@@ -106,16 +107,6 @@ psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER
    SELECT 1
    ```
 
-## Snowflake error when running via JAR file
-
-If you're connecting to Snowflake and encounter an error like, `JDBC driver internal error: exception creating result` and are running from the JAR file, add `--add-opens java.base/java.nio=ALL-UNNAMED` to your `java` command:
-
-```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
-```
-
-See the docs on [running the Metabase jar file](../installation-and-operation/running-the-metabase-jar-file.md).
-
 ## Related problems
 
 - [My connection or query is timing out](./timeout.md).
@@ -127,7 +118,7 @@ If you can’t solve your problem using the troubleshooting guides:
 
 - Search or ask the [Metabase community][discourse].
 - Search for [known bugs or limitations][known-issues].
-- Hire a [Metabase Expert](https://www.metabase.com/partners/){:target="\_blank"}.
+- Hire a [Metabase Expert](https://www.metabase.com/partners){:target="\_blank"}.
 
 [discourse]: https://discourse.metabase.com/
 [known-issues]: ./known-issues.md

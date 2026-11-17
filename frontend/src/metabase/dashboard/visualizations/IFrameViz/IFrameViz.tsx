@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 
@@ -10,23 +11,28 @@ import { getParameterValues } from "metabase/dashboard/selectors";
 import { fillParametersInText } from "metabase/dashboard/visualizations/parameter-substitution";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
-import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Textarea,
+} from "metabase/ui";
+import * as Urls from "metabase/urls";
 import {
   getAllowedIframeAttributes,
   isAllowedIframeUrl,
-} from "metabase/visualizations/lib/iframe";
+} from "metabase/viz-core";
 import type {
   Dashboard,
   VirtualDashboardCard,
   VisualizationSettings,
 } from "metabase-types/api";
 
-import {
-  IFrameEditWrapper,
-  IFrameWrapper,
-  InteractiveText,
-  StyledInput,
-} from "./IFrameViz.styled";
+import S from "./IFrameViz.module.css";
 import { settings } from "./IFrameVizSettings";
 
 export interface IFrameVizProps {
@@ -89,7 +95,14 @@ function IFrameVizInner({
 
   if (isEditing && !isEditingParameter && !isPreviewing) {
     return (
-      <IFrameEditWrapper>
+      <Flex
+        direction="column"
+        justify="center"
+        w="100%"
+        h="100%"
+        px="lg"
+        py="md"
+      >
         <Stack h="100%" gap="sm">
           <Group align="center" wrap="nowrap">
             <Text fw="bold" truncate>
@@ -97,16 +110,17 @@ function IFrameVizInner({
             </Text>{" "}
             <Box ml="auto">
               <Button
-                size="compact-md"
+                className={CS.pointerEventsAll}
+                size="sm"
                 variant="filled"
-                style={{ pointerEvents: "all" }}
                 onClick={onTogglePreviewing}
                 onMouseDown={(e) => e.stopPropagation()}
               >{t`Done`}</Button>
             </Box>
           </Group>
           <Box h="100%">
-            <StyledInput
+            <Textarea
+              className={S.interactive}
               data-testid="iframe-card-input"
               autoFocus={isNew}
               styles={{
@@ -119,11 +133,10 @@ function IFrameVizInner({
               placeholder={`<iframe src="https://example.com" />`}
               onChange={(e) => handleIFrameChange(e.target.value)}
               onMouseDown={(e) => e.stopPropagation()}
-              style={{ pointerEvents: "all" }}
             />
           </Box>
         </Stack>
-      </IFrameEditWrapper>
+      </Flex>
     );
   }
 
@@ -140,7 +153,13 @@ function IFrameVizInner({
   };
 
   return (
-    <IFrameWrapper data-testid="iframe-card" fade={isEditingParameter}>
+    <Flex
+      className={cx(CS.rounded, CS.overflowHidden)}
+      data-testid="iframe-card"
+      w="100%"
+      h="100%"
+      align="center"
+    >
       {hasAllowedIFrameUrl ? (
         <iframe
           data-testid="iframe-visualization"
@@ -155,15 +174,15 @@ function IFrameVizInner({
       ) : (
         renderError()
       )}
-    </IFrameWrapper>
+    </Flex>
   );
 }
 
 function ForbiddenDomainError({ url }: { url: string }) {
   const isAdmin = useSelector(getUserIsAdmin);
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
-    "configuring-metabase/settings",
-    { anchor: "allowed-domains-for-iframes-in-dashboards" },
+    "configuring-metabase/domains",
+    { anchor: "allow-iframes-from-a-site-in-dashboards" },
   );
 
   const domain = useMemo(() => {
@@ -177,7 +196,7 @@ function ForbiddenDomainError({ url }: { url: string }) {
 
   const renderMessage = () => {
     if (isAdmin) {
-      return jt`If you’re sure you trust this domain, you can add it to your ${<Link key="link" className={CS.link} to="/admin/settings/general#allowed-iframe-hosts" target="_blank">{t`allowed domains list`}</Link>} in admin settings.`;
+      return jt`If you’re sure you trust this domain, you can add it to your ${<Link key="link" className={CS.link} to={`${Urls.domainsSettings()}#allowed-iframe-hosts`} target="_blank">{t`allowed domains list`}</Link>} in admin settings.`;
     }
     return showMetabaseLinks
       ? jt`If you’re sure you trust this domain, you can ask an admin to add it to the ${<ExternalLink key="link" className={CS.link} href={docsUrl}>{t`allowed domains list`}</ExternalLink>}.`
@@ -185,8 +204,8 @@ function ForbiddenDomainError({ url }: { url: string }) {
   };
 
   return (
-    <Box p={12} w="100%" style={{ textAlign: "center" }}>
-      <Icon name="lock" c="text-primary" mb="s" />
+    <Box p={12} w="100%" ta="center">
+      <Icon name="lock" c="text-primary" />
       <Text c="text-primary">
         {jt`${(
           <Text key="domain" fw="bold" display="inline">
@@ -194,18 +213,18 @@ function ForbiddenDomainError({ url }: { url: string }) {
           </Text>
         )} can not be embedded in iframe cards.`}
       </Text>
-      <InteractiveText c="text-primary" px="lg" mt="md">
+      <Text className={S.interactive} c="text-primary" px="xl" mt="lg">
         {renderMessage()}
-      </InteractiveText>
+      </Text>
     </Box>
   );
 }
 
 function GenericError() {
   return (
-    <Box p={12} w="100%" style={{ textAlign: "center" }}>
-      <Icon name="lock" c="text-primary" mb="s" />
-      <Text color="text-primary">
+    <Box p={12} w="100%" ta="center">
+      <Icon name="lock" c="text-primary" />
+      <Text c="text-primary">
         {t`There was a problem rendering this content.`}
       </Text>
     </Box>

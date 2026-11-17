@@ -8,16 +8,19 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
+  QueryTransformSource,
   TableIndexEntry,
   Transform,
   UserListResult,
@@ -34,18 +37,29 @@ import {
 
 import { TransformIndexesPage } from "./TransformIndexesPage";
 
+const QUERY_SOURCE: QueryTransformSource = {
+  type: "query",
+  query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+};
+
 type SetupOpts = {
   transform?: Transform;
   indexes?: TableIndexEntry[];
   users?: UserListResult[];
   remoteSyncReadOnly?: boolean;
+  warehouseError?: string | null;
 };
 
 function setup({
-  transform = createMockTransform({ id: 1, name: "Test Transform" }),
+  transform = createMockTransform({
+    id: 1,
+    name: "Test Transform",
+    source: QUERY_SOURCE,
+  }),
   indexes = [],
   users = [],
   remoteSyncReadOnly = false,
+  warehouseError = null,
 }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 600 });
   setupDatabasesEndpoints([
@@ -58,7 +72,7 @@ function setup({
   setupUsersEndpoints(users);
 
   setupGetTransformEndpoint(transform);
-  setupListTableIndexesEndpoint(transform.id, indexes);
+  setupListTableIndexesEndpoint(transform.id, indexes, warehouseError);
 
   const storeInitialState = createMockState({
     settings: mockSettings({
@@ -188,6 +202,51 @@ describe("TransformIndexesPage", () => {
 
     expect(
       screen.queryByRole("button", { name: "Create index" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("warns with the warehouse's own error when the indexes could not be read", async () => {
+    const warehouseError =
+      "Code: 497. DB::Exception: Not enough privileges. (ACCESS_DENIED)";
+    setup({
+      indexes: [createMockTableIndexEntry({ name: "idx_orders_id" })],
+      warehouseError,
+    });
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      screen.getByText(
+        `Metabase couldn't read the indexes on this table, so statuses may be out of date. The database said: ${warehouseError}`,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("idx_orders_id")).toBeInTheDocument();
+  });
+
+  it("does not claim the table has no indexes when the warehouse could not be read", async () => {
+    setup({
+      indexes: [],
+      warehouseError:
+        "Code: 497. DB::Exception: Not enough privileges. (ACCESS_DENIED)",
+    });
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.getByTestId("warehouse-error-banner")).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Index the key columns of your transforms to make them faster and more efficient.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create index" }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not warn when the warehouse read succeeded", async () => {
+    setup({ indexes: [createMockTableIndexEntry({ name: "idx_orders_id" })] });
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      screen.queryByTestId("warehouse-error-banner"),
     ).not.toBeInTheDocument();
   });
 

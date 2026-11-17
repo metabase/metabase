@@ -6,7 +6,12 @@ import {
   useListLlmProvidersQuery,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { Button, Flex, Stack, Text } from "metabase/ui";
+import { FormFooter } from "metabase/common/components/FormFooter";
+import { Button, Text } from "metabase/ui";
+import type {
+  LlmProviderConnection,
+  LlmProviderType,
+} from "metabase-types/api";
 
 import { ProviderListSkeleton } from "./AIProviderList";
 import { LlmModelPicker } from "./LlmModelPicker";
@@ -33,8 +38,6 @@ export function AIProviderSetup({
     error: providerTypesError,
   } = useListLlmProviderTypesQuery();
 
-  const [hasJustConnected, { open: markConnected }] = useDisclosure(false);
-
   if (isLoadingConnections || isLoadingProviderTypes) {
     return <ProviderListSkeleton />;
   }
@@ -42,28 +45,48 @@ export function AIProviderSetup({
   const loadError = connectionsError ?? providerTypesError;
   if (loadError) {
     return (
-      <Text c="error">
+      <Text c="feedback-negative">
         {getErrorMessage(loadError, t`Unable to load your AI providers.`)}
       </Text>
     );
   }
 
-  const hasUsableConnection = connections.some(
-    (connection) => connection.usable,
+  return (
+    <AIProviderSetupContent
+      connections={connections}
+      providerTypes={providerTypes}
+      startOnConnectionForm={startOnConnectionForm}
+      onDone={onDone}
+    />
   );
-  const isPickingModel =
-    hasJustConnected || (!startOnConnectionForm && hasUsableConnection);
+}
+
+function AIProviderSetupContent({
+  connections,
+  providerTypes,
+  startOnConnectionForm,
+  onDone,
+}: {
+  connections: LlmProviderConnection[];
+  providerTypes: LlmProviderType[];
+  startOnConnectionForm: boolean;
+  onDone?: () => void;
+}) {
+  const [isPickingModel, { open: pickModel }] = useDisclosure(
+    !startOnConnectionForm &&
+      connections.some((connection) => connection.usable),
+  );
 
   if (isPickingModel) {
     return (
-      <Stack gap="lg">
+      <>
         <LlmModelPicker />
-        <Flex justify="end">
+        <FormFooter pageProps={{ mt: "xl" }}>
           <Button variant="filled" onClick={onDone}>
             {t`Done`}
           </Button>
-        </Flex>
-      </Stack>
+        </FormFooter>
+      </>
     );
   }
 
@@ -75,7 +98,7 @@ export function AIProviderSetup({
           (type) => type.type === saved?.type,
         );
         if (providerType && !providerType.managed) {
-          markConnected();
+          pickModel();
         } else {
           onDone?.();
         }

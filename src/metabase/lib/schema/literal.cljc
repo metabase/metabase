@@ -24,7 +24,7 @@
   :type/Boolean)
 
 (mr/def ::integer
-  [:or :int [:fn u.number/bigint?]])
+  [:or :int [:fn {:json-schema {:type "integer"}} u.number/bigint?]])
 
 (defmethod expression/type-of-method :dispatch-type/integer
   [x]
@@ -150,12 +150,14 @@
                                             (not (:effective-type m)))
                                  (assoc :effective-type (:base-type m))))))}
     [:effective-type ::common/base-type]
-    [:unit {:optional true} [:maybe ::temporal-bucketing/unit]]]])
+    [:unit {:optional true} [:maybe ::temporal-bucketing/unit]]
+    [:coercion-strategy {:optional true} [:maybe ::common/coercion-strategy]]]])
 
 (mr/def ::value.value
   "The value slot of a `:value` clause: a single literal that is not a Clojure collection."
   [:fn
-   {:error/message "value must be a literal, not a Clojure collection"}
+   {:error/message "value must be a literal, not a Clojure collection"
+    :json-schema   {:anyOf [{:type "string"} {:type "number"} {:type "boolean"} {:type "null"}]}}
    (complement coll?)])
 
 ;;; [:value <opts> <value>] clauses are mostly used internally by the query processor to add type information to
@@ -173,6 +175,14 @@
    #_tag   [:= {:decode/normalize common/normalize-keyword} :value]
    #_opts  [:ref ::value.options]
    #_value [:ref ::value.value]])
+
+(mr/def ::param-value
+  "A value bound to a native query parameter: a literal or, once the query processor has substituted parameters, a
+  UUID or a `java.time` object."
+  [:or
+   [:ref ::literal]
+   :uuid
+   #?@(:clj [(common/instance-of-class java.time.temporal.Temporal)])])
 
 (mr/def ::literal
   [:or

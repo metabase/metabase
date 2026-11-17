@@ -12,27 +12,6 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(def ^:private query-with-some-nesting
-  {:database 1
-   :type     :query
-   :query    {:source-query {:source-table 1
-                             :aggregation  [[:stddev [:field 1 nil]]
-                                            [:min [:field 1 nil]]]}
-              :aggregation  [[:avg [:field 1 nil]]
-                             [:max [:field 1 nil]]]}})
-
-(t/deftest ^:parallel aggregation-at-index-test
-  (doseq [[input expected] {[0]   [:avg [:field 1 nil]]
-                            [1]   [:max [:field 1 nil]]
-                            [0 0] [:avg [:field 1 nil]]
-                            [0 1] [:stddev [:field 1 nil]]
-                            [1 1] [:min [:field 1 nil]]}]
-    (t/testing (pr-str (cons 'aggregation-at-index input))
-      (t/is (= expected
-               (apply mbql.u/aggregation-at-index query-with-some-nesting input))))))
-
-;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
-
 (t/deftest ^:parallel query->max-rows-limit-test
   (doseq [[group query->expected]
           {"should return `:limit` if set"
@@ -97,68 +76,46 @@
           (t/is (= expected
                    (mbql.u/query->max-rows-limit query))))))))
 
-(t/deftest ^:parallel expression-with-name-test
-  (t/is (= [:+ 1 1]
-           (mbql.u/expression-with-name {:expressions  {"two" [:+ 1 1]}
-                                         :source-table 1}
-                                        "two"))))
-
-(t/deftest ^:parallel expression-with-name-test-2
-  (t/testing "Make sure `expression-with-name` knows how to reach into the parent query if need be"
-    (t/is (= [:+ 1 1]
-             (mbql.u/expression-with-name {:source-query {:expressions  {"two" [:+ 1 1]}
-                                                          :source-table 1}}
-                                          "two")))))
-
-(t/deftest ^:parallel expression-with-name-test-3
-  (t/testing "Should throw an Exception if expression does not exist"
-    (t/is (thrown-with-msg?
-           #?(:clj clojure.lang.ExceptionInfo :cljs :default)
-           #"No expression named"
-           (mbql.u/expression-with-name {} "wow")))))
-
 (t/deftest ^:parallel update-field-options-test
-  (t/is (= [:field 1 {:wow true}]
-           (mbql.u/update-field-options [:field 1 nil] assoc :wow true)
+  ;; the options exercised here (`:display-name`, `:name`, `:binning`) are real declared ref options. Ref options are
+  ;; a closed schema in MBQL 4 as well as MBQL 5, so a stand-in key like `:wow` would be rejected as this function's
+  ;; input before it did any of the updating this test is about.
+  (t/is (= [:field 1 {:display-name "Wow"}]
+           (mbql.u/update-field-options [:field 1 nil] #(assoc % :display-name "Wow"))
            (mu/disable-enforcement
-             (mbql.u/update-field-options [:field 1 {}] assoc :wow true))
-           (mbql.u/update-field-options [:field 1 {:wow false}] assoc :wow true)))
-  (t/is (= [:field 1 {:a 1, :b 2}]
-           (mbql.u/update-field-options [:field 1 {:a 1}] assoc :b 2)))
+             (mbql.u/update-field-options [:field 1 {}] #(assoc % :display-name "Wow")))
+           (mbql.u/update-field-options [:field 1 {:display-name "Meh"}] #(assoc % :display-name "Wow"))))
+  (t/is (= [:field 1 {:name "a", :display-name "b"}]
+           (mbql.u/update-field-options [:field 1 {:name "a"}] #(assoc % :display-name "b"))))
+  (t/testing "Should pass extra args to `f`, like `clojure.core/update`"
+    (t/is (= [:field 1 {:name "a", :display-name "b"}]
+             (mbql.u/update-field-options [:field 1 {:name "a"}] assoc :display-name "b")))
+    (t/is (= [:field 1 {:binning {:strategy :num-bins, :num-bins 10}}]
+             (mbql.u/update-field-options [:field 1 nil] assoc-in [:binning] {:strategy :num-bins, :num-bins 10})))
+    (t/is (= [:field 1 {:binning {:strategy :num-bins, :num-bins 20}}]
+             (mbql.u/update-field-options [:field 1 {:binning {:strategy :num-bins, :num-bins 10}}] update-in [:binning :num-bins] * 2)))
+    (t/is (= [:expression "wow"]
+             (mbql.u/update-field-options [:expression "wow" {:display-name "b", :name "a"}] dissoc :display-name :name))))
   (t/testing "Should remove empty options"
     (t/is (= [:field 1 nil]
-             (mbql.u/update-field-options [:field 1 {:a 1}] dissoc :a))))
+             (mbql.u/update-field-options [:field 1 {:name "a"}] #(dissoc % :name)))))
   (t/testing "Should normalize the clause"
     (t/is (= [:field 1 nil]
-             (mbql.u/update-field-options [:field 1 {:a {:b 1}}] assoc-in [:a :b] nil))))
+             (mbql.u/update-field-options [:field 1 {:binning {:strategy :default}}]
+                                          #(assoc-in % [:binning :strategy] nil)))))
   (t/testing "Should work with `:expression` and `:aggregation` references as well"
-    (t/is (= [:expression "wow" {:a 1}]
-             (mbql.u/update-field-options [:expression "wow"] assoc :a 1)))
-    (t/is (= [:expression "wow" {:a 1, :b 2}]
-             (mbql.u/update-field-options [:expression "wow" {:b 2}] assoc :a 1)))
-    (t/is (= [:aggregation 0 {:a 1}]
-             (mbql.u/update-field-options [:aggregation 0] assoc :a 1)))
-    (t/is (= [:aggregation 0 {:a 1, :b 2}]
-             (mbql.u/update-field-options [:aggregation 0 {:b 2}] assoc :a 1)))
+    (t/is (= [:expression "wow" {:name "a"}]
+             (mbql.u/update-field-options [:expression "wow"] #(assoc % :name "a"))))
+    (t/is (= [:expression "wow" {:name "a", :display-name "b"}]
+             (mbql.u/update-field-options [:expression "wow" {:display-name "b"}] #(assoc % :name "a"))))
+    (t/is (= [:aggregation 0 {:name "a"}]
+             (mbql.u/update-field-options [:aggregation 0] #(assoc % :name "a"))))
+    (t/is (= [:aggregation 0 {:name "a", :display-name "b"}]
+             (mbql.u/update-field-options [:aggregation 0 {:display-name "b"}] #(assoc % :name "a"))))
     ;; in the future when we make the 3-arg version the normalized/"official" version we will probably want to stop
     ;; doing this.
     (t/testing "Remove empty options entirely from `:expression` and `:aggregation` (for now)"
       (t/is (= [:expression "wow"]
-               (mbql.u/update-field-options [:expression "wow" {:b 2}] dissoc :b)))
+               (mbql.u/update-field-options [:expression "wow" {:display-name "b"}] #(dissoc % :display-name))))
       (t/is (= [:aggregation 0]
-               (mbql.u/update-field-options [:aggregation 0 {:b 2}] dissoc :b))))))
-
-(t/deftest ^:parallel with-temporal-unit-test
-  (t/is (= [:field 1 {:temporal-unit :day}]
-           (mbql.u/with-temporal-unit [:field 1 nil] :day)))
-  (t/is (= [:field "t" {:base-type :type/Date, :temporal-unit :day}]
-           (mbql.u/with-temporal-unit [:field "t" {:base-type :type/Date}] :day)))
-  (t/testing "Ignore invalid temporal units if `:base-type` is specified (#16485)"
-    ;; `:minute` doesn't make sense for a DATE
-    (t/is (= [:field "t" {:base-type :type/Date}]
-             (mbql.u/with-temporal-unit [:field "t" {:base-type :type/Date}] :minute)))))
-
-(t/deftest ^:parallel normalize-token-handle-types-test
-  (t/testing "If this gets called incorrectly with a base type keyword then handle it gracefully"
-    (t/is (= :type/Text
-             (mbql.u/normalize-token "type/Text")))))
+               (mbql.u/update-field-options [:aggregation 0 {:display-name "b"}] #(dissoc % :display-name)))))))

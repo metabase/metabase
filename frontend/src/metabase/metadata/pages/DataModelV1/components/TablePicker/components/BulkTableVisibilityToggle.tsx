@@ -3,8 +3,8 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useUpdateTableListMutation } from "metabase/api";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { ActionIcon, Icon, Loader, Tooltip } from "metabase/ui";
+import { useMetadataToasts } from "metabase/common/hooks";
+import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 interface Props {
@@ -85,21 +85,17 @@ export function BulkTableVisibilityToggle({
     }
   };
 
-  if (isLoading) {
-    return (
-      <ActionIcon disabled variant="transparent">
-        <Loader size="xs" />
-      </ActionIcon>
-    );
-  }
-
   return (
-    <Tooltip label={areAllHidden ? t`Unhide all tables` : t`Hide all tables`}>
+    <Tooltip
+      label={areAllHidden ? t`Unhide all tables` : t`Hide all tables`}
+      position="right"
+    >
       <ActionIcon
+        variant="subtle"
         aria-label={areAllHidden ? t`Unhide all tables` : t`Hide all tables`}
         className={className}
-        disabled={isLoading}
-        variant="transparent"
+        size="sm"
+        loading={isLoading}
         onClick={handleClick}
       >
         <Icon name={areAllHidden ? "eye_crossed_out" : "eye"} />

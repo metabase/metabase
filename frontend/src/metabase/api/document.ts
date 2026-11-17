@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { Api } from "metabase/api/api";
 import { idTag, listTag } from "metabase/api/tags";
+import { handleQueryFulfilled } from "metabase/api/utils/lifecycle";
 import type {
   CopyDocumentRequest,
   CreateDocumentRequest,
@@ -27,16 +29,16 @@ export const documentApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) => (error ? [] : [listTag("document")]),
-      async onQueryStarted(_props, { dispatch, queryFulfilled }) {
-        const { data } = await queryFulfilled;
-        await dispatch(
-          documentApi.util.upsertQueryData(
-            "getDocument",
-            { id: data.id },
-            data,
+      onQueryStarted: (_props, { dispatch, queryFulfilled }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(
+            documentApi.util.upsertQueryData(
+              "getDocument",
+              { id: data.id },
+              data,
+            ),
           ),
-        );
-      },
+        ),
     }),
     updateDocument: builder.mutation<Document, UpdateDocumentRequest>({
       query: (document) => ({
@@ -46,18 +48,24 @@ export const documentApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         !error
-          ? [listTag("document"), idTag("document", id), listTag("revision")]
+          ? [
+              listTag("document"),
+              idTag("document", id),
+              listTag("revision"),
+              // archiving a document resolves any content-diagnostics finding for it
+              listTag("content-diagnostics-finding"),
+            ]
           : [],
-      async onQueryStarted(_props, { dispatch, queryFulfilled }) {
-        const { data } = await queryFulfilled;
-        await dispatch(
-          documentApi.util.upsertQueryData(
-            "getDocument",
-            { id: data.id },
-            data,
+      onQueryStarted: (_props, { dispatch, queryFulfilled }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(
+            documentApi.util.upsertQueryData(
+              "getDocument",
+              { id: data.id },
+              data,
+            ),
           ),
-        );
-      },
+        ),
     }),
     deleteDocument: builder.mutation<void, DeleteDocumentRequest>({
       query: (document) => ({
@@ -74,16 +82,16 @@ export const documentApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) => (error ? [] : [listTag("document")]),
-      async onQueryStarted(_props, { dispatch, queryFulfilled }) {
-        const { data } = await queryFulfilled;
-        await dispatch(
-          documentApi.util.upsertQueryData(
-            "getDocument",
-            { id: data.id },
-            data,
+      onQueryStarted: (_props, { dispatch, queryFulfilled }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(
+            documentApi.util.upsertQueryData(
+              "getDocument",
+              { id: data.id },
+              data,
+            ),
           ),
-        );
-      },
+        ),
     }),
     listPublicDocuments: builder.query<GetPublicDocument[], void>({
       query: () => ({

@@ -1,11 +1,16 @@
 (ns metabase.formatter.core
   (:require
+   [metabase.formatter.duration]
    [metabase.formatter.impl]
    [potemkin :as p]))
 
-(comment metabase.formatter.impl/keep-me)
+(comment metabase.formatter.duration/keep-me
+         metabase.formatter.impl/keep-me)
 
 (p/import-vars
+ [metabase.formatter.duration
+  duration-days
+  format-duration]
  [metabase.formatter.impl
   ->NumericWrapper
   ->TextWrapper

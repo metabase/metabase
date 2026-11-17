@@ -1,7 +1,7 @@
 import { c, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
+import { useHelpLink } from "metabase/common/hooks";
 import { Icon } from "metabase/ui";
 
 import { StorageSetupStatusView } from "./StorageSetupStatusView";
@@ -20,7 +20,13 @@ export const StorageSetupErrorView = () => {
 
   return (
     <StorageSetupStatusView
-      badge={<Icon name="warning_triangle_filled" size={12} color="warning" />}
+      badge={
+        <Icon
+          name="warning_triangle_filled"
+          size={12}
+          color="feedback-warning"
+        />
+      }
       title={t`Storage setup didn't finish`}
       description={description}
     />

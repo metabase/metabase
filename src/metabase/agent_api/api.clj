@@ -3,9 +3,12 @@
   Endpoints are versioned (e.g., /v1/search) and use standard HTTP semantics."
   (:require
    [clojure.string :as str]
+   [metabase.agent-api.db :as agent-api.db]
+   [metabase.agent-api.query-guards :as query-guards]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.agent-api.validation :as agent-api.validation]
    [metabase.ai-tracing.core :as ait]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
@@ -23,8 +26,12 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.metabot.core :as metabot]
+   [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.tools.construct :as metabot-construct]
+   [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.metabot.tools.resources :as metabot-resources]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
@@ -37,11 +44,15 @@
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.eclipse.jetty.io EofException)))
 
 ;;; --------------------------------------------------- Defaults ------------------------------------------------------
 
@@ -71,9 +82,7 @@
   [collection-id]
   (if-not collection-id
     (:name (collection/root-collection-with-ui-details nil))
-    (let [coll      (t2/select-one [:model/Collection :id :name :location :personal_owner_id
-                                    :namespace :archived_directly]
-                                   collection-id)
+    (let [coll      (agent-api.db/collection-breadcrumb-columns collection-id)
           ;; `:effective_ancestors` is the app breadcrumb: it leads with the "Our analytics" root and
           ;; drops ancestors the caller can't read. A personal subtree leads with the personal
           ;; collection instead, so drop that root crumb for them.
@@ -109,8 +118,12 @@
    [:collection {:optional true} [:maybe :map]]
    ;; Present on collection results — the parent location path (e.g. "/12/34/").
    [:location {:optional true} [:maybe :string]]
-   [:updated_at {:optional true} [:maybe :any]]
-   [:created_at {:optional true} [:maybe :any]]])
+   ;; `[:maybe :any]` publishes as `oneOf [{}, {type:null}]`. Clients that enforce
+   ;; `oneOf` reject null timestamps because both branches match; TemporalInstant
+   ;; keeps the branches disjoint (`date-time` vs `null`). Collections can omit
+   ;; `updated_at` in search results.
+   [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::search-response
   "Search results containing tables, models, metrics, saved questions, dashboards, and
@@ -123,7 +136,8 @@
 
 (api.macros/defendpoint :get "/v1/ping" :- [:map [:message :string]]
   "Health check endpoint for the Agent API."
-  {:scope :unchecked}
+  {:deprecated true
+   :scope :unchecked}
   []
   {:message "pong"})
 
@@ -151,7 +165,8 @@
 
   Supports both term-based and semantic search queries. Results are ranked using
   Reciprocal Rank Fusion when both query types are provided."
-  {:scope metabot/agent-search
+  {:deprecated true
+   :scope metabot/agent-search
    :tool  {:name "search"
            :title "Search Metabase Content"
            :description (str "Search for tables, models, metrics, saved questions, dashboards, and collections "
@@ -163,7 +178,7 @@
    _query-params
    {term-queries     :term_queries
     semantic-queries :semantic_queries}
-   :- [:map
+   :- [:map {:closed true}
        [:term_queries {:optional true
                        :tool/description "Keyword search queries as an array of strings, for example [\"orders\", \"revenue\"]."}
         [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]
@@ -195,7 +210,7 @@
   `referenced_entities` envelope from before the repr migration) are dropped during request
   decoding, so a caller still sending the old shape is served.
 
-  The inner `:query` value is intentionally typed as an open map ([[ms/Map]]) at this boundary
+  The inner `:query` value is an opaque, string-keyed JSON object ([[ms/OpaqueJSONObject]]) at this boundary
   rather than `::lib.schema/external-query`. Being open matters: a closed map with no declared
   entries would have every key stripped before the handler saw it. Reasons for not naming the
   real schema:
@@ -212,7 +227,7 @@
   [:map {:closed true}
    [:query {:tool/description (str "A Metabase MBQL 5 query as a JSON object. See the "
                                    "`construct_notebook_query` tool for the format reference.")}
-    ms/Map]
+    ms/OpaqueJSONObject]
    ;; The user's original message, when available, captured so `visualize_query` can later
    ;; surface it back to the iframe alongside the query body for feedback submission. The MCP
    ;; layer stores it with the handle (see `metabase.mcp.tools/make-store-construct-query-result`).
@@ -235,7 +250,9 @@
   table, ambiguous FK, etc.); we let those propagate so [[api.macros/defendpoint]] surfaces
   them with the appropriate 4xx status code instead of a 500."
   [body]
-  (-> (metabot-construct/execute-representations-query (:query body))
+  (-> (metabot-construct/execute-representations-query
+       (:query body)
+       {:recovery-hint recovery-hints/recovery-hint})
       (get-in [:structured-output :query])))
 
 (defn- evaluate-external-query-for-execution
@@ -251,7 +268,8 @@
   matching `::lib.schema/external-query` \u2014 see the `construct_notebook_query` tool
   documentation for the format reference. Returns a base64-encoded MBQL query that can be
   executed via /v1/execute or paginated via /v2/query."
-  {:scope metabot/agent-query-construct
+  {:deprecated true
+   :scope metabot/agent-query-construct
    :tool  {:name "construct_query"
            ;; Condensed inline summary so LLMs see the shape directly in `tools/list`. Full
            ;; grammar lives in the `construct_notebook_query` tool prompt.
@@ -265,8 +283,9 @@
                 "\n"
                 "Shape: every clause is `[\"op\", {}, ...args]` with a MANDATORY empty options "
                 "map at position 1. Every field reference is "
-                "`[\"field\", {}, [<db-name>, <schema-or-null>, <table-name>, <column-name>]]` "
-                "(4-segment portable FK string array, NOT a numeric id). Cross-stage refs use "
+                "`[\"field\", {}, [<db-name>, <schema>, <table-name>, <column-name>]]` "
+                "(4-segment portable FK string array, NOT a numeric id; the schema is `null` only in a "
+                "database without schemas). Cross-stage refs use "
                 "a bare column-name string in the third slot: `[\"field\", {}, \"count\"]`.\n"
                 "\n"
                 "Top level: `{\"lib/type\": \"mbql/query\", \"stages\": [...]}`. Each stage has "
@@ -280,10 +299,10 @@
                 "```\n"
                 "{\"query\": {\"lib/type\": \"mbql/query\",\n"
                 "             \"stages\": [{\"lib/type\": \"mbql.stage/mbql\",\n"
-                "                          \"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"],\n"
+                "                          \"source-table\": [\"Sample Database\", null, \"ORDERS\"],\n"
                 "                          \"aggregation\": [[\"count\", {}]],\n"
                 "                          \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"},\n"
-                "                                        [\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}}\n"
+                "                                        [\"Sample Database\", null, \"ORDERS\", \"CREATED_AT\"]]]}]}}\n"
                 "```\n"
                 "\n"
                 "Common pitfalls: (1) forgetting the `{}` options map; (2) writing numeric "
@@ -325,7 +344,8 @@
   This endpoint does NOT execute the SQL; to run native SQL ad hoc use /v1/execute-sql. The
   MBQL execution endpoints (/v1/execute, /v2/query) reject native queries by design, so a
   handle produced here is for saving, not for /v2/query execution."
-  {:scope metabot/agent-sql-construct
+  {:deprecated true
+   :scope metabot/agent-sql-construct
    :tool  {:name "construct_native_query"
            :description (str "Construct a native (raw SQL) query for the given database. Returns "
                              "`{\"query_handle\": \"<uuid>\"}` to feed `create_question` and save it "
@@ -485,55 +505,6 @@
    [:handle       [:map {:closed true} [:query ms/NonBlankString]]]
    [:fresh        ::construct-query-request]])
 
-(defn- reject-native-query!
-  "Throw a 400 if `query-map` is a native query anywhere — top-level, nested, or in a join, in either the
-  legacy or the MBQL 5 form. Normalizes the payload to MBQL 5 (best-effort) and checks for a native stage
-  with [[lib/any-native-stage?]], so the check reads keyword `:lib/type`s regardless of how the JSON was
-  decoded; a payload too malformed to normalize is left for the shape and validation checks that follow.
-
-  `/v2/query` and `/v1/execute` are gated by the MBQL-execution scopes (`agent:query` /
-  `agent:query:execute`), not `agent:sql:execute`. The opaque base64 payloads they accept (a
-  query_handle, a continuation token) could carry a native query; allowing it would let a token
-  without the SQL-execution scope run raw SQL, defeating the scope split and bypassing the
-  execute-sql kill switch. Force native execution onto `/v1/execute-sql`, which is correctly scoped."
-  [query-map]
-  (when (some-> (u/ignore-exceptions (lib-be/normalize-query query-map))
-                not-empty
-                lib/any-native-stage?)
-    (throw (ex-info "Native queries are not supported here; use execute_sql instead."
-                    {:status-code 400}))))
-
-(defn- validate-serialized-query!
-  "Sanity-check a decoded MBQL query map from a client-reachable base64 payload (query_handle or token).
-   Require `:stages` to be a non-empty sequence of maps, and the last-stage `:limit` (if present) an
-   integer; otherwise `serialized-query-limit`, `clamp-total-limit`, and `apply-page-to-query` would
-   throw on the malformed shape and surface a 500 instead of a clean 400.
-   Deep MBQL validation still happens in the QP at execution."
-  [query-map]
-  (let [stages (:stages query-map)]
-    (when-not (and (sequential? stages) (seq stages) (every? map? stages))
-      (throw (ex-info "Invalid query: expected a serialized MBQL query with a non-empty :stages of maps."
-                      {:status-code 400 :query-map query-map})))
-    ;; `contains?` (not `when-let`) so an explicit `false`/`nil` limit is caught, not skipped.
-    (when (contains? (last stages) :limit)
-      (let [limit (:limit (last stages))]
-        (when-not (and (int? limit) (pos? limit))
-          (throw (ex-info "Invalid query: last-stage :limit must be a positive integer."
-                          {:status-code 400 :query-map query-map})))))))
-
-(defn- check-token-query-permissions!
-  "Re-validate query permissions on the continuation-token path.
-
-  The token body is client-supplied and could in principle name a different source table than
-  the one the fresh `/v2/query` call was authorized against (a user's data perms can also
-  change between pages). The QP middleware would catch this at execution time, but running
-  the explicit `api/query-check` first gives a cleaner 403 and avoids spinning up the
-  streaming response just to abort."
-  [query-map]
-  (when-let [table-id (get-in query-map [:stages 0 :source-table])]
-    (when (int? table-id)
-      (api/query-check :model/Table table-id))))
-
 (defn- initial-page-state
   "Normalize the three /v2/query entry points into a single {:query :total-limit :page} shape.
 
@@ -549,16 +520,16 @@
   (cond
     (:continuation_token body)
     (let [{:keys [query pagination]} (decode-continuation-token (:continuation_token body))]
-      (reject-native-query! query)
-      (validate-serialized-query! query)
+      (query-guards/reject-native-query! query)
+      (query-guards/validate-serialized-query! query)
       (let [query (normalize-and-validate-query query)]
-        (check-token-query-permissions! query)
+        (query-guards/check-token-query-permissions! query)
         {:query query :total-limit (:limit pagination) :page (:page pagination)}))
 
     (string? (:query body))
     (let [query (decode-base64-json-map (:query body))]
-      (reject-native-query! query)
-      (validate-serialized-query! query)
+      (query-guards/reject-native-query! query)
+      (query-guards/validate-serialized-query! query)
       (let [query (normalize-and-validate-query query)]
         {:query       query
          :total-limit (clamp-total-limit (serialized-query-limit query))
@@ -578,7 +549,8 @@
   Accepts either a JSON body (same shape as /v2/construct-query) or a `continuation_token`
   from a previous response. Returns results with column metadata and an optional
   `continuation_token` for fetching the next page."
-  {:scope metabot/agent-query
+  {:deprecated true
+   :scope metabot/agent-query
    :tool  {:name "query"
            :title "Query Tables and Metrics"
            :description (str "Execute a Metabase query and return results with column "
@@ -616,7 +588,7 @@
 
 (mr/def ::execute-query-request
   "Request schema for /v1/execute. Accepts a base64-encoded MBQL query."
-  [:map
+  [:map {:closed true}
    [:query {:tool/description "A base64-encoded query string returned by /v1/construct-query. Do not construct this value manually."}
     ms/NonBlankString]])
 
@@ -658,7 +630,8 @@
   - On failure: {:status :failed :error \"message\" ...}
 
   Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated)."
-  {:scope metabot/agent-query-execute
+  {:deprecated true
+   :scope metabot/agent-query-execute
    :tool  {:name "execute_query"
            :description (str "Execute a previously constructed query and return raw results with column metadata, "
                              "row count, and execution time. Use this when the user explicitly asks for raw data, "
@@ -670,7 +643,7 @@
    _query-params
    {encoded-query :query} :- ::execute-query-request]
   (let [decoded (-> encoded-query u/decode-base64 json/decode)]
-    (reject-native-query! decoded)
+    (query-guards/reject-native-query! decoded)
     (let [query (normalize-and-validate-query decoded)]
       (qp.streaming/streaming-response [rff :api]
         (qp/process-query (prepare-combined-query query) rff)))))
@@ -679,7 +652,7 @@
 
 (mr/def ::execute-sql-request
   "Request shape for /v1/execute-sql. The LLM passes a raw SQL string against a target database."
-  [:map
+  [:map {:closed true}
    [:database_id ms/PositiveInt]
    [:sql         ms/NonBlankString]])
 
@@ -690,7 +663,8 @@
   Requires the user to have native-query permission on the target database; the QP
   middleware enforces this. The instance-level `mcp-execute-sql-enabled` setting
   must also be on (it is by default)."
-  {:scope metabot/agent-sql-execute
+  {:deprecated true
+   :scope metabot/agent-sql-execute
    :tool  {:name "execute_sql"
            :description (str "Execute a raw SQL query against a Metabase-connected database. "
                              "Use this ONLY when MBQL via construct_query cannot express the question. "
@@ -720,9 +694,8 @@
 ;;; -------------------------------------------------- Read Resource -------------------------------------------------
 
 (mr/def ::read-resource-request
-  "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs."
-  [:map
-   [:uris [:sequential ms/NonBlankString]]])
+  "Arguments for /v1/read-resource, shared with the tool declaration."
+  (:args (tools.core/validate-tool! metabot-resources/read-resource-tool)))
 
 (mr/def ::read-resource-item
   "One fetched resource. Either `:content` (success) or `:error` (failure) is present."
@@ -738,31 +711,63 @@
    [:resources [:sequential ::read-resource-item]]
    [:output    :string]])
 
+(def ^:private read-resource-ctx
+  "The tool context for this endpoint.
+
+  `:tool-names` decides which recovery steps a per-URI failure keeps: a step is dropped unless the
+  caller has every tool its text names. This API publishes `search` (see `/v1/search` below), so the
+  \"find it with search\" steps survive here. Renaming that endpoint's tool drops those steps rather
+  than sending the caller at something it does not have, which is the point of `:uses`."
+  {:tool-names #{"search"}})
+
+(defn- read-resource-item
+  "One [[::read-resource-item]] from the tool's entry for that URI.
+
+  This endpoint's published item shape, built here rather than by the tool: a URI that could not be
+  read is this item's `:error`, not the call's. The tool reports per item and leaves what that means
+  to its caller."
+  [{:keys [item output failed? structured-output]}]
+  (cond-> {:uri (:uri item)}
+    failed?       (assoc :error output)
+    (not failed?) (assoc :content {:structured-output structured-output})))
+
 (api.macros/defendpoint :post "/v1/read-resource" :- ::read-resource-response
   "Read one or more Metabase resources via metabase:// URI patterns.
 
-  Dispatches into the shared URI resolver in `metabase.metabot.tools.resources`,
-  which validates URIs, fetches entities with per-URI permission checks, and
-  returns a map of `{:resources ... :output ...}`. Up to 5 URIs per call."
-  {:scope metabot/agent-resource-read
+  Calls the `read_resource` tool in `metabase.metabot.tools.resources` — the same record the agent
+  loop calls, so URI dispatch, per-URI permission checks and the per-URI failure text are shared.
+  A URI that cannot be read becomes that item's `:error`; the call still returns 200 with the items
+  that did read. Each request accepts up to five URIs; oversized batches return 400 before any reads."
+  {:deprecated true
+   :scope metabot/agent-resource-read
    :tool  {:name "read_resource"
-           :description (str "Read Metabase entities by metabase:// URI. "
-                             "Examples: metabase://databases, metabase://database/{id}/tables, "
-                             "metabase://collection/{id}/items, metabase://question/{id}, "
-                             "metabase://dashboard/{id}/items, metabase://table/{id}/fields. "
-                             "Up to 5 URIs per call. List endpoints cap at 25 items.")}}
+           :description metabot-resources/agent-api-description}}
   [_route-params
    _query-params
    body :- ::read-resource-request]
-  (try
-    (metabot-resources/read-resource body)
-    (catch clojure.lang.ExceptionInfo e
-      ;; The Metabot dispatcher's "too many URIs" guard throws ex-info without a
-      ;; :status-code. Surface it as a 400 to the HTTP boundary rather than the
-      ;; default 500.
-      (throw (ex-info (ex-message e)
-                      (merge {:status-code 400} (ex-data e))
-                      e)))))
+  ;; `with-batched-entries` rather than `tools.core/call`, because this endpoint's contract differs
+  ;; from the agent loop's in exactly one way: a call where no URI could be read is still a 200 with
+  ;; an `:error` per item, where the agent loop needs it to be a failed call. Composing the entries
+  ;; here is what lets both be true without the tool knowing either of us.
+  (tools.core/with-batched-entries metabot-resources/read-resource-tool body read-resource-ctx
+    {:on-item-fault
+     (fn [{:keys [uri]} e]
+       ;; One URI hitting a fault is this item's error, not the call's: the others read fine and the
+       ;; published response promises every URI it was given. Master did this too, with
+       ;; `(ex-message e)` as the text — a message written for a developer, crossing an API boundary
+       ;; to an agent that can do nothing with it. The exception goes to the log; the caller gets a
+       ;; sentence that is true and says nothing about our internals.
+       (log/error e "Reading a resource faulted" {:uri uri})
+       {:item    {:uri uri}
+        :failed? true
+        :output  (tru "This resource could not be read.")})}
+    (fn [entries]
+      {:resources (mapv read-resource-item entries)
+       ;; The tool's own envelope, so the text is identical to what the agent loop reads. Its
+       ;; `:structured-output` and `:data-parts` title are not part of this response.
+       :output    (tools.core/render-text
+                   (:output (tools.core/compose metabot-resources/read-resource-tool entries
+                                                read-resource-ctx)))})))
 
 ;;; ------------------------------------------------- Create Question ------------------------------------------------
 
@@ -904,7 +909,7 @@
     ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires data perms
     ;; to run the *new* query, otherwise a user with collection write on a card can repoint it at data
     ;; they cannot query. `queries/update-card!` does NOT run this check itself, so we run it here.
-    (when (api/column-will-change? :dataset_query card-before-update card-updates)
+    (when (api/column-will-change? (:dataset_query card-before-update) (get card-updates :dataset_query ::api/not-provided))
       (query-perms/check-run-permissions-for-query (:dataset_query card-updates))
       ;; Reject cycles. `lib/check-card-overwrite` throws if the new query references this card
       ;; transitively. Mirror REST's wrapping that promotes it to HTTP 400 instead of a 500.
@@ -920,16 +925,16 @@
                            :card-updates          card-updates
                            :actor                 @api/*current-user*
                            :delete-old-dashcards? false})
-    (update-card-response (t2/select-one :model/Card :id id))))
+    (update-card-response (agent-api.db/card id))))
 
 (mr/def ::create-question-request
-  [:map
+  [:map {:closed true}
    [:name                   ms/NonBlankString]
    [:query                  ms/NonBlankString]
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]])
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]])
 
 (mr/def ::create-question-response
   [:map
@@ -953,7 +958,8 @@
   The response `collection_path` is the saved location.
 
   Saving a native (raw SQL) query requires native-query permission on the target database."
-  {:scope metabot/agent-question-create
+  {:deprecated true
+   :scope metabot/agent-question-create
    :tool  {:name "create_question"
            :description (str "Save a query as a named question in Metabase. "
                              "Pass the `query_handle` returned by `construct_query` (MBQL) or "
@@ -973,13 +979,13 @@
 ;;; -------------------------------------------------- Create Metric -------------------------------------------------
 
 (mr/def ::create-metric-request
-  [:map
+  [:map {:closed true}
    [:name                   ms/NonBlankString]
    [:query                  ms/NonBlankString]
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]])
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]])
 
 (mr/def ::create-metric-response
   [:map
@@ -1017,7 +1023,8 @@
   If `collection_id` is omitted the metric is saved to the caller's personal collection.
   Pass an explicit `null` to save it to the root collection.
   The response `collection_path` is the saved location."
-  {:scope metabot/agent-metric-create
+  {:deprecated true
+   :scope metabot/agent-metric-create
    :tool  {:name "create_metric"
            :description (str "Save a query as a reusable metric in Metabase. "
                              "Pass the `query_handle` returned by `construct_query`. "
@@ -1040,12 +1047,12 @@
   "Patch shape for `update_metric`. Every field is optional; only the fields the caller
   passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID
   resolved upstream in the MCP layer) and must still describe a valid metric."
-  [:map
+  [:map {:closed true}
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
@@ -1071,7 +1078,8 @@
   Pass `query` (a query_handle from construct_query, or a base64 MBQL string) to replace the underlying
   query; the replacement must still be a valid metric (exactly one aggregation, at most one
   date/datetime grouping). The target card must be a metric — use `update_question` for questions."
-  {:scope metabot/agent-metric-update
+  {:deprecated true
+   :scope metabot/agent-metric-update
    :tool  {:name "update_metric"
            :description (str "Update a saved metric. Patch semantics - only fields you pass are changed. "
                              "To move a metric to a different collection, set collection_id. "
@@ -1081,7 +1089,7 @@
                              "(a query_handle from construct_query) - it must still have exactly one "
                              "aggregation and at most one date/datetime grouping. The target must be a "
                              "metric; use update_question for regular questions.")}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- ::update-metric-request]
   (let [card-before-update (api/write-check :model/Card id)]
@@ -1098,12 +1106,12 @@
   "Patch shape for `update_question`. Every field is optional; only the fields the caller
   passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID
   resolved upstream in the MCP layer)."
-  [:map
+  [:map {:closed true}
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
@@ -1129,7 +1137,8 @@
   Pass `query` (a query_handle from construct_query or construct_native_query, or a base64 query
   string) to replace the underlying query. Replacing it with a native (raw SQL) query requires
   native-query permission on the target database."
-  {:scope metabot/agent-question-update
+  {:deprecated true
+   :scope metabot/agent-question-update
    :tool  {:name "update_question"
            :description (str "Update a saved question (card). Patch semantics - only fields you pass are changed. "
                              "To move a card to a different collection, set collection_id. "
@@ -1137,7 +1146,7 @@
                              "delete or remove a question; set archived false to restore. "
                              "To replace the underlying query, pass query "
                              "(a query_handle from construct_query or construct_native_query).")}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- ::update-question-request]
   (apply-agent-card-patch! (api/write-check :model/Card id) body nil))
@@ -1165,7 +1174,8 @@
   Parameterized questions are NOT supported: if the card declares parameters or input
   template tags (field filters / variables), this returns a 400. Run it in Metabase, or
   save a parameterless version."
-  {:scope metabot/agent-question-execute
+  {:deprecated true
+   :scope metabot/agent-question-execute
    :tool  {:name "execute_question"
            :description (str "Run a saved question by id and return its rows with column metadata, "
                              "row count, and execution time. Use this to get the current results of "
@@ -1173,7 +1183,7 @@
                              "if the question takes parameters or template-tag input, this returns an "
                              "error.")
            :annotations {:read-only? true :idempotent? true}}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    _body]
   (let [card (api/read-check :model/Card id)]
@@ -1203,7 +1213,7 @@
     (autoplace/get-position-for-new-dashcard placed display)))
 
 (mr/def ::create-dashboard-request
-  [:map
+  [:map {:closed true}
    [:name          ms/NonBlankString]
    [:description   {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -1218,8 +1228,7 @@
   "The dashboard's tabs as `{:id :name}` in display order, [] when it has none."
   [dashboard-id]
   (mapv #(select-keys % [:id :name])
-        (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id
-                   {:order-by [[:position :asc] [:id :asc]]})))
+        (agent-api.db/dashboard-tab-names dashboard-id)))
 
 (mr/def ::create-dashboard-response
   [:map
@@ -1240,7 +1249,8 @@
   If `collection_id` is omitted the dashboard is saved to the caller's personal collection.
   Pass an explicit `null` to save it to the root collection.
   The response `collection_path` is the saved location."
-  {:scope metabot/agent-dashboard-create
+  {:deprecated true
+   :scope metabot/agent-dashboard-create
    :tool  {:name "create_dashboard"
            :description (str "Create a dashboard in Metabase. "
                              "Optionally pass question_ids to add saved questions as cards. "
@@ -1264,21 +1274,21 @@
                         (personal-collection-id))]
     (api/create-check :model/Dashboard {:collection_id collection_id})
     (let [cards (when (seq question_ids)
-                  (mapv #(api/read-check :model/Card %) question_ids))
+                  (let [id->card (u/index-by :id (t2/hydrate (agent-api.db/cards-with-ids (vec (distinct question_ids)))
+                                                             :can_read))]
+                    (mapv #(api/read-check (id->card %)) question_ids)))
           dash  (t2/with-transaction [_conn]
-                  (let [dash (first (t2/insert-returning-instances!
-                                     :model/Dashboard
-                                     {:name          dashboard-name
-                                      :description   description
-                                      :parameters    []
-                                      :creator_id    api/*current-user-id*
-                                      :collection_id collection_id}))]
+                  (let [dash (agent-api.db/insert-dashboard!
+                              {:name          dashboard-name
+                               :description   description
+                               :parameters    []
+                               :creator_id    api/*current-user-id*
+                               :collection_id collection_id})]
                     (when (seq cards)
                       (reduce (fn [placed card]
                                 (let [display  (or (:display card) :table)
                                       position (autoplaced-position placed display nil)]
-                                  (t2/insert-returning-instance!
-                                   :model/DashboardCard
+                                  (agent-api.db/insert-dashcard!
                                    (merge position {:dashboard_id (:id dash)
                                                     :card_id      (:id card)}))
                                   (conj placed position)))
@@ -1293,8 +1303,7 @@
        :collection_path (collection-path (:collection_id dash))
        :description     (:description dash)
        ;; select-fn-vec returns nil, not [], when there are no rows
-       :dashcard_ids    (or (t2/select-fn-vec :id :model/DashboardCard :dashboard_id (:id dash)
-                                              {:order-by [[:row :asc] [:col :asc]]})
+       :dashcard_ids    (or (agent-api.db/dashcard-ids-in-layout-order (:id dash))
                             [])
        :tabs            (dashboard-tabs (:id dash))})))
 
@@ -1345,7 +1354,7 @@
 (mr/def ::update-dashboard-request
   "Patch shape for `update_dashboard`. Metadata fields and an optional `dashcards` list of
    add/add_heading/add_text/update_text/remove/move mutations applied in order."
-  [:map
+  [:map {:closed true}
    [:name          {:optional true} [:maybe ms/NonBlankString]]
    [:description   {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -1393,10 +1402,11 @@
   Placement is per-tab: adds go on the mutation's `tab_id` (default: the first tab) and only
   collide with that tab's cards; a move only reflows cards sharing the moved card's tab."
   [dashboard-id mutations]
-  (let [current        (t2/select :model/DashboardCard :dashboard_id dashboard-id)
+  (let [current        (agent-api.db/dashcards dashboard-id)
+        ;; the dashboard row is the same for every mutation in the batch
+        dashboard      (agent-api.db/dashboard dashboard-id)
         ;; one fetch serves the default tab, per-mutation tab_id validation, and collision grouping
-        tab-ids        (t2/select-pks-vec :model/DashboardTab :dashboard_id dashboard-id
-                                          {:order-by [[:position :asc] [:id :asc]]})
+        tab-ids        (agent-api.db/dashboard-tab-ids dashboard-id)
         ;; new dashcards land on the first tab, alongside any nil-tab dashcards, which the
         ;; frontend renders there; nil when the dashboard has no tabs
         default-tab-id (first tab-ids)
@@ -1411,6 +1421,12 @@
         ;; collision/reflow purposes they count as first-tab cards.
         effective-tab  (fn [dashcard] (or (:dashboard_tab_id dashcard) default-tab-id))
         on-tab         (fn [placed tab-id] (filterv #(= (effective-tab %) tab-id) placed))
+        add-cards      (u/index-by :id (t2/hydrate (agent-api.db/cards-with-ids
+                                                    (into [] (comp (filter (comp #{"add"} :action))
+                                                                   (keep :card_id)
+                                                                   (distinct))
+                                                          mutations))
+                                                   :can_read))
         state          (atom {:placed  (vec current)
                               :added   []
                               :removed []
@@ -1420,7 +1436,11 @@
       (try
         (case action
           "add"
-          (let [card    (api/read-check :model/Card card_id)
+          (let [card    (api/read-check (add-cards card_id))
+                ;; A card placed on a shared dashboard exposes its selected timeline events, so the
+                ;; same read check the REST writer applies runs here too.
+                _       (queries/check-newly-exposed-dashcards-timeline-permissions!
+                         dashboard current [{:card_id card_id}])
                 ;; A card internal to a different dashboard (a dashboard question) can't be added
                 ;; here — mirrors the REST dashcard-creation gate.
                 _       (api/check (or (nil? (:dashboard_id card))
@@ -1443,18 +1463,17 @@
           (let [tab-id (target-tab-id tab_id)]
             (insert-new-dashcard! state dashboard-id tab-id
                                   (autoplaced-position (on-tab (:placed @state) tab-id) :heading nil)
-                                  {:visualization_settings (dashboard-card/virtual-card-settings "heading" text)}))
+                                  {:visualization_settings (dashboard-card/virtual-card-settings "heading" {:text text})}))
 
           "add_text"
           (let [tab-id (target-tab-id tab_id)]
             (insert-new-dashcard! state dashboard-id tab-id
                                   (autoplaced-position (on-tab (:placed @state) tab-id) :text display_size)
-                                  {:visualization_settings (dashboard-card/virtual-card-settings "text" text)}))
+                                  {:visualization_settings (dashboard-card/virtual-card-settings "text" {:text text})}))
 
           "update_text"
           (let [existing (api/check-404
-                          (t2/select-one :model/DashboardCard
-                                         :id dashcard_id :dashboard_id dashboard-id))
+                          (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))
                 vs       (:visualization_settings existing)
                 display  (some-> (get-in vs [:virtual_card :display]) name)]
             (api/check (or (contains? #{"heading" "text"} display)
@@ -1465,13 +1484,11 @@
                                 (string? (:text vs))))
                        [400 "Only heading and text cards support update_text."])
             ;; In-place: position and size stay put, unlike a remove + add_* round-trip.
-            (t2/update! :model/DashboardCard dashcard_id
-                        {:visualization_settings (assoc vs :text text)}))
+            (agent-api.db/update-dashcard! dashcard_id {:visualization_settings (assoc vs :text text)}))
 
           "remove"
           (let [existing (api/check-404
-                          (t2/select-one :model/DashboardCard
-                                         :id dashcard_id :dashboard_id dashboard-id))]
+                          (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))]
             ;; Model-level delete also cleans up orphaned inline parameters and pulse cards.
             (dashboard-card/delete-dashboard-cards! [dashcard_id])
             (swap! state #(-> %
@@ -1480,8 +1497,7 @@
 
           "move"
           (let [existing  (api/check-404
-                           (t2/select-one :model/DashboardCard
-                                          :id dashcard_id :dashboard_id dashboard-id))
+                           (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))
                 ;; A move only makes sense relative to the moved card's own tab: collision checks
                 ;; and the move-to-top reflow must not touch cards on other tabs. Compared via
                 ;; `effective-tab` so nil-tab dashcards group with the first tab they render on.
@@ -1504,9 +1520,8 @@
             (when (= position "top")
               (let [shift (:size_y existing)]
                 (doseq [{:keys [id row]} tab-placed]
-                  (t2/update! :model/DashboardCard id {:row (+ row shift)}))))
-            (t2/update! :model/DashboardCard dashcard_id
-                        (select-keys new-pos [:row :col]))
+                  (agent-api.db/update-dashcard! id {:row (+ row shift)}))))
+            (agent-api.db/update-dashcard! dashcard_id (select-keys new-pos [:row :col]))
             (swap! state #(-> %
                               (assoc :placed
                                      (conj (mapv (fn [c]
@@ -1528,7 +1543,7 @@
     ;; this dashboard. Sync their archived state from the final dashcard set, like the REST path.
     (when (or (seq (:added @state)) (seq (:removed @state)))
       (dashboard/archive-or-unarchive-internal-dashboard-questions!
-       dashboard-id (t2/select :model/DashboardCard :dashboard_id dashboard-id)))
+       dashboard-id (agent-api.db/dashcards dashboard-id)))
     (select-keys @state [:added :removed :moved])))
 
 (api.macros/defendpoint :put "/v1/dashboard/:id" :- ::update-dashboard-response
@@ -1540,7 +1555,8 @@
   `{action: add|add_heading|add_text|update_text|remove|move, ...}` entries applied in
   order. `add` requires `card_id`; `add_heading` and `add_text` require `text` (Markdown
   for text cards); `update_text`, `remove`, and `move` require `dashcard_id`."
-  {:scope metabot/agent-dashboard-update
+  {:deprecated true
+   :scope metabot/agent-dashboard-update
    :tool  {:name "update_dashboard"
            :description (str "Update a dashboard. Patch semantics - only fields you pass are changed. "
                              "Set collection_id to move it. "
@@ -1564,7 +1580,7 @@
                              "The response dashcard_ids lists all dashcards in row/col order; "
                              "metabase://dashboard/{id}/items (via read_resource) shows each "
                              "dashcard with its dashcard_id.")}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- ::update-dashboard-request]
   (let [current-dash (api/write-check :model/Dashboard id)
@@ -1596,7 +1612,7 @@
         result       (t2/with-transaction [_conn]
                        (when (seq updates)
                          (dashboard/cascade-card-state-from-dashboard-update! current-dash updates)
-                         (t2/update! :model/Dashboard id updates)
+                         (agent-api.db/update-dashboard! id updates)
                          ;; Fire :event/collection-touch with the *target* collection id so the
                          ;; activity feed records the right collection. Note: the dashboards-rest
                          ;; PUT-dashboard endpoint passes the dashboard id here instead, which
@@ -1620,7 +1636,7 @@
                              {:object current-dash
                               :user-id api/*current-user-id*
                               :dashcards (:removed result)}))
-    (let [updated (t2/select-one :model/Dashboard :id id)]
+    (let [updated (agent-api.db/dashboard id)]
       (events/publish-event! :event/dashboard-update
                              {:object updated :user-id api/*current-user-id*})
       {:id              (:id updated)
@@ -1630,8 +1646,7 @@
        :description     (:description updated)
        :archived        (boolean (:archived updated))
        ;; select-fn-vec returns nil, not [], when there are no rows
-       :dashcard_ids    (or (t2/select-fn-vec :id :model/DashboardCard :dashboard_id id
-                                              {:order-by [[:row :asc] [:col :asc]]})
+       :dashcard_ids    (or (agent-api.db/dashcard-ids-in-layout-order id)
                             [])
        :tabs            (dashboard-tabs id)})))
 
@@ -1641,7 +1656,7 @@
   "Request shape for `create_collection`. `:parent_collection_id` is named separately from
   the internal `:parent_id` field to make the LLM-facing API less ambiguous (the caller is
   saying \"put it under this parent\", not echoing back a server-set field)."
-  [:map
+  [:map {:closed true}
    [:name                 ms/NonBlankString]
    [:description          {:optional true} [:maybe :string]]
    [:parent_collection_id {:optional true} [:maybe ms/PositiveInt]]])
@@ -1661,7 +1676,8 @@
 
   Pass `parent_collection_id` to nest under another collection; omit for a root-level collection.
   The caller must have write access to the parent (or root, if no parent given)."
-  {:scope metabot/agent-collection-create
+  {:deprecated true
+   :scope metabot/agent-collection-create
    :tool  {:name "create_collection"
            :description (str "Create a new collection in Metabase. "
                              "Set parent_collection_id to nest under another collection; "
@@ -1704,14 +1720,24 @@
     (str/trim (subs auth-header 7))))
 
 (defn- error-response
-  "Create a 401 error response with structured JSON body."
-  [error-type message]
+  "Create a 401 error response with a structured JSON body and `challenge` as its RFC 6750 `WWW-Authenticate` value."
+  [error-type message challenge]
   {:status  401
-   :headers {"Content-Type" "application/json"}
+   :headers {"Content-Type"     "application/json"
+             "WWW-Authenticate" challenge}
    :body    {:error   error-type
              :message message}})
 
 ;;; -------------------------------------------- Stateless JWT Authentication --------------------------------------------
+
+(def ^:private jwt-not-configured
+  {:error   "jwt_not_configured"
+   :message "JWT authentication is not configured. Set the JWT shared secret in admin settings."})
+
+(defn- jwt-provider-available?
+  "Whether a `:provider/jwt` implementation is registered with [[auth-identity/authenticate]]."
+  []
+  (auth-identity/isa? :provider/jwt :metabase.auth-identity.provider/provider))
 
 (defn- authenticate-with-jwt
   "Authenticate a request using a stateless JWT. Returns `{:user <user>}` on success, or
@@ -1723,26 +1749,30 @@
    When the JWT contains a `\"scope\"` claim, the result includes `:scopes` — a parsed set of scope strings — so that
    [[enforce-authentication]] can attach it to the request for downstream scope enforcement."
   [token]
-  (let [result (auth-identity/authenticate :provider/jwt {:token token})]
-    (if (:success? result)
-      ;; JWT is valid - look up user from the email extracted by the JWT provider
-      ;; The provider uses jwt-attribute-email setting to extract the email from claims
-      (if-let [user (when-let [email (get-in result [:user-data :email])]
-                      (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true))]
-        (let [scope-entry (-> result :jwt-data (find :scope))]
-          (cond-> {:user user}
-            scope-entry
-            (assoc :scopes (or (scope/parse-scopes (val scope-entry)) #{}))))
-        ;; Don't reveal whether the user exists or not - use same error as invalid JWT
-        {:error   "invalid_jwt"
-         :message "Invalid or expired JWT token."})
-      ;; Authentication failed - map error to agent API format
-      (case (:error result)
-        :jwt-not-enabled {:error   "jwt_not_configured"
-                          :message "JWT authentication is not configured. Set the JWT shared secret in admin settings."}
-        ;; Default: use generic invalid JWT message (don't leak details)
-        {:error   "invalid_jwt"
-         :message "Invalid or expired JWT token."}))))
+  ;; The JWT provider ships only in EE, so on OSS nothing registers `:provider/jwt` and `authenticate` has no method
+  ;; to dispatch to. Answer the way a disabled provider does rather than let it throw: this is the last stop for a
+  ;; bearer token the OAuth bridge already declined, and it owes that request a 401 challenge, not a 500.
+  (if-not (jwt-provider-available?)
+    jwt-not-configured
+    (let [result (auth-identity/authenticate :provider/jwt {:token token})]
+      (if (:success? result)
+        ;; JWT is valid - look up user from the email extracted by the JWT provider
+        ;; The provider uses jwt-attribute-email setting to extract the email from claims
+        (if-let [user (when-let [email (get-in result [:user-data :email])]
+                        (agent-api.db/active-user-by-email email))]
+          (let [scope-entry (-> result :jwt-data (find :scope))]
+            (cond-> {:user user}
+              scope-entry
+              (assoc :scopes (or (scope/parse-scopes (val scope-entry)) #{}))))
+          ;; Don't reveal whether the user exists or not - use same error as invalid JWT
+          {:error   "invalid_jwt"
+           :message "Invalid or expired JWT token."})
+        ;; Authentication failed - map error to agent API format
+        (case (:error result)
+          :jwt-not-enabled jwt-not-configured
+          ;; Default: use generic invalid JWT message (don't leak details)
+          {:error   "invalid_jwt"
+           :message "Invalid or expired JWT token."})))))
 
 ;;; -------------------------------------------------- Middleware ----------------------------------------------------
 
@@ -1753,21 +1783,26 @@
 
    - For **session-authenticated** requests (where `:metabase-user-id` is already set by
      upstream middleware), preserves any pre-existing `:token-scopes` value if present,
-     otherwise defaults to `#{::scope/unrestricted}` for unrestricted access.
+     otherwise defaults to `#{::scope/unrestricted}` for unrestricted access. An OAuth-authenticated
+     request without `:token-scopes` is not defaulted, so scope enforcement rejects it.
    - For **JWT-authenticated** requests, derives `:token-scopes` from the JWT when a
      `\"scope\"` claim is present, falls back to any pre-existing `:token-scopes` on the
-     request, and finally defaults to `#{::scope/unrestricted}` for unscoped JWTs.
+     request, and finally defaults to `#{::scope/unrestricted}` for unscoped JWTs. A request
+     [[metabase.server.middleware.data-app-scope]] already confined is the exception: its
+     narrowing is a server-side decision and a caller-supplied `\"scope\"` claim may not
+     widen it back out.
 
    This ensures downstream scope enforcement never has to special-case nil within the
    agent API."
   [handler]
-  (fn [{:keys [headers metabase-user-id token-scopes] :as request} respond raise]
+  (fn [{:keys [headers metabase-user-id token-scopes data-app-scoped?] :as request} respond raise]
     (cond
       ;; Already authenticated via X-Metabase-Session or synthetic request (e.g. MCP dispatch).
       ;; Preserve existing :token-scopes when present (MCP sets them on the synthetic request).
       metabase-user-id
       (handler (cond-> request
-                 (not token-scopes) (assoc :token-scopes #{::scope/unrestricted}))
+                 (and (not token-scopes) (not (:authenticated-via-oauth? request)))
+                 (assoc :token-scopes #{::scope/unrestricted}))
                respond raise)
 
       ;; Not authenticated via session - check for Bearer JWT
@@ -1775,15 +1810,19 @@
       (let [auth-header  (get headers "authorization")
             bearer-token (extract-bearer-token auth-header)]
         (cond
-          ;; No authorization header and no session
+          ;; No authorization header and no session.
+          ;; RFC 6750 section 3.1: a challenge to a request with no bearer token carries no error code.
           (nil? auth-header)
           (respond (error-response "missing_authorization"
-                                   "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."))
+                                   (str "Authentication required. Use X-Metabase-Session header or "
+                                        "Authorization: Bearer <jwt>.")
+                                   "Bearer"))
 
           ;; Authorization header present but not Bearer format
           (nil? bearer-token)
           (respond (error-response "invalid_authorization_format"
-                                   "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"))
+                                   "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"
+                                   "Bearer"))
 
           ;; Validate JWT
           :else
@@ -1794,11 +1833,13 @@
                   (log/warn "JWT scopes" (:scopes result)
                             "differ from pre-existing token-scopes" token-scopes))
                 (request/with-current-user (:id user)
-                  (handler (assoc request :token-scopes (or (:scopes result)
-                                                            token-scopes
-                                                            #{::scope/unrestricted}))
+                  (handler (assoc request :token-scopes (if data-app-scoped?
+                                                          token-scopes
+                                                          (or (:scopes result)
+                                                              token-scopes
+                                                              #{::scope/unrestricted})))
                            respond raise)))
-              (respond (error-response (:error result) (:message result))))))))))
+              (respond (error-response (:error result) (:message result) "Bearer error=\"invalid_token\"")))))))))
 
 (def +auth
   "Agent API authentication middleware. Supports both session-based and stateless JWT authentication."
@@ -1808,10 +1849,71 @@
   "Wrap routes so they may only be accessed when the Agent API is enabled."
   agent-api.validation/+agent-api-enabled)
 
+(defn- exception-response
+  "The response to an exception raised while handling an Agent API request, never with a stack trace.
+  A 4xx exception without a database cause keeps its message and client-facing ex-data. Any other exception goes to the
+  server log, as a database failure when [[metabot-construct/database-error?]] says it is one, and the caller gets a
+  generic 500 whatever `hide-stacktraces` says."
+  [e]
+  (let [{:keys [status-code] :as data} (ex-data e)
+        client-data                     (api-error/response-data data)
+        database-error?                 (metabot-construct/database-error? e {:ignore-status? true})]
+    (if (and (not database-error?) status-code (<= 400 status-code 499))
+      {:status status-code
+       :body   (if (empty? client-data)
+                 (ex-message e)
+                 (merge {:message (ex-message e)} client-data))}
+      (do
+        (if database-error?
+          (log/error e "Database failure in Agent API")
+          (log/error e "Unhandled error in Agent API request"))
+        (when (nil? status-code)
+          (analytics/inc! :metabase-api/unhandled-errors))
+        {:status 500
+         :body   {:message (tru "Something went wrong")}}))))
+
+(defn- query-failure-body
+  "The body for an error that a streamed query run writes.
+  A failure that [[query-execution/caller-facing-failure?]] accepts keeps its status, error and error type. Any other
+  failure goes to the server log without the query, and the caller gets a generic message."
+  [error]
+  (if (query-execution/caller-facing-failure? error)
+    (merge {:status :failed} (select-keys error [:error :error_type]))
+    (do
+      (log/errorf "Agent API query run failed: %s" (u/pprint-to-str (dissoc error :json_query :preprocessed :native)))
+      {:status :failed
+       :error  (tru "Something went wrong")})))
+
+(defn- wrap-error-responses
+  "Middleware that keeps internal detail out of Agent API error responses, since an agent passes them to its LLM.
+  A raised exception gets [[exception-response]], and an error that a streamed query run writes gets
+  [[query-failure-body]]. When the client went away before its response was written, the default exception handling
+  logs a canceled request, as on any other route."
+  [handler]
+  (fn [request respond raise]
+    (let [callback-called? (volatile! false)
+          respond' (fn [response]
+                     (let [response (streaming-response/with-error-response-fn response query-failure-body)]
+                       (vreset! callback-called? true)
+                       (respond response)))
+          raise'   (fn [e]
+                     (when @callback-called?
+                       (throw e))
+                     (vreset! callback-called? true)
+                     (if (instance? EofException e)
+                       (raise e)
+                       (respond' (exception-response e))))]
+      (try
+        (handler request respond' raise')
+        (catch Throwable e
+          (if @callback-called?
+            (throw e)
+            (raise' e)))))))
+
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 
 (def ^:private base-routes
-  (api.macros/ns-handler *ns* +auth))
+  (api.macros/ns-handler *ns* +auth wrap-error-responses))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/agent/` routes."
@@ -1854,3 +1956,11 @@
                                      (respond response))
                                    raise))))
    (fn [prefix] (open-api/open-api-spec base-routes prefix))))
+
+(defn defendpoint-scopes
+  "All defendpoint scopes from agent-api as a sorted set."
+  []
+  (into (sorted-set)
+        (comp (keep #(get-in % [:form :metadata :scope]))
+              (filter string?))
+        (vals (api.macros/ns-routes 'metabase.agent-api.api))))

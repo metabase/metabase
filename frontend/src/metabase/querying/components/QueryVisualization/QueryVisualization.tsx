@@ -1,18 +1,17 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { useTimeout } from "react-use";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { Warnings } from "metabase/common/components/Warnings";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { useSelector } from "metabase/redux";
-import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
-import { Box, Flex, Loader, Stack, Text, Title } from "metabase/ui";
+import { Box, Flex, Stack, Text } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
-import { prefetchVisualizationComponent } from "metabase/visualizations";
+import { VisualizationRunningState } from "metabase/visualizations/components/Visualization/VisualizationRunningState";
+import { prefetchVisualizationComponent } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
@@ -21,8 +20,6 @@ import { RunButtonWithTooltip } from "./RunButtonWithTooltip";
 import { VisualizationError } from "./VisualizationError";
 import { VisualizationResult } from "./VisualizationResult";
 import type { QueryVisualizationProps } from "./types";
-
-const SLOW_MESSAGE_TIMEOUT = 4000;
 
 export function QueryVisualization(props: QueryVisualizationProps) {
   const {
@@ -35,6 +32,7 @@ export function QueryVisualization(props: QueryVisualizationProps) {
     isNativeEditorOpen,
     isDirtyStateShownForError,
     result,
+    errorAction,
     maxTableRows = HARD_ROW_LIMIT,
   } = props;
 
@@ -80,9 +78,9 @@ export function QueryVisualization(props: QueryVisualizationProps) {
             className={S.spread}
             error={result.error}
             errorType={result.error_type}
-            via={result.via ?? []}
             question={question}
             duration={result.duration ?? 0}
+            errorAction={errorAction}
           />
         ) : result?.data ? (
           <VisualizationResult
@@ -122,35 +120,6 @@ const VisualizationEmptyState = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export function VisualizationRunningState({
-  className = "",
-}: {
-  className?: string;
-}) {
-  const [isSlow] = useTimeout(SLOW_MESSAGE_TIMEOUT);
-
-  const getLoadingMessage = useSelector(getWhiteLabeledLoadingMessageFactory);
-
-  // show the slower loading message only when the loadingMessage is
-  // not customized
-  const message = getLoadingMessage(isSlow() ?? false);
-
-  return (
-    <Flex
-      className={cx(className, QueryBuilderS.Overlay)}
-      c="core-brand"
-      direction="column"
-      justify="center"
-      align="center"
-    >
-      <Loader size="lg" />
-      <Title c="core-brand" order={3} mt="lg">
-        {message}
-      </Title>
-    </Flex>
-  );
-}
-
 type VisualizationDirtyStateProps = {
   className?: string;
   isRunning?: boolean;
@@ -168,8 +137,6 @@ export const VisualizationDirtyState = ({
   cancelQuery,
   hidden,
 }: VisualizationDirtyStateProps) => {
-  const keyboardShortcut = getRunQueryShortcut();
-
   const handleClick = () => {
     if (!hidden) {
       if (isRunning) {
@@ -200,8 +167,8 @@ export const VisualizationDirtyState = ({
         hidden={hidden}
         isRunning={Boolean(isRunning)}
         isDirty={Boolean(isResultDirty)}
+        getTooltip={getRunQueryShortcut}
       />
-      {!hidden && <Text c="text-secondary">{keyboardShortcut}</Text>}
     </Flex>
   );
 };

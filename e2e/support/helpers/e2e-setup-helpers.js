@@ -15,8 +15,9 @@ export function snapshot(name) {
  * "postgres-12" |
  * "postgres-writable" |
  * "mysql-8" |
- * "mysql-writable"
- * } name
+ * "mysql-writable" |
+ * (string & {})
+ * } name - A built-in snapshot, or one saved with `snapshot()`
  */
 export function restore(name = "default") {
   cy.log("Restore Data Set");
@@ -34,5 +35,12 @@ export function restore(name = "default") {
     failOnStatusCode: false,
   });
 
-  return cy.request("POST", `/api/testing/restore/${name}`);
+  return cy.request({
+    method: "POST",
+    url: `/api/testing/restore/${name}`,
+    // the restore endpoint takes an app DB write lock, drops and reloads
+    // everything, then re-syncs search; under CI load it can exceed the
+    // default 30s responseTimeout (EMB-2363)
+    timeout: 60_000,
+  });
 }

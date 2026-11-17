@@ -82,7 +82,7 @@ describe("suggestMeasures", () => {
                 {
                   type: "operator",
                   operator: "sum",
-                  args: [{ type: "column", name: "sum", displayName: "Sum" }],
+                  args: [{ type: "column", name: "sum" }],
                 },
               ],
             },

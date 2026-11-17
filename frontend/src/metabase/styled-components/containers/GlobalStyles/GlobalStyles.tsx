@@ -1,21 +1,20 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import { Global, css } from "@emotion/react";
-import { useMemo } from "react";
+import { type JSX, useMemo } from "react";
 
-import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
-import { defaultFontFiles } from "metabase/css/core/fonts.styled";
+import "metabase/css/core/base.css";
+import "metabase/css/core/fonts.css";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   isPublicEmbedding,
   isStaticEmbedding,
 } from "metabase/embedding/config";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { useMantineTheme } from "metabase/ui";
-import { getSitePath } from "metabase/utils/dom";
 import { getFontFamilyValue } from "metabase/utils/fonts";
-import { getSaveDomImageStyles } from "metabase/visualizations/lib/image-exports";
+import { getSaveDomImageStyles } from "metabase/viz-core";
 
 import { getFont, getFontFiles } from "../../selectors";
 
@@ -24,7 +23,6 @@ export const GlobalStyles = (): JSX.Element => {
   const fontFiles = useSelector(getFontFiles);
   const whitelabelColors = useSetting("application-colors");
 
-  const sitePath = getSitePath();
   const theme = useMantineTheme();
   const { colorScheme } = theme.other;
 
@@ -40,7 +38,6 @@ export const GlobalStyles = (): JSX.Element => {
         --mb-default-font-family: ${getFontFamilyValue(font)};
       }
 
-      ${defaultFontFiles({ baseUrl: sitePath })}
       ${fontFiles?.map(
         (file) => css`
           @font-face {
@@ -52,18 +49,15 @@ export const GlobalStyles = (): JSX.Element => {
           }
         `,
       )}
-    ${getSaveDomImageStyles(isEmbeddingSdk())}
+      ${getSaveDomImageStyles(isEmbeddingSdk())}
     body {
         font-size: 0.875em;
         ${isStaticEmbedding() || isPublicEmbedding()
           ? ""
           : `color-scheme: ${colorScheme};`}
-        ${rootStyle}
       }
-
-      ${baseStyle}
     `;
-  }, [cssVariables, font, sitePath, fontFiles, colorScheme]);
+  }, [cssVariables, font, fontFiles, colorScheme]);
 
   return <Global styles={styles} />;
 };

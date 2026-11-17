@@ -55,15 +55,20 @@
   api-call?
   auth-call?
   cacheable?
+  cookie-header-entries
   data-app-embed-prefix
   data-app-url-segment
   data-app?
+  embedded-data-app-prefix
+  embedded-data-app?
   device-info
   embed-sdk-eajs-entrypoint?
   embed?
   embedded?
   geocode-ip-addresses
-  https?
+  host-names
+  https-state
+  internal-data-app?
   public?
   referer])
 

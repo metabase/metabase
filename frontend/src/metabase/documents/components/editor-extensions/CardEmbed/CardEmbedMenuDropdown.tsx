@@ -15,6 +15,7 @@ export interface CardEmbedMenuContext {
   isNativeQuestion: boolean | undefined;
   commentsPath: string;
   hasUnsavedChanges: boolean;
+  isStatic: boolean;
 }
 
 export interface CardEmbedMenuActions {
@@ -24,6 +25,8 @@ export interface CardEmbedMenuActions {
     enablePivot: boolean;
   }) => Promise<void>;
   handleEditVisualizationSettings: () => void;
+  shouldShowTimelineEventsMenu?: boolean;
+  handleEditTimelineEvents?: () => void;
   setIsModifyModalOpen: (open: boolean) => void;
   handleReplaceQuestion: () => void;
   handleRemoveNode: () => void;
@@ -47,9 +50,12 @@ export const CardEmbedMenuDropdown = ({
   isNativeQuestion,
   commentsPath,
   hasUnsavedChanges,
+  isStatic,
+  shouldShowTimelineEventsMenu,
   // Actions
   handleDownload,
   handleEditVisualizationSettings,
+  handleEditTimelineEvents,
   setIsModifyModalOpen,
   handleReplaceQuestion,
   handleRemoveNode,
@@ -104,23 +110,36 @@ export const CardEmbedMenuDropdown = ({
       >
         {t`Edit Visualization`}
       </Menu.Item>
-      <Menu.Item
-        onClick={() => setIsModifyModalOpen(true)}
-        leftSection={
-          <Icon name={isNativeQuestion ? "sql" : "notebook"} size={14} />
-        }
-        disabled={!canWrite}
-      >
-        {t`Edit Query`}
-      </Menu.Item>
-      <Menu.Item
-        onClick={handleReplaceQuestion}
-        leftSection={<Icon name="refresh" size={14} />}
-        disabled={!canWrite}
-      >
-        {t`Replace`}
-      </Menu.Item>
-      {canDownloadResults(dataset) && (
+      {shouldShowTimelineEventsMenu && (
+        <Menu.Item
+          leftSection={<Icon name="calendar" size={14} />}
+          onClick={handleEditTimelineEvents}
+          disabled={!canWrite}
+        >
+          {t`Events`}
+        </Menu.Item>
+      )}
+      {!isStatic && (
+        <Menu.Item
+          onClick={() => setIsModifyModalOpen(true)}
+          leftSection={
+            <Icon name={isNativeQuestion ? "sql" : "notebook"} size={14} />
+          }
+          disabled={!canWrite}
+        >
+          {t`Edit Query`}
+        </Menu.Item>
+      )}
+      {!isStatic && (
+        <Menu.Item
+          onClick={handleReplaceQuestion}
+          leftSection={<Icon name="refresh" size={14} />}
+          disabled={!canWrite}
+        >
+          {t`Replace`}
+        </Menu.Item>
+      )}
+      {!isStatic && canDownloadResults(dataset) && (
         <Menu.Item
           leftSection={<Icon name="download" aria-hidden />}
           aria-label={isDownloadingData ? t`Downloading…` : t`Download results`}

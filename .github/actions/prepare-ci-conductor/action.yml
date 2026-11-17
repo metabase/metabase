@@ -27,7 +27,7 @@ runs:
     # Anything headed for master runs master's own sources, so a PR can test its own changes.
     - name: Fetch ci-conductor sources from master
       if: ${{ github.base_ref != 'master' && github.ref_name != 'master' }}
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         repository: metabase/metabase
         ref: master

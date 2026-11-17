@@ -6,19 +6,27 @@ import { useCreateMeasureMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { trackMeasureCreated } from "metabase/common/data-studio/analytics";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useSelector } from "metabase/redux";
+import {
+  type MetadataSelectorOpts,
+  useMetadataProvider,
+  useQuestionFromOptsBuilder,
+} from "metabase/metadata-store";
 import { useNavigate } from "metabase/router";
-import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Measure, Table } from "metabase-types/api";
 
 import { MeasureEditor } from "../../components/MeasureEditor";
-import { NewMeasureHeader } from "../../components/NewMeasureHeader";
 import { useMeasureQuery } from "../../hooks/use-measure-query";
 import { createInitialQueryForTable } from "../../utils/measure-query";
+
+import { NewMeasureHeader } from "./NewMeasureHeader";
+
+// Hoisted: the metadata selector memoises on the options object, so a fresh
+// literal each render would defeat it.
+const WITH_HIDDEN_TABLES: MetadataSelectorOpts = { includeHiddenTables: true };
 
 type NewMeasurePageProps = {
   table: Table;
@@ -32,7 +40,11 @@ export function NewMeasurePage({
   getSuccessUrl,
 }: NewMeasurePageProps) {
   const navigate = useNavigate();
-  const metadata = useSelector(getMetadataWithHiddenTables);
+  const buildQuestion = useQuestionFromOptsBuilder();
+  const metadataProvider = useMetadataProvider(
+    table?.db_id ?? null,
+    WITH_HIDDEN_TABLES,
+  );
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const [name, setName] = useState("");
@@ -45,11 +57,11 @@ export function NewMeasurePage({
   useEffect(() => {
     if (table && !isInitialized.current) {
       isInitialized.current = true;
-      setDefinition(createInitialQueryForTable(table, metadata));
+      setDefinition(createInitialQueryForTable(table, metadataProvider));
     }
-  }, [table, metadata]);
+  }, [table, metadataProvider]);
 
-  const { query, aggregations } = useMeasureQuery(definition, metadata);
+  const { query, aggregations } = useMeasureQuery(definition);
 
   const isDirty =
     !savedMeasure &&
@@ -59,7 +71,7 @@ export function NewMeasurePage({
   const isValid = name.trim().length > 0 && aggregations.length === 1;
   const previewUrl =
     aggregations.length === 1
-      ? getDatasetQueryPreviewUrl(definition)
+      ? getDatasetQueryPreviewUrl(definition, buildQuestion)
       : undefined;
 
   const setQuery = useCallback((newQuery: Lib.Query) => {
@@ -104,7 +116,7 @@ export function NewMeasurePage({
   }, [savedMeasure, getSuccessUrl, navigate]);
 
   return (
-    <PageContainer data-testid="new-measure-page" gap="xl">
+    <PageContainer data-testid="new-measure-page" gap="xxl">
       <NewMeasureHeader
         previewUrl={previewUrl}
         onNameChange={setName}

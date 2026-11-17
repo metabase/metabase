@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { t } from "ttag";
 
+import { getErrorMessage } from "metabase/api/utils/errors";
 import type { GenericErrorResponse } from "metabase/utils/errors";
 
 export const getUpdateApiErrorMessage = (
@@ -28,11 +30,7 @@ export const getUpdateApiErrorMessage = (
     return maybeError.errors[0].message ?? maybeError.errors[0].error;
   }
 
-  if (typeof maybeError.data?.message === "string") {
-    return maybeError.data.message;
-  }
-
-  return t`Unknown error`;
+  return getErrorMessage(error, t`Unknown error`);
 };
 
 export function getUpdateApiErrorType(error: unknown): string {

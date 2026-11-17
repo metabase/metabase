@@ -62,7 +62,7 @@
              [:= [:field (meta/id :venues :name) nil] "Cam's Toucannery"])
             (expand-parameters
              (query-with-parameters
-              {:hash   "abc123"
+              {:id   "abc123"
                :name   "foo"
                :type   "id"
                :target [:dimension [:field (meta/id :venues :name) nil]]
@@ -74,7 +74,7 @@
              [:= [:field (meta/id :orders :id) nil] 9223372036854775808])
             (expand-parameters
              (query-with-parameters
-              {:hash   "abc123"
+              {:id   "abc123"
                :name   "foo"
                :type   "id"
                :target [:dimension [:field (meta/id :orders :id) nil]]
@@ -89,12 +89,12 @@
               [:= [:field (meta/id :venues :id) nil] 999]])
             (expand-parameters
              (-> (query-with-parameters
-                  {:hash   "abc123"
+                  {:id   "abc123"
                    :name   "foo"
                    :type   :id
                    :target [:dimension [:field (meta/id :venues :name) nil] nil]
                    :value  "Cam's Toucannery"}
-                  {:hash   "def456"
+                  {:id   "def456"
                    :name   "bar"
                    :type   :category
                    :target [:dimension [:field (meta/id :venues :id) nil] {}]
@@ -121,7 +121,7 @@
               (lib.tu.macros/mbql-5-query venues
                 {:stages [{:aggregation [[:count {}]]
                            :breakout    [[:field {:temporal-unit :day} %price]]
-                           :parameters  [{:hash   "abc123"
+                           :parameters  [{:id   "abc123"
                                           :name   "foo"
                                           :type   "id"
                                           ;; stage-number should get ignored by this
@@ -139,7 +139,7 @@
                                          {}
                                          [:field {:base-type :type/Integer} "count"]
                                          0]]
-                           :parameters [{:hash   "def456"
+                           :parameters [{:id   "def456"
                                          :name   "bar"
                                          :type   :number/<=
                                          :target [:dimension [:field "count" {:base-type :type/Integer}] {:stage-number 1}]
@@ -160,7 +160,7 @@
         (is (=? (expanded-query-with-filter expected-filter-clause)
                 (expand-parameters
                  (query-with-parameters
-                  {:hash   "abc123"
+                  {:id   "abc123"
                    :name   "foo"
                    :type   :date
                    :target [:dimension [:field (meta/id :users :last-login) nil]]
@@ -176,11 +176,43 @@
         (is (=? (expanded-query-with-filter expected-filter-clause)
                 (expand-parameters
                  (query-with-parameters
-                  {:hash   "abc123"
+                  {:id   "abc123"
                    :name   "foo"
                    :type   :date/single
                    :target [:dimension [:field (meta/id :users :last-login) nil]]
                    :value  value}))))))))
+
+(deftest ^:parallel before-after-date-parameters-test
+  (testing "before and after parameters keep time"
+    (are [value op unit expected-value] (=? (expanded-query-with-filter
+                                             [op [:field (meta/id :users :last-login) {:temporal-unit unit}] expected-value])
+                                            (expand-parameters
+                                             (query-with-parameters
+                                              {:id     "abc123"
+                                               :name   "foo"
+                                               :type   :date/all-options
+                                               :target [:dimension [:field (meta/id :users :last-login) nil]]
+                                               :value  value})))
+      "~2014-05-10"          :< :day    "2014-05-10"
+      "2014-05-10~"          :> :day    "2014-05-10"
+      "~2014-05-10T09:30:00" :< :minute "2014-05-10T09:30:00"
+      "2014-05-10T09:30:00~" :> :minute "2014-05-10T09:30:00")))
+
+(deftest ^:parallel date-parameters-on-date-column-test
+  (testing "time of date parameter is ignored for date-only column, which cannot be bucketed by minute"
+    (are [value op expected-value] (=? (expanded-query-with-filter
+                                        [op [:field (meta/id :checkins :date) {:temporal-unit :day}] expected-value])
+                                       (expand-parameters
+                                        (query-with-parameters
+                                         {:id     "abc123"
+                                          :name   "foo"
+                                          :type   :date/all-options
+                                          :target [:dimension [:field (meta/id :checkins :date) nil]]
+                                          :value  value})))
+      "~2014-05-10T09:30:00" :< "2014-05-10"
+      "2014-05-10T09:30:00~" :> "2014-05-10"
+      "2014-05-10T09:30:00"  := "2014-05-10"
+      "2014-05-10~"          :> "2014-05-10")))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                END-TO-END TESTS                                                |
@@ -206,7 +238,7 @@
                (qp/process-query
                 (mt/query checkins
                   {:query      {:aggregation [[:count]]}
-                   :parameters [{:hash   "abc123"
+                   :parameters [{:id   "abc123"
                                  :name   "foo"
                                  :type   "date"
                                  :target [:dimension $date]
@@ -224,7 +256,7 @@
                    (qp/process-query
                     (mt/query checkins
                       {:query      {:aggregation [[:count]]}
-                       :parameters [{:hash   "abc123"
+                       :parameters [{:id   "abc123"
                                      :name   "foo"
                                      :type   :number
                                      :target [:dimension $id]

@@ -7,7 +7,9 @@ import type { PythonTransformEditorProps } from "metabase/plugins";
 // bundle no matter which route the user is on. The registry holds this stand-in
 // instead, and the editor loads when a Python transform is actually opened.
 const LazyPythonTransformEditor = lazy(() =>
-  import("./PythonTransformEditor").then(({ PythonTransformEditor }) => ({
+  import(
+    /* webpackChunkName: "python-transform-editor" */ "./PythonTransformEditor"
+  ).then(({ PythonTransformEditor }) => ({
     default: PythonTransformEditor,
   })),
 );

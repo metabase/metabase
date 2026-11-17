@@ -32,6 +32,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.models.field :as field]
@@ -63,58 +64,107 @@
 
 (p.types/defrecord+ DatabaseDefinition [database-name table-definitions options])
 
-(def ^:private FieldDefinitionSchema
+(mr/def ::dataset-value
+  "One cell value in a test dataset row, whose type is whatever the driver's test extension knows how to insert."
+  [:schema {::mr/deliberately-open true, :description "a test dataset cell value"} :any])
+
+(mr/def ::native-ddl-value
+  [:or
+   :string :keyword number? :boolean nil?
+   [:sequential [:ref ::native-ddl-value]]
+   [:ref ::native-ddl-clause]])
+
+(mr/def ::native-ddl-clause
   [:map {:closed true}
-   [:field-name                          ms/NonBlankString]
-   [:base-type                           [:or
-                                          [:map {:closed true}
-                                           [:natives [:map-of :keyword ms/NonBlankString]]]
-                                          [:map {:closed true}
-                                           [:native ms/NonBlankString]]
-                                          ms/FieldType]]
-   ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
-   ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
-   ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
-   ;; datasets e.g. [[mt/with-actions-test-data]]
-   ;; default is nullable
-   [:not-null?         {:optional true} [:maybe :boolean]]
-   [:unique?           {:optional true} [:maybe :boolean]]
-   [:pk?               {:optional true} [:maybe :boolean]]
-   [:default-expr      {:optional true} [:maybe :string]]
-   [:generated-expr    {:optional true} [:maybe :string]]
-   ;; should we create an index for this field?
-   [:indexed?          {:optional true} [:maybe :boolean]]
-   [:semantic-type     {:optional true} [:maybe ms/FieldSemanticOrRelationType]]
-   [:effective-type    {:optional true} [:maybe ms/FieldType]]
-   [:coercion-strategy {:optional true} [:maybe ms/CoercionStrategy]]
-   [:visibility-type   {:optional true} [:maybe (into [:enum] field/visibility-types)]]
-   [:fk                {:optional true} [:maybe ms/KeywordOrString]]
-   [:field-comment     {:optional true} [:maybe ms/NonBlankString]]
-   [:nested-fields     {:optional true} [:maybe [:sequential :any]]]])
+   [:create-table {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:with-columns {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:drop-table   {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:create-index {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:drop-index   {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:alter-table  {:optional true} [:ref ::native-ddl-value]]
+   [:add-column   {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:add-constraint {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:create-view {:optional true} [:ref ::native-ddl-value]]
+   [:create-materialized-view {:optional true} [:ref ::native-ddl-value]]
+   [:insert-into  {:optional true} [:ref ::native-ddl-value]]
+   [:columns      {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:values       {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:select       {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:from         {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:join         {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:where        {:optional true} [:ref ::native-ddl-value]]
+   [:order-by     {:optional true} [:sequential [:ref ::native-ddl-value]]]
+   [:limit        {:optional true} [:ref ::native-ddl-value]]
+   [:raw          {:optional true} [:ref ::native-ddl-value]]])
+
+(mr/def ::native-ddl-form
+  "A single native DDL statement: raw SQL, or a Honey SQL clause map."
+  [:or :string [:ref ::native-ddl-clause]])
+
+(def ^:private FieldDefinitionSchema
+  [:schema
+   {:registry
+    {::field-definition
+     [:map {:closed true}
+      [:field-name                          ms/NonBlankString]
+      [:base-type                           [:or
+                                             [:map {:closed true}
+                                              [:natives [:map-of :string ms/NonBlankString]]]
+                                             [:map {:closed true}
+                                              [:native ms/NonBlankString]]
+                                             ms/FieldType]]
+      ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
+      ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to
+      ;; add support for it elsewhere if you want to use it. It only really matters for testing things that modify
+      ;; test datasets e.g. [[mt/with-actions-test-data]]
+      ;; default is nullable
+      [:not-null?         {:optional true} [:maybe :boolean]]
+      [:unique?           {:optional true} [:maybe :boolean]]
+      [:pk?               {:optional true} [:maybe :boolean]]
+      [:default-expr      {:optional true} [:maybe :string]]
+      [:generated-expr    {:optional true} [:maybe :string]]
+      ;; should we create an index for this field?
+      [:indexed?          {:optional true} [:maybe :boolean]]
+      [:semantic-type     {:optional true} [:maybe ms/FieldSemanticOrRelationType]]
+      [:effective-type    {:optional true} [:maybe ms/FieldType]]
+      [:coercion-strategy {:optional true} [:maybe ms/CoercionStrategy]]
+      [:visibility-type   {:optional true} [:maybe (into [:enum] field/visibility-types)]]
+      [:fk                {:optional true} [:maybe ms/KeywordOrString]]
+      [:field-comment     {:optional true} [:maybe ms/NonBlankString]]
+      [:collection-type   {:optional true} [:maybe ms/FieldType]]
+      [:nested-fields     {:optional true} [:maybe [:sequential [:ref ::field-definition]]]]]}}
+   ::field-definition])
 
 (def ^:private ValidFieldDefinition
   [:and FieldDefinitionSchema (ms/InstanceOfClass FieldDefinition)])
 
+(def TableDefinitionSchema
+  "Schema for a table definition, either a `TableDefinition` record or a plain map of the same shape."
+  [:map {:closed true}
+   [:table-name                     ms/NonBlankString]
+   [:field-definitions              [:sequential FieldDefinitionSchema]]
+   [:rows                           [:sequential [:sequential ::dataset-value]]]
+   [:table-comment {:optional true} [:maybe ms/NonBlankString]]])
+
 (def ^:private ValidTableDefinition
-  [:and
-   [:map {:closed true}
-    [:table-name                     ms/NonBlankString]
-    [:field-definitions              [:sequential ValidFieldDefinition]]
-    [:rows                           [:sequential [:sequential :any]]]
-    [:table-comment {:optional true} [:maybe ms/NonBlankString]]]
-   (ms/InstanceOfClass TableDefinition)])
+  [:and TableDefinitionSchema (ms/InstanceOfClass TableDefinition)])
+
+(def DatabaseDefinitionSchema
+  "Schema for a database definition, either a `DatabaseDefinition` record or a plain map of the same shape."
+  [:map {:closed true}
+   [:database-name ms/NonBlankString] ; this must be unique
+   [:table-definitions [:sequential TableDefinitionSchema]]
+   [:options [:maybe [:map {:closed true}
+                      [:native-ddl {:optional true} [:sequential ::native-ddl-form]]
+                      ;; When true, drivers that support it (e.g., MySQL) will disable FK checks during data loading.
+                      ;; Useful for datasets with self-referencing FKs that need to be inserted in a single batch.
+                      [:disable-fk-checks {:optional true} :boolean]
+                      ;; static datasets are not subject to periodic GC
+                      [:static {:optional true} :boolean]]]]
+   [:hash-key {:optional true} [:maybe (ms/InstanceOfClass DatabaseDefinition)]]])
 
 (def ^:private ValidDatabaseDefinition
-  [:and
-   [:map {:closed true}
-    [:database-name ms/NonBlankString] ; this must be unique
-    [:table-definitions [:sequential ValidTableDefinition]]
-    [:options [:map {:closed true}
-               [:native-ddl {:optional true} [:sequential :any]]
-               ;; When true, drivers that support it (e.g., MySQL) will disable FK checks during data loading.
-               ;; Useful for datasets with self-referencing FKs that need to be inserted in a single batch.
-               [:disable-fk-checks {:optional true} :boolean]]]]
-   (ms/InstanceOfClass DatabaseDefinition)])
+  [:and DatabaseDefinitionSchema (ms/InstanceOfClass DatabaseDefinition)])
 
 ;; TODO - this should probably be a protocol instead
 ;; Tech debt issue: #39350
@@ -163,9 +213,15 @@
 
 (defonce ^:private has-done-before-run (atom #{}))
 
+(def ^:dynamic *skip-before-run?*
+  "When true, loading a driver's test extensions does NOT run its [[before-run]] hook. Bound by the nightly sweep
+  ([[metabase.test.data.gc]]), which needs the extensions to dispatch [[gc-orphans!]] but not the hooks: Redshift's
+  creates a session schema, which the sweep would then leak nightly."
+  false)
+
 ;; this gets called below by [[load-test-extensions-namespace-if-needed]]
 (defn- do-before-run-if-needed [driver]
-  (when-not (@has-done-before-run driver)
+  (when-not (or *skip-before-run?* (@has-done-before-run driver))
     (locking has-done-before-run
       (when-not (@has-done-before-run driver)
         (when (not= (get-method before-run driver) (get-method before-run ::test-extensions))
@@ -386,6 +442,69 @@
 (defmethod after-run ::test-extensions
   [driver]
   (log/infof "%s has no after-run hooks." driver))
+
+(defmulti gc-orphans!
+  "Collect orphaned test data a previous run left behind in a shared cloud warehouse. Reports what was attempted, not
+  what was found. Runs nightly (`.github/workflows/test.cleanup-dwh-data.yml`) because [[after-run]] never fires when
+  a CI job is cancelled.
+
+  `options` are `:hours` and `:dry-run?`
+
+  Returns one map per object it tried to delete:
+
+    {:server \"cluster-a.example/testdb\"  ; which account, project, or cluster+database it was on
+     :name   \"sha__abc123_test_data\"     ; nil only when the failure was reaching the server at all
+     :status :deleted or :failed
+     :error  \"...\"}                      ; ex-message, present only when :failed
+
+  A failed object must still be reported by name: the nightly report exists so someone can tell which dataset is
+  stuck, and an exception alone does not carry that.
+
+  Implement only for drivers whose tests create objects in a shared cloud account -- not Athena or Databricks, whose
+  datasets are preloaded. Match only names the driver's own test extensions generate, never a bare wildcard."
+  {:arglists '([driver options])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod gc-orphans! ::test-extensions
+  [driver _options]
+  (log/infof "%s has no orphan GC; skipping." driver)
+  [])
+
+;; `println` rather than [[metabase.util.log]] on purpose: the nightly sweep runs as `clojure -X`, and log4j2 emits
+;; nothing to stdout in that context -- `info` and `warn` alike are swallowed, so a run's log showed only the few
+;; lines that already happened to use `println`.
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defn print-progress!
+  "Print one operator-facing progress line, prefixed with `label` so the interleaved output of concurrently sweeping
+  drivers stays attributable.
+
+  Progress is printed as it happens rather than assembled at the end, because the job is expected to be killed at
+  its timeout partway through a backlog.
+
+  The newline is part of the string and written once. `println` writes the text and the newline separately, which
+  let concurrently sweeping drivers splice their output into the middle of each other's lines."
+  [label fmt-str & args]
+  (print (str "[" (name label) "] " (apply format fmt-str args) \newline))
+  (flush))
+
+(defmulti count-datasets
+  "Census of every test dataset still on each server this driver's tests write to, taken after [[gc-orphans!]] has
+  run. Returns `{server-label count}`, keyed the same way as `:server` in [[gc-orphans!]]'s results.
+
+  Counts everything on the server, including datasets too young to be eligible for collection -- the number worth
+  watching is total pressure toward the account's dataset and table limits, not how much this run happened to be
+  allowed to touch.
+
+  A count that cannot be taken is `nil` rather than a missing key, so the report can say \"unknown\" instead of
+  silently omitting a server."
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod count-datasets ::test-extensions
+  [_driver]
+  {})
 
 (defmulti drop-if-exists-and-create-db!
   "Drop a database named `db-name` if it already exists, then create a new empty one with that name"
@@ -629,17 +748,6 @@
                        (original-db-supports?# driver-arg# feature-arg# db-arg#)))]
        ~@body)))
 
-(defmulti track-dataset
-  "Track the creation or the usage of the database.
-   This is useful for cloud databases with shared state to ensure that stale datasets can be deleted and dataset loading is not done more than necessary. Pairs well with [[dataset-already-loaded?]]"
-  {:arglists '([driver dbdef]) :added "0.56.0"}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod track-dataset ::test-extensions
-  [_driver _dbdef]
-  nil)
-
 (defmulti create-db!
   "Create a new database from `database-definition`, including adding tables, fields, and foreign key constraints,
   and load the appropriate data. (This refers to creating the actual *DBMS* database itself, *not* a Metabase
@@ -771,7 +879,7 @@
   [:tuple
    ms/NonBlankString
    [:sequential DatasetFieldDefinition]
-   [:sequential [:sequential :any]]])
+   [:sequential [:sequential ::dataset-value]]])
 
 ;; TODO - not sure everything below belongs in this namespace
 ;; Tech debt issue: #39363
@@ -790,8 +898,8 @@
    (apply dataset-table-definition tabledef))
 
   ([table-name :- ms/NonBlankString
-    field-definition-maps
-    rows]
+    field-definition-maps :- [:sequential DatasetFieldDefinition]
+    rows :- [:sequential [:sequential ::dataset-value]]]
    (map->TableDefinition
     {:table-name        table-name
      :rows              rows
@@ -801,11 +909,14 @@
   "Parse a dataset definition (from a `defdatset` form or EDN file) and return a DatabaseDefinition instance for
   comsumption by various test-data-loading methods."
   ([database-name :- ms/NonBlankString
-    table-definitions]
+    table-definitions :- [:sequential DatasetTableDefinition]]
    (dataset-definition database-name table-definitions {}))
   ([database-name :- ms/NonBlankString
-    table-definitions
-    options]
+    table-definitions :- [:sequential DatasetTableDefinition]
+    options :- [:map {:closed true}
+                [:native-ddl {:optional true} [:sequential ::native-ddl-form]]
+                [:disable-fk-checks {:optional true} :boolean]
+                [:static {:optional true} :boolean]]]
    (mu/validate-throw
     (ms/InstanceOfClass DatabaseDefinition)
     (map->DatabaseDefinition
@@ -835,9 +946,12 @@
    `(defdataset ~dataset-name nil ~definition))
 
   ([dataset-name docstring definition]
+   `(defdataset ~dataset-name ~docstring ~definition {:static true}))
+  ([dataset-name docstring definition options]
    {:pre [(symbol? dataset-name)]}
-   `(~(if config/is-dev? 'def 'defonce) ~(vary-meta dataset-name assoc :doc docstring, :tag `DatabaseDefinition)
-                                        (dataset-definition ~(name dataset-name) ~definition))))
+   `(~(if config/is-dev? 'def 'defonce)
+     ~(vary-meta dataset-name assoc :doc docstring, :tag `DatabaseDefinition)
+     (dataset-definition ~(name dataset-name) ~definition ~options))))
 
 (p.types/deftype+ ^:private NativeDatasetDefinition [dataset-name table-definitions native-ddl]
   pretty/PrettyPrintable
@@ -878,7 +992,7 @@
 (p.types/deftype+ ^:private EDNDatasetDefinition [dataset-name def]
   pretty/PrettyPrintable
   (pretty [_]
-    (list `edn-dataset-definition dataset-name)))
+    (list `edn-dataset-definition dataset-name {})))
 
 (defmethod get-dataset-definition EDNDatasetDefinition
   [^EDNDatasetDefinition this]
@@ -887,12 +1001,16 @@
 (mu/defn edn-dataset-definition
   "Define a new test dataset using the definition in an EDN file in the `test/metabase/test/data/dataset_definitions/`
   directory. (Filename should be `dataset-name` + `.edn`.)"
-  [dataset-name :- ms/NonBlankString]
+  [dataset-name :- ms/NonBlankString
+   options      :- [:map {:closed true}
+                    [:native-ddl        {:optional true} [:sequential ::native-ddl-form]]
+                    [:disable-fk-checks {:optional true} :boolean]
+                    [:static            {:optional true} :boolean]]]
   (let [get-def (delay
                   (let [file-contents (edn/read-string
                                        {:eof nil, :readers {'t #'u.date/parse}}
                                        (slurp (str edn-definitions-dir dataset-name ".edn")))]
-                    (dataset-definition dataset-name file-contents)))]
+                    (dataset-definition dataset-name file-contents options)))]
     (EDNDatasetDefinition. dataset-name get-def)))
 
 (defmacro defdataset-edn
@@ -900,7 +1018,7 @@
   directory. (Filename should be `dataset-name` + `.edn`.)"
   [dataset-name & [docstring]]
   `(defonce ~(vary-meta dataset-name assoc :doc docstring, :tag `EDNDatasetDefinition)
-     (edn-dataset-definition ~(name dataset-name))))
+     (edn-dataset-definition ~(name dataset-name) {:static true})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Transformed Dataset Definitions                                         |
@@ -911,10 +1029,21 @@
   (pretty [_]
     (list `transformed-dataset-definition new-name (pretty/pretty wrapped-definition))))
 
+(def ^:private AnyDatasetDefinition
+  "Any of the dataset-definition types [[get-dataset-definition]] knows how to resolve directly (dispatched
+  elsewhere, e.g. by tests, are wrapped in one of these before reaching here)."
+  [:or
+   (ms/InstanceOfClass DatabaseDefinition)
+   (ms/InstanceOfClass NativeDatasetDefinition)
+   (ms/InstanceOfClass EDNDatasetDefinition)
+   (ms/InstanceOfClass TransformedDatasetDefinition)])
+
 (mu/defn transformed-dataset-definition
   "Create a dataset definition that is a transformation of an some other one, seqentially applying `transform-fns` to
   it. The results of `transform-fns` are cached."
-  [new-name :- ms/NonBlankString wrapped-definition & transform-fns]
+  [new-name :- ms/NonBlankString
+   wrapped-definition :- AnyDatasetDefinition
+   & transform-fns :- [:* fn?]]
   (let [transform-fn (apply comp (reverse transform-fns))
         get-def      (delay
                        (transform-fn
@@ -933,7 +1062,7 @@
 (mu/defn transform-dataset-only-tables :- fn?
   "Create a function for `transformed-dataset-definition` to only keep some subset of Tables from the original dataset
   definition."
-  [& table-names]
+  [& table-names :- [:* ms/NonBlankString]]
   (transform-dataset-update-tabledefs
    (let [names (set table-names)]
      (fn [tabledefs]
@@ -1026,7 +1155,7 @@
 (mu/defn flattened-dataset-definition
   "Create a flattened version of `dbdef` by following resolving all FKs and flattening all rows into the table with
   `table-name`. For use with timeseries databases like Druid."
-  [dataset-definition
+  [dataset-definition :- AnyDatasetDefinition
    table-name :- ms/NonBlankString]
   (transformed-dataset-definition table-name dataset-definition
                                   (fn [dbdef]

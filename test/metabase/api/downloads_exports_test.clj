@@ -20,7 +20,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.formatter.impl :as formatter]
    [metabase.pulse.send :as pulse.send]
@@ -29,6 +28,7 @@
    [metabase.query-processor.settings :as qp.settings]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.match :as match]
    [toucan2.core :as t2])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)))
@@ -92,6 +92,7 @@
   (->> (mt/user-http-request :crowberto :post 200
                              (format "dataset/%s" (name export-format))
                              {:visualization_settings (:visualization_settings card)
+                              :display (:display card)
                               :query (assoc (:dataset_query card)
                                             :was-pivot (boolean pivot)
                                             :info {:visualization-settings (:visualization_settings card)}
@@ -280,13 +281,9 @@
   "Walk `form` and normalise every numeric leaf to 2 decimal places — both numeric-looking strings (via
   [[normalize-num-str]]) and native doubles/BigDecimals (via `Math/round`). Non-numeric values pass through."
   [form]
-  (walk/prewalk
-   (fn [x]
-     (cond
-       (string? x) (normalize-num-str x)
-       (double? x) (double (/ (Math/round (* 100.0 x)) 100.0))
-       :else       x))
-   form))
+  (match/replace-all form
+    #'string? (normalize-num-str &match)
+    #'double? (double (/ (Math/round (* 100.0 &match)) 100.0))))
 
 (defn- all-outputs!
   [card-or-dashcard opts]
@@ -402,6 +399,55 @@
                           (group-by second)
                           ((fn [m] (update-vals m #(into #{} (mapv first %)))))
                           (apply concat)))))))))))
+
+(deftest pivot-export-currency-in-header-default-test
+  (testing "Currency symbols are shown inline in pivot exports even with the default `currency_in_header` (UXW-4499).
+            Pivot measures have no column header to carry the symbol, matching the in-app pivot table."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    ["CATEGORY"]
+                                                :columns ["CREATED_AT"]
+                                                :values  ["sum"]}
+                                               ;; note: no `:currency_in_header false` here -- the default leaves the
+                                               ;; currency symbol in the header for regular tables, but pivot exports
+                                               ;; should still show it inline.
+                                               :column_settings
+                                               {"[\"name\",\"sum\"]" {:number_style "currency"}}
+                                               :pivot.condense_duplicate_totals true}
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]]
+                                                 :breakout    [$category
+                                                               !year.created_at]})}]
+        (testing "csv"
+          (is (= [["Category" "2016" "2017" "2018" "2019" "Row totals"]
+                  ["Doohickey" "$632.14" "$854.19" "$496.43" "$203.13" "$2,185.89"]
+                  ["Gadget" "$679.83" "$1,059.11" "$844.51" "$435.75" "$3,019.20"]
+                  ["Gizmo" "$529.70" "$1,080.18" "$997.94" "$227.06" "$2,834.88"]
+                  ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
+                  ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"]]
+                 (card-download card {:export-format :csv :format-rows true :pivot true}))))
+        (testing "xlsx"
+          ;; The pivot measure cells get a currency data format (`[$$]#,##0.00`), which Excel renders with the
+          ;; symbol. (POI's test DataFormatter renders the `[$$]` marker literally, so we assert on the format string.)
+          (let [result (mt/user-http-request :crowberto :post 200
+                                             (format "card/%d/query/xlsx" (:id card))
+                                             {:format_rows true :pivot_results true})
+                measure-formats (with-open [in (io/input-stream result)]
+                                  (let [sheet (->> (spreadsheet/load-workbook in)
+                                                   (spreadsheet/select-sheet "Query result"))]
+                                    (->> (spreadsheet/row-seq sheet)
+                                         (drop 1) ;; skip header row
+                                         (mapcat (fn [r] (->> (spreadsheet/cell-seq r)
+                                                              (drop 1) ;; skip the row-dimension cell
+                                                              (keep (fn [c]
+                                                                      (some-> (.getCellStyle ^org.apache.poi.ss.usermodel.Cell c)
+                                                                              (.getDataFormatString)))))))
+                                         distinct
+                                         vec)))]
+            (is (every? #(str/includes? % "[$$]") measure-formats))
+            (is (seq measure-formats))))))))
 
 (deftest ^:mb/driver-tests simple-pivot-with-sum-and-average-export-test
   (testing "Pivot table exports look pivoted and can have multiple measures aggregated properly."
@@ -1705,6 +1751,42 @@
                 val-unscaled (Double/parseDouble (first (second result-unscaled)))]
             (is (= val-scaled
                    (* val-unscaled 2.13)))))))))
+
+(deftest details-only-columns-export-test
+  (testing "The table viz hides `:details-only` columns, so table exports drop them; other displays keep them (#70909)"
+    (mt/dataset test-data
+      (mt/with-temp-vals-in-db :model/Field (mt/id :orders :discount) {:visibility_type :details-only}
+        (let [query         {:database (mt/id)
+                             :type     :query
+                             :query    {:source-table (mt/id :orders)
+                                        :limit        1}}
+              header-names  (fn [download] (set (first download)))
+              has-discount? (fn [names] (boolean (some #(str/starts-with? % "Discount") names)))]
+          (mt/with-temp [:model/Card table-card  {:display :table, :dataset_query query}
+                         :model/Card object-card {:display :object, :dataset_query query}]
+            (doseq [export-format [:csv :xlsx :json]]
+              (testing (name export-format)
+                (testing "saved card"
+                  (is (false? (has-discount? (header-names (card-download table-card {:export-format export-format})))))
+                  (is (true? (has-discount? (header-names (card-download object-card {:export-format export-format}))))))
+                (testing "unsaved question"
+                  (is (false? (has-discount? (header-names (unsaved-card-download table-card {:export-format export-format})))))
+                  (is (true? (has-discount? (header-names (unsaved-card-download object-card {:export-format export-format})))))
+                  (testing "with no display given, nothing is dropped"
+                    (is (true? (has-discount? (header-names (unsaved-card-download (dissoc object-card :display)
+                                                                                   {:export-format export-format})))))))))
+            (testing "the browser form-encodes ad-hoc downloads, so the display arrives as a JSON string"
+              (is (false? (has-discount? (header-names (unsaved-card-download (assoc table-card :display "\"table\"")
+                                                                              {:export-format :csv}))))))
+            (testing "a visualizer dashcard exports as the display it renders, not the card's"
+              (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                             :model/DashboardCard plain-dashcard {:dashboard_id dashboard-id
+                                                                  :card_id      (:id object-card)}
+                             :model/DashboardCard table-dashcard {:dashboard_id           dashboard-id
+                                                                  :card_id                (:id object-card)
+                                                                  :visualization_settings {:visualization {:display "table"}}}]
+                (is (true? (has-discount? (header-names (dashcard-download plain-dashcard {:export-format :csv})))))
+                (is (false? (has-discount? (header-names (dashcard-download table-dashcard {:export-format :csv})))))))))))))
 
 (deftest ^:parallel ^:mb/driver-tests pivot-xlsx-export-respects-custom-title
   (testing "Pivot tables exported as xlsx should respect column title viz settings #51342"

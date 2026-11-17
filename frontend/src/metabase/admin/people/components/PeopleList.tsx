@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call -- FIXME: any-typed values */
 import cx from "classnames";
 import { Fragment } from "react";
 import { msgid, ngettext, t } from "ttag";
@@ -225,7 +226,7 @@ export const PeopleList = ({
           <Flex
             align="center"
             justify="space-between"
-            p="md"
+            p="lg"
             data-testid="people-list-footer"
           >
             <Box fw={700}>
@@ -251,13 +252,13 @@ export const PeopleList = ({
             align="center"
             justify="center"
             direction="column"
-            px="xl"
-            pt="xl"
+            px="xxl"
+            pt="xxl"
             ta="center"
           >
-            <Box my="lg">
+            <Box my="xl">
               <Icon name="search" mb="sm" size={32} />
-              <Text c="text-disabled" fz="lg" fw={700}>
+              <Text c="text-secondary" fz="lg" fw={700}>
                 {noResultsMessage}
               </Text>
             </Box>

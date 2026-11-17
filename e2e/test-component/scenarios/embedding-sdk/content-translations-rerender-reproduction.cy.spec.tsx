@@ -27,6 +27,16 @@ describe("scenarios > embedding-sdk > content-translations-rerender-reproduction
   };
 
   const mountEditor = () => {
+    // The German dictionary is only fetched once the SDK has authenticated,
+    // loaded its settings and initialized the content-translation plugin. The
+    // app renders untranslated until then, so the assertions below have to wait
+    // for this request rather than for the static German label alone.
+    cy.intercept({
+      method: "GET",
+      pathname: "/api/ee/content-translation/dictionary",
+      query: { locale: "de" },
+    }).as("germanDictionary");
+
     mockAuthProviderAndJwtSignIn();
 
     mountSdkContent(
@@ -39,6 +49,8 @@ describe("scenarios > embedding-sdk > content-translations-rerender-reproduction
         },
       },
     );
+
+    cy.wait("@germanDictionary", { timeout: 30000 });
 
     getSdkRoot().contains("Wähle deine Start-Daten");
   };

@@ -4,20 +4,24 @@
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}}}}}}
   (:require
    [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.events.core :as events]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,6 +30,7 @@
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        (process-userland-query/flush-execution-metadata!)
         ;; save-execution-metadata!* is invoked from the QP pipeline transducer, which runs on a thread
         ;; that doesn't inherit *local-redefs* — use with-redefs so worker threads see the replacement.
         ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
@@ -102,6 +107,7 @@
                :card_id         nil
                :action_id       nil
                :is_sandboxed    false
+               :sandbox_details nil
                :is_impersonated false
                :is_db_routed    false
                :parameters      nil
@@ -113,6 +119,55 @@
                :parameterized   false}
               (qe))
           "QueryExecution should be saved"))))
+
+(deftest oversized-row-does-not-destroy-batch-test
+  (testing "a row the app DB rejects (here: an oversized embedding_client) does not take the rest of the batch with it"
+    (mt/with-model-cleanup [:model/QueryExecution]
+      (let [marker (str "oversized-row-batch-test-" (random-uuid))
+            ;; hash must be a real 32-byte digest: the column is BINARY(32) on H2/MySQL (only Postgres' bytea is unbounded)
+            row    (fn [i client]
+                     {:hash             (buddy-hash/sha256 (str marker "-" i))
+                      :started_at       (t/offset-date-time)
+                      :running_time     1
+                      :result_rows      0
+                      :native           false
+                      :context          :ad-hoc
+                      :cache_hit        true
+                      :error            (str marker "-" i)
+                      :embedding_client client})
+            rows   [(row 1 "embedding-sdk-react")
+                    (row 2 (apply str (repeat 255 "c")))
+                    (row 3 "embedding-sdk-react")]]
+        (#'process-userland-query/save-execution-metadata!* rows)
+        (is (= [(str marker "-1") (str marker "-3")]
+               (t2/select-fn-vec :error :model/QueryExecution
+                                 :error [:like (str marker "%")]
+                                 {:order-by [[:id :asc]]})))))
+    (testing "inside a caller's transaction (the synchronous path of grouper/submit!) the good rows are still saved,
+              and the rejected statement does not abort that transaction"
+      (let [marker (str "oversized-row-batch-test-" (random-uuid))]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (#'process-userland-query/save-execution-metadata!*
+           [{:hash (buddy-hash/sha256 (str marker "-1")) :started_at (t/offset-date-time) :running_time 1
+             :result_rows 0 :native false :context :ad-hoc :cache_hit true :error (str marker "-1")
+             :embedding_client (apply str (repeat 255 "c"))}
+            {:hash (buddy-hash/sha256 (str marker "-2")) :started_at (t/offset-date-time) :running_time 1
+             :result_rows 0 :native false :context :ad-hoc :cache_hit true :error (str marker "-2")
+             :embedding_client "embedding-sdk-react"}])
+          (is (= [(str marker "-2")]
+                 (t2/select-fn-vec :error :model/QueryExecution :error [:like (str marker "%")])))
+          (is (pos? (t2/count :model/User))))))))
+
+(deftest unavailable-app-db-does-not-retry-rows-test
+  (testing "when the batch fails for a reason other than a rejected row (e.g. the app DB is down), do not retry each
+            row: every retry would fail too, and could wait for a connection"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [query-processor.db/insert-query-executions!
+                                  (fn [_rows]
+                                    (swap! calls inc)
+                                    (throw (java.sql.SQLTransientConnectionException. "pool checkout timed out")))]
+        (#'process-userland-query/insert-query-executions-resiliently! [{:error "1"} {:error "2"} {:error "3"}])
+        (is (= 1 @calls))))))
 
 (deftest failure-test
   (let [query (mt/mbql-query venues)]
@@ -206,31 +261,42 @@
       (is (zero? @*viewlog-call-count*)))))
 
 (deftest cancel-test
-  (let [saved-query-execution? (atom false)]
-    (mt/with-dynamic-fn-redefs [process-userland-query/save-execution-metadata! (fn [info]
-                                                                                  (reset! saved-query-execution? info))]
+  (let [saved-execution-count (atom 0)
+        reduce-started        (promise)
+        release-reduce        (promise)
+        worker-finished       (promise)]
+    (mt/with-dynamic-fn-redefs
+      [process-userland-query/save-execution-metadata!
+       (fn [_info]
+         (swap! saved-execution-count inc))]
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
-        (let [status (atom ::not-started)]
-          (binding [qp.pipeline/*canceled-chan* canceled-chan
-                    qp.pipeline/*reduce*        (fn [_rff _metadata rows]
-                                                  (reset! status ::started)
-                                                  (Thread/sleep 1000)
-                                                  (reset! status ::done)
-                                                  (qp.pipeline/*result* rows))]
-            (future
-              (let [futur (future
-                            (process-userland-query (mt/mbql-query venues)))]
-                (is (not= ::done
-                          @status))
-                (Thread/sleep 100)
-                (future-cancel futur)))))
-        (testing "canceled-chan should get get a :cancel message"
-          (let [[val port] (a/alts!! [canceled-chan (a/timeout 500)])]
-            (is (= 'canceled-chan
-                   (if (= port canceled-chan) 'canceled-chan 'timeout))
-                "port")
-            (is (= ::qp.pipeline/cancel
-                   val)
-                "val")))
-        (testing "No QueryExecution should get saved when a query is canceled"
-          (is (not @saved-query-execution?)))))))
+        ;; The interrupt must land inside `*run*`'s `try` for it to publish `::cancel`.
+        ;; Synchronize on entry to `*reduce*`; canceling during earlier query setup bypasses
+        ;; that handler and makes this test race.
+        (binding [qp.pipeline/*canceled-chan* canceled-chan
+                  qp.pipeline/*reduce*        (fn [_rff _metadata _rows]
+                                                (deliver reduce-started true)
+                                                ;; Keep `*run*` active until the cancellation interrupt arrives.
+                                                @release-reduce)]
+          (let [query-future (future
+                               (try
+                                 (process-userland-query (mt/mbql-query venues))
+                                 (finally
+                                   (deliver worker-finished true))))]
+            (try
+              (is (true? (deref reduce-started 10000 ::timed-out))
+                  "query should reach *reduce* before the 10-second timeout")
+              (future-cancel query-future)
+              (testing "canceled-chan receives ::cancel"
+                (is (= ::qp.pipeline/cancel
+                       (first (a/alts!! [canceled-chan (a/timeout 2000)])))))
+              ;; Wait for the middleware to unwind before checking side effects outside
+              ;; the cancellation handler.
+              (is (true? (deref worker-finished 10000 ::timed-out))
+                  "query worker should exit after cancellation")
+              (testing "cancellation does not save a QueryExecution"
+                (is (zero? @saved-execution-count)))
+              (finally
+                (future-cancel query-future)
+                ;; Release the worker if cancellation fails to interrupt the deref.
+                (deliver release-reduce nil)))))))))

@@ -104,6 +104,27 @@ describe("Onboarding", () => {
     expect(scrollIntoViewMock).not.toHaveBeenCalled();
   });
 
+  it("should let non-admins access this page", async () => {
+    setup({ isAdmin: false });
+
+    expect(
+      screen.getByRole("heading", { name: "Explore your data" }),
+    ).toBeVisible();
+    const queryText = await within(getItem("query")).findByText(
+      /to create a question in natural language/,
+    );
+    expect(queryText).toBeVisible();
+
+    await userEvent.click(getItemControl("Create a dashboard"));
+
+    const dashboardText = await within(getItem("dashboard")).findByText(
+      /You can present questions, text, and links on a dashboard/,
+    );
+    // The panel shows once the expand animation starts on the next frame
+    await waitFor(() => expect(dashboardText).toBeVisible());
+    expect(queryText).not.toBeVisible();
+  });
+
   it("should fall back to the default item when the remembered item is hidden", () => {
     setup({ openItem: "ai", aiFeaturesEnabled: false });
 
@@ -358,7 +379,12 @@ describe("Onboarding", () => {
     });
 
     it("'data-studio' CTA should be visible to non-admin analysts", () => {
-      setup({ isAdmin: false, isAnalyst: true, openItem: "data-studio" });
+      setup({
+        isAdmin: false,
+        isAnalyst: true,
+        openItem: "data-studio",
+        tokenFeatures: { advanced_permissions: true },
+      });
 
       const cta = within(screen.getByTestId("data-studio-cta")).getByRole(
         "link",

@@ -14,6 +14,7 @@ const makeMetabotResult = (
   resetConversation: jest.fn(),
   messages: [],
   errorMessages: [],
+  incompleteResponse: null,
   isProcessing: false,
   contextWindowPercentUsage: 0,
   isContextWindowFull: false,

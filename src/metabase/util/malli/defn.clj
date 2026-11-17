@@ -54,6 +54,7 @@
                                                      (:arities arities-value)))
                                       ")"))
           "\n  Return: " (str/replace (with-out-str
+                                        ;; renders the schema into the generated docstring via with-out-str
                                         #_{:clj-kondo/ignore [:discouraged-var]}
                                         (pp/pprint (:schema (:values return) :any)
                                                    {:max-width 120}))
@@ -121,7 +122,8 @@
        ~(if instrument?
           (macros/case
             :clj  (let [error-context {:fn-name (list 'quote fn-name)}]
-                    (mu.fn/instrumented-fn-form error-context :clj parsed cosmetic-name))
+                    (mu.fn/instrumented-fn-form error-context :clj parsed cosmetic-name
+                                                (symbol (str *ns*) (str fn-name))))
             :cljs (mu.fn/deparameterized-fn-form :cljs parsed cosmetic-name))
           (mu.fn/deparameterized-fn-form (macros/case :clj :clj, :cljs :cljs) parsed)))))
 

@@ -5,15 +5,12 @@ import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import {
   renderWithProviders,
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { Card, WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
@@ -32,15 +29,19 @@ export type SetupOpts = {
   isAdmin?: boolean;
   isPublicSharingEnabled?: boolean;
   model?: Card | null;
+  onSubmit?: (action: WritebackAction) => void;
+  onClose?: () => void;
 };
 
 export async function setup({
   action,
   canWrite = true,
   hasActionsEnabled = true,
-  isAdmin = false,
+  isAdmin = true,
   isPublicSharingEnabled = false,
   model,
+  onSubmit,
+  onClose,
 }: SetupOpts = {}) {
   if (model === undefined) {
     model = createMockCard({
@@ -57,9 +58,18 @@ export async function setup({
   setupCardsEndpoints(model ? [model] : []);
 
   if (action) {
-    fetchMock.get(`path:/api/action/${action.id}`, action, {
-      name: `action-${action.id}-get`,
-    });
+    fetchMock.get(
+      `path:/api/action/${action.id}`,
+      { ...action, can_write: canWrite },
+      {
+        name: `action-${action.id}-get`,
+      },
+    );
+    fetchMock.put(
+      `path:/api/action/${action.id}`,
+      { ...action, can_write: canWrite },
+      { name: `action-${action.id}-put` },
+    );
     fetchMock.delete(`path:/api/action/${action.id}/public_link`, 204, {
       name: `public-link-${action.id}-delete`,
     });
@@ -77,6 +87,8 @@ export async function setup({
       actionId={action?.id}
       modelId={model?.id}
       databaseId={database.id}
+      onSubmit={onSubmit}
+      onClose={onClose}
     />,
     {
       storeInitialState: createMockState({

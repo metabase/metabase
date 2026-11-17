@@ -14,5 +14,5 @@
 
 .dropdown {
   min-width: 15rem;
-  max-width: calc(100vw - var(--mantine-spacing-xl));
+  max-width: calc(100vw - var(--mantine-spacing-xxl));
 }

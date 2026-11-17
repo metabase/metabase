@@ -9,6 +9,7 @@
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase-enterprise.sso.db :as sso.db]
    [metabase.util.random :as random]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
@@ -61,12 +62,11 @@
   - `:origin`       - postMessage target origin (embedding popup only)
   - `:embedding?`   - whether this is a modular-embedding popup login"
   [{:keys [id continue-url origin embedding?]}]
-  (t2/insert! :model/SsoRelayState
-              {:id           (hash-key id)
-               :continue_url continue-url
-               :origin       origin
-               :embedding    (boolean embedding?)
-               :expires_at   (t/plus (t/offset-date-time) (t/seconds ttl-seconds))})
+  (sso.db/insert-relay-state! {:id           (hash-key id)
+                               :continue_url continue-url
+                               :origin       origin
+                               :embedding    (boolean embedding?)
+                               :expires_at   (t/plus (t/offset-date-time) (t/seconds ttl-seconds))})
   id)
 
 (defn find-unexpired
@@ -75,7 +75,7 @@
   retried callback doesn't burn the key."
   [key]
   (when (relay-state-key? key)
-    (t2/select-one :model/SsoRelayState :id (hash-key key) :expires_at [:> (t/offset-date-time)])))
+    (sso.db/unexpired-relay-state (hash-key key) (t/offset-date-time))))
 
 (defn delete!
   "Consume (delete) the RelayState entry for the (plaintext) `key`. Called after a successful login; the single
@@ -83,9 +83,9 @@
   nothing)."
   [key]
   (when (relay-state-key? key)
-    (t2/delete! :model/SsoRelayState :id (hash-key key))))
+    (sso.db/delete-relay-state! (hash-key key))))
 
 (defn delete-expired!
   "Delete all expired RelayState entries (abandoned logins that never came back). Returns the number deleted."
   []
-  (t2/delete! :model/SsoRelayState :expires_at [:<= (t/offset-date-time)]))
+  (sso.db/delete-relay-states-expired-at! (t/offset-date-time)))

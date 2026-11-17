@@ -1,12 +1,14 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { dayjs } from "metabase/dayjs";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { hasPrimarySource } from "metabase/querying/common/utils";
+import { transformSeries as transformCartesianSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
 import {
+  type ComputedVisualizationSettings,
   extractRemappings,
   getVisualizationTransformed,
-} from "metabase/visualizations";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { transformSeries as transformCartesianSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -23,7 +25,7 @@ import {
   getRawSeries,
   getVisibleTimelineEvents,
   getVisualizationSettings,
-} from "../selectors";
+} from "../store/selectors";
 
 const colTypeToMetabotColTypeMap: Record<string, MetabotColumnType> = {
   "type/*": "string",
@@ -226,7 +228,7 @@ export const registerQueryBuilderMetabotContextFn = async ({
   const { isNative } = Lib.queryDisplayInfo(query);
   const hasDataSource = isNative
     ? Lib.databaseID(query) != null
-    : Lib.sourceTableOrCardId(query) != null;
+    : hasPrimarySource(query);
   if (!hasDataSource) {
     return {};
   }

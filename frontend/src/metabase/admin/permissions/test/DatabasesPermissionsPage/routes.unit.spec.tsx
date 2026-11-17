@@ -1,4 +1,5 @@
 import { renderWithProviders, screen } from "__support__/ui";
+import { DATABASES_PERMISSIONS_PATHS } from "metabase/admin/permissions/routes";
 import { Outlet, Route, useParams } from "metabase/router";
 
 // Validates the restructured route shape (depth-enumerated siblings that replaced
@@ -13,14 +14,6 @@ function ParamsProbe() {
     </span>
   );
 }
-
-// Mirrors DATABASES_PERMISSIONS_PATHS in routes.tsx.
-const DATABASES_PERMISSIONS_PATHS = [
-  "database",
-  "database/:databaseId",
-  "database/:databaseId/schema/:schemaName",
-  "database/:databaseId/schema/:schemaName/table/:tableId",
-];
 
 function setup(initialRoute: string) {
   renderWithProviders(
@@ -37,6 +30,10 @@ describe("restructured databases permissions routes", () => {
   it.each([
     ["/admin/permissions/data/database", {}],
     ["/admin/permissions/data/database/1", { databaseId: "1" }],
+    [
+      "/admin/permissions/data/database/1/table/2",
+      { databaseId: "1", tableId: "2" },
+    ],
     [
       "/admin/permissions/data/database/1/schema/PUBLIC",
       { databaseId: "1", schemaName: "PUBLIC" },

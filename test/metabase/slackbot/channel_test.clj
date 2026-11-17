@@ -111,13 +111,15 @@
 
 (deftest ^:parallel truncation-notice-test
   (testing "the notice points at the instance, and says what to do about the cut"
-    (is (= (str "_This answer was longer than 3000 characters. That is too long to post in Slack, "
+    (is (= (str "_This answer was longer than " slackbot.tu/slack-markdown-text-limit
+                " characters. That is too long to post in Slack, "
                 "so I cut it short._\n\n"
                 "Ask a narrower question so the answer comes back smaller"
                 ", or head to <https://metabase.example.com|Metabase> and try again.")
            (#'slackbot.channel/truncation-notice test-site-url))))
   (testing "an instance with no site URL still gets a sentence, just without the link"
-    (is (= (str "_This answer was longer than 3000 characters. That is too long to post in Slack, "
+    (is (= (str "_This answer was longer than " slackbot.tu/slack-markdown-text-limit
+                " characters. That is too long to post in Slack, "
                 "so I cut it short._\n\n"
                 "Ask a narrower question so the answer comes back smaller.")
            (#'slackbot.channel/truncation-notice nil))))
@@ -130,15 +132,14 @@
     (mt/with-temporary-setting-values [site-url test-site-url]
       (let [{:keys [text blocks backfill]} (send-channel-response! slackbot.tu/oversized-answer)
             [answer-block notice-block]    blocks
-            section-text                   (get-in answer-block [:text :text])]
-        (testing "no section block is over the limit -- so Slack no longer rejects the message"
-          (is (nil? (slackbot.tu/oversized-section-error blocks))))
-        (testing "the answer rides one mrkdwn section block, cut to the limit"
-          (is (= "section" (:type answer-block)))
-          (is (= "mrkdwn" (get-in answer-block [:text :type])))
-          (is (= slackbot.tu/slack-section-text-limit (count section-text)))
-          (is (str/ends-with? section-text "..."))
-          (is (str/starts-with? slackbot.tu/oversized-answer (str/replace section-text #"\.\.\.$" ""))
+            answer-text                    (:text answer-block)]
+        (testing "no block is over its limit -- so Slack no longer rejects the message"
+          (is (nil? (slackbot.tu/oversized-block-error blocks))))
+        (testing "the answer goes in one markdown block, cut to the limit (BOT-2010)"
+          (is (= "markdown" (:type answer-block)))
+          (is (= slackbot.tu/slack-markdown-text-limit (count answer-text)))
+          (is (str/ends-with? answer-text "..."))
+          (is (str/starts-with? slackbot.tu/oversized-answer (str/replace answer-text #"\.\.\.$" ""))
               "what survives the cut is a genuine prefix of the answer"))
         (testing "the notice rides in a context block of the same message, linking to the instance"
           (is (= "context" (:type notice-block)))
@@ -148,10 +149,10 @@
           (is (not (str/includes? (get-in notice-block [:elements 0 :text]) "/metabot/conversation/"))
               "the link is the home page, not a conversation we cannot continue on the web"))
         (testing "the visualizations and the feedback buttons still ride the message"
-          (is (= ["section" "context" "section" "table" "context_actions"]
+          (is (= ["markdown" "context" "section" "table" "context_actions"]
                  (mapv :type blocks))))
         (testing "the notice stays out of `:text`, which `thread->history` replays back to the model"
-          (is (= section-text text))
+          (is (= answer-text text))
           (is (not (str/includes? text "too long to post in Slack"))))
         (testing "one message is posted, and its ts is persisted -- it carries the feedback buttons"
           (is (= {:msg-id 42 :slack-msg-id "1700000000.000002"} backfill)))))))
@@ -171,10 +172,10 @@
   (testing "an answer within the limit is posted whole, with no notice"
     (let [answer                "Orders peaked in March. *1,204* of them."
           {:keys [text blocks]} (send-channel-response! answer)]
-      (is (nil? (slackbot.tu/oversized-section-error blocks)))
-      (is (= answer (get-in (first blocks) [:text :text])))
+      (is (nil? (slackbot.tu/oversized-block-error blocks)))
+      (is (= answer (:text (first blocks))))
       (is (= answer text))
-      (is (= ["section" "section" "table" "context_actions"] (mapv :type blocks))
+      (is (= ["markdown" "section" "table" "context_actions"] (mapv :type blocks))
           "no context block, because nothing was cut"))))
 
 ;; Not ^:parallel: `with-prometheus-system!` redefs a process-global var.
@@ -210,6 +211,97 @@
                            "Orders peaked in March."
                            (constantly {:ok true :ts "1700000000.000002"}))]
       (is (= 1 (count posts))))))
+
+;;; -------------------------------- BOT-2063: incomplete finish reasons --------------------------------
+
+(defn- channel-post-with-finish-reason!
+  "Drive [[slackbot.channel/send-channel-response]] for a turn that stopped early.
+
+  `answer` is the model's streamed text, or nil when it streamed none; `finish-reason` is what
+  `make-streaming-ai-request` reports. No visualizations, so the posted blocks are only the ones this
+  path builds itself. Returns `{:text .. :blocks ..}` as posted."
+  [answer finish-reason]
+  (let [posts (atom [])]
+    (mt/with-dynamic-fn-redefs [slackbot.client/set-status (constantly {:ok true})
+                                slackbot.client/post-thread-reply
+                                (fn [_client _message-ctx text & {:keys [blocks]}]
+                                  (swap! posts conj {:text text :blocks blocks})
+                                  {:ok true :ts "1700000000.000002"})
+                                metabot.persistence/set-response-slack-msg-id! (fn [& _] nil)]
+      (slackbot.channel/send-channel-response
+       {}
+       {:ts "1700000000.000001"}
+       nil
+       {:channel-id      "C123"
+        :message-ctx     {:channel "C123" :thread_ts "1700000000.000001"}
+        :channel         "C123"
+        :thread-ts       "1700000000.000001"
+        :auth-info       {:team_id "T123"}
+        :thread          {:messages []}
+        :bot-user-id     "U999"
+        :prompt          "hello"
+        :conversation-id conversation-id}
+       {:tool-name->friendly        {}
+        :make-streaming-ai-request  (fn [& args]
+                                      (when answer
+                                        ((:on-text (last args)) answer))
+                                      {:msg-id        42
+                                       :external-id   "message-external-id"
+                                       :finish-reason finish-reason})
+        :collect-viz-blocks         (constantly {:blocks [] :errors []})
+        :feedback-blocks            (constantly feedback-blocks)
+        :post-viz-error!            (constantly nil)
+        :make-viz-prefetch-callback (constantly (fn [& _]))
+        :cancel-prefetched-viz!     (constantly nil)}))
+    (last @posts)))
+
+(defn- context-texts
+  "The mrkdwn text of every `context` block in `blocks`."
+  [blocks]
+  (for [block blocks
+        :when (= "context" (:type block))
+        element (:elements block)]
+    (:text element)))
+
+(deftest slackbot-channel-finish-reason-notice-test
+  (testing "a truncated answer carries a notice block, and the answer itself is untouched"
+    (let [{:keys [text blocks]} (channel-post-with-finish-reason! "Orders peaked in March." "length")]
+      (is (= ["markdown" "context" "context_actions"] (mapv :type blocks))
+          "the notice rides between the answer and the feedback buttons")
+      (is (= ["_Response from Metabot was cut off because it hit the maximum length_"]
+             (context-texts blocks)))
+      (testing "the notice stays out of `:text`, which `thread->history` replays back to the model"
+        (is (= "Orders peaked in March." text))
+        (is (not (str/includes? text "cut off"))))))
+  (testing "a content-filtered turn with no text keeps the existing fallback copy, plus the notice"
+    (let [{:keys [text blocks]} (channel-post-with-finish-reason! nil "content-filter")]
+      (is (= "I wasn't able to generate a response. Please try again." text))
+      (is (= ["_Response from Metabot was stopped by a content filter. Try rephrasing your question._"]
+             (context-texts blocks)))))
+  (testing "a step-limited turn names the step limit"
+    (let [{:keys [blocks]} (channel-post-with-finish-reason! "Partial answer." "tool-calls")]
+      (is (= ["_Metabot paused after reaching its step limit for this response_"]
+             (context-texts blocks)))))
+  (testing "a turn that ran to a normal stop gets no notice -- the guard for the three above"
+    (let [{:keys [blocks]} (channel-post-with-finish-reason! "Orders peaked in March." nil)]
+      (is (= ["markdown" "context_actions"] (mapv :type blocks)))
+      (is (empty? (context-texts blocks)))))
+  (testing "a reason this build does not know stays silent rather than posting an empty aside"
+    (let [{:keys [blocks]} (channel-post-with-finish-reason! "Orders peaked in March." "from-a-newer-build")]
+      (is (= ["markdown" "context_actions"] (mapv :type blocks))))))
+
+(deftest slackbot-channel-notice-escapes-metabot-name-test
+  (testing "an admin-set Metabot name cannot smuggle Slack markup into the notice"
+    ;; The setter bypasses the feature gate, but the *getter* still returns the default without
+    ;; :ai-controls -- so without this the block would read "Metabot" and prove nothing.
+    (mt/with-premium-features #{:ai-controls}
+      (mt/with-temporary-setting-values [metabot-name "<!channel> & co"]
+        (let [{:keys [blocks]} (channel-post-with-finish-reason! "Orders peaked in March." "length")
+              notices          (context-texts blocks)]
+          (is (= ["_Response from &lt;!channel&gt; &amp; co was cut off because it hit the maximum length_"]
+                 notices))
+          (is (not (str/includes? (str/join notices) "<!channel>"))
+              "an unescaped <!channel> would notify everyone in the channel"))))))
 
 ;; Not ^:parallel: `with-prometheus-system!` redefs a process-global var.
 (deftest channel-response-undeliverable-metric-test

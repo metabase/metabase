@@ -6,13 +6,13 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
 import type { ParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
+import type {
+  NavigatedEntityParameterChangePayload,
+  NavigatedEntityParameters,
+} from "embedding-sdk-bundle/types/navigation";
 import type { SqlParameterChangePayload } from "embedding-sdk-bundle/types/question";
 import type { MetabaseError } from "embedding-sdk-shared/errors";
 import type { MetabaseErrorCode } from "embedding-sdk-shared/errors/error-code";
-import type {
-  SdkIframeDashboardEmbedSettings,
-  SdkIframeQuestionEmbedSettings,
-} from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type {
   MetabaseEmbeddingSessionToken,
@@ -58,7 +58,8 @@ export type SdkIframeEmbedMessage =
   | SdkIframeEmbedReportAuthenticationError
   | SdkIframeEmbedReportAnalytics
   | SdkIframeEmbedHandleLinkResponse
-  | SdkIframeEmbedSubmitRefreshedGuestTokenMessage;
+  | SdkIframeEmbedSubmitRefreshedGuestTokenMessage
+  | SdkIframeEmbedNavigateToDataAppPathMessage;
 
 export type SdkIframeEmbedSetSettingsMessage = {
   type: "metabase.embed.setSettings";
@@ -67,7 +68,11 @@ export type SdkIframeEmbedSetSettingsMessage = {
 export type SdkIframeEmbedSubmitSessionTokenMessage = {
   type: "metabase.embed.submitSessionToken";
   data: {
-    authMethod: MetabaseAuthMethod;
+    /**
+     * Use "provider-managed" when the host owns the session,
+     * so the iframe does not save it to SAML token storage.
+     **/
+    authMethod: MetabaseAuthMethod | "provider-managed";
     sessionToken: MetabaseEmbeddingSessionToken;
   };
 };
@@ -94,6 +99,10 @@ export type SdkIframeEmbedSubmitRefreshedGuestTokenMessage = {
     guestToken: string;
   };
 };
+export type SdkIframeEmbedNavigateToDataAppPathMessage = {
+  type: "metabase.embed.navigateToDataAppPath";
+  data: { path: string };
+};
 
 export type SdkIframeEmbedComponentTagMessage =
   | {
@@ -103,6 +112,10 @@ export type SdkIframeEmbedComponentTagMessage =
   | {
       type: "metabase.embed.sqlParametersChange";
       data: SqlParameterChangePayload;
+    }
+  | {
+      type: "metabase.embed.navigatedEntityParametersChange";
+      data: NavigatedEntityParameterChangePayload;
     };
 
 // --- Embed Option Interfaces ---
@@ -123,6 +136,7 @@ export type DashboardEmbedOptions = StrictUnion<
   parameters?: ParameterValues;
   hiddenParameters?: string[];
   enableEntityNavigation?: boolean;
+  navigatedEntityParameters?: NavigatedEntityParameters;
 
   customContext?: string | Record<string, unknown>;
 
@@ -156,6 +170,17 @@ export type QuestionEmbedOptions = StrictUnion<
   dashboardId?: never;
 };
 
+// The embed setup wizard extends the runtime options with locked parameters;
+// the runtime accepts the key, so the types live here with the options they
+// extend.
+export type SdkIframeDashboardEmbedSettings = DashboardEmbedOptions & {
+  lockedParameters?: string[];
+};
+
+export type SdkIframeQuestionEmbedSettings = QuestionEmbedOptions & {
+  lockedParameters?: string[];
+};
+
 export interface ExplorationEmbedOptions {
   componentName: "metabase-question";
   template: "exploration";
@@ -174,7 +199,7 @@ export interface BrowserEmbedOptions {
   componentName: "metabase-browser";
 
   /** Which collection to start from? */
-  initialCollection: CollectionId;
+  initialCollection: CollectionId | "all";
 
   /** Whether the content manager is in read-only mode. Defaults to true. */
   readOnly?: boolean;
@@ -226,6 +251,17 @@ export interface MetabotEmbedOptions {
   isSaveEnabled?: boolean;
 
   // incompatible options
+  template?: never;
+  questionId?: never;
+  dashboardId?: never;
+  token?: never;
+}
+
+export interface DataAppEmbedOptions {
+  componentName: "metabase-data-app";
+  path: string;
+
+  theme?: never;
   template?: never;
   questionId?: never;
   dashboardId?: never;
@@ -294,7 +330,8 @@ export type SdkIframeEmbedTemplateSettings =
   | QuestionEmbedOptions
   | ExplorationEmbedOptions
   | BrowserEmbedOptions
-  | MetabotEmbedOptions;
+  | MetabotEmbedOptions
+  | DataAppEmbedOptions;
 
 /** Settings used by the sdk embed route */
 export type SdkIframeEmbedSettings = Omit<
@@ -312,6 +349,7 @@ export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &
       })
     | BrowserEmbedOptions
     | MetabotEmbedOptions
+    | DataAppEmbedOptions
   );
 
 export type SdkIframeEmbedEvent = { type: "ready" };
@@ -325,4 +363,5 @@ export type SdkIframeEmbedSettingKey =
   | keyof SdkIframeQuestionEmbedSettings
   | keyof ExplorationEmbedOptions
   | keyof BrowserEmbedOptions
-  | keyof MetabotEmbedOptions;
+  | keyof MetabotEmbedOptions
+  | keyof DataAppEmbedOptions;

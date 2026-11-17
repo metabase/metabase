@@ -4,15 +4,12 @@ import {
   setupPopularItemsEndpoints,
   setupRecentViewsEndpoints,
 } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type {
   Database,
   DatabaseXray,

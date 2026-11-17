@@ -10,7 +10,6 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib.core :as lib]
@@ -26,6 +25,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -630,6 +630,7 @@
                           :unit         :day)
                    (dissoc :semantic_type :coercion_strategy :table_id
                            :id :settings :fingerprint :nfc_path)
+                   ;; mirrors annotate's legacy display-name handling in the expected col
                    #_{:clj-kondo/ignore [:deprecated-var]}
                    lib.temporal-bucket/ensure-temporal-unit-in-display-name)
                (qp.test-util/aggregate-col :count)]
@@ -750,7 +751,7 @@
       (qp.store/with-metadata-provider (-> meta/metadata-provider
                                            (lib.tu/metadata-provider-with-cards-for-queries [{}])
                                            (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :collection-id 1000}]}))
-        (is (= {:paths #{(perms/collection-read-path (t2/instance :model/Collection {:id 1000}))}}
+        (is (= {:source-card-ids #{1}}
                (query-perms/required-perms-for-query (query-with-source-card 1
                                                                              lib.schema.id/saved-questions-virtual-database-id
                                                                              :aggregation [:count]))))))))
@@ -761,7 +762,7 @@
       (testing "should be able to save even if you don't have SQL write perms (#6845)"
         (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                           [(mt/native-query {:query "SELECT * FROM VENUES"})])
-          (is (= {:paths #{(perms/collection-read-path collection/root-collection)}}
+          (is (= {:source-card-ids #{1}}
                  (query-perms/required-perms-for-query (query-with-source-card 1
                                                                                lib.schema.id/saved-questions-virtual-database-id
                                                                                :aggregation [:count])))))))))
@@ -782,10 +783,6 @@
                            :model/Card       card-2 {:collection_id (u/the-id collection)
                                                      :dataset_query (mt/mbql-query nil
                                                                       {:source-table (format "card__%d" (u/the-id card-1))})}]
-              (testing "read perms for both Cards should be the same as reading the parent collection"
-                (is (= (mi/perms-objects-set collection :read)
-                       (mi/perms-objects-set card-1 :read)
-                       (mi/perms-objects-set card-2 :read))))
               (testing "\nSanity check: shouldn't be able to read before we grant permissions\n"
                 (doseq [[object-name object] {"Collection" collection
                                               "Card 1"     card-1
@@ -793,7 +790,7 @@
                   (mt/with-test-user :rasta
                     (testing object-name
                       (is (= false
-                             (mi/can-read? object)))))))
+                             (mi/can-read? (t2/hydrate object :can_read))))))))
               (testing "\nshould be able to read nested-nested Card if we have Collection permissions\n"
                 (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
                 (mt/with-test-user :rasta
@@ -802,7 +799,7 @@
                                                 "Card 2"     card-2}]
                     (testing object-name
                       (is (true?
-                           (mi/can-read? object)))))
+                           (mi/can-read? (t2/hydrate object :can_read))))))
                   (testing "\nshould be able to run the query"
                     (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
                             [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
@@ -850,16 +847,16 @@
           #_{:clj-kondo/ignore [:discouraged-var]}
           (mt/with-temp [:model/Collection dest-card-collection]
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
-            (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
-                    (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
+            (is (= "You cannot save this Question because you do not have permissions to run its query."
+                   (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
         (testing "Card in a different Collection for which we do not have perms"
           ;; allowing `with-temp` here since we need it to make Collections
           #_{:clj-kondo/ignore [:discouraged-var]}
           (mt/with-temp [:model/Collection source-card-collection {}
                          :model/Collection dest-card-collection   {}]
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
-            (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
-                    (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection)))))
+            (is (= "You cannot save this Question because you do not have permissions to run its query."
+                   (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection)))))
         (testing "similarly, if we don't have *write* perms for the dest collection it should also fail"
           (testing "Try to save in the Root Collection"
             ;; allowing `with-temp` here since we need it to make Collections
@@ -1753,6 +1750,7 @@
   (testing "can query a card that has an empty column alias (#57685)"
     (let [mp (mt/metadata-provider)
           card-query (lib/native-query mp "select id as \"\" from orders limit 2")]
+      ;; the card is fetched via the app-db metadata provider mid-query, so it must be a real row
       #_{:clj-kondo/ignore [:discouraged-var]}
       (mt/with-temp [:model/Card card {:dataset_query card-query}]
         (let [query (->> (lib/query mp (lib.metadata/card mp (:id card)))
@@ -1968,6 +1966,47 @@
                                      (-> base
                                          (lib/with-fields [b-col])
                                          (lib/order-by b-col :desc)))))))))))
+
+(defmethod driver/database-supports? [::driver/driver ::filter-on-boolean-expression-reference]
+  [_driver _feature _database]
+  true)
+
+;;; SQL Server compiles a filter that compares a boolean expression reference with a value to a predicate compared
+;;; with a value, which is a syntax error.
+(defmethod driver/database-supports? [:sqlserver ::filter-on-boolean-expression-reference]
+  [_driver _feature _database]
+  false)
+
+;;; A boolean custom column from a source card can be used in custom columns, filters and aggregations downstream.
+;;; Selecting a bare boolean expression is unsupported on Oracle and Mongo: those are the `:expressions` drivers
+;;; lacking `:expressions/date` (Oracle) and `:distinct-where` (Mongo).
+(deftest ^:parallel source-card-boolean-expression-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :expressions/date :distinct-where)
+    (mt/dataset test-data
+      (let [mp0      (mt/metadata-provider)
+            category (lib.metadata/field mp0 (mt/id :products :category))
+            card-q   (-> (lib/query mp0 (lib.metadata/table mp0 (mt/id :products)))
+                         (lib/expression "b" (lib/starts-with category "Gi")))
+            mp       (qp.test-util/metadata-provider-with-cards-for-queries mp0 [card-q])
+            base     (lib/query mp (lib.metadata/card mp 1))
+            b        (m/find-first #(= "b" (:name %)) (lib/visible-columns base))
+            n-rows   #(count (mt/rows (qp/process-query %)))]
+        (testing "a custom column comparing the boolean column with a literal"
+          (let [query (lib/expression base "ne" (lib/!= b true))
+                ne    (m/find-first #(= "ne" (:name %)) (lib/visible-columns query))]
+            (is (= 200 (n-rows query)))
+            (when (driver/database-supports? driver/*driver* ::filter-on-boolean-expression-reference (mt/db))
+              (testing "used in a filter"
+                (is (= 149 (n-rows (lib/filter query (lib/= ne true)))))))))
+        (testing "a filter on the boolean column"
+          (is (= 51 (n-rows (lib/filter base (lib/= b true))))))
+        ;; Postgres has no `MIN(boolean)` and SQL Server and Redshift cannot aggregate one; no driver feature captures
+        ;; this, so the aggregation runs on H2 only.
+        (when (= driver/*driver* :h2)
+          (testing "min of the boolean column"
+            (is (= [[false]]
+                   (mt/formatted-rows [mt/boolish->bool]
+                                      (qp/process-query (lib/aggregate base (lib/min b))))))))))))
 
 ;;; A custom column that is just a field reference (CREATED_AT) survives nesting as a distinct column.
 (deftest ^:parallel field-only-expression-survives-nesting-test

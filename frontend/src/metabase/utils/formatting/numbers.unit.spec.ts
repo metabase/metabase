@@ -325,6 +325,25 @@ describe("formatNumber", () => {
         formatNumber(1234567.89, { ...options, currency_style: "name" }),
       ).toEqual("$1.2M");
     });
+
+    it.each([
+      [2, "$2.00", "2.00\u00a0$"],
+      [1200, "$1.2k", "1.2k\u00a0$"],
+    ])(
+      "preserves compact symbol placement for Name-style currency %s",
+      (value, before, after) => {
+        const options = {
+          compact: true,
+          number_style: "currency",
+          currency: "USD",
+          currency_style: "name",
+        };
+        expect(formatNumber(value, options)).toBe(before);
+        expect(
+          formatNumber(value, { ...options, currency_position: "after" }),
+        ).toBe(after);
+      },
+    );
   });
 
   it("should format to correct number of decimal places", () => {
@@ -341,6 +360,88 @@ describe("formatNumber", () => {
   });
 
   describe("number_style = currency", () => {
+    it.each([
+      ["symbol", "EUR", "1,234.56\u00a0€"],
+      ["code", "EUR", "1,234.56\u00a0EUR"],
+      ["narrowSymbol", "USD", "1,234.56\u00a0$"],
+      ["symbol", "BTC", "1,234.56\u00a0₿"],
+    ])(
+      "places the %s label for %s after the amount",
+      (style, currency, expected) => {
+        expect(
+          formatNumber(1234.56, {
+            number_style: "currency",
+            currency,
+            currency_style: style,
+            currency_position: "after",
+          }),
+        ).toBe(expected);
+      },
+    );
+
+    it("preserves signs, separators, scaling, and decimal places with a suffix", () => {
+      expect(
+        formatNumber(-1234.567, {
+          number_style: "currency",
+          currency: "EUR",
+          currency_position: "after",
+          number_separators: ",.",
+          decimals: 2,
+          scale: 10,
+        }),
+      ).toBe("-12.345,67\u00a0€");
+      expect(
+        formatNumber(-1234.56, {
+          number_style: "currency",
+          currency: "EUR",
+          currency_position: "after",
+          negativeInParentheses: true,
+        }),
+      ).toBe("(1,234.56\u00a0€)");
+    });
+
+    it.each(["before", "after"] as const)(
+      "keeps currency names after the amount when position is %s",
+      (position) => {
+        expect(
+          formatNumber(2, {
+            number_style: "currency",
+            currency: "EUR",
+            currency_style: "name",
+            currency_position: position,
+            decimals: 0,
+          }),
+        ).toBe("2 euros");
+      },
+    );
+
+    it.each([
+      [0, "0.00\u00a0€"],
+      [2, "2.00\u00a0€"],
+      [-1200, "-1.2k\u00a0€"],
+    ])("formats compact currency %s with a suffix", (value, expected) => {
+      expect(
+        formatNumber(value, {
+          number_style: "currency",
+          currency: "EUR",
+          currency_position: "after",
+          compact: true,
+        }),
+      ).toBe(expected);
+    });
+
+    it("omits the suffix when the currency is displayed in the header", () => {
+      expect(
+        formatNumber(-1234.56, {
+          number_style: "currency",
+          currency: "EUR",
+          currency_position: "after",
+          currency_in_header: true,
+          type: "cell",
+        }),
+      ).toBe("-1,234.56");
+    });
+
     it("should handle positive currency", () => {
       expect(
         formatNumber(1.23, { number_style: "currency", currency: "USD" }),
@@ -409,9 +510,91 @@ describe("formatNumber with scale (multiply function)", () => {
   });
 });
 
+describe("formatNumber with duration style", () => {
+  it("formats value as duration", () => {
+    expect(formatNumber(72, { number_style: "duration" })).toBe("0:01:12");
+    expect(
+      formatNumber(BigInt(72_000), {
+        number_style: "duration",
+        duration_unit: "millisecond",
+        duration_style: "narrow",
+      }),
+    ).toBe("1m 12s");
+  });
+
+  it("applies scale before reading value in duration unit", () => {
+    expect(formatNumber(1.2, { number_style: "duration", scale: 60 })).toBe(
+      "0:01:12",
+    );
+  });
+
+  it("ignores decimals and compact", () => {
+    expect(
+      formatNumber(3723.25, {
+        number_style: "duration",
+        decimals: 3,
+        compact: true,
+      }),
+    ).toBe("1:02:03");
+  });
+
+  it("wraps negative duration in parentheses when requested", () => {
+    expect(
+      formatNumber(-72, {
+        number_style: "duration",
+        negativeInParentheses: true,
+      }),
+    ).toBe("(0:01:12)");
+  });
+});
+
 describe("formatPercent", () => {
   it("formats percent with two decimals", () => {
     expect(formatPercent(0.12245)).toBe("12.25 %");
     expect(formatPercent(0)).toBe("0.00 %");
+  });
+});
+
+describe("numberFormatterForOptions caching", () => {
+  it("should reuse the formatter for equivalent options", () => {
+    const options = { number_style: "currency" as const, currency: "EUR" };
+
+    expect(numberFormatterForOptions(options)).toBe(
+      numberFormatterForOptions({ ...options }),
+    );
+  });
+
+  it("should build a separate formatter for different options", () => {
+    const usd = numberFormatterForOptions({
+      number_style: "currency",
+      currency: "USD",
+    });
+    const eur = numberFormatterForOptions({
+      number_style: "currency",
+      currency: "EUR",
+    });
+
+    expect(eur).not.toBe(usd);
+    expect(usd.format(1)).not.toBe(eur.format(1));
+  });
+
+  it("builds decimal formatter for styles Intl does not support", () => {
+    expect(
+      numberFormatterForOptions({ number_style: "duration" }).format(1234.5),
+    ).toBe("1,234.5");
+  });
+
+  it("should evict the oldest formatter once the cache is full", async () => {
+    jest.resetModules();
+    const { numberFormatterForOptions: freshCache } = await import("./numbers");
+    const oldest = freshCache({ minimumIntegerDigits: 7 });
+    expect(freshCache({ minimumIntegerDigits: 7 })).toBe(oldest);
+
+    // NUMBER_FORMATTER_CACHE_SIZE is 100, so this pushes the first entry out
+    for (let digits = 0; digits <= 100; digits++) {
+      freshCache({ maximumFractionDigits: digits });
+    }
+
+    expect(freshCache({ minimumIntegerDigits: 7 })).not.toBe(oldest);
   });
 });

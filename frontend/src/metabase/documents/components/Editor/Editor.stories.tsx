@@ -1,9 +1,10 @@
 import type { Store } from "@reduxjs/toolkit";
-import type { StoryFn } from "@storybook/react";
 import { HttpResponse, http } from "msw";
+import type { ComponentType } from "react";
 
 import { getCommonStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   ForceDocumentCardRenderDecorator,
@@ -11,10 +12,9 @@ import {
 } from "__support__/storybook";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
-import { registerVisualization } from "metabase/visualizations";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import { PieChart } from "metabase/visualizations/visualizations/PieChart";
+import { registerVisualization } from "metabase/viz-core";
 import type { DatasetData } from "metabase-types/api";
 import {
   createMockCard,
@@ -38,7 +38,7 @@ const storeInitialState = createMockState({
 // Unjustified type cast. FIXME
 const store = getCommonStore(storeInitialState) as unknown as Store<State>;
 
-const ReduxDecorator = (Story: StoryFn) => {
+const ReduxDecorator = (Story: ComponentType) => {
   return (
     <MetabaseReduxProvider store={store}>
       <Story />

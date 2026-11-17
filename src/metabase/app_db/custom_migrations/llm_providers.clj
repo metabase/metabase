@@ -11,6 +11,7 @@
   Migrations must not call application code — see the `metabase.app-db.custom-migrations` namespace docstring."
   (:require
    [clojure.string :as str]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.util.encryption :as encryption]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -94,7 +95,7 @@
   [setting-key]
   (some-> (t2/query-one {:select [:value] :from :setting :where [:= :key setting-key]})
           :value
-          encryption/maybe-decrypt))
+          encryption/maybe-decrypt-accepting-plaintext))
 
 (defn- non-blank
   [value]
@@ -102,11 +103,16 @@
     (not-empty (str/trim value))))
 
 (defn- write-setting!
-  "Writes `value` for `setting-key`, encrypted only when `encrypt?` — a setting declared `:encryption :no` should
-  not come out of a downgrade holding ciphertext, even though reads would decrypt it opportunistically."
+  "Writes `value` for `setting-key`, in both `value` and `value_with_aad`, encrypted only when `encrypt?` — a setting
+  declared `:encryption :no` should not come out of a downgrade holding ciphertext, even though reads would decrypt it
+  opportunistically."
   [setting-key value encrypt?]
   (t2/query {:delete-from :setting :where [:= :key setting-key]})
-  (t2/insert! :setting {:key setting-key :value (cond-> value encrypt? encryption/maybe-encrypt)}))
+  (t2/query {:insert-into :setting
+             :values      [{:key            setting-key
+                            :value          (cond-> value encrypt? encryption/maybe-encrypt)
+                            :value_with_aad (cond-> value
+                                              encrypt? (encryption/maybe-encrypt {:aad (mdb.setting/setting-aad setting-key)}))}]}))
 
 ;;; ------------------------------------------------------ Up ------------------------------------------------------
 

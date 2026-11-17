@@ -1,5 +1,6 @@
 ---
 title: SQL editor
+summary: Write SQL to ask questions the query builder can't express, with auto-formatting, snippets, and filter widgets to help.
 redirect-from:
   - /docs/latest/users-guide/writing-sql
   - /docs/latest/questions/native-editor
@@ -108,7 +109,7 @@ On databases that use [impersonation](../../permissions/impersonation.md), Metab
 
 ## Question version history
 
-For questions, [dashboards](../../dashboards/start.md), and [models](../../data-modeling/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
+For questions, [dashboards](../../dashboards/start.md), and [models](../../data-modeling/models/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
 
 See [History](../../exploration-and-organization/history.md).
 

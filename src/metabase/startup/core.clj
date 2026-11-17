@@ -53,7 +53,7 @@
     (try
       (f k)
       (catch Throwable e
-        (log/errorf "Error initializing startup logic %s: %s" k (ex-message e))))))
+        (log/errorf e "Error initializing startup logic %s" k)))))
 
 (defn- run-startup-logic!*
   "Run `validation-impls` (each aborts the boot on a throw), then `setup-impls` (throws logged and skipped).

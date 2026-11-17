@@ -5,12 +5,14 @@ import {
   type MouseEvent,
   type MouseEventHandler,
   type ReactNode,
+  type TouchEventHandler,
   forwardRef,
   useCallback,
 } from "react";
 
 import type { LinkProps } from "metabase/common/components/Link";
 import { Link } from "metabase/common/components/Link";
+import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Box } from "metabase/ui";
 
@@ -23,12 +25,23 @@ interface Props {
   onClick?: MouseEventHandler;
   onFocus: FocusEventHandler;
   onMouseEnter: MouseEventHandler;
+  onMouseDown?: MouseEventHandler;
+  onTouchStart?: TouchEventHandler;
 }
 
 // eslint-disable-next-line react/display-name
 export const LegendLabel = forwardRef(
   (
-    { children, className, href, onClick, onFocus, onMouseEnter }: Props,
+    {
+      children,
+      className,
+      href,
+      onClick,
+      onFocus,
+      onMouseEnter,
+      onMouseDown,
+      onTouchStart,
+    }: Props,
     ref: React.Ref<any>,
   ) => {
     const handleLinkClick = useCallback(
@@ -41,18 +54,24 @@ export const LegendLabel = forwardRef(
       [onClick],
     );
 
+    const labelClassName = cx(CS.textPrimary, CS.textBold, className, {
+      [S.link]: onClick,
+      [CS.cursorPointer]: onClick,
+      [CS.textBrandHover]: onClick,
+    });
+
     if (!href || !onClick) {
       return (
         <div
           ref={ref}
-          className={cx(S.text, className, {
-            [S.link]: onClick,
-          })}
+          className={labelClassName}
           onClick={onClick}
           onFocus={onFocus}
           onMouseEnter={onMouseEnter}
+          onMouseDown={onMouseDown}
+          onTouchStart={onTouchStart}
           data-testid="legend-label"
-          data-is-clickable={!!onClick}
+          data-is-clickable={Boolean(onClick)}
         >
           {children}
         </div>
@@ -65,12 +84,14 @@ export const LegendLabel = forwardRef(
       return (
         <Box
           ref={ref}
-          className={cx(S.text, S.link, className)}
+          className={labelClassName}
           onClick={handleLinkClick}
           onFocus={onFocus}
           onMouseEnter={onMouseEnter}
+          onMouseDown={onMouseDown}
+          onTouchStart={onTouchStart}
           data-testid="legend-label"
-          data-is-clickable={!!onClick}
+          data-is-clickable={Boolean(onClick)}
         >
           {children}
         </Box>
@@ -80,13 +101,15 @@ export const LegendLabel = forwardRef(
     return (
       <Link
         ref={ref}
-        className={cx(S.text, S.link, className)}
+        className={labelClassName}
         to={href}
         onClick={handleLinkClick}
         onFocus={onFocus}
         onMouseEnter={onMouseEnter}
+        onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
         data-testid="legend-label"
-        data-is-clickable={!!onClick}
+        data-is-clickable={Boolean(onClick)}
       >
         {children}
       </Link>

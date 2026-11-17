@@ -1,16 +1,21 @@
 import type { ReactNode } from "react";
 
-import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
+import type {
+  DataSource,
+  DataSourceSelectorProps,
+} from "metabase/embedding-sdk/types/components/data-picker";
 import type { State } from "metabase/redux/store";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
-import type { TableId } from "metabase-types/api";
+
+import { definePluginSlot } from "../slot";
 
 export interface SimpleDataPickerProps {
   filterByDatabaseId: number | null;
-  selectedEntity?: TableId;
+  isJoinStep: boolean;
+  selectedSource?: DataSource;
   isInitiallyOpen: boolean;
   triggerElement: ReactNode;
-  setSourceTableFn: (tableId: TableId) => void;
+  setSourceFn: (source: DataSource) => void;
   entityTypes: EmbeddingEntityType[];
 }
 
@@ -21,11 +26,4 @@ const getDefaultPluginEmbedding = () => ({
   DataSourceSelector: (_props: DataSourceSelectorProps): ReactNode => null,
 });
 
-export const PLUGIN_EMBEDDING = getDefaultPluginEmbedding();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_EMBEDDING, getDefaultPluginEmbedding());
-}
+export const PLUGIN_EMBEDDING = definePluginSlot(getDefaultPluginEmbedding);

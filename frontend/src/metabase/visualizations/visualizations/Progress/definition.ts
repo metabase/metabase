@@ -1,13 +1,14 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { t } from "ttag";
 
 import { color } from "metabase/ui/colors";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import {
+  type VisualizationDefinition,
+  columnSettings,
+  fieldSetting,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { findProgressColumn } from "./utils";

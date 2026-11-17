@@ -26,9 +26,10 @@ import {
   DASHBOARD_PDF_EXPORT_ROOT_ID,
   saveDashboardPdf,
 } from "metabase/visualizations/lib/save-dashboard-pdf";
-import { getCardKey } from "metabase/visualizations/lib/utils";
+import { getCardKey } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  CardDisplayType,
   DashCardId,
   Dashboard,
   DashboardId,
@@ -445,6 +446,7 @@ const getInternalQuestionParams = (
 const getAdHocQuestionParams = (
   type: string,
   result: Dataset,
+  display: CardDisplayType,
   visualizationSettings: VisualizationSettings | undefined,
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => ({
@@ -452,6 +454,7 @@ const getAdHocQuestionParams = (
   url: `/api/dataset/${type}`,
   body: {
     query: _.omit(result?.json_query ?? {}, "constraints"),
+    display,
     visualization_settings: visualizationSettings ?? {},
     ...exportParams,
   },
@@ -563,6 +566,7 @@ export const getDatasetParams = ({
     return getAdHocQuestionParams(
       type,
       result,
+      question.display(),
       visualizationSettings,
       exportParams,
     );

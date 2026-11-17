@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components/QuestionFiltersHeader";
+import { QuestionFiltersHeader } from "metabase/query_builder";
 import { Box, Button, Icon, Stack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 

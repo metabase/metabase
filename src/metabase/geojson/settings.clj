@@ -133,7 +133,7 @@
 
 (defsetting custom-geojson
   (deferred-tru "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :type       :json
   :getter     (fn [] (merge (setting/get-value-of-type :json :custom-geojson) (builtin-geojson)))
   :setter     (fn [new-value]
@@ -158,7 +158,7 @@
 (defn defined-region?
   "Whether `region-key` names a region map whose GeoJSON we could resolve: a built-in region (when default
   maps are enabled), or a user-defined one (when custom GeoJSON is enabled). Mirrors what
-  [[metabase.geojson.api/region-geojson]] can resolve, minus the fetch itself."
+  [[metabase.geojson.core/region-geojson]] can resolve, minus the fetch itself."
   [region-key]
   (let [k (keyword region-key)]
     (or (contains? (builtin-geojson) k)

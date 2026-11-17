@@ -7,7 +7,9 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
+   [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.settings :as audit-app.settings]
+   [metabase.audit-app.task.partitions :as partitions]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
@@ -19,26 +21,14 @@
 
 (defn- truncate-table-batched!
   [table-name time-column]
-  (t2/query-one
-   (case (mdb/db-type)
-     (:postgres :h2)
-     {:delete-from (keyword table-name)
-      :where [:in
-              :id
-              ^:allow-subquery {:select [:id]
-                                :from (keyword table-name)
-                                :where [:<=
-                                        (keyword time-column)
-                                        (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))]
-                                :order-by [[:id :asc]]
-                                :limit (audit-app.settings/audit-table-truncation-batch-size)}]}
+  (let [cutoff     (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))
+        batch-size (audit-app.settings/audit-table-truncation-batch-size)]
+    (case (mdb/db-type)
+      (:postgres :h2)
+      (audit-app.db/delete-oldest-by-id-subquery! (keyword table-name) (keyword time-column) cutoff batch-size)
 
-     (:mysql :mariadb)
-     {:delete-from (keyword table-name)
-      :where [:<=
-              (keyword time-column)
-              (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))]
-      :limit (audit-app.settings/audit-table-truncation-batch-size)})))
+      :mysql
+      (audit-app.db/delete-oldest-with-limit! (keyword table-name) (keyword time-column) cutoff batch-size))))
 
 (defn- truncate-table!
   "Given a model, deletes all rows older than the configured threshold"
@@ -66,7 +56,7 @@
   metabase-enterprise.audit-app.task.truncate-audit-tables
   []
   ;; postgres has partitioned query_execution; we detach partitions instead of deleting
-  (if (= :postgres (mdb/db-type))
+  (if (partitions/fully-on-partitions?)
     []
     [{:model :model/QueryExecution :timestamp-col :started_at}]))
 
@@ -78,12 +68,20 @@
        (truncate-table! model timestamp-col)))
    (audit-models-to-truncate)))
 
-(task/defjob ^{:doc "Triggers the removal of `query_execution` rows older than the configured threshold."} TruncateAuditTables [_]
+(task/defjob TruncateAuditTables
+  "Triggers the removal of `query_execution` rows older than the configured threshold."
+  {:saved-class "metabase.audit_app.task.truncate_audit_tables.TruncateAuditTables"}
+  [_]
   (truncate-audit-tables!))
 
 (def ^:private truncate-audit-tables-job-key "metabase.task.truncate-audit-tables.job")
 (def ^:private truncate-audit-tables-trigger-key "metabase.task.truncate-audit-tables.trigger")
-(def ^:private truncate-audit-tables-cron "0 0 */12 * * ? *") ;; Run every 12 hours
+(defn- truncate-audit-tables-cron
+  "Run every 12 hours, at a random hour/minute offset to spread load across instances."
+  []
+  (let [hour   (rand-int 12)
+        minute (rand-int 60)]
+    (format "0 %d %d,%d * * ? *" minute hour (+ hour 12))))
 
 (defmethod task/init! ::TruncateAuditTables [_]
   (let [job     (jobs/build
@@ -94,6 +92,6 @@
                  (triggers/start-now)
                  (triggers/with-schedule
                   (cron/schedule
-                   (cron/cron-schedule truncate-audit-tables-cron)
+                   (cron/cron-schedule (truncate-audit-tables-cron))
                    (cron/with-misfire-handling-instruction-do-nothing))))]
     (task/schedule-task! job trigger)))

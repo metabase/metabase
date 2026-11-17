@@ -4,37 +4,16 @@ import type { TemplateTag, TemplateTags, TemporalUnit } from "./dataset";
 import type { FieldId } from "./field";
 import type { MeasureId } from "./measure";
 import type { MetricId } from "./metric";
-import type { NormalizedQueryParameter } from "./parameters";
 import type { SegmentId } from "./segment";
 import type { TableId } from "./table";
 
-export interface NativeQuery {
-  query: string;
-  "template-tags"?: TemplateTags;
-  collection?: string;
-}
-
-export interface StructuredDatasetQuery {
-  type: "query";
-  query: StructuredQuery;
-
-  // Database is null when missing data permissions to the database
-  database: DatabaseId | null;
-  parameters?: NormalizedQueryParameter[];
-}
-
-export interface NativeDatasetQuery {
-  type: "native";
-  native: NativeQuery;
-
-  // Database is null when missing data permissions to the database
-  database: DatabaseId | null;
-  parameters?: NormalizedQueryParameter[];
-}
-
 export type DatasetQuery = OpaqueDatasetQuery | LegacyDatasetQuery;
 
-export type LegacyDatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
+declare const LegacyDatasetQuerySymbol: unique symbol;
+export type LegacyDatasetQuery = unknown & {
+  database: DatabaseId | null;
+  _opaque: typeof LegacyDatasetQuerySymbol;
+};
 
 // Audit-only query shape accepted by /api/dataset.
 // `fn` names a backend function.
@@ -46,7 +25,6 @@ export interface InternalDatasetQuery {
   offset?: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
 declare const OpaqueDatasetQuerySymbol: unique symbol;
 export type OpaqueDatasetQuery = unknown & {
   // TODO (AlexP 10/09/25) -- replace usages of this field with Lib.databaseID and drop it from here
@@ -145,180 +123,6 @@ export type NumericLiteral = number | bigint;
 export type BooleanLiteral = boolean;
 export type DatetimeLiteral = string;
 
-type Value =
-  | null
-  | BooleanLiteral
-  | StringLiteral
-  | NumericLiteral
-  | DatetimeLiteral;
-type OrderableValue = NumericLiteral | DatetimeLiteral;
-
-type RelativeDatetimePeriod = "current" | "last" | "next" | number;
-
-type OffsetOptions = {
-  "lib/uuid": string;
-  name: string;
-  "display-name": string;
-};
-
-// "card__4" like syntax meaning a query is using card 4 as a data source
-type NestedQueryTableId = string;
-
-type SourceTableId = TableId | NestedQueryTableId;
-
-export type StructuredQuery = {
-  // `null` is the legacy MBQL marker for a not-yet-selected source table
-  "source-table"?: SourceTableId | null;
-  "source-query"?: StructuredQuery;
-  aggregation?: AggregationClause;
-  breakout?: BreakoutClause;
-  filter?: FilterClause;
-  joins?: JoinClause;
-  "order-by"?: OrderByClause;
-  limit?: LimitClause;
-  expressions?: ExpressionClause;
-  fields?: FieldsClause;
-};
-
-export type AggregationClause = Aggregation[];
-
-type CountAgg = ["count"];
-
-type CountFieldAgg = ["count", ConcreteFieldReference];
-type AvgAgg = ["avg", ConcreteFieldReference];
-type MedianAgg = ["median", ConcreteFieldReference];
-type CumSumAgg = ["cum-sum", ConcreteFieldReference];
-type DistinctAgg = ["distinct", ConcreteFieldReference];
-type StdDevAgg = ["stddev", ConcreteFieldReference];
-type SumAgg = ["sum", ConcreteFieldReference];
-type MinAgg = ["min", ConcreteFieldReference];
-type MaxAgg = ["max", ConcreteFieldReference];
-type OffsetAgg = ["offset", OffsetOptions, Aggregation, NumericLiteral];
-
-type CommonAggregation =
-  | CountAgg
-  | CountFieldAgg
-  | AvgAgg
-  | MedianAgg
-  | CumSumAgg
-  | DistinctAgg
-  | StdDevAgg
-  | SumAgg
-  | MinAgg
-  | MaxAgg
-  | OffsetAgg;
-
-export type MetricAgg = ["metric", CardId];
-
-export type MeasureAgg =
-  | ["measure", { "display-name"?: string }, CardId]
-  | ["measure", CardId];
-
-type InlineExpressionAgg = [
-  "aggregation-options",
-  CommonAggregation,
-  { name: string; "display-name": string },
-];
-
-/**
- * An aggregation MBQL clause
- */
-export type Aggregation =
-  | CommonAggregation
-  | MetricAgg
-  | MeasureAgg
-  | InlineExpressionAgg;
-
-type BreakoutClause = Breakout[];
-export type Breakout = ConcreteFieldReference;
-
-type FilterClause = Filter;
-export type Filter = FieldFilter | CompoundFilter | NotFilter | SegmentFilter;
-
-type AndFilter = ["and", ...Filter[]];
-type OrFilter = ["or", ...Filter[]];
-type CompoundFilter = AndFilter | OrFilter;
-
-export type FieldFilter =
-  | EqualityFilter
-  | ComparisonFilter
-  | BetweenFilter
-  | StringFilter
-  | NullFilter
-  | NotNullFilter
-  | EmptyFilter
-  | NotEmptyFilter
-  | InsideFilter
-  | TimeIntervalFilter;
-
-type NotFilter = ["not", Filter];
-
-type EqualityFilter = ["=" | "!=", ConcreteFieldReference, Value];
-export type ComparisonFilter = [
-  "<" | "<=" | ">=" | ">",
-  ConcreteFieldReference,
-  OrderableValue,
-];
-type BetweenFilter = [
-  "between",
-  ConcreteFieldReference,
-  OrderableValue,
-  OrderableValue,
-];
-type StringFilter =
-  | [
-      "starts-with" | "contains" | "does-not-contain" | "ends-with",
-      ConcreteFieldReference,
-      StringLiteral,
-    ]
-  | [
-      "starts-with" | "contains" | "does-not-contain" | "ends-with",
-      ConcreteFieldReference,
-      StringLiteral,
-      StringFilterOptions,
-    ];
-
-type StringFilterOptions = {
-  "case-sensitive"?: false;
-};
-
-type NullFilter = ["is-null", ConcreteFieldReference];
-type NotNullFilter = ["not-null", ConcreteFieldReference];
-type EmptyFilter = ["is-empty", ConcreteFieldReference];
-type NotEmptyFilter = ["not-empty", ConcreteFieldReference];
-type InsideFilter = [
-  "inside",
-  ConcreteFieldReference,
-  ConcreteFieldReference,
-  NumericLiteral,
-  NumericLiteral,
-  NumericLiteral,
-  NumericLiteral,
-];
-type TimeIntervalFilter =
-  | [
-      "time-interval",
-      ConcreteFieldReference,
-      RelativeDatetimePeriod,
-      DateTimeAbsoluteUnit,
-    ]
-  | [
-      "time-interval",
-      ConcreteFieldReference,
-      RelativeDatetimePeriod,
-      DateTimeAbsoluteUnit,
-      TimeIntervalFilterOptions,
-    ];
-
-type TimeIntervalFilterOptions = {
-  "include-current"?: boolean;
-};
-
-export type SegmentFilter = ["segment", SegmentId];
-
-type OrderByClause = Array<OrderBy>;
-export type OrderBy = ["asc" | "desc", FieldReference];
-
 export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
 
 export type JoinStrategy =
@@ -326,22 +130,6 @@ export type JoinStrategy =
   | "right-join"
   | "inner-join"
   | "full-join";
-export type JoinAlias = string;
-export type JoinCondition = ["=", FieldReference, FieldReference];
-export type JoinFields = "all" | "none" | JoinedFieldReference[];
-
-type JoinClause = Array<Join>;
-export type Join = {
-  "source-table"?: TableId;
-  "source-query"?: StructuredQuery;
-  condition: JoinCondition;
-  alias?: JoinAlias;
-  ident?: string;
-  strategy?: JoinStrategy;
-  fields?: JoinFields;
-};
-
-type LimitClause = number;
 
 export type FieldReference = ConcreteFieldReference | AggregateFieldReference;
 
@@ -398,50 +186,6 @@ export type AggregateFieldReference =
   | ["aggregation", number, ReferenceOptions | null]
   | ["aggregation", number];
 
-export type ExpressionClause = {
-  [key: ExpressionName]: Expression;
-};
-
-export type Expression =
-  | NumericLiteral
-  | StringLiteral
-  | BooleanLiteral
-  | OffsetExpression
-  | CaseOrIfExpression
-  | CallExpression
-  | ConcreteFieldReference
-  | Filter
-  | ValueExpression;
-
-export type CallOptions = { [key: string]: unknown };
-export type CallExpression =
-  | [ExpressionOperator, ...ExpressionOperand[]]
-  | [ExpressionOperator, ...ExpressionOperand[], CallOptions];
-
-export type CaseOperator = "case";
-export type IfOperator = "if";
-export type CaseOrIfOperator = CaseOperator | IfOperator;
-
-export type CaseOptions = { default?: Expression };
-
-export type CaseOrIfExpression =
-  | [CaseOrIfOperator, [Expression, Expression][]]
-  | [CaseOrIfOperator, [Expression, Expression][], CaseOptions];
-
-export type ValueExpression = ["value", Value, CallOptions | null];
-
-export type OffsetExpression = [
-  "offset",
-  OffsetOptions,
-  Expression,
-  NumericLiteral,
-];
-
-export type ExpressionOperator = string;
-export type ExpressionOperand = Expression | CallOptions;
-
-type FieldsClause = ConcreteFieldReference[];
-
 export type TagName = string;
 export type TemplateTagReference = ["template-tag", TagName];
 
@@ -468,15 +212,11 @@ export type TestSourceSpec = TestTableSourceSpec | TestCardSourceSpec;
 
 export type TestColumnSpec = {
   type: "column";
-  name: string;
-  tableId?: TableId;
-  sourceName?: string;
+  name?: string;
+  fieldId?: FieldId;
+  joinAlias?: string;
   sourceFieldId?: FieldId;
-  displayName?: string;
-
-  // When the columns cannot be disambiguated with name, sourceName and displayName
-  // use this index to pick one.
-  index?: number;
+  sourceFieldJoinAlias?: string;
 };
 
 export type TestExpressionSpec =
@@ -501,9 +241,20 @@ export type TestMetricSpec = {
 
 export type TestFilterSpec = TestExpressionSpec | TestSegmentSpec;
 
+export type TestOperatorArgSpec =
+  | TestExpressionSpec
+  | TestSegmentSpec
+  | TestMeasureSpec
+  | TestMetricSpec;
+
+export type TestNamedAggregationSpec = {
+  name: string;
+  value: TestExpressionSpec | TestMeasureSpec | TestMetricSpec;
+};
+
 export type TestAggregationSpec =
   | TestExpressionSpec
-  | TestNamedExpressionSpec
+  | TestNamedAggregationSpec
   | TestMeasureSpec
   | TestMetricSpec;
 
@@ -520,33 +271,56 @@ export type TestLiteralSpec = {
 export type TestOperatorSpec = {
   type: "operator";
   operator: string;
-  args?: readonly TestExpressionSpec[];
+  args?: readonly TestOperatorArgSpec[];
+
+  // For an aggregation: the name of its result column, which a later stage
+  // refers to.
+  name?: string;
 };
 
 export type TestTemporalBucketSpec = {
   unit?: TemporalUnit;
 };
 
-export type TestBinCountSpec = {
-  bins?: number | "auto";
+export type TestDefaultBinningSpec = {
+  strategy: "default";
 };
 
-export type TestBinWidthSpec = {
-  binWidth?: number | "auto";
+export type TestNumBinsBinningSpec = {
+  strategy: "num-bins";
+  numBins: number;
 };
 
-type TestBinningSpec =
-  | TestTemporalBucketSpec
-  | TestBinCountSpec
-  | TestBinWidthSpec;
+export type TestBinWidthBinningSpec = {
+  strategy: "bin-width";
+  binWidth: number;
+};
 
-export type TestColumnWithBinningSpec = TestColumnSpec & TestBinningSpec;
+export type TestBinningSpec =
+  | TestDefaultBinningSpec
+  | TestNumBinsBinningSpec
+  | TestBinWidthBinningSpec;
 
-export type TestBreakoutSpec = TestColumnWithBinningSpec;
+type TestBucketSpec = TestTemporalBucketSpec & {
+  binning?: TestBinningSpec;
+};
+
+export type TestColumnWithBinningSpec = TestColumnSpec & TestBucketSpec;
+
+export type TestBreakoutWithNameSpec = {
+  type: "breakout";
+  name: string;
+  column: TestColumnWithBinningSpec;
+};
+
+export type TestBreakoutSpec =
+  | TestColumnWithBinningSpec
+  | TestBreakoutWithNameSpec;
 
 export type TestJoinSpec = {
   source: TestSourceSpec;
   strategy: JoinStrategy;
+  alias?: string;
 
   // If not set we will use the suggested join conditions
   conditions?: TestJoinConditionSpec[];
@@ -560,7 +334,7 @@ type TestJoinConditionSpec = {
 
 export type TestOrderBySpec = TestColumnSpec & {
   direction?: "asc" | "desc";
-} & TestBinningSpec;
+} & TestBucketSpec;
 
 export type TestStageSpec = {
   fields?: readonly TestColumnSpec[];
@@ -586,9 +360,7 @@ export type TestQuerySpecWithDatabase = TestQuerySpec & {
 };
 
 export type TestTemplateTag = Pick<TemplateTag, "type"> &
-  Partial<Omit<TemplateTag, "dimension" | "type">> & {
-    dimension?: TableId;
-  };
+  Partial<Omit<TemplateTag, "type">>;
 
 export type TestTemplateTags = Record<string, TestTemplateTag>;
 

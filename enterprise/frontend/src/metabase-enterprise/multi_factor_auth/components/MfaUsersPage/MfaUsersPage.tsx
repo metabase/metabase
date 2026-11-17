@@ -1,12 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { SearchFilter } from "metabase/admin/people/components/SearchFilter";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import {
   Box,
   Card,
@@ -18,8 +19,6 @@ import {
 import type { MfaAdminUser, MfaUserListResponse } from "metabase-types/api";
 
 import { AUTHENTICATION_PATH } from "../../constants";
-
-import S from "./MfaUsersPage.module.css";
 
 export const PAGE_SIZE = 25;
 
@@ -64,7 +63,7 @@ export const MfaUsersPage = <TUser extends MfaAdminUser>({
   });
 
   return (
-    <SettingsPageWrapper h="100%" mih={0} w="100%" px="xl">
+    <SettingsPageWrapper h="100%" mih={0} w="100%" px="xxl">
       <Breadcrumbs crumbs={[[t`2FA`, AUTHENTICATION_PATH], [title]]} />
 
       <SearchFilter
@@ -88,10 +87,10 @@ export const MfaUsersPage = <TUser extends MfaAdminUser>({
           <TreeTable
             instance={instance}
             hierarchical={false}
-            classNames={{ row: S.staticRow, cell: S.cell }}
+            static
             ariaLabel={tableAriaLabel}
             emptyState={
-              <Box p="xl" ta="center">
+              <Box p="xxl" ta="center">
                 <EmptyState
                   title={emptyMessage}
                   illustrationElement={<img src={NoResults} />}

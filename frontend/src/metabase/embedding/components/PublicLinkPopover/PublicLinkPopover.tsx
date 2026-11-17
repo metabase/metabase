@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
@@ -62,7 +63,7 @@ export const PublicLinkPopover = ({
         <Box onClick={isOpen ? onClose : undefined}>{target}</Box>
       </Popover.Target>
       <Popover.Dropdown>
-        <Box p="lg" w="28rem" data-testid="public-link-popover-content">
+        <Box p="xl" w="28rem" data-testid="public-link-popover-content">
           <Title
             order={4}
             c="text-primary"

@@ -22,6 +22,7 @@ export const SidebarCacheForm = ({
   withOverlay = true,
   overlayProps,
   onBack,
+  withBackButton,
   ...stackProps
 }: SidebarCacheFormProps) => {
   const configurableModels = useMemo(() => [model], [model]);
@@ -53,25 +54,40 @@ export const SidebarCacheForm = ({
     askBeforeDiscardingChanges,
   } = useConfirmIfFormIsDirty();
 
+  const confirmLeave = useCallback((): boolean | Promise<boolean> => {
+    if (!isStrategyFormDirty) {
+      return true;
+    }
+    return new Promise((resolve) =>
+      askBeforeDiscardingChanges(
+        () => resolve(true),
+        () => resolve(false),
+      ),
+    );
+  }, [isStrategyFormDirty, askBeforeDiscardingChanges]);
+  const backIfConfirmed = async () => {
+    if (await confirmLeave()) {
+      onBack();
+    }
+  };
+
   const headingId = `${model}-sidebar-caching-settings-heading`;
 
   return (
     <SidesheetSubPage
       title={t`Caching settings`}
       isOpen={isOpen}
-      onClose={() =>
-        isStrategyFormDirty ? askBeforeDiscardingChanges(onClose) : onClose()
-      }
+      onClose={onClose}
+      confirmClose={confirmLeave}
       withOverlay={withOverlay}
       overlayProps={overlayProps}
-      onBack={() =>
-        isStrategyFormDirty ? askBeforeDiscardingChanges(onBack) : onBack()
-      }
+      onBack={backIfConfirmed}
+      withBackButton={withBackButton}
     >
       <Stack
         align="space-between"
         h="calc(100% + 2.5rem)" // to make bottom padding nice with scroll containers
-        gap="md"
+        gap="lg"
         aria-labelledby={headingId}
         {...stackProps}
       >
@@ -85,11 +101,7 @@ export const SidebarCacheForm = ({
             savedStrategy={savedStrategy}
             shouldAllowInvalidation
             shouldShowName={false}
-            onCancel={() =>
-              isStrategyFormDirty
-                ? askBeforeDiscardingChanges(onBack)
-                : onBack()
-            }
+            onCancel={backIfConfirmed}
             buttonLabels={{ save: t`Save`, discard: t`Cancel` }}
             layout="sidebar"
           />

@@ -22,7 +22,7 @@ export default {
 export const Default = {
   render(args: DownloadWidgetProps) {
     return (
-      <Box p="lg">
+      <Box p="xl">
         <SdkQuestion questionId={QUESTION_ID}>
           <SdkQuestion.DownloadWidget {...args} />
         </SdkQuestion>
@@ -34,7 +34,7 @@ export const Default = {
 export const Dropdown = {
   render(args: PopoverProps) {
     return (
-      <Box p="lg">
+      <Box p="xl">
         <SdkQuestion withDownloads questionId={QUESTION_ID}>
           <SdkQuestion.DownloadWidgetDropdown {...args} />
         </SdkQuestion>

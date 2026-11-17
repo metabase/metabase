@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -7,7 +8,7 @@ import { Box, Button, Stack, rem } from "metabase/ui";
 
 export const NoDatabasesEmptyState = () => {
   return (
-    <Stack align="center" gap="lg" h="100%" justify="center">
+    <Stack align="center" gap="xl" h="100%" justify="center">
       <Box maw={rem(268)}>
         <EmptyState
           illustrationElement={<img src={EmptyDashboardBot} />}
@@ -19,9 +20,9 @@ export const NoDatabasesEmptyState = () => {
       {/* no need to check if user is admin because this page can only be viewed by admins */}
       <Button
         component={Link}
-        size="md"
         to="/admin/databases/create"
-        variant="primary"
+        variant="filled"
+        size="lg"
       >{t`Connect a database`}</Button>
     </Stack>
   );

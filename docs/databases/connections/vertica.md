@@ -1,5 +1,6 @@
 ---
 title: Working with Vertica in Metabase
+summary: Add the Vertica JDBC driver to your self-hosted Metabase, which Metabase can't bundle itself because of licensing restrictions.
 redirect_from:
   - /docs/latest/administration-guide/databases/vertica
 ---
@@ -12,7 +13,7 @@ is straightforward and only takes a few minutes.
 
 ## Downloading the Vertica JDBC Driver JAR
 
-You can download the JDBC driver from [Vertica's JDBC driver downloads page](https://my.vertica.com/download/vertica/client-drivers/).
+You can download the JDBC driver from [Vertica's JDBC driver downloads page](https://vertica.com/download/vertica/client-drivers/).
 Head to this page, log in to your account, accept the license agreement, and download `vertica-jdbc-8.0.0-0.jar` (for Vertica DB version 8.0)
 or whatever driver version most closely matches the version of Vertica you're running.
 
@@ -44,10 +45,6 @@ The process for adding plugins when running via Docker is similar, but you'll ne
 ## Writable connection
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
-
-## Model features
-
-There aren't (yet) any model features for Vertica.
 
 ## Danger zone
 

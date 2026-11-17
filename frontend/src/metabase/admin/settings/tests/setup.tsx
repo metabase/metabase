@@ -7,25 +7,29 @@ import {
 } from "__support__/enterprise";
 import {
   setupApiKeyEndpoints,
+  setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupEmailEndpoints,
   setupGroupsEndpoint,
+  setupLibraryEndpoints,
   setupNotificationChannelsEndpoints,
   setupPropertiesEndpoints,
   setupSettingEndpoint,
   setupSettingsEndpoints,
   setupSlackAppInfoEndpoint,
   setupSlackManifestEndpoint,
+  setupTimezonesEndpoint,
   setupTokenStatusEndpoint,
   setupUploadManagementEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { getTestStoreAndWrapper, screen } from "__support__/ui";
 import { getSettingsRoutes } from "metabase/admin/settingsRoutes";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Outlet, Route } from "metabase/router";
+import { Route } from "metabase/router";
 import type { TokenFeature, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
@@ -60,7 +64,7 @@ export const ossRoutes: RouteMap = {
     path: "/authentication/api-keys",
     testPattern: /Create API keys to let users authenticate/i,
   },
-  maps: { path: "/maps", testPattern: /Map tile server URL/i },
+  maps: { path: "/maps", testPattern: /Map tile server public URL/i },
   localization: { path: "/localization", testPattern: /Instance language/i },
   uploads: {
     path: "/uploads",
@@ -87,7 +91,10 @@ export const enterpriseRoutes: RouteMap = {
 };
 
 export const premiumRoutes: RouteMap = {
-  saml: { path: "/authentication/saml", testPattern: /Set up SAML-based SSO/i },
+  saml: {
+    path: "/authentication/saml",
+    testPattern: /Identity provider \(IdP\) configuration/i,
+  },
   jwt: { path: "/authentication/jwt", testPattern: /Server Settings/i },
 };
 
@@ -115,12 +122,14 @@ export const setup = async ({
   isAdmin = true,
   features = {},
   initialRoute = "",
+  waitForLayout = true,
 }: {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
   hasTokenFeatures?: boolean;
   isAdmin?: boolean;
   features?: Partial<TokenFeatures>;
   initialRoute?: string;
+  waitForLayout?: boolean;
 }) => {
   const tokenFeatures = createMockTokenFeatures({});
   if (hasTokenFeatures) {
@@ -148,6 +157,7 @@ export const setup = async ({
   setupApiKeyEndpoints([]);
   setupGroupsEndpoint([]);
   setupDatabasesEndpoints([]);
+  setupTimezonesEndpoint(["Europe/Paris", "US/Mountain", "UTC"]);
   setupSlackManifestEndpoint();
   setupSlackAppInfoEndpoint();
   setupUploadManagementEndpoint([]);
@@ -172,13 +182,11 @@ export const setup = async ({
   });
   fetchMock.get("path:/api/cloud-migration", { status: 204 });
   fetchMock.get("path:/api/ee/sso/oidc", []);
-  fetchMock.get("path:/api/ee/remote-sync/dirty", {
-    data: [],
-    metadata: {
-      changed_collections: {},
-      is_dirty: false,
-      has_removed_items: false,
-    },
+  setupLibraryEndpoints();
+  setupCollectionsEndpoints({ collections: [] });
+  setupCollectionItemsEndpoint({
+    collection: { id: "root" },
+    collectionItems: [],
   });
 
   const user = createMockUser({
@@ -205,14 +213,18 @@ export const setup = async ({
     initialRoute: `/admin/settings${initialRoute}`,
   });
 
-  const PassThroughGuard = () => <Outlet />;
-
   testingLibraryRender(
-    <Route path="admin/settings">
-      {getSettingsRoutes(store, PassThroughGuard)}
-    </Route>,
+    <>
+      <Route path="admin/settings">{getSettingsRoutes(store)}</Route>
+      <Route
+        path="unauthorized"
+        element={<div data-testid="unauthorized-page">Unauthorized</div>}
+      />
+    </>,
     { wrapper },
   );
 
-  await screen.findByTestId("admin-layout-content");
+  if (waitForLayout) {
+    await screen.findByTestId("admin-layout-content");
+  }
 };

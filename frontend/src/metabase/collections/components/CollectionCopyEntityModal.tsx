@@ -1,4 +1,4 @@
-import { dissoc } from "icepick";
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { CopyModal } from "metabase/common/components/CopyModal";
-import { entityTypeForObject } from "metabase/redux/store/entities";
+import { entityTypeForObject } from "metabase/metadata-store";
 
 const getTitle = (entityObject: any, isShallowCopy: boolean) => {
   if (entityObject.model !== "dashboard") {
@@ -42,7 +42,7 @@ function CollectionCopyEntityModal({
   };
 
   const handleCopy = async (values: Record<string, any>) => {
-    const overrides = dissoc(values, "id");
+    const { id: _id, ...overrides } = values;
 
     if (entityObject.model === "dashboard") {
       const { is_shallow_copy, ...rest } = overrides;

@@ -35,7 +35,9 @@ function getOnBeforeRequestHandlers(): OnBeforeRequestHandler[] {
     PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds,
     PLUGIN_API.onBeforeRequestHandlers.rewriteEmbedPreviewUrl,
     PLUGIN_API.onBeforeRequestHandlers.reactSdkEmbedReferrer,
+    PLUGIN_API.onBeforeRequestHandlers.reactSdkReactVersion,
     PLUGIN_API.onBeforeRequestHandlers.embedReferrer,
+    PLUGIN_API.onBeforeRequestHandlers.setDataAppDevHeader,
   ];
 }
 

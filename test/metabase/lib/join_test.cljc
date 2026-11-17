@@ -42,7 +42,6 @@
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table (meta/id :venues)
                        :joins        [{:lib/type    :mbql/join
-                                       :lib/options {:lib/uuid string?}
                                        :alias       "Categories"
                                        :stages      [{:lib/type     :mbql.stage/mbql
                                                       :source-table (meta/id :categories)}]
@@ -76,9 +75,8 @@
         (is (not (contains? (first (:stages (lib/with-join-source-fields with-it nil))) :fields)))
         (is (not (contains? (first (:stages (lib/with-join-source-fields with-it []))) :fields)))))
     (testing "Rejects a native-stage inner with a clear error (not a malli output-schema mess)"
-      (let [native-join (assoc base-join :stages [{:lib/type    :mbql.stage/native
-                                                   :lib/options {:lib/uuid (str (random-uuid))}
-                                                   :native      "SELECT 1"}])]
+      (let [native-join (assoc base-join :stages [{:lib/type :mbql.stage/native
+                                                   :native   "SELECT 1"}])]
         #?(:clj  (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                        #"requires the join's first stage to be an MBQL stage"
                                        (lib/with-join-source-fields native-join
@@ -156,11 +154,10 @@
 
 (deftest ^:parallel join-clause-test
   (testing "Should have :fields :all by default (#32419)"
-    (is (=? {:lib/type    :mbql/join
-             :stages      [{:lib/type     :mbql.stage/mbql
-                            :source-table (meta/id :orders)}]
-             :lib/options {:lib/uuid string?}
-             :fields      :all}
+    (is (=? {:lib/type :mbql/join
+             :stages   [{:lib/type     :mbql.stage/mbql
+                         :source-table (meta/id :orders)}]
+             :fields   :all}
             (lib/join-clause (meta/table-metadata :orders)))))
   (testing "Should allow specifying the join strategy when creating a join clause"
     (is (= [:left-join :right-join :inner-join]
@@ -237,7 +234,6 @@
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table (meta/id :categories)
                        :joins        [{:lib/type    :mbql/join
-                                       :lib/options {:lib/uuid string?}
                                        :alias       "Venues"
                                        :stages      [{:lib/type     :mbql.stage/mbql
                                                       :source-table (meta/id :venues)}]
@@ -268,7 +264,6 @@
                                                     (lib/visible-columns q2))]
       (let [clause (lib/join-clause q2 [(lib/= categories-id-metadata venues-category-id-metadata)])]
         (is (=? {:lib/type    :mbql/join
-                 :lib/options {:lib/uuid string?}
                  :stages      [{:lib/type     :mbql.stage/mbql
                                 :source-table (meta/id :venues)}]
                  :conditions  [[:=
@@ -282,7 +277,6 @@
       (is (=? {:database (meta/id)
                :stages   [{:source-table (meta/id :categories)
                            :joins        [{:lib/type    :mbql/join
-                                           :lib/options {:lib/uuid string?}
                                            :alias       "Venues"
                                            :stages      [{:source-table (meta/id :venues)}]
                                            :conditions  [[:=
@@ -319,14 +313,12 @@
   (testing "Display name for a joined field should include a nice name for the join; include other info like :source-alias"
     (let [query {:lib/type     :mbql/query
                  :stages       [{:lib/type     :mbql.stage/mbql
-                                 :lib/options  {:lib/uuid "fdcfaa06-8e65-471d-be5a-f1e821022482"}
                                  :source-table (meta/id :venues)
                                  :fields       [[:field
                                                  {:join-alias "CATEGORIES__via__CATEGORY_ID"
                                                   :lib/uuid   "8704e09b-496e-4045-8148-1eef28e96b51"}
                                                  (meta/id :categories :name)]]
                                  :joins        [{:lib/type    :mbql/join
-                                                 :lib/options {:lib/uuid "490a5abb-54c2-4e62-9196-7e9e99e8d291"}
                                                  :alias       "CATEGORIES__via__CATEGORY_ID"
                                                  :conditions  [[:=
                                                                 {:lib/uuid "cc5f6c43-1acb-49c2-aeb5-e3ff9c70541f"}
@@ -335,7 +327,6 @@
                                                  :strategy    :left-join
                                                  :fk-field-id (meta/id :venues :category-id)
                                                  :stages      [{:lib/type     :mbql.stage/mbql
-                                                                :lib/options  {:lib/uuid "bbbae500-c972-4550-b100-e0584eb72c4d"}
                                                                 :source-table (meta/id :categories)}]}]}]
                  :database     (meta/id)
                  :lib/metadata meta/metadata-provider}
@@ -359,7 +350,6 @@
                               {:aggregation [[:count]]
                                :breakout    [$user-id]})])
         join              {:lib/type    :mbql/join
-                           :lib/options {:lib/uuid "d7ebb6bd-e7ac-411a-9d09-d8b18329ad46"}
                            :stages      [{:lib/type    :mbql.stage/mbql
                                           :source-card 1}]
                            :alias       "checkins_by_user"
@@ -473,7 +463,6 @@
                     :stages       [{:lib/type     :mbql.stage/mbql
                                     :source-table (meta/id :categories)
                                     :joins        [{:lib/type    :mbql/join
-                                                    :lib/options {:lib/uuid "10ee93eb-6749-41ed-a48b-93c66427eb49"}
                                                     :alias       join-alias
                                                     :fields      [[:field
                                                                    {:join-alias join-alias
@@ -488,7 +477,6 @@
                                                                     {:lib/uuid "c5203ef8-d56d-474c-b176-2853a3f017b0"}
                                                                     (meta/id :categories :id)]]]
                                                     :stages      [{:lib/type     :mbql.stage/mbql
-                                                                   :lib/options  {:lib/uuid "e8888108-22a7-4f97-8315-ff63503634d7"}
                                                                    :source-table (meta/id :categories)}]}]}]}]
     (is (=? [{:name                     "ID"
               :display-name             "ID"

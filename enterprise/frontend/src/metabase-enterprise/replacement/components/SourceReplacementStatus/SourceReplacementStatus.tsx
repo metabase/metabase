@@ -5,14 +5,14 @@ import { Api, skipToken, useGetCardQuery } from "metabase/api";
 import { useGetTableQuery } from "metabase/api/table";
 import type { TagType } from "metabase/api/tags";
 import { useDispatch } from "metabase/redux";
-import StatusLarge from "metabase/status/components/StatusLarge";
+import { StatusLarge } from "metabase/status/components/StatusLarge";
 import StatusSmall from "metabase/status/components/StatusSmall";
 import {
   getIconName,
   isSpinnerVisible,
 } from "metabase/status/components/utils/status";
 import useStatusVisibility from "metabase/status/hooks/use-status-visibility";
-import { visualizations } from "metabase/visualizations";
+import { visualizations } from "metabase/viz-core";
 import {
   useGetSourceReplacementRunQuery,
   useListSourceReplacementRunsQuery,

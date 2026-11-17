@@ -16,8 +16,6 @@ import {
   mergeUrlStateConfig,
 } from "../ConversationFilters/url-state";
 
-export const PAGE_SIZE = 25;
-
 const DEFAULT_SORT_COLUMN: ConversationSortColumn = "created_at";
 const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
 

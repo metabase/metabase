@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import type { VisualizerVizDefinitionWithColumnsAndPreloadedDatasets } from "metabase/redux/store/visualizer";
 import { isNotNull } from "metabase/utils/types";
 import type {
   Card,
+  DashCardDataSeries,
   Dataset,
   DatasetColumn,
-  RawSeries,
   VisualizerColumnReference,
   VisualizerDataSource,
 } from "metabase-types/api";
@@ -108,7 +109,9 @@ function processColumnsForDataSource(
   return columnInfos;
 }
 
-export function getInitialStateForMultipleSeries(rawSeries: RawSeries) {
+export function getInitialStateForMultipleSeries(
+  rawSeries: DashCardDataSeries,
+) {
   const mainCard = rawSeries[0].card;
 
   const state: VisualizerVizDefinitionWithColumnsAndPreloadedDatasets = {

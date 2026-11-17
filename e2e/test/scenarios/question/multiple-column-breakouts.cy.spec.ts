@@ -286,12 +286,14 @@ describe("scenarios > question > multiple column breakouts", () => {
           bucketLabel,
           bucket1Name,
           bucket2Name,
+          columns,
         }: {
           tableName: string;
           columnName: string;
           bucketLabel: string;
           bucket1Name: string;
           bucket2Name: string;
+          columns: string[];
         }) {
           H.startNewQuestion();
           H.miniPicker().within(() => {
@@ -324,6 +326,8 @@ describe("scenarios > question > multiple column breakouts", () => {
           H.popover().last().findByText(bucket2Name).click();
           H.visualize();
           cy.wait("@dataset");
+          H.queryBuilderFooter().findByLabelText("Switch to data").click();
+          H.assertTableData({ columns });
         }
 
         cy.log("temporal breakouts");
@@ -333,6 +337,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           bucketLabel: "Temporal bucket",
           bucket1Name: "Year",
           bucket2Name: "Month",
+          columns: ["Created At: Year", "Created At: Month", "Count"],
         });
         H.assertQueryBuilderRowCount(49);
 
@@ -343,6 +348,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           bucketLabel: "Binning strategy",
           bucket1Name: "10 bins",
           bucket2Name: "50 bins",
+          columns: ["Total: 10 bins", "Total: 50 bins", "Count"],
         });
         H.assertQueryBuilderRowCount(32);
 
@@ -353,6 +359,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           bucketLabel: "Binning strategy",
           bucket1Name: "Bin every 10 degrees",
           bucket2Name: "Bin every 20 degrees",
+          columns: ["Latitude: 10°", "Latitude: 20°", "Count"],
         });
         H.assertQueryBuilderRowCount(6);
       });
@@ -606,13 +613,15 @@ describe("scenarios > question > multiple column breakouts", () => {
         });
       });
 
-      it("should be able to change pivot split settings when there are more than 2 breakouts", () => {
+      it("should be able to change pivot split settings when there are more than 2 breakouts and not move columns items into measures and vice-versa", () => {
         function testPivotSplit({
           questionDetails,
           columnNamePattern,
+          testMeasureMoves = false,
         }: {
           questionDetails: StructuredQuestionDetails;
           columnNamePattern: RegExp;
+          testMeasureMoves?: boolean;
         }) {
           H.createQuestion(questionDetails, { visitQuestion: true });
 
@@ -626,8 +635,42 @@ describe("scenarios > question > multiple column breakouts", () => {
             .findAllByText(columnNamePattern)
             .should("have.length", 3);
 
-          cy.log("move a column from rows to columns");
           H.openVizSettingsSidebar();
+
+          if (testMeasureMoves) {
+            const assertBreakoutsBeforeMeasure = () => {
+              H.getDraggableElements().should(($items) => {
+                expect($items).to.have.length(6);
+                $items.slice(0, 5).each((_index, item) => {
+                  expect(item.getAttribute("data-testid")).to.match(
+                    /^draggable-item-Created At: /,
+                  );
+                });
+                expect($items.eq(5)).to.have.attr(
+                  "data-testid",
+                  "draggable-item-Count",
+                );
+              });
+            };
+
+            assertBreakoutsBeforeMeasure();
+
+            cy.log("move an item from columns to measures");
+            H.moveDnDKitListElement("drag-handle", {
+              startIndex: 2,
+              dropIndex: 5,
+            });
+            assertBreakoutsBeforeMeasure();
+
+            cy.log("move an item from measures to columns");
+            H.moveDnDKitListElement("drag-handle", {
+              startIndex: 5,
+              dropIndex: 2,
+            });
+            assertBreakoutsBeforeMeasure();
+          }
+
+          cy.log("move a column from rows to columns");
           H.moveDnDKitListElement("drag-handle", {
             startIndex: 2,
             dropIndex: 3,
@@ -652,6 +695,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         testPivotSplit({
           questionDetails: questionWith5TemporalBreakoutsDetails,
           columnNamePattern: /^Created At/,
+          testMeasureMoves: true,
         });
 
         cy.log("'num-bins' breakouts");
@@ -659,43 +703,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           questionDetails: questionWith5NumBinsBreakoutsDetails,
           columnNamePattern: /^Total: \d+ bins$/,
         });
-      });
-
-      it("should not be able to move columns items into measures and vice-versa", () => {
-        H.createQuestion(questionWith5TemporalBreakoutsDetails, {
-          visitQuestion: true,
-        });
-
-        const columnNamePattern = /^Created At/;
-
-        cy.log("change display and assert the default settings");
-        H.openVizTypeSidebar();
-        cy.findByTestId("chart-type-sidebar")
-          .findByTestId("Pivot Table-button")
-          .click();
-        cy.wait("@pivotDataset");
-        cy.findByTestId("pivot-table")
-          .findAllByText(columnNamePattern)
-          .should("have.length", 3);
-
-        cy.log("move an item from columns to measures");
-        H.openVizSettingsSidebar();
-        H.moveDnDKitListElement("drag-handle", {
-          startIndex: 2,
-          dropIndex: 5,
-        });
-        cy.findByTestId("pivot-table")
-          .findAllByText(columnNamePattern)
-          .should("have.length", 3);
-
-        cy.log("move an item from measures to columns");
-        H.moveDnDKitListElement("drag-handle", {
-          startIndex: 5,
-          dropIndex: 2,
-        });
-        cy.findByTestId("pivot-table")
-          .findAllByText(columnNamePattern)
-          .should("have.length", 3);
       });
     });
 
@@ -809,7 +816,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           cy.wait("@dataset");
         }
 
-        // Fragile and bound to break when the year changes
         cy.log("temporal breakouts");
         testDatePostAggregationExpression({
           questionDetails: questionWith2TemporalBreakoutsDetails,
@@ -839,7 +845,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         testDatePostAggregationExpression({
           questionDetails: questionWith2NumBinsBreakoutsDetails,
           expression1: "[Total: 10 bins] + 100",
-          expression2: "[Total: 10 bins] + 200",
+          expression2: "[Total: 50 bins] + 200",
         });
 
         H.assertTableData({
@@ -850,10 +856,10 @@ describe("scenarios > question > multiple column breakouts", () => {
             "Expression1",
             "Expression2",
           ],
-          firstRows: [["-60  –  -40", "-50  –  -45", "1", "40", "140"]],
+          firstRows: [["-60  –  -40", "-50  –  -45", "1", "40", "150"]],
         });
 
-        cy.log("'max-bins' breakouts");
+        cy.log("'bin-width' breakouts");
         testDatePostAggregationExpression({
           questionDetails: questionWith2BinWidthBreakoutsDetails,
           expression1: "[Latitude: 20°] + 100",
@@ -1103,7 +1109,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           firstRows: [["-60", "155"]],
         });
 
-        cy.log("'max-bins' breakouts");
+        cy.log("'bin-width' breakouts");
         testPostAggregationAggregation({
           questionDetails: questionWith2BinWidthBreakoutsDetails,
           column1Name: "Latitude: 20°",
@@ -1178,7 +1184,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           ],
         });
 
-        cy.log("'max-bins' breakouts");
+        cy.log("'bin-width' breakouts");
         testPostAggregationBreakout({
           questionDetails: questionWith2BinWidthBreakoutsDetails,
           column1Name: "Latitude: 20°",
@@ -1341,19 +1347,8 @@ describe("scenarios > question > multiple column breakouts", () => {
   });
 });
 
-function tableHeaderClick(
-  columnName: string,
-  { columnIndex = 0 }: { columnIndex?: number } = {},
-) {
-  // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  H.tableInteractive()
-    .findAllByText(columnName)
-    .eq(columnIndex)
-    .trigger("mousedown");
+function tableHeaderClick(columnName: string) {
+  H.tableInteractive().findAllByText(columnName).eq(0).trigger("mousedown");
 
-  // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  H.tableInteractive()
-    .findAllByText(columnName)
-    .eq(columnIndex)
-    .trigger("mouseup");
+  H.tableInteractive().findAllByText(columnName).eq(0).trigger("mouseup");
 }

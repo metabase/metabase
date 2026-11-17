@@ -2,11 +2,14 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sqlserver-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sqlserver-test]}}}}}}
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [colorize.core :as colorize]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [medley.core :as m]
+   [metabase-enterprise.workspaces.provisioning :as ws.provisioning]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -18,16 +21,22 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.sql-tools.settings :as sql-tools.settings]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -36,6 +45,11 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(deftest default-schema-test
+  (mt/test-driver :sqlserver
+    (is (= "dbo"
+           (driver.sql/default-schema :sqlserver (lib.metadata/database (mt/metadata-provider)))))))
 
 (deftest ^:parallel hour-bucketing-time-without-database-type-test
   (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
@@ -191,7 +205,6 @@
                                  config/local-process-uuid)
             :database           "birddb"
             :encrypt            false
-            :instanceName       nil
             :loginTimeout       10
             :password           "toucans"
             :port               1433
@@ -205,7 +218,145 @@
                                                     :db                 "birddb"
                                                     :host               "localhost"
                                                     :port               1433
-                                                    :additional-options "trustServerCertificate=false"})))))
+                                                    :additional-options "trustServerCertificate=false"}))))
+  (testing "instanceName is omitted when no instance is supplied — mssql-jdbc treats an empty string as a named instance, which breaks Microsoft Fabric and Synapse serverless endpoints (#81270)"
+    (doseq [instance [nil "" "   "]]
+      (testing (pr-str instance)
+        (is (not (contains? (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                                    {:user "cam", :password "toucans", :db "birddb",
+                                                                     :host "localhost", :port 1433, :instance instance})
+                            :instanceName))))))
+  (testing "instanceName is passed through when the user supplies one"
+    (is (= "MYINSTANCE"
+           (:instanceName (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                                  {:user "cam", :password "toucans", :db "birddb",
+                                                                   :host "localhost", :instance "MYINSTANCE"}))))))
+
+(deftest ^:parallel connection-spec-sql-auth-mode-test
+  (testing "auth-mode 'sql' (explicit or missing) → traditional user/password login, no :authentication key"
+    (doseq [details [{:auth-mode "sql", :user "cam", :password "toucans", :db "birddb", :host "localhost"}
+                     ;; missing :auth-mode simulates legacy connections saved before the auth-mode field existed
+                     {:user "cam", :password "toucans", :db "birddb", :host "localhost"}]]
+      (testing (str "details = " (pr-str details))
+        (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver details)]
+          (is (= "cam" (:user spec)))
+          (is (= "toucans" (:password spec)))
+          (is (not (contains? spec :authentication))))))))
+
+(deftest ^:parallel connection-spec-ad-service-principal-test
+  (testing "auth-mode 'ad-service-principal' → ActiveDirectoryServicePrincipal, principal id in :user, secret in :password"
+    (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                       {:auth-mode        "ad-service-principal"
+                                                        :ad-client-id     "4e027ad8-5e10-4e05-b5a6-c071b9b61b37"
+                                                        :ad-client-secret "the-secret"
+                                                        :host             "sql.example.com"
+                                                        :db               "metabase_test"})]
+      (is (= "ActiveDirectoryServicePrincipal"      (:authentication spec)))
+      (is (= "4e027ad8-5e10-4e05-b5a6-c071b9b61b37" (:user spec)))
+      (is (= "the-secret"                           (:password spec))))))
+
+(deftest ^:parallel connection-spec-ad-service-principal-certificate-embedded-key-test
+  (testing "auth-mode 'ad-service-principal-certificate': cert with embedded key, cert password goes in :password"
+    (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                       {:auth-mode                             "ad-service-principal-certificate"
+                                                        :ad-client-id                          "4e027ad8-5e10-4e05-b5a6-c071b9b61b37"
+                                                        :ad-client-certificate-value           "cert-bytes"
+                                                        :ad-client-certificate-password-value  "cert-pw"
+                                                        :host                                  "sql.example.com"
+                                                        :db                                    "metabase_test"})]
+      (is (= "ActiveDirectoryServicePrincipalCertificate" (:authentication spec)))
+      (is (= "4e027ad8-5e10-4e05-b5a6-c071b9b61b37"       (:user spec)))
+      (is (instance? java.io.File (:clientCertificate spec)))
+      (is (= "cert-pw" (:password spec)))
+      (is (not (contains? spec :clientKey)))
+      (is (not (contains? spec :clientKeyPassword))))))
+
+(deftest ^:parallel connection-spec-ad-service-principal-certificate-separate-key-test
+  (testing "auth-mode 'ad-service-principal-certificate': cert + separate encrypted key file → :clientKey + :clientKeyPassword"
+    (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                       {:auth-mode                             "ad-service-principal-certificate"
+                                                        :ad-client-id                          "4e027ad8-5e10-4e05-b5a6-c071b9b61b37"
+                                                        :ad-client-certificate-value           "cert-bytes"
+                                                        :ad-client-certificate-password-value  "cert-pw"
+                                                        :ad-client-key-value                   "key-bytes"
+                                                        :ad-client-key-password-value          "key-pw"
+                                                        :host                                  "sql.example.com"
+                                                        :db                                    "metabase_test"})]
+      (is (instance? java.io.File (:clientCertificate spec)))
+      (is (= "cert-pw" (:password spec)))
+      (is (instance? java.io.File (:clientKey spec)))
+      (is (= "key-pw"  (:clientKeyPassword spec))))))
+
+(deftest ^:parallel connection-spec-ad-managed-identity-user-assigned-test
+  (testing "auth-mode 'ad-managed-identity' with :ad-managed-identity-client-id → ActiveDirectoryManagedIdentity, MI id in :user"
+    (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                       {:auth-mode                     "ad-managed-identity"
+                                                        :ad-managed-identity-client-id "4e027ad8-5e10-4e05-b5a6-c071b9b61b37"
+                                                        :host                          "sql.example.com"
+                                                        :db                            "metabase_test"})]
+      (is (= "ActiveDirectoryManagedIdentity"       (:authentication spec)))
+      (is (= "4e027ad8-5e10-4e05-b5a6-c071b9b61b37" (:user spec))))))
+
+(deftest ^:parallel connection-spec-ad-managed-identity-default-test
+  (testing "auth-mode 'ad-managed-identity' with blank/missing :ad-managed-identity-client-id → default identity, no :user"
+    (doseq [mi-client-id [nil "" "   "]]
+      (testing (str ":ad-managed-identity-client-id = " (pr-str mi-client-id))
+        (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                           {:auth-mode                     "ad-managed-identity"
+                                                            :ad-managed-identity-client-id mi-client-id
+                                                            :host                          "sql.example.com"
+                                                            :db                            "metabase_test"})]
+          (is (= "ActiveDirectoryManagedIdentity" (:authentication spec)))
+          (is (not (contains? spec :user))))))))
+
+(deftest connection-spec-ad-managed-identity-hosted-rejected-test
+  (testing "auth-mode 'ad-managed-identity' is rejected on Metabase Cloud (ambient Azure identity, not available on AWS hosts)"
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (doseq [[label details] [["default identity"       {:auth-mode "ad-managed-identity"
+                                                          :host      "sql.example.com"
+                                                          :db        "metabase_test"}]
+                               ["user-assigned identity" {:auth-mode                     "ad-managed-identity"
+                                                          :ad-managed-identity-client-id "4e027ad8-5e10-4e05-b5a6-c071b9b61b37"
+                                                          :host                          "sql.example.com"
+                                                          :db                            "metabase_test"}]]]
+        (testing label
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"not available on Metabase Cloud"
+               (sql-jdbc.conn/connection-details->spec :sqlserver details)))))))
+  (testing "Off Metabase Cloud, ad-managed-identity continues to work."
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
+      (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                         {:auth-mode "ad-managed-identity"
+                                                          :host      "sql.example.com"
+                                                          :db        "metabase_test"})]
+        (is (= "ActiveDirectoryManagedIdentity" (:authentication spec)))))))
+
+(deftest auth-mode-options-hidden-when-hosted-test
+  (let [auth-mode-values
+        (fn [] (->> (:details-fields (:sqlserver (driver.u/available-drivers-info)))
+                    (m/find-first #(= "auth-mode" (:name %)))
+                    :options
+                    (mapv :value)))]
+    (testing "On Metabase Cloud, ad-managed-identity is stripped from the auth-mode select."
+      (mt/with-premium-features #{:hosting}
+        (is (= ["sql" "ad-service-principal" "ad-service-principal-certificate"]
+               (auth-mode-values)))))
+    (testing "Off Metabase Cloud, every auth-mode option is offered."
+      (mt/with-premium-features #{}
+        (is (= ["sql" "ad-service-principal" "ad-service-principal-certificate" "ad-managed-identity"]
+               (auth-mode-values)))))))
+
+(deftest ^:parallel reject-inherited-disallowed-parameters-in-host-test
+  (mt/test-driver :sqlserver
+    (testing "parameters every SQL-JDBC driver disallows are refused in `host` too"
+      (are [bad-option] (thrown-with-msg? clojure.lang.ExceptionInfo
+                                          #"Potentially dangerous keys in connection details"
+                                          (driver/validate-db-details! :sqlserver {:host (str "sql.example.com;" bad-option)
+                                                                                   :db   "db"}))
+        "hostnameverifier=bad.Verifier"
+        "sslfactory=bad.Factory"
+        "loggerFile=/tmp/x"))))
 
 (deftest ^:parallel reject-details-with-dangerous-additional-options-test
   (mt/test-driver :sqlserver
@@ -214,7 +365,7 @@
         (are [bad-option] (let [bad-opts-details (assoc details :additional-options bad-option)
                                 bad-host-details (update details :host str ";" bad-option)]
                             (is (thrown-with-msg? java.lang.Exception
-                                                  #"Potentially dangerous keys in connection details"
+                                                  #"Potentially dangerous keys in additional options"
                                                   (driver/can-connect? :sqlserver bad-opts-details)))
                             (is (thrown-with-msg? java.lang.Exception
                                                   #"Potentially dangerous keys in connection details"
@@ -238,21 +389,40 @@
           "trustServerCertificate=false"
           "trustStore=/path/to/store;trustStorePassword=password;trustStoreType=pkcs12")))))
 
+(deftest ^:parallel validate-db-details-inherits-shared-denylist-test
+  (testing "SQL Server also inherits the shared SQL-JDBC denylist, not just its own keys"
+    (doseq [opt ["socketFactory=evil.Factory"   ; shared list, distinct from sqlserver's socketFactoryClass
+                 "sslfactory=evil.Factory"
+                 "dnsResolver=evil.Resolver"
+                 "queryInterceptors=evil.Interceptor"]]
+      (testing opt
+        (is (thrown-with-msg?
+             java.lang.Exception #"[Dd]angerous keys"
+             (driver/validate-db-details! :sqlserver {:additional-options opt}))))))
+  (testing "sqlserver's own denylist keys are still rejected"
+    (doseq [opt ["socketFactoryClass=evil.Factory"
+                 "accessTokenCallbackClass=evil.Callback"]]
+      (testing opt
+        (is (thrown-with-msg?
+             java.lang.Exception #"[Dd]angerous keys"
+             (driver/validate-db-details! :sqlserver {:additional-options opt})))))))
+
 (deftest ^:parallel add-max-results-limit-test
   (mt/test-driver :sqlserver
     (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "
                   "equivalent of LIMIT). Make sure we add a max-results LIMIT to the nested query")
-      (is (= {:query ["SELECT"
+      (is (= {:query ["WITH \"__mb_stage_0\" AS ("
+                      "  SELECT"
+                      "    TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
+                      "  FROM"
+                      "    \"dbo\".\"venues\""
+                      "  ORDER BY"
+                      "    \"dbo\".\"venues\".\"id\" ASC"
+                      ")"
+                      "SELECT"
                       "  TOP(1048575) \"__mb_source\".\"name\" AS \"name\""
                       "FROM"
-                      "  ("
-                      "    SELECT"
-                      "      TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
-                      "    FROM"
-                      "      \"dbo\".\"venues\""
-                      "    ORDER BY"
-                      "      \"dbo\".\"venues\".\"id\" ASC"
-                      "  ) AS \"__mb_source\""]
+                      "  \"__mb_stage_0\" AS \"__mb_source\""]
               :params nil}
              (-> (mt/mbql-query venues
                    {:source-query {:source-table $$venues
@@ -265,17 +435,18 @@
   (mt/test-driver :sqlserver
     (testing (str "make sure when adding TOP clauses to make ORDER BY work we don't stomp over any explicit TOP "
                   "clauses that may have been set in the query")
-      (is (= {:query  ["SELECT"
+      (is (= {:query  ["WITH \"__mb_stage_0\" AS ("
+                       "  SELECT"
+                       "    TOP(20) \"dbo\".\"venues\".\"name\" AS \"name\""
+                       "  FROM"
+                       "    \"dbo\".\"venues\""
+                       "  ORDER BY"
+                       "    \"dbo\".\"venues\".\"id\" ASC"
+                       ")"
+                       "SELECT"
                        "  TOP(10) \"__mb_source\".\"name\" AS \"name\""
                        "FROM"
-                       "  ("
-                       "    SELECT"
-                       "      TOP(20) \"dbo\".\"venues\".\"name\" AS \"name\""
-                       "    FROM"
-                       "      \"dbo\".\"venues\""
-                       "    ORDER BY"
-                       "      \"dbo\".\"venues\".\"id\" ASC"
-                       "  ) AS \"__mb_source\""]
+                       "  \"__mb_stage_0\" AS \"__mb_source\""]
               :params nil}
              (-> (qp.compile/compile
                   (mt/mbql-query venues
@@ -300,17 +471,18 @@
                              qp.preprocess/preprocess
                              (lib/limit nil))]
         (mt/with-metadata-provider (mt/id)
-          (is (= {:query  ["SELECT"
+          (is (= {:query  ["WITH \"__mb_stage_0\" AS ("
+                           "  SELECT"
+                           "    TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
+                           "  FROM"
+                           "    \"dbo\".\"venues\""
+                           "  ORDER BY"
+                           "    \"dbo\".\"venues\".\"id\" ASC"
+                           ")"
+                           "SELECT"
                            "  \"__mb_source\".\"name\" AS \"name\""
                            "FROM"
-                           "  ("
-                           "    SELECT"
-                           "      TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
-                           "    FROM"
-                           "      \"dbo\".\"venues\""
-                           "    ORDER BY"
-                           "      \"dbo\".\"venues\".\"id\" ASC"
-                           "  ) AS \"__mb_source\""
+                           "  \"__mb_stage_0\" AS \"__mb_source\""
                            "ORDER BY"
                            "  \"__mb_source\".\"id\" ASC"]
                   :params nil}
@@ -333,6 +505,29 @@
                                  :limit        5}
                   :limit        3}))))))))
 
+(deftest ^:parallel page-adds-order-by-when-none-present-test
+  (testing "Regression for #81988."
+    (testing "no existing ORDER BY -> synthetic ORDER BY (SELECT NULL) added"
+      (is (= {:order-by [[{:select [nil]}]]
+              :offset   [:inline 0]
+              :fetch    [:inline 200]}
+             (sql.qp/apply-top-level-clause :sqlserver :page {}
+                                            {:page {:page 1 :items 200}}))))
+    (testing "existing ORDER BY preserved"
+      (let [existing-order-by [[[:field "id" nil] :asc]]]
+        (is (= {:order-by existing-order-by
+                :offset   [:inline 0]
+                :fetch    [:inline 200]}
+               (sql.qp/apply-top-level-clause :sqlserver :page
+                                              {:order-by existing-order-by}
+                                              {:page {:page 1 :items 200}})))))
+    (testing "later pages compute OFFSET from (page - 1) * items"
+      (is (= {:order-by [[{:select [nil]}]]
+              :offset   [:inline 400]
+              :fetch    [:inline 200]}
+             (sql.qp/apply-top-level-clause :sqlserver :page {}
+                                            {:page {:page 3 :items 200}}))))))
+
 (deftest ^:parallel locale-bucketing-test
   (mt/test-driver :sqlserver
     (testing (str "Make sure datetime bucketing functions work properly with languages that format dates like "
@@ -342,7 +537,7 @@
       ;; are working we need to add to in from of the query we're trying to check
       (sql-jdbc.execute/do-with-connection-with-options
        :sqlserver
-       (mt/db)
+       (mt/id)
        {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
        (fn [^java.sql.Connection conn]
          (.setAutoCommit conn false)
@@ -372,7 +567,7 @@
       ;; persist otherwise
       (sql-jdbc.execute/do-with-connection-with-options
        :sqlserver
-       (mt/db)
+       (mt/id)
        {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
        (fn [^java.sql.Connection conn]
          (doseq [datefirst (range 1 8)]
@@ -397,7 +592,7 @@
       ;; persist otherwise
       (sql-jdbc.execute/do-with-connection-with-options
        :sqlserver
-       (mt/db)
+       (mt/id)
        {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
        (fn [^java.sql.Connection conn]
          (doseq [datefirst (range 1 8)]
@@ -432,12 +627,13 @@
                             [(t/zoned-date-time  date time (t/zone-id "America/Los_Angeles"))
                              (t/offset-date-time (t/local-date-time date time) (t/zone-offset -8))]]]
         (let [expected (or expected t)]
+          ;; pr renders the value into the testing label via with-out-str; nothing hits the console
           #_{:clj-kondo/ignore [:discouraged-var]}
           (testing (format "Convert %s to SQL literal" (colorize/magenta (with-out-str (pr t))))
             (let [sql (format "SELECT %s AS t;" (sql.qp/inline-value :sqlserver t))]
               (sql-jdbc.execute/do-with-connection-with-options
                :sqlserver
-               (mt/db)
+               (mt/id)
                nil
                (fn [^java.sql.Connection conn]
                  (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql nil)
@@ -910,7 +1106,7 @@
                                           :where  (sql.qp/->honeysql
                                                    :sqlserver
                                                    [:= {}
-                                                    [:field {} (mt/id :attempts :datetime)]
+                                                    [:field {:lib/uuid (str (random-uuid))} (mt/id :attempts :datetime)]
                                                     (sql.qp/compiled [:raw "?"])])})))]
           (doseq [param [datetime-string datetime-localdatetime]
                   :let  [query [base-query param]]]
@@ -925,24 +1121,28 @@
 
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver :sqlserver
-    (is (= "Z" (str (driver/db-default-timezone :sqlserver (mt/db)))))))
+    (is (= "Z" (str (driver/db-default-timezone :sqlserver (lib.metadata/database (mt/metadata-provider))))))))
 
 (deftest ^:parallel default-database-role-test
   (testing "SQL Server default database role handling"
     (testing "returns role when explicitly configured"
       (let [database {:lib/type :metadata/database
+                      :id       1
                       :details {:user "login_user" :role "db_user"}}]
         (is (= "db_user" (driver.sql/default-database-role :sqlserver database)))))
     (testing "returns nil when no role is configured"
       (let [database {:lib/type :metadata/database
+                      :id       1
                       :details {:user "login_user"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
     (testing "returns nil even when user is 'sa'"
       (let [database {:lib/type :metadata/database
+                      :id       1
                       :details {:user "sa"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
     (testing "ignores user field and only uses role field"
       (let [database {:lib/type :metadata/database
+                      :id       1
                       :details {:user "login_user" :role "impersonation_user"}}]
         (is (= "impersonation_user" (driver.sql/default-database-role :sqlserver database)))))))
 
@@ -993,7 +1193,40 @@
     (mt/test-driver :sqlserver
       (mt/dataset bigint-identity-data
         (is (= :type/BigInteger
-               (t2/select-one-fn :base_type :model/Field (mt/id :bigint_identity_test :id))))))))
+               (t2/select-one-fn :base_type :model/Field :id (mt/id :bigint_identity_test :id))))))))
+
+(def ^:private udt-alias-db-details
+  (delay (mt/dbdef->connection-details :sqlserver :db {:database-name "udt_alias_test"})))
+
+(def ^:private udt-alias-db-ddl
+  ["CREATE TYPE dbo.Key10 FROM varchar(10);"
+   "CREATE TYPE dbo.Importe FROM numeric(19,2);"
+   (str "CREATE TABLE dbo.udt_alias_test ("
+        "  id int NOT NULL PRIMARY KEY,"
+        "  customer dbo.Key10 NOT NULL,"
+        "  amount   dbo.Importe NULL,"
+        "  plain    varchar(10) NULL);")])
+
+(defn- create-udt-alias-db! []
+  (tx/drop-if-exists-and-create-db! :sqlserver "udt_alias_test")
+  (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver @udt-alias-db-details)]
+    (doseq [stmt udt-alias-db-ddl]
+      (jdbc/execute! spec [stmt] {:transaction? false}))))
+
+(deftest user-defined-type-alias-sync-test
+  (testing "UDT aliases (like `CREATE TYPE Key10 FROM varchar(10)`) sync to their underlying base type (#62335)"
+    (mt/test-driver :sqlserver
+      (create-udt-alias-db!)
+      (mt/with-temp [:model/Database database {:engine :sqlserver, :details @udt-alias-db-details}]
+        (sync/sync-database! (:id database))
+        (let [table-id (t2/select-one-pk :model/Table :db_id (:id database) :name "udt_alias_test")
+              fields   (into {} (map (juxt :name identity))
+                             (t2/select :model/Field :table_id table-id))]
+          (is (=? {:database_type "Key10"   :base_type :type/Text}    (get fields "customer")))
+          (is (=? {:database_type "Importe" :base_type :type/Decimal} (get fields "amount")))
+          (testing "known base types are untouched"
+            (is (=? {:database_type "int"     :base_type :type/Integer} (get fields "id")))
+            (is (=? {:database_type "varchar" :base_type :type/Text}    (get fields "plain")))))))))
 
 (deftest ^:parallel type->database-type-test
   (testing "type->database-type multimethod returns correct SQL Server types"
@@ -1023,6 +1256,36 @@
                                                                      [[1 true] [2 false]] false))]
       (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)))
       (is (= [1 true 2 false] params)))))
+
+(deftest ^:parallel compile-create-temp-table-from-a-set-operation-test
+  (mt/test-driver :sqlserver
+    (let [compile! (fn [sql]
+                     (first (driver/compile-create-temp-table :sqlserver {:table "#mb_test_1" :query {:query sql :params []}})))]
+      (testing "a set operation takes the INTO in its first SELECT"
+        (is (= "SELECT 1 AS id INTO [#mb_test_1] UNION ALL SELECT 2 AS id"
+               (compile! "SELECT 1 AS id UNION ALL SELECT 2 AS id")))
+        (is (= "SELECT 1 AS id INTO [#mb_test_1] EXCEPT SELECT 2 AS id INTERSECT SELECT 3"
+               (compile! "SELECT 1 AS id EXCEPT SELECT 2 AS id INTERSECT SELECT 3"))))
+      (testing "with a WITH clause, which stays in front"
+        (is (= "WITH c AS (SELECT 1 AS id) SELECT id INTO [#mb_test_1] FROM c UNION ALL SELECT 2"
+               (compile! "WITH c AS (SELECT 1 AS id) SELECT id FROM c UNION ALL SELECT 2"))))
+      (testing "each branch's base tables are wrapped, as in a plain SELECT"
+        (is (= (str "SELECT id INTO [#mb_test_1] FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products"
+                    " UNION ALL SELECT id FROM (SELECT * FROM orders UNION ALL SELECT * FROM orders WHERE 1 = 0) AS orders")
+               (compile! "SELECT id FROM products UNION ALL SELECT id FROM orders"))))
+      (testing "a statement that is not a query is still refused"
+        (is (thrown-with-msg? Exception #"must be a SELECT statement"
+                              (compile! "UPDATE t SET a = 1"))))
+      (testing "with the Macaw parser, a set operation also takes the INTO in its first SELECT"
+        (binding [sql-tools.settings/*parser-backend-override* :macaw]
+          (is (= "SELECT 1 AS id INTO \"#mb_test_1\" UNION ALL SELECT 2 AS id"
+                 (compile! "SELECT 1 AS id UNION ALL SELECT 2 AS id")))
+          (is (thrown-with-msg? Exception #"must be a SELECT statement"
+                                (compile! "(SELECT 1 AS id) UNION ALL SELECT 2")))))
+      (testing "a transform whose query is a set operation compiles the same way"
+        (is (= ["SELECT 1 AS id INTO [t] UNION ALL SELECT 2 AS id" nil]
+               (driver/compile-transform :sqlserver {:query        {:query "SELECT 1 AS id UNION ALL SELECT 2 AS id"}
+                                                     :output-table "t"})))))))
 
 (deftest ^:parallel compile-transform-test
   (mt/test-driver :sqlserver
@@ -1113,7 +1376,7 @@
               {:query        {:query "SELECT mydb.dbo.products.id FROM mydb.dbo.products"}
                :output-table "PRODUCTS_COPY"}))))
     (testing "compile-insert generates INSERT INTO"
-      (is (= ["INSERT INTO \"PRODUCTS_COPY\" SELECT * FROM products" nil]
+      (is (= ["INSERT INTO [PRODUCTS_COPY] SELECT * FROM products" nil]
              (driver/compile-insert
               :sqlserver
               {:query        {:query "SELECT * FROM products"}
@@ -1123,7 +1386,7 @@
   (mt/test-driver :sqlserver
     (testing "`current-user-table-privileges` returns correct structure and privileges"
       (sql-jdbc.execute/do-with-connection-with-options
-       :sqlserver (mt/db) nil
+       :sqlserver (mt/id) nil
        (fn [conn]
          (let [privileges (sql-jdbc.sync/current-user-table-privileges :sqlserver {:connection conn})]
            (is (seq privileges) "Should return at least one table")
@@ -1216,3 +1479,525 @@
           hosts   #(set (driver/connection-parameter-hosts :sqlserver %))]
       (is (contains? (hosts (assoc details :additional-options "serverName=10.0.0.1")) "10.0.0.1"))
       (is (not (contains? (hosts details) "10.0.0.1"))))))
+
+(deftest cancelation-poisons-connection-test
+  (testing "discarding the Connection a query canceled on leaves the pool able to serve later queries (#39018)"
+    (mt/test-driver :sqlserver
+      (is (true? (sql-jdbc.execute/cancelation-poisons-connection? :sqlserver))
+          "SQL Server does not recover from a cancelation on its own, so the Connection must not be recycled")
+      (letfn [(rows [table n]
+                (let [mp (mt/metadata-provider)]
+                  (cond-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                    n    (lib/limit n)
+                    true (-> qp/process-query mt/rows))))]
+        ;; stopping at the limit leaves the statement producing, which is what triggers the cancel-and-discard
+        (is (= 4 (count (rows :venues 4))))
+        (testing "and a later query reading every row still succeeds"
+          (is (= 1000 (count (rows :checkins nil)))))))))
+
+(defn- temp-table-rows [conn table]
+  (driver/query-on-connection :sqlserver conn [(str "SELECT * FROM " table) []] {:max-rows 10}))
+
+(defn- create-temp-table! [conn table sql params]
+  (driver/execute-on-connection! :sqlserver conn
+                                 (driver/compile-create-temp-table :sqlserver {:table table
+                                                                               :query {:query sql :params params}})))
+
+(deftest transform-testing-temp-tables-are-session-local-test
+  (mt/test-driver :sqlserver
+    (testing "a transform test's temp table is visible to its own session only"
+      (let [table (driver/temp-table-name :sqlserver)]
+        (driver/do-with-test-connection
+         :sqlserver (lib.metadata/database (mt/metadata-provider))
+         (fn [conn]
+           (create-temp-table! conn table "SELECT 1 AS id" [])
+           (is (= [[1]] (:rows (temp-table-rows conn table))))
+           (driver/do-with-test-connection
+            :sqlserver (lib.metadata/database (mt/metadata-provider))
+            (fn [other-conn]
+              (is (thrown-with-msg? Exception #"Invalid object name"
+                                    (temp-table-rows other-conn table)))))))))))
+
+(deftest transform-testing-temp-table-from-parameterized-query-test
+  (mt/test-driver :sqlserver
+    (testing "a temp table created by a query with bound parameters outlives the statement that created it"
+      (let [table (driver/temp-table-name :sqlserver)]
+        (driver/do-with-test-connection
+         :sqlserver (lib.metadata/database (mt/metadata-provider))
+         (fn [conn]
+           (create-temp-table! conn table "SELECT CAST(? AS nvarchar(50)) AS name, CAST(? AS decimal(10,2)) AS price"
+                               ["abc" 1.5M])
+           (is (=? {:rows [["abc" 1.50M]]} (temp-table-rows conn table)))))))
+    (testing "the test connection runs temp table statements as batches, and gets its prepare method back afterwards"
+      (let [physical (atom nil)]
+        (driver/do-with-test-connection
+         :sqlserver (lib.metadata/database (mt/metadata-provider))
+         (fn [^java.sql.Connection conn]
+           (let [sqlserver-conn (.unwrap conn com.microsoft.sqlserver.jdbc.ISQLServerConnection)]
+             (reset! physical sqlserver-conn)
+             (is (= "scopeTempTablesToConnection"
+                    (.getPrepareMethod ^com.microsoft.sqlserver.jdbc.ISQLServerConnection sqlserver-conn))))))
+        (is (= "prepexec" (.getPrepareMethod ^com.microsoft.sqlserver.jdbc.ISQLServerConnection @physical)))))))
+
+(defn- run-teardown-statements!
+  "Runs teardown for workspace user `ws_user` and schema `ws_schema` on a stub connection. `failures` maps a substring
+  to an error: the stub throws that error for each statement that contains the substring. Returns each SQL statement
+  teardown ran, in order, the error it threw, and whether it discarded the connection."
+  [failures]
+  (let [statements (atom [])
+        discarded? (atom false)
+        stmt       (reify java.sql.Statement
+                     (^boolean execute [_ ^String sql]
+                       (swap! statements conj sql)
+                       (doseq [[fail-on ^Throwable error] failures]
+                         (when (str/includes? sql fail-on)
+                           (throw error)))
+                       false)
+                     (close [_]))
+        conn       (reify java.sql.Connection
+                     (createStatement [_] stmt))]
+    (try
+      (with-redefs [driver.u/ensure-lib-database                         identity
+                    sql-jdbc.execute/do-with-connection-with-options (fn [_driver _db _opts f] (f conn))
+                    sql-jdbc.conn/discard-pooled-connection!          (fn [c] (when (identical? c conn) (reset! discarded? true)))]
+        (driver/destroy-workspace-isolation! :sqlserver {} {:schema           "ws_schema"
+                                                            :database_details {:user "ws_user"}}))
+      {:statements @statements, :discarded? @discarded?}
+      (catch Throwable t
+        {:statements @statements, :discarded? @discarded?, :error t}))))
+
+(defn- statement-kinds
+  "The kind of each teardown statement in `statements`, such as `DROP SCHEMA` or `SET LOCK_TIMEOUT -1`."
+  [statements]
+  (map #(re-find #"SET LOCK_TIMEOUT -?\d+|ALTER LOGIN|KILL|DROP TABLE|DROP SCHEMA|DROP USER|DROP LOGIN" %) statements))
+
+(def ^:private all-teardown-statement-kinds
+  ["SET LOCK_TIMEOUT 30000" "ALTER LOGIN" "KILL" "DROP TABLE" "DROP SCHEMA" "DROP USER" "DROP LOGIN" "SET LOCK_TIMEOUT -1"])
+
+(defn- sql-error [code]
+  (java.sql.SQLException. (str "error " code) "S0001" (int code)))
+
+(deftest destroy-workspace-isolation-quotes-table-names-test
+  (testing "Teardown builds each DROP TABLE with QUOTENAME on the schema name and the table name. This checks the SQL text only; it does not run it on SQL Server."
+    (is (= [;; a bound on how long each statement below waits for a lock
+            "SET LOCK_TIMEOUT 30000"
+            ;; disable the login and end its sessions before any drop, so none of them holds a lock the drops wait on
+            "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = 'ws_user') ALTER LOGIN \"ws_user\" DISABLE"
+            (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
+                 "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                 "FROM sys.dm_exec_sessions WHERE login_name = 'ws_user'; "
+                 "EXEC sp_executesql @kill_sessions_sql")
+            (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
+                 "SELECT @drop_tables_sql += 'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + '; ' "
+                 "FROM sys.tables WHERE schema_id = SCHEMA_ID('ws_schema'); "
+                 "EXEC sp_executesql @drop_tables_sql")
+            "IF EXISTS (SELECT * FROM sys.schemas WHERE name = 'ws_schema') DROP SCHEMA \"ws_schema\""
+            "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = 'ws_user') DROP USER \"ws_user\""
+            "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = 'ws_user') DROP LOGIN \"ws_user\""
+            ;; the connection goes back to the pool with the default, which waits for a lock without a bound
+            "SET LOCK_TIMEOUT -1"]
+           (:statements (run-teardown-statements! {}))))))
+
+(deftest destroy-workspace-isolation-lock-timeout-test
+  (testing "a DROP TABLE that times out waiting for a lock answers a 409 the caller can retry, skips DROP SCHEMA, still drops the user and the login, and restores the lock timeout"
+    (let [{:keys [statements error]} (run-teardown-statements! {"DROP TABLE" (java.sql.SQLException. "Lock request time out period exceeded." "S00051" 1222)})]
+      (is (=? {:status-code 409} (ex-data error)))
+      (is (str/starts-with? (ex-message error) "Another session holds a lock that removing this workspace needs"))
+      (is (= 1222 (.getErrorCode ^java.sql.SQLException (ex-cause error))))
+      (is (= ["SET LOCK_TIMEOUT 30000" "ALTER LOGIN" "KILL" "DROP TABLE" "DROP USER" "DROP LOGIN" "SET LOCK_TIMEOUT -1"]
+             (statement-kinds statements)))))
+  (testing "a lock timeout at DROP SCHEMA answers a 409, and the user and the login are still dropped"
+    (let [{:keys [statements error]} (run-teardown-statements! {"DROP SCHEMA" (sql-error 1222)})]
+      (is (=? {:status-code 409} (ex-data error)))
+      (is (= all-teardown-statement-kinds (statement-kinds statements)))))
+  (testing "another error is thrown as it is, and the lock timeout is restored"
+    (let [{:keys [statements error]} (run-teardown-statements! {"DROP LOGIN" (sql-error 15434)})]
+      (is (= 15434 (.getErrorCode ^java.sql.SQLException error)))
+      (is (= "SET LOCK_TIMEOUT -1" (last statements))))))
+
+(deftest destroy-workspace-isolation-runs-every-drop-test
+  (testing "a DROP SCHEMA that fails, as it does on a schema that holds a sequence (3729), still drops the user and the login, and throws its error"
+    (let [{:keys [statements error discarded?]} (run-teardown-statements! {"DROP SCHEMA" (sql-error 3729)})]
+      (is (= 3729 (.getErrorCode ^java.sql.SQLException error)))
+      (is (= all-teardown-statement-kinds (statement-kinds statements)))
+      (is (false? discarded?))))
+  (testing "a KILL that fails, as it does when a session ends first (6106), still runs every drop"
+    (let [{:keys [statements error]} (run-teardown-statements! {"KILL" (sql-error 6106)})]
+      (is (= 6106 (.getErrorCode ^java.sql.SQLException error)))
+      (is (= all-teardown-statement-kinds (statement-kinds statements)))))
+  (testing "a DROP TABLE that fails, as it does on a table another workspace table references (3726), skips DROP SCHEMA, which cannot succeed while a table is left, and still drops the user and the login"
+    (let [{:keys [statements error]} (run-teardown-statements! {"DROP TABLE" (sql-error 3726)})]
+      (is (= 3726 (.getErrorCode ^java.sql.SQLException error)))
+      (is (= ["SET LOCK_TIMEOUT 30000" "ALTER LOGIN" "KILL" "DROP TABLE" "DROP USER" "DROP LOGIN" "SET LOCK_TIMEOUT -1"]
+             (statement-kinds statements)))))
+  (testing "the first error is thrown, with each later error attached as suppressed"
+    (let [{:keys [error]} (run-teardown-statements! {"DROP SCHEMA" (sql-error 3729), "DROP LOGIN" (sql-error 15434)})]
+      (is (= 3729 (.getErrorCode ^java.sql.SQLException error)))
+      (is (= [15434] (map #(.getErrorCode ^java.sql.SQLException %) (.getSuppressed ^Throwable error))))))
+  (testing "a first error of 1222 is the 409, and a later error is attached to it as suppressed"
+    (let [{:keys [error]} (run-teardown-statements! {"DROP TABLE" (sql-error 1222), "DROP LOGIN" (sql-error 15434)})]
+      (is (=? {:status-code 409} (ex-data error)))
+      (is (= [15434] (map #(.getErrorCode ^java.sql.SQLException %) (.getSuppressed ^Throwable error)))))))
+
+(deftest destroy-workspace-isolation-lock-timeout-reset-fails-test
+  (testing "a failed reset of the lock timeout is attached to the teardown error as suppressed, and the connection is discarded"
+    (let [{:keys [statements error discarded?]} (run-teardown-statements! {"DROP SCHEMA"         (sql-error 3729)
+                                                                           "SET LOCK_TIMEOUT -1" (sql-error 50000)})]
+      (is (= 3729 (.getErrorCode ^java.sql.SQLException error)))
+      (is (= [50000] (map #(.getErrorCode ^java.sql.SQLException %) (.getSuppressed ^Throwable error))))
+      (is (= all-teardown-statement-kinds (statement-kinds statements)))
+      (is (true? discarded?))))
+  (testing "a failed reset after every statement succeeded is thrown, and the connection is discarded"
+    (let [{:keys [error discarded?]} (run-teardown-statements! {"SET LOCK_TIMEOUT -1" (sql-error 50000)})]
+      (is (= 50000 (.getErrorCode ^java.sql.SQLException error)))
+      (is (true? discarded?))))
+  (testing "a teardown that succeeds keeps the connection"
+    (is (false? (:discarded? (run-teardown-statements! {}))))))
+
+(deftest workspace-init-sqls-test
+  (testing "init creates the login, user and schema outright: it neither adopts an existing one nor resets a login's password"
+    (is (= ["CREATE LOGIN \"ws_user\" WITH PASSWORD = N'pa''ss'"
+            "CREATE USER \"ws_user\" FOR LOGIN \"ws_user\""
+            "EXEC('CREATE SCHEMA \"ws_schema\"')"
+            "GRANT ALTER, SELECT, INSERT, UPDATE, DELETE ON SCHEMA::\"ws_schema\" TO \"ws_user\""
+            "GRANT CREATE TABLE TO \"ws_user\""]
+           (#'sqlserver/workspace-init-sqls "ws_user" "pa'ss" "ws_schema")))))
+
+(defn- workspace-isolation-fixture
+  "A fresh workspace map with isolation details for the test database, and the admin and workspace-user specs."
+  []
+  (let [database (mt/db)
+        details  (:details database)
+        run-id   (subs (str (random-uuid)) 0 8)
+        ws       {:id (Long/parseLong run-id 16) :name (str "ws-sqlserver-" run-id)}
+        ws       (merge ws (driver/workspace-isolation-details :sqlserver database ws))]
+    {:database   database
+     :ws         ws
+     :admin-spec (sql-jdbc.conn/connection-details->spec :sqlserver details)
+     :user-spec  (sql-jdbc.conn/connection-details->spec :sqlserver (merge details (:database_details ws)))}))
+
+(defn- principal-counts [admin-spec ws]
+  (first (jdbc/query admin-spec
+                     [(str "SELECT (SELECT COUNT(*) FROM master.sys.server_principals WHERE name = ?) AS logins, "
+                           "(SELECT COUNT(*) FROM sys.database_principals WHERE name = ?) AS users, "
+                           "(SELECT COUNT(*) FROM sys.schemas WHERE name = ?) AS schemas")
+                      (-> ws :database_details :user) (-> ws :database_details :user) (:schema ws)])))
+
+(deftest ^:synchronized init-workspace-isolation-refuses-existing-objects-test
+  (mt/test-driver :sqlserver
+    (let [{:keys [database ws admin-spec]} (workspace-isolation-fixture)
+          user (-> ws :database_details :user)]
+      (testing "an existing login of the workspace user's name is refused before any DDL, and its password is kept"
+        (try
+          (jdbc/execute! admin-spec [(format "CREATE LOGIN [%s] WITH PASSWORD = N'Other!Passw0rd'" user)])
+          (let [e (is (thrown? clojure.lang.ExceptionInfo (driver/init-workspace-isolation! :sqlserver database ws)))]
+            (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data e)))
+            (is (str/includes? (ex-message e) (str "login \"" user "\""))))
+          (is (= {:logins 1, :users 0, :schemas 0} (principal-counts admin-spec ws)))
+          ;; the login has no user in the test database, so it signs in to master
+          (is (= [{:one 1}]
+                 (jdbc/query (sql-jdbc.conn/connection-details->spec
+                              :sqlserver (assoc (:details database) :user user :password "Other!Passw0rd" :db "master"))
+                             ["SELECT 1 AS one"])))
+          (finally
+            (jdbc/execute! admin-spec [(format "DROP LOGIN [%s]" user)]))))
+      (testing "an existing schema of the workspace's name is refused, and nothing is created"
+        (try
+          (jdbc/execute! admin-spec [(format "CREATE SCHEMA [%s]" (:schema ws))])
+          (let [e (is (thrown? clojure.lang.ExceptionInfo (driver/init-workspace-isolation! :sqlserver database ws)))]
+            (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data e))))
+          (is (= {:logins 0, :users 0, :schemas 1} (principal-counts admin-spec ws)))
+          (finally
+            (jdbc/execute! admin-spec [(format "DROP SCHEMA [%s]" (:schema ws))]))))
+      (testing "a login made after the existence check fails the init, which rolls back everything it made"
+        (try
+          (jdbc/execute! admin-spec [(format "CREATE LOGIN [%s] WITH PASSWORD = N'Other!Passw0rd'" user)])
+          (mt/with-dynamic-fn-redefs [sqlserver/existing-workspace-principals (constantly [])]
+            (let [e (is (thrown? clojure.lang.ExceptionInfo (driver/init-workspace-isolation! :sqlserver database ws)))]
+              (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data e)))))
+          (is (= {:logins 1, :users 0, :schemas 0} (principal-counts admin-spec ws)))
+          (finally
+            (jdbc/execute! admin-spec [(format "DROP LOGIN [%s]" user)]))))
+      (testing "a schema made after the existence check fails the init after CREATE LOGIN and CREATE USER ran, and the rollback removes both"
+        (try
+          (jdbc/execute! admin-spec [(format "CREATE SCHEMA [%s]" (:schema ws))])
+          (mt/with-dynamic-fn-redefs [sqlserver/existing-workspace-principals (constantly [])]
+            (let [e (is (thrown? clojure.lang.ExceptionInfo (driver/init-workspace-isolation! :sqlserver database ws)))]
+              (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data e)))))
+          (is (= {:logins 0, :users 0, :schemas 1} (principal-counts admin-spec ws)))
+          (finally
+            (jdbc/execute! admin-spec [(format "DROP SCHEMA [%s]" (:schema ws))])))))))
+
+(def ^:private admin-with-session-permissions
+  "What [[sqlserver/admin-session-permissions]] returns for an admin login that can see and end any session."
+  {:login "[admin]", :view-sessions? true, :end-sessions? true})
+
+(deftest check-admin-can-end-sessions-test
+  (let [check! #'sqlserver/check-admin-can-end-sessions!]
+    (testing "a login with both permissions, such as a sysadmin, passes"
+      (is (nil? (check! admin-with-session-permissions))))
+    (testing "a login without VIEW SERVER STATE gets a 412 that names it and its GRANT"
+      (let [e (is (thrown? clojure.lang.ExceptionInfo (check! (assoc admin-with-session-permissions :view-sessions? false))))]
+        (is (= {:status-code 412, :workspace/cleanup? false} (ex-data e)))
+        (is (= (str "The admin connection's login [admin] lacks VIEW SERVER STATE, which it needs to see and end the "
+                    "workspace user's sessions when it removes the workspace. Have an administrator run "
+                    "`USE master; GRANT VIEW SERVER STATE TO [admin];` and retry.")
+               (ex-message e)))))
+    (testing "a login without ALTER ANY CONNECTION gets a 412 that names it and its GRANT"
+      (let [e (is (thrown? clojure.lang.ExceptionInfo (check! (assoc admin-with-session-permissions :end-sessions? false))))]
+        (is (= {:status-code 412, :workspace/cleanup? false} (ex-data e)))
+        (is (str/includes? (ex-message e) "lacks ALTER ANY CONNECTION,"))
+        (is (str/includes? (ex-message e) "`USE master; GRANT ALTER ANY CONNECTION TO [admin];`"))))
+    (testing "a login without either gets a 412 that names both"
+      (let [e (is (thrown? clojure.lang.ExceptionInfo (check! {:login "[admin]", :view-sessions? false, :end-sessions? false})))]
+        (is (str/includes? (ex-message e) "lacks VIEW SERVER STATE and ALTER ANY CONNECTION,"))
+        (is (str/includes? (ex-message e)
+                           "`USE master; GRANT VIEW SERVER STATE TO [admin]; GRANT ALTER ANY CONNECTION TO [admin];`"))))))
+
+(defn- recording-connection
+  "A Connection whose batch, rollback and commit throw `batch-error`, `rollback-error` and `commit-error` when each is
+  non-nil. Each JDBC call it gets is appended to `calls` as `[method-name & args]`."
+  ^java.sql.Connection [calls {:keys [^Throwable batch-error ^Throwable rollback-error ^Throwable commit-error]}]
+  (letfn [(proxy-of [^Class iface handle]
+            (java.lang.reflect.Proxy/newProxyInstance
+             (.getClassLoader iface)
+             (into-array Class [iface])
+             (reify java.lang.reflect.InvocationHandler
+               (invoke [_ _ method args]
+                 (swap! calls conj (into [(.getName ^java.lang.reflect.Method method)] args))
+                 (handle (.getName ^java.lang.reflect.Method method))))))]
+    (proxy-of java.sql.Connection
+              (fn [method]
+                (case method
+                  "createStatement" (proxy-of java.sql.Statement
+                                              (fn [method]
+                                                (when (and (= "executeBatch" method) batch-error)
+                                                  (throw batch-error))))
+                  "rollback"        (when rollback-error (throw rollback-error))
+                  "commit"          (when commit-error (throw commit-error))
+                  nil)))))
+
+(deftest ^:synchronized init-workspace-isolation-checks-session-permissions-first-test
+  (testing "init refuses an admin login that cannot end sessions before it looks for existing objects or runs any DDL"
+    (let [calls (atom [])
+          e     (is (thrown? clojure.lang.ExceptionInfo
+                             (with-redefs [sqlserver/admin-session-permissions
+                                           (constantly (assoc admin-with-session-permissions :end-sessions? false))
+                                           sqlserver/existing-workspace-principals
+                                           (fn [& _] (swap! calls conj ["existing-workspace-principals"]) [])
+                                           sql-jdbc.execute/do-with-connection-with-options
+                                           (fn [_driver _db _options f] (f (recording-connection calls {})))]
+                               (driver/init-workspace-isolation! :sqlserver
+                                                                 {:lib/type :metadata/database, :id 1, :engine :sqlserver}
+                                                                 {:schema           "ws_schema"
+                                                                  :database_details {:user "ws_user", :password "s3cret"}}))))]
+      (is (= {:status-code 412, :workspace/cleanup? false} (ex-data e)))
+      (is (= [] @calls)))))
+
+(deftest ^:synchronized init-workspace-isolation-rollback-failure-test
+  (let [ws       {:schema "ws_schema", :database_details {:user "ws_user", :password "s3cret"}}
+        database {:lib/type :metadata/database, :id 1, :engine :sqlserver}
+        init!    (fn [calls rollback-error]
+                   (with-redefs [sqlserver/admin-session-permissions   (constantly admin-with-session-permissions)
+                                 sqlserver/existing-workspace-principals (constantly [])
+                                 ;; the real one ignores non-c3p0 connections, so record the call instead
+                                 sql-jdbc.conn/discard-pooled-connection! (fn [_conn] (swap! calls conj ["discard"]))
+                                 sql-jdbc.execute/do-with-connection-with-options
+                                 (fn [_driver _db _options f]
+                                   (f (recording-connection calls
+                                                            {:batch-error    (java.sql.SQLException. "batch failed" "S0001" 15025)
+                                                             :rollback-error rollback-error})))]
+                     (driver/init-workspace-isolation! :sqlserver database ws)))]
+    (testing "after a successful rollback, autocommit is restored"
+      (let [calls (atom [])]
+        (is (thrown? clojure.lang.ExceptionInfo (init! calls nil)))
+        (is (= [["rollback"] ["setAutoCommit" true]]
+               (filterv (comp #{"rollback" "setAutoCommit" "commit" "discard"} first) (drop 1 @calls))))))
+    (testing "after a failed rollback, autocommit stays off (turning it on commits the partial batch), the connection is discarded and the original error is kept"
+      (let [calls (atom [])
+            e     (is (thrown? clojure.lang.ExceptionInfo (init! calls (java.sql.SQLException. "connection reset"))))]
+        (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data e)))
+        (is (str/includes? (ex-message e) "batch failed"))
+        (testing "the rollback error is attached to the thrown error's cause chain as suppressed"
+          (is (some #(= "connection reset" (ex-message %))
+                    (mapcat #(.getSuppressed ^Throwable %) (take-while some? (iterate ex-cause e))))))
+        (is (= [["rollback"] ["discard"]]
+               (filterv (comp #{"rollback" "setAutoCommit" "commit" "discard"} first) (drop 1 @calls))))))))
+
+(deftest ^:synchronized init-workspace-isolation-marks-errors-before-commit-test
+  (let [ws       {:schema "ws_schema", :database_details {:user "ws_user", :password "s3cret"}}
+        database {:lib/type :metadata/database, :id 1, :engine :sqlserver}
+        init!    (fn [existing-principals errors]
+                   (with-redefs [sqlserver/admin-session-permissions   (constantly admin-with-session-permissions)
+                                 sqlserver/existing-workspace-principals existing-principals
+                                 sql-jdbc.execute/do-with-connection-with-options
+                                 (fn [_driver _db _options f]
+                                   (f (recording-connection (atom []) errors)))]
+                     (driver/init-workspace-isolation! :sqlserver database ws)))]
+    (testing "an error from the existence check, before any DDL, says that there is nothing to tear down"
+      (let [e (is (thrown? clojure.lang.ExceptionInfo
+                           (init! (fn [& _] (throw (java.sql.SQLException. "Connection reset" "08S01" 0))) {})))]
+        (is (=? {:workspace/cleanup? false} (ex-data e)))
+        (is (= "Connection reset" (ex-message e)))))
+    (testing "an init DDL statement that fails rolls the transaction back, so there is nothing to tear down"
+      (let [e (is (thrown? clojure.lang.ExceptionInfo
+                           (init! (constantly [])
+                                  {:batch-error (java.sql.SQLException. "permission denied" "S0001" 15247)})))]
+        (is (=? {:workspace/cleanup? false} (ex-data e)))
+        (is (str/includes? (ex-message e) "permission denied"))))
+    (testing "a failed COMMIT may have committed, so the error does not say there is nothing to tear down"
+      (let [e (is (thrown? Exception
+                           (init! (constantly [])
+                                  {:commit-error (java.sql.SQLException. "Connection reset" "08S01" 0)})))]
+        (is (not (contains? (ex-data e) :workspace/cleanup?)))
+        (is (= "Connection reset" (ex-message e)))))))
+
+(deftest ^:synchronized provision-after-a-failed-existence-check-keeps-same-named-objects-test
+  (mt/test-driver :sqlserver
+    (testing "when init's existence check fails, provisioning does not tear down, so another workspace's login, schema and table survive"
+      (mt/with-temp [:model/Workspace {ws-id :id} {:name "sqlserver-existence-check" :creator_id (mt/user->id :crowberto)}
+                     :model/WorkspaceDatabase {wsd-id :id} {:workspace_id     ws-id
+                                                            :database_id      (mt/id)
+                                                            :input_schemas    ["dbo"]
+                                                            :database_details {}
+                                                            :status           :provisioning}]
+        (let [database    (mt/db)
+              admin-spec  (sql-jdbc.conn/connection-details->spec :sqlserver (:details database))
+              ws          (ws.provisioning/details ws.provisioning/dispatching-provisioner :sqlserver database
+                                                   {:id wsd-id :name (str "wsd-" wsd-id)})
+              user        (-> ws :database_details :user)
+              schema      (:schema ws)
+              destroyed   (atom 0)
+              provisioner (reify ws.provisioning/Provisioner
+                            (details [_ driver db workspace]
+                              (ws.provisioning/details ws.provisioning/dispatching-provisioner driver db workspace))
+                            (init! [_ driver db workspace]
+                              (ws.provisioning/init! ws.provisioning/dispatching-provisioner driver db workspace))
+                            (grant! [_ driver db workspace schemas]
+                              (ws.provisioning/grant! ws.provisioning/dispatching-provisioner driver db workspace schemas))
+                            (destroy! [_ driver db workspace]
+                              (swap! destroyed inc)
+                              (ws.provisioning/destroy! ws.provisioning/dispatching-provisioner driver db workspace)))]
+          (try
+            (jdbc/execute! admin-spec [(format "CREATE LOGIN [%s] WITH PASSWORD = N'Other!Passw0rd'" user)])
+            (jdbc/execute! admin-spec [(format "CREATE SCHEMA [%s]" schema)])
+            (jdbc/execute! admin-spec [(format "CREATE TABLE [%s].[kept] (id INT)" schema)])
+            (mt/with-dynamic-fn-redefs [sqlserver/existing-workspace-principals
+                                        (fn [& _] (throw (java.sql.SQLException. "Connection reset" "08S01" 0)))]
+              (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                   (ws.provisioning/provision-workspace-database! wsd-id provisioner)))]
+                (is (=? {:workspace/cleanup? false} (ex-data e)))))
+            (is (zero? @destroyed))
+            (is (= {:logins 1, :users 0, :schemas 1} (principal-counts admin-spec ws)))
+            (is (= [{:n 1}]
+                   (jdbc/query admin-spec ["SELECT COUNT(*) AS n FROM sys.tables WHERE schema_id = SCHEMA_ID(?) AND name = 'kept'"
+                                           schema])))
+            (finally
+              (jdbc/execute! admin-spec [(format "IF OBJECT_ID(N'[%s].[kept]') IS NOT NULL DROP TABLE [%s].[kept]" schema schema)])
+              (jdbc/execute! admin-spec [(format "IF SCHEMA_ID(N'%s') IS NOT NULL DROP SCHEMA [%s]" schema schema)])
+              (jdbc/execute! admin-spec [(format "IF SUSER_ID(N'%s') IS NOT NULL DROP LOGIN [%s]" user user)]))))))))
+
+(deftest ^:synchronized init-workspace-isolation-refuses-admin-without-session-permissions-test
+  (mt/test-driver :sqlserver
+    (testing "an admin login without VIEW SERVER STATE and ALTER ANY CONNECTION gets a 412, and init creates nothing"
+      (let [{:keys [database ws admin-spec]} (workspace-isolation-fixture)
+            admin       (str "wsfix_admin_" (subs (str (random-uuid)) 0 8))
+            password    "Admin!Passw0rd"
+            master-spec (sql-jdbc.conn/connection-details->spec :sqlserver (assoc (:details database) :db "master"))]
+        (try
+          (jdbc/execute! admin-spec [(format "CREATE LOGIN [%s] WITH PASSWORD = N'%s'" admin password)])
+          (jdbc/execute! admin-spec [(format "CREATE USER [%s] FOR LOGIN [%s]" admin admin)])
+          ;; enough to create the workspace's objects, so only the session permissions are missing
+          (jdbc/execute! master-spec [(format "GRANT ALTER ANY LOGIN TO [%s]" admin)])
+          (jdbc/execute! admin-spec [(format "ALTER ROLE db_owner ADD MEMBER [%s]" admin)])
+          (mt/with-temp [:model/Database low-db {:engine  :sqlserver
+                                                 :details (assoc (:details database) :user admin :password password)}]
+            (try
+              (let [e (is (thrown? clojure.lang.ExceptionInfo (driver/init-workspace-isolation! :sqlserver low-db ws)))]
+                (is (=? {:status-code 412, :workspace/cleanup? false} (ex-data e)))
+                (is (str/includes? (ex-message e) "lacks VIEW SERVER STATE and ALTER ANY CONNECTION,")))
+              (is (= {:logins 0, :users 0, :schemas 0} (principal-counts admin-spec ws)))
+              (testing "with VIEW SERVER STATE granted, the 412 names only ALTER ANY CONNECTION"
+                (jdbc/execute! master-spec [(format "GRANT VIEW SERVER STATE TO [%s]" admin)])
+                (let [e (is (thrown? clojure.lang.ExceptionInfo (driver/init-workspace-isolation! :sqlserver low-db ws)))]
+                  (is (=? {:status-code 412} (ex-data e)))
+                  (is (str/includes? (ex-message e) "lacks ALTER ANY CONNECTION,"))
+                  (is (str/includes? (ex-message e) (format "`USE master; GRANT ALTER ANY CONNECTION TO [%s];`" admin))))
+                (is (= {:logins 0, :users 0, :schemas 0} (principal-counts admin-spec ws))))
+              (finally
+                (sql-jdbc.conn/invalidate-pool-for-db! (:id low-db)))))
+          (finally
+            (jdbc/execute! admin-spec [(format (str "DECLARE @kill NVARCHAR(MAX) = ''; "
+                                                    "SELECT @kill += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                                                    "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
+                                                    "EXEC sp_executesql @kill")
+                                               admin)])
+            (jdbc/execute! admin-spec [(format "IF USER_ID(N'%s') IS NOT NULL DROP USER [%s]" admin admin)])
+            (jdbc/execute! admin-spec [(format "IF SUSER_ID(N'%s') IS NOT NULL DROP LOGIN [%s]" admin admin)])))))))
+
+(deftest ^:synchronized destroy-workspace-isolation-lock-timeout-live-test
+  (mt/test-driver :sqlserver
+    (testing "teardown answers a 409 within the lock timeout while another login's session holds a lock on a workspace table, and finishes once it ends"
+      (let [{:keys [database ws admin-spec user-spec]} (workspace-isolation-fixture)
+            table (format "[%s].[locked]" (:schema ws))]
+        (try
+          (driver/init-workspace-isolation! :sqlserver database ws)
+          (jdbc/execute! user-spec [(str "CREATE TABLE " table " (id INT)")])
+          (jdbc/with-db-transaction [holder admin-spec]
+            ;; the admin login's insert holds its lock until the transaction ends, and teardown kills only the
+            ;; workspace user's sessions
+            (jdbc/execute! holder [(str "INSERT INTO " table " VALUES (1)")])
+            (let [started   (System/nanoTime)
+                  destroyed (future (try (driver/destroy-workspace-isolation! :sqlserver database ws)
+                                         :done
+                                         (catch Throwable t t)))
+                  result    (deref destroyed 60000 :timed-out)
+                  seconds   (/ (- (System/nanoTime) started) 1e9)]
+              (is (instance? clojure.lang.ExceptionInfo result))
+              (is (=? {:status-code 409} (ex-data result)))
+              (is (< 29 seconds 45))
+              (is (= {:logins 0, :users 0, :schemas 1} (principal-counts admin-spec ws))
+                  "the drops of the user and the login do not wait on the table's lock")))
+          (driver/destroy-workspace-isolation! :sqlserver database ws)
+          (is (= {:logins 0, :users 0, :schemas 0} (principal-counts admin-spec ws)))
+          (finally
+            (driver/destroy-workspace-isolation! :sqlserver database ws)))))))
+
+(deftest ^:synchronized destroy-workspace-isolation-drops-login-when-schema-stays-test
+  (mt/test-driver :sqlserver
+    (testing "teardown drops the user and the login when DROP SCHEMA fails on an object teardown does not drop, such as a sequence"
+      (let [{:keys [database ws admin-spec user-spec]} (workspace-isolation-fixture)
+            sequence (format "[%s].[ws_seq]" (:schema ws))]
+        (try
+          (driver/init-workspace-isolation! :sqlserver database ws)
+          ;; ALTER on the schema lets the workspace user create a sequence in it
+          (jdbc/execute! user-spec [(str "CREATE SEQUENCE " sequence)])
+          (let [e (is (thrown? java.sql.SQLException (driver/destroy-workspace-isolation! :sqlserver database ws)))]
+            ;; 3729: cannot drop schema because it is being referenced by object
+            (is (= 3729 (.getErrorCode ^java.sql.SQLException e))))
+          (is (= {:logins 0, :users 0, :schemas 1} (principal-counts admin-spec ws)))
+          (is (= [{:sequences 1}]
+                 (jdbc/query admin-spec ["SELECT COUNT(*) AS sequences FROM sys.sequences WHERE schema_id = SCHEMA_ID(?)"
+                                         (:schema ws)])))
+          (finally
+            (jdbc/execute! admin-spec [(str "DROP SEQUENCE IF EXISTS " sequence)])
+            (driver/destroy-workspace-isolation! :sqlserver database ws)))))))
+
+(deftest ^:synchronized destroy-workspace-isolation-ends-sessions-first-test
+  (mt/test-driver :sqlserver
+    (testing "teardown completes while a session of the workspace user holds a lock on one of its tables"
+      (let [{:keys [database ws admin-spec user-spec]} (workspace-isolation-fixture)
+            table (format "[%s].[locked]" (:schema ws))]
+        (try
+          (driver/init-workspace-isolation! :sqlserver database ws)
+          (jdbc/execute! user-spec [(str "CREATE TABLE " table " (id INT)")])
+          (is (thrown-with-msg? Exception #"(?i)connection"
+                                (jdbc/with-db-transaction [holder user-spec]
+                                  ;; the insert's lock lasts until the transaction ends
+                                  (jdbc/execute! holder [(str "INSERT INTO " table " VALUES (1)")])
+                                  (let [destroyed (future (driver/destroy-workspace-isolation! :sqlserver database ws) :done)]
+                                    (is (= :done (deref destroyed 60000 :timed-out)))
+                                    (is (= {:logins 0, :users 0, :schemas 0} (principal-counts admin-spec ws))))))
+              "teardown ended the holder's session, so its commit fails")
+          (finally
+            (driver/destroy-workspace-isolation! :sqlserver database ws)))))))

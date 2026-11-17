@@ -28,6 +28,8 @@ import type { SdkBreadcrumbItemType } from "embedding-sdk-bundle/types/breadcrum
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Stack } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -51,9 +53,14 @@ jest.mock("metabase/common/hooks/use-locale", () => ({
 // Unjustified type cast. FIXME
 const useLocaleMock = useLocale as jest.Mock;
 
+type EntityBreadcrumbType = Exclude<SdkBreadcrumbItemType, "all-collections">;
+
 type View =
   | { type: "collection"; id: SdkCollectionId }
-  | { type: Exclude<SdkBreadcrumbItemType, "collection">; id: string | number };
+  | {
+      type: Exclude<EntityBreadcrumbType, "collection">;
+      id: string | number;
+    };
 
 export const BreadcrumbsTestComponent = () => {
   const { currentLocation } = useSdkBreadcrumbs();
@@ -70,11 +77,11 @@ export const BreadcrumbsTestComponent = () => {
       <CollectionBrowser
         collectionId={view.id}
         onClick={(item) => {
-          const type = match<string, SdkBreadcrumbItemType>(item.model)
+          const type = match<string, EntityBreadcrumbType>(item.model)
             .with("card", () => "question")
             .with("dataset", () => "model")
-            // Unjustified type cast. FIXME
-            .otherwise((model) => model as SdkBreadcrumbItemType);
+            // A collection item is never the virtual "all-collections" root.
+            .otherwise((model) => model as EntityBreadcrumbType);
 
           setView({ type, id: item.id });
         }}
@@ -89,7 +96,7 @@ export const BreadcrumbsTestComponent = () => {
     .exhaustive();
 
   return (
-    <Stack p="md" gap="sm">
+    <Stack p="lg" gap="sm">
       <div data-testid="breadcrumbs-container">
         <SdkBreadcrumbs />
       </div>
@@ -136,6 +143,7 @@ export const setup = async () => {
   const TEST_CARD = createMockCard({
     id: 1,
     name: "Test Question",
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
   });
 
   const collectionItems = [

@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { supportsImplicitActions } from "metabase/actions/utils";
 import { skipToken, useListTableForeignKeysQuery } from "metabase/api";
 import { DetailViewSidesheet } from "metabase/detail-view/components";
 import { filterByPk } from "metabase/detail-view/utils";
@@ -10,8 +11,10 @@ import {
   getRowUrl,
   getSingleResultsRow,
 } from "metabase/visualizations/components/ObjectDetail/utils";
-import { getSeriesWithDisplay } from "metabase/visualizations/lib/series";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import {
+  getComputedSettingsForSeries,
+  getSeriesWithDisplay,
+} from "metabase/viz-core";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
 import {
@@ -20,16 +23,17 @@ import {
   viewNextObjectDetail,
   viewPreviousObjectDetail,
 } from "../actions";
+import { getIsObjectDetail } from "../store/mode-selectors";
 import {
   getCanZoomNextRow,
   getCanZoomPreviousRow,
   getQuestion,
   getRawSeries,
+  getSourceCardId,
   getTableMetadata,
   getZoomRow,
   getZoomedObjectId,
-} from "../selectors";
-import { getIsObjectDetail } from "../selectors/mode";
+} from "../store/selectors";
 
 export function ObjectDetailSidesheet() {
   const isObjectDetail = useSelector(getIsObjectDetail);
@@ -46,13 +50,14 @@ function ObjectDetailSidesheetInner() {
   const rawSeries = useSelector(getRawSeries);
   const question = useSelector(getQuestion);
   const table = useSelector(getTableMetadata);
+  const sourceCardId = useSelector(getSourceCardId);
   const zoomedObjectId = useSelector(getZoomedObjectId);
   const zoomRow = useSelector(getZoomRow);
   const canZoomPreviousRow = useSelector(getCanZoomPreviousRow);
   const canZoomNextRow = useSelector(getCanZoomNextRow);
 
   const { data: tableForeignKeys } = useListTableForeignKeysQuery(
-    table ? table.id : skipToken,
+    table && typeof table.id === "number" ? table.id : skipToken,
   );
 
   const data = useMemo(() => {
@@ -71,7 +76,11 @@ function ObjectDetailSidesheetInner() {
   const zoomedRowID = isZooming
     ? zoomedObjectId
     : datasetData
-      ? getIdValue({ data: datasetData, tableId: table?.id })
+      ? getIdValue({
+          data: datasetData,
+          tableId: typeof table?.id === "number" ? table.id : undefined,
+          cardId: sourceCardId,
+        })
       : null;
 
   const filteredQuery = useMemo(() => {
@@ -115,7 +124,7 @@ function ObjectDetailSidesheetInner() {
   const showImplicitActions = Boolean(
     question.canWrite() &&
     question.type() === "model" &&
-    question.supportsImplicitActions(),
+    supportsImplicitActions(question.query()),
   );
 
   return (
@@ -126,6 +135,7 @@ function ObjectDetailSidesheetInner() {
       query={filteredQuery}
       row={zoomedRow}
       rowId={zoomedRowID}
+      modelId={showImplicitActions ? sourceCardId : null}
       showImplicitActions={showImplicitActions}
       showNav={Boolean(canZoom && (canZoomNextRow || canZoomPreviousRow))}
       table={apiTable}

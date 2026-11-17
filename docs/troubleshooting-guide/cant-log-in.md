@@ -1,5 +1,6 @@
 ---
 title: People can't log in to Metabase
+summary: Fix login problems, from resetting passwords to regaining access to the login page or your Metabase Store account.
 ---
 
 # People can't log in to Metabase
@@ -11,7 +12,7 @@ To reset a password for your Metabase instance, see:
 - [Reset a user's password](../people-and-groups/managing.md#resetting-someones-password).
 - [Reset admin password](../people-and-groups/managing.md#resetting-the-admin-password).
 
-To reset password for your Metabase Store account, [contact support](https://www.metabase.com/help-premium).
+To reset the password for your Metabase Store account, [contact support](https://www.metabase.com/help-premium).
 
 ## No access to Metabase login page
 

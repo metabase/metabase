@@ -4,15 +4,19 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.test.fixtures :as fixtures]
    [metabase.xrays.related :as related]
    [toucan2.core :as t2]))
+
+;; Initialize test users before these tests run in parallel. Each creates a `with-temp` Card whose creator defaults
+;; to Rasta; creating that User within the transaction would roll it back and make every test race to reinsert it.
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (deftest ^:parallel collect-context-bearing-forms-test
   (is (= #{[:field 1 nil] [:metric 1] [:field 2 nil] [:segment 1]}
@@ -49,6 +53,23 @@
         (testing (format "Similarity between Card #%d and Card #%d" card-x card-y)
           (is (= expected-similarity
                  (double (#'related/similarity (t2/select-one :model/Card :id (get cards card-x)) (t2/select-one :model/Card :id (get cards card-y)))))))))))
+
+(deftest ^:parallel similarity-tolerates-an-unparseable-query-test
+  (testing "a Card whose stored query will not parse has no context-bearing forms, and does not stop the ranking"
+    (mt/with-temp [:model/Card broken {:name "broken", :dataset_query {}}
+                   :model/Card {:as reference} {:name          "reference"
+                                                :dataset_query (mt/mbql-query venues
+                                                                 {:aggregation [[:sum $price]]
+                                                                  :breakout    [$category_id]})}
+                   :model/Card {:as similar} {:name          "similar"
+                                              :dataset_query (mt/mbql-query venues
+                                                               {:aggregation [[:sum $longitude]]
+                                                                :breakout    [$category_id]})}]
+      (is (nil? (#'related/definition broken)))
+      (is (zero? (double (#'related/similarity reference broken))))
+      (testing "the similar Card still ranks above the broken one"
+        (is (= ["similar" "broken"]
+               (map :name (#'related/rank-by-similarity reference [broken similar]))))))))
 
 (def ^:private ^:dynamic *world* {})
 
@@ -151,7 +172,7 @@
         (is (= 1
                (count-related-fields))))
       (exec! "ALTER TABLE blueberries_consumed DROP COLUMN weight")
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (testing "after"
         (is (= 0
                (count-related-fields)))))))
@@ -167,8 +188,7 @@
                                                      :object   {}}
                  :model/DashboardCard _             {:card_id (:id card-1), :dashboard_id dash-id}
                  :model/DashboardCard _             {:card_id (:id card-2), :dashboard_id dash-id}]
-    (binding [api/*current-user-id*              (mt/user->id :rasta)
-              api/*current-user-permissions-set* (atom #{"/"})]
+    (mt/with-test-user :crowberto
       (is (=? [{:id dash-id}]
               ;; filter out dashboards unrelated to this test
               (filter #(= (:id %) dash-id)

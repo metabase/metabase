@@ -1,7 +1,7 @@
 (ns metabase.permissions.test-util
   (:require
    [metabase.config.core :as config]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.schema :as permissions.schema]
@@ -171,6 +171,21 @@
   [group-or-id db-id perm-type value & body]
   `(do-with-db-perm-for-group! ~group-or-id ~db-id ~perm-type ~value (fn [] ~@body)))
 
+(defn do-with-db-perms-for-group!
+  "Implementation of `with-db-perms-for-group!`. Sets several data permissions for the given database to the given
+  values for the given permission group for the duration of the test."
+  [group-or-id db-id perm-type->value thunk]
+  (with-restored-data-perms-for-group! (u/the-id group-or-id)
+    (doseq [[perm-type value] perm-type->value]
+      (data-perms/set-database-permission! group-or-id db-id perm-type value))
+    (thunk)))
+
+(defmacro with-db-perms-for-group!
+  "Runs `body`, and sets several data permissions for the given database to the given values for the given permission
+  group for the duration of the test."
+  [group-or-id db-id perm-type->value & body]
+  `(do-with-db-perms-for-group! ~group-or-id ~db-id ~perm-type->value (fn [] ~@body)))
+
 (defn do-with-data-analyst-role!
   "Implementation of `with-data-analyst-role!`. Sets the `is_data_analyst` column to true for the given user
   for the duration of the test, then restores the original value."
@@ -178,10 +193,10 @@
   (let [user-id        (u/the-id user-or-id)
         original-value (t2/select-one-fn :is_data_analyst :model/User :id user-id)]
     (try
-      (t2/update! :model/User user-id {:is_data_analyst true})
+      (t2/update! :model/User :id user-id {:is_data_analyst true})
       (thunk)
       (finally
-        (t2/update! :model/User user-id {:is_data_analyst original-value})))))
+        (t2/update! :model/User :id user-id {:is_data_analyst original-value})))))
 
 (defmacro with-data-analyst-role!
   "Runs `body` with the given user's `is_data_analyst` column set to true.

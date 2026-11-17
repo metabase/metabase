@@ -10,8 +10,8 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { trackSegmentCreated } from "metabase/common/data-studio/analytics";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useNavigate, useParams } from "metabase/router";
 import type {
   CreateSegmentRequest,

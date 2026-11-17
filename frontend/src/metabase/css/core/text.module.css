@@ -70,8 +70,13 @@
   white-space: nowrap;
 }
 
+/* Unlike .textWrap, fills each line instead of breaking at hyphens first: for URLs and paths. */
+.textBreakAll {
+  word-break: break-all;
+}
+
 .textCode {
-  font-family: monospace;
+  font-family: var(--mb-default-monospace-font-family);
   color: var(--mb-color-text-secondary);
   background-color: var(--mb-color-background_page-tertiary);
   border-radius: 2px;
@@ -81,7 +86,7 @@
 }
 
 .textMonospace {
-  font-family: Monaco, monospace;
+  font-family: var(--mb-default-monospace-font-family);
 }
 
 .textPreWrap {

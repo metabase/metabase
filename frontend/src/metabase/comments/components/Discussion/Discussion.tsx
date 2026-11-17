@@ -7,7 +7,6 @@ import {
   useToggleReactionMutation,
   useUpdateCommentMutation,
 } from "metabase/api";
-import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
 import type { CommentExtraRenderer } from "metabase/comments/types";
 import { getCommentNodeId } from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
@@ -31,6 +30,7 @@ export interface DiscussionProps {
   comments: Comment[];
   targetId: EntityId;
   targetType: CommentEntityType;
+  useCommentUrl: (opts: { childTargetId: string | null }) => string;
   onHoverChange?: (childTargetId: string | undefined) => void;
   renderExtra?: CommentExtraRenderer;
 }
@@ -40,6 +40,7 @@ export const Discussion = ({
   comments,
   targetId,
   targetType,
+  useCommentUrl,
   onHoverChange,
   renderExtra,
 }: DiscussionProps) => {
@@ -54,7 +55,9 @@ export const Discussion = ({
   const [deleteComment] = useDeleteCommentMutation();
   const [toggleReaction] = useToggleReactionMutation();
 
-  const commentsUrl = useCommentUrl({ childTargetId: effectiveChildTargetId });
+  const commentsUrl = useCommentUrl({
+    childTargetId: effectiveChildTargetId,
+  });
 
   const handleSubmit = async (doc: DocumentContent) => {
     const { error } = await createComment({
@@ -67,8 +70,7 @@ export const Discussion = ({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to send comment`,
       });
     }
@@ -83,8 +85,7 @@ export const Discussion = ({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to delete comment`,
       });
     }
@@ -98,8 +99,7 @@ export const Discussion = ({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to resolve comment`,
       });
     }
@@ -113,8 +113,7 @@ export const Discussion = ({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to unresolve comment`,
       });
     }
@@ -131,8 +130,7 @@ export const Discussion = ({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to update comment`,
       });
     }
@@ -164,8 +162,7 @@ export const Discussion = ({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: errorMessage,
       });
     }

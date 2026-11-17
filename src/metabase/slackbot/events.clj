@@ -5,32 +5,33 @@
 
 (def SlackEventsResponse
   "Malli schema for Slack events API response"
-  [:map
+  [:map {:closed true}
    ;; Response status is expected to be 2xx to indicate the event was received
    ;; https://docs.slack.dev/apis/events-api/#error-handling
    [:status  [:= 200]]
-   [:headers [:map ["Content-Type" [:= "text/plain"]]]]
+   [:headers [:map {:closed true} ["Content-Type" [:= "text/plain"]]]]
    [:body    :string]])
 
 (def SlackUrlVerificationEvent
   "Malli schema for Slack url_verification event"
-  [:map
+  [:map {:closed true}
    [:type      [:= "url_verification"]]
    [:challenge :string]])
 
 (def SlackFile
   "Malli schema for a file attached to a Slack message"
-  [:map
+  [:map {:closed true}
    [:id :string]
    [:name :string]
    [:mimetype {:optional true} [:maybe :string]]
    [:filetype {:optional true} [:maybe :string]]
+   [:mode {:optional true} [:maybe :string]]
    [:url_private :string]
    [:size :int]])
 
 (def SlackMessageEvent
   "Base schema for Slack message events"
-  [:map
+  [:map {:closed true}
    [:type [:= "message"]]
    [:channel :string]
    [:user :string]
@@ -41,7 +42,7 @@
 (def SlackMessageFileShareEvent
   "Schema for file_share message events"
   [:merge SlackMessageEvent
-   [:map
+   [:map {:closed true}
     [:subtype [:= "file_share"]]
     [:channel_type :string]
     [:files [:sequential SlackFile]]
@@ -50,11 +51,11 @@
 
 (def SlackEventCallbackEvent
   "Malli schema for Slack event_callback event"
-  [:map
+  [:map {:closed true}
    [:type [:= "event_callback"]]
    [:event_id {:optional true} :string]
    [:team_id  {:optional true} :string]
-   [:event [:map
+   [:event [:map {:closed true}
             [:type                          :string]
             [:event_ts                      :string]
             [:user         {:optional true} :string]
@@ -66,11 +67,11 @@
             [:text         {:optional true} [:maybe :string]]
             [:bot_id       {:optional true} [:maybe :string]]
             [:reaction     {:optional true} :string]
-            [:edited       {:optional true} [:map
+            [:edited       {:optional true} [:map {:closed true}
                                              [:user {:optional true} :string]
                                              [:ts   {:optional true} :string]]]
             [:files        {:optional true} [:sequential SlackFile]]
-            [:item         {:optional true} [:map
+            [:item         {:optional true} [:map {:closed true}
                                              [:type    {:optional true} :string]
                                              [:channel {:optional true} :string]
                                              [:ts      {:optional true} :string]]]]]])

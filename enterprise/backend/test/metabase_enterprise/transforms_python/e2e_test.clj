@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.util :as mt.util]
    [metabase.transforms.test-dataset :as transforms-dataset]
@@ -25,7 +26,7 @@
                                                                "\n"
                                                                "def add_greeting(name):\n"
                                                                "    return f'Hello, {name}!'\n"))
-            (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
               ;; Create and run a transform that uses the library
               (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
                                                                        :schema schema
@@ -42,7 +43,7 @@
                                           "    }\n"
                                           "    return pd.DataFrame(data)")
                       transform-payload {:name   "Library Test Transform"
-                                         :source {:type  "python"
+                                         :source {:type  :python
                                                   :source-database (mt/id)
                                                   :source-tables []
                                                   :body transform-body}
@@ -51,7 +52,7 @@
                                                                transform-payload)]
                   (transforms.tu/test-run transform-id)
                   (transforms.tu/wait-for-table table-name 5000)
-                  (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
+                  (is (true? (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) target)))
                   (let [rows (transforms.tu/table-rows table-name)]
                     (is (= 5 (count rows)))
                     (is (every? #(= (* 2 (first %)) (second %)) rows))
@@ -63,12 +64,12 @@
     (mt/test-drivers #{:postgres}
       (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
         (mt/dataset transforms-dataset/transforms-test
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+          (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
                                                                      :schema schema
                                                                      :name   "target_table"}]
               (let [original           {:name   "Gadget Products"
-                                        :source {:type  "python"
+                                        :source {:type  :python
                                                  :source-database (mt/id)
                                                  :source-tables [(transforms.tu/source-table-entry "transforms_customers" (mt/id :transforms_customers))]
                                                  :body  (str "import pandas as pd\n"
@@ -80,6 +81,6 @@
                                                              original)]
                 (transforms.tu/test-run transform-id)
                 (transforms.tu/wait-for-table table-name 5000)
-                (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
+                (is (true? (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) target)))
                 (is (= [["Alice" 25] ["Bob" 30]]
                        (transforms.tu/table-rows table-name)))))))))))

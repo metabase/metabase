@@ -2,7 +2,6 @@ import { useCallback } from "react";
 
 import type { Location, RouteObject } from "metabase/router";
 import { Route, useLocation, useNavigate, useParams } from "metabase/router";
-import { Modal, type ModalProps } from "metabase/ui";
 
 type RouteParams = Record<string, string | undefined>;
 
@@ -17,15 +16,10 @@ export type ModalComponentProps = {
   onClose: () => void;
 };
 
-type ModalComponent = React.ComponentType<ModalComponentProps>;
+export type ModalComponent = React.ComponentType<ModalComponentProps>;
 
-type ModalRouteOptions = {
-  /**
-   * Render the modal component on its own instead of wrapping it in a `<Modal>`,
-   * for components that bring their own overlay.
-   */
-  noWrap?: boolean;
-  modalProps?: Partial<ModalProps>;
+export type ModalRouteOptions = {
+  closeTo?: string;
 };
 
 /**
@@ -60,9 +54,7 @@ export function lazyModalRouteElement(
     <Route
       key={path}
       path={path}
-      lazy={async () => ({
-        Component: createModalRouteComponent(await loadModal(), options),
-      })}
+      lazy={lazyModalRouteComponent(loadModal, options)}
     />
   );
 }
@@ -81,44 +73,39 @@ export function lazyModalRoute(
 ): RouteObject {
   return {
     path,
-    lazy: async () => ({
-      Component: createModalRouteComponent(await loadModal(), options),
-    }),
+    lazy: lazyModalRouteComponent(loadModal, options),
   };
+}
+
+/**
+ * A route `lazy` function that loads a code-split modal and renders it as a
+ * modal route. Use it for route objects `lazyModalRoute` can't express, such
+ * as index routes.
+ */
+export function lazyModalRouteComponent(
+  loadModal: () => Promise<ModalComponent>,
+  options: ModalRouteOptions = {},
+) {
+  return async () => ({
+    Component: createModalRouteComponent(await loadModal(), options),
+  });
 }
 
 function createModalRouteComponent(
   ComposedModal: ModalComponent,
-  { noWrap = false, modalProps }: ModalRouteOptions,
+  { closeTo = ".." }: ModalRouteOptions,
 ) {
   function ModalRouteComponent() {
     const params = useParams();
     const location = useLocation();
     const navigate = useNavigate();
     const onClose = useCallback(
-      () => navigate("..", { relative: "route" }),
+      () => navigate(closeTo, { relative: "route" }),
       [navigate],
     );
 
-    const modal = (
-      <ComposedModal params={params} location={location} onClose={onClose} />
-    );
-
-    if (noWrap) {
-      return modal;
-    }
-
     return (
-      <Modal
-        opened
-        onClose={onClose}
-        withCloseButton={false}
-        padding={0}
-        size="lg"
-        {...modalProps}
-      >
-        {modal}
-      </Modal>
+      <ComposedModal params={params} location={location} onClose={onClose} />
     );
   }
 

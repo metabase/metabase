@@ -1,37 +1,53 @@
-import cx from "classnames";
+import { SegmentedControl, type SegmentedControlItem } from "metabase/ui";
+import {
+  type ChartSettingSegmentedControlOption,
+  type ChartSettingSegmentedControlProps,
+  encodeWidgetValue,
+} from "metabase/viz-core";
 
-import CS from "metabase/css/core/index.css";
-import { Box, Button, Center, Icon, Text } from "metabase/ui";
-
-import type { ChartSettingSegmentedControlProps } from "../../../types/widget-props";
+import { getChartSettingLabelId } from "../get-chart-setting-label-id";
 
 export const ChartSettingSegmentedControl = ({
+  id,
   options,
   onChange,
   value,
-}: ChartSettingSegmentedControlProps) => (
-  <Button.Group w="100%">
-    {options.map((elem) => (
-      <Button
-        className={cx(CS.borderBrand, CS.flexGrow1)}
-        py="sm"
-        px="xs"
-        variant={value === elem.value ? "filled" : "default"}
-        key={elem.value}
-        onClick={() => onChange(elem.value)}
-      >
-        {elem.icon ? (
-          <Center>
-            <Icon name={elem.icon} size={16}></Icon>
-          </Center>
-        ) : (
-          <Box>
-            <Text inherit c="inherit" lh="normal">
-              {elem.name}
-            </Text>
-          </Box>
-        )}
-      </Button>
-    ))}
-  </Button.Group>
-);
+  disabled,
+}: ChartSettingSegmentedControlProps) => {
+  const handleChange = (encodedValue: string) => {
+    const option = options.find(
+      (option) => encodeWidgetValue(option.value) === encodedValue,
+    );
+    if (option) {
+      onChange(option.value);
+    }
+  };
+
+  return (
+    <SegmentedControl
+      fullWidth
+      // Settings live in narrow sidebars and popovers; tighter segments
+      // leave more room for labels before they truncate.
+      itemPaddingX="sm"
+      aria-labelledby={id ? getChartSettingLabelId(id) : undefined}
+      data={options.map(getSegmentedControlItem)}
+      value={encodeWidgetValue(value)}
+      onChange={handleChange}
+      disabled={disabled}
+    />
+  );
+};
+
+function getSegmentedControlItem({
+  name,
+  value,
+  icon,
+}: ChartSettingSegmentedControlOption): SegmentedControlItem<string> {
+  const encodedValue = encodeWidgetValue(value);
+
+  if (icon === undefined) {
+    return { value: encodedValue, label: name };
+  }
+
+  return { value: encodedValue, icon, ariaLabel: name };
+}

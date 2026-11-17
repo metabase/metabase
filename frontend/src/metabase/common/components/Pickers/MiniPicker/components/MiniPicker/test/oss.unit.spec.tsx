@@ -316,6 +316,29 @@ describe("MiniPicker", () => {
       );
     });
 
+    it("does not show databases in search results unless they are pickable", async () => {
+      await setup({ searchQuery: "pem" });
+      expect(await screen.findByText("No search results")).toBeInTheDocument();
+      expect(screen.queryByText("Pemberley")).not.toBeInTheDocument();
+    });
+
+    it("can pick a database search result when databases are pickable", async () => {
+      const { onChangeSpy } = await setup({
+        searchQuery: "pem",
+        models: ["table", "database"],
+      });
+      await userEvent.click(await screen.findByText("Pemberley"));
+
+      expect(screen.queryByText("Our analytics")).not.toBeInTheDocument();
+      expect(onChangeSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 501,
+          model: "database",
+          name: "Pemberley",
+        }),
+      );
+    });
+
     it("passes the local search input query to searchParams callbacks", async () => {
       const searchParams = jest.fn((params: SearchRequest) => {
         return params.q ? {} : { collection: 123 };

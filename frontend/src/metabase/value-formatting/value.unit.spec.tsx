@@ -146,6 +146,22 @@ describe("formatValue", () => {
     ).toEqual("122.41940000° W");
   });
 
+  it("should format binned coordinates as a range with the precision of the bin width", () => {
+    const column = {
+      base_type: TYPE.Number,
+      semantic_type: TYPE.Longitude,
+      binning_info: { bin_width: 20 },
+    };
+    expect(formatValue(-180, { column })).toEqual("180° W  –  160° W");
+    expect(formatValue(-180, { column, noRange: true })).toEqual("180° W");
+    expect(
+      formatValue(-122.4194, {
+        column: { ...column, binning_info: { bin_width: 0.05 } },
+        noRange: true,
+      }),
+    ).toEqual("122.42° W");
+  });
+
   it("should not add mailto prefix if there's a different semantic type", () => {
     expect(
       formatValue("foobar@example.test", {
@@ -196,5 +212,18 @@ describe("formatValue", () => {
         },
       }),
     ).toEqual("7/7/2019");
+  });
+
+  it("should re-read column type fields when the same column object is mutated", () => {
+    const column = createMockColumn({
+      base_type: "type/Text",
+      effective_type: "type/Text",
+      semantic_type: null,
+    });
+    expect(formatValue("12345", { column })).toBe("12345");
+
+    column.base_type = "type/Integer";
+    column.effective_type = "type/Integer";
+    expect(formatValue("12345", { column })).toBe("12,345");
   });
 });

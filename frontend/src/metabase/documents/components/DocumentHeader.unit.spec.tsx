@@ -6,7 +6,9 @@ import {
   PrintContext,
   type PrintContextValue,
 } from "metabase/documents/contexts/PrintContext";
+import type { Comment } from "metabase-types/api";
 import { createMockDocument, createMockUser } from "metabase-types/api/mocks";
+import { createMockComment } from "metabase-types/api/mocks/comment";
 
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 
@@ -35,6 +37,7 @@ const setup = ({
   onShowHistory = jest.fn(),
   // Unjustified type cast. FIXME
   printContext = undefined as PrintContextValue | undefined,
+  comments = new Array<Comment>(),
 } = {}) => {
   const props = {
     document,
@@ -52,7 +55,7 @@ const setup = ({
     onShowHistory,
   };
 
-  setupCommentEndpoints([], {
+  setupCommentEndpoints(comments, {
     target_type: "document",
     target_id: document.id,
   });
@@ -301,6 +304,22 @@ describe("DocumentHeader", () => {
       await userEvent.click(screen.getByLabelText("More options"));
       await userEvent.click(screen.getByText("Duplicate"));
       expect(onDuplicate).toHaveBeenCalled();
+    });
+  });
+
+  describe("All comments link", () => {
+    it("should be shown when all comments of the document are resolved", async () => {
+      setup({
+        comments: [
+          createMockComment({
+            target_id: defaultDocument.id,
+            is_resolved: true,
+          }),
+        ],
+      });
+      expect(
+        await screen.findByRole("link", { name: "Show all comments" }),
+      ).toHaveAttribute("href", `/document/${defaultDocument.id}/comments/all`);
     });
   });
 });

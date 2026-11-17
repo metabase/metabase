@@ -19,7 +19,7 @@ import type {
   DatasetColumn,
   ForeignKey,
   RowValues,
-  Table,
+  TableEntityType,
 } from "metabase-types/api";
 
 import S from "./DetailViewPage.module.css";
@@ -29,7 +29,7 @@ interface Props {
   isNavBarOpen: boolean;
   row: RowValues;
   rowId: string | number;
-  table: Table;
+  entityType?: TableEntityType | null;
   tableForeignKeys?: ForeignKey[];
 }
 
@@ -41,12 +41,12 @@ export function DetailViewPage({
   isNavBarOpen,
   row,
   rowId,
-  table,
+  entityType,
   tableForeignKeys,
 }: Props) {
   const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
   const rowName = getRowName(columns, row) || rowId;
-  const icon = getEntityIcon(table.entity_type);
+  const icon = getEntityIcon(entityType);
   const viewport = useViewportSize();
   const navBarWidth = isNavBarOpen ? parseInt(NAV_SIDEBAR_WIDTH, 10) : 0;
   const width = viewport.width - navBarWidth;
@@ -67,7 +67,7 @@ export function DetailViewPage({
           bg="background_page-primary"
           className={S.header}
           pl={rem(paddingLeft)}
-          pr="xl"
+          pr="xxl"
           py={rem(64)}
         >
           <Box
@@ -91,7 +91,7 @@ export function DetailViewPage({
           align="flex-start"
           bg="background_page-primary"
           flex="1"
-          p="xl"
+          p="xxl"
           pl={rem(paddingLeft)}
           w={isMediumBreakpoint ? "100%" : undefined}
         >
@@ -101,7 +101,6 @@ export function DetailViewPage({
                 columns={columns}
                 responsive={isSmallBreakpoint}
                 row={row}
-                table={table}
               />
             )}
           </Stack>
@@ -112,7 +111,7 @@ export function DetailViewPage({
             flex={isMediumBreakpoint ? undefined : "0 0 auto"}
             pl={rem(isMediumBreakpoint ? paddingLeft : 40)}
             pr={rem(40)}
-            py="xl"
+            py="xxl"
             w={isMediumBreakpoint ? "100%" : rem(440)}
           >
             <Relationships

@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
@@ -9,12 +10,13 @@ import {
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
-import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type {
   Notification,
   NotificationChannel,
@@ -537,10 +539,8 @@ describe("CreateOrEditQuestionAlertModal", () => {
       expect(screen.getByText("Edit alert")).toBeInTheDocument();
     });
 
-    // Going through Custom drops the hour, so the alert is left without a
-    // subscription until a new time is picked
     await userEvent.click(screen.getByTestId("select-frequency"));
-    await userEvent.click(screen.getByRole("option", { name: /custom/i }));
+    await userEvent.click(screen.getByRole("option", { name: /hourly/i }));
 
     await userEvent.click(screen.getByTestId("select-frequency"));
     await userEvent.click(screen.getByRole("option", { name: /daily/i }));
@@ -650,6 +650,32 @@ describe("CreateOrEditQuestionAlertModal", () => {
       expect(JSON.parse(String(requestBody)).creator_id).toBe(7);
     });
   });
+
+  it("should not send the creator on 'Send now' in edit mode", async () => {
+    fetchMock.postOnce("path:/api/notification/send", 204);
+
+    setup({
+      isAdmin: true,
+      isEmailSetup: true,
+      editingNotification: createMockNotification(),
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /send now/i }),
+    );
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/notification/send"),
+      ).toHaveLength(1);
+    });
+
+    const [call] = fetchMock.callHistory.calls("path:/api/notification/send");
+    const requestBody = JSON.parse(String(call.options?.body));
+
+    expect(requestBody).not.toHaveProperty("creator");
+    expect(requestBody).toHaveProperty("handlers");
+  });
 });
 
 function setup({
@@ -687,6 +713,7 @@ function setup({
   setupEnterpriseOnlyPlugin("application_permissions");
 
   const mockCard = createMockCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     type: cardType,
     display: "line",
     visualization_settings: createMockVisualizationSettings({
@@ -726,11 +753,11 @@ function setup({
   });
   const storeConfig = { storeInitialState };
 
-  const metadata = getMetadata(storeInitialState);
+  const metadata = createMockMetadataFromState(storeInitialState);
   // The modal takes `question` as a prop. In production it comes from the `getQuestion` selector
   // which composes metrics and models into runnable ad-hoc questions.
   // Matching that behavior here.
-  const savedQuestion = checkNotNull(metadata.question(mockCard.id));
+  const savedQuestion = new Question(mockCard, metadata);
   const question =
     cardType === "metric" || cardType === "model"
       ? savedQuestion.composeQuestion()

@@ -8,7 +8,6 @@ import {
 } from "metabase/dashboard/utils/click-behavior";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { useDispatch, useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import MetabaseSettings from "metabase/utils/settings";
 import Question from "metabase-lib/v1/Question";
@@ -24,7 +23,6 @@ type ClickMappingsData = {
     column: DatasetColumn[];
     parameter: Parameter[];
   };
-  question: Question;
 };
 
 export function useClickMappingsData(
@@ -33,14 +31,11 @@ export function useClickMappingsData(
   const { object, isDashboard, dashcard, clickBehavior } = props;
 
   const parameters = useSelector(getParameters);
-  const metadata = useSelector(getMetadata);
   const dashcardData = useSelector((state) =>
     getDashcardData(state, dashcard.id),
   );
 
   return useMemo(() => {
-    const question = new Question(dashcard.card, metadata);
-
     let filteredParameters = parameters;
 
     if (props.excludeParametersSources) {
@@ -84,13 +79,12 @@ export function useClickMappingsData(
       parameter: filteredParameters,
     };
 
-    return { setTargets, unsetTargets, sourceOptions, question };
+    return { setTargets, unsetTargets, sourceOptions };
   }, [
     clickBehavior,
     dashcard,
     dashcardData,
     isDashboard,
-    metadata,
     object,
     parameters,
     props.excludeParametersSources,

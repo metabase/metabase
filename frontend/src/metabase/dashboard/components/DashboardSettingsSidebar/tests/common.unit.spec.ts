@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 
 import { setup } from "./setup";
 
@@ -10,8 +10,8 @@ jest.mock("metabase/common/utils/dashboard", () => ({
 }));
 
 describe("DashboardSettingsSidebar", () => {
-  it("should render the component", () => {
-    setup();
+  it("should render the component", async () => {
+    await setup();
 
     expect(screen.getByText("Dashboard settings")).toBeInTheDocument();
     expect(screen.getByTestId("sidesheet")).toBeInTheDocument();
@@ -21,7 +21,7 @@ describe("DashboardSettingsSidebar", () => {
     const { onClose } = await setup();
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
 
-    expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
   it("should show dashboard auto-apply filter toggle", async () => {

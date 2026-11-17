@@ -4,7 +4,7 @@ import type { FeatureCollection } from "geojson";
 // against real (Multi)Polygon geometry. Faithful because the component only ever receives parsed GeoJSON.
 import usStatesGeoJson from "assets/geojson/us-states.json";
 import worldCountriesGeoJson from "assets/geojson/world.json";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { RawSeries } from "metabase-types/api";
 
 import { getStaticChoroplethSettings } from "./utils";

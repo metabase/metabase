@@ -10,12 +10,12 @@ export function Error({ message }: Props) {
   return (
     <Stack
       align="center"
-      color="text-disabled"
+      color="text-secondary"
       h="100%"
       justify="center"
-      p="xl"
+      p="xxl"
     >
-      <Box bg="background_page-tertiary" className={S.error} mt="lg" p="md">
+      <Box bg="background_page-tertiary" className={S.error} mt="xl" p="lg">
         <Icon name="warning" size={16} />
       </Box>
 

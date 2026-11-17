@@ -18,13 +18,13 @@
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/Collection no-allowed-content {:name "Test No Content" :type collection/library-collection-type}]
       (testing "Cannot add anything to library collections"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the Library collection"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the semantic layer"
                               (t2/insert! :model/Collection (merge (mt/with-temp-defaults :model/Collection) {:location (str "/" (:id no-allowed-content) "/")}))))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the Library collection"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the semantic layer"
                               (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model, :collection_id (:id no-allowed-content)}))))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the Library collection"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the semantic layer"
                               (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :metric :collection_id (:id no-allowed-content)}))))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the Library collection"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the semantic layer"
                               (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id no-allowed-content)}))))))))
 
 (deftest check-allowed-content-table
@@ -69,6 +69,35 @@
           (is (= 1 (t2/insert! :model/Collection (assoc new-coll :type collection/library-metrics-collection-type)))
               "new collection with :type set is allowed"))))))
 
+(deftest library-dashboards-collections-hold-content-except-tables-and-regular-collections-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection library    {:name "Test Library" :type collection/library-collection-type}
+                   :model/Collection dashboards {:name      "Dashboards"
+                                                 :type      collection/library-dashboards-collection-type
+                                                 :location  (str "/" (:id library) "/")
+                                                 :entity_id "librarylibrarydashbrd"}]
+      (testing "Holds cards, dashboards, and Dashboards subcollections"
+        (doseq [card-type [:question :model :metric]]
+          (is (some? (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type card-type :collection_id (:id dashboards)})))
+              (name card-type)))
+        (is (some? (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id dashboards)}))))
+        (is (some? (t2/insert! :model/Collection (merge (mt/with-temp-defaults :model/Collection)
+                                                        {:location (str "/" (:id dashboards) "/")
+                                                         :type     collection/library-dashboards-collection-type})))))
+      (testing "Rejects regular collections, created or moved in"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add tables or regular collections to the 'Dashboards' collection"
+                              (t2/insert! :model/Collection (merge (mt/with-temp-defaults :model/Collection) {:location (str "/" (:id dashboards) "/")}))))
+        (mt/with-temp [:model/Collection regular {:name "Regular Collection"}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add tables or regular collections to the 'Dashboards' collection"
+                                (t2/update! :model/Collection :id (:id regular) {:location (str "/" (:id library) "/" (:id dashboards) "/")})))))
+      (testing "Rejects published tables"
+        (mt/with-temp [:model/Table table {}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add tables or regular collections to the 'Dashboards' collection"
+                                (t2/update! :model/Table :id (:id table) {:collection_id (:id dashboards) :is_published true})))))
+      (testing "Stays a locked Library section"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection"
+                              (t2/update! :model/Collection :id (:id dashboards) {:name "Old dashboards"})))))))
+
 (deftest tables-cannot-be-moved-to-non-library-data-collections
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/Collection library-data {:name "Library Data" :type collection/library-data-collection-type}
@@ -82,21 +111,21 @@
                                                                :is_published  true})))))
       (testing "Cannot move a published table to a regular collection"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables can only be added to"
-                              (t2/update! :model/Table (:id table) {:collection_id (:id regular)}))))
+                              (t2/update! :model/Table :id (:id table) {:collection_id (:id regular)}))))
       (testing "Can move a table out to no collection"
-        (is (some? (t2/update! :model/Table (:id table) {:collection_id nil})))))))
+        (is (some? (t2/update! :model/Table :id (:id table) {:collection_id nil})))))))
 
 (deftest cannot-update-library-collections
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/Collection library {:name "Test Library" :type collection/library-collection-type}
                    :model/Collection models {:name "Test Semantic Model Layer" :type collection/library-data-collection-type}
                    :model/Collection metrics {:name "Test Semantic Metrics Layer" :type collection/library-metrics-collection-type}]
-      (with-redefs [collection/library-root-collection? (constantly true)]
+      (mt/with-dynamic-fn-redefs [collection/library-root-collection? (constantly true)]
         (doseq [col [library models metrics]]
           (testing (str "Checking type " (:type col))
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                  #"Cannot update properties on a Library collection"
-                                  (t2/update! :model/Collection (:id col) {:name "New Name"})))))))))
+                                  #"Cannot update properties on a semantic layer collection"
+                                  (t2/update! :model/Collection :id (:id col) {:name "New Name"})))))))))
 
 (deftest unpublish-tables-in-archived-collection-test
   (mt/with-premium-features #{:library}
@@ -168,11 +197,11 @@
                                                      :location (str "/" (:id metrics-parent) "/")}]
       (testing "Cannot move a library-data collection into a library-metrics parent"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics"
-                              (t2/update! :model/Collection (:id data-child)
+                              (t2/update! :model/Collection :id (:id data-child)
                                           {:location (str "/" (:id metrics-parent) "/")}))))
       (testing "Cannot move a library-metrics collection into a library-data parent"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables"
-                              (t2/update! :model/Collection (:id metrics-child)
+                              (t2/update! :model/Collection :id (:id metrics-child)
                                           {:location (str "/" (:id data-parent) "/")}))))
       (testing "Cannot move a library-data collection via API to a library-metrics parent"
         (is (= "Can only add metrics to the 'Metrics' collection"
@@ -196,21 +225,21 @@
                                                      :location (str "/" (:id library-root) "/" (:id metrics-root) "/")}
                    :model/Collection vanilla        {:name "Vanilla Collection" :type nil}]
       (let [vanilla-location (str "/" (:id vanilla) "/")]
-        (with-redefs [collection/library-root-collection? (fn [coll]
-                                                            (contains? #{(:id library-root) (:id data-root) (:id metrics-root)}
-                                                                       (:id coll)))]
+        (mt/with-dynamic-fn-redefs [collection/library-root-collection? (fn [coll]
+                                                                          (contains? #{(:id library-root) (:id data-root) (:id metrics-root)}
+                                                                                     (:id coll)))]
           (testing "Cannot move the Library collection itself into a vanilla collection"
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a Library collection"
-                                  (t2/update! :model/Collection (:id library-root) {:location vanilla-location}))))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection"
+                                  (t2/update! :model/Collection :id (:id library-root) {:location vanilla-location}))))
           (testing "Cannot move a top-level Data collection into a vanilla collection"
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a Library collection"
-                                  (t2/update! :model/Collection (:id data-root) {:location vanilla-location}))))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection"
+                                  (t2/update! :model/Collection :id (:id data-root) {:location vanilla-location}))))
           (testing "Cannot move a top-level Metrics collection into a vanilla collection"
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a Library collection"
-                                  (t2/update! :model/Collection (:id metrics-root) {:location vanilla-location})))))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection"
+                                  (t2/update! :model/Collection :id (:id metrics-root) {:location vanilla-location})))))
         (testing "Cannot move a Data subcollection into a vanilla collection"
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move a Library collection outside the Library"
-                                (t2/update! :model/Collection (:id data-sub) {:location vanilla-location}))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move a semantic layer collection outside the semantic layer"
+                                (t2/update! :model/Collection :id (:id data-sub) {:location vanilla-location}))))
         (testing "Cannot move a Metrics subcollection into a vanilla collection"
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move a Library collection outside the Library"
-                                (t2/update! :model/Collection (:id metrics-sub) {:location vanilla-location}))))))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move a semantic layer collection outside the semantic layer"
+                                (t2/update! :model/Collection :id (:id metrics-sub) {:location vanilla-location}))))))))

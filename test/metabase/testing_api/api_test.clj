@@ -6,13 +6,18 @@
    [java-time.api :as t]
    [java-time.clock]
    [metabase.app-db.core :as mdb]
+   [metabase.global-system.mutable-component :as mc]
+   [metabase.llm.settings :as llm.settings]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
+   [metabase.search.ingestion :as search.ingestion]
+   [metabase.server.settings :as server.settings]
    [metabase.session.api :as session.api]
    [metabase.test :as mt]
    [metabase.testing-api.api :as testing]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.queue :as queue]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,9 +36,42 @@
 
 (deftest restore-test
   (when (= (mdb/db-type) :h2)
-    (testing "Should throw Exception if file does not exist"
-      (is (= "Not found."
-             (mt/user-http-request :rasta :post 404 (format "testing/restore/%s" (mt/random-name))))))))
+    (let [path (format "testing/restore/%s" (mt/random-name))]
+      (testing "Should throw Exception if file does not exist"
+        (is (= "Not found."
+               (mt/user-http-request :rasta :post 404 path))))
+      (testing "An indexing timeout prevents reaching the missing snapshot"
+        (mt/with-dynamic-fn-redefs [search.ingestion/await-pending-updates! (constantly false)]
+          (is (=? {:message "Timed out waiting for search indexing before restoring a snapshot."}
+                  (mt/user-http-request :rasta :post 500 path))))))))
+
+(deftest restore-waits-for-in-flight-indexing-test
+  (mt/initialize-if-needed! :db :test-users :web-server)
+  (let [test-queue    (queue/delay-queue)
+        pending       (atom 2)
+        queue-cleared (promise)
+        restored      (promise)]
+    (queue/put-with-delay! test-queue 60000 ["card" [:= :this.id 1]])
+    (add-watch pending ::queue-cleared
+               (fn [_key _ref _old new]
+                 (when (= new 1)
+                   (deliver queue-cleared true))))
+    (with-redefs [search.ingestion/queue           test-queue
+                  search.ingestion/pending-updates pending]
+      (mt/with-dynamic-fn-redefs [testing/restore-snapshot!     (fn [_name] (deliver restored @pending))
+                                  search/sync-from-restored-db! (constantly nil)]
+        (let [request (future (mt/user-http-request :rasta :post 204 "testing/restore/in-flight-indexing"))]
+          (try
+            (is (true? (deref queue-cleared 2000 ::timeout)))
+            (is (empty? test-queue))
+            (is (= ::waiting (deref restored 100 ::waiting))
+                "Restoration cannot start while the remaining batch is still being indexed")
+            (reset! pending 0)
+            (is (nil? (deref request 2000 ::timeout)))
+            (is (= 0 (deref restored 2000 ::timeout)))
+            (finally
+              (reset! pending 0)
+              (future-cancel request))))))))
 
 (deftest e2e-test
   (when (= (mdb/db-type) :h2)
@@ -73,7 +111,8 @@
           ;; Snapshot with a valid search index in place
           (mt/user-http-request :rasta :post 204 (format "testing/snapshot/%s" snapshot-name))
           ;; Clear the tracking atoms so we can verify they get restored
-          (reset! @#'search.index/*indexes* {:active nil, :pending nil})
+          ;; keeps the time of the next sync, so the read below does not sync the tables back
+          (mc/swap! (search.index/indexes-handle) assoc :active nil, :pending nil)
           (is (nil? (search.index/active-table))
               "Precondition: tracking atoms should be cleared before restore")
           ;; Restore should call sync-from-restored-db! and refresh the atoms
@@ -127,3 +166,38 @@
         (is (empty? @(:attempts throttler))))
       (finally
         (reset! (:attempts throttler) nil)))))
+
+(deftest replace-llm-providers-test
+  (mt/with-temporary-setting-values [llm.settings/llm-providers []]
+    (let [connections [{:key    "anthropic"
+                        :type   "anthropic"
+                        :name   "Anthropic"
+                        :config {:api-key "sk-ant-test-key"}}]]
+      (is (nil? (mt/user-http-request :rasta :put 204 "testing/llm-providers" {:value connections})))
+      (is (= connections (vec (llm.settings/llm-providers))))
+      (testing "unknown connection fields cannot reach storage"
+        (is (nil? (mt/user-http-request :rasta :put 204 "testing/llm-providers"
+                                        {:value [(assoc (first connections) :unknown "value")]})))
+        (is (= connections (vec (llm.settings/llm-providers)))))
+      (testing "unknown provider config fields are rejected"
+        (is (some? (mt/user-http-request :rasta :put 400 "testing/llm-providers"
+                                         {:value [(update (first connections) :config assoc :unknown "value")]})))
+        (is (= connections (vec (llm.settings/llm-providers)))))
+      (testing "provider-internal stored config fields are accepted"
+        (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+          (let [vllm [{:key    "vllm"
+                       :type   "vllm"
+                       :name   "vLLM"
+                       :config {:base-url       "http://localhost:8000/v1"
+                                :model-reasoning "true"}}]]
+            (is (nil? (mt/user-http-request :rasta :put 204 "testing/llm-providers" {:value vllm})))
+            (is (= vllm (vec (llm.settings/llm-providers))))))))))
+
+(deftest set-isolated-origin-test
+  (mt/with-temporary-setting-values [site-url        "http://localhost:4000"
+                                     isolated-origin nil]
+    (is (nil? (mt/user-http-request :rasta :put 204 "testing/isolated-origin" {:value "http://127.0.0.1:4000"})))
+    (is (= "http://127.0.0.1:4000" (server.settings/isolated-origin)))
+    (testing "a nil value unsets it"
+      (is (nil? (mt/user-http-request :rasta :put 204 "testing/isolated-origin" {:value nil})))
+      (is (nil? (server.settings/isolated-origin))))))

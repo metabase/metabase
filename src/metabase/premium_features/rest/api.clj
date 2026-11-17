@@ -1,0 +1,71 @@
+(ns metabase.premium-features.rest.api
+  (:require
+   [clj-http.client :as http]
+   [clojure.string :as str]
+   [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
+   [metabase.llm.settings :as llm.settings]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.token-check :as token-check]
+   [metabase.settings.core :as setting]
+   [metabase.util.log :as log]
+   [ring.util.response :as response])
+  (:import
+   (java.net URLEncoder)))
+
+(set! *warn-on-reflection* true)
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/token/status"
+  "Fetch info about the current Premium-Features premium features token including whether it is `valid`, a `trial` token, its
+  `features`, when it is `valid-thru`, and the `status` of the account."
+  []
+  (api/check-404 (premium-features/token-status)))
+
+(defn- invalidate-llm-proxy-token-cache!
+  "Invalidation of the AI service's cached token status for the current instance token.
+
+  The URL carries the instance token in its path, and `ai-service-base-url` is a stored setting a superuser can
+  write through the generic settings API, so this request gets the same network policy as any other LLM request:
+  see [[metabase.llm.settings/llm-request-opts]]. Only a base URL the environment supplies is deployment
+  configuration, and only that one is granted the `:allow-private` floor a service inside the cluster needs.
+
+  Best effort: a refused or failed invalidation is logged, not raised. Token refresh has already happened by the
+  time it runs, and the AI service's cache expires on its own."
+  []
+  (when-let [service-base-url (llm.settings/ai-service-base-url)]
+    (when-let [^String token (premium-features/premium-embedding-token)]
+      (try
+        (let [encoded-token (URLEncoder/encode ^String token "UTF-8")
+              url (str (str/replace service-base-url #"/+$" "") "/v1/invalidate-token-cache/" encoded-token)
+              floor (when (setting/env-var-value :ai-service-base-url) :allow-private)
+              response (http/post url (merge {:throw-exceptions false}
+                                             (llm.settings/llm-request-opts floor url)))]
+          (when-not (<= 200 (:status response) 299)
+            (log/warnf "LLM proxy token cache invalidation failed with status %s" (:status response))))
+        (catch Exception e
+          (log/warnf "Failed to invalidate LLM proxy token cache: %s" (ex-message e)))))))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/token/refresh"
+  "Re-check the premium features token against the MetaStore and return the fresh token status. Useful for the
+  frontend after a purchase so that new features are recognized without waiting for the next scheduled refresh.
+
+  When the check fails, returns an unvalidated status whose `:error-details` says why, so the caller knows the check
+  failed. The status this instance holds is left as it was, so feature checks keep using it."
+  []
+  (let [status (try
+                 (token-check/refresh-now!)
+                 (catch Throwable e
+                   (token-check/unvalidated-status (ex-message e))))]
+    (invalidate-llm-proxy-token-cache!)
+    (-> (api/check-404 status)
+        response/response
+        (assoc-in [:mb/cookies :cookie/premium-features-cache-timestamp] true))))
+
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/premium-features` routes."
+  (api.macros/ns-handler *ns* api/+check-superuser))

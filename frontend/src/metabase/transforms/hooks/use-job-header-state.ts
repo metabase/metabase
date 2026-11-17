@@ -6,7 +6,7 @@ import {
   useListTransformJobTransformsQuery,
   useUpdateTransformJobMutation,
 } from "metabase/api";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type { TransformJobId } from "metabase-types/api";
 
 import {

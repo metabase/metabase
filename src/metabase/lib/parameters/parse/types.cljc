@@ -2,6 +2,7 @@
   "Schemas and helper functions for various PARSED parameter maps. These are created from the `:parameters` passed in
   with a query."
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -20,9 +21,8 @@
   [:= ::no-value])
 
 (mr/def ::field-filter.value.map
-  [:map
-   [:type ::lib.schema.parameter/type]
-   [:value :any]])
+  "The query parameter a field filter's value comes from."
+  [:ref ::lib.schema.parameter/parameter])
 
 (mr/def ::field-filter.value
   [:or
@@ -47,7 +47,7 @@
   *  A vector of maps like the one above (for multiple values)
 
   * Alias is optional and added by #61118 (not sure what it does, look at PR for more info)"
-  [:map
+  [:map {:closed true}
    [:lib/type [:= ::field-filter]]
    [:field    ::lib.schema.metadata/column]
    [:value    ::field-filter.value]
@@ -60,7 +60,9 @@
    {:lib/type ::field-filter
     :field    field
     :value    value})
-  ([field value param-alias]
+  ([field       :- ::lib.schema.metadata/column
+    value       :- ::field-filter.value
+    param-alias :- [:maybe :string]]
    (assoc (field-filter field value) :alias param-alias)))
 
 (defn field-filter?
@@ -68,22 +70,27 @@
   [x]
   (= (:lib/type x) ::field-filter))
 
+(mr/def ::temporal-unit.value
+  "Either the no-value placeholder, or the name of a temporal unit as a string."
+  [:or ::no-value :string])
+
 (mr/def ::temporal-unit
-  [:map
+  [:map {:closed true}
    [:lib/type [:= ::temporal-unit]]
    [:field    ::lib.schema.metadata/column]
-   ;; TODO (Cam 7/16/25) -- constrain `:value`
-   [:value    some?]
+   [:value    ::temporal-unit.value]
    [:alias    {:optional true} [:maybe string?]]])
 
 (mu/defn temporal-unit :- ::temporal-unit
   "Create a parsed `temporal-unit` parameter from map `m`."
-  ([column    :- ::lib.schema.metadata/column
-    value      :- some?]
+  ([column :- ::lib.schema.metadata/column
+    value  :- ::temporal-unit.value]
    {:lib/type ::temporal-unit
     :field    column
     :value    value})
-  ([column value param-alias]
+  ([column      :- ::lib.schema.metadata/column
+    value       :- ::temporal-unit.value
+    param-alias :- [:maybe :string]]
    (assoc (temporal-unit column value) :alias param-alias)))
 
 (defn temporal-unit?
@@ -100,19 +107,20 @@
 
   `parameters` are positional parameters for a parameterized native query e.g. the JDBC parameters corresponding to
   `?` placeholders"
-  [:map
+  [:map {:closed true}
    [:lib/type   [:= ::referenced-card-query]]
    [:card-id    ::lib.schema.id/card]
    [:query      :string]
-   [:parameters {:optional true} [:maybe [:sequential :any]]]])
+   [:parameters {:optional true} [:maybe [:sequential ::lib.schema.literal/param-value]]]])
 
 (mu/defn referenced-card-query :- ::referenced-card-query
   "Create a parsed `referenced-card-query` parameter from map `m`."
-  ([card-id query]
+  ([card-id :- ::lib.schema.id/card
+    query   :- :string]
    (referenced-card-query card-id query nil))
   ([card-id    :- ::lib.schema.id/card
     query      :- :string
-    parameters :- [:maybe [:sequential :any]]]
+    parameters :- [:maybe [:sequential ::lib.schema.literal/param-value]]]
    {:lib/type   ::referenced-card-query
     :card-id    card-id
     :query      query
@@ -129,10 +137,10 @@
    * `:field-id` - the ID of the field to filter on
    * `:op`       - the comparison operator, one of :>, :>=, :<, :<=, :=, :!=
    * `:value`    - the value to compare against"
-  [:map
+  [:map {:closed true}
    [:field-id ::lib.schema.id/field]
    [:op       [:enum :> :>= :< :<= := :!=]]
-   [:value    any?]])
+   [:value    ::lib.schema.parameter/parameter.value]])
 
 (mr/def ::referenced-table-query
   "`table-id` is the id of the table being referenced
@@ -149,7 +157,7 @@
   \"table\" AS \"alias\" or (SELECT ...) AS \"alias\".
 
   Resolved from the template tag's `:emit-alias` boolean and `:name` during parsing."
-  [:map
+  [:map {:closed true}
    [:lib/type       [:= ::referenced-table-query]]
    [:table-id       ::lib.schema.id/table]
    [:source-filters {:optional true} [:maybe [:sequential ::referenced-table-query.source-filter]]]
@@ -157,9 +165,10 @@
 
 (mu/defn referenced-table-query :- ::referenced-table-query
   "Create a parsed `referenced-table-query` parameter from map `m`."
-  ([table-id]
+  ([table-id :- ::lib.schema.id/table]
    (referenced-table-query table-id nil))
-  ([table-id source-filters]
+  ([table-id       :- ::lib.schema.id/table
+    source-filters :- [:maybe [:sequential ::referenced-table-query.source-filter]]]
    (referenced-table-query table-id source-filters nil))
   ([table-id       :- ::lib.schema.id/table
     source-filters :- [:maybe [:sequential ::referenced-table-query.source-filter]]
@@ -181,7 +190,7 @@
   `snippet-id` is the integer ID of the row in the application DB from where the snippet content is loaded.
 
   `content` is the raw query snippet which will be replaced, verbatim, for this template tag."
-  [:map
+  [:map {:closed true}
    [:lib/type   [:= ::referenced-query-snippet]]
    [:snippet-id ::lib.schema.id/snippet]
    [:content    :string]])
@@ -207,7 +216,7 @@
 ;; TODO (Cam 2026-05-14) -- rename to `::datetime`
 (mr/def ::date
   "As in a literal date, defined by date-string `s`."
-  [:map
+  [:map {:closed true}
    [:lib/type [:= ::date]]
    [:s        ::date.value]])
 
@@ -222,15 +231,15 @@
   (= (:lib/type x) ::date))
 
 (mr/def ::date-range
-  [:map
+  [:map {:closed true}
    [:lib/type [:= ::date-range]]
-   ;; TODO (Cam 7/16/25) -- constrain `:start` and `:end` values
-   [:start    :any]
-   [:end      :any]])
+   [:start    [:maybe ::lib.schema.common/non-blank-string]]
+   [:end      [:maybe ::lib.schema.common/non-blank-string]]])
 
 (mu/defn date-range :- ::date-range
   "Create a new parsed `date-range` parameter from map `m`."
-  [start end]
+  [start :- [:maybe ::lib.schema.common/non-blank-string]
+   end   :- [:maybe ::lib.schema.common/non-blank-string]]
   {:lib/type ::date-range, :start start, :end end})
 
 (defn date-range?
@@ -239,15 +248,15 @@
   (= (:lib/type x) ::date-range))
 
 (mr/def ::date-time-range
-  [:map
+  [:map {:closed true}
    [:lib/type [:= ::date-time-range]]
-   ;; TODO (Cam 7/16/25) -- constrain `:start` and `:end` values
-   [:start    :any]
-   [:end      :any]])
+   [:start    [:maybe ::lib.schema.common/non-blank-string]]
+   [:end      [:maybe ::lib.schema.common/non-blank-string]]])
 
 (mu/defn date-time-range :- ::date-time-range
   "Create a new parsed `date-time-range` parameter from map `m`."
-  [start end]
+  [start :- [:maybe ::lib.schema.common/non-blank-string]
+   end   :- [:maybe ::lib.schema.common/non-blank-string]]
   {:lib/type ::date-time-range, :start start, :end end})
 
 (defn date-time-range?
@@ -256,7 +265,7 @@
   (= (:lib/type x) ::date-time-range))
 
 (mr/def ::param
-  [:map
+  [:map {:closed true}
    [:lib/type [:= ::param]]
    [:k        :string]])
 
@@ -272,15 +281,16 @@
   (= (:lib/type x) ::param))
 
 (mr/def ::function-param
-  [:map
+  [:map {:closed true}
    [:lib/type      [:= ::function-param]]
    [:function-name :string]
-   ;; TODO (Cam 7/16/25) -- constrain further; I think these have to be valid parameters
-   [:args          [:sequential :any]]])
+   [:args          [:sequential [:ref :metabase.lib.parameters.parse/parsed-token]]]])
 
 (mu/defn function-param :- ::function-param
   "Create a new parsed `function-param` from map `m`."
-  [m :- :map]
+  [m :- [:map {:closed true}
+         [:function-name :string]
+         [:args          [:sequential [:ref :metabase.lib.parameters.parse/parsed-token]]]]]
   (assoc m :lib/type ::function-param))
 
 (defn function-param?
@@ -289,14 +299,13 @@
   (= (:lib/type x) ::function-param))
 
 (mr/def ::optional
-  [:map
+  [:map {:closed true}
    [:lib/type [:= ::optional]]
-   ;; TODO (Cam 7/16/25) -- constrain further
-   [:args     [:sequential :any]]])
+   [:args     [:sequential [:ref :metabase.lib.parameters.parse/parsed-token]]]])
 
 (mu/defn optional :- ::optional
   "Create a new parsed `optional` param from map `m`."
-  [args :- [:sequential :any]]
+  [args :- [:sequential [:ref :metabase.lib.parameters.parse/parsed-token]]]
   {:lib/type ::optional
    :args     args})
 
@@ -304,3 +313,18 @@
   "Whether `x` is a map that represents a parsed [[optional]] parameter."
   [x]
   (= (:lib/type x) ::optional))
+
+(mr/def ::parsed-value
+  "The value looked up for a parameter name in a `param->value` map during native query parameter substitution: one
+  of the parsed parameter types above, the no-value placeholder, or a literal value (or sequence of literal values)
+  for parameters that aren't Field filters, temporal units, or references."
+  [:or
+   ::no-value
+   ::field-filter
+   ::temporal-unit
+   ::date
+   ::referenced-card-query
+   ::referenced-table-query
+   ::referenced-query-snippet
+   ::lib.schema.literal/param-value
+   [:sequential ::lib.schema.literal/param-value]])

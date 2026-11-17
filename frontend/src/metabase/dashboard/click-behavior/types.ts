@@ -1,15 +1,14 @@
 import type { ClickBehaviorExtraData } from "metabase/dashboard/utils/click-behavior";
 import type { ValueAndColumnForColumnNameDate } from "metabase/value-formatting";
-import type {
-  ClickObject,
-  ComputedVisualizationSettings,
-} from "metabase/visualizations/types";
+import type { ClickObject } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type {
   Card,
   CardId,
   ClickBehavior,
   ClickBehaviorParameterMapping,
   ClickBehaviorType,
+  DashboardCard,
   DashboardId,
   DashboardTabId,
   ParameterId,
@@ -24,6 +23,7 @@ export type DashboardDrillType =
   | "dashboard-reset";
 
 export interface DrillExtraData extends ClickBehaviorExtraData {
+  dashcard?: DashboardCard;
   questions?: Record<CardId, Card>;
 }
 

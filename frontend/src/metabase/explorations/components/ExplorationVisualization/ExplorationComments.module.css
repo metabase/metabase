@@ -3,6 +3,19 @@
   overflow-anchor: none;
 }
 
+.commentBadge {
+  background-color: var(--mb-color-background_surface-brand-subtle);
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+}
+
+.commentBadgeLabel {
+  background-color: var(--mb-color-background_surface-brand-subtle);
+  cursor: default;
+}
+
 /* User mentions (SmartLink user nodes) read as plain colored text here, not
  * bold — scoped so document comments keep their own styling. */
 .stream :global([data-type="smart-link"] > span) {
@@ -22,6 +35,6 @@
 }
 
 .target {
-  background-color: var(--mb-color-background-brand);
-  outline: 1px solid var(--mb-color-brand);
+  background-color: var(--mb-color-background_surface-brand-subtle);
+  outline: 1px solid var(--mb-color-core-brand);
 }

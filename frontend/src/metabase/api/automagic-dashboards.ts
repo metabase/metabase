@@ -1,5 +1,3 @@
-import { updateMetadata } from "metabase/redux/metadata";
-import { QueryMetadataSchema } from "metabase/schema";
 import type {
   Dashboard,
   DashboardQueryMetadata,
@@ -14,7 +12,6 @@ import {
   provideDashboardQueryMetadataTags,
   provideDatabaseCandidateListTags,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
 
 // `subPath` is embedded raw into the request URL (its slashes are real path
 // separators) and originates from the `/auto/dashboard/*` route — i.e. it is
@@ -62,10 +59,6 @@ export const automagicDashboardsApi = Api.injectEndpoints({
       }),
       providesTags: (metadata) =>
         metadata ? provideDashboardQueryMetadataTags(metadata) : [],
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, QueryMetadataSchema)),
-        ),
     }),
     listDatabaseXrays: builder.query<DatabaseXray[], DatabaseId>({
       query: (id) => `/api/automagic-dashboards/database/${id}/candidates`,
@@ -84,10 +77,6 @@ export const automagicDashboardsApi = Api.injectEndpoints({
           params,
         };
       },
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, QueryMetadataSchema)),
-        ),
     }),
   }),
 });

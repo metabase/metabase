@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
 import { type MouseEvent, useCallback, useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Flex, Icon } from "metabase/ui";
+import { assignLazily } from "metabase/utils/merge-lazily";
 import { checkNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -254,7 +256,7 @@ export function IconWithBorder() {
   );
 }
 
-export const Progress = Object.assign(
+export const Progress = assignLazily(
   ProgressComponent,
   PROGRESS_CHART_DEFINITION,
 );

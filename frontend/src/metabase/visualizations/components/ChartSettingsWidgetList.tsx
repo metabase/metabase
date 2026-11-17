@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import _ from "underscore";
 
-import { Badge } from "metabase/ui";
+import { Badge, Box } from "metabase/ui";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
-import { ChartSettingsWidgetListDivider } from "./ChartSettingsWidgetList.styled";
 
 interface ChartSettingsWidgetListProps {
   widgets: { id: string; group?: string }[];
@@ -35,7 +35,7 @@ const ChartSettingsWidgetList = ({
       return (
         <div key={`group-${groupIndex}`}>
           {group && (
-            <Badge color="brand" mb="lg" ml="lg" size="sm" variant="light">
+            <Badge color="brand" mb="xl" ml="xl" size="sm" variant="light">
               {group}
             </Badge>
           )}
@@ -47,9 +47,7 @@ const ChartSettingsWidgetList = ({
                 {...extraWidgetProps}
               />
             ))}
-            <ChartSettingsWidgetListDivider
-              style={lastGroup ? { marginBottom: 0 } : undefined}
-            />
+            <Box h={1} bg="border-neutral" mb={lastGroup ? 0 : "xl"} />
           </div>
         </div>
       );

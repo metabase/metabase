@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
@@ -13,18 +14,20 @@ import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import * as Urls from "metabase/urls";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockDataset,
   createMockDatasetData,
   createMockNumericColumn,
+  createMockSettings,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
-  ORDERS,
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -34,15 +37,17 @@ const TEST_USER = createMockUser();
 const TEST_DATABASE = createSampleDatabase();
 const TEST_CARD = createMockCard({
   display: "line",
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "quarter" }]],
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [{ type: "column", name: "CREATED_AT", unit: "quarter" }],
+        },
+      ],
+    }),
+  ),
 });
 
 const QUERY_RESULT = createMockDataset({
@@ -58,8 +63,24 @@ const QUERY_RESULT = createMockDataset({
   }),
 });
 
-function setup() {
-  const { state } = setupSdkState({ currentUser: TEST_USER });
+function setup({ applicationName }: { applicationName?: string } = {}) {
+  const { state } = setupSdkState({
+    currentUser: TEST_USER,
+    ...(applicationName && {
+      settingValues: createMockSettings({
+        "enable-embedding-sdk": true,
+        "application-name": applicationName,
+      }),
+      tokenFeatures: createMockTokenFeatures({
+        embedding_sdk: true,
+        whitelabel: true,
+      }),
+    }),
+  });
+  if (applicationName) {
+    setupEnterpriseOnlyPlugin("whitelabel");
+  }
+
   const app = { openLink: jest.fn() };
   const instanceUrl = "https://metabase.example";
 
@@ -113,5 +134,13 @@ describe("McpExploreButton", () => {
           }),
       });
     });
+  });
+
+  it("uses the custom application name when white-labelled", async () => {
+    setup({ applicationName: "Acme Analytics" });
+
+    expect(
+      await screen.findByRole("button", { name: "Explore in Acme Analytics" }),
+    ).toBeInTheDocument();
   });
 });

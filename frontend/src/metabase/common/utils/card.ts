@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import querystring from "querystring";
 
+import { t } from "ttag";
 import _ from "underscore";
 
-import { clone } from "metabase/utils/clone";
 import {
   b64hash_to_utf8,
   b64url_to_utf8,
@@ -10,8 +11,6 @@ import {
 } from "metabase/utils/encoding";
 import { stableStringify } from "metabase/utils/objects";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import { normalizeParameterValue } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -20,15 +19,27 @@ import type {
   ActionParametersMapping,
   Card,
   CardId,
+  DashCardSeries,
   DashboardParameterMapping,
-  DatasetQuery,
-  LegacyDatasetQuery,
+  JsonQuery,
   Parameter,
   ParameterValuesMap,
-  Series,
   UnsavedCard,
   VirtualDashCardParameterMapping,
 } from "metabase-types/api";
+import { isDashCardDataSeries } from "metabase-types/guards/dashboard";
+
+export const QUESTION_NAME_MAX_LENGTH = 254;
+
+export function getNonBlankNameAndDescription({
+  name,
+  description,
+}: Partial<Pick<Card, "name" | "description">>) {
+  return {
+    name: name?.trim() ? name : t`Untitled question`,
+    description: description?.trim() ? description : null,
+  };
+}
 
 export type SerializeCardOptions = {
   includeDatasetQuery?: boolean;
@@ -99,10 +110,10 @@ export function isEqualCard(card1?: Card | null, card2?: Card | null) {
 }
 
 export function getMetricSeriesWithDefaultDisplay(
-  series: Series,
-  metadata: Metadata,
-): Series {
-  if (series.length !== 1) {
+  series: DashCardSeries,
+  metadataProvider: Lib.MetadataProvider,
+): DashCardSeries {
+  if (series.length !== 1 || !isDashCardDataSeries(series)) {
     return series;
   }
 
@@ -111,9 +122,9 @@ export function getMetricSeriesWithDefaultDisplay(
     return series;
   }
 
-  const query = Lib.fromJsQueryAndMetadata(metadata, metricSeries.json_query);
+  const query = Lib.fromJsQuery(metadataProvider, metricSeries.json_query);
   const { display, settings = {} } = Lib.defaultDisplay(
-    query,
+    Lib.dropEmptyStages(query),
     metricSeries.data.cols,
   );
 
@@ -187,41 +198,18 @@ export function parseHash(hash?: string) {
   return { options, serializedCard };
 }
 
-export function isNative(card?: Card | null | undefined) {
-  if (!card) {
-    return false;
-  }
-  const question = Question.create({ dataset_query: card.dataset_query });
-  return question.isNative();
-}
-
-function cardVisualizationIsEquivalent(cardA: Card, cardB: Card) {
+function cardVisualizationIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {
   return _.isEqual(
     _.pick(cardA, "display", "visualization_settings"),
     _.pick(cardB, "display", "visualization_settings"),
   );
 }
 
-function isLegacyDatasetQuery(
-  datasetQuery: DatasetQuery,
-): datasetQuery is LegacyDatasetQuery {
-  return (
-    "type" in datasetQuery &&
-    (datasetQuery.type === "query" || datasetQuery.type === "native")
-  );
+function datasetQueryForComparison(datasetQuery: JsonQuery): JsonQuery {
+  return { ...datasetQuery, parameters: datasetQuery.parameters ?? [] };
 }
 
-function datasetQueryForComparison(datasetQuery: DatasetQuery): DatasetQuery {
-  const res = clone(datasetQuery);
-
-  if (isLegacyDatasetQuery(res)) {
-    res.parameters ??= [];
-  }
-
-  return res;
-}
-
-export function cardQueryIsEquivalent(cardA: Card, cardB: Card) {
+export function cardQueryIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {
   const datasetQueryA = datasetQueryForComparison(cardA.dataset_query);
   const datasetQueryB = datasetQueryForComparison(cardB.dataset_query);
   return Lib.areLegacyQueriesEqual(datasetQueryA, datasetQueryB);
@@ -231,7 +219,7 @@ export function cardParametersAreEquivalent(cardA: Card, cardB: Card) {
   return _.isEqual(cardA.parameters || [], cardB.parameters || []);
 }
 
-export function cardIsEquivalent(cardA: Card, cardB: Card) {
+export function cardIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {
   return (
     cardQueryIsEquivalent(cardA, cardB) &&
     cardVisualizationIsEquivalent(cardA, cardB)
@@ -249,10 +237,8 @@ export function applyParameters(
     | DashboardParameterMapping[]
     | VirtualDashCardParameterMapping[] = [],
   { sparse = false }: { sparse?: boolean } = {},
-) {
-  // TODO(romeovs): This cast is a hack, this function only works with LegacyDatasetQuery
-  const datasetQuery = clone(card.dataset_query) as LegacyDatasetQuery;
-  datasetQuery.parameters = [];
+): JsonQuery {
+  const queryParameters: UiParameter[] = [];
   for (const parameter of parameters || []) {
     const value = parameterValues[parameter.id];
 
@@ -289,12 +275,12 @@ export function applyParameters(
       // mapped target, e.x. on a dashboard
       queryParameter.target = mapping.target;
       // Unjustified type cast. FIXME
-      datasetQuery.parameters.push(queryParameter as UiParameter);
+      queryParameters.push(queryParameter as UiParameter);
     } else if (parameter.target) {
       // inline target, e.x. on a card
       queryParameter.target = parameter.target;
       // Unjustified type cast. FIXME
-      datasetQuery.parameters.push(queryParameter as UiParameter);
+      queryParameters.push(queryParameter as UiParameter);
     }
 
     if (sparse) {
@@ -303,7 +289,7 @@ export function applyParameters(
     }
   }
 
-  return datasetQuery;
+  return { ...card.dataset_query, parameters: queryParameters };
 }
 
 export function isTransientCardId(id: CardId | string | null | undefined) {

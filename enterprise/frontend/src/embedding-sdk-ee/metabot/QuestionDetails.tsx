@@ -4,6 +4,7 @@ import { useBreakoutData } from "embedding-sdk-bundle/components/private/SdkQues
 import { useFilterData } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Filter/hooks/use-filter-data";
 import { useSummarizeData } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Summarize/use-summarize-data";
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
+import { getPrimarySourceMetadata } from "metabase/querying/common/utils";
 import { Text } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -45,38 +46,28 @@ export function QuestionDetails() {
   ].filter((section) => section.length > 0);
 
   return (
-    <Text size="0.75rem" c="text-disabled">
+    <Text size="0.75rem" c="text-secondary">
       {sections.join(" ")}
     </Text>
   );
 }
 
 function getTableSection(question?: Question) {
-  return (
-    getAllTables(question)
-      .map((table) => table.displayName())
-      .join(" + ") + "."
-  );
+  return getAllTableNames(question).join(" + ") + ".";
 }
 
-function getAllTables(question?: Question) {
+function getAllTableNames(question?: Question) {
   if (!question) {
     return [];
   }
 
-  const metadata = question.metadata();
   const query = question.query();
-  const table = metadata.table(Lib.sourceTableOrCardId(query));
-  return [
-    table,
-    ...Lib.joins(query, -1)
-      .map((join) => Lib.pickerInfo(query, Lib.joinedThing(query, join)))
-      .map((pickerInfo) => {
-        if (pickerInfo?.tableId != null) {
-          return metadata.table(pickerInfo.tableId);
-        }
+  const source = getPrimarySourceMetadata(query);
+  const joinedTables = Lib.joins(query, -1).map((join) =>
+    Lib.joinedThing(query, join),
+  );
 
-        return undefined;
-      }),
-  ].filter(isNotNull);
+  return [source, ...joinedTables]
+    .filter(isNotNull)
+    .map((table) => Lib.displayInfo(query, -1, table).displayName);
 }

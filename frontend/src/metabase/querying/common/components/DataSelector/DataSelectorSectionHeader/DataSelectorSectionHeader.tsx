@@ -9,7 +9,7 @@ export type DataSelectorSectionHeaderProps = {
 export const DataSelectorSectionHeader = ({
   header,
 }: DataSelectorSectionHeaderProps) => (
-  <Flex p="md" align="center" className={DataSelectorSectionHeaderS.Container}>
+  <Flex p="lg" align="center" className={DataSelectorSectionHeaderS.Container}>
     <Box component="h3" className={DataSelectorSectionHeaderS.Header}>
       {header}
     </Box>

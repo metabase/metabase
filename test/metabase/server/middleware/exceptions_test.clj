@@ -36,13 +36,33 @@
         (is (vector? (get-in response [:body :trace]))
             "Stacktrace should be a vector")))))
 
-(deftest api-exception-response-includes-ex-data-test
-  (testing "When hide-stacktraces is false, exception response includes ex-data"
+(deftest api-exception-response-includes-only-exposed-ex-data-test
+  (testing "When hide-stacktraces is false, exception response includes the ex-data keys the throw site listed"
     (mt/with-temporary-setting-values [server.settings/hide-stacktraces false]
-      (let [exception (create-test-exception "Test error message")
-            response (mw.exceptions/api-exception-response exception nil)]
-        (is (= "test-value" (get-in response [:body :custom-data]))
-            "Response should include custom data from ex-info")))))
+      (let [exception (ex-info "Test error message"
+                               {:custom-data "secret", :shown "test-value", :response/keys #{:shown}}
+                               (ex-info "cause" {:cause-data "secret", :cause-shown 1, :response/keys #{:cause-shown}}))
+            response  (mw.exceptions/api-exception-response exception nil)]
+        (is (= "test-value" (get-in response [:body :shown])))
+        (testing "nothing unlisted is sent, anywhere in the body, nor the list itself"
+          (is (not (str/includes? (pr-str (:body response)) "secret")))
+          (is (not (str/includes? (pr-str (:body response)) "response/keys"))))))))
+
+(deftest api-exception-response-does-not-leak-ex-data-test
+  (testing "a 4xx whose ex-data carries server-side context (e.g. a preprocessed query) does not send it (SEC-1173)"
+    (doseq [hide? [false true]]
+      (mt/with-temporary-setting-values [server.settings/hide-stacktraces hide?]
+        (let [exception (ex-info "You cannot save this Question because you do not have permissions to run its query."
+                                 {:status-code    403
+                                  :query          {:native "SELECT salary FROM payroll"}
+                                  :required-perms #{"/db/1/"}})
+              response  (mw.exceptions/api-exception-response exception nil)
+              body      (pr-str (:body response))]
+          (is (= 403 (:status response)))
+          (is (= "You cannot save this Question because you do not have permissions to run its query."
+                 (:body response)))
+          (is (not (str/includes? body "SELECT salary")))
+          (is (not (str/includes? body "required-perms"))))))))
 
 (deftest api-exception-response-includes-exception-chain-test
   (testing "When hide-stacktraces is false, exception response includes exception chain information"
@@ -51,6 +71,36 @@
             response (mw.exceptions/api-exception-response exception nil)]
         (is (contains? (:body response) :via)
             "Response should contain :via key with exception chain")))))
+
+(deftest api-exception-response-error-code-test
+  (testing (str "a non-500 with an :error-code, client-facing without being listed, returns its structured body "
+                "without a stacktrace, whatever hide-stacktraces says")
+    (doseq [hide? [false true]]
+      (mt/with-temporary-setting-values [server.settings/hide-stacktraces hide?]
+        (let [exception (ex-info "You are out of tokens."
+                                 {:status-code 402
+                                  :message     "You are out of tokens."
+                                  :error-code  "metabase_ai_managed_locked"})
+              response  (mw.exceptions/api-exception-response exception nil)]
+          (is (= 402 (:status response)))
+          (is (= {:message    "You are out of tokens."
+                  :error-code "metabase_ai_managed_locked"}
+                 (:body response))))
+        (let [exception (ex-info "Slack API error: ratelimited"
+                                 {:status-code 502
+                                  :error-code  "ratelimited"})
+              response  (mw.exceptions/api-exception-response exception nil)]
+          (is (= 502 (:status response)))
+          (is (= {:message    "Slack API error: ratelimited"
+                  :error-code "ratelimited"}
+                 (:body response)))))))
+  (testing "a 500, or the legacy :error_code spelling, keeps the full stacktrace body"
+    (mt/with-temporary-setting-values [server.settings/hide-stacktraces false]
+      (doseq [data [{:status-code 500, :error-code "boom"}
+                    {:status-code 404, :error_code "archived"}]]
+        (let [response (mw.exceptions/api-exception-response (ex-info "boom" data) nil)]
+          (is (= (:status-code data) (:status response)))
+          (is (contains? (:body response) :trace)))))))
 
 (deftest api-exception-response-hides-stacktraces-returns-generic-message-test
   (testing "When hide-stacktraces is true, exception response contains only a generic message"
@@ -110,38 +160,40 @@
         (is (= "Resource not found" (:body response))
             "Should return plain message for 404s")))))
 
-(deftest api-exception-response-404-with-extra-data-hides-details-test
-  (testing "404 errors with extra data hide details when hide-stacktraces is enabled"
-    (mt/with-temporary-setting-values [server.settings/hide-stacktraces true]
-      (let [exception (ex-info "Resource not found with details" {:status-code 404 :resource-id 123})
-            response (mw.exceptions/api-exception-response exception nil)]
-        (is (= 404 (:status response))
-            "Status should remain 404 from exception")
-        (is (= "Something went wrong" (get-in response [:body :message]))
-            "Should return generic message")
-        (is (not (contains? (:body response) :resource-id))
-            "Should not include resource-id from ex-data")))))
+(deftest api-exception-response-404-with-internal-data-test
+  (testing "a non-500 whose ex-data has nothing client-facing returns its plain message, whatever hide-stacktraces says"
+    (doseq [hide? [false true]]
+      (mt/with-temporary-setting-values [server.settings/hide-stacktraces hide?]
+        (let [exception (ex-info "Resource not found with details" {:status-code 404 :resource-id 123})
+              response  (mw.exceptions/api-exception-response exception nil)]
+          (is (= 404 (:status response))
+              "Status should remain 404 from exception")
+          (is (= "Resource not found with details" (:body response))
+              "Should return the message as the body, without the internal ex-data"))))))
 
 (deftest api-exception-response-validation-errors-with-stacktraces-disabled-test
   (testing "Validation errors with :errors key are returned when hide-stacktraces is false"
     (mt/with-temporary-setting-values [server.settings/hide-stacktraces false]
       (let [exception (ex-info "Validation failed"
                                {:status-code 400
-                                :errors {:email "Invalid email format"
+                                :params {:password "hunter2"}
+                                :errors {:email    "Invalid email format"
                                          :password "Password too short"}})
             response (mw.exceptions/api-exception-response exception nil)]
         (is (= 400 (:status response)))
         (is (= {:email "Invalid email format"
                 :password "Password too short"}
                (get-in response [:body :errors]))
-            "Should include validation errors")))))
+            "Should include validation errors")
+        (is (not (contains? (:body response) :params)))))))
 
 (deftest api-exception-response-validation-errors-with-stacktraces-enabled-test
   (testing "Validation errors with :errors key are returned even when hide-stacktraces is true"
     (mt/with-temporary-setting-values [server.settings/hide-stacktraces true]
       (let [exception (ex-info "Validation failed"
                                {:status-code 400
-                                :errors {:email "Invalid email format"
+                                :params {:password "hunter2"}
+                                :errors {:email    "Invalid email format"
                                          :password "Password too short"}})
             response (mw.exceptions/api-exception-response exception nil)]
         (is (= 400 (:status response)))
@@ -183,6 +235,19 @@
               "Response should only include generic message")
           (is (not (contains? (:body @captured-response) :trace))
               "Response should not include stacktrace"))))))
+
+(deftest catch-api-exceptions-middleware-includes-configured-cors-test
+  (let [origin   "https://mcp.example"
+        cors     {:origins-fn         (constantly origin)
+                  :sandbox-origin?-fn (constantly false)}
+        handler  (mw.exceptions/catch-api-exceptions
+                  (fn [_request _respond raise]
+                    (raise (Exception. "boom")))
+                  cors)
+        response (handler {:headers {"origin" origin}}
+                          identity
+                          #(throw %))]
+    (is (= origin (get-in response [:headers "Access-Control-Allow-Origin"])))))
 
 (deftest catch-api-exceptions-middleware-eof-exception-logs-request-info-test
   (testing "EofException (request canceled) log line includes the HTTP method, URI, and client IP"

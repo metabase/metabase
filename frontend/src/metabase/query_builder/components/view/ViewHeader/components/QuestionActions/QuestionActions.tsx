@@ -8,21 +8,24 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { UploadInput } from "metabase/common/components/upload";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { runQuestionQuery } from "metabase/query_builder/actions";
-import { QuestionMoreActionsMenu } from "metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu";
-import type { QueryModalType } from "metabase/querying/constants";
 import { useDispatch } from "metabase/redux";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
+import type {
+  DatasetEditorTab,
+  QueryBuilderMode,
+  QueryModalType,
+} from "metabase/redux/store";
 import { UploadMode } from "metabase/redux/store/upload";
 import { uploadFile } from "metabase/redux/uploads";
 import { Box, Divider, Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
+import { runQuestionQuery } from "../../../../../actions";
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
+
+import { QuestionMoreActionsMenu } from "./QuestionMoreActionsMenu";
 
 interface Props {
   isBookmarked: boolean;
-  isShowingQuestionInfoSidebar: boolean;
   onToggleBookmark: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
   question: Question;
@@ -38,7 +41,6 @@ interface Props {
 
 export const QuestionActions = ({
   isBookmarked,
-  isShowingQuestionInfoSidebar,
   onToggleBookmark,
   onOpenModal,
   question,
@@ -49,23 +51,16 @@ export const QuestionActions = ({
 
   const dispatch = useDispatch();
 
-  useRegisterShortcut(
-    [
-      {
-        id: "query-builder-info-sidebar",
-        perform: onInfoClick,
-      },
-      {
-        id: "query-builder-bookmark",
-        perform: onToggleBookmark,
-      },
-    ],
-    [isShowingQuestionInfoSidebar, isBookmarked],
-  );
-
-  const infoButtonColor = isShowingQuestionInfoSidebar
-    ? "core-brand"
-    : undefined;
+  useRegisterShortcut([
+    {
+      id: "query-builder-info-sidebar",
+      perform: onInfoClick,
+    },
+    {
+      id: "query-builder-bookmark",
+      perform: onToggleBookmark,
+    },
+  ]);
 
   const hasCollectionPermissions = question.canWrite();
   const uploadTableId = question._card.based_on_upload;
@@ -129,7 +124,7 @@ export const QuestionActions = ({
 
   return (
     <>
-      <Divider orientation="vertical" my="xs" />
+      <Divider orientation="vertical" my="xxs" />
       {!question.isArchived() && (
         <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
           <BookmarkToggle
@@ -144,7 +139,6 @@ export const QuestionActions = ({
           className={ViewTitleHeaderS.ViewHeaderIconButton}
           icon="info"
           onClick={onInfoClick}
-          color={infoButtonColor}
           data-testid="qb-header-info-button"
           tooltipLabel={t`More info`}
           aria-label={t`More info`}
@@ -163,7 +157,6 @@ export const QuestionActions = ({
                 <ToolbarButton
                   className={ViewTitleHeaderS.ViewHeaderIconButton}
                   icon="upload"
-                  color={infoButtonColor}
                   data-testid="qb-header-append-button"
                   tooltipLabel={t`Upload data to this model`}
                   aria-label={t`Upload data to this model`}

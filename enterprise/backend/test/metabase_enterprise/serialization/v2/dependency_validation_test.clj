@@ -3,9 +3,10 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase.collections.test-utils :refer [personal-collection-id]]
    [metabase.documents.prose-mirror :as prose-mirror]
-   [metabase.models.serialization :as serdes]
    [metabase.search.test-util :as search.tu]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -20,7 +21,7 @@
 
 (defn- ids-by-model [model-name extraction]
   (->> (by-model model-name extraction)
-       (map (comp :id last :serdes/meta))
+       (map :entity_id)
        set))
 
 (defn- extract-aborts!
@@ -28,7 +29,7 @@
    Warnings are logged before the abort, so callers can still assert on the logged messages."
   [opts]
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"incomplete export"
-                        (into [] (extract/extract opts)))))
+                        (dorun (extract/extract opts)))))
 
 (deftest escape-report-test
   (mt/with-empty-h2-app-db!
@@ -51,10 +52,8 @@
                                                                             :database db-id
                                                                             :query    {:source-table (str "card__" card1-id)}}}
                        :model/User          user           {:email "dirk@kirk.ir"}
-                       :model/Collection    pcoll          {:name              "Personal Collection"
-                                                            :personal_owner_id (:id user)}
                        :model/Card          pcard          {:name          "Personal Card"
-                                                            :collection_id (:id pcoll)}
+                                                            :collection_id (personal-collection-id user)}
                        :model/Card          _              {:name          "External Card"
                                                             :dataset_query {:database db-id
                                                                             :type     :query
@@ -67,7 +66,7 @@
                                                                              :values_source_config {:card_id card1-id}}]}]
       (testing "Complain about card not available for exporting"
         (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
-          (extract-aborts! {:targets       [["Collection" coll1-id]]
+          (extract-aborts! {:targets       [[:model/Collection coll1-id]]
                             :no-settings   true
                             :no-data-model true})
           (is (some #(re-find #"not included in the export" %)
@@ -77,7 +76,7 @@
       (testing "Complain about card depending on an outside card: "
         (testing "when its :source-table"
           (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
-            (extract-aborts! {:targets       [["Collection" coll2-id]]
+            (extract-aborts! {:targets       [[:model/Collection coll2-id]]
                               :no-settings   true
                               :no-data-model true})
             (is (some #(re-find #"not included in the export" %)
@@ -87,7 +86,7 @@
         (testing "when it's :parameters"
           (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
             ;; the parameter-referencing "Card with parameters" lives in coll3, so target coll3 to exercise it
-            (extract-aborts! {:targets       [["Collection" coll3-id]]
+            (extract-aborts! {:targets       [[:model/Collection coll3-id]]
                               :no-settings   true
                               :no-data-model true})
             (is (some #(re-find #"not included in the export" %)
@@ -104,7 +103,7 @@
                             (map :message)
                             (messages)))))))
       (testing "exporting a clean collection works even when other collections have escape issues"
-        (let [extracted (into [] (extract/extract {:targets       [["Collection" clean-coll-id]]
+        (let [extracted (into [] (extract/extract {:targets       [[:model/Collection clean-coll-id]]
                                                    :no-settings   true
                                                    :no-data-model true
                                                    :no-transforms true}))]
@@ -133,7 +132,7 @@
                          :model/Card          {escaped-eid :entity_id
                                                escaped-id  :id}      {:name "Escaped Card" :database_id db-id}
                          :model/DashboardCard _                      {:card_id escaped-id :dashboard_id dash-id}]
-        (let [opts {:targets [["Collection" coll-id]] :no-settings true :no-data-model true}]
+        (let [opts {:targets [[:model/Collection coll-id]] :no-settings true :no-data-model true}]
           (testing "without the flag, dependency validation aborts the whole export with an error (#75176)"
             (extract-aborts! opts))
           (testing "with continue-on-error, everything in the target collection is exported and the escaped card is left out"
@@ -161,20 +160,20 @@
                          :model/Database   {db-id :id}    {:engine :postgres}
                          :model/Table      {table-id :id} {:db_id db-id :name "T"}
                          :model/Collection {coll-id :id}  {:name "Target Collection"}]
-        (let [opts {:targets [["Collection" coll-id]] :no-settings true :no-data-model true :no-transforms true}]
+        (let [opts {:targets [[:model/Collection coll-id]] :no-settings true :no-data-model true :no-transforms true}]
           (doseq [{:keys [label query-filter viz-settings delete! msg-re]}
                   [{:label        "a Field referenced in the query"
                     :query-filter (fn [field-id _seg-id] [:> [:field field-id nil] 1])
-                    :delete!      (fn [field-id _seg-id] (t2/delete! :model/Field field-id))
+                    :delete!      (fn [field-id _seg-id] (t2/delete! :model/Field :id field-id))
                     :msg-re       #"Field .* is missing from the source database"}
                    {:label        "a Segment referenced in the query"
                     :query-filter (fn [_field-id seg-id] [:segment seg-id])
-                    :delete!      (fn [_field-id seg-id] (t2/delete! :model/Segment seg-id))
+                    :delete!      (fn [_field-id seg-id] (t2/delete! :model/Segment :id seg-id))
                     :msg-re       #"Segment .* is missing from the source database"}
                    {:label        "a Field referenced only in visualization_settings"
                     :viz-settings (fn [field-id] {:column_settings {(str "[\"ref\",[\"field\"," field-id ",null]]")
                                                                     {:column_title "X"}}})
-                    :delete!      (fn [field-id _seg-id] (t2/delete! :model/Field field-id))
+                    :delete!      (fn [field-id _seg-id] (t2/delete! :model/Field :id field-id))
                     :msg-re       #"Field .* is missing from the source database"}]]
             (testing label
               (ts/with-temp-dpc [:model/Field   {field-id :id}   {:table_id table-id :name "F" :base_type :type/Integer}
@@ -203,42 +202,38 @@
                         "the warning reports the unsatisfied data-model reference")))))))))))
 
 (deftest serialization-dependencies-content-models-test
-  (testing "serialization-dependencies derives export deps from the raw entity for the newly-covered content models (GHY-4010)"
+  (testing "export-references derives export deps from raw entity for content models (GHY-4010)"
     (mt/with-empty-h2-app-db!
       (ts/with-temp-dpc [;; non-H2 engine so the database survives serdes extract filtering
                          :model/Database   {db-id :id}         {:engine :postgres}
-                         :model/Table      {table-id :id}      {:db_id db-id :name "T"}
-                         :model/Field      {field-id :id}      {:table_id table-id :name "F" :base_type :type/Integer}
                          :model/Collection {parent-id :id}     {:name "Parent"}
                          :model/Collection {child-id :id}      {:name "Child" :location (str "/" parent-id "/")}
                          :model/Collection {snip-coll-id :id}   {:name "Snips" :namespace "snippets"}
                          :model/Card       {model-card-id :id} {:name "Model" :type :model :database_id db-id}
                          :model/Card       {embed-card-id :id} {:name "Embedded" :database_id db-id}]
         (let [deps (fn [model id]
-                     (serdes/serialization-dependencies model (t2/select-one (keyword "model" model) :id id)))]
+                     (let [model (keyword "model" model)]
+                       (set (first (serialization/export-dependencies model [(t2/select-one model :id id)])))))]
           (testing "Collection derives its parent from the raw :location path"
-            (is (= #{[{:model "Collection" :id parent-id}]} (deps "Collection" child-id)))
-            (is (empty? (deps "Collection" parent-id)) "a root collection has no parent dependency"))
+            (is (= #{[:model/Collection parent-id]} (deps "Collection" child-id)))
+            (is (empty? (deps "Collection" parent-id)) "root collection has no parent dependency"))
           (testing "Timeline references its containing collection"
             (let [tl-id (t2/insert-returning-pk! :model/Timeline {:name "TL" :icon "star" :collection_id child-id :creator_id (mt/user->id :rasta)})]
-              (is (= #{[{:model "Collection" :id child-id}]} (deps "Timeline" tl-id)))))
+              (is (= #{[:model/Collection child-id]} (deps "Timeline" tl-id)))))
           (testing "NativeQuerySnippet references its containing collection"
             (let [snip-id (t2/insert-returning-pk! :model/NativeQuerySnippet
                                                    {:name "snip" :content "1=1" :collection_id snip-coll-id
                                                     :creator_id (mt/user->id :rasta)})]
-              (is (= #{[{:model "Collection" :id snip-coll-id}]} (deps "NativeQuerySnippet" snip-id)))))
-          (testing "Action (query) references its model Card, Database, and the tables/fields in its query"
+              (is (= #{[:model/Collection snip-coll-id]} (deps "NativeQuerySnippet" snip-id)))))
+          (testing "Action (query) references its model Card and Database"
             (let [action-id (t2/insert-returning-pk! :model/Action {:name "A" :type :query :model_id model-card-id})]
               (t2/insert! :model/QueryAction {:action_id     action-id
                                               :database_id   db-id
                                               :dataset_query {:database db-id
-                                                              :type     :query
-                                                              :query    {:source-table table-id
-                                                                         :filter       [:> [:field field-id nil] 1]}}})
-              (is (= #{[{:model "Card" :id model-card-id}]
-                       [{:model "Database" :id db-id}]
-                       [{:model "Table" :id table-id}]
-                       [{:model "Field" :id field-id}]}
+                                                              :type     :native
+                                                              :native   {:query "DELETE FROM t WHERE x > 1"}}})
+              (is (= #{[:model/Card model-card-id]
+                       [:model/Database db-id]}
                      (deps "Action" action-id)))))
           (testing "Document references its embedded cards and its containing collection"
             (let [doc-id (t2/insert-returning-pk! :model/Document
@@ -249,6 +244,6 @@
                                                    :document      {:type    "doc"
                                                                    :content [{:type  "cardEmbed"
                                                                               :attrs {:id embed-card-id}}]}})]
-              (is (= #{[{:model "Collection" :id child-id}]
-                       [{:model "Card" :id embed-card-id}]}
+              (is (= #{[:model/Collection child-id]
+                       [:model/Card embed-card-id]}
                      (deps "Document" doc-id))))))))))

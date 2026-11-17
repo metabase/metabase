@@ -1,5 +1,6 @@
 ---
 title: How to request new features
+summary: How to request a Metabase feature, and what to include in the request.
 ---
 
 # How to request new features

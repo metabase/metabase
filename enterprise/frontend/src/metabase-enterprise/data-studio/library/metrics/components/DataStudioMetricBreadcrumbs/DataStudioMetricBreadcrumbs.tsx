@@ -1,6 +1,7 @@
 import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
+import { getLibraryCollectionDisplayName } from "metabase/data-studio/common/utils";
 import * as Urls from "metabase/urls";
 import type { Card } from "metabase-types/api";
 
@@ -24,7 +25,7 @@ export function DataStudioMetricBreadcrumbs({
             expandedIds: path.slice(1, index + 1).map((c) => c.id),
           })}
         >
-          {collection.name}
+          {getLibraryCollectionDisplayName(collection)}
         </Link>
       ))}
       <span>{card.name}</span>

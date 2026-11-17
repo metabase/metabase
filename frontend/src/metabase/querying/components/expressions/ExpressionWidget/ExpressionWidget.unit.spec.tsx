@@ -1,8 +1,14 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type { DatabaseFeature } from "metabase-types/api";
+import {
+  PRODUCTS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import type { ExpressionWidgetProps } from "./ExpressionWidget";
 import { ExpressionWidget } from "./ExpressionWidget";
@@ -10,7 +16,7 @@ import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 
 describe("ExpressionWidget", () => {
   it("should render proper controls", async () => {
-    setup();
+    await setup();
     expect(
       await screen.findByTestId("custom-expression-query-editor"),
     ).toBeInTheDocument();
@@ -18,8 +24,8 @@ describe("ExpressionWidget", () => {
     expect(screen.getByText("Done")).toBeInTheDocument();
   });
 
-  it("should not render Name field", () => {
-    setup();
+  it("should not render Name field", async () => {
+    await setup();
 
     expect(screen.queryByText("Name")).not.toBeInTheDocument();
   });
@@ -47,7 +53,7 @@ describe("ExpressionWidget", () => {
   it(`should render interactive header if it is passed`, async () => {
     const mockTitle = "Some Title";
     const onClose = jest.fn();
-    setup({
+    await setup({
       header: <ExpressionWidgetHeader title={mockTitle} onBack={onClose} />,
       onClose,
     });
@@ -61,8 +67,8 @@ describe("ExpressionWidget", () => {
   });
 
   describe("withName = true", () => {
-    it("should render Name field", () => {
-      setup({ withName: true });
+    it("should render Name field", async () => {
+      await setup({ withName: true });
 
       expect(screen.getByTestId("expression-name")).toBeInTheDocument();
     });
@@ -148,6 +154,22 @@ describe("ExpressionWidget", () => {
     });
   });
 
+  it("debounces the first validation of a new expression", async () => {
+    await setup({ expressionMode: "aggregation" });
+
+    await userEvent.paste("[Imaginary]");
+
+    // Validation is debounced, so the error must not appear synchronously with
+    // the first change to a new expression.
+    expect(
+      screen.queryByText("Unknown Aggregation, Measure or Metric: Imaginary"),
+    ).not.toBeInTheDocument();
+
+    await screen.findByText(
+      "Unknown Aggregation, Measure or Metric: Imaginary",
+    );
+  });
+
   describe("expressionMode = 'expression'", () => {
     it("should show a detailed error when comma is missing (metabase#15892)", async () => {
       await setup({ expressionMode: "expression" });
@@ -161,9 +183,89 @@ describe("ExpressionWidget", () => {
       await screen.findByText('Expecting operator but got "test" instead');
     });
   });
+
+  describe("reopening a committed literal expression", () => {
+    const literalQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: PRODUCTS_ID },
+          expressions: [
+            { name: "Number", value: { type: "literal", value: 10 } },
+            { name: "TrueColumn", value: { type: "literal", value: true } },
+            { name: "FalseColumn", value: { type: "literal", value: false } },
+          ],
+        },
+      ],
+    });
+
+    it.each([
+      "True",
+      "False",
+      "0",
+      "10",
+      '"abc"',
+      '"2024-01-01"',
+      '"2024-01-01T10:20:00"',
+      '"10:20"',
+      "[Number]",
+      "[Number] + [Number]",
+    ])("should show the custom column formula %s again", async (formula) => {
+      await expectFormulaRoundTrip({
+        query: literalQuery,
+        expressionMode: "expression",
+        formula,
+      });
+    });
+
+    it.each([
+      "False",
+      "True",
+      "[TrueColumn]",
+      "[FalseColumn]",
+      "[TrueColumn] OR [FalseColumn]",
+      "[TrueColumn] = [FalseColumn]",
+    ])("should show the filter formula %s again", async (formula) => {
+      await expectFormulaRoundTrip({
+        query: literalQuery,
+        expressionMode: "filter",
+        formula,
+      });
+    });
+  });
+
+  describe("functions the query's database supports", () => {
+    const expression = "Percentile([Total], 0.5)";
+
+    it("should accept a function when the database has its feature", async () => {
+      await setup({ expressionMode: "aggregation" }, [
+        "percentile-aggregations",
+      ]);
+
+      await userEvent.paste(expression);
+      await userEvent.tab();
+
+      const doneButton = screen.getByRole("button", { name: "Done" });
+      await waitFor(() => expect(doneButton).toBeEnabled());
+    });
+
+    it("should reject a function when the database lacks its feature", async () => {
+      await setup({ expressionMode: "aggregation" }, []);
+
+      await userEvent.paste(expression);
+      await userEvent.tab();
+
+      const doneButton = screen.getByRole("button", { name: "Done" });
+      expect(doneButton).toBeDisabled();
+
+      await screen.findByText("Unsupported function Percentile");
+    });
+  });
 });
 
-async function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
+async function setup(
+  additionalProps?: Partial<ExpressionWidgetProps>,
+  databaseFeatures?: DatabaseFeature[],
+) {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const stageIndex = 0;
   const availableColumns = Lib.expressionableColumns(query, stageIndex);
@@ -179,6 +281,12 @@ async function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   function getRecentExpressionClauseInfo() {
     return Lib.displayInfo(query, stageIndex, getRecentExpressionClause());
   }
+
+  setupDatabaseEndpoints(
+    createSampleDatabase(
+      databaseFeatures ? { features: databaseFeatures } : {},
+    ),
+  );
 
   renderWithProviders(
     <ExpressionWidget
@@ -206,4 +314,76 @@ async function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
     onChangeClause,
     onClose,
   };
+}
+
+type RoundTripOpts = {
+  query: Lib.Query;
+  expressionMode: Lib.ExpressionMode;
+  formula: string;
+};
+
+async function renderEditableWidget({
+  query,
+  expressionMode,
+  clause,
+  onChangeClause,
+}: {
+  query: Lib.Query;
+  expressionMode: Lib.ExpressionMode;
+  clause?: Lib.ExpressionClause;
+  onChangeClause: (name: string, clause: Lib.ExpressionClause) => void;
+}) {
+  const stageIndex = -1;
+  const view = renderWithProviders(
+    <ExpressionWidget
+      clause={clause}
+      name={undefined}
+      query={query}
+      stageIndex={stageIndex}
+      expressionMode={expressionMode}
+      availableColumns={Lib.expressionableColumns(query, stageIndex)}
+      reportTimezone="UTC"
+      onChangeClause={onChangeClause}
+      onClose={jest.fn()}
+    />,
+  );
+  await waitFor(() =>
+    expect(screen.getByTestId("custom-expression-query-editor")).toHaveProperty(
+      "readOnly",
+      false,
+    ),
+  );
+  return view;
+}
+
+async function expectFormulaRoundTrip({
+  query,
+  expressionMode,
+  formula,
+}: RoundTripOpts) {
+  setupDatabaseEndpoints(createSampleDatabase());
+
+  const onChangeClause = jest.fn<void, [string, Lib.ExpressionClause]>();
+  const { unmount } = await renderEditableWidget({
+    query,
+    expressionMode,
+    onChangeClause,
+  });
+  screen.getByTestId("custom-expression-query-editor").focus();
+  await userEvent.paste(formula);
+  await userEvent.tab();
+  const doneButton = screen.getByRole("button", { name: "Done" });
+  await waitFor(() => expect(doneButton).toBeEnabled());
+  await userEvent.click(doneButton);
+  await waitFor(() => expect(onChangeClause).toHaveBeenCalledTimes(1));
+  const [, committedClause] = onChangeClause.mock.calls[0];
+  unmount();
+
+  await renderEditableWidget({
+    query,
+    expressionMode,
+    clause: committedClause,
+    onChangeClause: jest.fn(),
+  });
+  expect(await screen.findByDisplayValue(formula)).toBeInTheDocument();
 }

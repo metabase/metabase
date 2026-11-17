@@ -1,12 +1,13 @@
 import { t } from "ttag";
 
+import { useHasTokenFeature } from "metabase/common/hooks";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { Card, Flex, Radio, Stack, Text } from "metabase/ui";
 
 import { getEmbedExperiences } from "../../../constants";
 import { useSdkIframeEmbedSetupContext } from "../../../context";
 import { useHandleExperienceChange } from "../../../hooks/use-handle-experience-change";
-import type { SdkIframeEmbedSetupExperience } from "../../../types";
 import { hasAuthToSelect } from "../../../utils/has-auth-to-select";
 import { SetupSsoAlert } from "../../Common/SetupSsoAlert";
 
@@ -19,6 +20,7 @@ export const ExperienceCard = () => {
   } = useSdkIframeEmbedSetupContext();
 
   const isGuestEmbed = !!settings.isGuest;
+  const isDataAppsAvailable = useHasTokenFeature("data-apps");
   const isMetabotAvailable = useMetabotEnabledEmbeddingAware({
     forceEmbedding: true,
   });
@@ -27,14 +29,15 @@ export const ExperienceCard = () => {
 
   const experiences = getEmbedExperiences({
     isMetabotAvailable,
+    isDataAppsAvailable,
   });
 
   const showSsoNotConfiguredWarning =
     !isSsoEnabledAndConfigured && !hasAuthToSelect(experience);
 
   return (
-    <Card p="md">
-      <Stack gap="md">
+    <Card p="lg">
+      <Stack gap="lg">
         <Text size="lg" fw="bold">
           {t`Select your embed experience`}
         </Text>
@@ -48,27 +51,33 @@ export const ExperienceCard = () => {
             )
           }
         >
-          <Stack gap="md">
+          <Stack gap="lg">
             {experiences.map((experience) => (
               <Radio
                 key={experience.value}
                 value={experience.value}
                 label={
-                  <Flex gap="xs" align="center">
+                  <Flex gap="xxs" align="center">
                     {experience.title}
                   </Flex>
                 }
                 description={experience.description}
                 disabled={
                   (!experience.supportsOss && !isSimpleEmbedFeatureAvailable) ||
-                  (!experience.supportsGuestEmbed && isGuestEmbed)
+                  (!experience.supportsGuestEmbed &&
+                    isGuestEmbed &&
+                    experience.value !== "data-app")
                 }
               />
             ))}
           </Stack>
         </Radio.Group>
 
-        {showSsoNotConfiguredWarning && <SetupSsoAlert />}
+        {showSsoNotConfiguredWarning && (
+          <SetupSsoAlert
+            variant={experience === "data-app" ? "data-app" : "local-testing"}
+          />
+        )}
       </Stack>
     </Card>
   );

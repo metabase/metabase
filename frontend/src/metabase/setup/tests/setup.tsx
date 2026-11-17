@@ -8,6 +8,7 @@ import {
 } from "__support__/enterprise";
 import {
   setupCurrentUserEndpoint,
+  setupEnginesEndpoint,
   setupLlmModelsEndpoint,
   setupLlmProviderTypesEndpoint,
   setupLlmProvidersEndpoint,
@@ -15,18 +16,16 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockSetupState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { SetupStep } from "metabase/redux/store";
-import {
-  createMockSetupState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type {
   EnterpriseSettings,
   TokenFeatures,
   UsageReason,
 } from "metabase-types/api";
 import {
+  createMockEngines,
   createMockLlmProviderField,
   createMockLlmProviderType,
   createMockSettings,
@@ -60,12 +59,15 @@ const METABASE_TYPE = createMockLlmProviderType({
 
 export interface SetupOpts {
   step?: SetupStep;
+  isEmbeddingUseCase?: boolean;
   tokenFeatures?: TokenFeatures;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
   settings?: Partial<EnterpriseSettings>;
 }
 
 export async function setup({
+  step = "welcome",
+  isEmbeddingUseCase = false,
   tokenFeatures = createMockTokenFeatures(),
   enterprisePlugins,
   settings = {},
@@ -75,7 +77,8 @@ export async function setup({
 
   const state = createMockState({
     setup: createMockSetupState({
-      step: "welcome",
+      step,
+      isEmbeddingUseCase,
     }),
     settings: mockSettings(
       createMockSettings({
@@ -107,10 +110,14 @@ export async function setup({
   setupLlmProvidersEndpoint([]);
   setupLlmModelsEndpoint([]);
 
+  setupEnginesEndpoint(createMockEngines());
+
   renderWithProviders(<Setup />, { storeInitialState: state });
 
   // there is some async stuff going on with the locale loading
-  await screen.findByText("Let's get started");
+  await screen.findByText(
+    step === "welcome" ? "Let's get started" : "What should we call you?",
+  );
 
   return;
 }

@@ -218,7 +218,7 @@ export const DragBetweenTwoInputs = {
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <Stack gap="md" align="stretch">
+        <Stack gap="lg" align="stretch">
           <Text fw="bold">Drag between two inputs</Text>
           <Box style={{ display: "flex", gap: "0.5rem" }}>
             <ReorderableTagsInput

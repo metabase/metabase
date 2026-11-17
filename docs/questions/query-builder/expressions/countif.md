@@ -1,5 +1,6 @@
 ---
 title: CountIf
+summary: Count only the rows that meet a condition you define.
 ---
 
 # CountIf
@@ -190,7 +191,7 @@ GROUP BY
     plan
 ```
 
-The `SELECT` part of the SQl query matches the Metabase expression:
+The `SELECT` part of the SQL query matches the Metabase expression:
 
 ```
 CountIf([Active Subscription] = false)

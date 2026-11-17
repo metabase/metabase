@@ -3,28 +3,42 @@
    [clojure.core.async :as a]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.util :as driver.u]
+   [metabase.request.core :as request]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.interface :as transforms.i]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(defn- run-mbql-transform!
-  ([transform] (run-mbql-transform! transform nil))
-  ([{:keys [id source target owner_user_id creator_id] :as transform}
-    {:keys [run-method on-start user-id parent-run]}]
+(mu/defn- run-mbql-transform! :- :nil
+  ([transform :- ::transforms-base.schema/transform]
+   (run-mbql-transform! transform nil))
+  ([{:keys [id source target owner_user_id creator_id] :as transform} :- ::transforms-base.schema/transform
+    {:keys [run-method on-start user-id parent-run]} :- [:maybe ::transforms.schema/execute-options]]
+   ;; `:target` is already workspace-rewritten — `resolve-target` runs in
+   ;; `metabase.transforms.execute/execute!` before dispatch.
    (try
-     (let [db          (t2/select-one :model/Database (get-in source [:query :database]))
+     (let [db          (driver.u/lib-database (get-in source [:query :database]))
            driver      (:engine db)
            _           (transforms-base.u/throw-if-db-routing-enabled! transform db)
            run-user-id (if (and (= run-method :manual) user-id)
                          user-id
                          (or owner_user_id creator_id))
+           ;; Authorized as the user the run executes as -- the requester for a manual run, the owner (or
+           ;; creator) otherwise -- and before the run row is booked. A manual refusal surfaces as a 403 on
+           ;; the request that asked for the run rather than as a failed run.
+           _           (do (when-not run-user-id
+                             (throw (ex-info "Transform has no owner or creator to run as" {:transform-id id})))
+                           (request/with-current-user run-user-id
+                             (transforms.u/check-source-query-permissions! transform)))
            {run-id :id} (transforms.u/try-start-unless-already-running id run-method run-user-id
                                                                        :parent-run parent-run)]
        (when on-start (on-start run-id))
@@ -59,11 +73,12 @@
                             (throw (or (:error result) (ex-info "Transform failed" {:status (:status result)}))))
                           result))))]
                ;; Post-processing: sync, transform_id, events
-               (transforms-base.u/complete-execution! transform {}))))))
+               (transforms-base.u/complete-execution! transform {})))))
+       nil)
      (catch Throwable t
        (if (= :already-running (:error (ex-data t)))
          (log/warnf "Transform %d is already running" id)
-         (log/errorf "Error executing transform: %s" (ex-message t)))
+         (log/errorf "Error executing transform %d: %s" id (ex-message t)))
        (throw t)))))
 
 (defmethod transforms.i/execute! :query [transform opts]

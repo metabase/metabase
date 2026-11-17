@@ -117,7 +117,7 @@
   [action-id]
   {:action_id     action-id
    :database_id   (mt/id)
-   :dataset_query (mt/query venues)})
+   :dataset_query (mt/native-query {:query "SELECT * FROM venues"})})
 
 (def ^:private test-collection (make-result "collection test collection"
                                             :bookmark false
@@ -962,10 +962,12 @@
               (is (= #{}
                      (into #{} (comp relevant-2 (map (juxt :name normalize)))
                            (search! "rom" :rasta))))))
-          (testing "Sandboxed users do not see indexed entities in search"
+          (testing "Sandboxed, impersonated and routed users do not see indexed entities in search"
             (mt/with-dynamic-fn-redefs [perms-util/impersonated-user? (constantly true)]
               (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))
             (mt/with-dynamic-fn-redefs [perms-util/sandboxed-user? (constantly true)]
+              (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))
+            (mt/with-dynamic-fn-redefs [perms-util/routed-user? (constantly true)]
               (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
 
 (defn- archived-collection [m]
@@ -1074,7 +1076,7 @@
   (testing "You should see Tables in the search results!\n"
     (mt/with-temp [:model/Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
-        (is (= [(default-table-search-row "RoundTable")]
+        (is (= [(assoc (default-table-search-row "RoundTable") :can_write (= user :crowberto))]
                (search-request-data user :q "RoundTable" :models "table")))))))
 
 (deftest table-test-2
@@ -1082,7 +1084,7 @@
     (mt/with-temp [:model/Table _normal {:name "Foo Visible"}
                    :model/Table _hidden {:name "Foo Hidden", :visibility_type "hidden"}]
       (do-test-users [user [:crowberto :rasta]]
-        (is (= [(default-table-search-row "Foo Visible")]
+        (is (= [(assoc (default-table-search-row "Foo Visible") :can_write (= user :crowberto))]
                (search-request-data user :q "Foo")))))))
 
 (deftest table-test-3
@@ -1090,7 +1092,7 @@
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [:model/Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
+          (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot :can_write (= user :crowberto))]
                  (search-request-data user :q "Lancelot"))))))))
 
 (deftest table-test-4
@@ -1098,7 +1100,8 @@
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [:model/Table _ {:name "RoundTable" :description lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
+          (is (= [(assoc (default-table-search-row "RoundTable")
+                         :description lancelot :table_description lancelot :can_write (= user :crowberto))]
                  (search-request-data user :q "Lancelot"))))))))
 
 (deftest table-test-5
@@ -1146,7 +1149,7 @@
         (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
         (perms/set-table-permission! group-id table :perms/create-queries :query-builder)
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(default-table-search-row "RoundTable")]
+          (is (= [(assoc (default-table-search-row "RoundTable") :can_write (= user :crowberto))]
                  (binding [*search-request-results-database-id* db-id]
                    (search-request-data user :q "RoundTable")))))))))
 
@@ -1219,7 +1222,7 @@
             (is (= nil (search-for-pulses pulse))))
           (testing "Even as a dashboard subscription, the pulse is not found."
             (mt/with-temp [:model/Dashboard dashboard {}]
-              (t2/update! :model/Pulse (:id pulse) {:dashboard_id (:id dashboard)})
+              (t2/update! :model/Pulse :id (:id pulse) {:dashboard_id (:id dashboard)})
               (is (= nil (search-for-pulses pulse))))))))))
 
 (deftest filter-by-creator-test
@@ -1235,7 +1238,7 @@
          :model/Card      {card-id-4 :id}    {:name (format "%s Card 4" search-term) :creator_id user-id-2}
          :model/Card      {model-id :id}     {:name (format "%s Dataset 1" search-term) :type :model :creator_id user-id}
          :model/Dashboard {dashboard-id :id} {:name (format "%s Dashboard 1" search-term) :creator_id user-id}
-         :model/Action    {action-id :id}    {:name (format "%s Action 1" search-term) :model_id model-id :creator_id user-id :type :http}]
+         :model/Action    {action-id :id}    {:name (format "%s Action 1" search-term) :model_id model-id :creator_id user-id :type :query}]
         (testing "sanity check that without search by created_by we have more results than if a filter is provided"
           (is (> (:total (mt/user-http-request :crowberto :get 200 "search" :q search-term))
                  5)))
@@ -1328,7 +1331,7 @@
             :is-creation? true
             :object       (merge {:id id}
                                  (when (= model :model/Card)
-                                   {:type "question"}))}))
+                                   {:type :question}))}))
         (testing "Able to filter by last editor"
           (let [resp (mt/user-http-request :crowberto :get 200 "search"
                                            :q search-term
@@ -1449,6 +1452,19 @@
         (is (= "Failed to parse datetime value: today~"
                (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_at "today~" :creator_id (mt/user->id :rasta))))))))
 
+(deftest action-without-model-not-searchable-test
+  (testing "search returns an Action with a model but not one without a model"
+    (let [search-term "action-without-model-search"]
+      (mt/with-temp [:model/Card   {model-id :id}  {:name (str search-term " model") :type :model}
+                     :model/Action {action-id :id} {:name (str search-term " with model") :model_id model-id :type :query}
+                     :model/Action _               {:name (str search-term " without model") :model_id nil :type :query}]
+        (search.tu/with-appdb-search-and-legacy-search
+          (is (= #{action-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "action")
+                      :data
+                      (map :id)
+                      set))))))))
+
 (deftest filter-by-last-edited-at-test
   (let [search-term "last-edited-at-filtering"]
     (mt/with-temp
@@ -1458,7 +1474,7 @@
        :model/Card       {metric-id :id} {:name search-term :type :metric}
        :model/Action     {action-id :id} {:name       search-term
                                           :model_id   model-id
-                                          :type       :http}]
+                                          :type       :query}]
       (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
                           [:model/Dashboard dash-id] [:model/Card metric-id]]]
         (revision/push-revision!
@@ -1468,7 +1484,7 @@
           :is-creation? true
           :object       (merge {:id id}
                                (when (= model :model/Card)
-                                 {:type "question"}))}))
+                                 {:type :question}))}))
       (testing "returns only applicable models"
         (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today"
                                          :calculate_available_models true)]
@@ -1494,7 +1510,7 @@
             :is-creation? true
             :object       (merge {:id id}
                                  (when (= model :model/Card)
-                                   {:type "question"}))}))
+                                   {:type :question}))}))
         (is (= #{"dashboard" "dataset" "metric" "card"}
                (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today" :last_edited_by (mt/user->id :rasta)
                                          :calculate_available_models true)
@@ -1548,7 +1564,7 @@
              (t2/select-one-fn :query_type :model/Card :id native-card-in-query)))
       (mt/with-actions
        [_                         {:type :model :dataset_query (mt/mbql-query venues)}
-        {http-action :action-id}  {:type :http :name search-term}
+        {named-action :action-id} {:type :implicit :name search-term}
         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
         ;; TODO investigate why the actions don't get indexed automatically
         (search/reindex! {:async? false :in-place? true})
@@ -1557,7 +1573,7 @@
                    ["card" native-card-in-name]
                    ["dataset" mbql-model]
                    ["dataset" native-model-in-name]
-                   ["action" http-action]}
+                   ["action" named-action]}
                  (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term)
                       :data
                       (map (juxt :model :id))
@@ -1567,7 +1583,7 @@
                    ["card" native-card-in-name]
                    ["dataset" mbql-model]
                    ["dataset" native-model-in-name]
-                   ["action" http-action]
+                   ["action" named-action]
                    ["card" native-card-in-query]
                    ["dataset" native-model-in-query]
                    ["action" query-action]}
@@ -1593,13 +1609,13 @@
         :id           card-id-1
         :user-id      user-id-1
         :is-creation? true
-        :object       {:id card-id-1 :type "question"}})
+        :object       {:id card-id-1 :type :question}})
       (revision/push-revision!
        {:entity       :model/Card
         :id           card-id-2
         :user-id      user-id-2
         :is-creation? true
-        :object       {:id card-id-2 :type "question"}})
+        :object       {:id card-id-2 :type :question}})
       (testing "search result should returns creator_common_name and last_editor_common_name"
         (is (= #{["card" card-id-1 "Ngoc Khuat" "Ngoc Khuat"]
                  ;; for user that doesn't have first_name or last_name, should fall backs to email
@@ -1660,12 +1676,28 @@
         (is (= #{["dashboard" dash-public]
                  ["dashboard" dash-sub-public]
                  ["collection" coll-sub-public]}
-               (search :rasta "exclude"))))
+               (search :crowberto "exclude"))))
       (testing "non-admin exclude"
         (is (= #{["dashboard" dash-public]
                  ["dashboard" dash-sub-public]
                  ["collection" coll-sub-public]}
                (search :rasta "exclude"))))
+      (testing "non-admin `all` is not exposed to other users' personal collection items"
+        (let [rasta-all     (search :rasta "all")
+              crowberto-all (search :crowberto "all")
+              crowberto-items #{["dataset" model-crowberto]
+                                ["dataset" model-sub-crowberto]
+                                ["collection" coll-sub-crowberto]}
+              rasta-items   #{["card" card-rasta]
+                              ["card" card-sub-rasta]
+                              ["collection" coll-sub-rasta]}
+              public-items  #{["dashboard" dash-public]
+                              ["dashboard" dash-sub-public]
+                              ["collection" coll-sub-public]}]
+          (is (= (into rasta-items public-items) rasta-all)
+              "rasta sees only their own personal items plus public items, none of crowberto's")
+          (testing "positive control: admin with `all` sees everyone's items"
+            (is (= (into (into rasta-items crowberto-items) public-items) crowberto-all)))))
       (testing "getting models should return only models that are applied"
         (is (= #{"dashboard" "collection"}
                (get-available-models :q search-term :filter_items_in_personal_collection "exclude"))))
@@ -1749,6 +1781,31 @@
                 :type            nil}
                (-> result :data first :collection)))))))
 
+(deftest official-collection-search-result-authority-level-test
+  (testing "Collection search results carry their own official authority level, which the UI badges"
+    (let [search-name (str (random-uuid))]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name            (str search-name "-collection")
+                                                      :authority_level "official"}]
+        (is (=? [{:id                         coll-id
+                  :collection_authority_level "official"}]
+                (:data (mt/user-http-request :crowberto :get 200 "search"
+                                             :q search-name :models ["collection"]))))))))
+
+(deftest official-collection-item-search-result-authority-level-test
+  (testing "Card and dashboard search results carry the official authority level of their collection, which the UI badges"
+    (let [search-name (str (random-uuid))]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name            "Official parent"
+                                                      :authority_level "official"}
+                     :model/Card      {card-id :id} {:name          (str search-name "-card")
+                                                     :collection_id coll-id}
+                     :model/Dashboard {dash-id :id} {:name          (str search-name "-dashboard")
+                                                     :collection_id coll-id}]
+        (let [results (:data (mt/user-http-request :crowberto :get 200 "search"
+                                                   :q search-name :models ["card" "dashboard"]))]
+          (is (=? {"card"      [{:id card-id :collection {:id coll-id :authority_level "official"}}]
+                   "dashboard" [{:id dash-id :collection {:id coll-id :authority_level "official"}}]}
+                  (group-by :model results))))))))
+
 (deftest archived-search-results-with-no-write-perms-test
   (testing "Results which the searching user has no write permissions for are filtered out. (#24018, #33602)"
     ;; note that the collection does not start out archived, so that we can revoke/grant permissions on it
@@ -1769,7 +1826,7 @@
                                                      {:archived true}))
       (testing "Sanity check: Lucky should not be able to write our test Collection"
         (mt/with-test-user :lucky
-          (is (not (mi/can-write? :model/Collection collection-id)))))
+          (is (not (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id collection-id) :can_write))))))
       (is (= ["card test card is returned"]
              (->> (mt/user-http-request :lucky :get 200 "search" :archived true :q "test" :models ["card"])
                   :data
@@ -1988,26 +2045,27 @@
         ;; now (see note of the Card spec).
         (search/update! (t2/instance :model/Card {:id card-id}))
         (testing "The card data also include `dashboard` info"
-          (is (= {:id dash-id
-                  :name (named "dashboard")
-                  :moderation_status nil}
-                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
-                      :data
-                      (filter #(= card-id (:id %)))
-                      first
-                      :dashboard))))
+          (let [card (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                          :data
+                          (filter #(and (= "card" (:model %)) (= card-id (:id %))))
+                          first)]
+            (is (some? card))
+            (is (= {:id dash-id
+                    :name (named "dashboard")
+                    :moderation_status nil}
+                   (:dashboard card)))))
         (testing "Regular cards don't have it"
-          (is (nil?
-               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
-                    :data
-                    (filter #(= reg-card-id (:id %)))
-                    first
-                    :dashboard))))
+          (let [card (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                          :data
+                          (filter #(and (= "card" (:model %)) (= reg-card-id (:id %))))
+                          first)]
+            (is (some? card))
+            (is (nil? (:dashboard card)))))
         (testing "Dashboard questions are only returned if you pass `include_dashboard_questions=true`"
           (is (= []
                  (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "false")
                       :data
-                      (filter #(= card-id (:id %))))))))))
+                      (filter #(and (= "card" (:model %)) (= card-id (:id %)))))))))))
   (testing "Dashboard questions aren't searchable without a DashboardCard"
     (let [search-name (random-uuid)
           named #(str search-name "-" %)]
@@ -2072,40 +2130,44 @@
                 "result count is not observed on error responses")))))))
 
 (deftest ^:synchronized multiple-limits-test
-  (when (search/supports-index?)
-    ;; This test is failing with "no index" for some reason, forcing the reindex
-    (mt/user-real-request :crowberto :post 200 "search/force-reindex"))
   (testing "Multiple `limit` query args should be handled correctly (#45345)"
-    (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
-                          :data count)
-          result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
-                           :data count)]
-      (is (>= total-count result-count))
-      (is (= 1 result-count)))))
+    ;; The mock client sends repeated `:limit` keys as `limit=1&limit=3`, the same shape a real request would.
+    (let [q (str "multiplelimits" (u/lower-case-en (mt/random-name)))]
+      (mt/with-temp [:model/Card _ {:name (str q " one")}
+                     :model/Card _ {:name (str q " two")}]
+        (let [total-count  (-> (mt/user-http-request :crowberto :get 200 "search" :q q)
+                               :data count)
+              result-count (-> (mt/user-http-request :crowberto :get 200 "search" :q q :limit 1 :limit 3)
+                               :data count)]
+          (is (= 2 total-count))
+          (is (= 1 result-count)))))))
 
 (deftest ^:synchronized delete-database-hides-cards-from-search-test
   (testing "When deleting a database, cards referring to that database should be hidden from search"
     (let [card-name (str (random-uuid))]
-      (mt/with-temp [:model/Database {db-id :id} {:name "Test Database"}
-                     :model/Table {table-id :id} {:db_id db-id :name "Test Table"}
-                     :model/Card {card-id :id} {:name card-name
-                                                :database_id db-id
-                                                :table_id table-id
-                                                :dataset_query {:database db-id
-                                                                :type :query
-                                                                :query {:source-table table-id}}}]
-        (search/reindex! {:async? false :in-place? true})
-        (testing "Card should be visible in search before database deletion"
-          (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
-            (is (some #(= (:id %) card-id) (:data search-results))
-                "Card should be found in search results before database deletion")))
-        (testing "Card should be hidden from search after database deletion"
-          (t2/delete! :model/Database :id db-id)
-          (is (not (t2/exists? :model/Card :id card-id)))
-          (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
-            (is (not (some #{card-id}
-                           (mapv :id (:data search-results))))
-                "Card should not be found in search results after database deletion")))))))
+      ;; The search purge runs after the delete commits, and `with-temp` normally wraps its body in a rollback-only
+      ;; transaction that never commits; this makes it commit for real, with explicit cleanup.
+      (mt/test-helpers-set-global-values!
+        (mt/with-temp [:model/Database {db-id :id} {:name "Test Database"}
+                       :model/Table {table-id :id} {:db_id db-id :name "Test Table"}
+                       :model/Card {card-id :id} {:name card-name
+                                                  :database_id db-id
+                                                  :table_id table-id
+                                                  :dataset_query {:database db-id
+                                                                  :type :query
+                                                                  :query {:source-table table-id}}}]
+          (search/reindex! {:async? false :in-place? true})
+          (testing "Card should be visible in search before database deletion"
+            (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
+              (is (some #(= (:id %) card-id) (:data search-results))
+                  "Card should be found in search results before database deletion")))
+          (testing "Card should be hidden from search after database deletion"
+            (t2/delete! :model/Database :id db-id)
+            (is (not (t2/exists? :model/Card :id card-id)))
+            (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
+              (is (not (some #{card-id}
+                             (mapv :id (:data search-results))))
+                  "Card should not be found in search results after database deletion"))))))))
 
 (deftest collection-filter-test
   (mt/with-temp
@@ -2236,7 +2298,7 @@
                    :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
       (mt/with-no-data-perms-for-all-users!
         (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
-        (perms/set-table-permission! group-id (t2/select-one :model/Table table-id) :perms/create-queries :query-builder)
+        (perms/set-table-permission! group-id (t2/select-one :model/Table :id table-id) :perms/create-queries :query-builder)
         (is (=? [{:name "test measure" :model "measure"}]
                 (binding [*search-request-results-database-id* db-id]
                   (search-request-data :rasta :q "test measure"))))))))
@@ -2250,13 +2312,13 @@
           (is (=? [{:name measure-name :model "measure"}]
                   (search-request-data :crowberto :q measure-name))))
         (testing "after archiving, measure disappears from default results"
-          (t2/update! :model/Measure measure-id {:archived true})
+          (t2/update! :model/Measure :id measure-id {:archived true})
           (is (= [] (search-request-data :crowberto :q measure-name))))
         (testing "archived measure appears in archived=true results"
           (is (=? [{:name measure-name :model "measure" :archived true}]
                   (search-request-data :crowberto :q measure-name :archived "true"))))
         (testing "after unarchiving, measure returns to default results"
-          (t2/update! :model/Measure measure-id {:archived false})
+          (t2/update! :model/Measure :id measure-id {:archived false})
           (is (=? [{:name measure-name :model "measure"}]
                   (search-request-data :crowberto :q measure-name))))))))
 
@@ -2274,22 +2336,27 @@
                                          :models "measure")))))))))
 
 (deftest ^:synchronized search-results-do-not-expose-is-published-test
-  (testing "the internal is_published permission signal never carries a value in search API responses"
-    (let [table-name (mt/random-name)]
-      (mt/with-temp [:model/Table _ {:name table-name :is_published true}]
-        (testing "in-place engine"
-          (let [rows (:data (mt/user-http-request :crowberto :get 200 "search"
-                                                  :q table-name :models "table" :search_engine "in-place"))]
-            (is (seq rows))
-            (is (every? (comp nil? :is_published) rows))))
-        (when (search/supports-index?)
-          (testing "appdb engine"
-            (search.tu/with-temp-index-table
-              (search/reindex! {:async? false :in-place? true})
-              (let [rows (:data (mt/user-http-request :crowberto :get 200 "search"
-                                                      :q table-name :models "table" :search_engine "appdb"))]
-                (is (seq rows))
-                (is (every? (comp nil? :is_published) rows))))))))))
+  ;; Create the index table before `with-temp` opens its transaction. On H2 and MySQL, DDL on the ambient
+  ;; connection would commit that transaction, preventing rollback and leaking rows into later tests. The nested
+  ;; scope below reuses this table. Use `-if-supported` because the rest of the test does not require an index and
+  ;; should still run where the app DB cannot support one.
+  (search.tu/with-temp-index-table-if-supported
+    (testing "the internal is_published permission signal never carries a value in search API responses"
+      (let [table-name (mt/random-name)]
+        (mt/with-temp [:model/Table _ {:name table-name :is_published true}]
+          (testing "in-place engine"
+            (let [rows (:data (mt/user-http-request :crowberto :get 200 "search"
+                                                    :q table-name :models "table" :search_engine "in-place"))]
+              (is (seq rows))
+              (is (every? (comp nil? :is_published) rows))))
+          (when (search/supports-index?)
+            (testing "appdb engine"
+              (search.tu/with-temp-index-table
+                (search/reindex! {:async? false :in-place? true})
+                (let [rows (:data (mt/user-http-request :crowberto :get 200 "search"
+                                                        :q table-name :models "table" :search_engine "appdb"))]
+                  (is (seq rows))
+                  (is (every? (comp nil? :is_published) rows)))))))))))
 
 (deftest exploration-description-searchable-in-place-test
   (testing "explorations match on :description in the in-place engine (parity with the appdb spec)"

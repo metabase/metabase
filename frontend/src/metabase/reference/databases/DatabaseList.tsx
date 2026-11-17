@@ -5,35 +5,25 @@ import { t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { NoDatabasesEmptyState } from "metabase/common/components/NoDatabasesEmptyState";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/redux";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
-import { getShallowDatabases as getDatabases } from "metabase/selectors/metadata";
-import type { NormalizedDatabase } from "metabase-types/api";
+import type { Database } from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
-import type { StateWithReference } from "../selectors";
 
 interface DatabaseListProps {
-  entities: Record<string, NormalizedDatabase>;
+  entities: Database[];
   loading?: boolean;
   loadingError?: unknown;
 }
-
-const mapStateToProps = (state: StateWithReference) => ({
-  entities: getDatabases(state),
-});
 
 class DatabaseList extends Component<DatabaseListProps> {
   render() {
     const { entities, loadingError, loading } = this.props;
 
-    const databases = Object.values(entities)
-      .filter((database) => {
-        const exists = Boolean(database?.id && database?.name);
-        return exists && !database.is_saved_questions;
-      })
+    const databases = entities
+      .filter((database) => Boolean(database?.id && database?.name))
       .sort((a, b) => {
         const compared = a.name.localeCompare(b.name);
         return compared !== 0
@@ -49,7 +39,7 @@ class DatabaseList extends Component<DatabaseListProps> {
           error={loadingError}
         >
           {() =>
-            Object.keys(entities).length > 0 ? (
+            entities.length > 0 ? (
               <div className={cx(CS.wrapper, CS.wrapperTrim)}>
                 <List>
                   {databases.map((database) => (
@@ -76,4 +66,4 @@ class DatabaseList extends Component<DatabaseListProps> {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps)(DatabaseList);
+export default DatabaseList;

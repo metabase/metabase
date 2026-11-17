@@ -4,7 +4,7 @@ import type { Feature, FeatureCollection } from "geojson";
 import { memo } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { isSameSeries } from "metabase/visualizations/lib/utils";
+import { isSameSeries } from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 
 import type { FeatureInteraction } from "./LeafletChoropleth";

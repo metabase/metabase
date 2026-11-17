@@ -1,27 +1,24 @@
 (ns metabase.auth-identity.providers.password
   "Password authentication provider implementation."
   (:require
+   [metabase.auth-identity.db :as auth-identity.db]
+   [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
    [metabase.auth-identity.provider :as provider]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
 ;; Register password provider in the hierarchy
-(derive :provider/password ::provider/provider)
+(auth-identity.hierarchy/derive! :provider/password ::provider/provider)
+(auth-identity.hierarchy/derive! :provider/password ::provider/supports-mfa)
 
 ;;; -------------------------------------------------- Multimethod Implementations --------------------------------------------------
-
-;; Fake salt & hash used to run bcrypt hash if user doesn't exist, to avoid timing attacks (Metaboat #134)
-(def ^:private fake-salt "ee169694-5eb6-4010-a145-3557252d7807")
-(def ^:private fake-hashed-password "$2a$10$owKjTym0ZGEEZOpxM0UyjekSvt66y1VvmOJddkAaMB37e0VAIVOX2")
 
 (methodical/defmethod provider/validate :provider/password
   "Validate password credentials before insert/update into AuthIdentity.
@@ -40,10 +37,8 @@
 (mu/defn- find-auth-identity-by-email
   "Find an AuthIdentity record by email address."
   [email :- ms/NonBlankString]
-  (when-let [user (t2/select-one :model/User :%lower.email (u/lower-case-en email))]
-    (t2/select-one :model/AuthIdentity
-                   :user_id (:id user)
-                   :provider "password")))
+  (when-let [user (auth-identity.db/user-by-email email)]
+    (auth-identity.db/auth-identity (:id user) "password")))
 
 (methodical/defmethod provider/authenticate :provider/password
   "Authenticate a user with email and password.
@@ -87,7 +82,7 @@
            :error :invalid-credentials
            :message "Password did not match stored password."}))
       ;; Still run bcrypt to prevent timing attacks
-      (do (u.password/verify-password password fake-salt fake-hashed-password)
+      (do (u.password/do-useless-hash)
           {:success? false
            :error :invalid-credentials
            :message "No user found with that email address."}))))

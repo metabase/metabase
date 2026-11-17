@@ -4,12 +4,20 @@
   --inset-inline-end: 0;
 
   line-height: 1rem;
+  margin-top: min(
+    var(--input-margin-top, 0px),
+    calc(var(--mantine-spacing-xxs) / 2)
+  );
+  margin-bottom: min(
+    var(--input-margin-bottom, 0px),
+    calc(var(--mantine-spacing-xxs) / 2)
+  );
 }
 
 .input {
   display: block;
   color: var(--mb-color-text-primary);
-  border-radius: var(--mantine-radius-xs);
+  border-radius: var(--mantine-radius-xxs);
   background-color: var(--mb-color-background_page-primary);
 
   &::placeholder {
@@ -66,7 +74,7 @@
   font-size: var(--mantine-font-size-md);
   font-weight: bold;
   line-height: var(--mantine-line-height-md);
-  margin-bottom: var(--mantine-spacing-xs);
+  margin-bottom: var(--mantine-spacing-xxs);
 }
 
 .description {

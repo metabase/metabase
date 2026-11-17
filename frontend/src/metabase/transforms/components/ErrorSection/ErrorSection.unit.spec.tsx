@@ -13,14 +13,14 @@ function setup({ run = createMockTransformRun() }: SetupOpts = {}) {
 }
 
 describe("ErrorSection", () => {
-  it("should render the error title and message", () => {
+  it("should render the error title and message", async () => {
     const run = createMockTransformRun({
       status: "failed",
       message: 'relation "abc" does not exist',
     });
     setup({ run });
 
-    expect(screen.getByText("Error")).toBeInTheDocument();
+    expect(await screen.findByText("Error")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Error" })).toBeInTheDocument();
   });
 

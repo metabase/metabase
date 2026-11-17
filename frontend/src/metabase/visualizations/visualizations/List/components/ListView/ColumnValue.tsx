@@ -13,8 +13,10 @@ import {
 import { formatNumber, getCurrencySymbol } from "metabase/utils/formatting";
 import { formatValue } from "metabase/value-formatting";
 import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
-import { getColumnExtent } from "metabase/visualizations/lib/utils";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  type ComputedVisualizationSettings,
+  getColumnExtent,
+} from "metabase/viz-core";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   isAvatarURL,
@@ -104,7 +106,7 @@ export function ColumnValue({
           <Icon
             name={rawValue === true ? "check" : "close"}
             size={12}
-            mr="xs"
+            mr="xxs"
           />
         }
       >
@@ -240,7 +242,7 @@ export function ColumnValue({
             {String(value).slice(0, -1)}
             <span
               style={{
-                color: "var(--mb-color-text-disabled)",
+                color: "var(--mb-color-text-secondary)",
                 paddingLeft: "0.25rem",
               }}
             >
@@ -259,20 +261,27 @@ export function ColumnValue({
         typeof options.currency === "string"
       ) {
         const currencySymbol = getCurrencySymbol(options?.currency);
-        const currencyValue = formattedValue.replace(currencySymbol, "");
+        const currencyIndex = formattedValue.indexOf(currencySymbol);
+        if (currencyIndex === -1) {
+          return <Text fw="bold">{formattedValue}</Text>;
+        }
+        const beforeCurrency = formattedValue.slice(0, currencyIndex);
+        const afterCurrency = formattedValue.slice(
+          currencyIndex + currencySymbol.length,
+        );
 
         return (
           <Text fw="bold">
-            <span
-              style={{
-                color: "var(--mb-color-text-disabled)",
-                fontWeight: "normal",
-                paddingRight: "0.25rem",
-              }}
+            {beforeCurrency}
+            <Text
+              component="span"
+              c="text-secondary"
+              fw="normal"
+              pr={afterCurrency ? "xxs" : undefined}
             >
               {currencySymbol}
-            </span>
-            {currencyValue}
+            </Text>
+            {afterCurrency}
           </Text>
         );
       }

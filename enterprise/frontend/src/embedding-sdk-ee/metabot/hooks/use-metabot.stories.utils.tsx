@@ -134,7 +134,7 @@ export const MessageList = ({
 }: {
   messages: MetabotMessage[];
   isProcessing: boolean;
-  scrollRef: React.RefObject<HTMLDivElement>;
+  scrollRef: React.RefObject<HTMLDivElement | null>;
   palette: MessageListPalette;
   onRetry?: (messageId: string) => void;
 }) => (

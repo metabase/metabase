@@ -8,17 +8,10 @@
     java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar command-documentation"
   (:require
    [clojure.string :as str]
-   [metabase.cmd.common :as cmd.common]))
+   [metabase.cmd.common :as cmd.common]
+   [metabase.cmd.markdown :as md]))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private section-separator
-  "Separator between major sections in generated documentation"
-  "\n\n")
-
-(def ^:private document-ending
-  "Trailing newline at end of document"
-  "\n")
 
 (defn- command?
   "Returns true if the var has :command metadata"
@@ -50,19 +43,18 @@
        (str/join " | ")))
 
 (defn- format-option
-  "Format a single option spec as a markdown list item"
+  "Format a single option spec as the contents of a Markdown bullet. The `- ` prefix is [[md/bullets]]' job."
   [[short-opt long-opt desc & _]]
   (let [opt-str (->> [short-opt long-opt]
                      (remove str/blank?)
                      (str/join ", "))]
-    (format "- `%s` - %s" opt-str desc)))
+    (str (md/code opt-str) " - " desc)))
 
 (defn- format-options
-  "Format the options section for a command"
+  "Format the options section for a command. Nil when the command takes none, so it drops out of the section."
   [arg-spec]
   (when (seq arg-spec)
-    (str "\n\nOptions:\n\n"
-         (str/join "\n" (map format-option arg-spec)))))
+    (md/labeled-block "Options:" (md/bullets (map format-option arg-spec)))))
 
 (defn- normalize-whitespace
   "Normalize whitespace in a string by replacing multiple spaces and newlines with single spaces"
@@ -71,29 +63,20 @@
       str/trim
       (str/replace #"\s+" " ")))
 
-(defn- format-description
-  "Format a docstring as markdown description"
-  [doc]
-  (some-> doc
-          normalize-whitespace
-          (->> (str "\n\n"))))
-
 (defn- format-command
   "Generate markdown documentation for a single command"
   [[symb varr]]
   (let [{:keys [doc arg-spec arglists]} (meta varr)
-        command-name (name symb)
-        heading (str "## `" (format-arglists command-name arglists) "`")]
-    (str heading
-         (format-description doc)
-         (format-options arg-spec))))
+        command-name (name symb)]
+    ;; a command with no docstring or no options contributes nothing, rather than a stray blank line
+    (md/paragraphs [(md/heading 2 (md/code (format-arglists command-name arglists)))
+                    (some-> doc normalize-whitespace)
+                    (format-options arg-spec)])))
 
 (defn- generate-commands-section
   "Generate the commands section of the documentation"
   []
-  (->> (command-vars)
-       (map format-command)
-       (str/join section-separator)))
+  (md/paragraphs (map format-command (command-vars))))
 
 (defn- header-section
   "Generate the header section of the documentation"
@@ -108,10 +91,9 @@
 (defn- generate-documentation
   "Generate the complete commands documentation"
   []
-  (str/join section-separator
-            [(header-section)
-             (generate-commands-section)
-             (str (footer-section) document-ending)]))
+  (md/document [(header-section)
+                (generate-commands-section)
+                (footer-section)]))
 
 (defn generate-dox!
   "Generates CLI command documentation and writes it to docs/installation-and-operation/commands.md"

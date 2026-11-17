@@ -27,7 +27,8 @@
     ExecutorService
     ScheduledExecutorService
     SynchronousQueue
-    TimeUnit)))
+    TimeUnit)
+   (java.util.concurrent.atomic AtomicLong)))
 
 (set! *warn-on-reflection* true)
 
@@ -75,13 +76,18 @@
                         block-ms
                         sleep-ms))
 
-(defrecord DelayValue [value ^Instant ready-at]
+(defonce ^{:private true, :tag AtomicLong} delay-sequence (AtomicLong.))
+
+(defrecord DelayValue [value ^Instant ready-at ^long order]
   Delayed
   (getDelay [_ unit]
     (.convert unit (- (.toEpochMilli ready-at) (System/currentTimeMillis)) TimeUnit/MILLISECONDS))
-  (compareTo [this other]
-    (Long/compare (.getDelay this TimeUnit/MILLISECONDS)
-                  (.getDelay ^Delayed other TimeUnit/MILLISECONDS))))
+  (compareTo [_ other]
+    (let [^DelayValue other other
+          ready-order       (Long/compare (.toEpochMilli ready-at) (.toEpochMilli ^Instant (.-ready-at other)))]
+      (if (zero? ready-order)
+        (Long/compare order (.-order other))
+        ready-order))))
 
 (defn delay-queue
   "Return an unbounded queue that returns each item only after some specified delay."
@@ -91,7 +97,9 @@
 (defn put-with-delay!
   "Put an item on a delay queue, with a delay given in milliseconds."
   [^DelayQueue queue delay-ms value]
-  (.offer queue (->DelayValue value (.plus (Instant/now) (Duration/ofMillis delay-ms)))))
+  (.offer queue (->DelayValue value
+                              (.plus (Instant/now) (Duration/ofMillis delay-ms))
+                              (.incrementAndGet delay-sequence))))
 
 (defn- take-batch* [^BlockingQueue queue ^long max-messages ^long poll-ms acc]
   (loop [acc acc]
@@ -113,11 +121,13 @@
    (when-let [fst (.poll queue max-first-ms TimeUnit/MILLISECONDS)]
      (take-batch* queue max-batch-messages max-next-ms [(if (instance? DelayQueue queue) (:value fst) fst)]))))
 
-(mr/def ::listener-options [:map [:success-handler {:optional true} [:=> [:cat :any :double :string] :any]
-                                  :err-handler {:optional true} [:=> [:cat [:fn (ms/InstanceOfClass Throwable) :string]] :any]
-                                  :pool-size {:optional true} number?
-                                  :max-batch-messages {:optional true} number?
-                                  :max-next-ms {:optional true} number?]])
+(mr/def ::listener-options
+  [:map {:closed true}
+   [:success-handler    {:optional true} fn?]
+   [:err-handler        {:optional true} fn?]
+   [:pool-size          {:optional true} number?]
+   [:max-batch-messages {:optional true} number?]
+   [:max-next-ms        {:optional true} number?]])
 
 (defonce
   ^:private
@@ -132,7 +142,7 @@
 
 (mu/defn- listener-thread [listener-name :- :string
                            queue :- (ms/InstanceOfClass BlockingQueue)
-                           handler :- [:=> [:cat [:sequential :any]] :any]
+                           handler :- fn?
                            {:keys [success-handler err-handler max-batch-messages max-next-ms]} :- ::listener-options]
   (log/debugf "Thread for listener %s started" listener-name)
   (while true
@@ -192,7 +202,7 @@
   - max-next-ms: Max number of ms to wait for each additional message before calling the handler. Default 100"
   [listener-name :- :string
    queue :- (ms/InstanceOfClass BlockingQueue)
-   handler :- [:=> [:cat [:sequential :any]] :any]
+   handler :- fn?
    {:keys [success-handler
            err-handler
            pool-size

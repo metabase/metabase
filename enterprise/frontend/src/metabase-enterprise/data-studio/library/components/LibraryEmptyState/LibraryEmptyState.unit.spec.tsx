@@ -25,15 +25,17 @@ function setup({ hasCreateError }: SetupOpts = {}) {
 describe("LibraryEmptyState", () => {
   it("should be able to create the library", async () => {
     setup();
-    await userEvent.click(screen.getByText("Create my Library"));
+    await userEvent.click(screen.getByText("Create my semantic layer"));
     await waitFor(() =>
-      expect(screen.queryByText("Create my Library")).not.toBeInTheDocument(),
+      expect(
+        screen.queryByText("Create my semantic layer"),
+      ).not.toBeInTheDocument(),
     );
   });
 
   it("should show a library creation error", async () => {
     setup({ hasCreateError: true });
-    await userEvent.click(screen.getByText("Create my Library"));
+    await userEvent.click(screen.getByText("Create my semantic layer"));
     expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
   });
 });

@@ -7,6 +7,7 @@ import {
   collectionTable,
   entityPickerModal,
   entityPickerModalItem,
+  modal,
   navigationSidebar,
   popover,
 } from "./e2e-ui-elements-helpers";
@@ -16,9 +17,11 @@ export const LOCAL_GIT_PATH =
 export const SYNCED_COLLECTION_FIXTURE_PATH =
   Cypress.config("projectRoot") +
   "/e2e/support/assets/example_synced_collection";
-export const SYNCED_TRANSFORMS_COLLECTION_FIXTURE_PATH =
+export const SYNCED_LIBRARY_FIXTURE_PATH =
+  Cypress.config("projectRoot") + "/e2e/support/assets/example_synced_library";
+export const SYNCED_STUB_DATABASE_FIXTURE_PATH =
   Cypress.config("projectRoot") +
-  "/e2e/support/assets/example_synced_transforms_collection";
+  "/e2e/support/assets/example_synced_stub_database";
 
 // Copy the sample synced collection from the fixture folder to the working directory
 export const copySyncedCollectionFixture = () => {
@@ -27,10 +30,18 @@ export const copySyncedCollectionFixture = () => {
     destination: LOCAL_GIT_PATH,
   });
 };
-// Copy the sample synced transforms collection from the fixture folder to the working directory
-export const copySyncedTransformsCollectionFixture = () => {
+// Copy the sample remote-synced Library (with one glossary entry) from the fixture folder to the working directory
+export const copySyncedLibraryFixture = () => {
   cy.task("copyDirectory", {
-    source: SYNCED_TRANSFORMS_COLLECTION_FIXTURE_PATH,
+    source: SYNCED_LIBRARY_FIXTURE_PATH,
+    destination: LOCAL_GIT_PATH,
+  });
+};
+
+// Copy a synced collection whose card references a database the instance doesn't have
+export const copySyncedStubDatabaseFixture = () => {
+  cy.task("copyDirectory", {
+    source: SYNCED_STUB_DATABASE_FIXTURE_PATH,
     destination: LOCAL_GIT_PATH,
   });
 };
@@ -55,15 +66,23 @@ export const commitToRepo = (
 export function configureGit(
   syncType: "read-write" | "read-only",
   syncUrl = "file://" + LOCAL_GIT_PATH + "/.git",
-  collections?: Record<number, boolean>,
+  collections?: Record<string, boolean>,
 ) {
   cy.request("PUT", "/api/ee/remote-sync/settings", {
     "remote-sync-branch": "main",
     "remote-sync-type": syncType,
     "remote-sync-url": syncUrl,
-    "remote-sync-enabled": true,
     ...(collections && { collections }),
   });
+}
+
+// Push the synced content via the API and wait for the export
+export function pushChangesWithApi(message = "Push") {
+  cy.request("POST", "/api/ee/remote-sync/export", {
+    branch: "main",
+    message,
+  });
+  pollForTask({ taskName: "export" });
 }
 
 // Setup remote sync via the API and wait for/trigger the initial import
@@ -218,91 +237,39 @@ export const goToSyncedCollection = (
     .findByRole("treeitem", { name: new RegExp(collectionName) })
     .click(opts);
 
-// Git sync controls are now in the app bar, not the sidebar
 export const getGitSyncControls = () => cy.findByTestId("git-sync-controls");
 
-const ensureGitSyncMenuOpen = () => {
-  getGitSyncControls().then(($btn) => {
-    if ($btn.attr("data-expanded") !== "true") {
-      cy.wrap($btn).click();
-    }
-  });
+const openGitSyncMenu = () => getGitSyncControls().click();
+
+const MENU_STATUS_TIMEOUT = 20000;
+
+const getPullOption = () => {
+  openGitSyncMenu();
+  return popover()
+    .findByRole("menuitem", { name: /Pull changes/ })
+    .should("be.enabled", { timeout: MENU_STATUS_TIMEOUT });
 };
 
-export const getPullOption = () => {
-  ensureGitSyncMenuOpen();
-  return popover().findByRole("option", { name: /Pull changes/ });
+const getPushOption = () => {
+  openGitSyncMenu();
+  return popover()
+    .findByRole("menuitem", { name: /Push changes/ })
+    .should("be.enabled", { timeout: MENU_STATUS_TIMEOUT });
 };
 
-export const getPushOption = () => {
-  ensureGitSyncMenuOpen();
-  return popover().findByRole("option", { name: /Push changes/ });
-};
+export const clickPullOption = () => getPullOption().click();
 
-// Mantine combobox options can drop a synthetic `.click()` if the dropdown's
-// state machine isn't fully wired yet (e.g. right after the menu opens — the
-// dropdown is visible but the option's handler isn't attached). `realClick`
-// dispatches native mouse events that Mantine processes reliably, and we then
-// verify the menu closed; if not, re-click once with a synthetic click.
-//
-// We detect "menu still open" by looking for the main-menu options (Pull/Push) —
-// neither "any popover visible" nor the controls' `data-expanded` attribute
-// distinguishes the main menu from follow-up popovers.
-const MAIN_MENU_OPTION_RE = /Pull changes|Push changes/;
-const clickGitSyncOption = (
-  getOption: () => Cypress.Chainable<JQuery<HTMLElement>>,
-) => {
-  // Clicks are swallowed while `data-combobox-disabled` is set (cleared once the git round-trips resolve)
-  getOption().should("not.have.attr", "data-combobox-disabled");
-  getOption().realClick();
-  cy.get("body").then(($body) => {
-    const mainMenuStillOpen =
-      $body
-        .find('[role="option"]:visible')
-        .filter((_, el) => MAIN_MENU_OPTION_RE.test(el.textContent || ""))
-        .length > 0;
-    if (mainMenuStillOpen) {
-      cy.log("git-sync menu didn't close — re-clicking option");
-      getOption().click();
-    }
-  });
-};
-
-export const clickPullOption = () => clickGitSyncOption(getPullOption);
-export const clickPushOption = () => clickGitSyncOption(getPushOption);
-
-// --- Branch switching (moved from the app bar to the instance Settings panel) ---
+export const clickPushOption = () => getPushOption().click();
 
 export const visitRemoteSyncSettings = () =>
   cy.visit("/admin/settings/remote-sync");
 
-// The read-write branch switcher lives in the "Sync branch" section of the Settings page.
-export const getSettingsBranchSwitcher = () =>
-  cy.findByTestId("settings-branch-switcher");
-
-// Open the branch picker on the Settings page (navigates there first).
-const openSettingsBranchPicker = () => {
-  visitRemoteSyncSettings();
-  // The Sync branch section sits below the fold at the default viewport, and Cypress treats an element
-  // clipped by a scrollable ancestor as hidden, so scroll to it before asserting visibility.
-  getSettingsBranchSwitcher().scrollIntoView().should("be.visible").click();
-};
-
-// Create a new branch (forks the current branch and switches to it) via the Settings branch switcher.
-export const createBranchViaSettings = (name: string) => {
-  openSettingsBranchPicker();
-  popover().findByPlaceholderText("Find or create a branch...").type(name);
-  popover()
-    .findByRole("option", { name: /Create branch/ })
-    .click();
-};
-
-// Select an existing branch via the Settings branch switcher. With unsaved changes this opens the
-// choose-what-to-do modal instead of switching immediately.
-export const switchBranchViaSettings = (branch: string) => {
-  openSettingsBranchPicker();
-  popover().findByPlaceholderText("Find or create a branch...").type(branch);
-  popover().findByRole("option", { name: branch }).click();
+export const pushChanges = (message = "Local changes") => {
+  clickPushOption();
+  modal().within(() => {
+    cy.findByLabelText("Commit message").type(message);
+    cy.button("Push").click();
+  });
 };
 
 // Enable tenants feature for testing
@@ -322,33 +289,27 @@ export const createSharedTenantCollection = (name: string) => {
 export const interceptTask = () =>
   cy.intercept("/api/ee/remote-sync/current-task").as("currentTask");
 
-/**
- * The import/export confirmation modal stays open until the user closes it (GHY-3747). Dismiss it so a
- * subsequent interaction isn't blocked by the modal overlay. Waits for the Close button since the modal
- * renders from the same task poll that `waitForTask` observes.
- */
-export const closeSyncResultModal = () => {
-  cy.findByTestId("sync-success-close-button", { timeout: 10000 }).click();
-};
-
-const TASK_POLL_LIMIT = 30;
+// An import's first native SQL parse starts the Python parser, which on a slow runner takes longer than the
+// fifteen seconds thirty polls allow. Giving up while the import still runs is worse than waiting: a retry
+// restores the app DB under the live import, which then dies on a closed connection.
+const TASK_POLL_LIMIT = 120;
 
 export const waitForTask = (
   { taskName }: { taskName: "import" | "export" },
   retries = 0,
 ): Cypress.Chainable => {
-  if (retries > 3) {
+  if (retries > TASK_POLL_LIMIT) {
     throw Error(`Too many retries waiting for ${taskName}`);
   }
-  return cy.wait("@currentTask").then(({ response }) => {
+
+  return cy.wait("@currentTask", { timeout: 10000 }).then(({ response }) => {
     const { body } = response || {};
     if (body?.sync_task_type !== taskName) {
       return waitForTask({ taskName });
     } else if (body?.status !== "successful") {
       return waitForTask({ taskName }, retries + 1);
     }
-    // A UI-triggered sync leaves its confirmation modal open; close it so the next step can run.
-    return closeSyncResultModal();
+    return cy.wrap(body);
   });
 };
 

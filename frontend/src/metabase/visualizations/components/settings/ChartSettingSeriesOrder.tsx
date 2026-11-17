@@ -1,21 +1,30 @@
 import { arrayMove } from "@dnd-kit/sortable";
-import { updateIn } from "icepick";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import type { DragEndEvent } from "metabase/common/components/Sortable";
-import { Box, Button, Flex, Group, Icon, Select, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Select,
+  Stack,
+  Text,
+} from "metabase/ui";
 import { color } from "metabase/ui/colors";
-import { getAccentColors } from "metabase/ui/colors/groups";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNamedAccentColors } from "metabase/ui/colors/groups";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { getEventTarget } from "metabase/utils/dom";
 import { isEmpty } from "metabase/utils/validate";
 import type {
   ChartSettingSeriesOrderItem,
   ChartSettingSeriesOrderProps,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core";
 
 import { ChartSettingMessage } from "./ChartSettingMessage";
 import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
@@ -79,7 +88,9 @@ export const ChartSettingSeriesOrder = ({
         (item) => item.key === selectedItem.key,
       );
       onChange(
-        updateIn(orderedItems, [index, "enabled"], (enabled) => !enabled),
+        orderedItems.map((item, i) =>
+          i === index ? { ...item, enabled: !item.enabled } : item,
+        ),
       );
     },
     [orderedItems, onChange],
@@ -99,7 +110,7 @@ export const ChartSettingSeriesOrder = ({
   );
 
   const getItemTitle = useCallback((item: ChartSettingSeriesOrderItem) => {
-    return isEmpty(item.name) ? NULL_DISPLAY_VALUE : item.name;
+    return isEmpty(item.name) ? getNullDisplayValue() : item.name;
   }, []);
 
   const handleOnEdit = useCallback(
@@ -117,8 +128,12 @@ export const ChartSettingSeriesOrder = ({
   );
 
   const handleColorChange = useCallback(
-    (item: ChartSettingSeriesOrderItem, color: string) => {
-      onChangeSeriesColor(item.key, color);
+    (
+      item: ChartSettingSeriesOrderItem,
+      hexValue: string,
+      colorName?: string,
+    ) => {
+      onChangeSeriesColor(item.key, hexValue, colorName);
     },
     [onChangeSeriesColor],
   );
@@ -155,20 +170,20 @@ export const ChartSettingSeriesOrder = ({
             <Group p={4} gap="sm">
               <ColorSelector
                 value={otherColor ?? color("text-disabled")}
-                colors={getAccentColors()}
+                colors={getNamedAccentColors()}
                 onChange={onOtherColorChange}
                 pillSize="small"
               />
               <Text truncate fw="bold">{t`Other`}</Text>
             </Group>
-            <Button
-              size="compact-md"
-              color="text-secondary"
+            <ActionIcon
               variant="subtle"
-              leftSection={<Icon name="gear" />}
+              size="sm"
               aria-label={t`Other series settings`}
               onClick={handleOtherSeriesSettingsClick}
-            />
+            >
+              <Icon name="gear" />
+            </ActionIcon>
           </Flex>
         ),
       },
@@ -181,7 +196,7 @@ export const ChartSettingSeriesOrder = ({
   ]);
 
   return (
-    <Box pl="md" pb="sm">
+    <Box pl="lg" pb="sm">
       {orderedItems.length > 0 ? (
         <>
           <ChartSettingOrderedItems
@@ -199,24 +214,26 @@ export const ChartSettingSeriesOrder = ({
             getItemColor={getItemColor}
             dividers={dividers}
           />
-          {truncatedItems.length > 0 ? (
-            <div>
+          <Stack gap="md" mt="md" align="flex-start">
+            {truncatedItems.length > 0 && (
               <Button
-                variant="subtle"
+                variant="transparent"
+                size="compact-md"
                 onClick={() => setIsListTruncated(false)}
               >
                 {t`${truncatedItems.length} more series`}
               </Button>
-            </div>
-          ) : null}
-          {canAddSeries && !isSeriesPickerVisible && (
-            <Button
-              variant="subtle"
-              onClick={() => setSeriesPickerVisible(true)}
-            >
-              {addButtonLabel}
-            </Button>
-          )}
+            )}
+            {canAddSeries && !isSeriesPickerVisible && (
+              <Button
+                variant="transparent"
+                size="compact-md"
+                onClick={() => setSeriesPickerVisible(true)}
+              >
+                {addButtonLabel}
+              </Button>
+            )}
+          </Stack>
           {isSeriesPickerVisible && (
             <Select
               dropdownOpened

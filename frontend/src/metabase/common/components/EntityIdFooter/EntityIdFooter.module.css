@@ -1,0 +1,32 @@
+.Footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--mb-color-border-neutral);
+}
+
+.EntityIdGrid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  gap: var(--mantine-spacing-sm) var(--mantine-spacing-xl);
+  justify-items: start;
+}
+
+.CopyButton {
+  cursor: pointer;
+  position: relative;
+  height: 1rem;
+  color: var(--mb-color-text-disabled);
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
+}
+
+.CopyIcon {
+  visibility: hidden;
+}
+
+.CopyButton:hover .CopyIcon,
+.CopyButton:focus-visible .CopyIcon {
+  visibility: visible;
+}

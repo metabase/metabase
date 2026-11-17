@@ -96,7 +96,7 @@ export const AppearanceCard = () => {
     .otherwise(() => null);
 
   return (
-    <Card p="md">
+    <Card p="lg">
       <BaseAppearanceSection
         icons={
           showHeaderReset ? (
@@ -129,7 +129,7 @@ export const AppearanceCard = () => {
           />
         )}
       </BaseAppearanceSection>
-      {appearanceSection && <Divider mt="lg" mb="md" />}
+      {appearanceSection && <Divider mt="xl" mb="lg" />}
       {appearanceSection}
     </Card>
   );

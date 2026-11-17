@@ -20,8 +20,7 @@ export const getDetailViewState = (state: State) => {
 };
 
 export const getErrorMessage = (state: State) => {
-  const errorPage = getErrorPage(state);
-  return errorPage?.data?.message || errorPage?.data;
+  return getErrorPage(state)?.message;
 };
 
 export const getIsNavbarOpen: Selector<State, boolean> = createSelector(

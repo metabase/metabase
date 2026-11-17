@@ -1,5 +1,6 @@
 ---
 title: X-rays
+summary: Get automatically generated charts and summaries of a table, model, or data point.
 redirect_from:
   - /docs/latest/users-guide/14-x-rays
 ---
@@ -10,7 +11,7 @@ X-rays are a way to get automatic insights and explorations of your data.
 
 ## Get automatic insights when clicking on a chart
 
-One great way to explore your data in general in Metabase is to click on points of interest in charts and selecting **Automatic insights**.
+One great way to explore your data in general in Metabase is to click on points of interest in charts and select **Automatic insights**.
 
 ![Automatic insights in the drill-through menu](./images/automatic-insights.png)
 

@@ -1,11 +1,11 @@
-import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 
 /**
  * Whether the experience needs a specific resource picked by the user
- * (dashboard, chart, or initial collection for the browser). Exploration and
+ * (dashboard, chart, data app, or initial collection for the browser). Exploration and
  * Metabot have nothing to select.
  */
 export const hasResourceToSelect = (
   experience: SdkIframeEmbedSetupExperience,
-): experience is "dashboard" | "chart" | "browser" =>
-  ["dashboard", "chart", "browser"].includes(experience);
+): experience is "dashboard" | "chart" | "browser" | "data-app" =>
+  ["dashboard", "chart", "browser", "data-app"].includes(experience);

@@ -3,14 +3,9 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.source-swap.native :as source-swap.native]))
-
-(defn- field-id-ref
-  [mp field-id]
-  (lib/ref (lib.metadata/field mp field-id)))
 
 (def ^:private metadata-provider-with-cards
   (lib.tu/mock-metadata-provider meta/metadata-provider
@@ -266,7 +261,13 @@
                                                                    "SELECT * FROM\n-- /*]]*/ \nORDERS LIMIT 5"
                                                                    "ORDERS" "NEW_ORDERS")]
       (is (str/includes? result "NEW_ORDERS"))
-      (is (str/includes? result "/*]]*/") "Comment with bracket marker should be preserved"))))
+      ;; sqlglot regenerates comments rather than preserving their source text, and versions differ on how they
+      ;; escape a comment-terminator-like sequence inside comment content (sqlglot >=30.17 inserts spaces, e.g.
+      ;; "/*]]*/" -> "/* / *]]* / */", to keep the regenerated SQL valid). A plain substring check for "]]" would
+      ;; pass even if the marker leaked out of the comment into live SQL, so this checks it's still bracketed by
+      ;; some /* ... */ span instead.
+      (is (re-find #"(?s)/\*.*?\]\].*?\*/" result)
+          "Bracket marker should stay inside a comment, not leak into executable SQL"))))
 
 ;;; ------------------------------------------------ Schema-Qualified Native SQL Tests ------------------------------------------------
 
@@ -457,22 +458,22 @@
                    :name         "filter"
                    :display-name "Filter"
                    :widget-type  :number/=
-                   :dimension    (field-id-ref meta/metadata-provider (meta/id :products :id))}]
+                   :field-id     (meta/id :products :id)}]
           result (#'source-swap.native/update-dimension-tags query tags (meta/id :products) (meta/id :orders))]
-      (is (=? [{:name "filter", :dimension [:field {} (meta/id :orders :id)]}]
+      (is (=? [{:name "filter", :field-id (meta/id :orders :id)}]
               result)))))
 
 (deftest ^:parallel update-dimension-tags-no-match-test
   (testing "dimension tag left unchanged when no matching field on new table"
     (let [query     (lib/native-query meta/metadata-provider "SELECT 1")
-          dimension (field-id-ref meta/metadata-provider (meta/id :products :ean))
+          field-id  (meta/id :products :ean)
           tags      [{:type         :dimension
                       :name         "filter"
                       :display-name "Filter"
                       :widget-type  :number/=
-                      :dimension    dimension}]
+                      :field-id     field-id}]
           ;; Orders table doesn't have an EAN field
           result    (#'source-swap.native/update-dimension-tags query tags (meta/id :products) (meta/id :orders))]
       ;; Should be unchanged since no matching field
-      (is (=? [{:name "filter", :dimension dimension}]
+      (is (=? [{:name "filter", :field-id field-id}]
               result)))))

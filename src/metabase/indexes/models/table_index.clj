@@ -8,9 +8,11 @@
 
   `:structured` and `:status` are validated at the transform layer (on read and write), so every writer is covered."
   (:require
+   [metabase.indexes.db :as indexes.db]
    [metabase.indexes.schema :as schema]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -79,17 +81,12 @@
 (defn select-for-transform
   "All index request rows for `transform-id`, ordered for the index manager list."
   [transform-id]
-  (t2/select :model/TableIndex
-             :transform_id transform-id
-             {:order-by [[:id :asc]]}))
+  (indexes.db/table-indexes-for-transform transform-id))
 
 (defn select-applicable-for-transform
   "Rows whose structured definitions should be applied to `transform-id`'s target table."
   [transform-id]
-  (t2/select :model/TableIndex
-             :transform_id transform-id
-             :status [:not= :delete-pending]
-             {:order-by [[:index_name :asc]]}))
+  (indexes.db/applicable-table-indexes-for-transform transform-id))
 
 (defn select-for-verification
   "Rows the current execution can update while verifying indexes.
@@ -100,27 +97,20 @@
   [transform-id index-request-ids]
   (concat
    (when (seq index-request-ids)
-     (t2/select :model/TableIndex
-                :transform_id transform-id
-                :id [:in index-request-ids]
-                :status :running
-                {:order-by [[:id :asc]]}))
-   (t2/select :model/TableIndex
-              :transform_id transform-id
-              :status :delete-pending
-              {:order-by [[:id :asc]]})))
+     (indexes.db/running-table-indexes transform-id index-request-ids))
+   (indexes.db/delete-pending-table-indexes transform-id)))
 
 (defn select-applicable-by-id
   "Fetch a single applicable index request by id."
   [id]
-  (t2/select-one :model/TableIndex :id id :status [:not= :delete-pending]))
+  (indexes.db/applicable-table-index id))
 
 (defn pending-changes-for-transform?
   "True when `transform-id` has index changes that require a full rebuild to apply."
   [transform-id]
   (boolean
    (when transform-id
-     (t2/exists? :model/TableIndex :transform_id transform-id :status [:in rebuild-forcing-statuses]))))
+     (indexes.db/table-index-with-status-exists? transform-id rebuild-forcing-statuses))))
 
 (defn mark-runnable-indexes-running!
   "Mark hydrated index requests that this run will apply as running.
@@ -129,20 +119,14 @@
   [index-request-ids]
   (let [ids (set index-request-ids)]
     (when (seq ids)
-      (t2/update! :model/TableIndex
-                  {:id [:in ids] :status [:in runnable-statuses]}
-                  {:status :running}))
+      (indexes.db/mark-table-indexes-running! ids runnable-statuses))
     ids))
 
 (defn mark-unverified-running-indexes-failed!
   "Mark rows from [[mark-runnable-indexes-running!]] that are still running as failed."
   [ids message]
   (when (seq ids)
-    (t2/update! :model/TableIndex
-                {:id [:in ids] :status :running}
-                {:status           :failed
-                 :error_message    message
-                 :last_executed_at :%now})))
+    (indexes.db/mark-running-table-indexes-failed! ids message)))
 
 (defn mark-for-revalidation!
   "Flip `transform-id`'s applicable index requests to `:update-pending` and clear stale errors, so the next run
@@ -150,24 +134,26 @@
   [transform-id]
   (when transform-id
     (when-let [ids (seq (map :id (select-applicable-for-transform transform-id)))]
-      (t2/update! :model/TableIndex
-                  {:id [:in ids]}
-                  {:status :update-pending, :error_message nil}))))
+      (indexes.db/mark-table-indexes-update-pending! ids))))
 
 (defn exists-for-transform?
   "True when `transform-id` already has a request for `index-name`."
   [transform-id index-name]
-  (t2/exists? :model/TableIndex
-              :transform_id transform-id
-              :index_name index-name))
+  (indexes.db/table-index-exists-for-transform? transform-id index-name))
 
-;; Inlined into the owning transform's serialization (see the Transform make-spec's `:indexes`). Only the index
-;; definition travels; lifecycle is local, so an imported index starts fresh as `:create-pending`. `:structured` holds
-;; physical column names (no portable refs), so it copies verbatim. `:created_by` is skipped: a nested child's own
-;; FKs aren't declared in the transform's `dependencies`, so the user may not resolve on import.
-(defmethod serdes/make-spec "TableIndex"
-  [_model-name _opts]
-  {:copy      [:index_name :structured]
+;; Nested in its parent transform's entity (see the Transform spec's `:children`). Only the index definition
+;; travels; lifecycle is local, so an imported index starts fresh as `:create-pending`. `:structured` holds physical
+;; column names (no references), so it copies verbatim. `:created_by` is skipped: the user may
+;; not resolve on import.
+
+(defmethod serialization/spec :model/TableIndex [_]
+  {:schema    ::schema/external-table-index
+   :identity  [:transform_id :index_name]
+   :copy      [:index_name :structured]
    :skip      [:status :error_message :last_executed_at :created_by]
-   :transform {:transform_id (serdes/parent-ref)
-               :created_at   (serdes/date)}})
+   :parent    {:model :model/Transform :key :transform_id :order :index_name}
+   :transform {:transform_id serialization/import-only-transform}})
+
+(defmethod remote-sync/spec :model/TableIndex
+  [_model]
+  {:synced-filter-clause indexes.db/synced-table-indexes-clause})

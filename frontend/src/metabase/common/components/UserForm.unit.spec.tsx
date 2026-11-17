@@ -4,8 +4,8 @@ import fetchMock from "fetch-mock";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupTenantEntpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { GroupId, GroupInfo, Tenant, User } from "metabase-types/api";
 import {
   createMockGroup,
@@ -315,10 +315,8 @@ describe("UserForm", () => {
         await screen.findAllByText("Attribute keys can't have the same name"),
       ).toHaveLength(2);
 
-      await waitFor(async () =>
-        expect(
-          await screen.findByRole("button", { name: "Update" }),
-        ).toBeDisabled(),
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: "Update" })).toBeDisabled(),
       );
     });
   });

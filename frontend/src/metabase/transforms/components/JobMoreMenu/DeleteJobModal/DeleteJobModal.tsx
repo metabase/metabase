@@ -7,7 +7,7 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
+import { Button, FocusTrap, Modal, Text } from "metabase/ui";
 import type { TransformJob } from "metabase-types/api";
 
 type DeleteJobModalProps = {
@@ -22,13 +22,7 @@ export function DeleteJobModal({
   onClose,
 }: DeleteJobModalProps) {
   return (
-    <Modal
-      title={t`Delete this job?`}
-      opened
-      padding="xl"
-      onClose={onClose}
-      onClick={(event) => event.stopPropagation()}
-    >
+    <Modal title={t`Delete this job?`} opened onClose={onClose}>
       <FocusTrap.InitialFocus />
       <DeleteJobForm job={job} onDelete={onDelete} onClose={onClose} />
     </Modal>
@@ -52,20 +46,16 @@ function DeleteJobForm({ job, onDelete, onClose }: DeleteJobFormProps) {
   return (
     <FormProvider initialValues={{}} onSubmit={handleSubmit}>
       <Form>
-        <Stack gap="lg">
-          <Text>{t`Deleting this job won’t delete any transforms.`}</Text>
-          <Group>
-            <Box flex={1}>
-              <FormErrorMessage />
-            </Box>
-            <Button onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton
-              label={t`Delete job`}
-              variant="filled"
-              color="feedback-negative"
-            />
-          </Group>
-        </Stack>
+        <Text>{t`Deleting this job won’t delete any transforms.`}</Text>
+        <Modal.Footer>
+          <FormErrorMessage flex={1} />
+          <Button onClick={onClose}>{t`Cancel`}</Button>
+          <FormSubmitButton
+            label={t`Delete job`}
+            variant="filled"
+            color="negative"
+          />
+        </Modal.Footer>
       </Form>
     </FormProvider>
   );

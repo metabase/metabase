@@ -1,0 +1,9 @@
+/* overrides to match Figma designs */
+
+.root[data-size="lg"]::after {
+  border-width: 2px;
+}
+
+.root[data-size="xl"]::after {
+  border-width: 2.5px;
+}

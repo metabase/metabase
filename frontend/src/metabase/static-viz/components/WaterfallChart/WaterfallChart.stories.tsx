@@ -1,5 +1,4 @@
 import type { StoryFn } from "@storybook/react";
-import { updateIn } from "icepick";
 
 import { data } from "metabase/static-viz/components/WaterfallChart/stories-data";
 import {
@@ -7,11 +6,14 @@ import {
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
 import { color } from "metabase/ui/colors";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
-import type { RenderingContext } from "metabase/visualizations/types";
+import {
+  DEFAULT_VISUALIZATION_THEME,
+  type RenderingContext,
+} from "metabase/viz-core";
 
 import type { StaticChartProps } from "../StaticVisualization";
 import { StaticVisualization } from "../StaticVisualization";
+import { withVisualizationSettings } from "../stories-utils";
 
 export default {
   title: "Viz/Static Viz/WaterfallChart",
@@ -32,6 +34,7 @@ const renderingContext: RenderingContext = {
     measureTextWidth(text, Number(style.size), Number(style.weight)),
   measureTextHeight: (_, style) => measureTextHeight(Number(style.size)),
   fontFamily: "Lato",
+  isStatic: true,
   theme: DEFAULT_VISUALIZATION_THEME,
 };
 
@@ -450,19 +453,24 @@ export const WithGoalLine = {
   render: Template,
 
   args: {
-    // Unjustified type cast. FIXME
-    rawSeries: updateIn(
-      data.yAxisFullWithDataLabels,
-      [0, "card", "visualization_settings"],
-      (settings) => {
-        return {
-          ...settings,
-          "graph.show_goal": true,
-          "graph.goal_value": 250000,
-          "graph.goal_label": "Target",
-        };
-      },
-    ) as any,
+    rawSeries: withVisualizationSettings(data.yAxisFullWithDataLabels, {
+      "graph.show_goal": true,
+      "graph.goal_value": 250000,
+      "graph.goal_label": "Target",
+    }),
+    renderingContext,
+  },
+};
+
+export const CustomYAxisRangeOffScreen = {
+  render: Template,
+
+  args: {
+    rawSeries: withVisualizationSettings(data.ordinalXScale, {
+      "graph.y_axis.auto_range": false,
+      "graph.y_axis.min": 30000,
+      "graph.y_axis.max": 40000,
+    }),
     renderingContext,
   },
 };

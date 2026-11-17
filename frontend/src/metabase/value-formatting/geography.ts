@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import * as d3 from "d3";
 
 import { isLatitude, isLongitude } from "metabase-lib/v1/types/utils/isa";

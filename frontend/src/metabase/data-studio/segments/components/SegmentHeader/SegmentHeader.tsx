@@ -6,10 +6,10 @@ import {
   PaneHeader,
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { modelIconMap } from "metabase/common/utils/icon";
 import { EntityDetailTabs } from "metabase/data-studio/common/components/EntityDetailTabs/EntityDetailTabs";
 import type { SegmentTabUrls } from "metabase/data-studio/segments/types";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Stack } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 

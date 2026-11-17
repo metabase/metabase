@@ -6,9 +6,9 @@ import {
   setupLibraryEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
-import { createMockState } from "metabase/redux/store/mocks/state";
 import {
   createMockDatabase,
   createMockTokenFeatures,
@@ -24,7 +24,7 @@ const setup = ({
 }: { hasLibrary?: boolean; hasLibraryCollection?: boolean } = {}) => {
   const onItemClick = jest.fn();
 
-  setupDatabasesEndpoints(databases, { hasSavedQuestions: false });
+  setupDatabasesEndpoints(databases);
 
   const state = createMockState({
     settings: mockSettings({
@@ -34,7 +34,7 @@ const setup = ({
 
   if (hasLibrary) {
     setupEnterpriseOnlyPlugin("library");
-    setupLibraryEndpoints(hasLibraryCollection);
+    setupLibraryEndpoints({ hasLibrary: hasLibraryCollection });
   }
 
   renderWithProviders(

@@ -1,7 +1,9 @@
 /* eslint-disable metabase/no-literal-metabase-strings -- request header names */
 import type { OnBeforeRequestHandler } from "metabase/api/client";
-import { isEmbedPreview } from "metabase/embedding/config";
 import { isDataAppDev } from "metabase/embedding-sdk/config";
+import { isEmbedPreview } from "metabase/embedding/config";
+
+export const isEmbedPreviewRequest = () => isEmbedPreview() || isDataAppDev();
 
 /**
  * Tag requests coming from an embed preview (the page is iframed into itself).
@@ -10,7 +12,7 @@ import { isDataAppDev } from "metabase/embedding-sdk/config";
  * — static and full-app deliberately don't tag preview requests (see EMB-930 in `metabase/embedding/config`).
  */
 export const setEmbedPreviewHeader: OnBeforeRequestHandler = async () => {
-  if (isEmbedPreview() || isDataAppDev()) {
+  if (isEmbedPreviewRequest()) {
     return { headers: { "X-Metabase-Embedded-Preview": "true" } };
   }
 };

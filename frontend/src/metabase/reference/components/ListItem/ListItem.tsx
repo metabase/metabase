@@ -32,10 +32,10 @@ const ListItemInner = ({
 }: ListItemProps) => {
   const card = (
     <Card
-      p="lg"
-      mb="md"
+      p="xl"
+      mb="lg"
       w="680px"
-      radius="md"
+      radius="sm"
       withBorder
       c="inherit"
       data-testid="data-reference-list-item"

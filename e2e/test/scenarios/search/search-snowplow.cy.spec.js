@@ -161,513 +161,215 @@ describe("scenarios > search > snowplow", () => {
   });
 
   describe("should send snowplow events for each filter when it is applied and removed", () => {
-    describe("no filters", () => {
-      it("should send a new_search_query snowplow event", () => {
-        cy.visit("/search?q=orders");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-        });
+    [
+      {
+        name: "type",
+        urlParam: "type=card",
+        eventKey: "content_type",
+        onValue: [
+          "dashboard",
+          "card",
+          "dataset",
+          "collection",
+          "database",
+          "table",
+        ],
+        hydratedValue: ["card"],
+        offValue: null,
+        apply: () => {
+          cy.findByTestId("type-search-filter").click();
+          H.popover().within(() => {
+            cy.findAllByTestId("type-filter-checkbox").each(($el) => {
+              cy.wrap($el).click();
+            });
+            cy.findByText("Apply").click();
+          });
+        },
+      },
+      {
+        name: "created_by",
+        urlParam: "created_by=1",
+        eventKey: "creator",
+        onValue: true,
+        hydratedValue: true,
+        offValue: false,
+        apply: () => {
+          cy.findByTestId("created_by-search-filter").click();
+          H.popover().within(() => {
+            cy.findByText("Bobby Tables").click();
+            cy.findByText("Apply").click();
+          });
+        },
+      },
+      {
+        name: "last_edited_by",
+        urlParam: "last_edited_by=1",
+        eventKey: "last_editor",
+        onValue: true,
+        hydratedValue: true,
+        offValue: false,
+        apply: () => {
+          cy.findByTestId("last_edited_by-search-filter").click();
+          H.popover().within(() => {
+            cy.findByText("Bobby Tables").click();
+            cy.findByText("Apply").click();
+          });
+        },
+      },
+      {
+        name: "created_at",
+        urlParam: "created_at=thisday",
+        eventKey: "creation_date",
+        onValue: true,
+        hydratedValue: true,
+        offValue: false,
+        apply: () => {
+          cy.findByTestId("created_at-search-filter").click();
+          H.popover().within(() => {
+            cy.findByText("Today").click();
+          });
+        },
+      },
+      {
+        name: "last_edited_at",
+        urlParam: "last_edited_at=thisday",
+        eventKey: "last_edit_date",
+        onValue: true,
+        hydratedValue: true,
+        offValue: false,
+        apply: () => {
+          cy.findByTestId("last_edited_at-search-filter").click();
+          H.popover().within(() => {
+            cy.findByText("Today").click();
+          });
+        },
+      },
+      {
+        name: "verified",
+        urlParam: "verified=true",
+        eventKey: "verified_items",
+        onValue: true,
+        hydratedValue: true,
+        offValue: false,
+        toggleLabel: "Verified items only",
+        apply: () => {
+          cy.findByTestId("verified-search-filter")
+            .findByLabelText("Verified items only")
+            .click();
+        },
+      },
+      {
+        name: "search_native_query",
+        urlParam: "search_native_query=true",
+        eventKey: "search_native_queries",
+        onValue: true,
+        hydratedValue: true,
+        offValue: false,
+        toggleLabel: "Search the contents of native queries",
+        apply: () => {
+          cy.findByTestId("search_native_query-search-filter")
+            .findByLabelText("Search the contents of native queries")
+            .click();
+        },
+      },
+      {
+        name: "archived",
+        urlParam: "archived=true",
+        eventKey: "search_archived",
+        onValue: true,
+        hydratedValue: true,
+        offValue: false,
+        toggleLabel: "Search items in trash",
+        apply: () => {
+          cy.findByTestId("archived-search-filter")
+            .findByLabelText("Search items in trash")
+            .click();
+        },
+      },
+    ].forEach(
+      ({
+        name,
+        urlParam,
+        eventKey,
+        onValue,
+        hydratedValue,
+        offValue,
+        toggleLabel,
+        apply,
+      }) => {
+        describe(`${name} filter`, () => {
+          beforeEach(() => {
+            if (name === "verified") {
+              H.activateToken("pro-self-hosted");
+            }
+          });
 
-        // The result's rank depends on ranking weights, so derive its position from the DOM order
-        // rather than pinning a specific index.
-        cy.findAllByTestId("search-result-item").then(($items) => {
-          const position = $items
-            .toArray()
-            .findIndex((el) =>
-              el.textContent?.includes("Orders in a dashboard"),
-            );
-          expect(position, "Orders in a dashboard is in the results").to.be.gte(
-            0,
-          );
-          cy.wrap($items.eq(position)).click();
-          H.expectUnstructuredSnowplowEvent({
-            event: SEARCH_CLICK,
-            context: "search-app",
-            position,
+          it("should send snowplow events when a filter is applied, hydrated from the URL, and removed", () => {
+            cy.visit("/search?q=orders");
+            cy.wait("@search");
+            H.expectUnstructuredSnowplowEvent({
+              event: NEW_SEARCH_QUERY_EVENT_NAME,
+              context: "search-app",
+              ...(name === "type" ? {} : { [eventKey]: offValue }),
+            });
+
+            apply();
+            H.expectUnstructuredSnowplowEvent({
+              event: NEW_SEARCH_QUERY_EVENT_NAME,
+              context: "search-app",
+              [eventKey]: onValue,
+            });
+            H.expectNoBadSnowplowEvents();
+            H.resetSnowplow();
+            cy.intercept("GET", "/api/search**").as("hydratedSearch");
+            cy.visit(`/search?q=orders&${urlParam}`);
+            cy.wait("@hydratedSearch");
+            H.expectUnstructuredSnowplowEvent({
+              event: NEW_SEARCH_QUERY_EVENT_NAME,
+              context: "search-app",
+              [eventKey]: hydratedValue,
+            });
+
+            cy.findByTestId(`${name}-search-filter`)
+              .findByLabelText(toggleLabel ?? "close icon")
+              .click();
+            H.expectUnstructuredSnowplowEvent({
+              event: NEW_SEARCH_QUERY_EVENT_NAME,
+              context: "search-app",
+              [eventKey]: offValue,
+            });
+
+            if (name === "type") {
+              H.expectNoBadSnowplowEvents();
+              H.resetSnowplow();
+              cy.intercept("GET", "/api/search**").as("unfilteredSearch");
+              cy.visit("/search?q=orders");
+              cy.wait("@unfilteredSearch");
+              H.expectUnstructuredSnowplowEvent({
+                event: NEW_SEARCH_QUERY_EVENT_NAME,
+                context: "search-app",
+              });
+              cy.findAllByTestId("search-result-item").then(($items) => {
+                const position = $items
+                  .toArray()
+                  .findIndex((el) =>
+                    el.textContent?.includes("Orders in a dashboard"),
+                  );
+                expect(
+                  position,
+                  "Orders in a dashboard is in the results",
+                ).to.be.gte(0);
+                cy.wrap($items.eq(position)).click();
+                H.expectUnstructuredSnowplowEvent({
+                  event: SEARCH_CLICK,
+                  context: "search-app",
+                  position,
+                });
+              });
+            }
           });
         });
-      });
-    });
-
-    describe("type filter", () => {
-      it("should send a snowplow event when a search filter is used in the URL", () => {
-        cy.visit("/search?q=orders&type=card");
-        cy.wait("@search");
-
-        H.expectUnstructuredSnowplowEvent(
-          {
-            event: NEW_SEARCH_QUERY_EVENT_NAME,
-
-            context: "search-app",
-            content_type: ["card"],
-          },
-          1,
-        );
-      });
-
-      it("should send a snowplow event when a search filter is applied from the UI", () => {
-        cy.visit("/search?q=orders");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-        });
-
-        cy.findByTestId("type-search-filter").click();
-        H.popover().within(() => {
-          cy.findAllByTestId("type-filter-checkbox").each(($el) => {
-            cy.wrap($el).click();
-          });
-          cy.findByText("Apply").click();
-        });
-
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-
-          context: "search-app",
-
-          content_type: [
-            "dashboard",
-            "card",
-            "dataset",
-            "collection",
-            "database",
-            "table",
-          ],
-        });
-      });
-
-      it("should send a snowplow event when a search filter is removed from the UI", () => {
-        cy.visit("/search?q=orders&type=card");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          content_type: ["card"],
-        });
-
-        cy.findByTestId("type-search-filter")
-          .findByLabelText("close icon")
-          .click();
-
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          content_type: [],
-        });
-      });
-    });
-
-    describe("created_by filter", () => {
-      it("should send a snowplow event when a search filter is used in the URL", () => {
-        cy.visit("/search?q=orders&created_by=1");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          creator: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is applied from the UI", () => {
-        cy.visit("/search?q=orders");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-          creator: false,
-        });
-
-        cy.findByTestId("created_by-search-filter").click();
-        H.popover().within(() => {
-          cy.findByText("Bobby Tables").click();
-          cy.findByText("Apply").click();
-        });
-
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          creator: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is removed from the UI", () => {
-        cy.visit("/search?q=orders&created_by=1");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          creator: true,
-        });
-
-        cy.findByTestId("created_by-search-filter")
-          .findByLabelText("close icon")
-          .click();
-
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          creator: false,
-        });
-      });
-    });
-
-    describe("last_edited_by filter", () => {
-      it("should send a snowplow event when a search filter is used in the URL", () => {
-        cy.visit("/search?q=orders&last_edited_by=1");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          last_editor: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is applied from the UI", () => {
-        cy.visit("/search?q=orders");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          last_editor: false,
-        });
-
-        cy.findByTestId("last_edited_by-search-filter").click();
-        H.popover().within(() => {
-          cy.findByText("Bobby Tables").click();
-          cy.findByText("Apply").click();
-        });
-
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          last_editor: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is removed from the UI", () => {
-        cy.visit("/search?q=orders&last_edited_by=1");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          last_editor: true,
-        });
-
-        cy.findByTestId("last_edited_by-search-filter")
-          .findByLabelText("close icon")
-          .click();
-
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          last_editor: false,
-        });
-      });
-    });
-
-    describe("created_at filter", () => {
-      it("should send a snowplow event when a search filter is used in the URL", () => {
-        cy.visit("/search?q=orders&created_at=thisday");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          creation_date: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is applied from the UI", () => {
-        cy.visit("/search?q=orders");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          creation_date: false,
-        });
-
-        cy.findByTestId("created_at-search-filter").click();
-        H.popover().within(() => {
-          cy.findByText("Today").click();
-        });
-
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          creation_date: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is removed from the UI", () => {
-        cy.visit("/search?q=orders&created_at=thisday");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          creation_date: true,
-        });
-
-        cy.findByTestId("created_at-search-filter")
-          .findByLabelText("close icon")
-          .click();
-
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          creation_date: false,
-        });
-      });
-    });
-
-    describe("last_edited_at filter", () => {
-      it("should send a snowplow event when a search filter is used in the URL", () => {
-        cy.visit("/search?q=orders&last_edited_at=thisday");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          last_edit_date: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is applied from the UI", () => {
-        cy.visit("/search?q=orders");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          last_edit_date: false,
-        });
-
-        cy.findByTestId("last_edited_at-search-filter").click();
-        H.popover().within(() => {
-          cy.findByText("Today").click();
-        });
-
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          last_edit_date: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is removed from the UI", () => {
-        cy.visit("/search?q=orders&last_edited_at=thisday");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          last_edit_date: true,
-        });
-
-        cy.findByTestId("last_edited_at-search-filter")
-          .findByLabelText("close icon")
-          .click();
-
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          last_edit_date: false,
-        });
-      });
-    });
-
-    describe("verified filter", () => {
-      beforeEach(() => {
-        H.activateToken("pro-self-hosted");
-      });
-
-      it("should send a snowplow event when a search filter is used in the URL", () => {
-        cy.visit("/search?q=orders&verified=true");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          verified_items: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is applied from the UI", () => {
-        cy.visit("/search?q=orders");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          verified_items: false,
-        });
-
-        cy.findByTestId("verified-search-filter")
-          .findByLabelText("Verified items only")
-          .click();
-
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          verified_items: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is removed from the UI", () => {
-        cy.visit("/search?q=orders&verified=true");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          verified_items: true,
-        });
-
-        cy.findByTestId("verified-search-filter")
-          .findByLabelText("Verified items only")
-          .click();
-
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          verified_items: false,
-        });
-      });
-    });
-
-    describe("search_native_query filter", () => {
-      it("should send a snowplow event when a search filter is used in the URL", () => {
-        cy.visit("/search?q=orders&search_native_query=true");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          search_native_queries: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is applied from the UI", () => {
-        cy.visit("/search?q=orders");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          search_native_queries: false,
-        });
-
-        cy.findByTestId("search_native_query-search-filter")
-          .findByLabelText("Search the contents of native queries")
-          .click();
-
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          search_native_queries: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is removed from the UI", () => {
-        cy.visit("/search?q=orders&search_native_query=true");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          search_native_queries: true,
-        });
-
-        cy.findByTestId("search_native_query-search-filter")
-          .findByLabelText("Search the contents of native queries")
-          .click();
-
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          search_native_queries: false,
-        });
-      });
-    });
-
-    describe("archived filter", () => {
-      it("should send a snowplow event when a search filter is used in the URL", () => {
-        cy.visit("/search?q=orders&archived=true");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          search_archived: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is applied from the UI", () => {
-        cy.visit("/search?q=orders");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          search_archived: false,
-        });
-
-        cy.findByTestId("archived-search-filter")
-          .findByLabelText("Search items in trash")
-          .click();
-
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          search_archived: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is removed from the UI", () => {
-        cy.visit("/search?q=orders&archived=true");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          search_archived: true,
-        });
-
-        cy.findByTestId("archived-search-filter")
-          .findByLabelText("Search items in trash")
-          .click();
-
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          search_archived: false,
-        });
-      });
-    });
+      },
+    );
   });
 });

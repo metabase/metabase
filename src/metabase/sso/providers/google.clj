@@ -11,8 +11,8 @@
 (set! *warn-on-reflection* true)
 
 ;; Register Google OAuth provider
-(derive :provider/google :metabase.auth-identity.provider/provider)
-(derive :provider/google :metabase.auth-identity.provider/create-user-if-not-exists)
+(auth-identity/derive! :provider/google :metabase.auth-identity.provider/provider)
+(auth-identity/derive! :provider/google :metabase.auth-identity.provider/create-user-if-not-exists)
 
 (def ^:private google-auth-token-info-url "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=%s")
 

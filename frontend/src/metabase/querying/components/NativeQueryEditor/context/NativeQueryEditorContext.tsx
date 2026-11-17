@@ -1,9 +1,9 @@
 import { createContext, useContext } from "react";
 
-import type { QueryModalType } from "metabase/querying/constants";
+import type { DataSelectorDatabase } from "metabase/querying/common/components/DataSelector";
+import type { QueryModalType } from "metabase/redux/store";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Collection,
   DatabaseId,
@@ -19,8 +19,8 @@ import type {
  */
 export interface NativeQueryEditorContextValue {
   question: Question;
-  query: NativeQuery;
-  setDatasetQuery: (query: NativeQuery) => void;
+  query: Lib.Query;
+  setQuery: (query: Lib.Query) => void;
 
   focusEditor: () => void;
   onFormatQuery: () => void;
@@ -35,8 +35,10 @@ export interface NativeQueryEditorContextValue {
 
   canChangeDatabase: boolean;
   editorContext: "question" | "action";
-  databaseIsDisabled?: (database: Database) => boolean;
-  databaseDisabledTooltip?: (database: Database) => string | undefined;
+  databaseIsDisabled?: (database: DataSelectorDatabase) => boolean;
+  databaseDisabledTooltip?: (
+    database: DataSelectorDatabase,
+  ) => string | undefined;
   onSetDatabaseId?: (id: DatabaseId) => void;
   setParameterValue?: (parameterId: ParameterId, value: string) => void;
 
@@ -50,8 +52,6 @@ export interface NativeQueryEditorContextValue {
   snippets: NativeQuerySnippet[];
   snippetCollections: Collection[];
 
-  isPromptInputOpen?: boolean;
-  onTogglePromptInput?: () => void;
   isShowingDataReference: boolean;
   isShowingSnippetSidebar: boolean;
   isShowingTemplateTagsEditor: boolean;

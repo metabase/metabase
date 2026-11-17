@@ -18,8 +18,8 @@
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
@@ -94,8 +94,8 @@
   ;; either may name several hosts (a replica set). Parsing the connection string the driver itself will use is the
   ;; only way to be sure we see the same hosts it will connect to.
   (if (and (not use-conn-uri) (str/blank? host))
-    ;; nothing to parse and nothing to connect to. `:write_data_details` and `:admin_details` are overlays merged on
-    ;; top of `:details`, so they arrive here as partial maps; one that carries no host of its own names no hosts,
+    ;; nothing to parse and nothing to connect to. `:write_data_details` is an overlay merged on top of `:details`,
+    ;; so it arrives here as a partial map; one that carries no host of its own names no hosts,
     ;; which is what the default implementation reports for the same input.
     []
     ;; Parsing failures are left to propagate. It is tempting to fall back to the `:host` field, since a connection
@@ -240,6 +240,7 @@
   ;;  > If people have problems with that, I think we can make it configurable.
   7)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn- ^:dynamic *sample-stages*
   "Stages to get sample of a collection in [[describe-table-pipeline]]. Dynamic for testing purposes."
   [collection-name :- :string
@@ -487,17 +488,15 @@
 
   Each row represents leaf in sampled documents, its type and indices of keys present in the path of mongo of nested
   object."
-  [database :- [:map
-                [:id ::lib.schema.id/database]]
-   table    :- [:map
-                [:name :string]]]
-  (let [pipeline (describe-table-pipeline {:collection-name       (:name table)
+  [database        :- driver-api/schema.metadata.database
+   collection-name :- :string]
+  (let [pipeline (describe-table-pipeline {:collection-name       collection-name
                                            :sample-size           (* table-rows-sample/nested-field-sample-limit 2)
                                            :document-sample-depth describe-table-query-depth
                                            :leaf-limit            (driver.settings/sync-leaf-fields-limit)})
         query    {:database (:id database)
                   :type     "native"
-                  :native   {:collection (:name table)
+                  :native   {:collection collection-name
                              :query      (json/encode pipeline)}}]
     (driver-api/process-query query fetch-dbfields-rff)))
 
@@ -505,7 +504,7 @@
   [_driver database table]
   {:schema nil
    :name (:name table)
-   :fields (-> (fetch-dbfields database table)
+   :fields (-> (fetch-dbfields database (:name table))
                (dbfields->ftree (driver.settings/sync-max-fields-per-table))
                ftree->nested-fields)})
 
@@ -523,9 +522,12 @@
                               :index-info                           false ; Index sync is turned off across the application as it is not used ATM.
                               :inner-join                           true
                               :left-join                            true
+                              :mbql-5-native-query-execution        true
                               :metadata/key-constraints             false
                               :native-parameter-card-reference      false
                               :native-parameters                    true
+                              :native-pivot-tables                  true
+                              :native-pivot-tables/window-functions true
                               :native-requires-specified-collection true
                               :nested-fields                        true
                               :nested-queries                       true
@@ -537,7 +539,8 @@
                               :standard-deviation-aggregations      true
                               :test/create-table-without-data       false
                               :test/jvm-timezone-setting            false
-                              :transforms/python                    true}]
+                              :transforms/python                    true
+                              :workspace                            false}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
 (defn- dbms-version [database]
@@ -584,10 +587,13 @@
    query   :- ::lib.schema/query]
   (mongo.qp/mbql->native query))
 
-(defmethod driver/execute-reducible-query :mongo
-  [_driver query _context respond]
-  (assert (string? (get-in query [:native :collection])) "Cannot execute MongoDB query without a :collection name")
-  (mongo.connection/with-mongo-client [_ (driver-api/database (driver-api/metadata-provider))]
+(mu/defmethod driver/execute-reducible-query :mongo
+  [_driver  :- :keyword
+   query    :- ::lib.schema/native-only-query
+   _context :- ::driver/execute-reducible-query.context
+   respond  :- ::driver/execute-reducible-query.respond-fn]
+  (assert (string? (:collection (lib/query-stage query 0))) "Cannot execute MongoDB query without a :collection name")
+  (mongo.connection/with-mongo-client [_ (driver-api/database query)]
     (mongo.execute/execute-reducible-query query respond)))
 
 (defmethod driver/substitute-native-parameters-in-stage-method :mongo

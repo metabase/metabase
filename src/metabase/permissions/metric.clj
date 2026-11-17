@@ -9,8 +9,8 @@
    [metabase.api.common :as api]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :refer [defenterprise]]
-   [toucan2.core :as t2]))
+   [metabase.permissions.db :as permissions.db]
+   [metabase.premium-features.core :refer [defenterprise]]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,8 +23,7 @@
   (when (seq field-ids)
     (into {}
           (map (fn [f] [(:id f) (select-keys f [:visibility_type :table_id])]))
-          (t2/select [:model/Field :id :visibility_type :table_id]
-                     :id [:in field-ids]))))
+          (permissions.db/field-visibility-info field-ids))))
 
 (defn- batch-table-db-ids
   "Batch-fetch db_id for a set of table IDs.
@@ -33,8 +32,7 @@
   (when (seq table-ids)
     (into {}
           (map (fn [t] [(:id t) (:db_id t)]))
-          (t2/select [:model/Table :id :db_id]
-                     :id [:in table-ids]))))
+          (permissions.db/table-database-ids table-ids))))
 
 ;;; ------------------------------------------------- Permission Predicates -------------------------------------------------
 
@@ -46,7 +44,7 @@
 (defn- user-can-access-table?
   "Returns true if the current user has :unrestricted :perms/view-data for the given table."
   [user-id database-id table-id]
-  (perms/user-has-permission-for-table? user-id :perms/view-data :unrestricted database-id table-id))
+  (perms/user-has-permission-for-tables? (perms/user-info user-id) :perms/view-data :unrestricted {table-id database-id}))
 
 ;;; ------------------------------------------------- Sandbox Extension -------------------------------------------------
 
@@ -141,11 +139,12 @@
           field-info     (batch-field-info all-field-ids)
           table-ids      (into #{} (keep :table_id) (vals field-info))
           table->db      (batch-table-db-ids table-ids)
-          _              (perms/prime-table-perms-cache {:db-ids    (set (vals table->db))
-                                                         :table-ids table-ids})
           sandbox-map    (sandbox-restricted-fields table-ids)
-          can-access?    (memoize (fn [db-id table-id]
-                                    (user-can-access-table? api/*current-user-id* db-id table-id)))
+          view-data      (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                           :perms/view-data
+                                                           (into {} (filter val) table->db))
+          can-access?    (fn [_db-id table-id]
+                           (= :unrestricted (get view-data table-id)))
           allowed?       (fn [dim->field-id dim]
                            (let [fid (get dim->field-id (:id dim))]
                              (if-not fid

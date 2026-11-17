@@ -16,7 +16,7 @@ type LlmProviderConnectionInput = {
 };
 
 export function setLlmProviders(connections: LlmProviderConnectionInput[]) {
-  return cy.request("PUT", "/api/setting/llm-providers", {
+  return cy.request("PUT", "/api/testing/llm-providers", {
     value: connections.map(({ key, type = key, name = key, config = {} }) => ({
       key,
       type,
@@ -40,10 +40,6 @@ export function setupAnthropicLlmProvider({
         : { "api-key": apiKey },
     },
   ]);
-}
-
-export function clearLlmProviders() {
-  return setLlmProviders([]);
 }
 
 export function metabotChatSidebar() {

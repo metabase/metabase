@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import cx from "classnames";
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
@@ -13,8 +14,8 @@ import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import CS from "metabase/css/core/index.css";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import type Question from "metabase-lib/v1/Question";
 
@@ -108,7 +109,8 @@ export const QuestionVisualization = ({
         isNativeEditorOpen={false}
         result={result}
         noHeader
-        mode={mode ?? undefined}
+        mode={mode}
+        hasColumnReordering
         navigateToNewCardInsideQB={navigateToNewCard ?? undefined}
         onNavigateBack={onNavigateBack}
         onUpdateQuestion={(question: Question) =>

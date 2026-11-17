@@ -1,13 +1,13 @@
-/* eslint-disable react/display-name */
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { Component, type ComponentType } from "react";
 import _ from "underscore";
 
-import { updateSettings } from "metabase/visualizations/lib/settings";
-import { getSettingsWidgets } from "metabase/visualizations/lib/widgets";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+import {
+  type ComputedVisualizationSettings,
+  type VisualizationSettingsDefinitions,
+  getSettingsWidgets,
+  updateSettings,
+} from "metabase/viz-core";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
 import ChartSettingsWidget from "../ChartSettingsWidget";
@@ -145,14 +145,16 @@ export const chartSettingNestedSettings = <T,>(
         extra,
       );
 
-      return widgets.map((widget) => ({
-        ...widget,
-        style: {
-          ...widget.style,
-          marginLeft: 0,
-          marginRight: 0,
-        },
-      }));
+      return widgets
+        .filter((widget) => !widget.hidden)
+        .map((widget) => ({
+          ...widget,
+          style: {
+            ...widget.style,
+            marginLeft: 0,
+            marginRight: 0,
+          },
+        }));
     };
 
     render() {

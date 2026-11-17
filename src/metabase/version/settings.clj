@@ -8,6 +8,7 @@
 
 (defsetting version
   "Metabase's version info"
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     (constantly config/mb-version-info)
@@ -20,7 +21,7 @@
   :default true)
 
 (defsetting upgrade-threshold
-  (deferred-tru "Threshold (value in 0-100) indicating at which threshold it should offer an upgrade to the latest major version.")
+  "Threshold (value in 0-100) indicating at which threshold it should offer an upgrade to the latest major version."
   :visibility :internal
   :export?    false
   :type       :integer
@@ -51,7 +52,7 @@
   "A *different* site-wide UUID that we use for the version info fetching API calls. Do not use this for any other
   applications. (See [[metabase.premium-features.settings/site-uuid-for-premium-features-token-checks]] for more
   reasoning.)"
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :internal
   :base       setting/uuid-nonce-base)
 

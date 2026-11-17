@@ -4,11 +4,16 @@ import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import CS from "metabase/css/core/index.css";
+import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
+import {
+  type DraftQuestionBuilder,
+  useQuestionFromOptsBuilder,
+} from "metabase/metadata-store";
 import { Box, Button, Flex, Icon } from "metabase/ui";
+import { getScrollBarSize } from "metabase/utils/dom";
 import { checkNotNull } from "metabase/utils/types";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
 import type { NotebookStep } from "../../../types";
@@ -19,7 +24,10 @@ import { QuestionResultLoader } from "./QuestionResultLoader";
 
 const PREVIEW_ROWS_LIMIT = 10;
 
-const getPreviewQuestion = (step: NotebookStep) => {
+const getPreviewQuestion = (
+  step: NotebookStep,
+  buildQuestion: DraftQuestionBuilder,
+) => {
   const { stageIndex } = step;
   const previewQuery = checkNotNull(step.previewQuery);
   const limit = Lib.currentLimit(previewQuery, stageIndex);
@@ -28,7 +36,7 @@ const getPreviewQuestion = (step: NotebookStep) => {
     ? previewQuery
     : Lib.limit(previewQuery, stageIndex, PREVIEW_ROWS_LIMIT);
 
-  return Question.create({ dataset_query: Lib.toJsQuery(queryWithLimit) })
+  return buildQuestion({ dataset_query: Lib.toJsQuery(queryWithLimit) })
     .setDisplay("table")
     .setSettings({ "table.pivot": false });
 };
@@ -42,7 +50,11 @@ export const NotebookStepPreview = ({
   step,
   onClose,
 }: NotebookStepPreviewProps) => {
-  const previewQuestion = useMemo(() => getPreviewQuestion(step), [step]);
+  const buildQuestion = useQuestionFromOptsBuilder();
+  const previewQuestion = useMemo(
+    () => getPreviewQuestion(step, buildQuestion),
+    [step, buildQuestion],
+  );
   const [activeQuestion, setActiveQuestion] = useState(previewQuestion);
 
   const refresh = () => {
@@ -55,7 +67,7 @@ export const NotebookStepPreview = ({
   );
 
   return (
-    <Box pt="md" data-testid="preview-root">
+    <Box pt="lg" data-testid="preview-root">
       <Flex justify="space-between" align="center" mb="sm">
         <span className={CS.textBold}>{t`Preview`}</span>
         <Flex align="flex-end">
@@ -63,8 +75,7 @@ export const NotebookStepPreview = ({
             name="close"
             onClick={onClose}
             className={cx(
-              CS.textLight,
-              CS.textMediumHover,
+              CS.textSecondaryHoverPrimary,
               CS.cursorPointer,
               CS.ml1,
             )}
@@ -139,5 +150,5 @@ export const VisualizationPreview = ({
 
 function getPreviewHeightForResult(result: Dataset | null) {
   const rowCount = result ? result.data.rows.length : 1;
-  return rowCount * 36 + 36 + 2;
+  return rowCount * ROW_HEIGHT + HEADER_HEIGHT + getScrollBarSize() + 2;
 }

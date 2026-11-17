@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { t } from "ttag";
 
 import { FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
@@ -21,7 +22,7 @@ export const ExecutionTime = ({ time }: Props) => {
     <Tooltip label={label}>
       <Flex
         align="center"
-        gap="xs"
+        gap="xxs"
         fw="bold"
         data-testid="execution-time"
         aria-label={label}

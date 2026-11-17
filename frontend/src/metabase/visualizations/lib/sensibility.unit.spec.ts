@@ -1,7 +1,14 @@
-import { registerVisualization } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Visualization } from "metabase/visualizations/types";
+import {
+  DEFAULT_VIZ_ORDER,
+  getSensibleDisplays,
+  groupVisualizationsBySensibility,
+  registerVisualization,
+} from "metabase/viz-core";
+import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA } from "metabase-lib/query/test-helpers";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -18,13 +25,7 @@ import {
   createMockLongitudeColumn,
   createMockNumericColumn,
 } from "metabase-types/api/mocks";
-import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
-
-import {
-  getSensibleDisplays,
-  groupVisualizationsBySensibility,
-} from "./sensibility";
-import { DEFAULT_VIZ_ORDER } from "./viz-order";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 registerVisualizations();
 
@@ -407,11 +408,11 @@ describe("getSensibleDisplays with maybeResetDisplay", () => {
   const customVizQuestion = new Question(
     createMockCard({
       display: DISPLAY,
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: { "source-table": ORDERS_ID },
-      },
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [{ source: { type: "table", id: ORDERS_ID } }],
+        }),
+      ),
     }),
     SAMPLE_METADATA,
   ).lockDisplay();

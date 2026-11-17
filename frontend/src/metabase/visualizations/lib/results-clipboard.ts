@@ -3,26 +3,24 @@ import {
   formatCellValueForCopy,
   serializeTsv,
 } from "metabase/data-grid/utils/formatting";
-import { extractRemappedColumns } from "metabase/visualizations";
 import * as DataGrid from "metabase/visualizations/lib/data_grid";
 import { createPlainCellFormatter } from "metabase/visualizations/lib/plain-cell-formatter";
-import {
-  getTitleForColumn,
-  isPivoted,
-} from "metabase/visualizations/lib/settings/column";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import {
-  getTableCellClickedObject,
-  getTableClickedObjectRowData,
-} from "metabase/visualizations/lib/table";
 import { getVisibleTableData } from "metabase/visualizations/lib/visible-table-data";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { getTitleForColumn as getPivotTitleForColumn } from "metabase/visualizations/visualizations/PivotTable/settings";
 import type { HeaderItem } from "metabase/visualizations/visualizations/PivotTable/types";
 import {
   getTopHeaderRowIndex,
   getTopHeaderRowsCount,
 } from "metabase/visualizations/visualizations/PivotTable/utils";
+import {
+  type ComputedVisualizationSettings,
+  extractRemappedColumns,
+  getComputedSettingsForSeries,
+  getTableCellClickedObject,
+  getTableClickedObjectRowData,
+  getTitleForColumn,
+  isPivoted,
+} from "metabase/viz-core";
 import type {
   Card,
   ColumnSettings,

@@ -3,8 +3,10 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor :as qp]
@@ -12,9 +14,9 @@
    [metabase.query-processor.middleware.enterprise :as qp.enterprise]
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.middleware.process-userland-query :as qp.process-userland-query]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -23,7 +25,12 @@
   "Middleware that happens after compilation, AROUND query execution itself. Has the form
 
     (f (f query rff)) -> (f query rff)"
-  [#'qp.enterprise/swap-destination-db-middleware
+  ;; `capture-execution-context-middleware` is first so it runs INNERMOST, inside the `binding`s that the two EE
+  ;; middlewares establish -- same ordering rule as [[metabase.query-processor.execute/middleware]]; see its docstring
+  ;; for what it captures.
+  [#'qp.process-userland-query/capture-execution-context-middleware
+   #'qp.enterprise/swap-destination-db-middleware
+   #'qp.enterprise/apply-impersonation-postprocessing-middleware
    #'qp.perms/check-query-action-permissions])
 
 (defn- apply-middleware [qp middleware-fns]
@@ -35,20 +42,18 @@
    qp
    middleware-fns))
 
-(mu/defn- substitute-params :- ::lib.schema/native-only-query
-  [query :- ::lib.schema/native-only-query]
-  (->> query
-       (lib/query (qp.store/metadata-provider))
-       parameters/substitute-parameters))
-
 (defn- writeback-qp []
   ;; `rff` and `context` are not currently used by the writeback QP stuff, so these parameters can be ignored; we pass
   ;; in `nil` for these below.
   (letfn [(qp* [query _rff]
-            (let [query (substitute-params query)]
+            (let [query  (parameters/substitute-parameters query)
+                  driver driver/*driver*
+                  query  (cond-> query
+                           (not (driver.u/supports? driver :mbql-5-native-query-execution (lib.metadata/database query)))
+                           lib/->legacy-MBQL)]
               ;; ok, now execute the query.
               (log/debug "Executing write query")
-              (driver/execute-write-query! driver/*driver* (lib/->legacy-MBQL query))))]
+              (driver/execute-write-query! driver query)))]
     (apply-middleware qp* (concat execution-middleware qp/around-middleware))))
 
 (mu/defn execute-write-query!
@@ -70,7 +75,7 @@
                          :string
                          [:cat
                           :string
-                          [:* :any]]]]
+                          [:* :metabase.lib.schema.common/field-value]]]]
   (let [mp             (lib-be/application-database-metadata-provider db-id)
         [sql & params] (if (string? sql-or-sql+params)
                          (cons sql-or-sql+params nil)

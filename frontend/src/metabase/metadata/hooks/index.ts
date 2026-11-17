@@ -1,1 +1,1 @@
-export * from "./useMetadataToasts";
+export * from "./use-table-update-handlers";

@@ -26,8 +26,7 @@ export function SendTestEmailWidget() {
       });
     } catch (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: getTestEmailErrorMessage(error),
       });
     }

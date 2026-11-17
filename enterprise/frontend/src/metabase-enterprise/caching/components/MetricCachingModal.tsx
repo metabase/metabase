@@ -56,11 +56,11 @@ export function MetricCachingModal({
 
   return (
     <Modal
+      density="relaxed"
       opened
       onClose={handleClose}
       title={t`Caching`}
       size="lg"
-      padding="lg"
       classNames={{ content: S.content, body: S.body }}
     >
       <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>

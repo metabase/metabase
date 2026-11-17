@@ -15,7 +15,7 @@ export interface CustomVizPlugin {
   id: CustomVizPluginId;
   display_name: string;
   identifier: string;
-  status: "pending" | "active" | "error";
+  status: "active" | "error";
   enabled: boolean;
   icon: string | null;
   error_message: string | null;
@@ -51,6 +51,10 @@ export type CustomVizPluginWarning =
       type: "metabase-version-mismatch";
       metabase_version: string;
       current_version: string;
+    }
+  | {
+      type: "invalid-identifier";
+      identifier: string;
     };
 
 /**

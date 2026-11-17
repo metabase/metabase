@@ -1,6 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { merge } from "icepick";
 import {
   type ReactNode,
   useCallback,
@@ -21,14 +21,49 @@ import { EditBar } from "metabase/common/components/EditBar";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { getSemanticTypeIcon } from "metabase/common/utils/fields";
 import CS from "metabase/css/core/index.css";
+import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
+import { getShallowFields } from "metabase/metadata-store";
+import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
+import { TagEditorSidebar } from "metabase/parameters/components/TagEditor/TagEditorSidebar";
+import { DataReference } from "metabase/querying/components/DataReference/DataReference";
+import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
+import { getInitialEditorHeight } from "metabase/querying/components/NativeQueryEditor/utils";
+import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
+import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
+import { MODAL_TYPES } from "metabase/querying/constants";
+import { connect, useDispatch } from "metabase/redux";
+import { setUIControls } from "metabase/redux/query-builder";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
+import { Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import {
+  checkCanBeModel,
+  getSortedModelFields,
+} from "metabase-lib/v1/metadata/utils/models";
+import type {
+  CollectionId,
+  Dataset,
+  DatasetColumn,
+  Field,
+  FieldId,
+  NativeQuerySnippet,
+  NormalizedField,
+  RawSeries,
+  ResultsMetadata,
+  VisualizationDisplay,
+  VisualizationSettings,
+} from "metabase-types/api";
+import type { ModelIndex } from "metabase-types/api/modelIndexes";
+
 import {
   setDatasetEditorTab,
   setTemplateTagConfig,
   updateQuestion as updateQuestionAction,
-} from "metabase/query_builder/actions";
-import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";
-import { useVisualizationResultQBProps } from "metabase/query_builder/hooks";
-import type { FieldWithMaybeIndex } from "metabase/query_builder/model-indexes/actions";
+} from "../../actions";
+import { useListModelIndexesQuery } from "../../api/model-index";
+import { useVisualizationResultQBProps } from "../../hooks";
+import type { FieldWithMaybeIndex } from "../../model-indexes/actions";
 import {
   getDatasetEditorTab,
   getIsListViewConfigurationShown,
@@ -38,43 +73,9 @@ import {
   getResultsMetadata,
   getVisualizationSettings,
   isResultsMetadataDirty,
-} from "metabase/query_builder/selectors";
-import { getWritableColumnProperties } from "metabase/query_builder/utils";
-import { DataReference } from "metabase/querying/components/DataReference/DataReference";
-import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
-import { getInitialEditorHeight } from "metabase/querying/components/NativeQueryEditor/utils";
-import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
-import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
-import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
-import { MODAL_TYPES } from "metabase/querying/constants";
-import { connect, useDispatch } from "metabase/redux";
-import { setUIControls } from "metabase/redux/query-builder";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import {
-  checkCanBeModel,
-  getSortedModelFields,
-} from "metabase-lib/v1/metadata/utils/models";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type {
-  CollectionId,
-  Dataset,
-  DatasetColumn,
-  Field,
-  FieldId,
-  NativeQuerySnippet,
-  RawSeries,
-  ResultsMetadata,
-  VisualizationDisplay,
-  VisualizationSettings,
-} from "metabase-types/api";
-import type { ModelIndex } from "metabase-types/api/modelIndexes";
-
-import { useListModelIndexesQuery } from "../../api/model-index";
+} from "../../store/selectors";
+import { getWritableColumnProperties } from "../../utils";
+import { ViewSidebar } from "../view/ViewSidebar";
 
 import DatasetEditorS from "./DatasetEditor.module.css";
 import {
@@ -96,7 +97,7 @@ export type DatasetEditorInnerProps = {
   rawSeries: RawSeries | null;
   visualizationSettings?: VisualizationSettings | null;
   datasetEditorTab: DatasetEditorTab;
-  metadata?: Metadata;
+  storeFields: Record<string, NormalizedField>;
   metadataDiff: MetadataDiff;
   resultsMetadata?: ResultsMetadata | null;
   isMetadataDirty: boolean;
@@ -150,7 +151,7 @@ const TABLE_HEADER_HEIGHT = 45;
 
 function mapStateToProps(state: any) {
   return {
-    metadata: getMetadata(state),
+    storeFields: getShallowFields(state),
     metadataDiff: getMetadataDiff(state),
     visualizationSettings: getVisualizationSettings(state),
     datasetEditorTab: getDatasetEditorTab(state),
@@ -251,12 +252,7 @@ function getSidebar(
   if (isShowingTemplateTagsEditor) {
     return (
       // @ts-expect-error Multiple types missing, but handled inside TagEditorSidebar
-      <TagEditorSidebar
-        {...props}
-        // Unjustified type cast. FIXME
-        query={question.legacyNativeQuery() as NativeQuery}
-        onClose={toggleTemplateTagsEditor}
-      />
+      <TagEditorSidebar {...props} onClose={toggleTemplateTagsEditor} />
     );
   }
   if (isShowingDataReference) {
@@ -307,7 +303,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
     datasetEditorTab,
     result,
     resultsMetadata,
-    metadata,
+    storeFields,
     metadataDiff,
     isMetadataDirty,
     height,
@@ -336,8 +332,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   const fields = useMemo(
     () =>
       getSortedModelFields(
-        // Unjustified type cast. FIXME
-        (resultsMetadata?.columns as unknown as Field[]) ?? [],
+        resultsMetadata?.columns ?? [],
         visualizationSettings ?? {},
       ),
     [resultsMetadata, visualizationSettings],
@@ -389,7 +384,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
     return getInitialEditorHeight({
-      query: question.legacyNativeQuery(),
+      query: question.query(),
       availableHeight: height ?? "full",
     });
   }, [question, height]);
@@ -410,7 +405,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
     if (!focusedFieldName) {
       return -1;
     }
-    return fields.findIndex((field: Field) => field.name === focusedFieldName);
+    return fields.findIndex((field) => field.name === focusedFieldName);
   }, [focusedFieldName, fields]);
 
   const previousFocusedFieldIndex = usePrevious(focusedFieldIndex);
@@ -432,13 +427,18 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   }, [result, focusedFieldName, fields, focusFirstField, focusedField]);
 
   const inheritMappedFieldProperties = useCallback(
-    (changes: { id: FieldId | null } & Partial<Omit<DatasetColumn, "id">>) => {
-      const mappedField = metadata?.field?.(changes.id)?.getPlainObject();
-      const inheritedProperties =
-        mappedField && getWritableColumnProperties(mappedField, isNative);
-      return mappedField ? merge(inheritedProperties, changes) : changes;
+    (changes: { id: FieldId | null }) => {
+      const mappedField =
+        changes.id != null ? storeFields[changes.id] : undefined;
+      if (!mappedField) {
+        return changes;
+      }
+      return {
+        ...getWritableColumnProperties(mappedField, isNative),
+        ...changes,
+      };
     },
-    [metadata, isNative],
+    [storeFields, isNative],
   );
 
   const onFieldMetadataChange = useCallback(
@@ -694,8 +694,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
         buttons={[
           <Button
             key="cancel"
-            variant="subtle"
-            size="sm"
+            variant="on-dark-secondary"
             onClick={handleCancelClick}
           >{t`Cancel`}</Button>,
           <Tooltip
@@ -713,8 +712,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
               activeText={t`Saving…`}
               failedText={t`Save failed`}
               successText={t`Saved`}
-              variant="filled"
-              size="sm"
+              variant="on-dark-primary"
             />
           </Tooltip>,
         ]}
@@ -768,6 +766,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
                   className={CS.spread}
                   noHeader
                   queryBuilderMode="dataset"
+                  hasColumnReordering
                   onHeaderColumnReorder={handleHeaderColumnReorder}
                   isShowingDetailsOnlyColumns={datasetEditorTab !== "metadata"}
                   hasMetadataPopovers={false}
@@ -778,6 +777,12 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
                   renderTableHeader={renderTableHeader}
                   scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
                   renderEmptyMessage={isEditingColumns}
+                  noResultsAction={
+                    !isModelQueryDirty && (
+                      <HasResultsAlertPrompt question={question} />
+                    )
+                  }
+                  errorAction={<FixSqlQueryButton />}
                 />
               )}
             </DebouncedFrame>

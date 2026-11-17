@@ -41,9 +41,9 @@
     (mt/with-temp [:model/Timeline a {:icon "balloons"}
                    :model/Timeline b {:icon "cake"}]
       (is (= timeline-event/default-icon
-             (t2/select-one-fn :icon :model/Timeline (u/the-id a))))
+             (t2/select-one-fn :icon :model/Timeline :id (u/the-id a))))
       (is (= "cake"
-             (t2/select-one-fn :icon :model/Timeline (u/the-id b)))))))
+             (t2/select-one-fn :icon :model/Timeline :id (u/the-id b)))))))
 
 (deftest hydrate-timeline-test
   (mt/with-temp [:model/Timeline      tl  {:name "tl-a"}

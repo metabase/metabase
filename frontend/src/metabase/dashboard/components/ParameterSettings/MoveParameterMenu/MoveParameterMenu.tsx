@@ -7,7 +7,7 @@ import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Flex, Group, Icon, Select, Text } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import { visualizations } from "metabase/visualizations";
+import { visualizations } from "metabase/viz-core";
 import type {
   BaseDashboardCard,
   IconName,
@@ -164,7 +164,7 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
 function SelectItem({ icon, title }: { icon: IconName; title: string }) {
   return (
     <Group p="sm" w="100%">
-      <Flex direction="column" flex={1} justify="center" gap="xs" miw={0}>
+      <Flex direction="column" flex={1} justify="center" gap="xxs" miw={0}>
         <Text
           className={S.MoveParameterMenuOptionText}
           fw="400"

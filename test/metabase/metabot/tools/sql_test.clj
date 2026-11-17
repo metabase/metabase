@@ -1,24 +1,72 @@
 (ns metabase.metabot.tools.sql-test
-  "Tests that agent-level SQL tools produce correctly formatted :output strings
-   with preambles, query IDs in links, and operation-specific instructions."
+  "Tests for SQL query tools and the recovery instructions returned to the model."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [malli.util :as mut]
+   [metabase.api-scope.core :as api-scope]
+   [metabase.api.common :as api]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.recoverable.common :as recoverable]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.metabot.tools.sql :as agent-sql]
-   [metabase.metabot.tools.sql.create :as create-sql-query-tools]
-   [metabase.test :as mt]))
+   [metabase.metabot.tools.shared.instructions :as instructions]
+   [metabase.metabot.tools.sql :as sql]
+   [metabase.metabot.tools.sql.common :as sql.common]
+   [metabase.metabot.tools.sql.create :as sql.create]
+   [metabase.metabot.tools.sql.edit :as sql.edit]
+   [metabase.metabot.tools.sql.replace :as sql.replace]
+   [metabase.metabot.tools.sql.validation :as sql.validation]
+   [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.sql-tools.core :as sql-tools]
+   [metabase.sql-tools.test-util :as sql-tools.tu]
+   [metabase.test :as mt]
+   [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
+
+(defn- invoke-sql-tool-with-memory-atom
+  "Like [[invoke-sql-tool]], with the agent's memory in `memory-atom`, so several calls can share one turn."
+  [profile memory-atom tool-name args]
+  (binding [scope/*current-user-scope* api-scope/unrestricted]
+    (let [entries (tools/->entries (cond-> [#'tools/edit-sql-query-tool #'tools/replace-sql-query-tool
+                                            (if (= profile :sql)
+                                              #'tools/create-sql-query-code-edit-tool
+                                              #'tools/create-sql-query-tool)
+                                            #'tools/read-resource-tool]
+                                     ;; Like the real profiles: :internal has the notebook builder, :sql does not.
+                                     (= profile :internal) (conj #'tools/construct-notebook-query-tool))
+                                   memory-atom nil profile)]
+      ((get-in entries [tool-name :fn])
+       (merge {:title "Birds"}
+              (case tool-name
+                "create_sql_query" (merge {:sql_query "SELECT 1"} (select-keys args [:sql_query :database_id :title :visualization :show_chart]))
+                (merge {:query_id "q1" :checklist "Checked"}
+                       (select-keys args (if (= tool-name "edit_sql_query")
+                                           [:query_id :edits :title :checklist :show_chart]
+                                           [:query_id :new_query :title :checklist :show_chart])))))))))
+
+(defn- invoke-sql-tool
+  [profile memory tool-name args]
+  (invoke-sql-tool-with-memory-atom profile (atom memory) tool-name args))
 
 (deftest create-sql-query-output-test
   (testing "create_sql_query output includes preamble, query XML, and query-ID-aware instructions"
     (mt/test-drivers #{:h2}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
-          (let [result (agent-sql/create-sql-query-tool
-                        {:database_id db-id
-                         :sql_query   "SELECT 1"
-                         :title       "Results"})
+          (let [result (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) "create_sql_query"
+                                        {:database_id db-id
+                                         :sql_query   "SELECT 1"
+                                         :title       "Results"})
                 output   (:output result)
                 query-id (get-in result [:structured-output :query-id])]
             (is (string? output))
@@ -31,53 +79,77 @@
               (is (str/includes? output "type=\"sql\""))
               (is (str/includes? output (str "database_id=\"" db-id "\""))))
             (testing "instructions contain actual query ID link"
-              (is (str/includes? output (str "metabase://query/" query-id))))))))))
+              (is (str/includes? output (str "metabase://query/" query-id))))
+            (testing "instructions say that the query is not saved"
+              (is (str/includes? output instructions/not-saved-instruction)))))))))
 
-(deftest create-sql-query-validation-error-output-test
-  (testing "create_sql_query output contains appropriate info on validation failure"
-    (mt/test-drivers #{:postgres}
-      (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
-          (let [result (agent-sql/create-sql-query-tool
-                        {:database_id db-id
-                         :sql_query   "SELECT ="
-                         :title       "Results"})
-                output   (:output result)]
-            (is (string? output))
-            (is (str/starts-with? (:instructions result) "The SQL query has a syntax error"))
-            (is (str/starts-with? (:output result) "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error"))))))))
-
-(defn- create-sql-query-in-code-editor
-  [args]
-  (binding [shared/*memory-atom* (atom {:context {:user_is_viewing [{:type    "code_editor"
-                                                                     :buffers [{:id "buf-1"}]}]}})]
-    (agent-sql/create-sql-query-code-edit-tool (merge {:sql_query "SELECT 1"
-                                                       :title     "Results"}
-                                                      args))))
-
-(deftest create-sql-query-code-edit-agent-error-output-test
-  (testing "create_sql_query in the code editor returns agent errors as output instead of throwing"
+(deftest create-sql-query-says-whether-its-results-can-be-read-test
+  (mt/test-drivers #{:h2}
     (mt/with-current-user (mt/user->id :crowberto)
-      (let [{:keys [output]} (create-sql-query-in-code-editor {:database_id Integer/MAX_VALUE})]
-        (is (str/includes? output "not found"))))))
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+        (mt/with-temp [:model/MetabotConversation {own :id}    {:user_id (mt/user->id :crowberto)}
+                       :model/MetabotConversation {theirs :id} {:user_id (mt/user->id :rasta)}]
+          (doseq [:let [both #{"create_sql_query" "run_query"}]
+                  [situation tool-names query-on? sql-on? conversation readable?]
+                  [["run_query offered and SQL execution on"    both                  true  true  own    true]
+                   ["run_query offered and SQL execution off"   both                  true  false own    false]
+                   ["run_query offered and query execution off" both                  false true  own    false]
+                   ["no run_query in the session"               #{"create_sql_query"} true  true  own    false]
+                   ["a conversation someone else can read"      both                  true  true  theirs false]]]
+            (testing situation
+              (mt/with-temporary-setting-values [metabot-query-execution-enabled? query-on?
+                                                 metabot-sql-execution-enabled?   sql-on?]
+                (binding [shared/*memory-atom*                     (atom {:tool-names      tool-names
+                                                                          :conversation-id conversation
+                                                                          :state           {}})
+                          scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                          scope/*current-user-scope*               (scope/user-metabot-perms->scopes
+                                                                    scope/all-yes-permissions)]
+                  (let [instructions (:output (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) "create_sql_query" {:database_id db-id
+                                                                                                                                 :sql_query   "SELECT 1"
+                                                                                                                                 :title       "Results"}))]
+                    (is (= [readable? (not readable?)]
+                           [(str/includes? instructions "Run the query with `run_query`")
+                            (str/includes? instructions "you cannot view the results directly yourself")]))))))))))))
 
-(deftest create-sql-query-code-edit-permission-error-output-test
-  (testing "create_sql_query in the code editor returns a permission failure as output with its status code"
-    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
-      (mt/with-no-data-perms-for-all-users!
-        (mt/with-current-user (mt/user->id :rasta)
-          (let [{:keys [output status-code]} (create-sql-query-in-code-editor {:database_id db-id})]
-            (is (= 403 status-code))
-            (is (str/includes? output "permissions"))))))))
-
-(deftest create-sql-query-code-edit-unexpected-error-test
-  (testing "create_sql_query in the code editor rethrows non-agent errors so they stay tracked as failures"
+;; A dashboard needs a `chart_id` for each chart, so create_sql_query makes a chart for every query, shown or not.
+(deftest create-sql-query-chart-for-dashboards-test
+  (mt/test-drivers #{:h2}
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
-                                  (fn [& _] (throw (ex-info "boom" {})))]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo #"boom"
-             (create-sql-query-in-code-editor {:database_id 1})))))))
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                     :model/MetabotConversation {own :id} {:user_id (mt/user->id :crowberto)}]
+        (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
+                                           metabot-sql-execution-enabled?   true]
+          (let [create!  (fn [tool-names args]
+                           (binding [shared/*memory-atom*                     (atom {:tool-names      tool-names
+                                                                                     :conversation-id own})
+                                     scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+                             (let [result   (invoke-sql-tool :internal @shared/*memory-atom* "create_sql_query"
+                                                             (merge {:database_id db-id :sql_query "SELECT 1"} args))
+                                   chart-id (get-in result [:structured-output :chart-id])
+                                   shown    (get-in result [:data-parts 0 :data])]
+                               {:chart-id?  (string? chart-id)
+                                :chart-type (get-in result [:structured-output :chart-type])
+                                :shown-as   (when shown [(= chart-id (:id shown)) (:display shown)])
+                                :add-it?    (str/includes? (:output result)
+                                                           (str "pass `chart_id` `" chart-id "` to `write_dashboard`"))
+                                :no-chart?  (str/includes? (:output result) "so don't call `create_chart` for it")
+                                :edit-it?   (str/includes? (:output result) "call `edit_chart` with that `chart_id`")})))
+                readable #{"create_sql_query" "run_query"}]
+            (testing "a shown query is drawn as its chart, with the display left to the frontend"
+              (is (= {:chart-id? true, :chart-type :table, :shown-as [true nil], :add-it? false, :no-chart? true
+                      :edit-it? false}
+                     (create! readable {}))))
+            (testing "edit_chart is named for another chart type only when it is offered"
+              (is (=? {:no-chart? true, :edit-it? true}
+                      (create! (conj readable "edit_chart") {}))))
+            (testing "a chosen chart type is the chart's and the display's"
+              (is (=? {:chart-type :bar, :shown-as [true "bar"]}
+                      (create! readable {:visualization {:chart_type "bar"}}))))
+            (testing "a hidden query still gets a chart, and its chart_id is named when write_dashboard is offered"
+              (is (= {:chart-id? true, :chart-type :table, :shown-as nil, :add-it? true, :no-chart? false
+                      :edit-it? false}
+                     (create! (conj readable "write_dashboard") {:show_chart false}))))))))))
 
 (deftest edit-sql-query-output-test
   (testing "edit_sql_query output includes edit-specific instructions with query ID"
@@ -90,12 +162,12 @@
                   memory   (atom {:state {:queries {query-id (-> (lib/native-query mp "SELECT * FROM t")
                                                                  lib/->legacy-MBQL)}}})
                   result   (binding [shared/*memory-atom* memory]
-                             (agent-sql/edit-sql-query-tool
-                              {:query_id  query-id
-                               :checklist "- [x] checked"
-                               :edits     [{:old_string "SELECT *"
-                                            :new_string "SELECT id"}]
-                               :title     "Results"}))
+                             (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) "edit_sql_query"
+                                              {:query_id  query-id
+                                               :checklist "- [x] checked"
+                                               :edits     [{:old_string "SELECT *"
+                                                            :new_string "SELECT id"}]
+                                               :title     "Results"}))
                   output   (:output result)]
               (is (string? output))
               (testing "includes query XML with edited content and correct attributes"
@@ -104,31 +176,11 @@
                 (is (str/includes? output (str "database_id=\"" db-id "\""))))
               (testing "instructions reference the query ID"
                 (is (str/includes? output (str "metabase://query/" query-id))))
+              (testing "instructions say that the query is not saved"
+                (is (str/includes? output instructions/not-saved-instruction)))
               (testing "instructions mention error-analysis flow"
                 (is (str/includes? output "If the returned SQL query is NOT correct"))
                 (is (str/includes? output "Make further refinements using this tool again"))))))))))
-
-(deftest edit-sql-query-validation-error-output-test
-  (testing "edit_sql_query output contains appropriate info on validation failure"
-    (mt/test-drivers #{:postgres}
-      (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Database db {:engine :postgres}]
-          (mt/with-db db
-            (let [mp (mt/metadata-provider)
-                  query-id "test-edit-q-validation-failure"
-                  memory   (atom {:state {:queries {query-id (-> (lib/native-query mp "SELECT * FROM t")
-                                                                 lib/->legacy-MBQL)}}})
-                  result   (binding [shared/*memory-atom* memory]
-                             (agent-sql/edit-sql-query-tool
-                              {:query_id  query-id
-                               :checklist "- [x] checked"
-                               :edits     [{:old_string "SELECT *"
-                                            :new_string "SELECT ="}]
-                               :title     "Results"}))
-                  output   (:output result)]
-              (is (string? output))
-              (is (str/starts-with? (:instructions result) "The SQL query has a syntax error"))
-              (is (str/starts-with? (:output result) "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error")))))))))
 
 (deftest replace-sql-query-output-test
   (testing "replace_sql_query output includes replace-specific instructions with query ID"
@@ -141,11 +193,11 @@
                   memory   (atom {:state {:queries {query-id (-> (lib/native-query mp "SELECT 1")
                                                                  lib/->legacy-MBQL)}}})
                   result   (binding [shared/*memory-atom* memory]
-                             (agent-sql/replace-sql-query-tool
-                              {:query_id  query-id
-                               :checklist "- [x] checked"
-                               :new_query "SELECT 2"
-                               :title     "Results"}))
+                             (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) "replace_sql_query"
+                                              {:query_id  query-id
+                                               :checklist "- [x] checked"
+                                               :new_query "SELECT 2"
+                                               :title     "Results"}))
                   output   (:output result)]
               (is (string? output))
               (testing "includes query XML with replaced content and correct attributes"
@@ -154,57 +206,1305 @@
                 (is (str/includes? output (str "database_id=\"" db-id "\""))))
               (testing "instructions reference the query ID"
                 (is (str/includes? output (str "metabase://query/" query-id))))
+              (testing "instructions say that the query is not saved"
+                (is (str/includes? output instructions/not-saved-instruction)))
               (testing "instructions mention edit_sql_query as alternative"
                 (is (str/includes? output "this tool or edit_sql_query again"))))))))))
 
-(deftest replace-sql-query-validtion-error-output-test
-  (testing "replace_sql_query output contains appropriate info on validation failure"
-    (mt/test-drivers #{:postgres}
-      (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Database db {:engine :postgres}]
-          (mt/with-db db
-            (let [mp (mt/metadata-provider)
-                  query-id "test-replace-q"
-                  memory   (atom {:state {:queries {query-id (-> (lib/native-query mp "SELECT 1")
-                                                                 lib/->legacy-MBQL)}}})
-
-                  {:keys [output instructions]} (binding [shared/*memory-atom* memory]
-                                                  (agent-sql/replace-sql-query-tool
-                                                   {:query_id  query-id
-                                                    :checklist "- [x] checked"
-                                                    :new_query "SELECT ="
-                                                    :title     "Results"}))]
-              (is (string? output))
-              (is (str/starts-with? instructions "The SQL query has a syntax error"))
-              (is (str/starts-with? output "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error")))))))))
-
-(deftest edit-sql-query-viz-part-test
-  (testing "edit_sql_query emits a generated_entity card unless an open code-editor buffer wins"
+(deftest edit-and-replace-sql-query-viz-part-test
+  (testing "edit_sql_query and replace_sql_query emit a generated_entity card unless a code-editor buffer is open"
     (mt/test-drivers #{:h2}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Database {:as db} {:engine :h2}]
           (mt/with-db db
             (let [mp       (mt/metadata-provider)
                   query-id "test-inline-q"
-                  query    (-> (lib/native-query mp "SELECT * FROM t") lib/->legacy-MBQL)
-                  run      (fn [context]
-                             (let [memory (atom {:state   {:queries {query-id query}}
-                                                 :context context})]
-                               (binding [shared/*memory-atom* memory]
-                                 (agent-sql/edit-sql-query-tool
-                                  {:query_id  query-id
-                                   :checklist "- [x] checked"
-                                   :edits     [{:old_string "SELECT *" :new_string "SELECT id"}]
-                                   :title     "Results"}))))]
-              (testing "no code-editor buffer -> a single generated_entity (native) part"
-                (let [parts  (:data-parts (run {}))
-                      entity (:data (first parts))]
-                  (is (= 1 (count parts)))
-                  (is (= "generated_entity" (:data-type (first parts))))
-                  (is (= "card" (:type entity)))
-                  (is (= :native (get-in entity [:query :query :type])))))
-              (testing "an open code-editor buffer wins"
-                (let [parts (:data-parts (run {:user_is_viewing [{:type    "code_editor"
-                                                                  :buffers [{:id "buf-1"}]}]}))]
-                  (is (= 1 (count parts)))
-                  (is (= "code_edit" (:data-type (first parts)))))))))))))
+                  query    (-> (lib/native-query mp "SELECT * FROM t") lib/->legacy-MBQL)]
+              (doseq [[tool-name args] [["edit_sql_query" {:edits [{:old_string "SELECT *" :new_string "SELECT id"}]}]
+                                        ["replace_sql_query" {:new_query "SELECT id FROM t"}]]
+                      :let [run (fn [context]
+                                  (let [memory (atom {:state   {:queries {query-id query}}
+                                                      :context context})]
+                                    (binding [shared/*memory-atom* memory]
+                                      (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) tool-name
+                                                       (assoc args
+                                                              :query_id  query-id
+                                                              :checklist "- [x] checked"
+                                                              :title     "Results")))))]]
+                (testing tool-name
+                  (testing "a single generated_entity part carries a legacy native query when no code-editor buffer is open"
+                    (let [parts  (:data-parts (run {}))
+                          entity (:data (first parts))]
+                      (is (= 1 (count parts)))
+                      (is (= "generated_entity" (:data-type (first parts))))
+                      (is (= "card" (:type entity)))
+                      (is (= :native (get-in entity [:query :query :type])))))
+                  (testing "an open code-editor buffer receives a code_edit part"
+                    (let [result (run {:user_is_viewing [{:type    "code_editor"
+                                                          :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]})
+                          parts  (:data-parts result)]
+                      (is (= 1 (count parts)))
+                      (is (= "code_edit" (:data-type (first parts))))
+                      (testing "and the instructions do not say that the query is not saved"
+                        (is (not (str/includes? (:output result) instructions/not-saved-instruction)))))))))))))))
+
+(deftest sql-tools-show-chart-test
+  (mt/test-drivers #{:h2}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}
+                     :model/MetabotConversation {own :id} {:user_id (mt/user->id :crowberto)}]
+        (mt/with-db db
+          (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
+                                             metabot-sql-execution-enabled?   true]
+            (let [query-id "test-show-chart-q"
+                  query    (-> (lib/native-query (mt/metadata-provider) "SELECT * FROM t") lib/->legacy-MBQL)
+                  run      (fn [tool-name tool-names context args & {:keys [client-ids]}]
+                             (binding [shared/*memory-atom*                     (atom {:tool-names      tool-names
+                                                                                       :conversation-id own
+                                                                                       :context         context
+                                                                                       :client-ids      client-ids
+                                                                                       :state           {:queries {query-id query}}})
+                                       scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                                       scope/*current-user-scope*               (scope/user-metabot-perms->scopes
+                                                                                 scope/all-yes-permissions)]
+                               (let [result (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) tool-name
+                                                             (merge {:database_id db-id
+                                                                     :sql_query   "SELECT 1"
+                                                                     :query_id    query-id
+                                                                     :checklist   "- [x] checked"
+                                                                     :edits       [{:old_string "SELECT *" :new_string "SELECT id"}]
+                                                                     :new_query   "SELECT id FROM t"
+                                                                     :title       "Results"}
+                                                                    args))
+                                     shown-id (get-in result [:structured-output :query-id])]
+                                 {:parts         (mapv :data-type (:data-parts result))
+                                  :run-it?       (str/includes? (:output result)
+                                                                (str "call `run_query` with `query_id` `" shown-id "`"))
+                                  :link?         (str/includes? (:output result)
+                                                                (str "(metabase://query/" shown-id ")"))
+                                  :unsaved?      (str/includes? (:output result) instructions/not-saved-instruction)
+                                  :shown-anyway? (str/includes? (:output result)
+                                                                instructions/client-query-shown-instruction)
+                                  :variant?      (str/includes? (:output result)
+                                                                instructions/client-query-variant-instruction)})))
+                  readable #{"create_sql_query" "edit_sql_query" "replace_sql_query" "run_query"}
+                  editor   {:user_is_viewing [{:type    "code_editor"
+                                               :buffers [{:id     "buf-1"
+                                                          :source {:language "sql" :database_id nil}
+                                                          :cursor {:line 0 :column 0}}]}]}]
+              (doseq [tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
+                (testing tool-name
+                  (testing "with run_query offered, show_chart false shows the user nothing and points at run_query"
+                    (is (=? {:parts [], :run-it? true, :link? true, :unsaved? true, :shown-anyway? false}
+                            (run tool-name readable {} {:show_chart false}))))
+                  (testing "with run_query offered and the argument left out, the chart is shown"
+                    (is (=? {:parts ["generated_entity"], :run-it? false}
+                            (run tool-name readable {} {}))))
+                  (testing "without run_query the chart is shown whatever the argument says"
+                    (is (=? {:parts ["generated_entity"], :run-it? false}
+                            (run tool-name (disj readable "run_query") {} {:show_chart false}))))
+                  (when-not (= tool-name "create_sql_query")
+                    (testing "in an open SQL editor, a query built only to be read is not proposed there"
+                      (is (=? {:parts [], :run-it? true}
+                              (run tool-name readable editor {:show_chart false}))))
+                    (testing "in an open SQL editor, a query left to show is proposed there"
+                      (is (=? {:parts ["code_edit"], :run-it? false}
+                              (run tool-name readable editor {}))))
+                    (testing "the user's own query is shown even when show_chart is false, and the model is told why"
+                      (testing "as a proposal in their open SQL editor"
+                        (is (=? {:parts ["code_edit"], :run-it? false, :shown-anyway? true, :variant? true}
+                                (run tool-name readable editor {:show_chart false} :client-ids #{query-id}))))
+                      (testing "as a chart without an editor"
+                        (is (=? {:parts ["generated_entity"], :run-it? false, :shown-anyway? true, :variant? true}
+                                (run tool-name readable {} {:show_chart false} :client-ids #{query-id}))))
+                      (testing "without the advice to read a variant when run_query cannot read SQL results"
+                        (is (=? {:parts ["generated_entity"], :shown-anyway? true, :variant? false}
+                                (run tool-name (disj readable "run_query") {} {:show_chart false}
+                                     :client-ids #{query-id})))))
+                    (testing "the user's own query shown because they asked carries no explanation"
+                      (is (=? {:parts ["code_edit"], :shown-anyway? false}
+                              (run tool-name readable editor {} :client-ids #{query-id}))))))))))))))
+
+(deftest ^:parallel create-sql-query-editor-variant-has-no-show-chart-test
+  (is (nil? (mut/get (:args (tools.core/declaration sql/create-sql-query-code-edit-tool)) :show_chart))))
+
+(deftest edit-and-replace-sql-query-unexpected-error-test
+  (mt/with-dynamic-fn-redefs [sql.edit/edit-sql-query (fn [_] (throw (ex-info "boom" {})))
+                              sql.replace/replace-sql-query (fn [_] (throw (ex-info "boom" {})))]
+    (doseq [tool-name ["edit_sql_query" "replace_sql_query"]]
+      (let [result (invoke-sql-tool :internal {} tool-name
+                                    (merge {:query_id "q1" :checklist "Checked" :title "Results"}
+                                           (if (= tool-name "edit_sql_query")
+                                             {:edits [{:old_string "1" :new_string "2"}]}
+                                             {:new_query "SELECT 2"})))]
+        (is (= {:class :unrecoverable :code :internal} (:error result)))
+        (is (not (str/includes? (:output result) "boom")))))))
+
+(deftest sql-edit-mismatch-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [[code edits sql-before-edit]
+            [[::sql.edit/edit-not-found [{:old_string "missing" :new_string "2"}] nil]
+             [::sql.edit/edit-ambiguous [{:old_string "id" :new_string "bird_id"}] nil]
+             [::sql.edit/edit-not-found [{:old_string "birds" :new_string "owls"}
+                                         {:old_string "missing" :new_string "2"}]
+              "SELECT id, id FROM owls"]]]
+      (let [sql "SELECT id, id FROM birds"
+            query (lib/native-query (mt/metadata-provider) sql)
+            result (invoke-sql-tool :sql {:state {:queries {"q1" query}}} "edit_sql_query" {:edits edits})]
+        (is (= {:class :recoverable :code code} (:error result)))
+        (is (str/includes? (:output result) (str "Edit " (count edits))))
+        (is (str/includes? (:output result) (str "SQL for this edit: \"" (or sql-before-edit sql) "\"")))
+        (is (str/includes? (:output result) "No edits were saved"))))))
+
+(deftest sql-edit-context-is-quoted-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [sql "SELECT 'owl'\n-- \u001b[4mnotes"
+          query (lib/native-query (mt/metadata-provider) sql)
+          result (invoke-sql-tool :sql {:state {:queries {"q1" query}}} "edit_sql_query"
+                                  {:edits [{:old_string "missing\n\u001b[4m" :new_string "2"}]})]
+      (is (= ::sql.edit/edit-not-found (get-in result [:error :code])))
+      (is (str/includes? (:output result) "SQL for this edit: \"SELECT 'owl'\\n-- \\u001b[4mnotes\"")))))
+
+(def ^:private native-refusal
+  {:class        :unrecoverable
+   :code         ::sql.common/no-native-permission
+   :user-message (str "You do not have permission to write SQL queries against this database."
+                      " Native query permissions are required.")})
+
+(def ^:private notebook-fallback
+  {:class :recoverable
+   :code  ::sql/no-native-permission-with-notebook-fallback})
+
+(deftest sql-edit-permission-error-test
+  (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}]
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+      (perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :query-builder)
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-db db
+          (let [query (lib/native-query (mt/metadata-provider) "SELECT 1")]
+            (doseq [tool-name ["edit_sql_query" "replace_sql_query"]
+                    :let [invoke #(invoke-sql-tool % {:state {:queries {"q1" query}}} tool-name
+                                                   {:edits [{:old_string "1" :new_string "2"}]
+                                                    :new_query "SELECT 2"})]]
+              (testing (str tool-name " without the notebook builder")
+                (let [result (invoke :sql)]
+                  (is (= native-refusal (:error result)))
+                  (is (str/includes? (:output result) "Don't retry"))))
+              (testing (str tool-name " with the notebook builder")
+                (let [result (invoke :internal)]
+                  (is (= notebook-fallback (:error result)))
+                  (is (str/includes? (:output result) "Build the question with `construct_notebook_query`")))))))))))
+
+(deftest sql-edit-without-database-test
+  (testing "editing a SQL query with no database reports the missing database, not a permission refusal"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [query (lib/prepare-for-serialization (lib/native-query (mt/metadata-provider) "SELECT 1"))]
+        (doseq [[label draft] {"no database key" (dissoc query :database)
+                               "nil database"    (assoc query :database nil)}
+                profile       [:sql :internal]
+                tool-name     ["edit_sql_query" "replace_sql_query"]]
+          (testing (str label " / " profile " / " tool-name)
+            (let [result (invoke-sql-tool profile {:state {:queries {"q1" draft}}} tool-name
+                                          {:edits [{:old_string "1" :new_string "2"}] :new_query "SELECT 2"})]
+              (is (= {:class        :unrecoverable
+                      :code         ::sql.common/no-database
+                      :user-message "No database is selected for this query. Select a database and try again."}
+                     (:error result)))
+              (is (str/includes? (:output result) "Don't retry")))))))))
+
+(deftest missing-sql-editor-test
+  (doseq [memory [nil {} {:context {:user_is_viewing [{:type "code_editor" :buffers []}]}}]]
+    (let [result (invoke-sql-tool :sql memory "create_sql_query" {:database_id Integer/MAX_VALUE})]
+      (is (= {:class :unrecoverable
+              :code ::sql/missing-editor
+              :user-message "No active SQL editor was found. Open a SQL editor and try again."}
+             (:error result)))
+      (is (str/includes? (:output result) "Don't retry")))))
+
+(def ^:private editor-memory
+  {:context {:user_is_viewing [{:type "code_editor"
+                                :buffers [{:id "sql-buffer"
+                                           :source {:language "sql" :database_id nil}
+                                           :cursor {:line 0 :column 0}}]}]}})
+
+(deftest unknown-database-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [editor? [false true]]
+      (let [result (invoke-sql-tool (if editor? :sql :internal) editor-memory "create_sql_query" {:database_id Integer/MAX_VALUE})]
+        (is (= {:class :recoverable :code ::recoverable/unknown-database} (:error result)))
+        (is (str/includes? (:output result) (str "Database " Integer/MAX_VALUE " was not found")))
+        (is (str/includes? (:output result) "Read `metabase://databases` with `read_resource`"))))))
+
+(deftest database-disappeared-during-access-check-test
+  (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+    (mt/with-dynamic-fn-redefs [api/read-check (fn [& _] (throw (ex-info "Foreign access error" {:status-code 404})))]
+      (doseq [editor? [false true]]
+        (let [result (invoke-sql-tool (if editor? :sql :internal) editor-memory "create_sql_query" {:database_id db-id})]
+          (is (= {:class :recoverable :code ::recoverable/unknown-database} (:error result)))
+          (is (str/includes? (:output result) (str "Database " db-id " was not found")))
+          (is (not (str/includes? (:output result) "Foreign access error"))))))))
+
+(deftest creation-permission-test
+  (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+      (doseq [:let [access-denied {:class        :unrecoverable
+                                   :code         ::sql.create/database-access-denied
+                                   :user-message "You do not have access to this database."}]
+              [permission profile expected-error]
+              [[:query-builder-and-native :internal nil]
+               [:query-builder-and-native :sql      nil]
+               [:query-builder            :internal notebook-fallback]
+               [:query-builder            :sql      native-refusal]
+               [:no                       :internal access-denied]
+               [:no                       :sql      access-denied]]]
+        (perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries permission)
+        (mt/with-current-user (mt/user->id :rasta)
+          (testing (str permission " " profile)
+            (let [result (invoke-sql-tool profile editor-memory "create_sql_query" {:database_id db-id})]
+              (is (= expected-error (:error result)))
+              (case (:class expected-error)
+                nil            (is (some? (:structured-output result)))
+                :recoverable   (is (str/includes? (:output result) "Build the question with `construct_notebook_query`"))
+                :unrecoverable (is (str/includes? (:output result) "Don't retry"))))))))))
+
+(deftest creation-delivers-query-to-the-profile-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (doseq [editor? [false true]]
+        (let [result (invoke-sql-tool (if editor? :sql :internal) editor-memory "create_sql_query" {:database_id db-id})
+              query-id (get-in result [:structured-output :query-id])
+              part (first (:data-parts result))]
+          (is (nil? (:error result)))
+          (is (= :query (get-in result [:structured-output :result-type])))
+          (is (some? query-id))
+          (is (str/includes? (:output result) (str "New query ID: " query-id)))
+          (is (= 1 (count (:data-parts result))))
+          (if editor?
+            (do
+              (is (= "code_edit" (:data-type part)))
+              (is (= "sql-buffer" (get-in part [:data :buffer_id])))
+              (is (= "SELECT 1" (get-in part [:data :value]))))
+            (do
+              (is (= "generated_entity" (:data-type part)))
+              (is (= "Birds" (get-in part [:data :title]))))))))))
+
+(deftest unexpected-creation-error-test
+  (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+    (mt/with-dynamic-fn-redefs [api/read-check (fn [& _] (throw (ex-info "Foreign internal error" {:status-code 500})))]
+      (doseq [editor? [false true]]
+        (let [result (invoke-sql-tool (if editor? :sql :internal) editor-memory "create_sql_query" {:database_id db-id})]
+          (is (= {:class :unrecoverable :code :internal} (:error result)))
+          (is (str/includes? (:output result) "Don't retry"))
+          (is (not (str/includes? (:output result) "Foreign internal error"))))))))
+
+(deftest invalid-sql-edits-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [profile [:internal :sql]
+            query [(lib/native-query (mt/metadata-provider) "SELECT 1")
+                   (lib/->legacy-MBQL (lib/native-query (mt/metadata-provider) "SELECT 1"))]
+            [tool-name args code excerpt]
+            [["replace_sql_query" {:new_query ""} ::sql.common/blank-sql "would contain no SQL"]
+             ["replace_sql_query" {:new_query " \n\t"} ::sql.common/blank-sql "SQL that is not blank"]
+             ["edit_sql_query" {:edits [{:old_string "SELECT 1" :new_string ""}]}
+              ::sql.common/blank-sql "No changes were saved"]
+             ["edit_sql_query" {:edits [{:old_string "SELECT 1" :new_string " \n"}]}
+              ::sql.common/blank-sql "SQL that is not blank"]
+             ["edit_sql_query" {:edits []} ::sql.edit/empty-edits "at least one edit"]
+             ["edit_sql_query" {:edits [{:old_string "" :new_string "X"}]}
+              ::sql.edit/empty-old-string "cannot have an empty `old_string`"]
+             ["edit_sql_query" {:edits [{:old_string "" :new_string "X" :replace_all true}]}
+              ::sql.edit/empty-old-string "cannot have an empty `old_string`"]]]
+      (testing (str profile " / " args)
+        (let [result (invoke-sql-tool profile {:state {:queries {"q1" query}}} tool-name args)]
+          (is (= {:class :recoverable :code code} (:error result)))
+          (is (str/includes? (:output result) excerpt))
+          (is (nil? (:structured-output result)))
+          (is (empty? (:data-parts result))))))))
+
+(deftest sql-query-recovery-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)
+          notebook (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+          sql-query (lib/native-query mp "SELECT 1")]
+      (doseq [profile [:internal :sql]
+              tool-name ["edit_sql_query" "replace_sql_query"]
+              queries [{"notebook" notebook} {"notebook" notebook "sql" sql-query}]
+              id ["missing" "notebook"]]
+        (let [result (invoke-sql-tool profile {:state {:queries queries}} tool-name
+                                      {:query_id id :edits [] :new_query "SELECT 2"})
+              output (:output result)]
+          (is (= {:class :recoverable
+                  :code (if (= id "missing") ::recoverable/unknown-query-id ::sql.common/not-sql)}
+                 (:error result)))
+          (is (str/includes? output (if (= id "missing") "not found" "is not a SQL query")))
+          (if (contains? queries "sql")
+            (do
+              (is (str/includes? output "Available query IDs: \"sql\""))
+              (is (not (str/includes? output "create_sql_query"))))
+            (do
+              (is (str/includes? output "Available query IDs: none"))
+              (is (str/includes? output "create_sql_query")))))))))
+
+(defn- invoke-with-proposed-sql
+  "Invoke `tool-name` so that the SQL it proposes is `sql`: created, replaced, or edited from a stored `SELECT 1`
+  against the current test database."
+  [profile tool-name db-id sql]
+  (invoke-sql-tool profile (assoc editor-memory :state {:queries {"q1" (lib/native-query (mt/metadata-provider) "SELECT 1")}})
+                   tool-name
+                   {:database_id db-id :sql_query sql :new_query sql
+                    :edits [{:old_string "SELECT 1" :new_string sql}]}))
+
+(deftest sql-syntax-error-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {db-id :id :as db} {:engine :postgres}]
+      (mt/with-db db
+        (doseq [profile [:internal :sql]
+                tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]
+                [parser details] [[(mt/original-fn #'sql-tools/transpile-sql)
+                                   "\"Required keyword: 'this' missing. Line 1, Col: 8.\\n  SELECT =\\n         ^\""]
+                                  [(constantly {:status :error :error-message "Invalid expression\nSELECT \u001b[4m=\u001b[0m"})
+                                   "\"Invalid expression\\nSELECT \\u001b[4m=\\u001b[0m\""]]]
+          (mt/with-dynamic-fn-redefs [sql-tools/transpile-sql parser]
+            (let [result (invoke-with-proposed-sql profile tool-name db-id "SELECT =")
+                  output (:output result)]
+              (is (= {:class :recoverable :code ::sql.common/sql-syntax-error} (:error result)))
+              (is (str/includes? output "syntax error"))
+              (is (str/includes? output "Fix the SQL syntax and retry"))
+              (is (str/includes? output (str "Parser details: " details)))
+              (is (not (str/includes? output "\u001b")))
+              (doseq [text ["Common issues to check:" "DATE_TRUNC vs TRUNC" "Quote style for identifiers"
+                            "String concatenation operators" "Date/time literal syntax"
+                            "NULL handling differences" "Case sensitivity of identifiers"
+                            "If it keeps rejecting SQL the database supports, rewrite that part in standard SQL."]]
+                (is (str/includes? output text))))))))))
+
+(deftest multiple-sql-statements-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {db-id :id :as db} {:engine :postgres}]
+      (mt/with-db db
+        (doseq [profile [:internal :sql]
+                tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
+          (testing (str profile " / " tool-name)
+            (let [result (invoke-with-proposed-sql profile tool-name db-id "SELECT 1; SELECT 2")
+                  output (:output result)]
+              (is (= {:class :recoverable :code ::sql.common/multiple-sql-statements} (:error result)))
+              (is (str/includes? output "contains more than one statement"))
+              (is (str/includes? output "Rewrite the SQL as one statement"))
+              (is (not (str/includes? output "Common issues to check:")))
+              (is (nil? (:structured-output result))))))))))
+
+(deftest invalid-template-syntax-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [engine [:postgres :h2]]
+      (mt/with-temp [:model/Database {db-id :id :as db} {:engine engine}]
+        (mt/with-db db
+          (doseq [profile [:internal :sql]
+                  tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
+            (testing (str engine " / " profile " / " tool-name)
+              (let [result (invoke-with-proposed-sql profile tool-name db-id "SELECT * FROM t [[WHERE x = {{x}}")
+                    output (:output result)]
+                (is (= {:class :recoverable :code ::sql.common/invalid-template-syntax} (:error result)))
+                (is (str/includes? output "invalid Metabase `{{...}}` or `[[...]]` syntax"))
+                (is (= (= tool-name "edit_sql_query")
+                       (str/includes? output "The problem can be in SQL that this edit did not change.")))
+                (is (str/includes? output "Parser details: \"Invalid query: found '[[' or '{{' with no matching"))
+                (is (str/includes? output "No changes were saved."))
+                (is (nil? (:structured-output result)))))))))))
+
+(deftest brackets-without-template-tags-test
+  (testing "SQL with `[[` but no template tag passes, because Metabase sends it to the database as it is"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [profile [:internal :sql]
+              tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
+        (testing (str profile " / " tool-name)
+          (let [result (invoke-with-proposed-sql profile tool-name (mt/id) "SELECT 1 AS \"[[x]]\"")]
+            (is (nil? (:error result)))
+            (is (= "SELECT 1 AS \"[[x]]\"" (get-in result [:structured-output :query-content])))))))))
+
+(deftest edit-elsewhere-in-sql-with-invalid-template-syntax-test
+  (testing "An edit that leaves an existing unclosed tag in place returns a recoverable error, and an edit that closes it succeeds"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [memory (assoc editor-memory :state {:queries {"q1" {:database (mt/id)
+                                                                :type     :native
+                                                                :native   {:query "SELECT * FROM venues [[WHERE id = {{id}}"}}}})]
+        (doseq [profile [:internal :sql]]
+          (testing profile
+            (is (= {:class :recoverable :code ::sql.common/invalid-template-syntax}
+                   (:error (invoke-sql-tool profile memory "edit_sql_query"
+                                            {:edits [{:old_string "*" :new_string "name"}]}))))
+            (let [result (invoke-sql-tool profile memory "edit_sql_query"
+                                          {:edits [{:old_string "{{id}}" :new_string "{{id}}]]"}]})]
+              (is (nil? (:error result)))
+              (is (= "SELECT * FROM venues [[WHERE id = {{id}}]]"
+                     (get-in result [:structured-output :query-content]))))))))))
+
+(deftest closest-sql-match-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [ticket-sql "SELECT\n  id,\n  name\nFROM venues\nWHERE\n  price > 2 AND category_id IN (1, 2)"
+          columns (str/join ",\n" (for [i (range 300)] (str "    column_" i)))
+          cte-sql (str "WITH recent AS (\n  SELECT\n" columns
+                       "\n  FROM orders\n  WHERE\n    status IN ('paid', 'shipped')\n)\nSELECT\n"
+                       columns "\nFROM recent\nWHERE\n  price > 2")]
+      (doseq [profile [:internal :sql]
+              [sql old-string stored-text line]
+              [["SELECT 1 -- 🐦" "🐦 " "🐦" 1]
+               ["SELECT '🐦' AS bird" "select '🐦' as bird" "SELECT '🐦' AS bird" 1]
+               ["-- 🐦\nSELECT '𐐀' AS bird" "select '𐐨' as bird" "SELECT '𐐀' AS bird" 2]
+               [ticket-sql "where price > 2" "WHERE\n  price > 2" 5]
+               [ticket-sql "where price > 2 and category_id in (1,2)" "WHERE\n  price > 2 AND category_id IN (1, 2)" 5]
+               [ticket-sql "select id, name from venues where price > 2 and category_id in (1,2)" ticket-sql 1]
+               [cte-sql "status in ('paid','shipped')" "status IN ('paid', 'shipped')" 305]
+               [(str "SELECT 1\n-- " (apply str (repeat 1500 "\u200b")) "\nWHERE\n  price > 2")
+                "where price > 2" "WHERE\n  price > 2" 3]
+               [(str (apply str (repeat 222 "-- comment\n")) ticket-sql)
+                "where price > 2" "WHERE\n  price > 2" 227]]]
+        (let [memory {:state {:queries {"q1" (lib/native-query (mt/metadata-provider) sql)}}}
+              result (invoke-sql-tool profile memory "edit_sql_query"
+                                      {:edits [{:old_string old-string :new_string "x"}]})
+              output (:output result)]
+          (is (= ::sql.edit/edit-not-found (get-in result [:error :code])))
+          (is (str/includes? output (str "Closest match ignoring case and whitespace at line " line ": "
+                                         (pr-str stored-text))))
+          (is (str/includes? output "not applied"))
+          (is (str/ends-with? output "Or use `replace_sql_query` with the complete corrected SQL."))
+          (is (<= (count output) 4000))
+          (is (nil? (:structured-output result)))
+          (is (empty? (:data-parts result))))))))
+
+(deftest absent-sql-match-uses-available-budget-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [columns [300 1000 5000]]
+      (let [sql (str "SELECT\n" (str/join ",\n" (for [i (range columns)] (str "  column_" i))) "\nFROM venues")
+            result (invoke-sql-tool :sql {:state {:queries {"q1" (lib/native-query (mt/metadata-provider) sql)}}}
+                                    "edit_sql_query" {:edits [{:old_string "nope" :new_string "x"}]})
+            output (:output result)]
+        (is (= ::sql.edit/edit-not-found (get-in result [:error :code])))
+        (is (< 3900 (count output) 4001))
+        (is (str/includes? output "SQL characters omitted"))
+        (is (str/includes? output "SELECT\\n"))
+        (is (str/includes? output "FROM venues"))
+        (is (str/ends-with? output "Or use `replace_sql_query` with the complete corrected SQL."))))))
+
+(deftest long-closest-sql-match-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [sql (str "SELECT\n" (str/join ",\n" (for [i (range 1200)] (str "  column_" i))) "\nFROM venues")
+          old-string (str/replace (subs sql 0 12000) #"\n  " " ")
+          result (invoke-sql-tool :sql {:state {:queries {"q1" (lib/native-query (mt/metadata-provider) sql)}}}
+                                  "edit_sql_query" {:edits [{:old_string old-string :new_string "x"}]})
+          output (:output result)]
+      (is (= ::sql.edit/edit-not-found (get-in result [:error :code])))
+      (is (str/includes? output "Closest match ignoring case and whitespace at line 1: \"SELECT\\n  column_0"))
+      (is (str/includes? output "...\" (not applied)"))
+      (is (str/ends-with? output "Or use `replace_sql_query` with the complete corrected SQL."))
+      (is (<= (count output) 4000)))))
+
+(deftest tiny-sql-context-budget-test
+  (is (<= (count (#'sql.edit/quoted-sql-context (apply str (repeat 100 "SELECT id\n")) [] 10)) 10)))
+
+(deftest ambiguous-sql-match-lines-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [sql "SELECT id, id\nFROM birds\nWHERE id > 2"
+          result (invoke-sql-tool :sql {:state {:queries {"q1" (lib/native-query (mt/metadata-provider) sql)}}}
+                                  "edit_sql_query" {:edits [{:old_string "id" :new_string "bird_id"}]})]
+      (is (= ::sql.edit/edit-ambiguous (get-in result [:error :code])))
+      (is (str/includes? (:output result) "Match lines: 1, 1, 3"))
+      (is (str/includes? (:output result) "replace_all"))
+      (is (str/includes? (:output result) "replace_sql_query")))))
+
+(deftest long-sql-error-keeps-context-and-recovery-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [[columns expected-length] [[300 4125] [150 2025]]
+            old-string ["nope" "where price > 2" "column_"]]
+      (let [sql (str "SELECT\n" (str/join ",\n" (for [i (range columns)] (str "  column_" i)))
+                     "\nFROM venues\nWHERE\n  price > 2")
+            edits (cond-> []
+                    (= columns 150) (conj {:old_string "venues" :new_string "places"})
+                    true (conj {:old_string old-string :new_string "x"}))
+            result (invoke-sql-tool :sql {:state {:queries {"q1" (lib/native-query (mt/metadata-provider) sql)}}}
+                                    "edit_sql_query" {:edits edits})
+            output (:output result)]
+        (is (= expected-length (count sql)))
+        (is (= :recoverable (get-in result [:error :class])))
+        (is (<= (count output) 4000))
+        (is (str/includes? output "No edits were saved"))
+        (is (str/includes? output "replace_sql_query"))
+        (when (not= old-string "column_")
+          (is (str/includes? output "price > 2")))
+        (when (= columns 300)
+          (is (str/includes? output "omitted")))
+        (when (= columns 150)
+          (is (str/includes? output "includes earlier unsaved edits"))
+          (is (not (str/includes? output "FROM venues"))))))))
+
+(deftest escaped-sql-context-keeps-recovery-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [old-string ["nope" "where price > 2" "\u001b"]]
+      (let [sql (str "SELECT 1\n-- " (apply str (repeat 1000 "\u001b\n")) "\nWHERE\n  price > 2")
+            result (invoke-sql-tool :internal {:state {:queries {"q1" (lib/native-query (mt/metadata-provider) sql)}}}
+                                    "edit_sql_query" {:edits [{:old_string old-string :new_string "x"}]})]
+        (is (= :recoverable (get-in result [:error :class])))
+        (is (<= (count (:output result)) 4000))
+        (is (str/includes? (:output result) "replace_sql_query"))
+        (is (str/includes? (:output result) "SQL characters omitted"))
+        (is (not (str/includes? (:output result) "\u001b")))))))
+
+(deftest many-sql-match-lines-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [[sql expected-lines]
+            [[(str "SELECT\n" (str/join ",\n" (repeat 1000 "id")) "\nFROM birds")
+              "Match lines: 2-1001 (1 match per line)."]
+             [(str "SELECT " (str/join ", " (repeat 1000 "id")) " FROM birds")
+              "Match lines: 1 (1000 matches)."]
+             [(str "SELECT\n" (str/join "\n" (repeat 5 "id, id,")) "\n-- gap\n"
+                   (str/join ",\n" (repeat 1000 "id")) "\nFROM birds")
+              "Match lines: 2-6 (2 matches per line), 8-1007 (1 match per line)."]]]
+      (let [result (invoke-sql-tool :sql {:state {:queries {"q1" (lib/native-query (mt/metadata-provider) sql)}}}
+                                    "edit_sql_query" {:edits [{:old_string "id" :new_string "bird_id"}]})
+            output (:output result)]
+        (is (= ::sql.edit/edit-ambiguous (get-in result [:error :code])))
+        (is (str/includes? output expected-lines))
+        (is (not (str/includes? output "further match locations omitted")))
+        (is (str/includes? output "replace_sql_query"))
+        (is (<= (count output) 4000))))))
+
+(deftest ^:parallel closest-span-long-text-test
+  (let [sql (str "SELECT '" (apply str (repeat 20000 "a")) "' AS bird")
+        old-string (str/replace sql "SELECT" "select")]
+    (is (= [0 (count sql)] (#'sql.edit/closest-span sql old-string)))
+    (is (nil? (#'sql.edit/closest-span sql (str old-string " missing"))))))
+
+(deftest blank-sql-creation-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [engine [:h2 :postgres]]
+      (mt/with-temp [:model/Database {db-id :id} {:engine engine}]
+        (doseq [profile [:internal :sql]
+                sql ["" " \n\t"]
+                enforce-schema? [true false]]
+          (testing (str engine " / " profile " / schema checks: " enforce-schema? " / " (pr-str sql))
+            (let [invoke #(invoke-sql-tool profile editor-memory "create_sql_query" {:database_id db-id :sql_query sql})
+                  result (if enforce-schema? (invoke) (mu/disable-enforcement (invoke)))]
+              (is (= {:class :recoverable :code ::sql.common/blank-sql} (:error result)))
+              (is (str/includes? (:output result) "No changes were saved"))
+              (is (str/includes? (:output result) "Provide SQL that is not blank"))
+              (is (nil? (:structured-output result)))
+              (is (empty? (:data-parts result))))))))))
+
+(deftest long-parser-error-keeps-recovery-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {db-id :id :as db} {:engine :postgres}]
+      (mt/with-db db
+        (mt/with-dynamic-fn-redefs [sql-tools/transpile-sql
+                                    (constantly {:status :error
+                                                 :error-message (str "Invalid expression\n" (apply str (repeat 1500 "\u001b")))})]
+          (doseq [profile [:internal :sql]
+                  tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
+            (let [result (invoke-with-proposed-sql profile tool-name db-id "SELECT =")
+                  output (:output result)]
+              (is (= {:class :recoverable :code ::sql.common/sql-syntax-error} (:error result)))
+              (is (<= (count output) 4000))
+              (is (str/includes? output "Parser details: \"Invalid expression\\n"))
+              (is (str/includes? output "...\""))
+              (is (not (str/includes? output "\u001b")))
+              (is (str/includes? output "Fix the SQL syntax and retry"))
+              (is (str/includes? output "Common issues to check:"))
+              (is (str/ends-with? output "rewrite that part in standard SQL.")))))))))
+
+(deftest omitted-sql-match-lines-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [sql (str "SELECT\n" (str/join "\n" (repeat 1000 "id\n-- gap")) "\nFROM birds")
+          result (invoke-sql-tool :sql {:state {:queries {"q1" (lib/native-query (mt/metadata-provider) sql)}}}
+                                  "edit_sql_query" {:edits [{:old_string "id" :new_string "bird_id"}]})
+          output (:output result)
+          [_ listed omitted] (re-find #"Match lines: ([0-9, ]+); ([0-9]+) further match locations omitted" output)]
+      (is (= ::sql.edit/edit-ambiguous (get-in result [:error :code])))
+      (is (some? omitted))
+      (when omitted
+        (let [lines (map parse-long (str/split listed #", "))]
+          (is (= (take (count lines) (range 2 2001 2)) lines))
+          (is (= 1000 (+ (count lines) (parse-long omitted))))))
+      (is (<= (count output) 4000))
+      (is (str/ends-with? output "Or use `replace_sql_query` with the complete corrected SQL.")))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Reference checks
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- venues-model
+  "A model on the test database's `venues` table, for `mt/with-temp`."
+  []
+  (let [mp (mt/metadata-provider)]
+    {:type          :model
+     :database_id   (mt/id)
+     :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}))
+
+(defn- broken-card
+  "A card whose own SQL references a card that does not exist, so it cannot compile."
+  []
+  {:database_id   (mt/id)
+   :dataset_query (lib/native-query (mt/metadata-provider) (str "SELECT * FROM {{#" Integer/MAX_VALUE "}}"))})
+
+(defn- create-sql
+  "Call `create_sql_query` with `sql` against the test database, in the sidebar profile."
+  [sql]
+  (invoke-sql-tool :internal {} "create_sql_query" {:database_id (mt/id) :sql_query sql}))
+
+(def ^:private warning-intro
+  "checking its table references")
+
+(defn- warns-about?
+  "Whether `result` succeeded with a reference warning that names `identifier`."
+  [identifier result]
+  (and (nil? (:error result))
+       (str/includes? (:output result) warning-intro)
+       (str/includes? (:output result) (str "\"" identifier "\" was not found"))))
+
+(defn- table-warning
+  "The start of the reference warning for a table that the SQL names `table-name` and that does not resolve."
+  [table-name]
+  (str "Table \"" table-name "\" was not found in the table metadata that Metabase has synced."))
+
+(defn- warning-lines
+  "The reference warnings in the output of `result`, in order."
+  [result]
+  (->> (str/split-lines (:output result))
+       (drop-while #(not (str/ends-with? % "found possible problems:")))
+       rest
+       (take-while #(str/starts-with? % "- "))
+       (mapv #(subs % 2))))
+
+(deftest create-sql-query-unknown-table-warning-test
+  (testing "joining a table that does not exist to a model warns about the table and keeps the turn open (trace 1)"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
+          (let [result (create-sql (str "SELECT v.name, a.customer_name FROM {{#" card-id "}} AS v "
+                                        "LEFT JOIN no_such_account a ON v.id = a.id"))]
+            (is (warns-about? "no_such_account" result))
+            (testing "the table warning is the only warning and names `fully_qualified_name`"
+              (is (= 1 (count (warning-lines result))))
+              (is (str/starts-with? (first (warning-lines result)) (table-warning "no_such_account")))
+              (is (str/includes? (first (warning-lines result)) "`fully_qualified_name`")))
+            (is (some? (get-in result [:structured-output :query-id])))
+            (is (true? (:non-terminal? result)))))))))
+
+(deftest create-sql-query-unknown-table-warning-with-each-parser-test
+  (testing "an unqualified table that does not exist gets the table warning with each parser backend"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
+          (sql-tools.tu/test-parser-backends
+           (let [result (create-sql (str "SELECT v.name FROM {{#" card-id "}} AS v "
+                                         "LEFT JOIN no_such_account a ON v.id = a.id"))]
+             (is (str/starts-with? (first (warning-lines result)) (table-warning "no_such_account"))))))))))
+
+(deftest create-sql-query-plain-sql-unknown-table-warning-test
+  (testing "SQL without template tags gets the same reference check"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [result (create-sql "SELECT v.name, a.x FROM venues v JOIN no_such_account a ON v.id = a.id")]
+          (is (warns-about? "no_such_account" result))
+          (is (true? (:non-terminal? result))))
+        (testing "a table that does not exist in FROM is named once, by the table warning"
+          (let [warnings (warning-lines (create-sql "SELECT * FROM no_such_account"))]
+            (is (= 1 (count warnings)))
+            (is (str/starts-with? (first warnings) (table-warning "no_such_account")))))
+        (testing "a schema-qualified table that does not exist is named as the SQL writes it"
+          (let [result (create-sql "SELECT v.name, a.x FROM venues v JOIN dbt_models.venues a ON v.id = a.id")]
+            (is (str/starts-with? (first (warning-lines result)) (table-warning "dbt_models.venues")))))
+        (testing "a bare table name that resolves in the default schema gets no warning"
+          (let [result (create-sql "SELECT v.name FROM venues v")]
+            (is (not (str/includes? (:output result) warning-intro)))
+            (is (not (contains? result :non-terminal?)))))))))
+
+(deftest create-sql-query-table-warning-without-columns-test
+  (testing "an unknown table warns also when the query names none of its columns"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [result (create-sql "SELECT COUNT(*) FROM no_such_account")]
+          (is (= 1 (count (warning-lines result))))
+          (is (str/starts-with? (first (warning-lines result)) (table-warning "no_such_account")))
+          (is (true? (:non-terminal? result))))))))
+
+(deftest create-sql-query-known-unsynced-table-no-warning-test
+  (mt/test-drivers #{:postgres}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "a system table gives no table warning"
+        (let [result (create-sql "SELECT COUNT(*) FROM information_schema.tables")]
+          (is (not (str/includes? (:output result) warning-intro)))
+          (is (not (contains? result :non-terminal?)))))
+      (testing "a bare Postgres catalog table gives no table warning"
+        (is (not (str/includes? (:output (create-sql "SELECT COUNT(*) FROM pg_tables")) warning-intro))))
+      (testing "a schema that is a system schema on another database only does not exempt its tables"
+        (is (str/starts-with? (first (warning-lines (create-sql "SELECT COUNT(*) FROM sys.no_such_account")))
+                              (table-warning "sys.no_such_account"))))
+      (testing "a hidden synced table gives no table warning"
+        (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:visibility_type "hidden"}
+          (let [result (create-sql "SELECT COUNT(*) FROM venues")]
+            (is (not (str/includes? (:output result) warning-intro)))
+            (is (not (contains? result :non-terminal?))))))
+      (mt/with-temp [:model/Table _ {:db_id (mt/id) :schema "core" :name "account" :active false}]
+        (testing "an inactive table row does not exempt its table: sync marks a dropped table inactive"
+          (let [result (create-sql "SELECT * FROM core.account")]
+            (is (= [true] (mapv #(str/starts-with? % (table-warning "core.account")) (warning-lines result))))
+            (is (true? (:non-terminal? result))))))
+      (mt/with-temp [:model/Table _ {:db_id (mt/id) :schema "core" :name "account" :visibility_type "hidden"}]
+        (testing "a hidden table row with the same schema and name gives no table warning"
+          (is (not (str/includes? (:output (create-sql "SELECT COUNT(*) FROM core.account")) warning-intro))))
+        (testing "a bare name matches the default schema only, not a table of the same name in another schema"
+          (is (str/starts-with? (first (warning-lines (create-sql "SELECT COUNT(*) FROM account")))
+                                (table-warning "account")))))
+      (testing "a schema that has no synced tables does not exempt its tables"
+        (is (str/starts-with? (first (warning-lines (create-sql "SELECT COUNT(*) FROM dbt_models.no_such_account")))
+                              (table-warning "dbt_models.no_such_account")))))))
+
+(deftest create-sql-query-bare-name-of-table-in-other-schema-warning-test
+  (testing "a bare name of an active table that exists only in another schema gets a table warning"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        ;; `create-sql` does not run the query, so the warehouse needs no `core.account` table.
+        (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "core" :name "account" :active true}
+                       :model/Field _              {:table_id      table-id
+                                                    :name          "customer_name"
+                                                    :base_type     :type/Text
+                                                    :database_type "text"}]
+          (let [result (create-sql "SELECT a.customer_name FROM account a")]
+            (is (str/starts-with? (first (warning-lines result)) (table-warning "account")))
+            (is (true? (:non-terminal? result))))
+          (testing "the schema-qualified name resolves and gets no warning"
+            (let [result (create-sql "SELECT a.customer_name FROM core.account a")]
+              (is (nil? (:error result)))
+              (is (not (str/includes? (:output result) warning-intro)))
+              (is (not (contains? result :non-terminal?))))))))))
+
+(deftest create-sql-query-known-unsynced-table-star-no-warning-test
+  (testing "`SELECT *` from a table that exists but does not resolve gives no warning"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "a system table"
+          (let [result (create-sql "SELECT * FROM information_schema.tables")]
+            (is (= [] (warning-lines result)))
+            (is (not (contains? result :non-terminal?)))))
+        (testing "a hidden synced table"
+          (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:visibility_type "hidden"}
+            (let [result (create-sql "SELECT * FROM venues")]
+              (is (= [] (warning-lines result)))
+              (is (not (contains? result :non-terminal?))))))
+        (testing "an unknown table keeps exactly one warning, the table warning"
+          (let [lines (warning-lines (create-sql "SELECT * FROM no_such_account"))]
+            (is (= 1 (count lines)))
+            (is (str/starts-with? (first lines) (table-warning "no_such_account")))))))))
+
+(deftest create-sql-query-templated-unknown-table-warning-test
+  (testing "an unknown table in SQL with template tags is a warning, not an error"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
+          (let [from-v (str " FROM {{#" card-id "}} AS v JOIN no_such_account a ON a.id = v.id")]
+            (doseq [[situation sql] [["a model reference" (str "SELECT v.name" from-v)]
+                                     ["a variable"        (str "SELECT v.name" from-v " WHERE v.id = {{venue_id}}")]
+                                     ["an optional clause" (str "SELECT v.name" from-v
+                                                                " WHERE TRUE [[AND v.id = {{venue_id}}]]")]]]
+              (testing situation
+                (let [result (create-sql sql)]
+                  (is (warns-about? "no_such_account" result))
+                  (is (true? (:non-terminal? result))))))))))))
+
+(deftest referenced-card-and-snippet-tables-no-warning-test
+  (testing "a table that only a referenced card or snippet reads gets no warning: the model did not write it"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {native-id :id}     {:database_id   (mt/id)
+                                                        :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                         "SELECT * FROM unsynced_events")}
+                       :model/Card {model-id :id}      (venues-model)
+                       :model/NativeQuerySnippet _     {:name    "unsynced_venues"
+                                                        :content "id IN (SELECT venue_id FROM unsynced_events)"}
+                       :model/NativeQuerySnippet _     {:name    "unsynced_events"
+                                                        :content "id IN (SELECT venue_id FROM unsynced_events)"}]
+          (mt/with-temp [:model/Card {nested-id :id} {:database_id   (mt/id)
+                                                      :dataset_query (lib/native-query
+                                                                      (mt/metadata-provider)
+                                                                      (str "SELECT * FROM {{#" native-id "}} AS n"))}]
+            (doseq [[situation sql] [["a native card" (str "SELECT * FROM {{#" native-id "}} AS e")]
+                                     ["a native card in a CTE"
+                                      (str "WITH e AS {{#" native-id "}} SELECT count(*) FROM e")]
+                                     ["a native card that references a native card"
+                                      (str "SELECT * FROM {{#" nested-id "}} AS e")]
+                                     ["a snippet" "SELECT name FROM venues WHERE {{snippet: unsynced_venues}}"]
+                                     ["a snippet whose name is the name of the table"
+                                      "SELECT name FROM venues WHERE {{snippet: unsynced_events}}"]]]
+              (testing situation
+                (let [result (create-sql sql)]
+                  (is (nil? (:error result)))
+                  (is (= [] (warning-lines result)))
+                  (is (not (contains? result :non-terminal?)))))))
+          ;; The filter matches the table name that the parser gives against the model's SQL, so try each parser.
+          (sql-tools.tu/test-parser-backends
+           (testing "a table the model writes next to the card still gets a warning (BOT-1154)"
+             (let [result (create-sql (str "SELECT e.*, a.customer_name FROM {{#" native-id "}} AS e "
+                                           "JOIN {{#" model-id "}} AS v ON TRUE JOIN account a ON a.id = v.id"))]
+               (is (= [true] (mapv #(str/starts-with? % (table-warning "account")) (warning-lines result))))
+               (is (true? (:non-terminal? result)))))
+           (testing "a name that contains the card's table name does not keep the card's table"
+             (let [result (create-sql (str "SELECT * FROM {{#" native-id "}} AS e "
+                                           "JOIN my_unsynced_events m ON TRUE"))]
+               (is (= [true] (mapv #(str/starts-with? % (table-warning "my_unsynced_events"))
+                                   (warning-lines result)))))))
+          ;; With the default parser only: the :macaw backend gives no warning for this table, also before the filter.
+          (testing "a quoted, schema-qualified table the model writes next to the card still gets a warning"
+            (let [result (create-sql (str "SELECT * FROM {{#" native-id "}} AS e "
+                                          "JOIN \"public\".\"Account\" a ON TRUE"))]
+              (is (= [true] (mapv #(str/starts-with? % (table-warning "public.Account")) (warning-lines result))))
+              (is (true? (:non-terminal? result))))))))))
+
+(deftest create-sql-query-column-references-no-warning-test
+  (testing "column names are not checked: checker false positives and a real wrong column get no warning"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
+          (doseq [[situation sql] [["the column list of a CTE"
+                                    "WITH foo(x) AS (SELECT id FROM venues) SELECT x FROM foo"]
+                                   ["a column alias list"
+                                    "SELECT q.x FROM (SELECT id FROM venues) AS q(x)"]
+                                   ["a qualifier in another letter case"
+                                    "SELECT V.ID FROM venues v"]
+                                   ["a column the model does not have"
+                                    (str "SELECT v.customer_name FROM {{#" card-id "}} AS v")]]]
+            (testing situation
+              (let [result (create-sql sql)]
+                (is (nil? (:error result)))
+                (is (= [] (warning-lines result)))
+                (is (not (contains? result :non-terminal?)))))))))))
+
+(deftest bigquery-struct-field-no-warning-test
+  (testing (str "a BigQuery struct field, `UNNEST` alias or wildcard table gets no warning, and an unknown table "
+                "still does")
+    ;; Needs the BigQuery driver on the classpath (`--drivers=bigquery-cloud-sdk`). Without it the check fails open,
+    ;; so the test would prove nothing.
+    (when (try (driver/the-initialized-driver :bigquery-cloud-sdk) (catch Exception _ nil))
+      (mt/with-current-user (mt/user->id :crowberto)
+        ;; `validate-database-sql` does not run the query, so the database needs no connection.
+        (mt/with-temp [:model/Database {db-id :id}    {:engine :bigquery-cloud-sdk :details {}}
+                       :model/Table    {table-id :id} {:db_id db-id :schema "analytics" :name "events_20240101"}
+                       :model/Field    {geo-id :id}   {:table_id table-id :name "geo" :base_type :type/Dictionary
+                                                       :database_type "RECORD"}
+                       :model/Field    _              {:table_id table-id :name "country" :parent_id geo-id
+                                                       :nfc_path ["geo" "country"] :base_type :type/Text
+                                                       :database_type "STRING"}]
+          (doseq [sql ["SELECT e.geo.country FROM analytics.events_20240101 e"
+                       "SELECT geo.country FROM analytics.events_20240101"
+                       "SELECT p.key FROM analytics.events_20240101 e, UNNEST(e.event_params) AS p"
+                       ;; A GA4 export: the wildcard reads the daily shards, and `_table_suffix` is a pseudo-column.
+                       "SELECT event_name, _table_suffix FROM analytics.events_* WHERE _table_suffix >= '20240101'"]]
+            (testing sql
+              (is (nil? (:warnings (sql.validation/validate-database-sql db-id sql))))))
+          (is (= [(str (table-warning "analytics.no_such_events") " If you meant a synced table, refer to it by its "
+                       "schema-qualified name, the `fully_qualified_name` in the table metadata.")]
+                 (:warnings (sql.validation/validate-database-sql
+                             db-id "SELECT e.geo.country FROM analytics.no_such_events e")))))))))
+
+(deftest create-sql-query-missing-card-error-test
+  (testing "a reference to a card that does not exist is a recoverable error, and no query is created"
+    (mt/test-drivers #{:postgres :h2}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [result (create-sql (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v"))]
+          (is (= {:class :recoverable :code ::sql.common/missing-references} (:error result)))
+          (is (str/includes? (:output result) (str "Card " Integer/MAX_VALUE " does not exist")))
+          (is (str/includes? (:output result) "Refer to tables by their `fully_qualified_name` from the metadata."))
+          (is (nil? (:structured-output result))))))))
+
+(deftest missing-unreadable-and-other-db-card-test
+  (mt/test-drivers #{:postgres}
+    (testing "a card the user cannot read counts as missing"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Card       {card-id :id} (assoc (venues-model) :collection_id coll-id)]
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [result (create-sql (str "SELECT v.name FROM {{#" card-id "}} AS v"))]
+              (is (= {:class :recoverable :code ::sql.common/missing-references} (:error result)))
+              (is (str/includes? (:output result) (str "Card " card-id " does not exist"))))))))
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "a card on another database counts as missing"
+        (mt/with-temp [:model/Database {other-db-id :id} {:engine :postgres}
+                       :model/Card     {card-id :id}     {:database_id   other-db-id
+                                                          :dataset_query {:database other-db-id
+                                                                          :type     :native
+                                                                          :native   {:query "SELECT 1 AS x"}}}]
+          (is (= ::sql.common/missing-references
+                 (get-in (create-sql (str "SELECT * FROM {{#" card-id "}} AS v")) [:error :code])))))
+      (testing "a snippet that does not exist is missing, and is named"
+        (let [result (create-sql "SELECT * FROM venues WHERE {{snippet: nope}}")]
+          (is (= ::sql.common/missing-references (get-in result [:error :code])))
+          (is (str/includes? (:output result) "Snippet \"nope\" does not exist")))))))
+
+(deftest unreadable-snippet-reference-test
+  (testing "a snippet that exists but that the user cannot read is missing, is named, and no query is created"
+    (mt/test-drivers #{:postgres}
+      (mt/with-temp [:model/NativeQuerySnippet _ {:name "private_venues" :content "price < 2"}]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [sql "SELECT name FROM venues WHERE {{snippet: private_venues}}"]
+            (testing "with native permissions the snippet is readable"
+              (is (nil? (:error (create-sql sql)))))
+            ;; In OSS a user can read every snippet when they have native permissions on any database.
+            (mt/with-dynamic-fn-redefs [snippet.perms/has-any-native-permissions? (constantly false)]
+              (let [result (create-sql sql)]
+                (is (= {:class :recoverable :code ::sql.common/missing-references} (:error result)))
+                (is (str/includes? (:output result) "Snippet \"private_venues\" does not exist, or you cannot read it."))
+                (is (nil? (:structured-output result)))))))))))
+
+(deftest existing-snippet-reference-test
+  (testing "a snippet that exists is not missing, and SQL that uses it gets no warning"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/NativeQuerySnippet _ {:name "cheap_venues" :content "price < 2"}]
+          (let [result (create-sql "SELECT name FROM venues WHERE {{snippet: cheap_venues}}")]
+            (is (nil? (:error result)))
+            (is (not (str/includes? (:output result) warning-intro)))
+            (is (not (contains? result :non-terminal?)))))))))
+
+(deftest sql-reference-repeated-warning-accepts-test
+  (testing "warnings already shown in this turn do not keep the turn open again"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
+          (let [memory-atom (atom editor-memory)
+                create      #(invoke-sql-tool-with-memory-atom :sql memory-atom "create_sql_query"
+                                                               {:database_id (mt/id) :sql_query %})
+                warned-sql  (str "SELECT v.name FROM {{#" card-id "}} AS v JOIN no_such_account a ON a.id = v.id")]
+            (testing "the first send warns and keeps the turn open"
+              (is (true? (:non-terminal? (create warned-sql)))))
+            (testing "the second send of the same SQL still warns, and is accepted"
+              (let [result (create warned-sql)]
+                (is (warns-about? "no_such_account" result))
+                (is (not (contains? result :non-terminal?)))))
+            (testing "changed SQL with the same warning is accepted"
+              (let [result (create (str warned-sql " WHERE v.id = 1"))]
+                (is (warns-about? "no_such_account" result))
+                (is (not (contains? result :non-terminal?)))))
+            (testing "changed SQL with a new warning keeps the turn open"
+              (is (true? (:non-terminal? (create (str warned-sql " JOIN no_such_order o ON o.id = v.id")))))))))))
+  (testing "a wrong schema guess for an unknown table keeps the turn open, because the table warning is new"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [memory-atom (atom editor-memory)
+              create      #(invoke-sql-tool-with-memory-atom :sql memory-atom "create_sql_query"
+                                                             {:database_id (mt/id) :sql_query %})
+              join-sql    #(str "SELECT v.name, a.customer_name FROM venues v LEFT JOIN " % " a ON v.id = a.id")]
+          (is (true? (:non-terminal? (create (join-sql "no_such_account")))))
+          (let [result (create (join-sql "dbt_models.no_such_account"))]
+            (is (warns-about? "dbt_models.no_such_account" result))
+            (is (true? (:non-terminal? result)))))))))
+
+(deftest sql-reference-warning-in-one-response-keeps-turn-open-test
+  (testing "two calls in one model response that warn about the same table keep the turn open, so the model reads the
+           warning: the second call says it is repeated and accepted, but the model has not seen the first yet"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [memory-atom    (atom editor-memory)
+              create         #(invoke-sql-tool-with-memory-atom :sql memory-atom "create_sql_query"
+                                                                {:database_id (mt/id) :sql_query %})
+              terminal-tools (:terminal-tools (profiles/get-profile :sql))
+              ;; The tool executor runs `create_sql_query` calls in parallel; in sequence, the second one always
+              ;; finds the warning already shown.
+              results        [(create "SELECT COUNT(*) FROM no_such_account")
+                              (create "SELECT * FROM no_such_account")]
+              parts          (mapcat (fn [id result]
+                                       [{:type :tool-input :id id :function "create_sql_query"}
+                                        {:type :tool-output :id id :function "create_sql_query" :result result}])
+                                     ["a" "b"] results)]
+          (is (= [true nil] (map :non-terminal? results)))
+          (is (#'agent/should-continue? 0 20 terminal-tools parts)))))))
+
+(deftest sql-reference-repeated-warning-text-test
+  (testing "repeated warnings say the query is accepted, and no longer ask to fix or resend it"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
+          (let [memory-atom (atom editor-memory)
+                create      #(invoke-sql-tool-with-memory-atom :sql memory-atom "create_sql_query"
+                                                               {:database_id (mt/id) :sql_query %})
+                warned-sql  (str "SELECT v.name FROM {{#" card-id "}} AS v JOIN no_such_account a ON a.id = v.id")
+                first-send  (create warned-sql)
+                second-send (create warned-sql)]
+            (is (str/includes? (:output first-send) "send the same complete SQL again"))
+            (is (warns-about? "no_such_account" second-send))
+            (is (str/includes? (:output second-send) "The query was created and accepted"))
+            (is (not (str/includes? (:output second-send) "send the same complete SQL again")))
+            (is (not (str/includes? (:output second-send) "fix any that are wrong")))))))))
+
+(deftest same-sql-replace-after-edit-or-create-is-accepted-test
+  (testing "replace_sql_query with the SQL that a warned call saved is accepted, as the instructions say"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
+          (let [joins      (str " JOIN {{#" card-id "}} AS m ON v.id = m.id JOIN no_such_account a ON a.id = v.id")
+                warned-sql (str "SELECT v.name, m.name FROM venues v" joins)
+                ;; What the agent loop does after each call (`extract-queries`): store the saved query.
+                store!     (fn [memory-atom query-id result]
+                             (swap! memory-atom assoc-in [:state :queries query-id]
+                                    (get-in result [:structured-output :query])))
+                replace    (fn [memory-atom query-id sql]
+                             (invoke-sql-tool-with-memory-atom :sql memory-atom "replace_sql_query"
+                                                               {:query_id query-id :new_query sql}))]
+            (testing "after an edit that adds a card tag"
+              (let [memory-atom (atom (assoc editor-memory
+                                             :state {:queries {"q1" (lib/native-query (mt/metadata-provider)
+                                                                                      "SELECT v.name FROM venues v")}}))
+                    edited      (invoke-sql-tool-with-memory-atom
+                                 :sql memory-atom "edit_sql_query"
+                                 {:edits [{:old_string "v.name FROM venues v"
+                                           :new_string (str "v.name, m.name FROM venues v" joins)}]})]
+                (is (true? (:non-terminal? edited)))
+                (store! memory-atom "q1" edited)
+                (let [result (replace memory-atom "q1" (get-in edited [:structured-output :query-content]))]
+                  (is (warns-about? "no_such_account" result))
+                  (is (not (contains? result :non-terminal?))))))
+            (testing "after a create"
+              (let [memory-atom (atom editor-memory)
+                    created     (invoke-sql-tool-with-memory-atom :sql memory-atom "create_sql_query"
+                                                                  {:database_id (mt/id) :sql_query warned-sql})
+                    query-id    (get-in created [:structured-output :query-id])]
+                (is (true? (:non-terminal? created)))
+                (store! memory-atom query-id created)
+                (let [result (replace memory-atom query-id warned-sql)]
+                  (is (warns-about? "no_such_account" result))
+                  (is (not (contains? result :non-terminal?))))))))))))
+
+(deftest edit-and-replace-reference-warnings-test
+  (testing "edit_sql_query and replace_sql_query warn on a stored MBQL 5 JSON query with a card tag (trace shape)"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
+          (let [stored  (-> (lib/native-query (mt/metadata-provider) (str "SELECT v.name FROM {{#" card-id "}} AS v"))
+                            json/encode
+                            json/decode+kw)
+                new-sql (str "SELECT v.name, a.x FROM {{#" card-id "}} AS v LEFT JOIN no_such_account a ON v.id = a.id")]
+            (doseq [[tool-name args] [["edit_sql_query" {:edits [{:old_string "v.name FROM" :new_string "v.name, a.x FROM"}
+                                                                 {:old_string "AS v"
+                                                                  :new_string "AS v LEFT JOIN no_such_account a ON v.id = a.id"}]}]
+                                      ["replace_sql_query" {:new_query new-sql}]]]
+              (testing tool-name
+                (let [result (invoke-sql-tool :sql (assoc editor-memory :state {:queries {"q1" stored}})
+                                              tool-name args)]
+                  (is (warns-about? "no_such_account" result))
+                  (is (str/includes? (:output result) "The query was created, but checking"))
+                  (is (= new-sql (get-in result [:structured-output :query-content])))
+                  (is (true? (:non-terminal? result))))))))))))
+
+(defn- trace-shape
+  "`query` as the agent memory holds it in a trace: an MBQL 5 query after a JSON round trip."
+  [query]
+  (-> query json/encode json/decode+kw))
+
+(defn- missing-card-message
+  "The error message for SQL whose only missing reference is the card `card-id`."
+  [card-id]
+  (str "Card " card-id " does not exist, is on another database, or you cannot read it. No changes were saved."))
+
+(defn- edit-and-replace-calls
+  "The `edit_sql_query` call that adds `suffix` after `old-string` in the stored `sql`, and the `replace_sql_query` call
+  that gives the same SQL."
+  [sql old-string suffix]
+  [["edit_sql_query" {:edits [{:old_string old-string :new_string (str old-string suffix)}]}]
+   ["replace_sql_query" {:new_query (str/replace-first sql old-string (str old-string suffix))}]])
+
+(defn- check-refused
+  "Call `tool-name` with `args` on the stored query `q1`, and check that it fails with `message` and saves nothing."
+  [stored tool-name args message]
+  (let [memory-atom (atom (assoc editor-memory :state {:queries {"q1" stored}}))
+        result      (invoke-sql-tool-with-memory-atom :sql memory-atom tool-name args)]
+    (is (= {:class :recoverable :code ::sql.common/missing-references} (:error result)))
+    (is (str/includes? (:output result) message))
+    ;; The agent loop saves the `:query` of `:structured-output` (`extract-queries`): no structured output, no save.
+    (is (nil? (:structured-output result)))
+    (is (= stored (get-in @memory-atom [:state :queries "q1"])))))
+
+(deftest edit-and-replace-missing-reference-error-test
+  (testing "edit_sql_query and replace_sql_query refuse SQL that references a missing card or snippet"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [sql    "SELECT v.name FROM venues v"
+              stored (trace-shape (lib/native-query (mt/metadata-provider) sql))]
+          (doseq [[reference suffix message]
+                  [["a missing card" (str " JOIN {{#" Integer/MAX_VALUE "}} AS m ON v.id = m.id")
+                    (missing-card-message Integer/MAX_VALUE)]
+                   ["a missing snippet" " WHERE {{snippet: nope}}"
+                    "Snippet \"nope\" does not exist, or you cannot read it. No changes were saved."]]
+                  [tool-name args] (edit-and-replace-calls sql "FROM venues v" suffix)]
+            (testing (str tool-name " with " reference)
+              (check-refused stored tool-name args message))))))))
+
+(deftest edit-and-replace-missing-reference-with-stored-tags-test
+  (testing "a stored query that references a readable card or snippet, edited to add a missing card, names only the
+           missing card"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card              {card-id :id}    (venues-model)
+                       :model/NativeQuerySnippet {snippet-id :id} {:name "cheap_venues" :content "price < 2"}]
+          (let [mp             (mt/metadata-provider)
+                missing        (str " JOIN {{#" Integer/MAX_VALUE "}} AS m ON v.id = m.id")
+                card-sql       (str "SELECT v.name FROM {{#" card-id "}} AS v")
+                snippet-sql    "SELECT v.name FROM venues v WHERE {{snippet: cheap_venues}}"
+                card-stored    (trace-shape (lib/native-query mp card-sql))
+                ;; A snippet can be renamed after a query that uses it is saved. Only the stored tag keeps its id.
+                snippet-stored (trace-shape (lib/native-query mp snippet-sql))]
+            (t2/update! :model/NativeQuerySnippet :id snippet-id {:name "cheapest_venues"})
+            (is (= [snippet-id] (map :snippet-id (sql.common/stored-template-tags snippet-stored))))
+            (doseq [[stored-reference stored sql old-string]
+                    [["a readable card" card-stored card-sql "AS v"]
+                     ["a renamed snippet" snippet-stored snippet-sql "FROM venues v"]]
+                    [tool-name args] (edit-and-replace-calls sql old-string missing)]
+              (testing (str tool-name " on a stored query with " stored-reference)
+                (check-refused stored tool-name args (missing-card-message Integer/MAX_VALUE))))))))))
+
+(deftest hidden-sql-query-reference-warnings-test
+  (testing "with show_chart false, the reference warnings and :non-terminal? reach the model on every delivery path"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/MetabotConversation {own :id} {:user_id (mt/user->id :crowberto)}]
+          (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
+                                             metabot-sql-execution-enabled?   true]
+            (let [query-id  "test-hidden-warning-q"
+                  join      " JOIN no_such_account a ON a.id = v.id"
+                  stored    (-> (lib/native-query (mt/metadata-provider) "SELECT v.name FROM venues v")
+                                lib/->legacy-MBQL)
+                  ;; A fresh memory per call: a warning already shown in this turn would not keep the turn open.
+                  run       (fn [tool-name context & {:keys [client-ids]}]
+                              (binding [shared/*memory-atom*                     (atom {:tool-names      #{"create_sql_query"
+                                                                                                           "edit_sql_query"
+                                                                                                           "replace_sql_query"
+                                                                                                           "run_query"}
+                                                                                        :conversation-id own
+                                                                                        :context         context
+                                                                                        :client-ids      client-ids
+                                                                                        :state           {:queries {query-id stored}}})
+                                        scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                                        scope/*current-user-scope*               (scope/user-metabot-perms->scopes
+                                                                                  scope/all-yes-permissions)]
+                                (let [result   (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) tool-name
+                                                                {:database_id (mt/id)
+                                                                 :sql_query   (str "SELECT v.name FROM venues v" join)
+                                                                 :query_id    query-id
+                                                                 :edits       [{:old_string "FROM venues v"
+                                                                                :new_string (str "FROM venues v" join)}]
+                                                                 :new_query   (str "SELECT v.name FROM venues v" join)
+                                                                 :show_chart  false})
+                                      shown-id (get-in result [:structured-output :query-id])]
+                                  {:parts         (mapv :data-type (:data-parts result))
+                                   :run-it?       (str/includes? (:output result)
+                                                                 (str "call `run_query` with `query_id` `" shown-id "`"))
+                                   :shown-anyway? (str/includes? (:output result)
+                                                                 instructions/client-query-shown-instruction)
+                                   :variant?      (str/includes? (:output result)
+                                                                 instructions/client-query-variant-instruction)
+                                   :warned?       (warns-about? "no_such_account" result)
+                                   :non-terminal? (:non-terminal? result)})))
+                  editor    {:user_is_viewing [{:type    "code_editor"
+                                                :buffers [{:id     "buf-1"
+                                                           :source {:language "sql" :database_id nil}
+                                                           :cursor {:line 0 :column 0}}]}]}
+                  hidden    {:parts [], :run-it? true, :warned? true, :non-terminal? true}]
+              (doseq [tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
+                (testing tool-name
+                  (testing "a hidden query"
+                    (is (=? hidden (run tool-name {}))))
+                  (when-not (= tool-name "create_sql_query")
+                    (testing "a hidden query in an open SQL editor"
+                      (is (=? hidden (run tool-name editor))))
+                    (testing "the user's own query, which is shown, with the client-query instructions"
+                      (doseq [[delivery context part] [["in their open SQL editor" editor "code_edit"]
+                                                       ["as a chart without an editor" {} "generated_entity"]]]
+                        (testing delivery
+                          (is (=? {:parts         [part]
+                                   :run-it?       false
+                                   :shown-anyway? true
+                                   :variant?      true
+                                   :warned?       true
+                                   :non-terminal? true}
+                                  (run tool-name context :client-ids #{query-id}))))))))))))))))
+
+(deftest resolved-sql-unchanged-test
+  (testing "SQL whose references resolve gets the same output as before, with no warning"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
+          (doseq [sql [(str "SELECT v.name FROM {{#" card-id "}} AS v")
+                       "SELECT name FROM venues WHERE price > 1"]]
+            (testing sql
+              (let [result (create-sql sql)]
+                (is (nil? (:error result)))
+                (is (str/includes? (:output result) "SQL query successfully constructed."))
+                (is (not (str/includes? (:output result) warning-intro)))
+                (is (not (contains? result :non-terminal?)))))))))))
+
+(deftest reference-check-failure-is-not-fatal-test
+  (mt/test-drivers #{:postgres}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {broken-id :id} (broken-card)]
+        (let [accepted-without-warning? (fn [result]
+                                          (and (nil? (:error result))
+                                               (some? (get-in result [:structured-output :query-id]))
+                                               (not (str/includes? (:output result) warning-intro))
+                                               (not (contains? result :non-terminal?))))]
+          (testing "a check that throws does not fail the tool call"
+            (mt/with-dynamic-fn-redefs [sql-tools/referenced-tables (fn [& _] (throw (ex-info "boom" {})))]
+              (is (accepted-without-warning? (create-sql "SELECT * FROM no_such_account")))))
+          (testing "a referenced card that fails to compile does not fail the tool call"
+            (is (accepted-without-warning? (create-sql (str "SELECT * FROM {{#" broken-id "}} AS b"))))))))))
+
+(deftest unmapped-dialect-checks-only-cards-and-snippets-test
+  (testing "a driver that the parser does not map gets the card and snippet check, but no table check"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-dynamic-fn-redefs [sql.validation/database-id->dialect (constantly "no-such-dialect")]
+          (let [result (create-sql "SELECT * FROM no_such_account")]
+            (is (nil? (:error result)))
+            (is (not (str/includes? (:output result) warning-intro))))
+          (is (= ::sql.common/missing-references
+                 (get-in (create-sql (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v")) [:error :code]))))))))
+
+(deftest reference-check-counter-test
+  (testing "each reference check counts its outcome"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id}   (venues-model)
+                       :model/Card {broken-id :id} (broken-card)]
+          (let [checks (fn [system status]
+                         (mt/metric-value system :metabase-metabot/sql-reference-checks {:status status}))]
+            (mt/with-prometheus-system! [_ system]
+              (create-sql (str "SELECT v.name FROM {{#" card-id "}} AS v"))
+              (is (= 1.0 (checks system "ran"))))
+            (mt/with-prometheus-system! [_ system]
+              (create-sql (str "SELECT * FROM {{#" broken-id "}} AS b"))
+              (is (= 1.0 (checks system "skipped"))))
+            (mt/with-prometheus-system! [_ system]
+              (mt/with-dynamic-fn-redefs [sql-tools/referenced-tables (fn [& _] (throw (ex-info "boom" {})))]
+                (create-sql (str "SELECT v.name FROM {{#" card-id "}} AS v")))
+              (is (= 1.0 (checks system "failed"))))))))))
+
+(deftest table-tag-skips-table-check-test
+  (testing "a stored query's table tag skips the table check: its table is not known until the query runs"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [stored (-> (lib/native-query (mt/metadata-provider) "SELECT name FROM {{t}}")
+                         (lib/with-template-tags [{:type         :table
+                                                   :name         "t"
+                                                   :display-name "T"
+                                                   :id           (str (random-uuid))
+                                                   :table-id     (mt/id :venues)}]))
+              result (invoke-sql-tool :internal {:state {:queries {"q1" stored}}} "replace_sql_query"
+                                      {:new_query "SELECT * FROM {{t}} JOIN no_such_account a ON TRUE"})]
+          (is (nil? (:error result)))
+          (is (not (str/includes? (:output result) warning-intro)))
+          (is (not (contains? result :non-terminal?))))))))
+
+(deftest dialect-without-table-check-test
+  (testing "H2 gets no table check, so an unknown table does not warn"
+    (mt/test-drivers #{:h2}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [result (create-sql "SELECT * FROM no_such_account")]
+          (is (nil? (:error result)))
+          (is (not (str/includes? (:output result) warning-intro)))
+          (is (not (contains? result :non-terminal?))))))))

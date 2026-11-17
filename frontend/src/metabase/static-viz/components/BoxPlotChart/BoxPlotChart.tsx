@@ -1,72 +1,89 @@
-import { Group } from "@visx/group";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
+import { readAllPointsOutOfRange } from "metabase/static-viz/lib/data-visibility";
+import { withCartesianChartSize } from "metabase/static-viz/lib/rendering-context";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
-import { registerEChartsModules } from "metabase/visualizations/echarts";
+import { STATIC_CARTESIAN_CHART_SIZE } from "metabase/static-viz/lib/utils";
 import {
   getBoxPlotLayoutModel,
   getBoxPlotModel,
   getBoxPlotOption,
-} from "metabase/visualizations/echarts/boxplot";
-import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
-import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
+  getChartLayout,
+  getLegendItems,
+  getSizeAdjustedSettings,
+  registerEChartsModules,
+} from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
+import { DataOutOfRangeOverlay } from "../DataOutOfRangeOverlay/DataOutOfRangeOverlay";
 import { Legend } from "../Legend";
-import { calculateLegendRows } from "../Legend/utils";
+import { getPlotBounds, layoutChartWithBottomLegend } from "../Legend/layout";
 
 registerEChartsModules();
 
-const WIDTH = 540;
-const HEIGHT = 360;
-const LEGEND_PADDING = 8;
-
 export function BoxPlotChart({
   rawSeries,
-  settings,
-  renderingContext,
-  width = WIDTH,
-  height = HEIGHT,
+  settings: originalSettings,
+  renderingContext: originalRenderingContext,
+  width = STATIC_CARTESIAN_CHART_SIZE.width,
+  height = STATIC_CARTESIAN_CHART_SIZE.height,
   isStorybook = false,
   hasDevWatermark = false,
+  gridSize,
 }: StaticChartProps) {
-  const chartModel = getBoxPlotModel(rawSeries, settings);
+  const renderingContext = withCartesianChartSize(originalRenderingContext, {
+    width,
+    height,
+  });
+  const settings = getSizeAdjustedSettings({
+    settings: originalSettings,
+    width,
+    height,
+    gridSize,
+  });
+  const chartModel = getBoxPlotModel(
+    rawSeries,
+    settings,
+    [],
+    undefined,
+    renderingContext.cartesianSize,
+  );
 
-  const legendItems = getLegendItems(chartModel.seriesModels);
-  const isReversed = settings["legend.is_reversed"];
-  const { height: legendHeight, items: legendLayoutItems } =
-    calculateLegendRows({
-      items: legendItems,
-      width,
-      horizontalPadding: LEGEND_PADDING,
-      verticalPadding: LEGEND_PADDING,
-      isReversed,
-    });
+  const {
+    chartHeight,
+    legend,
+    layout: layoutModel,
+  } = layoutChartWithBottomLegend({
+    items: getLegendItems(chartModel.seriesModels),
+    chartWidth: width,
+    height,
+    fitWithinBounds: true,
+    isReversed: settings["legend.is_reversed"],
+    getLayout: (chartHeight) =>
+      getBoxPlotLayoutModel({
+        chartModel,
+        cartesianLayout: getChartLayout(
+          { ...chartModel, dataset: chartModel.boxDataset },
+          settings,
+          false,
+          width,
+          chartHeight,
+          renderingContext,
+        ),
+        settings,
+        chartWidth: width,
+        renderingContext,
+      }),
+    getPlot: (layout) => getPlotBounds(layout.adjustedPadding, width),
+  });
 
-  const chartHeight = height - legendHeight;
   const chart = init(null, null, {
     renderer: "svg",
     ssr: true,
     width,
     height: chartHeight,
-  });
-
-  const cartesianLayout = getChartLayout(
-    { ...chartModel, dataset: chartModel.boxDataset },
-    settings,
-    false,
-    width,
-    chartHeight,
-    renderingContext,
-  );
-
-  const layoutModel = getBoxPlotLayoutModel({
-    chartModel,
-    cartesianLayout,
-    settings,
-    chartWidth: width,
-    renderingContext,
   });
 
   const option = getBoxPlotOption(
@@ -79,14 +96,13 @@ export function BoxPlotChart({
   chart.setOption(option);
 
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
+  const allPointsOutOfRange = readAllPointsOutOfRange(chart);
   chart.dispose();
 
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height}>
-      <Legend items={legendLayoutItems} />
-      <Group top={legendHeight}>
-        <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>
-      </Group>
+      <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>
+      <Legend top={chartHeight} items={legend.items} />
       {hasDevWatermark && (
         <Watermark
           x="0"
@@ -96,6 +112,13 @@ export function BoxPlotChart({
           preserveAspectRatio="xMinYMin slice"
           fill={renderingContext.getColor("text-secondary")}
           opacity={0.2}
+        />
+      )}
+      {allPointsOutOfRange && (
+        <DataOutOfRangeOverlay
+          width={width}
+          height={height}
+          renderingContext={renderingContext}
         />
       )}
     </svg>

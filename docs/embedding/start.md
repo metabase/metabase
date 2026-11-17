@@ -1,5 +1,6 @@
 ---
 title: Embedding overview
+summary: Put dashboards, charts, the query builder, and AI chat in your app with modular embedding, the SDK, full app embedding, or public embeds, and secure them.
 redirect_from:
   - /docs/latest/embedding
 ---
@@ -25,6 +26,10 @@ With the Modular embedding SDK, you can embed individual Metabase components wit
 ### [Modular embedding SDK quickstart](./sdk/quickstart.md)
 
 Jump to a SDK quickstart with a sample React application.
+
+### [Modular embedding components](./components.md)
+
+A map of the components you can embed, with links to each component's docs.
 
 ### [Embed a dashboard](./dashboard.md)
 
@@ -54,9 +59,33 @@ Embed a browsable collection with web components or the React SDK, so people can
 
 Every `<metabase-browser>` attribute and the `CollectionBrowser` props.
 
+### [Embed an AI chat](./ai-chat.md)
+
+Embed an AI chat with web components or the React SDK, so people can ask questions of their data in natural language.
+
+### [Embedding parameters](./parameters.md)
+
+Set, control, hide, and lock dashboard filters and SQL variables in embedded dashboards and charts, with web components or the React SDK.
+
+### [Parameters reference](./parameters-reference.md)
+
+Which attribute or prop to use for each task, how web components parse parameter attributes, the value formats each filter type accepts, and the rules for params in a signed token.
+
+### [Configure your embeds](./config.md)
+
+Set the configuration that every embed on a page shares, like your Metabase URL, authentication, language, and theme, with web components or the React SDK.
+
+### [Config reference](./config-reference.md)
+
+Every `defineMetabaseConfig()` setting for web components, and the `MetabaseProvider` props for the React SDK.
+
 ### [Guest embedding](./guest-embedding.md)
 
 Guest embedding is a secure way to embed charts and dashboards. Guest embeds are view-only; people won't be able to drill-through charts and tables.
+
+### [Customize loading, error, and empty states](./sdk/loading-and-errors.md)
+
+Replace the React SDK's default loading screen, error screen, and no-results image with your own.
 
 ### [Custom visualizations in embeds](./custom-visualizations.md)
 

@@ -25,7 +25,7 @@ export default {
 export const Default = {
   render(args: EditorButtonProps) {
     return (
-      <Box p="lg">
+      <Box p="xl">
         <SdkQuestion questionId={QUESTION_ID}>
           <SdkQuestion.EditorButton {...args} />
         </SdkQuestion>

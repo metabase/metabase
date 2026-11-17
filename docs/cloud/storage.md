@@ -1,5 +1,6 @@
 ---
 title: Metabase Cloud Storage
+summary: Store spreadsheet data in Metabase Cloud Storage and query it with the query builder or SQL, even if you don't have a data warehouse.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true
@@ -30,7 +31,7 @@ Under the hood, Metabase Cloud Storage uses [ClickHouse](https://www.metabase.co
 
 ### Writing SQL queries on data stored in Metabase Cloud Storage
 
-For the SQL dialect supported by ClickHouse, check out [ClickHouse's SQL reference](https://clickhouse.com/docs/en/sql-reference).
+For the SQL dialect supported by ClickHouse, check out [ClickHouse's SQL reference](https://clickhouse.com/docs/reference/syntax).
 
 ## How to get Metabase Cloud Storage
 
@@ -54,7 +55,7 @@ To add storage to an existing instance, use the following steps.
 
 ## Metabase Cloud Storage pricing
 
-Pricing depends on how much data you need to store. See the Storage section on our [pricing page](https://www.metabase.com/pricing/).
+Pricing depends on how much data you need to store. See the Storage section on our [pricing page](https://www.metabase.com/pricing).
 
 ### Increase Metabase Cloud Storage
 
@@ -86,4 +87,4 @@ To remove Metabase Cloud Storage, use the following steps:
 
 ## Syncing Google Sheets with Metabase
 
-If you set up Metabase Cloud Storage, you can [sync Google Sheets with your Metabase](./google-sheets.md).
+If you set up Metabase Cloud Storage, you can [sync Google Sheets with your Metabase](https://www.metabase.com/docs/latest/cloud/google-sheets).

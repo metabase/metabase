@@ -1,6 +1,5 @@
 import { measureTextWidth } from "metabase/static-viz/lib/text";
-import type { LegendItem } from "metabase/visualizations/echarts/cartesian/model/types";
-import { truncateText } from "metabase/visualizations/lib/text";
+import { type LegendItem, truncateText } from "metabase/viz-core";
 
 import {
   DEFAULT_LEGEND_FONT_SIZE,
@@ -13,7 +12,7 @@ import {
 } from "./constants";
 import type { PositionedLegendItem } from "./types";
 
-const calculateItemWidth = (
+export const calculateItemWidth = (
   item: LegendItem,
   fontSize: number,
   fontWeight: number,
@@ -105,7 +104,7 @@ export const calculateLegendRows = ({
         color: item.color,
         name: truncateText(
           item.name,
-          availableTotalWidth,
+          availableTotalWidth - LEGEND_CIRCLE_SIZE - LEGEND_CIRCLE_MARGIN_RIGHT,
           (text, style) =>
             measureTextWidth(text, Number(style.size), Number(style.weight)),
           {

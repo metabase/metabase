@@ -230,7 +230,8 @@
    {:decode/normalize normalize-expression-options}
    ::common/options
    [:map
-    [:temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]]])
+    [:temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]
+    [:lib/original-effective-type {:optional true} [:ref ::common/base-type]]]])
 
 (mbql-clause/define-mbql-clause :expression
   [:and

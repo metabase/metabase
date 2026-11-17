@@ -7,11 +7,12 @@ import type { Comment } from "metabase-types/api/comments";
 
 import { Discussion } from "../Discussion";
 
-export interface DiscussionProps {
+export interface DiscussionsProps {
   childTargetId: Comment["child_target_id"];
   comments: Comment[];
   targetId: Comment["target_id"];
   targetType: Comment["target_type"];
+  useCommentUrl: (opts: { childTargetId: string | null }) => string;
   onHoverChange?: (childTargetId: string | undefined) => void;
   renderExtra?: CommentExtraRenderer;
 }
@@ -21,24 +22,26 @@ export const Discussions = ({
   comments,
   targetId,
   targetType,
+  useCommentUrl,
   onHoverChange,
   renderExtra,
-}: DiscussionProps) => {
+}: DiscussionsProps) => {
   const threads = useMemo(
     () => getCommentThreads(comments, childTargetId),
     [comments, childTargetId],
   );
 
   return (
-    <Stack pt="lg" gap={0}>
+    <Stack pt="xl" gap={0}>
       {threads.map((thread) => (
         <Fragment key={thread.id}>
-          <Box px="lg" pb="lg">
+          <Box px="xl" pb="xl">
             <Discussion
               childTargetId={childTargetId}
               comments={thread.comments}
               targetId={targetId}
               targetType={targetType}
+              useCommentUrl={useCommentUrl}
               onHoverChange={onHoverChange}
               renderExtra={renderExtra}
             />

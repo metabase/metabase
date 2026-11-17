@@ -3,7 +3,6 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import { findWhere } from "underscore";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { PerformancePageContent } from "metabase/admin/performance/components/PerformancePageContent";
 import { StrategyForm } from "metabase/admin/performance/components/StrategyForm";
 import {
@@ -24,6 +23,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import { ActionIcon, Center, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
@@ -194,7 +194,7 @@ export const DatabaseCachingEditor = () => {
         } catch {
           dispatch(
             addUndo({
-              icon: "warning",
+              variant: "negative",
               message: t`Could not reset the caching policies.`,
             }),
           );
@@ -250,8 +250,6 @@ export const DatabaseCachingEditor = () => {
                 <Tooltip label={t`Reset all to default`}>
                   <ActionIcon
                     size="lg"
-                    c="icon-primary"
-                    bd="1px solid var(--mb-color-border-neutral)"
                     aria-label={t`Reset all to default`}
                     onClick={handleResetAllToDefault}
                   >
@@ -289,7 +287,7 @@ export const DatabaseCachingEditor = () => {
               "data-testid": `policy-row-${row.original.targetId}`,
             })}
             emptyState={
-              <Center p="xl">
+              <Center p="xxl">
                 <Text fw="bold" c="text-secondary">{t`No results`}</Text>
               </Center>
             }

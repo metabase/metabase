@@ -26,10 +26,12 @@ const newExplorationPlanPage = () =>
     Component: NewExplorationPlanPage,
   }));
 
-const explorationPage = () =>
+const explorationPage = (view?: "summary") => () =>
   import(/* webpackChunkName: "explorations" */ "./pages/ExplorationPage").then(
     ({ ExplorationPage }) => ({
-      Component: ExplorationPage,
+      Component: function ExplorationPageRoute() {
+        return <ExplorationPage view={view} />;
+      },
     }),
   );
 
@@ -42,8 +44,9 @@ export const getRoutes = () => {
         <Route index lazy={newExplorationPage} />
         <Route path="plan" lazy={newExplorationPlanPage} />
       </Route>
-      <Route path=":id" lazy={explorationPage} />
-      <Route path=":id/page/:pageId" lazy={explorationPage} />
+      <Route path=":id" lazy={explorationPage()} />
+      <Route path=":id/page/:pageId" lazy={explorationPage()} />
+      <Route path=":id/summary" lazy={explorationPage("summary")} />
     </Route>
   );
 };

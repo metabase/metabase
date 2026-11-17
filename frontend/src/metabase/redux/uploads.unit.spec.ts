@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { getMainStore } from "__support__/entities-store";
-import { createMockState } from "metabase/redux/store/mocks";
+import { createMockState } from "__support__/state";
 import { UploadMode } from "metabase/redux/store/upload";
 
 import {

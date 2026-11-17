@@ -1,23 +1,28 @@
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { screen, waitFor, within } from "__support__/ui";
+import { createMockState } from "__support__/state";
+import { act, screen, waitFor, within } from "__support__/ui";
+import { SdkUsageProblemDisplay } from "embedding-sdk-bundle/components/private/SdkUsageProblem";
 import * as IsLocalhostModule from "embedding-sdk-bundle/lib/get-is-localhost";
+import { initAuth } from "embedding-sdk-bundle/store/auth";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import {
   createMockApiKeyConfig,
   createMockSdkConfig,
 } from "embedding-sdk-bundle/test/mocks/config";
 import {
+  createMockLoginStatusState,
   createMockSdkState,
   createMockTokenState,
 } from "embedding-sdk-bundle/test/mocks/state";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
-import { createMockState } from "metabase/redux/store/mocks";
+import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -36,9 +41,16 @@ interface Options {
   isEmbeddingSdkEnabled?: boolean;
   isDevelopmentMode?: boolean;
   hasExpirationClaim?: boolean;
+  initStatus?: LoginStatus["status"];
+  children?: ReactElement;
 }
 
-const setup = ({ hasExpirationClaim = true, ...options }: Options) => {
+const setup = ({
+  hasExpirationClaim = true,
+  initStatus = "success",
+  children = <div>hello!</div>,
+  ...options
+}: Options) => {
   const tokenFeatures = createMockTokenFeatures({
     embedding_sdk: options.hasEmbeddingFeature ?? true,
     development_mode: options.isDevelopmentMode ?? false,
@@ -54,6 +66,7 @@ const setup = ({ hasExpirationClaim = true, ...options }: Options) => {
     settings: mockSettings(settingValues),
     currentUser: TEST_USER,
     sdk: createMockSdkState({
+      initStatus: createMockLoginStatusState({ status: initStatus }),
       token: createMockTokenState({
         token: {
           id: "123",
@@ -68,7 +81,7 @@ const setup = ({ hasExpirationClaim = true, ...options }: Options) => {
   setupSettingsEndpoints([]);
   setupPropertiesEndpoints(settingValues);
 
-  return renderWithSDKProviders(<div>hello!</div>, {
+  return renderWithSDKProviders(children, {
     componentProviderProps: { authConfig: options.authConfig },
     storeInitialState: state,
   });
@@ -141,7 +154,7 @@ describe("SdkUsageProblemDisplay", () => {
 
     expect(docsLink).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/embedding/sdk/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication",
+      "https://www.metabase.com/docs/latest/embedding/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication",
     );
   });
 
@@ -244,7 +257,7 @@ describe("SdkUsageProblemDisplay", () => {
 
     expect(docsLink).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/embedding/sdk/introduction#in-metabase",
+      "https://www.metabase.com/docs/latest/embedding/sdk/introduction#enable-the-sdk-in-metabase",
     );
 
     mock.mockRestore();
@@ -309,8 +322,42 @@ describe("SdkUsageProblemDisplay", () => {
 
     expect(docsLink).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/embedding/sdk/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication",
+      "https://www.metabase.com/docs/latest/embedding/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication",
     );
+  });
+
+  it("logs a usage problem to the console once the SDK has initialized", async () => {
+    const consoleWarnSpy = jest
+      .spyOn(console, "warn")
+      .mockImplementation(() => {});
+    const authConfig = createMockApiKeyConfig();
+
+    // The SDK test renderer turns console logging off for its own display.
+    const { store } = setup({
+      authConfig,
+      initStatus: "loading",
+      children: (
+        <SdkUsageProblemDisplay authConfig={authConfig} allowConsoleLog />
+      ),
+    });
+
+    expect(
+      await screen.findAllByTestId(PROBLEM_INDICATOR_TEST_ID),
+    ).not.toHaveLength(0);
+    expect(consoleWarnSpy).not.toHaveBeenCalled();
+
+    act(() => {
+      store.dispatch(initAuth.fulfilled(undefined, "test-request", authConfig));
+    });
+
+    await waitFor(() => {
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+    });
+    expect(String(consoleWarnSpy.mock.calls[0][0])).toContain(
+      "This embed is using API keys. This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO.",
+    );
+
+    consoleWarnSpy.mockRestore();
   });
 
   it("hides the problem when 'hide' is clicked", async () => {

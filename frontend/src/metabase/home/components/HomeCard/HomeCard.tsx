@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { Link } from "metabase/common/components/Link";
 import { Card, Flex } from "metabase/ui";
@@ -28,8 +28,8 @@ export const HomeCard = ({
       onClick={onClick}
       bg="background_page-primary"
       maw={{ base: "100%", sm: "50%" }}
-      p={{ base: "md", lg: "lg" }}
-      radius="md"
+      p={{ base: "lg", lg: "xl" }}
+      radius="sm"
       withBorder
     >
       <Flex align="center">{children}</Flex>

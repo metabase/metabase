@@ -1,4 +1,4 @@
-(ns test.dev.n-plus-one-detection-test
+(ns dev.n-plus-one-detection-test
   (:require  [clojure.test :refer [deftest testing is]]
              [dev]
              [methodical.core :as methodical]

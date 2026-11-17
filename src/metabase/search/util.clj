@@ -2,12 +2,34 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
-   [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.db :as search.db]
+   [metabase.search.ingestion.query :as search.ingestion.query]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
-   [metabase.util.string :as u.str]
-   [toucan2.core :as t2]))
+   [metabase.util.string :as u.str]))
+
+;; A MySQL app database can represent a boolean column as 0 or 1.
+(defn- as-boolean
+  "The boolean SQL would compare `x` as: a boolean itself, or a 0 or 1.
+  Nil for anything else."
+  [x]
+  (cond
+    (boolean? x)                 x
+    (and (integer? x) (<= 0 x 1)) (= 1 x)))
+
+;; Other numbers are never folded: Clojure equality tells 1M from 1, where SQL does not.
+(defn- comparable-literals
+  "A pair that Clojure equality compares as SQL would compare `a` and `b`.
+  Nil unless both are constants of one kind."
+  [a b]
+  (cond
+    (and (string? a) (string? b))
+    [a b]
+
+    (and (or (boolean? a) (boolean? b)) (some? (as-boolean a)) (some? (as-boolean b)))
+    [(as-boolean a) (as-boolean b)]))
 
 (defn impossible-condition?
   "An (incomplete) check where queries will definitely return nothing, to help avoid spurious index update queries."
@@ -15,9 +37,9 @@
   (when (vector? where)
     (case (first where)
       :=   (let [[a b] (rest where)]
-             (and (string? a) (string? b) (not= a b)))
+             (when-let [[x y] (comparable-literals a b)] (not= x y)))
       :!=  (let [[a b] (rest where)]
-             (and (string? a) (string? b) (= a b)))
+             (when-let [[x y] (comparable-literals a b)] (= x y)))
       :and (boolean (some impossible-condition? (rest where)))
       :or  (every? impossible-condition? (rest where))
       false)))
@@ -52,40 +74,45 @@
 
 (def ^:private available-tsv-languages
   "Mapping of our available locals to the names of the postgres tsvector languages.
-  Queries the pg_ts_config table to find out which languages are actually available."
-  (if (= :postgres (mdb/db-type))
-    (let [default-mapping {:ar    :arabic
-                           :ar_SA :arabic
-                           :ca    :catalan
-                           :da    :danish
-                           :en    :english
-                           :fi    :finnish
-                           :fr    :french
-                           :de    :german
-                           :hu    :hungarian
-                           :id    :indonesian
-                           :it    :italian
-                           :nb    :norwegian
-                           :pt_BR :portuguese
-                           :ru    :russian
-                           :sr    :serbian
-                           :es    :spanish
-                           :sv    :swedish
-                           :tr    :turkish}
-          available-languages (->> (t2/query {:select [:cfgname]
-                                              :from   [:pg_ts_config]})
-                                   (map :cfgname)
-                                   (map keyword)
-                                   set)]
-      (into {} (filter (comp available-languages val) default-mapping)))
-    {}))
+  Queries the pg_ts_config table to find out which languages are actually available.
+
+  Computed on first use rather than at namespace-load time: this namespace is required during the boot require chain,
+  before [[metabase.app-db.setup/verify-db-connection]] has run, so querying eagerly turns any app DB connection
+  problem into an `ExceptionInInitializerError` that buries the real cause."
+  (mdb/memoize-for-application-db
+   (fn []
+     (if (= :postgres (mdb/db-type))
+       (let [default-mapping {:ar    :arabic
+                              :ar_SA :arabic
+                              :ca    :catalan
+                              :da    :danish
+                              :en    :english
+                              :fi    :finnish
+                              :fr    :french
+                              :de    :german
+                              :hu    :hungarian
+                              :id    :indonesian
+                              :it    :italian
+                              :nb    :norwegian
+                              :pt_BR :portuguese
+                              :ru    :russian
+                              :sr    :serbian
+                              :es    :spanish
+                              :sv    :swedish
+                              :tr    :turkish}
+             available-languages (->> (search.db/pg-text-search-configs)
+                                      (map :cfgname)
+                                      (map keyword)
+                                      set)]
+         (into {} (filter (comp available-languages val) default-mapping)))
+       {}))))
 
 (defn tsv-language
   "Get the appropriate text search configuration language for Postgres tsvector operations."
   []
   (if-let [custom-language (search.settings/search-language)]
     custom-language
-    (if-let [lang ((keyword (i18n/site-locale-string)) available-tsv-languages)]
+    (if-let [lang ((keyword (i18n/site-locale-string)) (available-tsv-languages))]
       (name lang)
       "simple")))
 
@@ -156,5 +183,11 @@
   ([weight text]
    (weighted-tsvector weight text (tsv-language)))
   ([weight text lang]
-   ;; tsvector has a max value size of 1048575 bytes, limit to less than that because the multiple values get concatenated together
-   [:setweight [:to_tsvector ^:allow-raw-sql [:inline lang] [:cast (u.str/limit-bytes text search.ingestion/max-searchable-value-length) :text]] ^:allow-raw-sql [:inline weight]]))
+   ;; tsvector has a max value size of 1048575 bytes, limit to less than that because the multiple values get
+   ;; concatenated together
+   ;; `lang` is a `regconfig` and `weight` is a `"char"`; both have to be real SQL literals, since Postgres cannot
+   ;; resolve either overload from an `?` parameter bound as `varchar`
+   [:setweight
+    [:to_tsvector (h2x/literal lang)
+     [:cast (u.str/limit-bytes text search.ingestion.query/max-searchable-value-length) :text]]
+    (h2x/literal weight)]))

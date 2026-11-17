@@ -9,7 +9,6 @@ effective_type: type/Text
 semantic_type: type/Name
 dimensions: []
 position: 6
-custom_position: 0
 database_position: 6
 has_field_values: list
 serdes/meta:

@@ -1,45 +1,109 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+import type { ReactElement } from "react";
 import _ from "underscore";
 
+import {
+  createMockMetadata,
+  createMockMetadataFromState,
+} from "__support__/metadata";
 import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupNativeQuerySnippetEndpoints,
+  setupSearchEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
+  fireEvent,
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
-import { checkNotNull } from "metabase/utils/types";
-import type { Card } from "metabase-types/api";
+import { waitForRequestsToSettle } from "__support__/utils";
+import {
+  type ChatContextProviderFn,
+  type DeregisterChatContextProviderFn,
+  MetabotContext,
+  defaultContext,
+} from "metabase/metabot";
+import * as Lib from "metabase-lib";
+import {
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
+import type {
+  Card,
+  Database,
+  MetabotUserIsViewingContext,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
-  createMockNativeDatasetQuery,
+  createMockUser,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+
+import { DatasetQueryEditor } from "./DatasetQueryEditor";
+
+// NativeQueryEditor is mocked globally in test/register-visualizations.js, but this suite inspects its children.
+// jest hoists the unmock above the imports, so the query builder graph the store setup loads gets the real editor.
+jest.unmock("metabase/querying/components/NativeQueryEditor");
+// The Metabot prompt shortcut needs the real CodeMirror, which test/__support__/mocks.js replaces with a textarea.
+jest.unmock("@uiw/react-codemirror");
 
 const TEST_DB = createSampleDatabase();
 
 const TEST_NATIVE_CARD = createMockCard({
-  dataset_query: createMockNativeDatasetQuery({
-    type: "native",
-    database: TEST_DB.id,
-    native: {
-      query: "select * from orders",
-      "template-tags": undefined,
-    },
+  query_type: "native",
+  dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+    query: "select * from orders",
   }),
+});
+
+const TEST_NATIVE_MODEL = createMockCard({
+  id: 2,
+  type: "model",
+  dataset_query: TEST_NATIVE_CARD.dataset_query,
+});
+
+const TEST_NOTEBOOK_MODEL = createMockCard({
+  id: 3,
+  type: "model",
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
+    }),
+  ),
+});
+
+const MONGO_DB = createSampleDatabase({ engine: "mongo" });
+
+const TEST_MONGO_MODEL = createMockCard({
+  id: 4,
+  type: "model",
+  query_type: "native",
+  dataset_query: Lib.createTestJsNativeQuery(
+    createMetadataProvider({
+      databaseId: MONGO_DB.id,
+      metadata: createMockMetadata({ databases: [MONGO_DB] }),
+    }),
+    { query: '[{"$limit":1}]' },
+  ),
 });
 
 const ROOT_COLLECTION = createMockCollection({ id: "root" });
 
 interface SetupOpts {
+  database?: Database;
   card?: Card;
   height?: number;
   availableHeight?: number;
@@ -48,6 +112,7 @@ interface SetupOpts {
 }
 
 const setup = async ({
+  database = TEST_DB,
   card = TEST_NATIVE_CARD,
   height = 300,
   availableHeight = 600,
@@ -55,69 +120,76 @@ const setup = async ({
   readOnly = false,
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
-  setupDatabasesEndpoints([TEST_DB]);
+  setupDatabasesEndpoints([database]);
+  fetchMock.get("path:/api/table", database.tables ?? []);
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupNativeQuerySnippetEndpoints();
+  setupSearchEndpoints([]);
 
   const storeInitialState = createMockState({
+    currentUser: createMockUser(),
+    settings: mockSettings({
+      "metabot-enabled?": true,
+      "llm-metabot-configured?": true,
+    }),
     entities: createMockEntitiesState({
-      databases: [createSampleDatabase()],
+      databases: [database],
       questions: [card],
     }),
   });
-  const metadata = getMetadata(storeInitialState);
-  const question = checkNotNull(metadata.question(card.id));
-  const query = checkNotNull(question.legacyNativeQuery());
-  const DatasetQueryEditor = await importDatasetQueryEditor();
+  const metadata = createMockMetadataFromState(storeInitialState);
+  const question = new Question(card, metadata);
   const onSetDatabaseId = jest.fn();
+  const registerChatContextProvider = jest.fn(
+    (_provider: ChatContextProviderFn): DeregisterChatContextProviderFn =>
+      _.noop,
+  );
+  const metabotContext = { ...defaultContext, registerChatContextProvider };
+  const withMetabotContext = (editor: ReactElement) => (
+    <MetabotContext.Provider value={metabotContext}>
+      {editor}
+    </MetabotContext.Provider>
+  );
 
-  const { rerender } = renderWithProviders(
-    <DatasetQueryEditor
-      isActive={isActive}
-      height={height}
-      availableHeight={availableHeight}
-      query={query}
-      question={question}
-      readOnly={readOnly}
-      onResizeStop={_.noop}
-      onSetDatabaseId={onSetDatabaseId}
-      setDatasetQuery={_.noop}
-      isNativeEditorOpen
-    />,
+  const { rerender, store } = renderWithProviders(
+    withMetabotContext(
+      <DatasetQueryEditor
+        isActive={isActive}
+        height={height}
+        availableHeight={availableHeight}
+        question={question}
+        readOnly={readOnly}
+        onResizeStop={_.noop}
+        onSetDatabaseId={onSetDatabaseId}
+        setQuery={_.noop}
+        isNativeEditorOpen
+      />,
+    ),
+    { storeInitialState },
   );
 
   // required for preventing memory leak
   await waitForLoaderToBeRemoved();
 
-  return { query, question, rerender };
-};
+  const getViewedItems = async (): Promise<MetabotUserIsViewingContext> => {
+    const contexts = await Promise.all(
+      registerChatContextProvider.mock.calls.map(([provider]) =>
+        provider(store.getState()),
+      ),
+    );
+    return contexts.flatMap((context) =>
+      context ? (context.user_is_viewing ?? []) : [],
+    );
+  };
 
-/**
- * NativeQueryEditor is globally mocked in test/register-visualizations.js but
- * its actual implementation is needed in this test suite because we need to
- * investigate its children.
- *
- * We're actually testing NativeQueryEditor indirectly by using DatasetQueryEditor
- * (which uses NativeQueryEditor), so the NativeQueryEditor has to be unmocked
- * the moment we import DatasetQueryEditor.
- *
- * Unmocking happens in beforeEach, so we can really only import the component
- * during the unit test.
- *
- * Should the import be at the beginning of this file, the mock NativeQueryEditor
- * would have been used in tests instead of the actual implementation.
- */
-const importDatasetQueryEditor = async () => {
-  const { DatasetQueryEditor } =
-    await import("metabase/query_builder/components/DatasetEditor/DatasetQueryEditor");
-  return DatasetQueryEditor;
+  return {
+    question,
+    rerender: (editor: ReactElement) => rerender(withMetabotContext(editor)),
+    getViewedItems,
+  };
 };
 
 describe("DatasetQueryEditor", () => {
-  beforeEach(() => {
-    jest.unmock("metabase/querying/components/NativeQueryEditor");
-  });
-
   it("renders sidebar when query tab is active", async () => {
     await setup({ isActive: true });
 
@@ -141,11 +213,10 @@ describe("DatasetQueryEditor", () => {
   });
 
   it("re-renders DatasetQueryEditor when height is 0 and isActive prop changes", async () => {
-    const { query, question, rerender } = await setup({
+    const { question, rerender } = await setup({
       height: 0,
       isActive: true,
     });
-    const DatasetQueryEditor = await importDatasetQueryEditor();
     const onSetDatabaseId = jest.fn();
 
     expect(
@@ -157,12 +228,11 @@ describe("DatasetQueryEditor", () => {
         isActive={false}
         height={0}
         availableHeight={600}
-        query={query}
         question={question}
         readOnly={false}
         onResizeStop={_.noop}
         onSetDatabaseId={onSetDatabaseId}
-        setDatasetQuery={_.noop}
+        setQuery={_.noop}
         isNativeEditorOpen
       />,
     );
@@ -172,5 +242,57 @@ describe("DatasetQueryEditor", () => {
         screen.queryByTestId("native-query-editor-action-buttons"),
       ).not.toBeInTheDocument();
     });
+  });
+
+  it("gives Metabot the SQL editor of a SQL model as a buffer", async () => {
+    const { getViewedItems } = await setup({
+      card: TEST_NATIVE_MODEL,
+      isActive: true,
+    });
+
+    expect(await getViewedItems()).toContainEqual(
+      expect.objectContaining({
+        type: "code_editor",
+        buffers: [expect.objectContaining({ id: "qb" })],
+      }),
+    );
+  });
+
+  it("gives Metabot no SQL buffer or SQL prompt for a MongoDB model", async () => {
+    const { getViewedItems } = await setup({
+      database: MONGO_DB,
+      card: TEST_MONGO_MODEL,
+      isActive: true,
+    });
+    const editor = await screen.findByRole("textbox");
+    await waitFor(() => expect(editor).toHaveTextContent("$limit"));
+    await userEvent.click(editor);
+    // CodeMirror reads a shifted letter binding from `keyCode`, which `userEvent.keyboard` does not set.
+    fireEvent.keyDown(editor, {
+      key: "I",
+      code: "KeyI",
+      keyCode: 73,
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    await waitForRequestsToSettle();
+
+    expect(await getViewedItems()).not.toContainEqual(
+      expect.objectContaining({ type: "code_editor" }),
+    );
+    expect(
+      screen.queryByTestId("metabot-inline-sql-prompt"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("gives Metabot no SQL buffer for a notebook model", async () => {
+    const { getViewedItems } = await setup({
+      card: TEST_NOTEBOOK_MODEL,
+      isActive: true,
+    });
+
+    expect(await getViewedItems()).not.toContainEqual(
+      expect.objectContaining({ type: "code_editor" }),
+    );
   });
 });

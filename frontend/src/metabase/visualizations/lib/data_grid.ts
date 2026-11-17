@@ -1,18 +1,22 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- FIXME: any-typed values */
 import _ from "underscore";
 
 import * as Pivot from "cljs/metabase.pivot.js";
+import { memoize } from "metabase/utils/memoize";
 import { checkNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import type {
-  ComputedVisualizationSettings,
-  PivotedDatasetColumn,
-  PivotedRowValues,
-} from "metabase/visualizations/types";
 import type {
   BodyItem,
   HeaderItem,
 } from "metabase/visualizations/visualizations/PivotTable/types";
+import {
+  type ComputedVisualizationSettings,
+  type PivotedDatasetColumn,
+  type PivotedRowValues,
+  type ShowWarning,
+  makeCellBackgroundGetter,
+  unaggregatedDataWarningTablePivot,
+} from "metabase/viz-core";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import type {
   DatasetColumn,
@@ -97,10 +101,8 @@ export function multiLevelPivot(
     rowIndexes,
   ].map((indexes) =>
     indexes.map((index) =>
-      _.memoize(
-        (value: RowValue) => formatValue(value, columnSettings[index]),
-        (value: RowValue) => JSON.stringify(value) + String(index),
-      ),
+      // `index` is closed over, so the value is the whole key.
+      memoize((value: RowValue) => formatValue(value, columnSettings[index])),
     ),
   );
 
@@ -184,6 +186,7 @@ export function pivot(
   pivotCol: number,
   cellCol: number,
   settings?: ComputedVisualizationSettings,
+  showWarning?: ShowWarning,
 ): PivotedTableData {
   const { pivotValues, normalValues } = distinctValuesSorted(
     data.rows,
@@ -211,13 +214,26 @@ export function pivot(
   );
 
   // fill it up with the data
+  let hasDuplicateCells = false;
   for (let j = 0; j < data.rows.length; j++) {
     const normalColIdx = normalValues.lastIndexOf(data.rows[j][normalCol]);
     const pivotColIdx = pivotValues.lastIndexOf(data.rows[j][pivotCol]);
 
+    if (sourceRows[normalColIdx][pivotColIdx] !== null) {
+      hasDuplicateCells = true;
+    }
     pivotedRows[normalColIdx][0] = data.rows[j][normalCol];
     pivotedRows[normalColIdx][pivotColIdx] = data.rows[j][cellCol];
     sourceRows[normalColIdx][pivotColIdx] = j;
+  }
+
+  if (hasDuplicateCells) {
+    showWarning?.(
+      unaggregatedDataWarningTablePivot(
+        data.cols[normalCol],
+        data.cols[pivotCol],
+      ).text,
+    );
   }
 
   // Use the pivot column's full visualization settings (date_style, time_style, etc.)

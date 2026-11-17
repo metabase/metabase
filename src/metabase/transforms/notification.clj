@@ -10,30 +10,40 @@
    [metabase.events.core :as events]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task.core :as task]
+   [metabase.transforms.db :as transforms.db]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
-(defn- recent-failed-cron-job-runs
-  "Cron job runs that failed or timed out in `[start, end)`, oldest first."
-  [start end]
-  (t2/select [:model/TransformJobRun :job_id :start_time :message]
-             {:where    [:and
-                         [:= :run_method "cron"]
-                         [:in :status ["failed" "timeout"]]
-                         [:>= :start_time start]
-                         [:< :start_time end]]
-              :order-by [[:start_time :asc]]}))
+(mr/def ::failing-job
+  [:map {:closed true}
+   [:job_name      [:maybe :string]]
+   [:job_href      :string]
+   [:failure_count :int]
+   [:first_failed  [:maybe :string]]
+   [:latest_error  [:maybe :string]]])
 
-(defn failing-jobs
+(mu/defn- recent-failed-cron-job-runs :- [:sequential [:map {:closed true}
+                                                       [:job_id     ms/PositiveInt]
+                                                       [:start_time [:maybe ms/TemporalInstant]]
+                                                       [:message    [:maybe :string]]]]
+  "Cron job runs that failed or timed out in `[start, end)`, oldest first."
+  [start :- ms/TemporalInstant
+   end   :- ms/TemporalInstant]
+  (transforms.db/failed-cron-job-runs-between start end))
+
+(mu/defn failing-jobs :- [:sequential ::failing-job]
   "Summarize failed/timed-out cron job runs in `[start, end)`, one entry per job."
-  [start end]
+  [start :- ms/TemporalInstant
+   end   :- ms/TemporalInstant]
   (let [runs     (recent-failed-cron-job-runs start end)
         job-ids  (distinct (map :job_id runs))
         id->name (when (seq job-ids)
-                   (t2/select-pk->fn :name :model/TransformJob :id [:in job-ids]))]
+                   (transforms.db/job-names-by-id job-ids))]
     (->> (group-by :job_id runs)
          ;; `runs` is oldest-first, and group-by preserves that within each job's group
          (map (fn [[job-id job-runs]]
@@ -45,37 +55,43 @@
          (sort-by :first_failed)
          vec)))
 
-(defn- digest-timezone
+(mu/defn- digest-timezone :- (ms/InstanceOfClass java.time.ZoneId)
   "Zone for the digest's calendar-day boundaries, matching transform scheduling."
   []
   (t/zone-id (or (driver/report-timezone)
                  (qp.timezone/system-timezone-id)
                  "UTC")))
 
-(defn digest-info
+(mu/defn digest-info :- [:map {:closed true}
+                         [:job_count     :int]
+                         [:failure_count :int]
+                         [:jobs          [:sequential ::failing-job]]]
   "Event info for the failure digest, covering the previous calendar day."
   []
   (let [yesterday           (u.date/add (t/zoned-date-time (digest-timezone)) :day -1)
-        {:keys [start end]} (u.date/range yesterday :day)
+        {:keys [start end]} (u.date/range {:start-of-week :sunday} yesterday :day)
         jobs                (failing-jobs start end)]
     {:job_count     (count jobs)
      :failure_count (reduce + 0 (map :failure_count jobs))
      :jobs          jobs}))
 
-(defn send-failure-digest!
+(mu/defn send-failure-digest! :- :nil
   "Publish the daily digest event, unless there were no failures."
   []
   (let [{:keys [jobs] :as info} (digest-info)]
     (if (seq jobs)
       (events/publish-event! :event/transform-failure-digest info)
-      (log/info "No transform job failures yesterday; skipping digest."))))
+      (log/info "No transform job failures yesterday; skipping digest."))
+    nil))
 
 (def ^:private digest-job-key "metabase.transforms.notification.failure-digest-job")
 (def ^:private digest-trigger-key "metabase.transforms.notification.failure-digest-trigger")
 
-(task/defjob ^{:doc "Sends the daily transform failure digest."
-               org.quartz.DisallowConcurrentExecution true}
-  SendTransformFailureDigest [_ctx]
+(task/defjob SendTransformFailureDigest
+  "Sends the daily transform failure digest."
+  {:saved-class "metabase.transforms.notification.SendTransformFailureDigest"
+   :concurrent? false}
+  [_ctx]
   (send-failure-digest!))
 
 (defmethod task/init! ::SendTransformFailureDigest [_]

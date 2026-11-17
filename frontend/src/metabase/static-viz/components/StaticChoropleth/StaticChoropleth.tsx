@@ -1,17 +1,16 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { geoAlbersUsa, geoMercator, geoPath } from "d3";
 import type { Feature } from "geojson";
 
 import {
+  type ComputedVisualizationSettings,
   HEAT_MAP_ZERO_COLOR,
+  type RenderingContext,
   buildColorScale,
   getDefaultMapDimension,
   getDefaultMapMetric,
   getLegendTitles,
-} from "metabase/visualizations/lib/choropleth";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import type { GeoJSONData, RawSeries } from "metabase-types/api";
 
 import {

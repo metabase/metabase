@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   Checkbox,
-  Group,
   Icon,
   Modal,
   Stack,
@@ -131,14 +130,8 @@ export function AddEntitiesModal({
   });
 
   return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      title={title}
-      size="lg"
-      padding="xl"
-    >
-      <Stack gap="md">
+    <Modal opened={opened} onClose={onClose} title={title} size="lg">
+      <Stack gap="lg">
         <TextInput
           value={search}
           onChange={(event) => onSearchChange(event.currentTarget.value)}
@@ -158,7 +151,7 @@ export function AddEntitiesModal({
                 <Text
                   c="text-secondary"
                   ta="center"
-                  py="lg"
+                  py="xl"
                 >{t`No results`}</Text>
               ))
             ) : (
@@ -188,7 +181,7 @@ export function AddEntitiesModal({
                         size="sm"
                         fw="bold"
                         c="text-secondary"
-                        pt="xs"
+                        pt="xxs"
                         style={positioning}
                       >
                         {row.label}
@@ -231,16 +224,16 @@ export function AddEntitiesModal({
             )}
           </LoadingAndErrorWrapper>
         </Box>
-        <Group justify="flex-end">
-          {!emptyState && (
-            <Button
-              variant="filled"
-              onClick={handleAdd}
-              disabled={checked.size === 0}
-            >{t`Add`}</Button>
-          )}
-        </Group>
       </Stack>
+      {!emptyState && (
+        <Modal.Footer>
+          <Button
+            variant="filled"
+            onClick={handleAdd}
+            disabled={checked.size === 0}
+          >{t`Add`}</Button>
+        </Modal.Footer>
+      )}
     </Modal>
   );
 }

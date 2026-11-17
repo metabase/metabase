@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { t } from "ttag";
 
 import {
@@ -39,7 +40,7 @@ export const PermissionsTabs = ({ tab, onChangeTab }: PermissionsTabsProps) => {
         value={tab}
         onChange={(value) => value && onChangeTab(value)}
       >
-        <Tabs.List pl="xl">
+        <Tabs.List pl="xxl">
           {tabs.map((tabOption) => (
             <Tabs.Tab key={tabOption.value} value={tabOption.value}>
               {tabOption.name}

@@ -6,8 +6,8 @@
    [metabase.metrics.core :as metrics]
    [metabase.metrics.permissions :as metrics.perms]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.metric :as permissions.metric]
-   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -42,8 +42,8 @@
 (defn- persist-full-dimension-set!
   [metric]
   (let [{:keys [dimensions dimension-mappings]}
-        (metrics/compute-full-dimension-set (:dataset_query metric))]
-    (t2/update! :model/Card (:id metric)
+        (metrics/compute-full-dimension-set (:entity_id metric) (:dataset_query metric))]
+    (t2/update! :model/Card :id (:id metric)
                 {:dimensions dimensions, :dimension_mappings dimension-mappings})))
 
 ;;; ------------------------------------------------- Field Visibility Tests -------------------------------------------------
@@ -57,13 +57,13 @@
       (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric)))
       ;; Now hide a field
       (let [tax-field-id (mt/id :orders :tax)]
-        (t2/update! :model/Field tax-field-id {:visibility_type :hidden})
+        (t2/update! :model/Field :id tax-field-id {:visibility_type :hidden})
         (try
           (let [dims (metric-dimensions :rasta (:id metric))]
             (testing "hidden field should not appear as a dimension"
               (is (not (contains? (dimension-names dims) "Tax")))))
           (finally
-            (t2/update! :model/Field tax-field-id {:visibility_type :normal})))))))
+            (t2/update! :model/Field :id tax-field-id {:visibility_type :normal})))))))
 
 (deftest sensitive-fields-are-filtered-out-test
   (testing "Dimensions based on sensitive fields are excluded from GET /api/metric/:id"
@@ -72,13 +72,13 @@
                                        :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}]
       (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric)))
       (let [tax-field-id (mt/id :orders :tax)]
-        (t2/update! :model/Field tax-field-id {:visibility_type :sensitive})
+        (t2/update! :model/Field :id tax-field-id {:visibility_type :sensitive})
         (try
           (let [dims (metric-dimensions :rasta (:id metric))]
             (testing "sensitive field should not appear as a dimension"
               (is (not (contains? (dimension-names dims) "Tax")))))
           (finally
-            (t2/update! :model/Field tax-field-id {:visibility_type :normal})))))))
+            (t2/update! :model/Field :id tax-field-id {:visibility_type :normal})))))))
 
 (deftest normal-fields-are-included-test
   (testing "Dimensions based on normal-visibility fields are included"
@@ -236,11 +236,14 @@
                             :dimension_mappings [{:dimension-id "d-tax" :target [:field {} fid-tax]}
                                                  {:dimension-id "d-total" :target [:field {} fid-total]}]})
           calls     (atom 0)]
-      ;; Two metrics × two dimensions all live on the Orders table -> a single distinct
-      ;; (db, table), so the access check must fire exactly once.
+      ;; Two metrics × two dimensions all live on the Orders table, and their Tables are answered together, so the
+      ;; access check must fire exactly once.
       (mt/with-test-user :rasta
-        (with-redefs [perms/user-has-permission-for-table? (fn [& _] (swap! calls inc) true)]
-          (metrics.perms/filter-dimensions-for-user-batch [(mk) (mk)])))
+        (let [table-permissions-for-user (mt/original-fn #'perms/table-permissions-for-user)]
+          (mt/with-dynamic-fn-redefs [perms/table-permissions-for-user (fn [& args]
+                                                                         (swap! calls inc)
+                                                                         (apply table-permissions-for-user args))]
+            (metrics.perms/filter-dimensions-for-user-batch [(mk) (mk)]))))
       (is (= 1 @calls)))))
 
 (deftest dimension-mapping-source-field-permissions-test

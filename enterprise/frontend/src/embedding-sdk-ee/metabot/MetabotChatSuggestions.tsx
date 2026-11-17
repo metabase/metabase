@@ -9,7 +9,7 @@ export const MetabotChatSuggestions = () => {
 
   // Keep in sync with [MetabotChat.tsx]
   const suggestedPromptsQuery = useGetSuggestedMetabotPromptsQuery({
-    metabot_id: metabot.metabotId,
+    metabot_id: metabot.metabotEntityId,
     limit: 3,
     sample: true,
   });
@@ -26,12 +26,10 @@ export const MetabotChatSuggestions = () => {
   }
 
   return (
-    <Stack gap="sm" p="md" className={S.promptSuggestionsContainer}>
+    <Stack gap="sm" p="lg" className={S.promptSuggestionsContainer}>
       {suggestedPrompts.map(({ prompt }, index) => (
         <Button
           key={index}
-          size="xs"
-          variant="outline"
           fw={400}
           onClick={() => metabot.submitInput(prompt, { focusInput: true })}
           className={S.promptSuggestionButton}

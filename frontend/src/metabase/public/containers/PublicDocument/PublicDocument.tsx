@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import Image from "@tiptap/extension-image";
 import { Link } from "@tiptap/extension-link";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -100,7 +101,7 @@ export const PublicDocument = () => {
       editable: false,
       immediatelyRender: false,
     },
-    [document?.document],
+    [],
   );
 
   useEffect(() => {
@@ -151,7 +152,7 @@ export const PublicDocument = () => {
           {document && editor && (
             <DocumentEditorHostProvider>
               <ExternalCardDataProvider value={externalCardDataValue}>
-                <Box maw={900} mx="auto" p="xl" w="100%">
+                <Box maw={900} mx="auto" p="xxl" w="100%">
                   <h1 style={{ marginBottom: "1rem" }}>{document.name}</h1>
                   <div className={S.editorContent}>
                     <EditorContent

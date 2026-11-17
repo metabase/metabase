@@ -68,7 +68,7 @@
                                (swap! card-ids conj (:id card))
                                {:state :success})
                              (unpersist! [_ _database _persisted-info]))
-            current-state! (fn [] (t2/select-one-fn :state :model/PersistedInfo (u/the-id prefreshing)))]
+            current-state! (fn [] (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id prefreshing)))]
         ;; ensure ee path is taken
         (mt/with-premium-features #{:cache-granular-controls}
           (is (= "refreshing" (current-state!)))
@@ -103,6 +103,7 @@
                       deleted?        (fn [{id :id}]
                                         (not (t2/exists? :model/PersistedInfo :id id)))
                       test-refresher
+                      ;; prune path only calls unpersist!; leaving refresh! out makes a stray call throw
                       #_{:clj-kondo/ignore [:missing-protocol-method]}
                       (reify task.persist-refresh/Refresher
                         (unpersist! [_ _database persisted-info]

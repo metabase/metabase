@@ -39,11 +39,6 @@
   pointer-events: all;
 }
 
-.PinMapUpdateButtonDisabled {
-  pointer-events: none;
-  color: var(--mb-color-text-disabled);
-}
-
 /* .react-draggable*, .react-resizable* are 3rd party library classes */
 .DashEditing .DashCard:global(.react-draggable-dragging) .Card {
   box-shadow: 3px 3px 8px var(--mb-color-shadow-default);
@@ -73,6 +68,13 @@
 .DashEditing .DashCard:hover .VisualizationSlowSpinner {
   opacity: 0;
   transition: opacity 0.15s linear;
+}
+
+/* editable cards outline their content while their dashcard is hovered, focused or being resized */
+.DashCard:hover .DashCardEditOutline,
+.DashCard:focus-within .DashCardEditOutline,
+.DashCard:global(.resizing) .DashCardEditOutline {
+  border-color: var(--mb-color-core-brand);
 }
 
 .DashEditing:not(.Mobile) .DashCard {

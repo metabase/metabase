@@ -8,9 +8,8 @@ import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useAdminSetting } from "metabase/settings";
-import { Button, Flex, Group, Modal, Radio, Stack, Text } from "metabase/ui";
-
-import S from "./EditUserStrategyModal.module.css";
+import { Button, Modal, Radio, Stack } from "metabase/ui";
+import * as EnterpriseUrls from "metabase-enterprise/urls";
 
 interface EditUserStrategyModalProps {
   onClose: () => void;
@@ -80,7 +79,7 @@ export const EditUserStrategyModal = ({
     dispatch(
       permissionApi.util.invalidateTags([
         "permissions-group",
-        "embedding-hub-checklist",
+        "setup-guide-checklist",
       ]),
     );
 
@@ -92,7 +91,7 @@ export const EditUserStrategyModal = ({
       // This ensures `createTenantsRouteGuard` sees the updated setting.
       await refetch();
 
-      navigate("/admin/people/tenants");
+      navigate(EnterpriseUrls.tenants());
     }
   };
 
@@ -104,12 +103,12 @@ export const EditUserStrategyModal = ({
   const strategyOptions = [
     {
       value: "multi-tenant",
-      title: t`Multi tenant`,
+      label: t`Multi tenant`,
       description: t`Each tenant operates in an isolated environment with dedicated resources and permissions. Best for SaaS platforms, scalable embedding, or strict data isolation needs.`,
     },
     {
       value: "single-tenant",
-      title: t`Single tenant`,
+      label: t`Single tenant`,
       // eslint-disable-next-line metabase/no-literal-metabase-strings -- in admin settings
       description: t`All users exist in the same world and are managed via Metabase groups. Ideal for internal company analytics, proof of concept, or simple embedding setups.`,
     },
@@ -120,59 +119,33 @@ export const EditUserStrategyModal = ({
       <Modal
         opened={!confirmationModal && !isApplyingAfterConfirm}
         title={t`Pick a user strategy`}
-        padding="xl"
         size="md"
         onClose={onClose}
       >
         <LoadingAndErrorWrapper loading={isLoading} error={error}>
-          <Stack gap="md" mt="sm">
-            <Radio.Group
-              value={selectedStrategy}
-              onChange={setSelectedStrategy}
-            >
-              <Stack gap="md">
-                {strategyOptions.map((option) => (
-                  <Radio.Card
-                    key={option.value}
-                    value={option.value}
-                    radius="md"
-                    p="md"
-                    className={S.radioCard}
-                  >
-                    <Group wrap="nowrap">
-                      <div>
-                        <Text
-                          fw={700}
-                          fz="lg"
-                          lh="xl"
-                          mb="xs"
-                          className={S.radioCardTitle}
-                        >
-                          {option.title}
-                        </Text>
+          <Radio.Group value={selectedStrategy} onChange={setSelectedStrategy}>
+            <Stack gap="lg">
+              {strategyOptions.map((option) => (
+                <Radio.Card
+                  key={option.value}
+                  value={option.value}
+                  label={option.label}
+                  description={option.description}
+                  withIndicator={false}
+                />
+              ))}
+            </Stack>
+          </Radio.Group>
 
-                        <Text c="text-secondary" fz="sm" lh="lg">
-                          {option.description}
-                        </Text>
-                      </div>
-                    </Group>
-                  </Radio.Card>
-                ))}
-              </Stack>
-            </Radio.Group>
+          <Modal.Footer>
+            <Button onClick={handleCancel}>{t`Cancel`}</Button>
 
-            <Flex justify="flex-end" gap="md" mt="md">
-              <Button variant="outline" onClick={handleCancel}>
-                {t`Cancel`}
-              </Button>
-
-              <Button
-                onClick={handleApply}
-                disabled={initialStrategy === selectedStrategy}
-                variant="filled"
-              >{t`Apply`}</Button>
-            </Flex>
-          </Stack>
+            <Button
+              onClick={handleApply}
+              disabled={initialStrategy === selectedStrategy}
+              variant="filled"
+            >{t`Apply`}</Button>
+          </Modal.Footer>
         </LoadingAndErrorWrapper>
       </Modal>
       {confirmationModal}

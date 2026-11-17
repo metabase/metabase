@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as serdes.extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
@@ -9,35 +10,32 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.metrics.core :as metrics]
-   [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
+   [metabase.util.yaml :as yaml]
    [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
                                                   models.database/assert-not-h2! (constantly nil)]
-                        (binding [models.database/*include-h2-in-extract?* true]
-                          (thunk)))))
+                        (thunk))))
 
 (def ^:private dim-a-id "11111111-1111-4111-8111-111111111111")
 (def ^:private dim-b-id "22222222-2222-4222-8222-222222222222")
 
-(defn- no-labels [path]
-  (mapv #(dissoc % :label) path))
+(def ^:private ingestion-in-memory ts/ingestion-in-memory)
 
-(defn- ingestion-in-memory [extractions]
-  (let [mapped (into {} (map (juxt (comp no-labels serdes/path) identity)) extractions)]
-    (reify
-      serdes.ingest/Ingestable
-      (ingest-list [_]
-        (keys mapped))
-      (ingest-one [_ path]
-        (get mapped (no-labels path)))
-      (ingest-errors [_]
-        []))))
+(defn- extract-all []
+  (into [] (serdes.extract/extract {:include-h2? true})))
+
+(defn- through-yaml
+  "What a file-based import reads back: YAML carries no keywords, so keyword values come back as strings."
+  [entity]
+  (-> (dump/yaml-content entity)
+      (yaml/parse-string {:key-fn serdes.ingest/parse-key})
+      serdes.ingest/read-timestamps))
 
 (defn- by-model [entities model-name]
   (filter #(-> % :serdes/meta last :model (= model-name)) entities))
@@ -114,10 +112,8 @@
               :target       [:field {:source-field ["metric-db" nil "sales" "product_id"]}
                              ["metric-db" nil "products" "title"]]}]
             (:dimension_mappings card)))
-    (is (contains? (metrics/dimension-mappings-deps (:dimension_mappings card))
-                   [{:model "Database" :id "metric-db"}]))
-    (is (contains? (serdes/deserialization-dependencies card)
-                   [{:model "Database" :id "metric-db"}]))))
+    (is (not (contains? (first (serialization/import-dependencies :model/Card [card]))
+                        [:model/Database "metric-db"])))))
 
 (defn- prepare-destination! []
   (let [other-db    (ts/create! :model/Database :name "other-db")
@@ -152,8 +148,18 @@
   (testing "curated metric dimensions and mappings are portable"
     (ts/with-dbs [source-db dest-db]
       (let [source     (ts/with-db source-db (create-source-metric!))
-            serialized (ts/with-db source-db (into [] (serdes.extract/extract {})))]
+            serialized (ts/with-db source-db (extract-all))]
         (assert-portable-extraction! serialized)
+        (ts/with-db dest-db
+          (prepare-destination!)
+          (serdes.load/load-metabase! (ingestion-in-memory serialized))
+          (assert-remapped-import! source))))))
+
+(deftest metric-v2-dimensions-yaml-round-trip-test
+  (testing "curated metric dimensions and mappings import from YAML, where their types are strings"
+    (ts/with-dbs [source-db dest-db]
+      (let [source     (ts/with-db source-db (create-source-metric!))
+            serialized (ts/with-db source-db (mapv through-yaml (extract-all)))]
         (ts/with-db dest-db
           (prepare-destination!)
           (serdes.load/load-metabase! (ingestion-in-memory serialized))
@@ -163,12 +169,12 @@
   (testing "deleting a curated dimension on the source deletes it on the destination after import"
     (ts/with-dbs [source-db dest-db]
       (let [source (ts/with-db source-db (create-source-metric!))
-            extract-source #(ts/with-db source-db (into [] (serdes.extract/extract {})))]
+            extract-source #(ts/with-db source-db (extract-all))]
         (ts/with-db dest-db
           (prepare-destination!)
           (serdes.load/load-metabase! (ingestion-in-memory (extract-source))))
         (ts/with-db source-db
-          (t2/update! :model/Card (-> source :card :id)
+          (t2/update! :model/Card :id (-> source :card :id)
                       {:dimensions         (filterv #(= dim-a-id (:id %))
                                                     (-> source :card :dimensions))
                        :dimension_mappings (filterv #(= dim-a-id (:dimension-id %))

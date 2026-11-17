@@ -82,6 +82,106 @@
       (invoke-handler (middleware spy-handler) {:token-scopes #{"agent:reports"}})
       (is (true? (:token-scopes-checked (deref seen-request 1000 ::timeout)))))))
 
+(deftest ^:parallel enforce-scope-defers-to-the-mcp-ui-gate-test
+  (let [ok-handler (fn [_request respond _raise]
+                     (respond {:status 200 :body "ok"}))
+        middleware (scope/enforce-scope "agent:reports")
+        invoke     #(invoke-handler (middleware ok-handler) %)]
+    (testing "an MCP Apps UI credential already cleared by its own route gate passes a declared scope it
+              does not hold — `metabase.mcp.ui-surface/request-surface` is what confines that credential,
+              and it is strictly narrower than any endpoint scope"
+      (is (= {:status 200 :body "ok"}
+             (invoke {:token-scopes #{::scope/mcp-ui} :token-scopes-checked true}))))
+    (testing "without the stamp it is refused — the carve-out defers to the gate's decision, it does not
+              exempt the credential from having one"
+      (is (= 403 (:status (invoke {:token-scopes #{::scope/mcp-ui}}))))
+      (is (= 403 (:status (invoke {:token-scopes #{::scope/mcp-ui} :token-scopes-checked false})))))
+    (testing "and the carve-out does not leak to ordinary scoped tokens. `enforce-scope` stamps
+              `:token-scopes-checked` itself on success, so trusting the stamp alone would make every
+              per-endpoint `:scope` a no-op underneath a namespace-level `enforce-scope`"
+      (is (= 403 (:status (invoke {:token-scopes #{"agent:queries"} :token-scopes-checked true}))))
+      (is (= 403 (:status (invoke {:token-scopes #{} :token-scopes-checked true})))))))
+
+(deftest ^:parallel oauth-request-without-token-scopes-fails-closed-test
+  (testing "GHY-4542: nil `:token-scopes` means scope-unaware auth (a session or API key), so both middlewares
+            let it through. An OAuth-authenticated request always carries its granted scopes; one that arrives
+            without any must be refused, not treated as unrestricted. The auth method the session middleware
+            records decides which case it is, not the presence of a bearer header."
+    (let [ok-handler (fn [_request respond _raise]
+                       (respond {:status 200 :body "ok"}))
+          middleware (scope/enforce-scope "agent:reports")]
+      (doseq [[label wrapped] {"enforce-scope"         (middleware ok-handler)
+                               "ensure-scopes-checked" (scope/ensure-scopes-checked ok-handler)}]
+        (testing label
+          (doseq [token-scopes [nil #{}]]
+            (testing (str "OAuth-authenticated with token-scopes " (pr-str token-scopes) " is refused")
+              (let [response (invoke-handler wrapped {:authenticated-via-oauth? true
+                                                      :token-scopes             token-scopes})]
+                (is (= 403 (:status response)))
+                (is (= (if (= label "enforce-scope") "unsupported_scope" "scope_not_permitted")
+                       (get-in response [:body :error])))))
+            (testing (str "even when already stamped :token-scopes-checked, with token-scopes " (pr-str token-scopes))
+              (is (= 403 (:status (invoke-handler wrapped {:authenticated-via-oauth? true
+                                                           :token-scopes             token-scopes
+                                                           :token-scopes-checked     true}))))))
+          (testing "the same request without the OAuth marker is session or API-key auth and passes"
+            (is (= {:status 200 :body "ok"}
+                   (invoke-handler wrapped {:token-scopes nil}))))
+          (testing "an OAuth request carrying a full-access grant still passes"
+            (is (= {:status 200 :body "ok"}
+                   (invoke-handler wrapped {:authenticated-via-oauth? true
+                                            :token-scopes             #{::scope/unrestricted}})))))))))
+
+(deftest ^:parallel quoted-string-test
+  (testing "GHY-4542: RFC 6750 section 3 excludes `\"` and `\\` from an auth-param value outright, so neither can be
+            escaped into one, and limits the rest to printable ASCII. A value carrying any of them would produce a
+            challenge header a client cannot parse, so they are replaced rather than emitted."
+    (let [quoted-string #'scope/quoted-string]
+      (is (= "\"plain value\"" (quoted-string "plain value")))
+      (is (= "\"it's 'quoted'\"" (quoted-string "it's \"quoted\"")))
+      (is (= "\"back/slash\"" (quoted-string "back\\slash")))
+      (is (= "\"caf?\"" (quoted-string "café")))
+      (is (= "\"tab?here\"" (quoted-string "tab\there")))
+      (is (= "\"\"" (quoted-string nil)))
+      (testing "so every value it produces stays inside the character set"
+        (doseq [s ["plain value" "it's \"quoted\"" "back\\slash" "café" "tab\there"]]
+          (is (re-matches #"\"[\x20-\x21\x23-\x5B\x5D-\x7E]*\"" (quoted-string s))))))))
+
+(deftest ^:parallel scope-denial-carries-insufficient-scope-challenge-test
+  (testing "GHY-4542: RFC 6750 section 3 requires a resource server to answer a bearer token that does not grant
+            access with a `WWW-Authenticate` challenge. `insufficient_scope` tells an OAuth client to re-authorize
+            for more scope instead of treating the 403 as final; `scope` names what `enforce-scope` requires, and
+            is omitted where the endpoint declares no scope to ask for."
+    (let [ok-handler (fn [_request respond _raise]
+                       (respond {:status 200 :body "ok"}))
+          enforced   ((scope/enforce-scope "agent:reports") ok-handler)
+          unchecked  (scope/ensure-scopes-checked ok-handler)]
+      (doseq [[label wrapped request expected]
+              [["enforce-scope, insufficient scope"
+                enforced {:token-scopes #{"agent:queries"}}
+                (str "Bearer error=\"insufficient_scope\", scope=\"agent:reports\", "
+                     "error_description=\"Insufficient scope for this operation.\"")]
+               ["enforce-scope, OAuth request without token-scopes"
+                enforced {:authenticated-via-oauth? true}
+                (str "Bearer error=\"insufficient_scope\", scope=\"agent:reports\", "
+                     "error_description=\"Insufficient scope for this operation.\"")]
+               ["ensure-scopes-checked, scoped token on an endpoint without a scope"
+                unchecked {:token-scopes #{"agent:reports"}}
+                (str "Bearer error=\"insufficient_scope\", "
+                     "error_description=\"Scoped tokens cannot access this endpoint.\"")]
+               ["ensure-scopes-checked, OAuth request without token-scopes"
+                unchecked {:authenticated-via-oauth? true :token-scopes-checked true}
+                (str "Bearer error=\"insufficient_scope\", "
+                     "error_description=\"Scoped tokens cannot access this endpoint.\"")]]]
+        (testing label
+          (let [response (invoke-handler wrapped request)]
+            (is (= 403 (:status response)))
+            (is (= expected (get-in response [:headers "WWW-Authenticate"])))
+            (testing "the JSON body is unchanged"
+              (is (= "application/json" (get-in response [:headers "Content-Type"])))
+              (is (= (if (= wrapped enforced) "unsupported_scope" "scope_not_permitted")
+                     (get-in response [:body :error]))))))))))
+
 (deftest ^:parallel ensure-scopes-checked-test
   (let [ok-handler (fn [_request respond _raise]
                      (respond {:status 200 :body "ok"}))]

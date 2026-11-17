@@ -47,7 +47,7 @@ Only add tables that come from a specific schema.
 
 ### Username
 
-The database username for the account that you want to use to connect to your database. You can set up multiple connections to the same database using different user accounts to connect to the same database, each with different sets of [privileges](../users-roles-privileges.md).
+The username Metabase uses to connect to your database. Create a dedicated database user for Metabase with read-only access to the schemas and tables you want to analyze. For write operations like uploads, actions, or transforms, use a separate [writable connection](../writable-connection.md). For instructions, see [Database users, roles, and privileges](../users-roles-privileges.md). You can set up multiple connections to the same database using different user accounts, each with different sets of privileges.
 
 ### Password
 
@@ -77,7 +77,7 @@ connection_timeout=1000&socket_timeout=300000
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/summarizing-and-grouping.md) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose a grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when syncs and scans happen
 
@@ -94,10 +94,6 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 ## Writable connection
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
-
-## Model features
-
-There aren't (yet) any model features for Starburst.
 
 ## Database routing
 

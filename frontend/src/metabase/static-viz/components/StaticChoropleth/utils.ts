@@ -1,11 +1,13 @@
 import Color from "color";
 import type { Feature, FeatureCollection } from "geojson";
 
-import { getCanonicalRowKey } from "metabase/visualizations/lib/region-codes";
-import { getComputedSettings } from "metabase/visualizations/lib/settings";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { getStoredSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  type ComputedVisualizationSettings,
+  columnSettings,
+  getCanonicalRowKey,
+  getComputedSettings,
+  getStoredSettingsForSeries,
+} from "metabase/viz-core";
 import type { GeoJSONData, RawSeries, RowValue } from "metabase-types/api";
 
 // Internal projection resolution, not output size — the SVG is rasterized at a fixed width downstream.

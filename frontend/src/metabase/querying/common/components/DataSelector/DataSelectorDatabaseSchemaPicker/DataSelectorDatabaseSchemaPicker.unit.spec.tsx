@@ -1,32 +1,33 @@
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { render, renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getEntityLookups } from "metabase/querying/common/components/DataSelector";
 import { checkNotNull } from "metabase/utils/types";
-import type Database from "metabase-lib/v1/metadata/Database";
 import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 import type { Database as ApiDatabase } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
+import type { DataSelectorDatabase, DataSelectorSchema } from "../types";
+
 import { DataSelectorDatabaseSchemaPicker } from "./DataSelectorDatabaseSchemaPicker";
 
 const defaultProps = {
-  hasBackButton: false,
   hasFiltering: false,
   hasInitialFocus: false,
   hasNextStep: false,
   isLoading: false,
   onChangeDatabase: jest.fn(),
   onChangeSchema: jest.fn(),
+  getDatabaseSchemas: () => [],
 };
 
 const setup = (opts: { database: ApiDatabase }) => {
   const state = createMockState({
     entities: createMockEntitiesState({ databases: [opts.database] }),
   });
-  const metadata = getMetadata(state);
-  const database = checkNotNull(metadata.database(opts.database.id));
-  const schemas = database.getSchemas();
+  const lookups = getEntityLookups(state);
+  const database = checkNotNull(lookups.database(opts.database.id));
+  const schemas = lookups.databaseSchemas(database.id);
 
   renderWithProviders(
     <DataSelectorDatabaseSchemaPicker
@@ -34,6 +35,7 @@ const setup = (opts: { database: ApiDatabase }) => {
       selectedDatabase={database}
       selectedSchema={schemas[0]}
       databases={[database]}
+      getDatabaseSchemas={lookups.databaseSchemas}
     />,
     { storeInitialState: state },
   );
@@ -49,27 +51,27 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
   });
 
   describe("displays picker when it has databases", () => {
-    it("includes database name if it's not about saved questions", () => {
+    it("includes database name", () => {
       const databaseName = "Database name";
       const schemaName = "Schema name";
 
-      // The picker only reads database id/name and getSchemas, so a partial
-      // mock is enough here.
+      // The picker only reads database id and name, so a partial mock is
+      // enough here.
       const databases = [
-        {
-          id: 1,
-          name: databaseName,
-          getSchemas: () => [
-            { name: schemaName },
-            { name: "another schema name" },
-          ],
-        },
-      ] as unknown as Database[];
+        { id: 1, name: databaseName },
+      ] as DataSelectorDatabase[];
 
       render(
         <DataSelectorDatabaseSchemaPicker
           {...defaultProps}
           databases={databases}
+          getDatabaseSchemas={() =>
+            // The picker only reads schema names here.
+            [
+              { name: schemaName },
+              { name: "another schema name" },
+            ] as DataSelectorSchema[]
+          }
         />,
       );
 
@@ -77,36 +79,6 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
       expect(
         screen.getByText(checkNotNull(getSchemaDisplayName(schemaName))),
       ).toBeInTheDocument();
-    });
-
-    it("displays Saved Questions if it's about saved questions", () => {
-      const databaseName = "Database name";
-      const schemaName = "Schema name";
-
-      // The picker only reads database id/name, is_saved_questions and
-      // getSchemas, so a partial mock is enough here.
-      const databases = [
-        {
-          id: 1,
-          is_saved_questions: true,
-          name: databaseName,
-          getSchemas: () => [
-            { name: schemaName },
-            { name: "another schema name" },
-          ],
-        },
-      ] as unknown as Database[];
-
-      render(
-        <DataSelectorDatabaseSchemaPicker
-          {...defaultProps}
-          databases={databases}
-        />,
-      );
-
-      expect(screen.queryByText(databaseName)).not.toBeInTheDocument();
-      expect(screen.queryByText(schemaName)).not.toBeInTheDocument();
-      expect(screen.getByText("Saved Questions")).toBeInTheDocument();
     });
   });
 

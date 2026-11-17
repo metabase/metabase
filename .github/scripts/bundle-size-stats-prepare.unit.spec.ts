@@ -48,7 +48,15 @@ describe("buildStatsRows", () => {
     const result = buildStatsRows({
       ...meta,
       measurements: [measurement({ bundle: "app", kind: "initial" })],
-      previous: [{ bundle: "app", kind: "total", rawBytes: 1, gzipBytes: 1, brotliBytes: 1 }],
+      previous: [
+        {
+          bundle: "app",
+          kind: "total",
+          rawBytes: 1,
+          gzipBytes: 1,
+          brotliBytes: 1,
+        },
+      ],
       threshold: 99,
     });
 
@@ -93,7 +101,14 @@ describe("buildStatsRows", () => {
       ...meta,
       measurements: [measurement({ gzipBytes: 440, brotliBytes: 300 })], // gzip +10%
       // No brotliBytes: this point was cached before brotli logging landed.
-      previous: [{ bundle: "embedding-sdk-chunked", kind: "total", rawBytes: 1000, gzipBytes: 400 }],
+      previous: [
+        {
+          bundle: "embedding-sdk-chunked",
+          kind: "total",
+          rawBytes: 1000,
+          gzipBytes: 400,
+        },
+      ],
       threshold: 1,
     });
 

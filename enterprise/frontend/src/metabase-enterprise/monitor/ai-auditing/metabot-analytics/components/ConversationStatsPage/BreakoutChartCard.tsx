@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import cx from "classnames";
 
 import { Card, Skeleton, Text } from "metabase/ui";
@@ -45,13 +46,13 @@ export function BreakoutChartCard({
       })}
       withBorder
       shadow="none"
-      px="lg"
-      pt="md"
-      pb={display === "row" ? "md" : "0"}
+      px="xl"
+      pt="lg"
+      pb={display === "row" ? "lg" : "0"}
       h={h}
     >
       {title && (
-        <Text fw="bold" mb="md">
+        <Text fw="bold" mb="lg">
           {title}
         </Text>
       )}

@@ -22,6 +22,7 @@ import {
 import { Popover } from "metabase/common/components/MetadataInfo/Popover";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import CS from "metabase/css/core/index.css";
 import { hasFeature } from "metabase/databases";
 import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
 import {
@@ -33,13 +34,8 @@ import {
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
-import { Box, Flex, Icon, Text } from "metabase/ui";
+import { Box, Flex, Icon, Text, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
-
-import {
-  ColumnPickerHeaderContainer,
-  ColumnPickerHeaderTitleContainer,
-} from "./AggregationPicker.styled";
 
 export interface AggregationPickerProps {
   className?: string;
@@ -389,10 +385,8 @@ export function AggregationPicker({
           <Popover
             position="right"
             content={
-              <Box p="md">
-                <Markdown disallowHeading unstyleLinks>
-                  {tc(item.description)}
-                </Markdown>
+              <Box p="lg">
+                <Markdown unstyleLinks>{tc(item.description)}</Markdown>
               </Box>
             }
           >
@@ -487,14 +481,26 @@ function ColumnPickerHeader({
   onClick: () => void;
 }) {
   return (
-    <ColumnPickerHeaderContainer>
-      <ColumnPickerHeaderTitleContainer onClick={onClick} aria-label={t`Back`}>
+    <Flex
+      className={CS.borderBottom}
+      align="center"
+      py="lg"
+      px="sm"
+      c="text-secondary"
+    >
+      <Flex
+        component={UnstyledButton}
+        align="center"
+        gap="sm"
+        onClick={onClick}
+        aria-label={t`Back`}
+      >
         <Icon name="chevronleft" size={18} />
         <Text fz="lg" fw="bold" lh="normal" c="inherit">
           {children}
         </Text>
-      </ColumnPickerHeaderTitleContainer>
-    </ColumnPickerHeaderContainer>
+      </Flex>
+    </Flex>
   );
 }
 

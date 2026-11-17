@@ -2,15 +2,15 @@
   (:refer-clojure :exclude [ref run! every? mapv reduce empty? first second])
   (:require
    [medley.core :as m]
-   [metabase.lib.options :as lib.options]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [run! every? mapv reduce empty? first second]]))
+   [metabase.util.match :as match]
+   [metabase.util.performance :refer [run! every? mapv reduce empty? first second]]))
 
 (declare collect-uuids*)
 
 (defn- collect-uuids-in-map [m result]
-  (when-let [our-uuid (or (:lib/uuid (lib.options/options m))
+  (when-let [our-uuid (or (:lib/uuid (:lib/options m))
                           (:lib/uuid m))]
     ;; Keep duplicates in metadata of the result.
     (if (@result our-uuid)
@@ -83,7 +83,7 @@
 (mu/defn mbql-clause-distinct-key
   "For deduplicating MBQL clauses: keep just the keys in options that are essential to distinguish one clause from
   another. Removes namespaced keywords and type information keys like `:base-type`."
-  [clause]
+  [clause :- :metabase.lib.schema.common/any-clause]
   (let [tag (first clause)
         opts (second clause)
         f #(cond-> %
@@ -134,23 +134,16 @@
 (defn remove-lib-uuids
   "Recursively remove all uuids from `x`."
   [x]
-  (perf/postwalk
-   (fn [x]
-     (cond-> x
-       (map? x) (dissoc :lib/uuid)))
-   x))
+  (match/replace-all x
+    {:lib/uuid _} (dissoc &match :lib/uuid)))
 
 (defn sorted-maps
   "Recursively convert all maps in `x` to sorted maps using the same comparator
    as [[metabase.lib.schema.common/unfussy-sorted-map]]. This ensures consistent
    JSON serialization order regardless of how maps were constructed."
   [x sorted-map-fn]
-  (perf/postwalk
-   (fn [x]
-     (if (and (map? x) (not (sorted? x)))
-       (into (sorted-map-fn) x)
-       x))
-   x))
+  (match/replace-all x
+    (m :guard (and (map? m) (not (sorted? m)))) (into (sorted-map-fn) m)))
 
 (defn- aggregation-ref?
   "Check if `x` is an aggregation ref clause `[:aggregation opts uuid-string]`."

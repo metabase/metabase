@@ -1,16 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { autoUpdate, useFloating } from "@floating-ui/react";
 import { useMergedRef } from "@mantine/hooks";
 import type { Editor, NodeViewProps } from "@tiptap/core";
 import { useEffect, useState } from "react";
 
-import { useNodeInViewport } from "metabase/documents/hooks/use-node-in-viewport";
-import { useUnresolvedDocumentCommentsCount } from "metabase/documents/hooks/use-unresolved-document-comments-count";
-import {
-  getChildTargetId,
-  getCurrentDocument,
-  getHoveredChildTargetId,
-} from "metabase/documents/selectors";
 import { useSelector } from "metabase/redux";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { documentWithAnchor } from "metabase/urls";
 import { isWithinIframe } from "metabase/utils/iframe";
 
@@ -34,14 +29,17 @@ export function useBlockMenus({
   getPos,
   shouldHideMenus = false,
 }: UseBlockMenusOptions) {
-  const childTargetId = useSelector(getChildTargetId);
-  const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
-  const document = useSelector(getCurrentDocument);
+  const host = useEditorHost();
+  const childTargetId = useSelector(host.selectors.getChildTargetId);
+  const hoveredChildTargetId = useSelector(
+    host.selectors.getHoveredChildTargetId,
+  );
+  const document = useSelector(host.selectors.getCurrentDocument);
   const { _id } = node.attrs;
 
-  const { ref: viewportRef, isInViewport } = useNodeInViewport();
+  const { ref: viewportRef, isInViewport } = host.useNodeInViewport();
 
-  const unresolvedCommentsCount = useUnresolvedDocumentCommentsCount(_id, {
+  const unresolvedCommentsCount = host.useUnresolvedCommentsCount(_id, {
     skip: !isInViewport,
   });
 

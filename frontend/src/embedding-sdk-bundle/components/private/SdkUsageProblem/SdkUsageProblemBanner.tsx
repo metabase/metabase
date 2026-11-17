@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 /* eslint-disable i18next/no-literal-string */
 import cx from "classnames";
 import { useState } from "react";
@@ -74,8 +75,8 @@ export const SdkUsageProblemBanner = ({
 
       <Popover.Dropdown className={S.PopoverDropdown}>
         <Card
-          p="lg"
-          radius="md"
+          p="xl"
+          radius="sm"
           maw="22rem"
           data-testid="sdk-usage-problem-card"
         >
@@ -94,35 +95,25 @@ export const SdkUsageProblemBanner = ({
               {problem.message}
             </Text>
 
-            <Flex w="100%" justify="end" mt="sm" columnGap="sm">
+            <Flex w="100%" justify="end" mt="sm" columnGap="lg">
               <Button
-                fz="sm"
-                ff={fontFamily}
-                fs="normal"
-                size="md"
-                radius="md"
                 variant="subtle"
-                color="text-brand"
+                ff={fontFamily}
                 onClick={() => {
                   dispatch(setUsageProblem(null));
                 }}
               >
                 Hide {severity === "error" ? "error" : "warning"}
               </Button>
-              <ExternalLink role="link" href={problem.documentationUrl}>
-                <Button
-                  fz="sm"
-                  rightSection={
-                    <Icon aria-hidden name="external" size="1rem" />
-                  }
-                  ff={fontFamily}
-                  className={S.DocsButton}
-                  size="md"
-                  radius="md"
-                >
-                  Documentation
-                </Button>
-              </ExternalLink>
+              <Button
+                component={ExternalLink}
+                ff={fontFamily}
+                href={problem.documentationUrl}
+                rightSection={<Icon aria-hidden name="external" />}
+                variant="light"
+              >
+                Documentation
+              </Button>
             </Flex>
           </Stack>
         </Card>

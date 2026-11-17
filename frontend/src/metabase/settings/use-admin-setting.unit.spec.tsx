@@ -8,6 +8,7 @@ import {
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { useGetSetupGuideChecklistQuery } from "metabase/embedding/setup-guide/api/setup-guide";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -37,6 +38,27 @@ const TestComponent = () => {
         change site name
       </button>
     </div>
+  );
+};
+
+// The setup guide checklist is derived from settings server-side, so a single
+// setting write has to invalidate it -- otherwise the card stays stale until reload.
+const TestChecklistComponent = () => {
+  const { isLoading } = useGetSetupGuideChecklistQuery();
+  const { updateSetting } = useAdminSetting("site-name");
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <button
+      onClick={() =>
+        updateSetting({ key: "site-name", value: "New Site Name" })
+      }
+    >
+      change site name
+    </button>
   );
 };
 
@@ -141,6 +163,30 @@ describe("useAdminSetting", () => {
     const putCall = apiCalls.find((call) => call.request?.method === "PUT");
 
     expect(putCall?.request?.url).toContain("/api/setting/site-name");
+  });
+});
+
+describe("setup guide checklist invalidation", () => {
+  const CHECKLIST_URL = "path:/api/embedding-hub/checklist";
+
+  const setupChecklist = async () => {
+    fetchMock.get(CHECKLIST_URL, { checklist: {} });
+    setupPropertiesEndpoints(createMockSettings({ "site-name": "Metabased" }));
+    setupSettingsEndpoints([createMockSettingDefinition({ key: "site-name" })]);
+    setupUpdateSettingEndpoint();
+    renderWithProviders(<TestChecklistComponent />);
+  };
+
+  it("refetches the checklist after a single setting is written", async () => {
+    await setupChecklist();
+    const updateButton = await screen.findByText("change site name");
+    expect(fetchMock.callHistory.calls(CHECKLIST_URL)).toHaveLength(1);
+
+    await userEvent.click(updateButton);
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls(CHECKLIST_URL)).toHaveLength(2);
+    });
   });
 });
 

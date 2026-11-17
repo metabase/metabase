@@ -2,16 +2,20 @@ import { act } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import {
+  setupCardCreateEndpoint,
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { createMockDashboardState } from "__support__/state";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { getDashcards } from "metabase/dashboard/selectors";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
+import * as Urls from "metabase/urls";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -20,12 +24,13 @@ import {
   createMockDataset,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { useDashboardChartPaste } from "./use-dashboard-chart-paste";
 
 const TEST_DB = createSampleDatabase();
-const datasetQuery = createMockStructuredDatasetQuery();
+const datasetQuery = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+);
 
 const CREATED_CARD = createMockCard({
   id: 99,
@@ -36,6 +41,23 @@ const CREATED_CARD = createMockCard({
 const chartText = serializeChartClipboard(
   {
     name: "Orders by month",
+    display: "bar",
+    dataset_query: datasetQuery,
+    visualization_settings: {},
+  },
+  "https://metabase.example",
+);
+
+const unsavedQuestionUrl = `https://metabase.example${Urls.card({
+  display: "bar",
+  dataset_query: datasetQuery,
+  visualization_settings: {},
+})}`;
+
+const blankChartText = serializeChartClipboard(
+  {
+    name: "",
+    description: "",
     display: "bar",
     dataset_query: datasetQuery,
     visualization_settings: {},
@@ -123,6 +145,38 @@ describe("useDashboardChartPaste", () => {
       );
     });
   });
+
+  it.each([
+    { source: "an unsaved question's URL", text: unsavedQuestionUrl },
+    {
+      source: "a Metabot chart with a blank title and description",
+      text: blankChartText,
+    },
+  ])(
+    "adds a chart pasted from $source as an untitled question",
+    async ({ text }) => {
+      setupCardCreateEndpoint();
+      setupCardMocks(createMockCard());
+
+      const { store } = setup({ isEditing: true });
+      act(() => {
+        paste(text);
+      });
+
+      await waitFor(() => {
+        expect(store.getState().undo).toContainEqual(
+          expect.objectContaining({ message: "Chart added to dashboard" }),
+        );
+      });
+      const body: unknown = JSON.parse(
+        String(fetchMock.callHistory.lastCall("card-create")?.options.body),
+      );
+      expect(body).toMatchObject({
+        name: "Untitled question",
+        description: null,
+      });
+    },
+  );
 
   it("shows an in-progress toast and ignores repeated pastes while saving", async () => {
     setupCardMocks(CREATED_CARD);

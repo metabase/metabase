@@ -12,6 +12,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.lib.schema.id :as lib.schema.id]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]
@@ -97,7 +98,7 @@
     (catch Exception e
       (ex-data e))))
 
-(defn- field-id->name [id] (t2/select-one-fn :name :model/Field id))
+(defn- field-id->name [id] (t2/select-one-fn :name :model/Field :id id))
 
 (mu/defn- test-action-error-handling! [f :- fn?]
   (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))

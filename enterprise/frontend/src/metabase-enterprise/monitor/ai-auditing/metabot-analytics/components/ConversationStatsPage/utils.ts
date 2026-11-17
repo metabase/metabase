@@ -1,15 +1,4 @@
-import {
-  type QueryParam,
-  type UrlStateConfig,
-  getFirstParamValue,
-} from "metabase/common/hooks/use-url-state";
 import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
-
-import {
-  type FilterUrlState,
-  filterUrlStateConfig,
-  mergeUrlStateConfig,
-} from "../ConversationFilters/url-state";
 
 import type { UsageStatsMetric } from "./query-utils";
 
@@ -21,30 +10,16 @@ export function getFilterDays(dateValue: string): number {
   return 30;
 }
 
-type StatsPageUrlState = {
-  metric: UsageStatsMetric;
-};
+export const DEFAULT_USAGE_STATS_METRIC: UsageStatsMetric = "conversations";
 
-export type StatsUrlState = FilterUrlState & StatsPageUrlState;
+const USAGE_STATS_METRICS: readonly UsageStatsMetric[] = [
+  "conversations",
+  "tokens",
+  "messages",
+];
 
-const DEFAULT_METRIC: UsageStatsMetric = "conversations";
-
-function parseMetric(param: QueryParam): UsageStatsMetric {
-  const value = getFirstParamValue(param);
-  if (value === "messages" || value === "tokens") {
-    return value;
-  }
-  return DEFAULT_METRIC;
+export function parseUsageStatsMetric(
+  value: string | undefined,
+): UsageStatsMetric | undefined {
+  return USAGE_STATS_METRICS.find((metric) => metric === value);
 }
-
-const statsPageUrlStateConfig: UrlStateConfig<StatsPageUrlState> = {
-  parse: (query) => ({
-    metric: parseMetric(query.metric),
-  }),
-  serialize: ({ metric }) => ({
-    metric: metric === DEFAULT_METRIC ? undefined : metric,
-  }),
-};
-
-export const statsUrlStateConfig: UrlStateConfig<StatsUrlState> =
-  mergeUrlStateConfig(filterUrlStateConfig, statsPageUrlStateConfig);

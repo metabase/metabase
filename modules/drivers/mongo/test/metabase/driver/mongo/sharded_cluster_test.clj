@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]))
 
@@ -11,6 +12,6 @@
   (mt/test-driver
     :mongo
     (testing "Mongo driver can connect to a sharded cluster"
-      (is (true? (driver/can-connect? :mongo (mt/db)))))
+      (is (true? (driver/can-connect? :mongo (lib.metadata/database (mt/metadata-provider))))))
     (testing "Mongo can sync"
-      (sync/sync-database! (mt/db)))))
+      (sync/sync-database! (mt/id)))))

@@ -1,10 +1,8 @@
 import type {
   CardId,
-  ConcreteTableId,
   DatabaseId,
-  FieldId,
   SchemaName,
-  VirtualTableId,
+  TableId,
 } from "metabase-types/api";
 
 import { DatabasePane } from "./DatabasePane";
@@ -13,8 +11,6 @@ import { QuestionPane } from "./QuestionPane";
 import { SchemaPane } from "./SchemaPane";
 import { TablePane } from "./TablePane";
 
-// The library pane is rendered from PLUGIN_LIBRARY.DataReferenceLibraryPane
-// (see DataReference), so it is intentionally absent from PANES.
 export const PANES = {
   database: DatabasePane, // lists schemas, tables and models of a database
   schema: SchemaPane, // lists tables of a schema
@@ -58,7 +54,7 @@ export type DataReferenceSchemaItem = {
 
 export type DataReferenceTableItem = {
   type: "table";
-  id: ConcreteTableId;
+  id: TableId;
 };
 
 export type DataReferenceQuestionItem = {
@@ -66,9 +62,20 @@ export type DataReferenceQuestionItem = {
   id: CardId;
 };
 
-export type UniqueFieldId = `${VirtualTableId}:${string}`;
-
-export type DataReferenceFieldItem = {
+export type DataReferenceTableFieldItem = {
   type: "field";
-  id: FieldId | UniqueFieldId;
+  kind: "table";
+  tableId: TableId;
+  columnIndex: number;
 };
+
+export type DataReferenceCardFieldItem = {
+  type: "field";
+  kind: "card";
+  cardId: CardId;
+  columnIndex: number;
+};
+
+export type DataReferenceFieldItem =
+  | DataReferenceTableFieldItem
+  | DataReferenceCardFieldItem;

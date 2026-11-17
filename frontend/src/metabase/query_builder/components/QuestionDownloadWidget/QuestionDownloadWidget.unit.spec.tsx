@@ -1,35 +1,29 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupCardQueryDownloadEndpoint,
   setupLastDownloadFormatEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
-import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type { Card, Dataset } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockDataset,
-  createMockStructuredDatasetQuery,
-} from "metabase-types/api/mocks";
-import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
 registerVisualizations();
 
 const TEST_CARD = createMockCard({
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  }),
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  ),
 });
 
 const TEST_RESULT = createMockDataset();
@@ -54,8 +48,8 @@ const setup = ({
     settings: mockSettings(settings),
   });
 
-  const metadata = getMetadata(state);
-  const question = checkNotNull(metadata.question(card.id));
+  const metadata = createMockMetadataFromState(state);
+  const question = new Question(card, metadata);
 
   setupCardQueryDownloadEndpoint(card, "json");
   setupLastDownloadFormatEndpoints();

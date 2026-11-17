@@ -1,9 +1,13 @@
 (ns metabase.dashboards.models.dashboard-tab
   (:require
    [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
-   [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -15,10 +19,9 @@
 
 (doto :model/DashboardTab
   (derive :metabase/model)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/dependencies))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:metabase.dashboards.models.dashboard-card/DashboardCard :dashboard_tab]
   [_original-model _k]
@@ -34,45 +37,68 @@
   (assert (= 1 (count (set (map :dashboard_id tabs)))), "All tabs must belong to the same dashboard")
   (let [dashboard-id      (:dashboard_id (first tabs))
         tab-ids           (map :id tabs)
-        dashcards         (t2/select :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id [:in tab-ids])
+        dashcards         (dashboards.db/dashcards-in-tabs dashboard-id tab-ids)
         tab-id->dashcards (-> (group-by :dashboard_tab_id dashcards)
                               (update-vals #(sort dashboard-card/dashcard-comparator %)))
         tabs              (sort-by :position tabs)]
     (for [{:keys [id] :as tab} tabs]
       (assoc tab :cards (get tab-id->dashcards id [])))))
 
-(defmethod mi/perms-objects-set :model/DashboardTab
-  [dashtab read-or-write]
-  (let [dashboard (or (:dashboard dashtab)
-                      (t2/select-one :model/Dashboard :id (:dashboard_id dashtab)))]
-    (mi/perms-objects-set dashboard read-or-write)))
+(defn- dashboard-collection-ids
+  "The id of the Collection, nil for the root, of the Dashboard of each of `tabs`, by Dashboard id, the Dashboards
+  loaded together."
+  [tabs]
+  (run! #(when % (api/check-500 (contains? % :dashboard_id) "No :dashboard_id is set for a DashboardTab.")) tabs)
+  (let [ids (into [] (comp (remove nil?) (keep :dashboard_id) (distinct)) tabs)]
+    (if (seq ids)
+      (into {} (map (juxt :id :collection_id)) (dashboards.db/dashboard-collection-rows ids))
+      {})))
+
+(methodical/defmethod t2/batched-hydrate [:model/DashboardTab :can_read]
+  "Whether the current user reads each of `tabs`: the content of the Collection of its Dashboard, answered together."
+  [_model _k tabs]
+  (let [collection-ids (dashboard-collection-ids tabs)
+        readable       (collection/content-readable-collection-ids (vals collection-ids)
+                                                                   {:root-namespace nil, :audit-rules? false})]
+    (for [tab tabs]
+      (when tab
+        (vary-meta tab assoc :can_read (and (contains? collection-ids (:dashboard_id tab))
+                                            (contains? readable (get collection-ids (:dashboard_id tab)))))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/DashboardTab :can_write]
+  "Whether the current user writes each of `tabs`: the content of the Collection of its Dashboard, answered together."
+  [_model _k tabs]
+  (let [collection-ids (dashboard-collection-ids tabs)
+        writable       (collection/content-writable-collection-ids (vals collection-ids)
+                                                                   {:root-namespace nil, :audit-rules? false})]
+    (for [tab tabs]
+      (when tab
+        (assoc tab :can_write (and (contains? collection-ids (:dashboard_id tab))
+                                   (contains? writable (get collection-ids (:dashboard_id tab)))))))))
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
-(defmethod serdes/generate-path "DashboardTab" [_ dashcard]
-  [(serdes/infer-self-path "Dashboard" (t2/select-one :model/Dashboard :id (:dashboard_id dashcard)))
-   (serdes/infer-self-path "DashboardTab" dashcard)])
 
-(defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
-  {:copy      [:entity_id :name :position]
-   :skip      []
-   :transform {:created_at   (serdes/date)
-               :dashboard_id (serdes/parent-ref)}})
+(defmethod serialization/spec :model/DashboardTab [_]
+  {:schema    ::dashboards.schema/external-dashboard-tab
+   :copy      [:entity_id :name :position]
+   :parent    {:model :model/Dashboard :key :dashboard_id :order (juxt :position :entity_id)}
+   :transform {:dashboard_id serialization/import-only-transform}})
 
 ;;; -------------------------------------------------- CRUD fns ------------------------------------------------------
 
 (mu/defn create-tabs! :- [:map-of neg-int? pos-int?]
   "Create the new tabs and returned a mapping from temporary tab ID to the new tab ID."
   [dashboard-id :- ms/PositiveInt
-   new-tabs     :- [:sequential [:map [:id neg-int?]]]]
-  (let [new-tab-ids (t2/insert-returning-pks! :model/DashboardTab (->> new-tabs
-                                                                       (map #(dissoc % :id))
-                                                                       (map #(assoc % :dashboard_id dashboard-id))))]
+   new-tabs     :- [:sequential [:merge ::dashboards.schema/dashboard-tab.update [:map {:closed true} [:id neg-int?]]]]]
+  (let [new-tab-ids (dashboards.db/insert-dashboard-tabs! (->> new-tabs
+                                                               (map #(dissoc % :id))
+                                                               (map #(assoc % :dashboard_id dashboard-id))))]
     (zipmap (map :id new-tabs) new-tab-ids)))
 
 (mu/defn update-tabs! :- nil?
   "Updates tabs of a dashboard if changed."
-  [current-tabs :- [:sequential [:map [:id ms/PositiveInt]]]
-   new-tabs     :- [:sequential [:map [:id ms/PositiveInt]]]]
+  [current-tabs :- [:sequential ::dashboards.schema/dashboard-tab]
+   new-tabs     :- [:sequential ::dashboards.schema/dashboard-tab]]
   (let [update-ks       [:name :position]
         id->current-tab (m/index-by :id current-tabs)
         to-update-tabs  (filter
@@ -83,14 +109,14 @@
                                    (select-keys new-tab update-ks))))
                          new-tabs)]
     (doseq [tab to-update-tabs]
-      (t2/update! :model/DashboardTab (:id tab) (select-keys tab update-ks)))
+      (dashboards.db/update-dashboard-tab! (:id tab) (select-keys tab update-ks)))
     nil))
 
 (mu/defn delete-tabs! :- nil?
   "Delete tabs of a Dashboard"
   [tab-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (when (seq tab-ids)
-    (t2/delete! :model/DashboardTab :id [:in tab-ids]))
+    (dashboards.db/delete-dashboard-tabs! tab-ids))
   nil)
 
 (defn do-update-tabs!
@@ -109,10 +135,10 @@
         _                   (when-let [to-delete-ids (seq to-delete-ids)]
                               (delete-tabs! to-delete-ids))
         old->new-tab-id     (when (seq to-create)
-                              (let [new-tab-ids (t2/insert-returning-pks! :model/DashboardTab
-                                                                          (->> to-create
-                                                                               (map #(dissoc % :id))
-                                                                               (map #(assoc % :dashboard_id dashboard-id))))]
+                              (let [new-tab-ids (dashboards.db/insert-dashboard-tabs!
+                                                 (->> to-create
+                                                      (map #(dissoc % :id))
+                                                      (map #(assoc % :dashboard_id dashboard-id))))]
                                 (zipmap (map :id to-create) new-tab-ids)))]
     (when (seq to-update)
       (update-tabs! current-tabs to-update))
@@ -120,3 +146,7 @@
      :created-tab-ids (vals old->new-tab-id)
      :deleted-tab-ids to-delete-ids
      :total-num-tabs  (reduce + (map count [to-create to-update]))}))
+
+(defmethod remote-sync/spec :model/DashboardTab
+  [_model]
+  {:synced-filter-clause dashboards.db/synced-dashboard-tabs-clause})

@@ -2,7 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.server.middleware.exceptions :as mw.exceptions]
+   [metabase.sso.core :as sso]
    [metabase.sso.oidc.state :as oidc.state]
    [metabase.sso.settings :as sso-settings]
    [metabase.sso.test-helpers :as sso.test-helpers]
@@ -16,8 +19,6 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :test-users))
-
 (def test-encryption-key
   "Test encryption key for OIDC state encryption."
   "Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=")
@@ -26,11 +27,17 @@
   "Hashed test encryption key."
   (encryption/secret-key->hash test-encryption-key))
 
+(use-fixtures :once
+  (fixtures/initialize :test-users)
+  (encryption-tu/with-encrypted-app-db-fixture test-secret))
+
 (defmacro with-test-encryption!
-  "Wraps body with test encryption key enabled. Use for tests that involve OIDC state cookies."
+  "Wraps body with test encryption key enabled, running against the namespace's isolated, already-encrypted app DB (see
+  [[metabase.app-db.encryption-test-util/with-encrypted-app-db]]) so a strict decrypting read under the active key does
+  not trip over a plaintext setting left in the shared app DB by another namespace. Use for tests that involve OIDC
+  state cookies."
   [& body]
-  `(with-redefs [encryption/default-secret-key test-secret]
-     ~@body))
+  `(encryption-tu/with-encrypted-app-db ~@body))
 
 (defn do-with-url-prefix-disabled
   "Test fixture that disables API URL prefix."
@@ -58,13 +65,13 @@
 
 (defmacro with-successful-oidc! [& body]
   `(do
-     (derive :provider/slack-connect :provider/test-successful-oidc)
+     (auth-identity/derive! :provider/slack-connect :provider/test-successful-oidc)
      ~@body
-     (underive :provider/slack-connect :provider/test-successful-oidc)))
+     (auth-identity/underive! :provider/slack-connect :provider/test-successful-oidc)))
 
 ;;; -------------------------------------------------- Prerequisites Tests --------------------------------------------------
 
-(deftest sso-prereqs-test
+(deftest ^:synchronized sso-prereqs-test
   (with-test-encryption!
     (sso.test-helpers/do-with-other-sso-types-disabled!
      (fn []
@@ -105,7 +112,7 @@
 
 ;;; -------------------------------------------------- Redirect Tests --------------------------------------------------
 
-(deftest redirect-test
+(deftest ^:synchronized redirect-test
   (testing "with Slack Connect configured, a GET request should result in a redirect to Slack"
     (with-test-encryption!
       (sso.test-helpers/with-slack-default-setup!
@@ -145,7 +152,7 @@
 
 ;;; -------------------------------------------------- Callback Tests --------------------------------------------------
 
-(deftest callback-state-validation-test
+(deftest ^:synchronized callback-state-validation-test
   (testing "callback should fail if state cookie is missing"
     (with-test-encryption!
       (sso.test-helpers/with-slack-default-setup!
@@ -156,7 +163,7 @@
           ;; Without a state cookie, the callback fails with invalid/expired state error
           (is (str/includes? (:body response) "OIDC state cookie is invalid, expired, or missing")))))))
 
-(deftest callback-state-validation-csrf-test
+(deftest ^:synchronized callback-state-validation-csrf-test
   (testing "callback with mismatched state should indicate possible CSRF attack"
     (with-test-encryption!
       (sso.test-helpers/with-slack-default-setup!
@@ -178,7 +185,7 @@
             ;; State mismatch should indicate possible CSRF attack
             (is (str/includes? (str (:body response)) "CSRF"))))))))
 
-(deftest happy-path-callback-test
+(deftest ^:synchronized happy-path-callback-test
   (testing "successful callback with valid code and state"
     (with-test-encryption!
       (sso.test-helpers/with-slack-default-setup!
@@ -202,7 +209,7 @@
 
 ;;; -------------------------------------------------- Link-Only Mode Tests --------------------------------------------------
 
-(deftest link-only-mode-requires-session-test
+(deftest ^:synchronized link-only-mode-requires-session-test
   (testing "link-only mode should require authenticated session for initial request"
     (with-test-encryption!
       (sso.test-helpers/with-slack-default-setup!
@@ -213,7 +220,7 @@
                                                   :redirect default-redirect-uri)]
             (is (str/includes? (str (get response :body)) "authenticated session"))))))))
 
-(deftest link-only-mode-with-session-test
+(deftest ^:synchronized link-only-mode-with-session-test
   (testing "link-only mode should work with authenticated session"
     (with-test-encryption!
       (sso.test-helpers/with-slack-default-setup!
@@ -237,11 +244,38 @@
         (let [result (mt/client :get 400 "/auth/sso/slack-connect"
                                 {:request-options {:redirect-strategy :none}}
                                 :redirect redirect-uri)]
-          (is (str/includes? (str (or (:message result) result)) "Invalid redirect URL")))))))
+          (is (str/includes? (str (or (:message result) result)) "Invalid redirect URL"))
+          (testing "the response does not contain the supplied value"
+            (is (not (str/includes? (str result) redirect-uri)))))))))
+
+(deftest slack-connect-redirect-validation-is-consistent-test
+  (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+    (testing "the initiate path validates with the same predicate used to build the state cookie"
+      ;; `sso-initiate` and `create-oidc-state` both validate the redirect with this one predicate, so a value is
+      ;; classified the same way at both points.
+      (are [url reject?] (= reject?
+                            (try (sso/validate-redirect-url! url) false
+                                 (catch clojure.lang.ExceptionInfo _ true)))
+        "http://metabase.example.com/x"  true
+        "https://metabase.example.com/x" false
+        "https://other.example/x"        true
+        "/foo/bar"                       false))
+    (testing "a rejected redirect produces a 400 whose body is the plain message"
+      (let [supplied "http://metabase.example.com/x"
+            response (try
+                       (sso/validate-redirect-url! supplied)
+                       (is false "expected validate-redirect-url! to throw")
+                       (catch clojure.lang.ExceptionInfo e
+                         (mw.exceptions/api-exception-response e {})))
+            body     (:body response)]
+        (is (= 400 (:status response)))
+        (is (string? body))
+        (is (not (str/includes? body ":trace")))
+        (is (not (str/includes? body supplied)))))))
 
 ;;; -------------------------------------------------- User Provisioning Tests --------------------------------------------------
 
-(deftest create-new-account-test
+(deftest ^:synchronized create-new-account-test
   (testing "A new account will be created for a Slack user we haven't seen before"
     (with-test-encryption!
       (sso.test-helpers/with-slack-default-setup!
@@ -290,7 +324,7 @@
                         (get-in (mt/latest-audit-log-entry :user-invited (:id new-user))
                                 [:details :email])))))))))))))
 
-(deftest create-new-slack-user-no-user-provisioning-test
+(deftest ^:synchronized create-new-slack-user-no-user-provisioning-test
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-test-encryption!
       (sso.test-helpers/with-slack-default-setup!

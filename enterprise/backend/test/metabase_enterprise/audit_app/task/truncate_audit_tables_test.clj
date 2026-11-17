@@ -39,7 +39,7 @@
             (is (= #{qe1-id qe2-id qe3-id}
                    (t2/select-fn-set :id :model/QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]}))))
           ;; Mock a cloud environment so that we can change the setting value via env var
-          (with-redefs [premium-features/is-hosted? (constantly true)]
+          (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
             (testing "When the threshold is 0 (representing infinity), no rows are deleted"
               (mt/with-temp-env-var-value! [mb-audit-max-retention-days 0]
                 (#'task.truncate-audit-tables/truncate-audit-tables!)
@@ -61,7 +61,7 @@
          :model/AuditLog {al3-id :id} (merge (audit-log-defaults)
                                              {:timestamp (t/minus (t/offset-date-time) (t/years 1))})]
         ;; Mock a cloud environment so that we can change the setting value via env var
-        (with-redefs [premium-features/is-hosted? (constantly true)]
+        (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
           (testing "When the threshold is 30 days, two rows are deleted"
             (mt/with-temp-env-var-value! [mb-audit-max-retention-days 30]
               (#'task.truncate-audit-tables/truncate-audit-tables!)
@@ -84,7 +84,7 @@
          :model/ViewLog {vl3-id :id} (merge (view-log-defaults)
                                             {:timestamp (t/minus (t/offset-date-time) (t/years 1))})]
         ;; Mock a cloud environment so that we can change the setting value via env var
-        (with-redefs [premium-features/is-hosted? (constantly true)]
+        (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
           (testing "When the threshold is 30 days, two rows are deleted"
             (mt/with-temp-env-var-value! [mb-audit-max-retention-days 30]
               (#'task.truncate-audit-tables/truncate-audit-tables!)

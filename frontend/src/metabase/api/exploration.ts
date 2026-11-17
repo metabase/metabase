@@ -1,9 +1,11 @@
 import type {
+  AppendChartToSummaryRequest,
   CancelExplorationThreadRequest,
   CancelExplorationThreadResponse,
   CreateExplorationRequest,
   Dataset,
   Exploration,
+  ExplorationDocument,
   ExplorationId,
   ExplorationQueryId,
   ExploreFurtherRequest,
@@ -195,6 +197,21 @@ export const explorationApi = Api.injectEndpoints({
         }
       },
     }),
+    appendChartToSummary: builder.mutation<
+      ExplorationDocument,
+      AppendChartToSummaryRequest
+    >({
+      query: ({ explorationId, ...body }) => ({
+        method: "POST",
+        url: `/api/exploration/${explorationId}/summary/append`,
+        body,
+      }),
+      invalidatesTags: (result, error) =>
+        invalidateTags(error, [
+          ...(result ? [idTag("document", result.id)] : []),
+          listTag("revision"),
+        ]),
+    }),
   }),
 });
 
@@ -210,4 +227,5 @@ export const {
   useCancelExplorationThreadMutation,
   useSetPageStarredMutation,
   useSetPagesHiddenMutation,
+  useAppendChartToSummaryMutation,
 } = explorationApi;

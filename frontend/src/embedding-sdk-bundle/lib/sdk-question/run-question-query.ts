@@ -3,10 +3,10 @@ import type { SdkQuestionState } from "embedding-sdk-bundle/types/question";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { runQuestionQuery } from "metabase/querying/run-query";
 import type { Dispatch } from "metabase/redux/store";
-import { visualizations } from "metabase/visualizations";
-import { getSensibleDisplays } from "metabase/visualizations/lib/sensibility";
+import { getSensibleDisplays, visualizations } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  Dataset,
   DatasetData,
   ParameterValuesMap,
   QueryVisualizationDisplayType,
@@ -22,6 +22,11 @@ interface RunQuestionQueryParams {
   signal?: AbortSignal;
   dispatch: Dispatch;
   initialVisualization?: QueryVisualizationDisplayType;
+  ignoreCache?: boolean;
+  /** Called just before the query request starts. Not called when the question runs no query. */
+  onQueryStart?: () => void;
+  /** Called with the result when the query request resolves, unless it was cancelled. It does not wait for the custom visualizations. */
+  onQueryEnd?: (result: Dataset) => void;
 }
 
 export async function runQuestionQuerySdk(
@@ -36,6 +41,9 @@ export async function runQuestionQuerySdk(
     signal,
     dispatch,
     initialVisualization,
+    ignoreCache = false,
+    onQueryStart,
+    onQueryEnd,
   } = params;
 
   if (question.isSaved()) {
@@ -53,6 +61,8 @@ export async function runQuestionQuerySdk(
   let queryResults;
 
   if (shouldRunCardQuery({ question, isGuestEmbed })) {
+    onQueryStart?.();
+
     const filteredParameters = getGuestEmbedFilteredParameters(
       question,
       parameterValues,
@@ -93,7 +103,7 @@ export async function runQuestionQuerySdk(
       runQuestionQuery(question, {
         dispatch,
         signal,
-        ignoreCache: false,
+        ignoreCache,
         isDirty: isQueryDirty,
         token,
         ...(isGuestEmbed && {
@@ -101,6 +111,11 @@ export async function runQuestionQuerySdk(
             parameters: JSON.stringify(filteredParameters),
           },
         }),
+      }).then((results) => {
+        if (!signal?.aborted) {
+          onQueryEnd?.(results[0]);
+        }
+        return results;
       }),
       loadCustomDisplays(),
     ]);
@@ -147,7 +162,7 @@ export function shouldRunCardQuery({
   question: Question;
   isGuestEmbed: boolean | null;
 }): boolean {
-  // Questions fetched from `/api/embed/*` endpoints have some fields missing, and it forces the this.legacyNativeQuery().canRun() to return `false`
+  // Questions fetched from `/api/embed/*` endpoints have some fields missing, and it forces question.canRun() to return `false`
   // To avoid it we just force-return true
   if (isGuestEmbed) {
     return true;

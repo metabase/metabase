@@ -1,24 +1,20 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { t } from "ttag";
 import _ from "underscore";
 
 import { formatNullable } from "metabase/utils/formatting";
 import {
   ChartSettingsError,
+  type ComputedVisualizationSettings,
   MinRowsError,
-} from "metabase/visualizations/lib/errors";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import {
+  type VisualizationDefinition,
+  columnSettings,
   dimensionSetting,
-  metricSetting,
-} from "metabase/visualizations/lib/settings/utils";
-import {
   getDefaultSize,
+  getLegendPositionSetting,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationDefinition,
-} from "metabase/visualizations/types";
+  metricSetting,
+} from "metabase/viz-core";
 import {
   type DatasetData,
   type RawSeries,
@@ -74,8 +70,9 @@ export const FUNNEL_CHART_DEFINITION: VisualizationDefinition = {
     ...columnSettings({ getHidden: () => true }),
     ...dimensionSetting("funnel.dimension", {
       getSection: () => t`Data`,
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
-      title: t`Column with steps`,
+      get title() {
+        return t`Column with steps`;
+      },
       dashboard: false,
       useRawSeries: true,
       showColumnSetting: true,
@@ -147,16 +144,18 @@ export const FUNNEL_CHART_DEFINITION: VisualizationDefinition = {
     ...metricSetting("funnel.metric", {
       getSection: () => t`Data`,
 
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
-      title: t`Measure`,
+      get title() {
+        return t`Measure`;
+      },
 
       dashboard: false,
       useRawSeries: true,
       showColumnSetting: true,
     }),
     "funnel.type": {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
-      title: t`Funnel type`,
+      get title() {
+        return t`Funnel type`;
+      },
 
       getSection: () => t`Display`,
 
@@ -171,5 +170,9 @@ export const FUNNEL_CHART_DEFINITION: VisualizationDefinition = {
       getDefault: (series: RawSeries) => (series.length > 1 ? "bar" : "funnel"),
       useRawSeries: true,
     },
+    "legend.position": getLegendPositionSetting({
+      getHidden: (_series, settings) => settings["funnel.type"] !== "bar",
+      readDependencies: ["funnel.type"],
+    }),
   },
 };

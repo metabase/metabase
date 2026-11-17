@@ -1,5 +1,3 @@
-/* eslint-disable metabase/no-literal-metabase-strings */
-
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -12,7 +10,11 @@ export function getMcpAppsUserAndSettingsFetchErrorType(
     return "network";
   }
 
-  if ("status" in error && error.status === 401) {
+  // 401: the credential was rejected. 404: it was minted for an MCP session that has
+  // since expired or does not match the one the iframe is holding. Both are fixed by
+  // asking the client to render the visualization again. A 403 means MCP is switched
+  // off instance-wide, which the "network" message covers.
+  if ("status" in error && (error.status === 401 || error.status === 404)) {
     return "auth";
   }
 
@@ -31,6 +33,6 @@ export const getMcpAppsUserAndSettingsFetchErrorMessage = (
     .with(
       "network",
       () =>
-        t`Could not connect to Metabase. Make sure this MCP client is enabled in AI settings and that Metabase is reachable.`,
+        t`Could not connect to the server. Ask your MCP client to show this again.`,
     )
     .exhaustive();

@@ -2,18 +2,16 @@ import type { EChartsType } from "echarts/core";
 import { type MutableRefObject, useCallback, useRef, useState } from "react";
 import _ from "underscore";
 
-import type { TreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
-import type {
-  ParentLabelLayout,
-  TreemapLabelLayout,
-} from "metabase/visualizations/echarts/graph/treemap/model/labels";
-import { measureTreemapLabelLayouts } from "metabase/visualizations/echarts/graph/treemap/model/measure";
-import { getTreemapLayoutNodes } from "metabase/visualizations/echarts/graph/treemap/model/tree";
-import type {
-  NodeId,
-  TreemapTree,
-} from "metabase/visualizations/echarts/graph/treemap/model/types";
-import type { RenderingContext } from "metabase/visualizations/types";
+import {
+  type NodeId,
+  type ParentLabelLayout,
+  type RenderingContext,
+  type TreemapFormatters,
+  type TreemapLabelLayout,
+  type TreemapTree,
+  getTreemapLayoutNodes,
+  measureTreemapLabelLayouts,
+} from "metabase/viz-core";
 
 interface UseLabelMeasurementOptions {
   chartRef: MutableRefObject<EChartsType | undefined>;

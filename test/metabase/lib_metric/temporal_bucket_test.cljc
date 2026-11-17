@@ -203,8 +203,8 @@
 
 (deftest ^:parallel with-temporal-bucket-preserves-other-options-test
   (testing "with-temporal-bucket preserves other options"
-    (let [projection [:dimension {:lib/uuid "test-uuid" :display-name "Test"} uuid-datetime]
+    (let [projection [:dimension {:lib/uuid "00000000-0000-4000-8000-000000000042" :display-name "Test"} uuid-datetime]
           result (lib-metric.projection/with-temporal-bucket projection :month)]
-      (is (= "test-uuid" (:lib/uuid (second result))))
+      (is (= "00000000-0000-4000-8000-000000000042" (:lib/uuid (second result))))
       (is (= "Test" (:display-name (second result))))
       (is (= :month (:temporal-unit (second result)))))))

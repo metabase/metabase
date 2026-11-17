@@ -4,12 +4,10 @@ import type { ConfirmationState } from "metabase/common/hooks/use-confirmation";
 import type { AdminPath, AdminPathKey } from "metabase/redux/store";
 import type { Member, Membership, User } from "metabase-types/api";
 
-const REVOKE_MANAGING_CONFIRMATION = {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+const getRevokeManagingConfirmation = () => ({
   title: t`Are you sure?`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   message: t`You will not be able to manage users of this group anymore.`,
-};
+});
 
 const canAccessPeople = (user?: User) =>
   user?.permissions?.is_group_manager ?? false;
@@ -63,7 +61,7 @@ export const getRemoveMembershipConfirmation = (
     ) != null;
 
   return isRemovingSelf && !currentUser.is_superuser
-    ? REVOKE_MANAGING_CONFIRMATION
+    ? getRevokeManagingConfirmation()
     : null;
 };
 
@@ -76,6 +74,6 @@ export const getChangeMembershipConfirmation = (
     !updatedMembership.is_group_manager;
 
   return isRevokingFromSelf && !currentUser.is_superuser
-    ? REVOKE_MANAGING_CONFIRMATION
+    ? getRevokeManagingConfirmation()
     : null;
 };

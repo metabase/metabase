@@ -3,11 +3,10 @@ import type { DataReferenceSlot } from "metabase/actions/containers/ActionCreato
 import {
   skipToken,
   useGetActionQuery,
-  useGetCardQuery,
   useListDatabasesQuery,
 } from "metabase/api";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import type {
   CardId,
   DatabaseId,
@@ -51,25 +50,30 @@ export function ActionCreator({
   onSubmit,
   onClose,
 }: ActionCreatorProps) {
-  useListDatabasesQuery();
-  useGetCardQuery(modelId != null ? { id: modelId } : skipToken);
-  const metadata = useSelector(getMetadata);
-  const model =
-    modelId != null ? (metadata.question(modelId) ?? undefined) : undefined;
+  const isAdmin = useSelector(getUserIsAdmin);
+  const { data: databases } = useListDatabasesQuery();
   const { data: initialAction } = useGetActionQuery(
     actionId != null ? { id: actionId } : skipToken,
   );
   // This is needed in case we already have an action and pass it from the outside
   const contextAction = action || initialAction;
+  const savedAction = initialAction ?? action;
+  const actionDatabase = databases?.data.find(
+    (database) => database.id === savedAction?.database_id,
+  );
+  const canWriteAction =
+    savedAction?.can_write === true &&
+    Boolean(actionDatabase?.settings?.["database-enable-actions"]);
 
   return (
     <ActionContextProvider
       initialAction={contextAction}
       databaseId={databaseId}
-      metadata={metadata}
     >
       <ActionCreatorContent
-        model={model}
+        modelId={modelId}
+        canCreateActions={isAdmin}
+        canWriteAction={canWriteAction}
         isRouted={isRouted}
         dataReference={DATA_REFERENCE}
         onSubmit={onSubmit}

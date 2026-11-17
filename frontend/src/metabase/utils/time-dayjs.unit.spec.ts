@@ -96,6 +96,24 @@ describe("time-dayjs", () => {
         expect(parseTimestamp(53, "week-of-year").isoWeek()).toBe(53);
       });
     });
+
+    it("should parse numeric temporal extraction units", () => {
+      expect(parseTimestamp(7, "minute-of-hour").minute()).toBe(7);
+      expect(parseTimestamp(5, "day-of-month").date()).toBe(5);
+      expect(parseTimestamp(1, "month-of-year").month()).toBe(0);
+      expect(parseTimestamp(12, "month-of-year").month()).toBe(11);
+      expect(parseTimestamp(1, "quarter-of-year").quarter()).toBe(1);
+      expect(parseTimestamp(4, "quarter-of-year").quarter()).toBe(4);
+    });
+
+    it("should parse day of week relative to the first day of the week", () => {
+      expect(parseTimestamp(1, "day-of-week").day()).toBe(0);
+      expect(parseTimestamp(7, "day-of-week").day()).toBe(6);
+
+      dayjs.updateLocale(dayjs.locale(), { weekStart: 1 });
+      expect(parseTimestamp(1, "day-of-week").day()).toBe(1);
+      expect(parseTimestamp(7, "day-of-week").day()).toBe(0);
+    });
   });
 
   describe("timezoneToUTCOffset", () => {

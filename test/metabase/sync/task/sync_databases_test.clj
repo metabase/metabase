@@ -10,6 +10,7 @@
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.task.sync-databases :as task.sync-databases]
+   [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
@@ -44,8 +45,8 @@
   "Returns the name of trigger for DB.
   These are all the trigger names that a database SHOULD have."
   [db]
-  (set (map #(.getName ^TriggerKey (#'task.sync-databases/trigger-key (t2/instance :model/Database db) %))
-            @#'task.sync-databases/all-tasks)))
+  (set (map #(.getName ^TriggerKey (#'sync-databases-trigger/trigger-key (t2/instance :model/Database db) %))
+            @#'sync-databases-trigger/all-tasks)))
 
 (defn query-all-db-sync-triggers-name
   "Find the all triggers for DB \"db\".
@@ -53,10 +54,10 @@
   [db]
   (let [db (t2/instance :model/Database db)]
     (assert (some? (#'task/scheduler)) "makes sure the scheduler is initialized!")
-    (->> (for [task-info @#'task.sync-databases/all-tasks]
-           (keep #(when (= (.getName ^TriggerKey (#'task.sync-databases/trigger-key db task-info)) (:key %))
+    (->> (for [task-info @#'sync-databases-trigger/all-tasks]
+           (keep #(when (= (.getName ^TriggerKey (#'sync-databases-trigger/trigger-key db task-info)) (:key %))
                     (:key %))
-                 (:triggers (task/job-info (#'task.sync-databases/job-key task-info)))))
+                 (:triggers (task/job-info (#'sync-databases-trigger/job-key task-info)))))
          flatten
          set)))
 
@@ -119,7 +120,7 @@
   (testing "Check that changing the schedule column(s) for a DB properly updates the scheduled tasks"
     (with-scheduler-setup!
       (mt/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
-        (t2/update! :model/Database (u/the-id database)
+        (t2/update! :model/Database :id (u/the-id database)
                     {:metadata_sync_schedule      "0 15 10 ? * MON-FRI"    ; 10:15 AM every weekday
                      :cache_field_values_schedule "0 11 11 11 11 ?"})      ; Every November 11th at 11:11 AM
         (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
@@ -130,7 +131,7 @@
   (testing "Check that changing one schedule doesn't affect the other"
     (with-scheduler-setup!
       (mt/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
-        (t2/update! :model/Database (u/the-id database)
+        (t2/update! :model/Database :id (u/the-id database)
                     {:cache_field_values_schedule "0 15 10 ? * MON-FRI"})
         (is (= [sync-job
                 (assoc-in fv-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")]
@@ -139,7 +140,7 @@
 (deftest schedule-changes-only-expected-test-2
   (with-scheduler-setup!
     (mt/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
-      (t2/update! :model/Database (u/the-id database)
+      (t2/update! :model/Database :id (u/the-id database)
                   {:metadata_sync_schedule "0 15 10 ? * MON-FRI"})
       (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
               fv-job]
@@ -178,7 +179,7 @@
     (mt/with-temp [:model/Database {db-id :id} {:is_full_sync true}]
       (testing "SyncAndAnalyzeDatabase: inner sync orchestrator is skipped when the flag is on"
         (let [calls (atom 0)]
-          (with-redefs [task.sync-databases/sync-and-analyze-database*! (fn [_] (swap! calls inc))]
+          (mt/with-dynamic-fn-redefs [task.sync-databases/sync-and-analyze-database*! (fn [_] (swap! calls inc))]
             (testing "default (flag=false): job proceeds and calls the inner orchestrator"
               (reset! calls 0)
               (#'task.sync-databases/sync-and-analyze-database! (MockJobExecutionContext. {"db-id" db-id}))
@@ -190,7 +191,7 @@
               (is (zero? @calls))))))
       (testing "UpdateFieldValues: field-values update is skipped when the flag is on"
         (let [calls (atom 0)]
-          (with-redefs [sync.field-values/update-field-values! (fn [_] (swap! calls inc))]
+          (mt/with-dynamic-fn-redefs [sync.field-values/update-field-values! (fn [_] (swap! calls inc))]
             (testing "default (flag=false): job proceeds and calls update-field-values!"
               (reset! calls 0)
               (#'task.sync-databases/update-field-values! (MockJobExecutionContext. {"db-id" db-id}))
@@ -206,7 +207,7 @@
     (mt/with-temp [:model/Database {db-id :id}      {:is_stub false}
                    :model/Database {stub-id :id}    {:is_stub true}]
       (let [calls (atom 0)]
-        (with-redefs [task.sync-databases/sync-and-analyze-database*! (fn [_] (swap! calls inc))]
+        (mt/with-dynamic-fn-redefs [task.sync-databases/sync-and-analyze-database*! (fn [_] (swap! calls inc))]
           (testing "non-stub: inner orchestrator is called"
             (reset! calls 0)
             (#'task.sync-databases/sync-and-analyze-database! (MockJobExecutionContext. {"db-id" db-id}))
@@ -221,14 +222,14 @@
     (mt/with-temp [:model/Database non-stub {:is_stub false}
                    :model/Database stub     {:is_stub true}]
       (let [calls (atom 0)]
-        (with-redefs [task.sync-databases/update-db-trigger-if-needed! (fn [_ _] (swap! calls inc))]
+        (mt/with-dynamic-fn-redefs [sync-databases-trigger/update-db-trigger-if-needed! (fn [_ _] (swap! calls inc))]
           (testing "non-stub: triggers are considered for scheduling"
             (reset! calls 0)
-            (task.sync-databases/check-and-schedule-tasks-for-db! non-stub)
+            (sync-databases-trigger/check-and-schedule-tasks-for-db! non-stub)
             (is (pos? @calls)))
           (testing "stub: no scheduling calls are made"
             (reset! calls 0)
-            (task.sync-databases/check-and-schedule-tasks-for-db! stub)
+            (sync-databases-trigger/check-and-schedule-tasks-for-db! stub)
             (is (zero? @calls))))))))
 
 (deftest check-orphaned-jobs-removed-test
@@ -270,7 +271,7 @@
                             :ran-update-field-values? update-field-values-ran?})))))))
 
 #_(defn- cron-schedule-for-next-year []
-    (format "0 15 10 * * ? %d" (inc (u.date/extract :year))))
+    (format "0 15 10 * * ? %d" (inc (u.date/extract {:start-of-week :sunday} (t/zoned-date-time) :year))))
 
 ;; this test fails all the time -- disabled for now until I figure out how to fix it - Cam
 #_(deftest check-sync-tasks-run-test
@@ -378,8 +379,8 @@
     (mt/with-temp [:model/Database db {:metadata_sync_schedule      sync-default
                                        :cache_field_values_schedule fv-default
                                        :details                     {:let-user-control-scheduling true}}]
-      (t2/update! :model/Database (u/the-id db) {:details (assoc (:details db)
-                                                                 :let-user-control-scheduling true)})
+      (t2/update! :model/Database :id (u/the-id db) {:details (assoc (:details db)
+                                                                     :let-user-control-scheduling true)})
       (let [before (t2/select-one :model/Database :id (u/the-id db))]
         (#'task.sync-databases/randomize-db-schedules-if-needed!)
         (let [after (t2/select-one :model/Database :id (u/the-id db))]

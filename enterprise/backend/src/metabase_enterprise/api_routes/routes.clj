@@ -11,23 +11,27 @@
    [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
+   [metabase-enterprise.browser-sandboxing.api]
    [metabase-enterprise.cloud-add-ons.api]
    [metabase-enterprise.cloud-proxy.api]
+   [metabase-enterprise.content-diagnostics.api]
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.custom-viz-plugin.api]
-   [metabase-enterprise.custom-viz-plugin.api.sandbox-host]
    [metabase-enterprise.data-apps.api]
    [metabase-enterprise.data-complexity-score.api]
    [metabase-enterprise.data-studio.api]
+   [metabase-enterprise.data-testing.api]
+   [metabase-enterprise.data-testing.card-api]
+   [metabase-enterprise.data-testing.run-api]
    [metabase-enterprise.database-replication.api :as database-replication.api]
    [metabase-enterprise.database-routing.api]
    [metabase-enterprise.dependencies.api]
    [metabase-enterprise.email.api]
-   [metabase-enterprise.embedding-hub.api]
    [metabase-enterprise.erd.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
+   [metabase-enterprise.mcp.api.permissions]
    [metabase-enterprise.metabot-analytics.api]
    [metabase-enterprise.metabot.api]
    [metabase-enterprise.metabot.api.routes]
@@ -37,18 +41,19 @@
    [metabase-enterprise.replacement.api]
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
+   [metabase-enterprise.search.semantic.api]
    [metabase-enterprise.security-center.api]
-   [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
+   [metabase-enterprise.session-management.api]
    [metabase-enterprise.stale.api]
    [metabase-enterprise.support-access-grants.api]
    [metabase-enterprise.tenants.api]
    [metabase-enterprise.transforms-python.api]
    [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
+   [metabase-enterprise.workspaces.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
-   [metabase.request.core :as request]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (comment metabase-enterprise.advanced-config.api.logs/keep-me)
@@ -59,9 +64,10 @@
    :attached-dwh               (deferred-tru "Attached DWH")
    :audit-app                  (deferred-tru "Audit app")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
+   :content-diagnostics        (deferred-tru "Content Diagnostics")
    :content-translation        (deferred-tru "Content translation")
    :custom-viz                 (deferred-tru "Custom Visualizations")
-   :data-apps-preview          (deferred-tru "Data Apps")
+   :data-apps                  (deferred-tru "Data Apps")
    :library                    (deferred-tru "Library")
    :dependencies               (deferred-tru "Dependency Tracking")
    :schema-viewer              (deferred-tru "Schema Viewer")
@@ -73,6 +79,7 @@
    :semantic-search            (deferred-tru "Semantic Search")
    :admin-security-center      (deferred-tru "Security Center")
    :serialization              (deferred-tru "Serialization")
+   :session-management         (deferred-tru "Session management")
    :table-data-editing         (deferred-tru "Table Data Editing")
    :tenants                    (deferred-tru "Tenants")
    :upload-management          (deferred-tru "Upload Management")
@@ -80,7 +87,9 @@
    :metabot-v3                (deferred-tru "Metabot")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")
    :support-users              (deferred-tru "Support Users")
-   :transforms-python          (deferred-tru "Transforms Python")})
+   :transforms-python          (deferred-tru "Transforms Python")
+   :transforms-testing         (deferred-tru "Transforms Testing")
+   :workspaces                 (deferred-tru "Workspaces")})
 
 (defn- premium-handler [handler required-feature]
   (let [handler (cond-> handler
@@ -94,10 +103,6 @@
 
   TODO -- Please fix them! See #22687"
   {"/moderation-review" metabase-enterprise.content-verification.api.routes/routes
-   ;; Data-app bundle hosting. Naughty because the FE route lives at `/apps/:slug`
-   ;; (and `/api/apps/...`), NOT `/api/ee/...` — `/app/*` is reserved for static
-   ;; assets, so we keep the public path stable here. Superuser-only inside the handler.
-   (str "/" request/data-app-url-segment) (premium-handler metabase-enterprise.data-apps.api/routes :data-apps-preview)
    "/mt"                metabase-enterprise.sandbox.api.routes/sandbox-routes
    "/table"             metabase-enterprise.sandbox.api.routes/sandbox-table-routes})
 
@@ -108,24 +113,26 @@
   ;; Postponing a granular flag for :actions until it's used more widely.
   {"/action-v2"                    (premium-handler metabase-enterprise.action-v2.api/routes :table-data-editing)
    "/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
-   "/ai-controls"                  (premium-handler metabase-enterprise.metabot.api.routes/routes :ai-controls)
+   ;; MCP permissions check :ai-controls per endpoint and must come first: the Metabot handler refuses every
+   ;; request without the feature, matching or not.
+   "/ai-controls"                  (handlers/routes
+                                    (handlers/route-map-handler
+                                     {"/mcp-permissions" metabase-enterprise.mcp.api.permissions/routes})
+                                    (premium-handler metabase-enterprise.metabot.api.routes/routes :ai-controls))
+   "/apps"                         (premium-handler metabase-enterprise.data-apps.api/routes :data-apps)
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
+   "/card-test"                    (premium-handler metabase-enterprise.data-testing.card-api/routes :transforms-testing)
+   "/content-diagnostics"          (premium-handler metabase-enterprise.content-diagnostics.api/routes :content-diagnostics)
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
-   ;; The sandbox donor GET can be accessed without auth (an iframe src cannot carry session auth), so it lives in
-   ;; its own namespace, tested before the rest of the session-authed custom-viz routes. Both stay behind
-   ;; the :custom-viz premium gate.
-   "/custom-viz-plugin"            (premium-handler
-                                    (handlers/routes
-                                     metabase-enterprise.custom-viz-plugin.api.sandbox-host/routes
-                                     metabase-enterprise.custom-viz-plugin.api/routes)
-                                    :custom-viz)
+   "/custom-viz-plugin"            (premium-handler metabase-enterprise.custom-viz-plugin.api/routes :custom-viz)
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes
    "/cloud-proxy"                  metabase-enterprise.cloud-proxy.api/routes
    ;; No premium-handler gate yet — we haven't settled on the feature flag name or final API shape.
    ;; Endpoint is superuser-only so it's not exposed to regular users in the meantime.
    "/data-complexity-score"        metabase-enterprise.data-complexity-score.api/routes
    "/data-studio"                  (premium-handler metabase-enterprise.data-studio.api/routes :library)
+   "/data-test-run"                (premium-handler metabase-enterprise.data-testing.run-api/routes :transforms-testing)
    "/database-replication"         (-> database-replication.api/routes ;; database-replication requires all these features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections)
@@ -136,7 +143,6 @@
    "/erd"                          (premium-handler metabase-enterprise.erd.api/routes :schema-viewer)
    "/remote-sync"                  (premium-handler metabase-enterprise.remote-sync.api/routes :remote-sync)
    "/replacement"                  (premium-handler metabase-enterprise.replacement.api/routes :dependencies)
-   "/embedding-hub"                (premium-handler metabase-enterprise.embedding-hub.api/routes :embedding)
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))
@@ -149,18 +155,23 @@
    ;; a lapsed-license user still needs to manage their enrolled second factor. The :multi-factor-auth
    ;; feature gates setup paths. MFA verification lives under /api/session/mfa/* (OSS mount).
    "/mfa"                          metabase-enterprise.mfa.routes/routes
+   "/browser-sandboxing"           metabase-enterprise.browser-sandboxing.api/routes
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
+   "/transform-test"               (premium-handler metabase-enterprise.data-testing.api/routes :transforms-testing)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
-   "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
+   "/semantic-search"              (premium-handler metabase-enterprise.search.semantic.api/routes :semantic-search)
    "/security-center"              (premium-handler metabase-enterprise.security-center.api/routes :admin-security-center)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
+   "/session-management"           (premium-handler metabase-enterprise.session-management.api/routes :session-management)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
    "/support-access-grant" (premium-handler metabase-enterprise.support-access-grants.api/routes :support-users)
    "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)
-   "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
+   "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)
+   "/workspace-instance"           (premium-handler metabase-enterprise.workspaces.api/instance-routes :workspaces)
+   "/workspace-manager"            (premium-handler metabase-enterprise.workspaces.api/manager-routes :workspaces)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 (def ^:private routes-map

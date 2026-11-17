@@ -1,50 +1,46 @@
 import fetchMock from "fetch-mock";
 
+import {
+  createMockMetadata,
+  createMockMetadataFromState,
+} from "__support__/metadata";
+import { createMockLocation, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { databaseApi, snippetApi } from "metabase/api";
+import { cardApi, databaseApi, snippetApi } from "metabase/api";
 import * as rtkEndpointUtils from "metabase/api/utils/run-rtk-endpoint";
 import * as CardLib from "metabase/common/utils/card";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
-import {
-  createMockLocation,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { Location } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import type { JsMetadata } from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
   DatabaseId,
-  NativeDatasetQuery,
   TableId,
-  TemplateTag,
+  TestTemplateTag,
   UnsavedCard,
   User,
 } from "metabase-types/api";
 import {
+  createMockCard,
   createMockSegment,
+  createMockUnsavedCard,
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   SAMPLE_DB_ID,
-  createAdHocCard,
-  createAdHocNativeCard,
-  createNativeModelCard,
   createSampleDatabase,
-  createSavedNativeCard,
-  createSavedStructuredCard,
-  createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 
+import * as qbActions from "../../store/actions";
 import * as querying from "../querying";
 
 import * as cardActions from "./card";
@@ -84,7 +80,7 @@ async function baseSetup({
         : user,
   });
 
-  const metadata = getMetadata(state);
+  const metadata = createMockMetadataFromState(state);
   const getState = () => state;
 
   // Pass actions through verbatim so callers that capture the result of
@@ -92,7 +88,7 @@ async function baseSetup({
   // call methods on it in tests where the snippet endpoint is mocked.
   const dispatch = jest.fn((action) => action);
   await initializeQB(location, params)(dispatch, getState);
-  jest.runAllTimers();
+  jest.runOnlyPendingTimers();
 
   const actions = dispatch.mock.calls.find(
     (call) => call[0]?.type === sharedQB.INITIALIZE_QB,
@@ -154,7 +150,7 @@ async function setup({
   return baseSetup({ location, params, ...opts });
 }
 
-const SNIPPET: TemplateTag = {
+const SNIPPET: TestTemplateTag = {
   id: "id",
   "snippet-id": 1,
   "display-name": "foo",
@@ -163,16 +159,54 @@ const SNIPPET: TemplateTag = {
   type: "snippet",
 };
 
-const NATIVE_QUESTION_WITH_SNIPPET: NativeDatasetQuery = {
-  type: "native",
-  database: 1,
-  native: {
-    query: "select * from orders {{ foo }}",
-    "template-tags": {
-      foo: SNIPPET,
-    },
+const NATIVE_QUESTION_WITH_SNIPPET = Lib.createTestJsNativeQuery(
+  SAMPLE_PROVIDER,
+  {
+    query: "select * from orders {{snippet: foo}}",
+    templateTags: { "snippet: foo": SNIPPET },
   },
-};
+);
+
+function createAdHocCard(opts?: Partial<UnsavedCard>): UnsavedCard {
+  return createMockUnsavedCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    ...opts,
+  });
+}
+
+function createAdHocNativeCard(opts?: Partial<UnsavedCard>): UnsavedCard {
+  return createMockUnsavedCard({
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
+    ...opts,
+  });
+}
+
+function createSavedStructuredCard(opts?: Partial<Card>): Card {
+  return createMockCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    ...opts,
+  });
+}
+
+function createSavedNativeCard(opts?: Partial<Card>): Card {
+  return createMockCard({
+    query_type: "native",
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
+    ...opts,
+  });
+}
+
+function createStructuredModelCard(opts?: Partial<Card>): Card {
+  return createSavedStructuredCard({ type: "model", ...opts });
+}
+
+function createNativeModelCard(opts?: Partial<Card>): Card {
+  return createSavedNativeCard({ type: "model", ...opts });
+}
 
 // Silence `console.warn` / `console.error` at module load so that describe-body
 // invocations of `setErrorPage(...)` (which logs via `console.error`) don't
@@ -257,7 +291,7 @@ describe("QB Actions > initializeQB", () => {
 
       describe(questionType, () => {
         it("resets QB state before doing anything", async () => {
-          const resetQBSpy = jest.spyOn(sharedQB, "resetQB");
+          const resetQBSpy = jest.spyOn(qbActions, "resetQB");
           await setup({ card });
           expect(resetQBSpy).toHaveBeenCalledTimes(1);
         });
@@ -673,14 +707,88 @@ describe("QB Actions > initializeQB", () => {
             },
           });
           const formattedQuestion = new Question(result.card, metadata);
-          // Unjustified type cast. FIXME
-          const query = formattedQuestion.legacyNativeQuery() as NativeQuery;
 
-          expect(query.queryText().toLowerCase()).toBe(
-            "select * from orders {{snippet: bar}}",
-          );
+          expect(
+            Lib.rawNativeQuery(formattedQuestion.query()).toLowerCase(),
+          ).toBe("select * from orders {{snippet: bar}}");
         });
       });
+    });
+  });
+
+  describe("native questions with card references", () => {
+    const REFERENCED_CARD = createMockCard({ id: 10, name: "Bob's Café" });
+
+    function setupCardReference({ tagName }: { tagName: string }) {
+      const actualRunRtkEndpoint = rtkEndpointUtils.runRtkEndpoint;
+      jest
+        .spyOn(rtkEndpointUtils, "runRtkEndpoint")
+        .mockImplementation((request, dispatch, endpoint, options) =>
+          endpoint === cardApi.endpoints.getCard
+            ? Promise.resolve(REFERENCED_CARD)
+            : actualRunRtkEndpoint(request, dispatch, endpoint, options),
+        );
+
+      return setup({
+        card: createSavedNativeCard({
+          dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+            query: `SELECT * FROM {{${tagName}}}`,
+            templateTags: {
+              [tagName]: {
+                name: tagName,
+                "display-name": tagName,
+                type: "card",
+                "card-id": REFERENCED_CARD.id,
+              },
+            },
+          }),
+        }),
+      });
+    }
+
+    function getQueryText(card: Card, metadata: JsMetadata) {
+      return Lib.rawNativeQuery(new Question(card, metadata).query());
+    }
+
+    function isDirty(
+      { card, originalCard }: { card: Card; originalCard: Card },
+      metadata: JsMetadata,
+    ) {
+      return new Question(card, metadata).isDirtyComparedTo(
+        new Question(originalCard, metadata),
+      );
+    }
+
+    it("fetches the card that the tag references", async () => {
+      await setupCardReference({ tagName: "#10-bobs-cafe" });
+
+      expect(rtkEndpointUtils.runRtkEndpoint).toHaveBeenCalledWith(
+        { id: REFERENCED_CARD.id, ignore_error: true },
+        expect.anything(),
+        cardApi.endpoints.getCard,
+      );
+    });
+
+    it("keeps a card reference unchanged when its tag name matches the name the frontend generates", async () => {
+      const { result, metadata } = await setupCardReference({
+        tagName: "#10-bobs-cafe",
+      });
+
+      expect(getQueryText(result.card, metadata)).toBe(
+        "SELECT * FROM {{#10-bobs-cafe}}",
+      );
+      expect(isDirty(result, metadata)).toBe(false);
+    });
+
+    it("renames a card reference whose tag name does not match the name the frontend generates", async () => {
+      const { result, metadata } = await setupCardReference({
+        tagName: "#10-foo",
+      });
+
+      expect(getQueryText(result.card, metadata)).toBe(
+        "SELECT * FROM {{#10-bobs-cafe}}",
+      );
+      expect(isDirty(result, metadata)).toBe(true);
     });
   });
 
@@ -735,13 +843,13 @@ describe("QB Actions > initializeQB", () => {
 
       // Second init runs to completion, superseding the first
       await startInitializeDB(secondCard, dispatch, getState);
-      jest.runAllTimers();
+      jest.runOnlyPendingTimers();
 
       // Unblock the first init; it should bail out once it sees the version
       // has been superseded.
       resolveFirstLoad(firstCard);
       await firstInit;
-      jest.runAllTimers();
+      jest.runOnlyPendingTimers();
 
       const initActions = dispatch.mock.calls.filter(
         (call) => call[0]?.type === sharedQB.INITIALIZE_QB,
@@ -786,11 +894,11 @@ describe("QB Actions > initializeQB", () => {
       await Promise.resolve();
 
       await startInitializeDB(secondCard, dispatch, getState);
-      jest.runAllTimers();
+      jest.runOnlyPendingTimers();
 
       resolveFirstLoad(firstCard);
       await firstInit;
-      jest.runAllTimers();
+      jest.runOnlyPendingTimers();
 
       const archiveError = setErrorPage(
         expect.objectContaining({ data: { error_code: "archived" } }),
@@ -889,6 +997,7 @@ describe("QB Actions > initializeQB", () => {
 
     it("constructs a card based on provided 'db' param", async () => {
       const expectedCard = Question.create({
+        metadata: createMockMetadata(),
         DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
       }).card();
 
@@ -902,15 +1011,19 @@ describe("QB Actions > initializeQB", () => {
           expectedCard.dataset_query,
         ),
       ).toBe(true);
-      expect(Lib.sourceTableOrCardId(query)).toBe(null);
+      expect(Lib.primarySourceTableId(query)).toBe(null);
       expect(result.originalCard).toBeUndefined();
     });
 
     it("constructs a card based on provided 'db' and 'table' params", async () => {
       const { result, metadata } = await setupOrdersTable();
-      const expectedCard = checkNotNull(
-        metadata.table(ORDERS_ID)?.question().card(),
-      );
+      const expectedCard = Question.create({
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+        DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
+        metadata,
+      })
+        .setDefaultDisplay()
+        .card();
 
       expect(
         Lib.areLegacyQueriesEqual(
@@ -975,9 +1088,13 @@ describe("QB Actions > initializeQB", () => {
 
     it("builds the table's default ad-hoc question from the slug", async () => {
       const { result, metadata } = await setupTableRoute(ORDERS_ID);
-      const expectedCard = checkNotNull(
-        metadata.table(ORDERS_ID)?.question().card(),
-      );
+      const expectedCard = Question.create({
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+        DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
+        metadata,
+      })
+        .setDefaultDisplay()
+        .card();
 
       expect(
         Lib.areLegacyQueriesEqual(

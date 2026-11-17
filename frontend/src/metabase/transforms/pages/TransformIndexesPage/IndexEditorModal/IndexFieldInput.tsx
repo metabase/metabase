@@ -37,7 +37,6 @@ export function IndexFieldInput({
           label={isUniqueField ? (description ?? label) : label}
           description={isUniqueField ? undefined : description}
           disabled={disabled}
-          size="sm"
         />
       );
     })

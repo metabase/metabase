@@ -58,7 +58,7 @@ export const DiagnosticsFilterBar = memo(function DiagnosticsFilterBar({
   };
 
   return (
-    <Group gap="md" align="center" wrap="nowrap">
+    <Group gap="lg" align="center" wrap="nowrap">
       <TextInput
         value={searchValue}
         placeholder={t`Search…`}

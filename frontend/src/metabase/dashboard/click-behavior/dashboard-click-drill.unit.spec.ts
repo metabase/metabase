@@ -1,12 +1,24 @@
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { createMockMetadata } from "__support__/metadata";
+import { deserializeCardFromUrl } from "metabase/common/utils/card";
+import { getTargetsForQuestion } from "metabase/dashboard/utils/click-behavior";
+import { isAlwaysDefaultClickAction } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { ClickBehavior } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDashboard,
+  createMockDashboardCard,
   createMockParameter,
+  createMockVisualizerDashboardCard,
 } from "metabase-types/api/mocks";
+import {
+  PRODUCTS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { DashboardClickAction } from "./DashboardClickAction";
 import {
@@ -44,9 +56,7 @@ function buildSettings({
   );
   const settings: ComputedVisualizationSettings = {
     column_settings,
-    // Computed column() does NOT surface click_behavior (#73448). Returning the
-    // formatter-only shape mirrors the production behavior we have to handle.
-    column: () => ({}),
+    column: ({ name }) => ({ click_behavior: columns[name] }),
   };
   if (root) {
     settings.click_behavior = root;
@@ -55,51 +65,76 @@ function buildSettings({
 }
 
 describe("getClickBehavior", () => {
-  it("uses click behavior configured on the clicked column", () => {
-    const clickBehavior = getClickBehavior({
-      column: metricColumn,
-      settings: buildSettings({ columns: { count: metricClickBehavior } }),
-    });
-
-    expect(clickBehavior).toBe(metricClickBehavior);
-  });
-
-  it("falls back to the click behavior configured on a clicked dimension (#73448)", () => {
+  it("does not inherit another table column's click behavior through row dimensions (#82956)", () => {
     const clickBehavior = getClickBehavior({
       column: metricColumn,
       dimensions: [{ column: dimensionColumn, value: "Gadget" }],
       settings: buildSettings({
         columns: { CATEGORY: dimensionClickBehavior },
       }),
+      extraData: { dashcard: createMockDashboardCard() },
     });
 
-    expect(clickBehavior).toBe(dimensionClickBehavior);
+    expect(clickBehavior).toBeUndefined();
   });
 
-  it("prefers a clicked column behavior over a dimension behavior", () => {
-    const clickBehavior = getClickBehavior({
-      column: metricColumn,
-      dimensions: [{ column: dimensionColumn, value: "Gadget" }],
-      settings: buildSettings({
-        columns: {
-          count: metricClickBehavior,
-          CATEGORY: dimensionClickBehavior,
+  it.each([
+    { description: "explicit", behavior: rootClickBehavior },
+    { description: "default", behavior: undefined },
+  ])(
+    "uses the chart's $description behavior instead of retained table column actions (#73448)",
+    ({ behavior }) => {
+      const clickBehavior = getClickBehavior({
+        column: metricColumn,
+        dimensions: [{ column: dimensionColumn, value: "Gadget" }],
+        extraData: {
+          dashcard: createMockVisualizerDashboardCard({
+            card: createMockCard({ display: "table" }),
+            visualization_settings: {
+              visualization: {
+                display: "bar",
+                settings: {},
+                columnValuesMapping: {},
+              },
+            },
+          }),
         },
-      }),
-    });
+        settings: {
+          ...buildSettings({
+            root: behavior,
+            columns: {
+              count: metricClickBehavior,
+              CATEGORY: dimensionClickBehavior,
+            },
+          }),
+          // Charts' computed column settings do not expose retained table click actions.
+          column: () => ({}),
+        },
+      });
 
-    expect(clickBehavior).toBe(metricClickBehavior);
-  });
+      expect(clickBehavior).toBe(behavior);
+    },
+  );
 
-  it("falls back to the root click behavior when neither column nor dimension has one", () => {
-    const clickBehavior = getClickBehavior({
-      column: metricColumn,
-      dimensions: [{ column: dimensionColumn, value: "Gadget" }],
-      settings: buildSettings({ root: rootClickBehavior }),
-    });
+  it.each([
+    { description: "configured", behavior: metricClickBehavior },
+    { description: "default", behavior: undefined },
+  ])(
+    "uses only the table column's $description behavior when a card action remains",
+    ({ behavior }) => {
+      const clickBehavior = getClickBehavior({
+        column: metricColumn,
+        dimensions: [{ column: dimensionColumn, value: "Gadget" }],
+        extraData: { dashcard: createMockDashboardCard() },
+        settings: {
+          ...buildSettings({ root: rootClickBehavior }),
+          column: () => ({ click_behavior: behavior }),
+        },
+      });
 
-    expect(clickBehavior).toBe(rootClickBehavior);
-  });
+      expect(clickBehavior).toBe(behavior);
+    },
+  );
 });
 
 const stateColumn = createMockColumn({ name: "STATE" });
@@ -263,6 +298,126 @@ describe("getDashboardDrillUrl", () => {
 
     expect(url).toBe("/dashboard/2?state=CA&size=L&tab=7");
   });
+
+  it("omits the tab and filter params when the link has no tab and the target has no filters", () => {
+    const url = getDashboardDrillUrl({
+      settings: buildSettings({
+        root: {
+          type: "link",
+          linkType: "dashboard",
+          targetId: 3,
+          tabId: undefined,
+          parameterMapping: {},
+        },
+      }),
+      data: [{ col: stateColumn, value: "CA" }],
+      extraData: {
+        ...drillExtraData,
+        dashboards: { 3: createMockDashboard({ id: 3, parameters: [] }) },
+      },
+    });
+
+    expect(url).toBe("/dashboard/3?");
+  });
+});
+
+describe("DashboardClickAction with a question link", () => {
+  it("opens the target question filtered by a clicked boolean custom column value", () => {
+    const metadata = createMockMetadata({
+      databases: [createSampleDatabase()],
+    });
+    const query = Lib.createTestQuery(createMetadataProvider({ metadata }), {
+      stages: [
+        {
+          source: { type: "table", id: PRODUCTS_ID },
+          expressions: [
+            {
+              name: "Boolean column",
+              value: {
+                type: "operator",
+                operator: "starts-with",
+                args: [
+                  { type: "column", name: "CATEGORY" },
+                  { type: "literal", value: "Gi" },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    const targetCard = createMockCard({
+      id: 5,
+      dataset_query: Lib.toJsQuery(query),
+    });
+    const target = getTargetsForQuestion(
+      new Question(targetCard, metadata),
+    ).find(({ name }) => name === "Boolean column");
+    if (target == null) {
+      throw new Error("Boolean column target not found");
+    }
+    const booleanColumn = createMockColumn({
+      name: "Boolean column",
+      base_type: "type/Boolean",
+      effective_type: "type/Boolean",
+    });
+
+    const sourceCard = createMockCard({ id: 1, display: "table" });
+
+    const actions = DashboardClickAction({
+      question: new Question(sourceCard, metadata),
+      clicked: {
+        column: booleanColumn,
+        value: false,
+        data: [{ col: booleanColumn, value: false }],
+        settings: buildSettings({
+          columns: {
+            "Boolean column": {
+              type: "link",
+              linkType: "question",
+              targetId: 5,
+              parameterMapping: {
+                [target.id]: {
+                  id: target.id,
+                  source: {
+                    type: "column",
+                    id: "Boolean column",
+                    name: "Boolean column",
+                  },
+                  target: target.target,
+                },
+              },
+            },
+          },
+        }),
+        extraData: {
+          dashboard: createMockDashboard({ id: 1 }),
+          dashcard: createMockDashboardCard({
+            card_id: sourceCard.id,
+            card: sourceCard,
+          }),
+          questions: { 5: targetCard },
+        },
+      },
+    });
+
+    expect(actions).toHaveLength(1);
+    const [action] = actions;
+    const url =
+      isAlwaysDefaultClickAction(action) && "url" in action
+        ? action.url?.()
+        : undefined;
+    expect(url).toMatch(/^\/question#/);
+    const drilledQuery = new Question(
+      deserializeCardFromUrl(url?.split("#")[1] ?? ""),
+      metadata,
+    ).query();
+    expect(
+      Lib.filters(drilledQuery, 0).map(
+        (filter) => Lib.displayInfo(drilledQuery, 0, filter).displayName,
+      ),
+    ).toEqual(["Boolean column is false"]);
+  });
 });
 
 describe("getDashboardDrillLinkUrl", () => {
@@ -283,17 +438,17 @@ describe("getDashboardDrillLinkUrl", () => {
 });
 
 describe("DashboardClickAction", () => {
-  it("creates a click-behavior action for a chart click with a dimension-scoped behavior (#73448)", () => {
+  it("creates a click-behavior action for the configured chart behavior", () => {
     const actions = DashboardClickAction({
-      question: new Question(createMockCard()),
+      question: new Question(createMockCard(), createMockMetadata()),
       clicked: {
         column: metricColumn,
         dimensions: [{ column: dimensionColumn, value: "Gadget" }],
         extraData: { dashboard: {}, parameters: [] },
+        settings: buildSettings({
+          root: { type: "crossfilter", parameterMapping: {} },
+        }),
       },
-      settings: buildSettings({
-        columns: { CATEGORY: { type: "crossfilter", parameterMapping: {} } },
-      }),
     });
 
     expect(actions).toHaveLength(1);
@@ -305,7 +460,7 @@ describe("DashboardClickAction", () => {
 
   it("returns no action when no click behavior is configured for the clicked target", () => {
     const actions = DashboardClickAction({
-      question: new Question(createMockCard()),
+      question: new Question(createMockCard(), createMockMetadata()),
       clicked: {
         column: metricColumn,
         dimensions: [{ column: dimensionColumn, value: "Gadget" }],

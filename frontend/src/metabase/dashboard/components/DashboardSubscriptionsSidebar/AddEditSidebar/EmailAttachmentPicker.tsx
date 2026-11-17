@@ -429,7 +429,7 @@ export function EmailAttachmentPicker({
         checked={includePdf}
         onChange={(e) => onToggleIncludePdf(e.target.checked)}
         disabled={!canAttachFiles}
-        mb="md"
+        mb="lg"
         classNames={{
           body: S.AttachmentSwitchBody,
           input: S.AttachmentSwitchInput,
@@ -441,23 +441,10 @@ export function EmailAttachmentPicker({
         <Box>
           <Switch
             label={
-              <Group gap={0}>
-                <Text
-                  fw="bold"
-                  c={disabledReason ? "text-secondary" : "text-primary"}
-                >{t`Attach CSV/XLSX with results`}</Text>
-                <Icon
-                  name="info"
-                  c="text-secondary"
-                  ml="0.5rem"
-                  size={12}
-                  tooltip={
-                    !disabledReason
-                      ? t`Attachments can contain up to 2,000 rows of data.`
-                      : undefined
-                  }
-                />
-              </Group>
+              <Text
+                fw="bold"
+                c={disabledReason ? "text-secondary" : "text-primary"}
+              >{t`Attach CSV/XLSX with results`}</Text>
             }
             aria-label={t`Attach results`}
             checked={isEnabled && canAttachFiles}
@@ -468,7 +455,7 @@ export function EmailAttachmentPicker({
               body: S.AttachmentSwitchBody,
               input: S.AttachmentSwitchInput,
             }}
-            mb="md"
+            mb="lg"
           />
         </Box>
       </Tooltip>

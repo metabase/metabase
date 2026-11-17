@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
-import { useSyncSecurityAdvisoriesMutation } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useToast } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
@@ -20,6 +19,7 @@ import {
 } from "metabase/ui";
 
 import { trackSecurityCenterPageViewed } from "../../analytics";
+import { useSyncSecurityAdvisoriesMutation } from "../../api";
 import {
   NotificationConfigProvider,
   useNotificationConfigState,
@@ -78,8 +78,7 @@ export function SecurityCenterPage() {
       setIsPolling(true);
     } catch {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to check for security advisories`,
       });
     }
@@ -105,8 +104,7 @@ export function SecurityCenterPage() {
     } else if (pollCountRef.current >= MAX_POLL_COUNT) {
       setIsPolling(false);
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "warning",
         message: t`Security advisory check is taking longer than expected. Results will appear when ready.`,
       });
     }
@@ -126,10 +124,10 @@ export function SecurityCenterPage() {
     return (
       <AdminSettingsLayout>
         <Box className={S.root}>
-          <Stack gap="lg" className={S.header}>
+          <Stack gap="xl" className={S.header}>
             <Title order={1}>{t`Security Center`}</Title>
           </Stack>
-          <Stack gap="xl" className={S.content}>
+          <Stack gap="xxl" className={S.content}>
             <EmptyState
               className={S.emptyState}
               icon="warning_triangle_filled"
@@ -145,7 +143,7 @@ export function SecurityCenterPage() {
     <NotificationConfigProvider value={notificationConfig}>
       <AdminSettingsLayout>
         <Box className={S.root} data-testid="security-center-page">
-          <Stack gap="md" className={S.header}>
+          <Stack gap="lg" className={S.header}>
             <Group gap="sm" align="center">
               <Title order={1}>{t`Security Center`}</Title>
               <Box style={{ flex: 1 }} />
@@ -166,23 +164,19 @@ export function SecurityCenterPage() {
               </Button>
               <Button
                 variant="subtle"
-                leftSection={isSmallScreen ? undefined : <Icon name="gear" />}
+                leftSection={<Icon name="gear" />}
                 onClick={() => setSettingsOpen(true)}
                 data-testid="notification-config-toggle"
               >
-                {isSmallScreen ? (
-                  <Icon name="gear" />
-                ) : (
-                  t`Notification settings`
-                )}
+                {isSmallScreen ? null : t`Notification settings`}
               </Button>
             </Group>
             <Text c="text-secondary" data-testid="current-version">
               {t`Current version`}: {currentVersion}
             </Text>
-            {targetVersion && <UpgradeBanner targetVersion={targetVersion} />}
+            <UpgradeBanner targetVersion={targetVersion} />
           </Stack>
-          <Stack gap="xl" className={S.content}>
+          <Stack gap="xxl" className={S.content}>
             <AdvisoryFilterBar
               className={S.filterBar}
               filter={filter}

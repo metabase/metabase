@@ -1,15 +1,21 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockMetadata } from "__support__/metadata";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
-import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
+import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import {
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import type {
   DatasetQuery,
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
-  StructuredQuery,
-  TemplateTags,
+  TestQuerySpec,
+  TestTemplateTags,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -17,6 +23,13 @@ import {
   createMockDatabase,
   createMockTable,
 } from "metabase-types/api/mocks";
+import {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import {
   CodeEditTablePills,
@@ -34,7 +47,7 @@ const ORDERS_TABLE = createMockTable({
   display_name: "Orders",
 });
 const PRODUCTS_TABLE = createMockTable({
-  id: 3,
+  id: PRODUCTS_ID,
   db_id: 1,
   name: "PRODUCTS",
   display_name: "Products",
@@ -62,26 +75,54 @@ const createGeneratedCard = (datasetQuery: DatasetQuery): GeneratedCard => ({
   query: { id: "query-1", query: datasetQuery },
 });
 
-const createMbqlCard = (query: StructuredQuery, database = 1) =>
-  createGeneratedCard({
-    type: "query",
-    database,
-    query,
-  });
+const REVENUE_MODEL = createMockCard({
+  id: 4,
+  name: "Revenue",
+  type: "metric",
+  database_id: SAMPLE_DB_ID,
+  table_id: ORDERS_ID,
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  }),
+});
+
+const CARD_PROVIDER = createMetadataProvider({
+  metadata: createMockMetadata({
+    databases: [createSampleDatabase()],
+    questions: [REVENUE_MODEL],
+  }),
+});
+
+const createMbqlCard = (spec: TestQuerySpec) =>
+  createGeneratedCard(
+    Lib.toLegacyQuery(Lib.createTestQuery(CARD_PROVIDER, spec)),
+  );
 
 const createNativeCard = (
   sql = "SELECT * FROM ORDERS",
-  database = 1,
-  templateTags?: TemplateTags,
+  templateTags?: TestTemplateTags,
 ) =>
-  createGeneratedCard({
-    type: "native",
-    database,
-    native: {
-      query: sql,
-      ...(templateTags ? { "template-tags": templateTags } : {}),
-    },
-  });
+  createGeneratedCard(
+    Lib.toLegacyQuery(
+      Lib.createTestNativeQuery(CARD_PROVIDER, { query: sql, templateTags }),
+    ),
+  );
+
+const createNativeQueryWithJoin = () => {
+  const query = Lib.appendStage(
+    Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+      query: "SELECT * FROM ORDERS",
+    }),
+  );
+  const products = checkNotNull(Lib.tableOrCardMetadata(query, PRODUCTS_ID));
+  const condition = Lib.joinConditionClause(
+    "=",
+    Lib.expressionClause(1),
+    Lib.expressionClause(1),
+  );
+  const [strategy] = Lib.availableJoinStrategies(query, -1);
+  return Lib.join(query, -1, Lib.joinClause(products, [condition], strategy));
+};
 
 const setupTableEndpoints = (...tables: (typeof ORDERS_TABLE)[]) => {
   tables.forEach((table) => {
@@ -108,6 +149,7 @@ const setupNativeEndpoints = ({ delay = 0 }: { delay?: number } = {}) => {
     },
     { delay },
   );
+  fetchMock.get(`path:/api/table/${ORDERS_TABLE.id}`, ORDERS_TABLE);
   fetchMock.get("path:/api/database/1", DATABASE);
 };
 
@@ -128,7 +170,7 @@ const renderMbqlPills = ({
   query,
 }: {
   messageId?: string;
-  query: StructuredQuery;
+  query: TestQuerySpec;
 }) =>
   renderWithProviders(
     <GeneratedCardTablePills
@@ -150,7 +192,6 @@ describe("MetabotAgentDataSourcePills", () => {
       expect(
         fetchMock.callHistory.calls(SOURCE_FEEDBACK_ENDPOINT, {
           body: {
-            metabot_id: FIXED_METABOT_IDS.DEFAULT,
             message_id: "message-1",
             source_id: ORDERS_TABLE.id,
             source_type: "table",
@@ -186,7 +227,6 @@ describe("MetabotAgentDataSourcePills", () => {
     expect(
       fetchMock.callHistory.calls(SOURCE_FEEDBACK_ENDPOINT, {
         body: {
-          metabot_id: FIXED_METABOT_IDS.DEFAULT,
           message_id: "message-2",
           source_id: ORDERS_TABLE.id,
           source_type: "table",
@@ -208,7 +248,6 @@ describe("MetabotAgentDataSourcePills", () => {
       expect(
         fetchMock.callHistory.calls(SOURCE_FEEDBACK_ENDPOINT, {
           body: {
-            metabot_id: FIXED_METABOT_IDS.DEFAULT,
             message_id: "message-3",
             source_id: ORDERS_TABLE.id,
             source_type: "table",
@@ -234,10 +273,14 @@ describe("MetabotAgentDataSourcePills", () => {
     renderMbqlPills({
       messageId: "message-4",
       query: {
-        "source-table": ORDERS_TABLE.id,
-        fields: [
-          ["field", 10, null],
-          ["field", 11, null],
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            fields: [
+              { type: "column", fieldId: ORDERS.ID },
+              { type: "column", fieldId: ORDERS.TOTAL },
+            ],
+          },
         ],
       },
     });
@@ -252,7 +295,7 @@ describe("MetabotAgentDataSourcePills", () => {
     expect(screen.getAllByRole("link", { name: "Products" })).toHaveLength(1);
     expect(
       fetchMock.callHistory.calls(FIELD_TABLE_IDS_ENDPOINT, {
-        body: { field_ids: [10, 11] },
+        body: { field_ids: [ORDERS.ID, ORDERS.TOTAL] },
       }),
     ).toHaveLength(1);
   });
@@ -281,14 +324,81 @@ describe("MetabotAgentDataSourcePills", () => {
     ).toHaveLength(1);
   });
 
+  it("parses MBQL 5 native SQL queries and requests extracted sources", async () => {
+    const sql = "SELECT * FROM ORDERS";
+    setupNativeEndpoints();
+
+    renderWithProviders(
+      <GeneratedCardTablePills
+        messageId="message-5"
+        value={createGeneratedCard(
+          Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, { query: sql }),
+        )}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("link", { name: "Orders" }),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls(EXTRACT_SOURCES_ENDPOINT, {
+        body: {
+          database_id: SAMPLE_DB_ID,
+          sql,
+        },
+      }),
+    ).toHaveLength(1);
+  });
+
+  it("parses MBQL 5 source tables", async () => {
+    setupTableEndpoints(ORDERS_TABLE);
+
+    renderWithProviders(
+      <GeneratedCardTablePills
+        messageId="message-4"
+        value={createGeneratedCard(
+          Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+            stages: [{ source: { type: "table", id: ORDERS_ID } }],
+          }),
+        )}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("link", { name: "Orders" }),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    { format: "legacy", toDatasetQuery: Lib.toLegacyQuery },
+    { format: "MBQL 5", toDatasetQuery: Lib.toJsQuery },
+  ])(
+    "lists a table joined after a native stage as a source ($format)",
+    async ({ toDatasetQuery }) => {
+      setupTableEndpoints(PRODUCTS_TABLE);
+      fetchMock.post(FIELD_TABLE_IDS_ENDPOINT, { table_ids: [] });
+
+      renderWithProviders(
+        <GeneratedCardTablePills
+          messageId="message-6"
+          value={createGeneratedCard(
+            toDatasetQuery(createNativeQueryWithJoin()),
+          )}
+        />,
+      );
+
+      expect(
+        await screen.findByRole("link", { name: "Products" }),
+      ).toBeInTheDocument();
+    },
+  );
+
   it("renders extracted native query model sources", async () => {
-    const sql = "SELECT * FROM {{#4-revenue_model}}";
-    const templateTags: TemplateTags = {
-      "#4-revenue_model": {
-        id: "1",
-        name: "#4-revenue_model",
-        "display-name": "Revenue Model",
+    const sql = "SELECT * FROM {{#4}}";
+    const templateTags: TestTemplateTags = {
+      "#4": {
         type: "card",
+        name: "#4",
         "card-id": 4,
       },
     };
@@ -306,22 +416,21 @@ describe("MetabotAgentDataSourcePills", () => {
     renderWithProviders(
       <GeneratedCardTablePills
         messageId="message-5-model"
-        value={createNativeCard(sql, 1, templateTags)}
+        value={createNativeCard(sql, templateTags)}
       />,
     );
 
     expect(
       await screen.findByRole("link", { name: "Revenue Model" }),
     ).toBeInTheDocument();
-    expect(
-      fetchMock.callHistory.calls(EXTRACT_SOURCES_ENDPOINT, {
-        body: {
-          database_id: 1,
-          sql,
-          template_tags: templateTags,
-        },
-      }),
-    ).toHaveLength(1);
+    const extractCalls = fetchMock.callHistory.calls(EXTRACT_SOURCES_ENDPOINT, {
+      matchPartialBody: true,
+      body: { database_id: 1, sql },
+    });
+    expect(extractCalls).toHaveLength(1);
+    expect(JSON.parse(String(extractCalls[0].options.body))).toMatchObject({
+      template_tags: { "#4": { type: "card", "card-id": 4 } },
+    });
 
     await userEvent.click(
       await screen.findByRole("button", { name: "Source is correct" }),
@@ -330,7 +439,6 @@ describe("MetabotAgentDataSourcePills", () => {
       expect(
         fetchMock.callHistory.calls(SOURCE_FEEDBACK_ENDPOINT, {
           body: {
-            metabot_id: FIXED_METABOT_IDS.DEFAULT,
             message_id: "message-5-model",
             source_id: 4,
             source_type: "model",
@@ -341,19 +449,26 @@ describe("MetabotAgentDataSourcePills", () => {
     );
   });
 
-  it("does not show Library in a model source path for normal collections", async () => {
-    const sql = "SELECT * FROM {{#4-revenue_model}}";
-    const templateTags: TemplateTags = {
-      "#4-revenue_model": {
-        id: "1",
-        name: "#4-revenue_model",
-        "display-name": "Revenue Model",
+  it("collects feedback for several sources via a modal", async () => {
+    const sql = "SELECT * FROM {{#4}}";
+    const templateTags: TestTemplateTags = {
+      "#4": {
         type: "card",
+        name: "#4",
         "card-id": 4,
       },
     };
     fetchMock.post(EXTRACT_SOURCES_ENDPOINT, {
-      tables: [],
+      tables: [
+        {
+          id: ORDERS_TABLE.id,
+          name: ORDERS_TABLE.name,
+          schema: ORDERS_TABLE.schema,
+          display_name: ORDERS_TABLE.display_name,
+          description: null,
+          columns: [],
+        },
+      ],
       card_ids: [4],
     });
     fetchMock.get(
@@ -368,19 +483,52 @@ describe("MetabotAgentDataSourcePills", () => {
         }),
       }),
     );
-    fetchMock.get("path:/api/database/1", DATABASE);
+    setupTableEndpoints(ORDERS_TABLE);
+    fetchMock.post(SOURCE_FEEDBACK_ENDPOINT, 204);
 
     renderWithProviders(
       <GeneratedCardTablePills
-        value={createNativeCard(sql, 1, templateTags)}
+        messageId="message-11"
+        value={createNativeCard(sql, templateTags)}
       />,
     );
 
     expect(
       await screen.findByRole("link", { name: "Revenue Model" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Marketing & Growth")).toBeInTheDocument();
-    expect(screen.queryByText("Library")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Source is correct"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Give feedback" }),
+    );
+
+    const modal = await screen.findByRole("dialog");
+    expect(within(modal).getByText("Marketing & Growth")).toBeInTheDocument();
+    expect(within(modal).getByText(/Sample Database/)).toBeInTheDocument();
+    expect(within(modal).queryByText("Library")).not.toBeInTheDocument();
+
+    await userEvent.click(
+      within(modal).getAllByRole("button", { name: "Source is wrong" })[1],
+    );
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls(SOURCE_FEEDBACK_ENDPOINT, {
+          body: {
+            message_id: "message-11",
+            source_id: 4,
+            source_type: "model",
+            positive: false,
+          },
+        }),
+      ).toHaveLength(1),
+    );
+
+    await userEvent.click(within(modal).getByRole("button", { name: "Done" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
   });
 
   it("shows source links without feedback buttons when message id is not provided", async () => {
@@ -395,6 +543,7 @@ describe("MetabotAgentDataSourcePills", () => {
     const sourceLink = await screen.findByRole("link", { name: "Orders" });
 
     expect(sourceLink).toHaveAttribute("href", "/table/2-orders");
+    expect(fetchMock.callHistory.calls("path:/api/database/1")).toHaveLength(0);
     expect(
       screen.queryByLabelText("Source is correct"),
     ).not.toBeInTheDocument();
@@ -412,7 +561,12 @@ describe("MetabotAgentDataSourcePills", () => {
     renderMbqlPills({
       messageId: "message-6",
       query: {
-        fields: [["field", 10, null]],
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            fields: [{ type: "column", fieldId: ORDERS.ID }],
+          },
+        ],
       },
     });
 
@@ -430,7 +584,7 @@ describe("MetabotAgentDataSourcePills", () => {
 
     renderMbqlPills({
       messageId: "message-7",
-      query: { "source-table": ORDERS_TABLE.id },
+      query: { stages: [{ source: { type: "table", id: ORDERS_ID } }] },
     });
 
     expect(
@@ -442,6 +596,7 @@ describe("MetabotAgentDataSourcePills", () => {
   });
 
   it("shows a loading skeleton while loading card source details", async () => {
+    setupTableEndpoints(ORDERS_TABLE);
     fetchMock.get(
       "path:/api/card/4",
       createMockCard({ id: 4, name: "Revenue", type: "metric" }),
@@ -450,7 +605,7 @@ describe("MetabotAgentDataSourcePills", () => {
 
     renderMbqlPills({
       messageId: "message-8",
-      query: { "source-table": "card__4" },
+      query: { stages: [{ source: { type: "card", id: REVENUE_MODEL.id } }] },
     });
 
     expect(

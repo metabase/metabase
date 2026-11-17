@@ -65,6 +65,7 @@ export const TaskRunEntityPicker = ({
   const select = (
     <Select
       comboboxProps={{
+        keepMounted: false,
         middlewares: {
           flip: true,
           size: {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -9,7 +10,7 @@ type MonitorEmptyStateProps = {
 
 export function MonitorEmptyState({ label }: MonitorEmptyStateProps) {
   return (
-    <Stack p="xl" align="center">
+    <Stack p="xxl" align="center">
       <img
         src={EmptyDashboardBot}
         alt={t`Empty list`}

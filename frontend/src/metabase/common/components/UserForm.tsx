@@ -1,10 +1,7 @@
 import { useField } from "formik";
-import type { HTMLAttributes } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { FormField } from "metabase/common/components/FormField";
-import { FormFooter } from "metabase/common/components/FormFooter";
 import { GroupsMultiSelect } from "metabase/common/components/GroupsMultiSelect";
 import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import {
@@ -18,7 +15,7 @@ import {
   PLUGIN_ADMIN_USER_FORM_FIELDS,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
-import { Alert, Button } from "metabase/ui";
+import { Alert, Button, Input, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { GroupId, GroupInfo, User, UserId } from "metabase-types/api";
 
@@ -40,8 +37,9 @@ interface InviteTargetAccess {
   warningMessage: string;
 }
 
-interface FormGroupsWidgetProps extends HTMLAttributes<HTMLDivElement> {
+interface FormGroupsWidgetProps {
   name: string;
+  title?: string;
   external?: boolean;
   groups?: GroupInfo[];
   inviteTargetAccess?: InviteTargetAccess;
@@ -49,8 +47,6 @@ interface FormGroupsWidgetProps extends HTMLAttributes<HTMLDivElement> {
 
 const FormGroupsWidget = ({
   name,
-  className,
-  style,
   title = t`Groups`,
   external,
   groups,
@@ -111,7 +107,7 @@ const FormGroupsWidget = ({
     !memberships.some(({ id }) => accessGroupIds.includes(id));
 
   return (
-    <FormField className={className} style={style} title={title}>
+    <Input.Wrapper label={title}>
       <GroupsMultiSelect
         groups={groups}
         value={memberships.map((membership) => membership.id)}
@@ -133,7 +129,7 @@ const FormGroupsWidget = ({
           {inviteTargetAccess?.warningMessage}
         </Alert>
       )}
-    </FormField>
+    </Input.Wrapper>
   );
 };
 
@@ -173,64 +169,63 @@ export const UserForm = ({
     >
       {({ dirty }: { dirty: boolean }) => (
         <Form disabled={!dirty}>
-          {!hideNameFields && (
-            <>
-              <FormTextInput
-                name="first_name"
-                title={t`First name`}
-                placeholder={t`Johnny`}
-                label={t`First name`}
-                mb="md"
-                nullable
-              />
-              <FormTextInput
-                name="last_name"
-                title={t`Last name`}
-                placeholder={t`Appleseed`}
-                label={t`Last name`}
-                mb="md"
-                nullable
-              />
-            </>
-          )}
-          <FormTextInput
-            name="email"
-            type="email"
-            title={t`Email`}
-            placeholder="nicetoseeyou@email.com"
-            label={t`Email`}
-            required
-            mb="md"
-          />
-          <FormGroupsWidget
-            name="user_group_memberships"
-            external={external}
-            title={PLUGIN_TENANTS.getFormGroupsTitle(external) ?? t`Groups`}
-            groups={groups}
-            inviteTargetAccess={inviteTargetAccess}
-          />
-          {external && (
-            <PLUGIN_TENANTS.FormTenantWidget
+          <Stack gap="xl">
+            {!hideNameFields && (
+              <>
+                <FormTextInput
+                  name="first_name"
+                  title={t`First name`}
+                  placeholder={t`Johnny`}
+                  label={t`First name`}
+                  nullable
+                />
+                <FormTextInput
+                  name="last_name"
+                  title={t`Last name`}
+                  placeholder={t`Appleseed`}
+                  label={t`Last name`}
+                  nullable
+                />
+              </>
+            )}
+            <FormTextInput
+              name="email"
+              type="email"
+              title={t`Email`}
+              placeholder="nicetoseeyou@email.com"
+              label={t`Email`}
               required
-              name="tenant_id"
-              placeholder={t`Select a tenant`}
-              disabled={edit}
             />
-          )}
-          {!hideAttributes && (
-            <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes
-              userId={userId}
+            <FormGroupsWidget
+              name="user_group_memberships"
+              external={external}
+              title={PLUGIN_TENANTS.getFormGroupsTitle(external) ?? t`Groups`}
+              groups={groups}
+              inviteTargetAccess={inviteTargetAccess}
             />
-          )}
-          <FormFooter>
-            <FormErrorMessage inline />
+            {external && (
+              <PLUGIN_TENANTS.FormTenantWidget
+                required
+                name="tenant_id"
+                placeholder={t`Select a tenant`}
+                disabled={edit}
+              />
+            )}
+            {!hideAttributes && (
+              <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes
+                userId={userId}
+              />
+            )}
+          </Stack>
+          <Modal.Footer>
+            <FormErrorMessage flex={1} />
             <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             <FormSubmitButton
               label={submitText}
               disabled={!dirty}
               variant="filled"
             />
-          </FormFooter>
+          </Modal.Footer>
         </Form>
       )}
     </FormProvider>

@@ -2,8 +2,12 @@
   "Model for tracking remote sync tasks and their progress."
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
+   [metabase.util.i18n :refer [trun]]
+   [metabase.util.jvm :as u.jvm]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -13,8 +17,6 @@
 
 (mr/def ::remote-sync-task-type
   [:enum "import" "export"])
-
-;;; ------------------------------------------- Entity & Lifecycle -------------------------------------------
 
 (methodical/defmethod t2/table-name :model/RemoteSyncTask [_model] :remote_sync_task)
 
@@ -30,282 +32,162 @@
   [task]
   (when-let [existing (current-task)]
     (throw (ex-info "A running task exists" {:existing-task existing})))
-  task)
-
-;;; ------------------------------------------- Helper Functions -------------------------------------------
+  (merge {:started_at (mi/now)} task))
 
 (mu/defn create-sync-task!
-  "Creates a new remote sync task.
-
-  Takes a sync-task-type (either 'import' or 'export'), an optional user-id (ID of the user who initiated the task),
-  and optional additional-fields (map of additional fields to include in the task record).
-
-  Returns the created RemoteSyncTask instance.
-
-  Throws ExceptionInfo if a running task already exists."
+  "Creates a RemoteSyncTask of `sync-task-type` for the user with `user-id`, throwing when another task is running."
   [sync-task-type :- ::remote-sync-task-type
-   user-id :- [:maybe pos-int?] &
-   [additional-fields :- [:map]]]
-  (t2/insert-returning-instance! :model/RemoteSyncTask
-                                 (merge {:sync_task_type sync-task-type
-                                         :initiated_by user-id
-                                         :progress 0
-                                         :started_at (mi/now)}
-                                        additional-fields)))
+   user-id        :- [:maybe pos-int?]]
+  (remote-sync.db/insert-task! {:sync_task_type sync-task-type
+                                :initiated_by   user-id
+                                :progress       0}))
 
 (defn cancel-sync-task!
-  "Marks a sync task as cancelled.
-
-  Takes the ID of the sync task to cancel.
-
-  Returns the number of rows updated (should be 1 if successful).
-
-  This signal will be checked in update-progress! to stop further processing. Note that the worker thread must
-  manually check this flag rather than being interrupted, as interrupting Quartz threads can cause issues."
+  "Asks the sync task with `task-id` to stop, which it does at its next progress report before it changes anything."
   [task-id]
-  (t2/update! :model/RemoteSyncTask task-id
-              {:cancelled true
-               :ended_at (mi/now)
-               :error_message "Task cancelled"}))
+  (remote-sync.db/cancel-running-task! task-id))
 
-(defn update-progress!
-  "Updates the progress of a sync task.
+(defn end-cancelled-task!
+  "Ends the sync task with `task-id`, which stopped because it was asked to."
+  [task-id]
+  (remote-sync.db/end-task! task-id {}))
 
-  Takes the ID of the sync task to update and a progress value between 0.0 and 1.0.
-
-  Returns the number of rows updated (should be 1 if successful).
-
-  Throws ExceptionInfo if the task has been marked as cancelled."
+(defn- update-progress!
+  "Records `progress`, between 0 and 1, on the sync task with `task-id`, throwing when the task was asked to stop."
   [task-id progress]
-  (when (true? (t2/select-one-fn :cancelled :model/RemoteSyncTask :id task-id))
-    (throw (ex-info "Remote sync task has been cancelled" {:task-id task-id
-                                                           :cancelled? true})))
-  (t2/update! :model/RemoteSyncTask task-id
-              {:progress progress
-               :last_progress_report_at (mi/now)}))
-
-(def ^:private default-progress-throttle-ms
-  "Minimum ms between throttled (non-boundary) progress writes."
-  10000)
+  (when (true? (remote-sync.db/task-cancelled? task-id))
+    (throw (ex-info "Remote sync task has been cancelled" {:task-id task-id :cancelled? true})))
+  (remote-sync.db/report-task-progress! task-id progress))
 
 (defn make-progress-reporter
-  "Returns a stateful progress reporter for `task-id`.
+  "The progress reporter of the sync task with `task-id`, a fn of a fraction that records it, throwing when the task
+  was asked to stop."
+  [task-id]
+  (fn report! [fraction]
+    (update-progress! task-id (-> (double fraction) (max 0.0) (min 1.0)))))
 
-  Call the returned fn with a fraction in [0.0, 1.0]. It writes progress (and bumps
-  `last_progress_report_at`) at most once per throttle window and never moves the fraction backward.
-  Pass `{:force? true}` to write immediately regardless of the throttle — use at phase boundaries.
+(def ^:private heartbeat-interval-ms
+  "The time between two heartbeats of a running task."
+  15000)
 
-  Options:
-   - :throttle-ms  minimum ms between throttled writes (default 10000)
-   - :now-fn       0-arg fn returning current millis (default `System/currentTimeMillis`)
-   - :write-fn     1-arg fn taking the clamped fraction (default `update-progress!` for `task-id`)"
-  ([task-id] (make-progress-reporter task-id nil))
-  ([task-id {:keys [throttle-ms now-fn write-fn]
-             :or   {throttle-ms default-progress-throttle-ms}}]
-   (let [now-fn        (or now-fn #(System/currentTimeMillis))
-         write-fn      (or write-fn (fn [f] (update-progress! task-id f)))
-         last-ms       (volatile! nil)
-         last-fraction (volatile! -1.0)]
-     (fn report!
-       ([fraction] (report! fraction nil))
-       ([fraction {:keys [force?]}]
-        (let [now (now-fn)
-              f   (-> (double fraction) (max 0.0) (min 1.0))]
-          (when (and (>= f @last-fraction)
-                     (or force? (nil? @last-ms) (>= (- now @last-ms) throttle-ms)))
-            (vreset! last-ms now)
-            (vreset! last-fraction f)
-            (write-fn f))))))))
+(defn start-heartbeat!
+  "Starts stamping the heartbeat of the sync task with `task-id` on a virtual thread, logging the writes that fail, and
+  returns a fn that stops it."
+  [task-id]
+  (let [stop (promise)]
+    (u.jvm/in-virtual-thread*
+     (loop []
+       (when (= ::tick (deref stop heartbeat-interval-ms ::tick))
+         (try
+           (remote-sync.db/touch-task! task-id)
+           (catch Throwable t
+             (log/debugf t "Heartbeat write failed for remote sync task %d" task-id)))
+         (recur))))
+    (fn stop-heartbeat! [] (deliver stop ::stop) nil)))
 
 (defn set-version!
-  "Sets the version value for a sync task.
-
-  Takes the ID of the sync task to update and a version identifier string to set (typically a git SHA).
-
-  Returns the number of rows updated (should be 1 if successful)."
+  "Records `version`, the git commit the sync task with `task-id` synced with, on the task."
   [task-id version]
-  (t2/update! :model/RemoteSyncTask task-id
-              {:version version}))
+  (remote-sync.db/update-task! task-id {:version version}))
 
 (defn complete-sync-task!
-  "Marks a sync task as completed.
-
-  Takes the ID of the sync task to mark as completed and an optional `outcome` map describing the result
-  (e.g. `{:kind \"pulled\" :count 12 :branch \"main\"}`). The UI renders the outcome to a localized
-  confirmation message; we store structured data rather than customer-facing copy.
-
-  Returns the number of rows updated (should be 1 if successful)."
-  ([task-id] (complete-sync-task! task-id nil))
-  ([task-id outcome]
-   (t2/update! :model/RemoteSyncTask task-id
-               {:progress 1.0
-                :ended_at (mi/now)
-                :outcome  outcome})))
+  "Ends the sync task with `task-id` successfully with `outcome`, the data the UI describes the result with."
+  [task-id outcome]
+  (remote-sync.db/end-task! task-id {:progress  1.0
+                                     :outcome   outcome
+                                     :cancelled false}))
 
 (defn fail-sync-task!
-  "Marks a sync task as failed.
-
-  Takes the ID of the sync task to mark as failed and an error message describing why the task failed.
-
-  Returns the number of rows updated (should be 1 if successful)."
+  "Ends the sync task with `task-id` with `error-msg`, the message for people of why it failed."
   [task-id error-msg]
-  (t2/update! :model/RemoteSyncTask task-id
-              {:ended_at (mi/now)
-               :error_message error-msg}))
+  (remote-sync.db/end-task! task-id {:error_message error-msg :cancelled false}))
+
+(defn conflict-sync-task!
+  "Ends the sync task with `task-id` with `conflicts`, the labels of the entities both sides changed, and `outcome`."
+  [task-id conflicts outcome]
+  (remote-sync.db/end-task! task-id {:conflicts (vec conflicts)
+                                     :outcome   outcome
+                                     :cancelled false}))
+
+(defn- liveness-cutoff
+  "The instant before which the last sign of life of a running task makes it stale."
+  []
+  (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms))))
 
 (defn current-task
-  "Gets the current active sync task.
-
-  Returns the most recent RemoteSyncTask that is still running (started but not ended, and has reported progress
-  within the time limit), or nil if no active task exists."
+  "The newest running sync task that showed a sign of life within the time limit, or nil."
   []
-  (t2/select-one :model/RemoteSyncTask
-                 {:where [:and
-                          [:<> :started_at nil]
-                          [:= :ended_at nil]
-                          [:<
-                           (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms)))
-                           :last_progress_report_at]]
-                  :limit 1
-                  :order-by [[:started_at :desc]
-                             [:id :desc]]}))
+  (remote-sync.db/current-task (liveness-cutoff)))
 
 (defn supersede-stale-tasks!
-  "Marks any genuinely stale task rows as cancelled and terminated.
-
-  A task is considered stale if it has `started_at` set, `ended_at` nil, and `last_progress_report_at`
-  is older than `remote-sync-task-time-limit-ms`. The DB schema requires `last_progress_report_at`
-  to be non-null with a default of `current_timestamp`, so a brand-new task always has a recent
-  value (set on insert) and is not considered stale.
-
-  Called from `create-task-with-lock!` before creating a new task, to clean up rows whose owning
-  JVM/thread is gone or hung. Returns nothing meaningful.
-
-  Combined with `handle-task-result!`'s already-terminated check, this means a stale task's thread
-  that eventually wakes up and tries to complete will detect that its row is terminated and exit
-  without writing the setting or overwriting bookkeeping."
+  "Cancels and ends the running tasks whose last heartbeat is older than `remote-sync-task-time-limit-ms`, with a
+  message the UI shows, and returns their ids."
   []
-  (let [cutoff (t/minus (t/offset-date-time)
-                        (t/millis (setting/get :remote-sync-task-time-limit-ms)))]
-    (t2/query {:update (t2/table-name :model/RemoteSyncTask)
-               :set    {:cancelled     true
-                        :ended_at      (mi/now)
-                        :error_message "Superseded after staleness timeout"}
-               :where  [:and
-                        [:<> :started_at nil]
-                        [:= :ended_at nil]
-                        [:< :last_progress_report_at cutoff]]})))
+  (let [cutoff  (liveness-cutoff)
+        minutes (max 1 (quot (setting/get :remote-sync-task-time-limit-ms) 60000))
+        ids     (remote-sync.db/supersede-stale-tasks!
+                 cutoff
+                 (trun "The sync stopped because the server didn''t respond for {0} minute. It may have restarted."
+                       "The sync stopped because the server didn''t respond for {0} minutes. It may have restarted."
+                       minutes))]
+    (when (seq ids)
+      (log/warnf "Superseded stale remote sync tasks %s: their owners were last alive before %s" ids cutoff))
+    ids))
 
 (defn most-recent-task
-  "Gets the most recently run task, including currently running tasks.
-
-  Returns the most recent RemoteSyncTask (running or completed), or nil if no tasks exist."
+  "The newest sync task, running or ended, or nil."
   []
-  (t2/select-one :model/RemoteSyncTask
-                 {:where [:and
-                          [:<> :started_at nil]]
-                  :limit 1
-                  :order-by [[:started_at :desc]
-                             [:id :desc]]}))
+  (remote-sync.db/most-recent-task))
 
 (defn last-version
-  "Gets the version that any changes are built off of.
-
-  Returns the version string from the most recent successful task (either export or import), or nil if no successful
-  tasks exist."
+  "The version of the last task that synced successfully, or nil when no task has synced."
   []
-  (:version (t2/select-one :model/RemoteSyncTask
-                           {:where [:and
-                                    [:<> nil :ended_at]
-                                    [:= false :cancelled]
-                                    [:= nil :error_message]
-                                    [:<> nil :version]]
-                            :limit 1
-                            :order-by [[:started_at :desc]
-                                       [:id :desc]]})))
+  (:version (remote-sync.db/last-synced-task)))
 
 (defn running?
-  "Checks if a task is currently running.
-
-  Takes a RemoteSyncTask instance.
-
-  Returns true if the task has started but not ended (ended_at is nil), false otherwise."
+  "Whether `task` has not ended."
   [task]
   (nil? (:ended_at task)))
 
 (defn successful?
-  "Checks if a task completed successfully.
-
-  Takes a RemoteSyncTask instance.
-
-  Returns true if the task completed without being cancelled or encountering errors, false otherwise."
+  "Whether `task` ended without a cancel or an error."
   [task]
   (and (false? (:cancelled task))
        (nil? (:error_message task))
        (some? (:ended_at task))))
 
 (defn failed?
-  "Checks if a task failed.
-
-  Takes a RemoteSyncTask instance.
-
-  Returns true if the task completed with an error but was not cancelled, false otherwise."
+  "Whether `task` ended with an error."
   [task]
   (and (false? (:cancelled task))
        (some? (:error_message task))
        (some? (:ended_at task))))
 
 (defn cancelled?
-  "Checks if a task was cancelled.
-
-  Takes a RemoteSyncTask instance.
-
-  Returns true if the task was cancelled, false otherwise."
+  "Whether `task` was asked to stop."
   [task]
   (:cancelled task))
 
 (defn timed-out?
-  "Checks if a task has timed out.
-
-  Takes a RemoteSyncTask instance.
-
-  Returns true if the task is incomplete and has not reported progress within the time limit, false otherwise."
+  "Whether `task` has not ended and showed no sign of life within the time limit."
   [task]
   (and (nil? (:ended_at task))
-       (t/< (:last_progress_report_at task)
-            (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms))))))
+       (t/< (or (:last_heartbeat_at task) (:last_progress_report_at task))
+            (liveness-cutoff))))
 
 (defn conflict?
-  "Checks if a task ended with conflicts.
-
-  Takes a RemoteSyncTask instance.
-
-  Returns true if the task has conflicts stored, false otherwise."
+  "Whether `task` ended with conflicts."
   [task]
   (and (some? (:ended_at task))
        (false? (:cancelled task))
        (nil? (:error_message task))
        (some? (:conflicts task))))
 
-(defn conflict-sync-task!
-  "Marks a sync task as having conflicts.
-
-  Takes the ID of the sync task and a collection of conflicts (vector of strings).
-  Conflicts are automatically serialized to JSON via the model transform.
-
-  Returns the number of rows updated (should be 1 if successful)."
-  [task-id conflicts]
-  (t2/update! :model/RemoteSyncTask task-id
-              {:ended_at (mi/now)
-               :conflicts conflicts}))
-
-;;; ------------------------------------------- Hydration -------------------------------------------
-
 (methodical/defmethod t2/batched-hydrate [:model/RemoteSyncTask :initiated_by_user]
   [_model k tasks]
   (mi/instances-with-hydrated-data
    tasks k
-   #(t2/select-pk->fn identity :model/User :id [:in (map :initiated_by tasks)])
+   #(remote-sync.db/users-by-id (map :initiated_by tasks))
    :initiated_by))
 
 (methodical/defmethod t2/batched-hydrate [:model/RemoteSyncTask :status]
@@ -315,6 +197,6 @@
                           (failed? task) :errored
                           (conflict? task) :conflict
                           (successful? task) :successful
-                          (cancelled? task) :cancelled
+                          (and (cancelled? task) (some? (:ended_at task))) :cancelled
                           (timed-out? task) :timed-out
                           :else :running))))

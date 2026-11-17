@@ -4,10 +4,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
 import { UpsellBetterSupport } from "metabase/admin/upsells";
 import { useGetBugReportDetailsQuery } from "metabase/api/bug-report";
 import { CopyButton } from "metabase/common/components/CopyButton";
@@ -18,6 +14,10 @@ import { useSelector } from "metabase/redux";
 import { Outlet } from "metabase/router";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { useSetting } from "metabase/settings";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
 import { Box, Code, Group } from "metabase/ui";
 import { getBasename } from "metabase/utils/basename";
 
@@ -38,7 +38,7 @@ const template = `**Describe the bug**
 A clear and concise description of what the bug is.
 
 **Logs**
-Please include javascript console and server logs around the time this bug occurred. For information about how to get these, consult our [bug troubleshooting guide](https://metabase.com/docs/latest/troubleshooting-guide/bugs.html)
+Please include javascript console and server logs around the time this bug occurred. For information about how to get these, consult our [bug troubleshooting guide](https://www.metabase.com/docs/latest/troubleshooting-guide/bugs)
 
 **To Reproduce**
 Steps to reproduce the behavior:
@@ -90,7 +90,7 @@ interface InfoBlockProps {
 }
 
 const InfoBlock = ({ children }: InfoBlockProps) => (
-  <Box p="md" className={cx(CS.bordered, CS.rounded, CS.bgLight, CS.relative)}>
+  <Box p="lg" className={cx(CS.bordered, CS.rounded, CS.bgLight, CS.relative)}>
     <Box className={S.InfoBlockButton}>
       <CopyButton value={children} />
     </Box>

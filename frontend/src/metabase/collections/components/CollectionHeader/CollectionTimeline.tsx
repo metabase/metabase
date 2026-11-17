@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link/Link";
@@ -17,7 +18,7 @@ const CollectionTimeline = ({
   return (
     <Tooltip label={t`Events`} position="bottom">
       <div>
-        <ActionIcon variant="viewHeader" size="2rem" component={Link} to={url}>
+        <ActionIcon variant="subtle" component={Link} to={url}>
           <Icon name="calendar" />
         </ActionIcon>
       </div>

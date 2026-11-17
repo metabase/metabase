@@ -1,5 +1,5 @@
 (ns i18n.validation
-  "Scan `locales/*.po` files for translation violations — invalid `java.text.MessageFormat`
+  "Scans .po files downloaded from S3 for translation violations — invalid `java.text.MessageFormat`
   patterns, skipped argument indices, and argument-count mismatches between English source and
   translated strings. Produces structured violation records suitable for:
 
@@ -42,8 +42,11 @@
   checks; frontend strings get only the format-system-agnostic ones. All applicable types are
   collected — no short-circuiting. Single `MessageFormat` parse for backend strings."
   [msgstr message backend?]
-  (let [count-fn     (arg-count-fn backend?)
-        format-error (when backend? (validation/message-format-error msgstr))
+  (let [msgid        (:id message)
+        count-fn     (arg-count-fn backend?)
+        format-error (if backend?
+                       (validation/message-format-error msgstr)
+                       (validation/regex-message-format-error msgid msgstr))
         skip?        (if backend?
                        (when-not format-error (validation/skipped-arg-index? msgstr))
                        (validation/regex-skipped-arg-index? msgstr))

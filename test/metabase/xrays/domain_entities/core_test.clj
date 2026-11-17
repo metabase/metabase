@@ -10,7 +10,7 @@
   (is (= [:field (data/id :venues :price) nil]
          (#'de/mbql-reference (t2/select-one :model/Field :id (data/id :venues :price)))))
   (is (= [:field "PRICE" {:base-type :type/Integer}]
-         (#'de/mbql-reference (dissoc (t2/select-one :model/Field :id (data/id :venues :price)) :id)))))
+         (#'de/mbql-reference {:name "PRICE", :display_name "Price", :base_type :type/Integer}))))
 
 (defn- hydrated-table
   [table-name]

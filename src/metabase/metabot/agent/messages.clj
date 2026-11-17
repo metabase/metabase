@@ -9,6 +9,7 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.agent.user-context :as user-context]
+   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.skills :as skills]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
@@ -25,17 +26,26 @@
     role
     (keyword role)))
 
+(defn- decode-arguments-json
+  "Decode the tool call arguments JSON string `s`, or return `s` unchanged when it is not valid JSON."
+  [s]
+  (try
+    (json/decode s)
+    (catch Exception e
+      (log/warnf "Failed to decode tool call arguments: %s" (ex-message e))
+      s)))
+
 (defn- decode-tool-arguments
-  "Decode tool call arguments from JSON when provided as a string.
-  Falls back to the raw string if decoding fails."
+  "Decode tool call arguments, with keyword argument names at the top level only.
+
+  The JSON string `{\"query\": {\"stages\": []}}` becomes `{:query {\"stages\" []}}`, the shape the stream parser gives.
+  A map gets the same shape: `{\"query\" {:stages []}}` becomes `{:query {\"stages\" []}}`. A string that is not valid
+  JSON comes back unchanged."
   [arguments]
-  (if (string? arguments)
-    (try
-      (json/decode+kw arguments)
-      (catch Exception e
-        (log/warnf "Failed to decode tool call arguments: %s" (ex-message e))
-        arguments))
-    arguments))
+  (let [decoded (cond-> arguments
+                  (string? arguments) decode-arguments-json)]
+    (cond-> decoded
+      (map? decoded) (-> (update-keys keyword) self.core/stringify-nested-keys))))
 
 (defn- tool-result-content
   "Normalise tool result content to a string suitable for :tool-output."
@@ -159,24 +169,34 @@
   - `{:type :tool-input, :id ..., :function ..., :arguments ...}` for tool calls
   - `{:type :tool-output, :id ..., :result ...}` for tool results
 
+  `tools` is the active tool registry (name -> tool). The SQL dialect skill is preloaded only when it
+  contains a SQL-writing tool: the dialect body is SQL-writing guidance, and a profile without those
+  tools (e.g. `:embedding_next` with the native editor open in a full-app embed) has no tool that could
+  act on it, and its prompt makes no SQL promise the preload would have to back. The 2-arity has no
+  tools and never preloads.
+
   Each LLM adapter converts this to its own wire format."
-  [context memory]
-  (let [input-messages (messages-with-injected-context context memory)
-        steps          (memory/get-steps memory)
-        input-parts    (mapcat input-message->parts input-messages)
-        step-parts     (mapcat step->parts steps)
-        ;; Preload the active SQL dialect (if any) as a synthetic load_skill
-        ;; tool-call/result pair. It is placed after the input messages (so the
-        ;; first message is still the user's) and before this turn's steps, which
-        ;; keeps it below the system cache breakpoint.
-        preload-parts  (skills/dialect-preload-parts (user-context/extract-sql-dialect context))
-        result         (vec (concat input-parts preload-parts step-parts))]
-    (log/info "Building message history"
-              {:input-message-count (count input-messages)
-               :step-count          (count steps)
-               :preload-parts       (count preload-parts)
-               :total-parts         (count result)})
-    result))
+  ([context memory]
+   (build-message-history context memory nil))
+  ([context memory tools]
+   (let [input-messages (messages-with-injected-context context memory)
+         steps          (memory/get-steps memory)
+         input-parts    (mapcat input-message->parts input-messages)
+         step-parts     (mapcat step->parts steps)
+         ;; Preload the active SQL dialect (if any) as a synthetic load_skill
+         ;; tool-call/result pair. It is placed after the input messages (so the
+         ;; first message is still the user's) and before this turn's steps, which
+         ;; keeps it below the system cache breakpoint.
+         preload-parts  (if (prompts/sql-generation-tools? tools)
+                          (skills/dialect-preload-parts (user-context/extract-sql-dialect context))
+                          [])
+         result         (vec (concat input-parts preload-parts step-parts))]
+     (log/info "Building message history"
+               {:input-message-count (count input-messages)
+                :step-count          (count steps)
+                :preload-parts       (count preload-parts)
+                :total-parts         (count result)})
+     result)))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; System message

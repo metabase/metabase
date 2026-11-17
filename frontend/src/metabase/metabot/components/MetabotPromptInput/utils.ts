@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import type { JSONContent } from "@tiptap/core";
 import {
   Fragment,
@@ -11,6 +12,7 @@ import { mbProtocolModelToSuggestionModel } from "metabase/rich_text_editing/tip
 import {
   METABSE_PROTOCOL_MD_LINK,
   createMetabaseProtocolLink,
+  parseMetabaseProtocolMarkdownLink,
 } from "metabase/urls";
 
 function serializeNodes(nodes: JSONContent[]): string {
@@ -85,8 +87,11 @@ export function parseMetabotMessageToTiptapDoc(text: string): JSONContent {
     let lastIndex = 0;
 
     for (const match of line.matchAll(MENTION_REGEX)) {
-      const [fullMatch, label, mbProtocolModel, entityId] = match;
-      const model = mbProtocolModelToSuggestionModel(mbProtocolModel);
+      const [fullMatch] = match;
+      const link = parseMetabaseProtocolMarkdownLink(fullMatch);
+      if (!link) {
+        continue;
+      }
 
       // Add text before the mention
       if (match.index > lastIndex) {
@@ -98,7 +103,11 @@ export function parseMetabotMessageToTiptapDoc(text: string): JSONContent {
 
       pContent.push({
         type: "smartLink",
-        attrs: { label, model, entityId },
+        attrs: {
+          label: link.name,
+          model: mbProtocolModelToSuggestionModel(link.model),
+          entityId: link.id,
+        },
       });
 
       lastIndex = match.index + fullMatch.length;

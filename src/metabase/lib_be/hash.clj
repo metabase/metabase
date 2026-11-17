@@ -35,7 +35,7 @@
 
 (mu/defn query->hash-input :- :map
   "Normalize and strip `query` to the canonical form used for hashing."
-  [query :- :map]
+  [query :- :metabase.lib.util/query-like]
   (-> query
       (cond-> (not= (keyword (:type query)) :internal)
         (as-> $query (lib-be.models.transforms/normalize-query nil $query {:strict? true})))
@@ -43,7 +43,7 @@
 
 (mu/defn query-hash :- bytes?
   "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
-  ^bytes [query :- :map]
+  ^bytes [query :- :metabase.lib.util/query-like]
   (-> query
       query->hash-input
       json/encode

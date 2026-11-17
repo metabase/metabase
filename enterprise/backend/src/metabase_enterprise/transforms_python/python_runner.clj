@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase-enterprise.transforms-python.db :as transforms-python.db]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase.analytics-interface.core :as analytics]
@@ -20,8 +21,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu])
   (:import
    (clojure.lang PersistentQueue)
    (java.io BufferedWriter File InputStream OutputStream OutputStreamWriter)
@@ -230,7 +230,7 @@
                                        source-tables)
         run-timeout-secs         (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
         payload                  {:code                code
-                                  :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
+                                  :library             (transforms-python.db/library-sources-by-path)
                                   :timeout             run-timeout-secs
                                   :request_id          (or request-id run-id)
                                   :output_url          (:url output)
@@ -285,18 +285,12 @@
   (try (.delete file) (catch Exception _)))
 
 (defn- fields-metadata [_driver table-id]
-  (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position]
-             :table_id table-id
-             :active true
-             ;; we are only interested in top-level objects, so filter out nested fields (parent or path)
-             :parent_id nil
-             :nfc_path nil
-             {:order-by [[:database_position :asc]]}))
+  (transforms-python.db/top-level-fields-metadata table-id))
 
 (defn- build-table-query
   "Build a mbql query for table, might add a proper filter for incremental transforms."
   [table-id source-incremental-strategy source-range-params limit]
-  (let [db-id             (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id)
+  (let [db-id             (transforms-python.db/table-database-id table-id)
         metadata-provider (lib-be/application-database-metadata-provider db-id)
         table-metadata    (lib.metadata/table metadata-provider table-id)]
     (cond-> (-> (lib/query metadata-provider table-metadata)
@@ -324,8 +318,8 @@
     (let [tmp-data-file (File/createTempFile data-path "")
           tmp-meta-file (File/createTempFile manifest-path "")]
       (try
-        (let [db-id       (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table_id)
-              driver      (t2/select-one-fn :engine :model/Database db-id)
+        (let [db-id       (transforms-python.db/table-database-id table_id)
+              driver      (transforms-python.db/database-engine db-id)
               fields-meta (fields-metadata driver table_id)
               manifest    (generate-manifest table_id fields-meta)]
           (transforms.instrumentation/with-stage-timing [run-id [:export :dwh-to-file]]
