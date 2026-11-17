@@ -103,10 +103,13 @@
                              ;; failure — the table that was missing, the argument to repair — on
                              ;; every replay. One field, two audiences; the model wins, because the
                              ;; live SSE channel has its own and the whole point of the text is that
-                             ;; the agent can act on it. A failure that no tool declared is stored as
-                             ;; the neutral sentence `tools.runtime/replay-text` gives it, because its
-                             ;; live text tells the model what to do in a turn that will have ended.
-                             (assoc :errorText (str (tools.runtime/replay-text (:result output))))))
+                             ;; the agent can act on it. It is the text that the adapters send (see
+                             ;; `self.core/tool-result-text`), except that a failure no tool declared is
+                             ;; stored as the neutral sentence `tools.runtime/replay-text` gives it, because
+                             ;; its live text tells the model what to do in a turn that will have ended.
+                             (assoc :errorText (tools.runtime/replay-text
+                                                (assoc (:result output)
+                                                       :output (self.core/tool-result-text (:result output)))))))
                          :data {:type (str "data-" (or (:data-type part) "data"))
                                 :data (:data part)}
                          (do (log/warn "Dropping internal part with no v2 storage representation"
@@ -504,8 +507,8 @@
            content (case state
                      "output-available" (if (hidden-query-results? part)
                                           hidden-query-results
-                                          (str (if (map? output) (:output output) output)))
-                     "output-error"     (or errorText "Tool execution failed")
+                                          (self.core/tool-result-text output))
+                     "output-error"     (or errorText self.core/failed-tool-result-text)
                      "input-available"  (when-not (= on-unresolved :skip)
                                           "Tool execution interrupted by user")
                      nil)]
