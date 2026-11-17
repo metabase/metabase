@@ -174,6 +174,8 @@ describe("data app embedding setup", () => {
     ).toBeInTheDocument();
   });
 
+  // jsdom ignores `inert`, so these check for it instead of tabbing to the
+  // button. Browsers skip inert elements for focus, selection and copying.
   it("does not let the admin copy the code from the keyboard before embedding is enabled", async () => {
     setupDataApps({
       initialState: { resourceType: "data-app", resourceId: "sales" },
@@ -183,9 +185,21 @@ describe("data app embedding setup", () => {
 
     await waitForRequestsToSettle();
 
-    // jsdom ignores `inert`, so we check for it instead of tabbing to the
-    // button. Browsers skip inert elements for focus, selection and copying.
     expect(screen.getByTestId("embed-code-section")).toHaveAttribute("inert");
+  });
+
+  it("lets the admin copy the code from the keyboard once embedding is enabled", async () => {
+    setupDataApps({
+      initialState: { resourceType: "data-app", resourceId: "sales" },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Done/ })).toBeEnabled(),
+    );
+
+    expect(screen.getByTestId("embed-code-section")).not.toHaveAttribute(
+      "inert",
+    );
   });
 
   it("excludes draft and outdated apps and selects an available app", async () => {
