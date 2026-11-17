@@ -57,7 +57,7 @@
 ;;; ------------------------------------------------- Parsing -------------------------------------------------
 
 (mu/defn referenced-tables :- [:set ::data-testing.schema/table]
-  "The tables `sql` reads."
+  "The tables `sql` reads or writes."
   [driver :- :keyword
    sql    :- :string]
   (into #{}

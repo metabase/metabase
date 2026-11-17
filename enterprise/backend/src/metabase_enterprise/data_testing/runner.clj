@@ -198,7 +198,7 @@
           (data-testing.executor/drop-temp-table! driver conn table))))))
 
 (mu/defn- source-tables :- [:set ::data-testing.schema/table]
-  "The tables the subject's `sql` reads, or a refusal naming what would not parse."
+  "The tables the subject's `sql` reads or writes, or a refusal naming what would not parse."
   [driver :- :keyword
    sql    :- :string]
   (try
