@@ -240,6 +240,31 @@ describe("SearchApp", () => {
       expect(screen.queryByLabelText("pagination")).not.toBeInTheDocument();
     });
 
+    it("links to the parent dashboard inside a dashboard question's result row", async () => {
+      await setup({
+        searchText: "Total Orders",
+        searchItems: [
+          createMockSearchResult({
+            model: "card",
+            name: "Total Orders Dashboard Question",
+            dashboard: {
+              id: 5,
+              name: "Orders in a dashboard",
+              moderation_status: null,
+            },
+          }),
+        ],
+      });
+
+      const row = within(screen.getByTestId("search-result-item"));
+      expect(row.getByTestId("search-result-item-name")).toHaveTextContent(
+        "Total Orders Dashboard Question",
+      );
+      expect(
+        row.getByRole("link", { name: "Orders in a dashboard" }),
+      ).toHaveAttribute("href", "/dashboard/5-orders-in-a-dashboard");
+    });
+
     it("renders search results and pagination when there is more than PAGE_SIZE results", async () => {
       await setup({ searchText: "Test" });
       const getPaginationTotal = () => screen.getByTestId("pagination-total");
@@ -285,6 +310,12 @@ describe("SearchApp", () => {
       const params = new URL(searchRequests[0].url).searchParams;
       expect(params.get("context")).toBe("search-app");
       expect(params.get("q")).toBe("orders");
+    });
+
+    it("should include dashboard questions in the search request", async () => {
+      await setup({ searchText: "orders" });
+
+      expectLastSearchRequestParam("include_dashboard_questions", ["true"]);
     });
   });
 

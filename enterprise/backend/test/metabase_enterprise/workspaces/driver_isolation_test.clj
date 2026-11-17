@@ -38,12 +38,16 @@
 
 (defn- init!
   "[[driver/init-workspace-isolation!]]. Postgres init refuses a cluster where PUBLIC can create objects in any
-  database, the default in a cluster created before Postgres 15 or upgraded from one, and the shared test cluster is
-  not these tests' to change: metabase.driver.postgres.workspace-test covers that check against a database of its
-  own."
+  database, the default in a cluster created before Postgres 15 or upgraded from one. Redshift init refuses a cluster
+  where PUBLIC can create objects in any database or any schema of one, and `public` allows it by default in every
+  database. The shared test clusters are not these tests' to change: metabase.driver.postgres.workspace-test and
+  metabase.driver.redshift-test cover those checks."
   [driver database workspace]
   (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
-    (driver/init-workspace-isolation! driver database workspace)))
+    (if (= :redshift driver)
+      (with-redefs-fn {(requiring-resolve 'metabase.driver.redshift/check-no-public-create-in-cluster!) (constantly nil)}
+        #(driver/init-workspace-isolation! driver database workspace))
+      (driver/init-workspace-isolation! driver database workspace))))
 
 (defn- find-sql-exception
   "Find a `java.sql.SQLException` reachable from `t`, or nil. Walks the cause
@@ -636,9 +640,13 @@
   ;; decision tracked separately; this test does not assert one way or the other.
   ;; The test skips MySQL: its init refuses an existing database with a 409, which
   ;; `metabase.driver.mysql.workspace-test` covers.
+  ;; ClickHouse refuses the collision: `init-workspace-isolation-refuses-existing-objects-test`.
+  ;; SQL Server also refuses an existing schema with a 409
+  ;; (`metabase.driver.sqlserver-test/init-workspace-isolation-refuses-existing-objects-test`).
+  ;; Redshift refuses the existing namespace with a 409: metabase.driver.redshift-test covers that.
   (mt/test-drivers (->> (mt/normal-drivers-with-feature :workspace)
                         (filter #(isa? driver/hierarchy % :sql-jdbc))
-                        (remove #{:mysql :postgres}))
+                        (remove #{:mysql :postgres :clickhouse :sqlserver :redshift}))
     (testing "init-workspace-isolation! is robust when its target output namespace already exists"
       (let [driver       driver/*driver*
             database     (mt/db)
@@ -1034,25 +1042,27 @@
           ;; CANNOT create users: postgres/redshift check CREATE at the database
           ;; level, so grant it to user A — execution then reaches the
           ;; password-bearing CREATE USER, which fails with permission denied.
-          ;; Postgres refuses an output schema that already exists, so the test
-          ;; does not pre-create one there.
+          ;; Postgres and Redshift refuse an output schema that already exists
+          ;; (409), so the test does not pre-create one there.
           ;; Elsewhere, pre-create ws-b's namespace so the leading
-          ;; `CREATE ... IF NOT EXISTS` can skip instead of failing. That only
-          ;; helps engines that check existence before privileges (SQL Server's
-          ;; guarded EXEC); ClickHouse checks privileges regardless, so there
-          ;; the batch dies on the namespace statement and never reaches
-          ;; CREATE USER. MySQL runs no `IF NOT EXISTS`, so the pre-created
+          ;; `CREATE ... IF NOT EXISTS` can skip instead of failing. SQL Server
+          ;; runs no such statement: init first looks for an existing login, user
+          ;; and schema (a 409 if the low-privilege login can see ws-b's schema),
+          ;; then its batch starts with the password-bearing CREATE LOGIN, which
+          ;; that login cannot run. MySQL runs no `IF NOT EXISTS`, so the pre-created
           ;; namespace does not matter there: its init first checks that the
           ;; login can see and end other users' sessions, which the
           ;; low-privilege login cannot, so init fails with a 412 before any
-          ;; DDL. On both, the
-          ;; leak assertion still covers whatever exception surfaces, it just
-          ;; can't prove the echo path there.
+          ;; DDL. ClickHouse runs plain CREATEs, after reading `system.users`
+          ;; before any DDL; the low-privilege login cannot read it, so init
+          ;; fails there and never reaches CREATE USER either. The leak
+          ;; assertion still covers whatever exception surfaces, it just can't
+          ;; prove the echo path on those engines.
           (when (#{:postgres :redshift} driver)
             (jdbc/execute! admin-spec [(format "GRANT CREATE ON DATABASE \"%s\" TO \"%s\""
                                                (or (:dbname details) (:db details))
                                                (driver.u/workspace-isolation-user-name ws-a))]))
-          (when-not (= :postgres driver)
+          (when-not (#{:postgres :redshift} driver)
             (jdbc/execute! admin-spec [(create-input-namespace-sql driver b-ns)]))
           (mt/with-temp [:model/Database low-priv-db {:engine  driver
                                                       :details (merge details (:database_details ws-a))}]
@@ -1064,11 +1074,16 @@
                                                          (swap! generated conj pw)
                                                          pw))]
                            (try
-                             ;; past Postgres's CREATEROLE precondition, so that CREATE USER itself runs and fails
+                             ;; past Postgres's CREATEROLE precondition and Redshift's superuser precondition, so
+                             ;; that CREATE USER itself runs and fails
                              (mt/with-dynamic-fn-redefs [postgres/check-admin-login-privileges! (constantly nil)]
-                               (init!
-                                driver low-priv-db
-                                (with-isolation-details driver low-priv-db ws-b)))
+                               (with-redefs-fn (if (= :redshift driver)
+                                                 {(requiring-resolve 'metabase.driver.redshift/check-superuser!)
+                                                  (constantly nil)}
+                                                 {})
+                                 #(init!
+                                   driver low-priv-db
+                                   (with-isolation-details driver low-priv-db ws-b))))
                              nil
                              (catch Throwable t t)))]
               (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id low-priv-db))
