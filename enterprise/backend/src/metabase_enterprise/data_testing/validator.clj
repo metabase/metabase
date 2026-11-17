@@ -206,7 +206,7 @@
   A function that writes, called by a name the check does not know, passes."
   [driver :- :keyword
    sql    :- :string]
-  (let [{:keys [verdict error reason] checked :sql} (sql-tools/validate-executable-stmt driver sql "write")]
+  (let [{:keys [verdict error reason detail] checked :sql} (sql-tools/validate-executable-stmt driver sql "write")]
     (case verdict
       :allowed
       checked
@@ -214,8 +214,10 @@
       :disallowed
       (throw (data-testing.errors/ex
               ::data-testing.errors/not-a-single-write
-              (tru "The SQL under test must be one INSERT, UPDATE or DELETE statement that calls no function that runs SQL text. Only for such a statement can the test tell which tables the SQL writes.")
-              {}))
+              (tru "The SQL under test must be one INSERT, UPDATE or DELETE statement that hides no SQL from the parser and calls no function that runs SQL text, takes a lock, waits, changes the session or reaches outside the database.")
+              (cond-> {}
+                reason (assoc :reason reason)
+                detail (assoc :detail detail))))
 
       :unknown
       (if error

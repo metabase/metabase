@@ -1,6 +1,6 @@
 (ns metabase-enterprise.data-testing.validator-test
   "The checks of [[validator/validate]]: declared and unused inputs, leftover references after the rewrite, table labels
-  and the required expectation. Pure — no warehouse."
+  and the required expectation; and the write check, [[validator/ensure-single-write]]. Pure — no warehouse."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
@@ -151,3 +151,11 @@
              (refused (with-sql card-test "SELECT * FROM {{OUTPUT}} WHERE x = '{{ other }}'")))))
     (testing "a transform test has no placeholders: braces in a string literal are its SQL's own"
       (is (nil? (refused (with-sql complete-test "SELECT '{{x}}' AS a FROM PEOPLE")))))))
+
+(deftest refused-write-says-why-test
+  (testing "a write that calls a function that waits is refused, and the refusal's data names the reason and the function"
+    (let [e (try (validator/ensure-single-write :postgres "UPDATE t SET name = pg_sleep(1)::text WHERE id = 1")
+                 nil
+                 (catch ExceptionInfo e e))]
+      (is (= {:error-type ::errors/not-a-single-write :reason "session-function" :detail "pg_sleep"}
+             (select-keys (ex-data e) [:error-type :reason :detail]))))))
