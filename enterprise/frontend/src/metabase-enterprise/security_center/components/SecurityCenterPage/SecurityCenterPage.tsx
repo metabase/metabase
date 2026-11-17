@@ -176,7 +176,9 @@ export function SecurityCenterPage() {
               {t`Current version`}: {currentVersion}
             </Text>
             <UpgradeBanner targetVersion={targetVersion} />
-            <NotificationConfigBanner />
+            <NotificationConfigBanner
+              openSettings={() => setSettingsOpen(true)}
+            />
           </Stack>
           <Stack gap="xxl" className={S.content}>
             <AdvisoryFilterBar
