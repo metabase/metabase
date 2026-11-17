@@ -6,6 +6,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.events.audit-log :as events.audit-log]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -835,3 +836,25 @@
             :model_id (:id table)
             :details  {:name "My Cool Table", :id (:id table), :db_id (:db_id table)}}
            (mt/latest-audit-log-entry "table-unpublish" (:id table)))))))
+
+(deftest batch-of-audited-writes-is-one-insert-test
+  (testing "the audit rows of a batch of writes by a user are inserted by one statement, in the order of the writes"
+    (mt/with-temp [:model/Card {a :id} {:name "A"}
+                   :model/Card {b :id} {:name "B"}
+                   :model/Card {c :id} {:name "C"}]
+      (let [inserts (atom 0)
+            before  (or (:id (t2/query-one {:select [[:%max.id :id]] :from [:audit_log]})) 0)]
+        (mt/with-dynamic-fn-redefs [audit-app.db/insert-audit-logs! (let [f (mt/original-fn #'audit-app.db/insert-audit-logs!)]
+                                                                      (fn [rows] (swap! inserts inc) (f rows)))]
+          (mt/with-current-user (mt/user->id :rasta)
+            (events/with-batched-events
+              (t2/update! :model/Card :id b {:name "B2"})
+              (t2/update! :model/Card :id c {:name "C2"})
+              (t2/update! :model/Card :id a {:name "A2"}))))
+        (is (= 1 @inserts))
+        (is (= [["card-update" b] ["card-update" c] ["card-update" a]]
+               (mapv (juxt :topic :model_id)
+                     (t2/query {:select   [:topic :model_id]
+                                :from     [:audit_log]
+                                :where    [:and [:> :id before] [:in :model_id [a b c]] [:= :model "Card"]]
+                                :order-by [[:id :asc]]}))))))))

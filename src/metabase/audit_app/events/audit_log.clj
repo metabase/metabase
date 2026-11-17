@@ -11,6 +11,15 @@
 
 (events/derive! ::event :metabase/event)
 
+(events/register-sink! ::rows audit-log/record-rows!)
+
+(defn- record!
+  "Record the audit row of `topic` and `params` with the other rows of the batch, in their order, or at once outside a
+  batch."
+  [topic params]
+  (when-let [row (audit-log/audit-row topic params)]
+    (events/add-to-sink! ::rows row)))
+
 (defn- unchanged-details?
   "Whether the update `event` leaves what the audit log records of the object as it was."
   [stored-topic {:keys [object previous-object]}]
@@ -41,11 +50,11 @@
              (not (carried-by-archive? event))
              (not (bookkeeping-update? event))
              (not (and previous? object previous-object (unchanged-details? stored-topic event))))
-    (audit-log/record-event! stored-topic
-                             (cond-> {:object (or object previous-object) :user-id user-id}
-                               (and previous? object previous-object) (assoc :previous-object previous-object)
-                               (:revision-message context)             (assoc :details {:revision-message (:revision-message context)})
-                               (:details context)                      (update :details merge (:details context))))))
+    (record! stored-topic
+             (cond-> {:object (or object previous-object) :user-id user-id}
+               (and previous? object previous-object) (assoc :previous-object previous-object)
+               (:revision-message context)             (assoc :details {:revision-message (:revision-message context)})
+               (:details context)                      (update :details merge (:details context))))))
 
 (events/derive! ::card-event ::event)
 (events/derive! :event/card-create ::card-event)
@@ -94,11 +103,11 @@
                                             (-> (cards card_id)
                                                 (assoc :id id)
                                                 (assoc :card_id card_id)))))]
-      (audit-log/record-event! (if (= :create operation) :event/dashboard-add-cards :event/dashboard-remove-cards)
-                               {:details  details
-                                :user-id  user-id
-                                :model    :model/Dashboard
-                                :model-id dashboard-id}))))
+      (record! (if (= :create operation) :event/dashboard-add-cards :event/dashboard-remove-cards)
+               {:details  details
+                :user-id  user-id
+                :model    :model/Dashboard
+                :model-id dashboard-id}))))
 
 (events/register-owned-consumer! ::dashcards dashcards-owner record-dashcards!)
 
@@ -112,12 +121,12 @@
 
 (methodical/defmethod events/publish-event! ::publicize
   [topic {:keys [user-id object-id] :as _event}]
-  (audit-log/record-event! topic
-                           {:user-id  user-id
-                            :model    (if (events/isa? topic ::publicize-dashboard)
-                                        :model/Dashboard
-                                        :model/Card)
-                            :model-id object-id}))
+  (record! topic
+           {:user-id  user-id
+            :model    (if (events/isa? topic ::publicize-dashboard)
+                        :model/Dashboard
+                        :model/Card)
+            :model-id object-id}))
 
 (events/derive! ::table-event ::event)
 (events/derive! :event/table-manual-scan ::table-event)
@@ -127,7 +136,7 @@
 
 (methodical/defmethod events/publish-event! ::table-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (record! topic event))
 
 (events/derive! ::pulse-event ::event)
 (events/derive! :event/pulse-create ::pulse-event)
@@ -158,11 +167,11 @@
                       (create-details-map object (:name object) false (:dashboard_id object))
                       object)
         model-id    (or id (:id object))]
-    (audit-log/record-event! topic
-                             {:details  details-map
-                              :user-id  user-id
-                              :model    :model/Pulse
-                              :model-id model-id})))
+    (record! topic
+             {:details  details-map
+              :user-id  user-id
+              :model    :model/Pulse
+              :model-id model-id})))
 
 (events/derive! ::alert-event ::event)
 (events/derive! :event/alert-create ::alert-event)
@@ -174,11 +183,11 @@
   (let [card      (:card object)
         card-name (:name card)]
     ;; Alerts are centered around a card/question. Users always interact with the alert via the question
-    (audit-log/record-event! topic
-                             {:details  (create-details-map object card-name true (:id card))
-                              :user-id  user-id
-                              :model    :model/Card
-                              :model-id (:id object)})))
+    (record! topic
+             {:details  (create-details-map object card-name true (:id card))
+              :user-id  user-id
+              :model    :model/Card
+              :model-id (:id object)})))
 
 (events/derive! ::notification-event ::event)
 (events/derive! :event/notification-create ::notification-event)
@@ -187,12 +196,12 @@
 
 (methodical/defmethod events/publish-event! ::notification-event
   [topic {:keys [object user-id] :as event}]
-  (audit-log/record-event! topic
-                           (merge
-                            event
-                            {:model    :model/Notification
-                             :model-id (:id object)
-                             :user-id  user-id})))
+  (record! topic
+           (merge
+            event
+            {:model    :model/Notification
+             :model-id (:id object)
+             :user-id  user-id})))
 
 (events/derive! ::notification-handler-event ::event)
 (events/derive! :event/notification-unsubscribe-ex ::notification-handler-event)
@@ -200,12 +209,12 @@
 
 (methodical/defmethod events/publish-event! ::notification-handler-event
   [topic {:keys [object user-id] :as event}]
-  (audit-log/record-event! topic
-                           (merge
-                            event
-                            {:model    :model/NotificationHandler
-                             :model-id (:id object)
-                             :user-id  user-id})))
+  (record! topic
+           (merge
+            event
+            {:model    :model/NotificationHandler
+             :model-id (:id object)
+             :user-id  user-id})))
 
 (events/derive! ::segment-event ::event)
 (events/derive! :event/segment-create ::segment-event)
@@ -240,7 +249,7 @@
 
 (methodical/defmethod events/publish-event! ::user-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (record! topic event))
 
 ;; session events
 
@@ -250,7 +259,7 @@
 
 (methodical/defmethod events/publish-event! ::session-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (record! topic event))
 
 (events/derive! ::user-update-event ::event)
 (events/derive! :event/user-update ::user-update-event)
@@ -269,10 +278,10 @@
 
 (methodical/defmethod events/publish-event! ::user-joined-event
   [topic {:keys [user-id]}]
-  (audit-log/record-event! topic
-                           {:user-id  user-id
-                            :model    :model/User
-                            :model-id user-id}))
+  (record! topic
+           {:user-id  user-id
+            :model    :model/User
+            :model-id user-id}))
 
 (events/derive! ::install-event ::event)
 (events/derive! :event/install ::install-event)
@@ -280,7 +289,7 @@
 (methodical/defmethod events/publish-event! ::install-event
   [topic _event]
   (when-not (audit-app.db/audit-log-topic-exists? "install")
-    (audit-log/record-event! topic {})))
+    (record! topic {})))
 
 (events/derive! ::database-event ::event)
 (events/derive! :event/database-create ::database-event)
@@ -295,7 +304,7 @@
   [topic event]
   (if (events/isa? topic ::lifecycle-event)
     (record-lifecycle! topic event false)
-    (audit-log/record-event! topic event)))
+    (record! topic event)))
 
 (events/derive! ::database-update-event ::event)
 (events/derive! :event/database-update ::database-update-event)
@@ -303,7 +312,7 @@
 (methodical/defmethod events/publish-event! ::database-update-event
   [topic event]
   (if (:details event)
-    (audit-log/record-event! topic event)
+    (record! topic event)
     (record-lifecycle! topic event true)))
 
 (events/derive! ::permission-failure-event ::event)
@@ -313,14 +322,14 @@
 
 (methodical/defmethod events/publish-event! ::permission-failure-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (record! topic event))
 
 (events/derive! ::settings-changed-event ::event)
 (events/derive! :event/setting-update ::settings-changed-event)
 
 (methodical/defmethod events/publish-event! ::settings-changed-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (record! topic event))
 
 (events/derive! ::api-key-event ::event)
 (events/derive! :event/api-key-create ::api-key-event)
@@ -353,7 +362,7 @@
 
 (methodical/defmethod events/publish-event! ::upload-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (record! topic event))
 
 (events/derive! ::cache-config-changed-event ::event)
 (events/derive! :event/cache-config-create ::cache-config-changed-event)
@@ -396,7 +405,7 @@
 
 (methodical/defmethod events/publish-event! ::cloud-add-on-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (record! topic event))
 
 (events/derive! ::document-event ::event)
 (events/derive! :event/document-create ::document-event)
@@ -473,7 +482,7 @@
     (if (re-find #"test" (name topic))
       (record-saved-test-lifecycle! topic event)
       (record-lifecycle! (get lifecycle-stored-topics topic topic) event false))
-    (audit-log/record-event! topic event)))
+    (record! topic event)))
 
 (events/derive! ::card-test-event ::event)
 (events/derive! :event/card-test-create ::card-test-event)
@@ -486,7 +495,7 @@
   [topic event]
   (if (events/isa? topic ::lifecycle-event)
     (record-saved-test-lifecycle! topic event)
-    (audit-log/record-event! topic event)))
+    (record! topic event)))
 
 (events/derive! ::glossary-event ::event)
 (events/derive! :event/glossary-create ::glossary-event)
@@ -515,7 +524,7 @@
 
 (methodical/defmethod events/publish-event! ::remote-sync-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (record! topic event))
 
 (events/derive! ::action-v2-event ::event)
 (events/derive! :event/action-v2-execute ::action-v2-event)
@@ -530,8 +539,8 @@
                                (when (or (string? event) (keyword? event))
                                  (keyword event))))
                   (get-in event [:details :scope :table_id]))]
-      (audit-log/record-event! :event/table-data-edit (merge event {:model :model/Table :model-id table-id}))
-      (audit-log/record-event! topic event))))
+      (record! :event/table-data-edit (merge event {:model :model/Table :model-id table-id}))
+      (record! topic event))))
 
 (events/derive! ::tenant-event ::event)
 (events/derive! :event/tenant-create ::tenant-event)
@@ -547,7 +556,7 @@
 
 (methodical/defmethod events/publish-event! ::security-advisory-event
   [topic event]
-  (audit-log/record-event! topic event))
+  (record! topic event))
 
 (defn- column-change
   "The `[topic params]` that the lifecycle `event` of a write records for a column it changes, or nil."
@@ -582,7 +591,7 @@
           :when (:user-id event)
           :let  [[topic params] (column-change event)]
           :when topic]
-    (audit-log/record-event! topic params)))
+    (record! topic params)))
 
 (events/register-owned-consumer! ::column-changes
                                  (fn [{:keys [model operation]}]
@@ -601,11 +610,11 @@
   (when user-id
     (let [router   (or object previous-object)
           database (audit-app.db/database (:database_id router))]
-      (audit-log/record-event! :event/database-update
-                               {:object          database
-                                :previous-object database
-                                :user-id         user-id
-                                :details         (if (= :event/database-router-delete topic)
-                                                   {:db_routing :disabled}
-                                                   {:db_routing        :enabled
-                                                    :routing_attribute (:user_attribute router)})}))))
+      (record! :event/database-update
+               {:object          database
+                :previous-object database
+                :user-id         user-id
+                :details         (if (= :event/database-router-delete topic)
+                                   {:db_routing :disabled}
+                                   {:db_routing        :enabled
+                                    :routing_attribute (:user_attribute router)})}))))

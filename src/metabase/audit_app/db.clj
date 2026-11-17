@@ -48,19 +48,15 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id [:auto/param database-id]))
 
-(mu/defn insert-audit-log!
-  "Insert an AuditLog entry."
-  [topic      :- :keyword
-   details    :- [:maybe ::audit-app.schema/audit-log.details]
-   model-name :- [:maybe :string]
-   model-id   :- [:maybe ms/PositiveInt]
-   user-id    :- [:maybe ::lib.schema.id/user]]
-  (t2/insert! :model/AuditLog
-              :topic    topic
-              :details  details
-              :model    model-name
-              :model_id model-id
-              :user_id  user-id))
+(mu/defn insert-audit-logs!
+  "Insert the AuditLog `rows` in one statement, in their order, returning the number inserted."
+  [rows :- [:sequential [:map {:closed true}
+                         [:topic    :keyword]
+                         [:details  [:maybe ::audit-app.schema/audit-log.details]]
+                         [:model    [:maybe :string]]
+                         [:model_id [:maybe ms/PositiveInt]]
+                         [:user_id  [:maybe ::lib.schema.id/user]]]]]
+  (t2/insert! :model/AuditLog rows))
 
 (mu/defn delete-oldest-by-id-subquery!
   "Delete up to `batch-size` of the `table` rows whose `time-column` is at or before `cutoff`, lowest ids first."
