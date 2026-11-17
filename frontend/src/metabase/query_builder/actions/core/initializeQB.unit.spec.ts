@@ -4,7 +4,11 @@ import {
   createMockMetadata,
   createMockMetadataFromState,
 } from "__support__/metadata";
-import { createMockLocation, createMockState } from "__support__/state";
+import {
+  createMockLocation,
+  createMockQueryBuilderState,
+  createMockState,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { cardApi, databaseApi, snippetApi } from "metabase/api";
 import * as rtkEndpointUtils from "metabase/api/utils/run-rtk-endpoint";
@@ -12,6 +16,7 @@ import * as CardLib from "metabase/common/utils/card";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
+import type { PendingMetabotCard } from "metabase/redux/store";
 import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";
@@ -54,6 +59,7 @@ type BaseSetupOpts = {
   location: Location;
   params: Record<string, unknown>;
   hasDataPermissions?: boolean;
+  pendingMetabotCard?: PendingMetabotCard | null;
 };
 
 const SEGMENT = createMockSegment();
@@ -63,9 +69,11 @@ async function baseSetup({
   location,
   params,
   hasDataPermissions = true,
+  pendingMetabotCard = null,
 }: BaseSetupOpts) {
   jest.useFakeTimers();
   const state = createMockState({
+    qb: createMockQueryBuilderState({ pendingMetabotCard }),
     entities: createMockEntitiesState({
       databases: hasDataPermissions ? [createSampleDatabase()] : [],
       segments: [SEGMENT],
@@ -573,6 +581,61 @@ describe("QB Actions > initializeQB", () => {
       const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
       await setup({ card });
       expect(runQuestionQuerySpy).not.toHaveBeenCalled();
+    });
+
+    describe("opened by Metabot", () => {
+      const location = getLocationForCard(card);
+      const url = `${location.pathname}${location.hash}`;
+
+      it("records the SQL it loaded as Metabot's", async () => {
+        const { dispatch, result } = await setup({
+          card,
+          location,
+          pendingMetabotCard: { url },
+        });
+
+        expect(result.uiControls.metabotSqlBaseline).toEqual({
+          sql: "select * from orders",
+          databaseId: SAMPLE_DB_ID,
+        });
+        expect(dispatch).toHaveBeenCalledWith(
+          sharedQB.setPendingMetabotCard(null),
+        );
+      });
+
+      it("records nothing when Metabot was opening another question", async () => {
+        const { dispatch, result } = await setup({
+          card,
+          location,
+          pendingMetabotCard: { url: "/question#another-card" },
+        });
+
+        expect(result.uiControls.metabotSqlBaseline).toBeUndefined();
+        expect(dispatch).toHaveBeenCalledWith(
+          sharedQB.setPendingMetabotCard(null),
+        );
+      });
+
+      it("records nothing when Metabot did not open it", async () => {
+        const { result } = await setup({ card, location });
+
+        expect(result.uiControls.metabotSqlBaseline).toBeUndefined();
+      });
+    });
+  });
+
+  describe("unsaved structured questions opened by Metabot", () => {
+    const { card } = TEST_CASE.UNSAVED_STRUCTURED_QUESTION;
+
+    it("records no SQL", async () => {
+      const location = getLocationForCard(card);
+      const { result } = await setup({
+        card,
+        location,
+        pendingMetabotCard: { url: `${location.pathname}${location.hash}` },
+      });
+
+      expect(result.uiControls.metabotSqlBaseline).toBeUndefined();
     });
   });
 

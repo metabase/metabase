@@ -36,6 +36,7 @@ export const createMockQueryBuilderUIControlsState = (
   isShowingListViewConfiguration: false,
   questionDetailsTimelineDrawerState: null,
   nativeEditorSelectedRange: [],
+  metabotSqlBaseline: null,
   ...opts,
 });
 
@@ -53,6 +54,7 @@ export const createMockQueryBuilderState = (
   opts?: Partial<QueryBuilderState>,
 ): QueryBuilderState => ({
   uiControls: createMockQueryBuilderUIControlsState(),
+  pendingMetabotCard: null,
   loadingControls: {
     showLoadCompleteFavicon: false,
     documentTitle: "",

@@ -6,6 +6,7 @@
 import { createAction } from "redux-actions";
 
 import { createThunkAction } from "metabase/redux";
+import type { PendingMetabotCard } from "metabase/redux/store";
 import type { Card } from "metabase-types/api";
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
@@ -28,6 +29,16 @@ export const setIsNativeEditorOpen = createThunkAction(
         dispatch(setUIControls({ isNativeEditorOpen }));
       }
     },
+);
+
+export const SET_PENDING_METABOT_CARD = "metabase/qb/SET_PENDING_METABOT_CARD";
+/**
+ * Tells the next query builder init that Metabot is opening the question at
+ * `url`. `initializeQB` clears it whichever location it loads, so a reload, a
+ * shared link or a later navigation never sees it.
+ */
+export const setPendingMetabotCard = createAction<PendingMetabotCard | null>(
+  SET_PENDING_METABOT_CARD,
 );
 
 export const EDIT_SUMMARY = "metabase/qb/EDIT_SUMMARY";

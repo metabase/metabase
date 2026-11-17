@@ -23,7 +23,10 @@ import {
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
-import { INITIALIZE_QB } from "metabase/redux/query-builder";
+import {
+  INITIALIZE_QB,
+  setPendingMetabotCard,
+} from "metabase/redux/query-builder";
 import type {
   Dispatch,
   GetState,
@@ -50,6 +53,7 @@ import { resetQB } from "../../store/actions";
 import {
   getIsEditingInDashboard,
   getNotebookNativePreviewSidebarWidth,
+  getPendingMetabotCard,
 } from "../../store/selectors";
 import type { QueryBuilderStoreState } from "../../store/state";
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
@@ -476,6 +480,21 @@ async function handleQBInit(
 
   if (isStale()) {
     return;
+  }
+
+  // Any init clears it, so a reload or a later page never sees it
+  const pendingMetabotCard = getPendingMetabotCard(getState());
+  if (pendingMetabotCard) {
+    dispatch(setPendingMetabotCard(null));
+    const isMetabotCard =
+      pendingMetabotCard.url === `${location.pathname}${location.hash}`;
+    if (isNative && isMetabotCard) {
+      // after the tag renames above, so it matches the question as loaded
+      uiControls.metabotSqlBaseline = {
+        sql: Lib.rawNativeQuery(question.query()),
+        databaseId: Lib.databaseID(question.query()),
+      };
+    }
   }
 
   dispatch({

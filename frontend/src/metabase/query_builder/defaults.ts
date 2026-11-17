@@ -34,6 +34,7 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   isShowingListViewConfiguration: false,
   nativeEditorSelectedRange: [],
   questionDetailsTimelineDrawerState: null,
+  metabotSqlBaseline: null,
 };
 
 export const DEFAULT_LOADING_CONTROLS: QueryBuilderLoadingControls = {

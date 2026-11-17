@@ -578,6 +578,44 @@ describe("getShouldShowUnsavedChangesWarning", () => {
       });
       expect(getShouldShowUnsavedChangesWarning(state)).toBe(false);
     });
+
+    describe("that Metabot opened", () => {
+      const card = getNativeCard("SELECT 1");
+      const databaseId = card.dataset_query.database;
+
+      it("does not warn while the query is Metabot's", () => {
+        const state = getBaseState({
+          card,
+          uiControls: {
+            queryBuilderMode: "view",
+            metabotSqlBaseline: { sql: "SELECT 1", databaseId },
+          },
+        });
+        expect(getShouldShowUnsavedChangesWarning(state)).toBe(false);
+      });
+
+      it("warns once the user changes the query", () => {
+        const state = getBaseState({
+          card: getNativeCard("SELECT 2"),
+          uiControls: {
+            queryBuilderMode: "view",
+            metabotSqlBaseline: { sql: "SELECT 1", databaseId },
+          },
+        });
+        expect(getShouldShowUnsavedChangesWarning(state)).toBe(true);
+      });
+
+      it("warns once the user changes the database", () => {
+        const state = getBaseState({
+          card,
+          uiControls: {
+            queryBuilderMode: "view",
+            metabotSqlBaseline: { sql: "SELECT 1", databaseId: -1 },
+          },
+        });
+        expect(getShouldShowUnsavedChangesWarning(state)).toBe(true);
+      });
+    });
   });
 });
 

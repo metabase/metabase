@@ -209,8 +209,9 @@
                   query    (-> (lib/native-query mp "SELECT * FROM t") lib/->legacy-MBQL)]
               (doseq [[tool-name args] [["edit_sql_query" {:edits [{:old_string "SELECT *" :new_string "SELECT id"}]}]
                                         ["replace_sql_query" {:new_query "SELECT id FROM t"}]]
-                      :let [run (fn [context]
-                                  (let [memory (atom {:state   {:queries {query-id query}}
+                      :let [run (fn [context & {:keys [charts]}]
+                                  (let [memory (atom {:state   {:queries {query-id query}
+                                                                :charts  charts}
                                                       :context context})]
                                     (binding [shared/*memory-atom* memory]
                                       (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) tool-name
@@ -226,6 +227,14 @@
                       (is (= "generated_entity" (:data-type (first parts))))
                       (is (= "card" (:type entity)))
                       (is (= :native (get-in entity [:query :query :type])))))
+                  (testing "the card carries the id of the chart that draws the query, which the edit redraws"
+                    (let [charts {"chart-1" {:query_id query-id :queries [query]}}
+                          entity (:data (first (:data-parts (run {} :charts charts))))]
+                      (is (= "chart-1" (:id entity)))))
+                  (testing "a query no chart draws gets a card id of its own"
+                    (let [charts {"chart-1" {:query_id "another-query" :queries [query]}}
+                          entity (:data (first (:data-parts (run {} :charts charts))))]
+                      (is (not= "chart-1" (:id entity)))))
                   (testing "an open code-editor buffer receives a code_edit part"
                     (let [result (run {:user_is_viewing [{:type    "code_editor"
                                                           :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]})

@@ -2,6 +2,7 @@ import type { Widget } from "metabase/viz-core";
 import type {
   Card,
   CollectionItemModel,
+  DatabaseId,
   Dataset,
   Field,
   NativeQuerySnippet,
@@ -83,7 +84,23 @@ export interface QueryBuilderUIControls {
   questionDetailsTimelineDrawerState: string | null;
   recentlySaved?: boolean;
   nativeEditorSelectedRange: Range[];
+  /**
+   * The SQL and database of a native question Metabot opened, as loaded. While
+   * the question still matches it, leaving does not warn about unsaved changes.
+   */
+  metabotSqlBaseline: MetabotSqlBaseline | null;
 }
+
+export type MetabotSqlBaseline = {
+  sql: string;
+  databaseId: DatabaseId | null;
+};
+
+/** A question Metabot is opening; the query builder init of `url` consumes it. */
+export type PendingMetabotCard = {
+  /** `pathname + hash` of the location the init must match. */
+  url: string;
+};
 
 export interface QueryBuilderLoadingControls {
   showLoadCompleteFavicon: boolean;
@@ -100,6 +117,7 @@ export interface QueryBuilderParentEntityState {
 
 export interface QueryBuilderState {
   uiControls: QueryBuilderUIControls;
+  pendingMetabotCard: PendingMetabotCard | null;
   loadingControls: QueryBuilderLoadingControls;
   parentEntity: QueryBuilderParentEntityState;
   queryStatus: QueryBuilderQueryStatus;

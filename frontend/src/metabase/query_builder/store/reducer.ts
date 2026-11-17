@@ -12,11 +12,13 @@ import {
   EDIT_SUMMARY,
   INITIALIZE_QB,
   RESET_QB,
+  SET_PENDING_METABOT_CARD,
   SET_UI_CONTROLS,
 } from "metabase/redux/query-builder";
 import type {
   ForeignKeyReference,
   InitialChartSettingState,
+  PendingMetabotCard,
   QueryBuilderLoadingControls,
   QueryBuilderParentEntityState,
   QueryBuilderQueryStatus,
@@ -464,6 +466,17 @@ const queryResults = createReducer<Dataset[] | null>(null, (builder) => {
     .addCase(CLEAR_QUERY_RESULT, () => null);
 });
 
+// Not cleared on RESET_QB: `initializeQB` resets the QB before it reads this.
+const pendingMetabotCard = createReducer<PendingMetabotCard | null>(
+  null,
+  (builder) => {
+    builder.addCase<
+      string,
+      { type: string; payload: PendingMetabotCard | null }
+    >(SET_PENDING_METABOT_CARD, (_state, action) => action.payload);
+  },
+);
+
 const metadataDiff = createReducer<Record<string, Partial<Field>>>(
   {},
   (builder) => {
@@ -718,6 +731,7 @@ const card = createReducer<Card | null>(null, (builder) => {
 
 export const queryBuilderReducer: Reducer<QueryBuilderState> = combineReducers({
   uiControls,
+  pendingMetabotCard,
   loadingControls,
   queryStatus,
   zoomedRowObjectId,

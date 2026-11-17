@@ -153,6 +153,9 @@ export const getIsBookmarked = (
 export const getQueryStartTime = (state: QueryBuilderStoreState) =>
   state.qb.queryStartTime;
 
+export const getPendingMetabotCard = (state: QueryBuilderStoreState) =>
+  state.qb.pendingMetabotCard;
+
 export const getDatabaseId = createSelector(
   [getCard],
   (card) => card && card.dataset_query && card.dataset_query.database,
@@ -665,7 +668,12 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
       const rawQuery = Lib.rawNativeQuery(question.query());
 
       if (isNewQuestion) {
-        return rawQuery.length > 0;
+        const baseline = uiControls.metabotSqlBaseline;
+        const isUntouchedMetabotSql =
+          baseline != null &&
+          rawQuery === baseline.sql &&
+          Lib.databaseID(question.query()) === baseline.databaseId;
+        return rawQuery.length > 0 && !isUntouchedMetabotSql;
       }
 
       const rawOriginalQuery = Lib.rawNativeQuery(originalQuestion.query());
