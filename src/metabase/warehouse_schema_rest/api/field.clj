@@ -76,73 +76,23 @@
                  (format "field_ids may contain at most %d IDs." max-field-ids-for-table-id-lookup))
   {:table_ids (schema.field/field-ids->table-ids field_ids)})
 
-(defn- check-field-in-same-database!
-  "Check that `target-field-id` is a valid field in the same database as `source-field-id`. Throws a 400 if
-   the target field does not exist or belongs to a different database. Uses a single query."
-  [source-field-id target-field-id param-name]
-  (let [result (first (warehouse-schema-rest.db/field-and-target-database-ids source-field-id target-field-id))]
-    (api/checkp result param-name "Invalid target field")
-    (api/checkp (= (:source_db_id result) (:target_db_id result))
-                param-name "Target field must belong to the same database")))
-
 (defn- check-can-point-at-field!
-  [source-field-id target-field-id current-target-field-id param-name]
-  (when target-field-id
-    (check-field-in-same-database! source-field-id target-field-id param-name)
-    (when (not= target-field-id current-target-field-id)
-      (-> (warehouse-schema-rest.db/field target-field-id)
-          :table_id
-          warehouse-schema-rest.db/table
-          schema.table/check-data-model-perms))))
+  "Throws a 403 unless the current user manages the metadata of the Table of the Field with `target-field-id`, a new
+  target for a foreign key or a remapping."
+  [target-field-id current-target-field-id]
+  (when (and target-field-id (not= target-field-id current-target-field-id))
+    (some-> (warehouse-schema-rest.db/field target-field-id)
+            :table_id
+            warehouse-schema-rest.db/table
+            schema.table/check-data-model-perms)))
 
-(defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
-  (doseq [{dimension-id :id, dimension-type :type} dimensions]
-    (when (and dimension-id (= :external dimension-type))
-      (warehouse-schema-rest.db/delete-dimension! dimension-id))))
-
-(defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
-  (and (not= old-semantic-type new-semantic-type)
-       (isa? old-semantic-type :type/FK)
-       (or (nil? new-semantic-type)
-           (not (isa? new-semantic-type :type/FK)))))
-
-(defn- internal-remapping-allowed? [base-type semantic-type]
-  (and (isa? base-type :type/Integer)
-       (or
-        (nil? semantic-type)
-        (isa? semantic-type :type/Category)
-        (isa? semantic-type :type/Enum))))
-
-(defn- clear-dimension-on-type-change!
-  "Removes a related dimension if the field is moving to a type that
-  does not support remapping"
-  [{:keys [dimensions], :as _old-field} base-type new-semantic-type]
-  (doseq [{old-dim-id :id, old-dim-type :type} dimensions]
-    (when (and old-dim-id
-               (= :internal old-dim-type)
-               (not (internal-remapping-allowed? base-type new-semantic-type)))
-      (warehouse-schema-rest.db/delete-dimension! old-dim-id))))
-
-(defn- update-nested-fields-on-json-unfolding-change!
-  "If JSON unfolding was enabled for a JSON field, it activates previously synced nested fields from the JSON field.
-   If JSON unfolding was disabled for that field, it inactivates the nested fields from the JSON field.
-   Returns nil."
-  [old-field new-json-unfolding]
-  (when (not= new-json-unfolding (:json_unfolding old-field))
-    (if new-json-unfolding
-      (let [update-result (warehouse-schema-rest.db/set-nested-fields-active! (:table_id old-field)
-                                                                              (str "[\"" (:name old-field) "\",%]")
-                                                                              true)]
-        (when (zero? update-result)
-          ;; Sync the table if no nested fields exist. This means the table hasn't previously
-          ;; been synced when JSON unfolding was enabled. This assumes the JSON field is already updated to have
-          ;; JSON unfolding enabled.
-          (let [table (field/table old-field)]
-            (quick-task/submit-task! (fn [] (sync/sync-table! table))))))
-      (warehouse-schema-rest.db/set-nested-fields-active! (:table_id old-field)
-                                                          (str "[\"" (:name old-field) "\",%]")
-                                                          false)))
-  nil)
+(defn- sync-table-when-unfolding-finds-no-fields!
+  "Syncs the Table of `field`, whose JSON unfolding was just enabled, when it has no nested Fields yet: it was never
+  synced with unfolding on."
+  [field]
+  (when-not (warehouse-schema-rest.db/nested-fields-exist? (:table_id field) (field/nested-fields-pattern (:name field)))
+    (let [table (field/table field)]
+      (quick-task/submit-task! (fn [] (sync/sync-table! table))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -153,8 +103,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {display-name      :display_name
-    coercion-strategy :coercion_strategy
+   {coercion-strategy :coercion_strategy
     json-unfolding    :json_unfolding
     :as body} :- [:map {:closed true}
                   [:caveats            {:optional true} [:maybe ms/NonBlankString]]
@@ -169,50 +118,35 @@
                   [:has_field_values   {:optional true} ::lib.schema.metadata/column.has-field-values]
                   [:settings           {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
                   [:json_unfolding     {:optional true} :boolean]]]
-  (let [field             (-> (warehouse-schema-rest.db/field id)
-                              api/write-check
-                              (t2/hydrate :dimensions))
-        new-semantic-type (keyword (get body :semantic_type (:semantic_type field)))
-        [effective-type coercion-strategy]
-        (cond (not (contains? body :coercion_strategy))
-              [((some-fn :effective_type :base_type) field) (:coercion_strategy field)]
+  (let [field          (api/write-check (warehouse-schema-rest.db/field id))
+        effective-type (cond
+                         (not (contains? body :coercion_strategy)) ((some-fn :effective_type :base_type) field)
+                         (nil? coercion-strategy)                  (:base_type field)
+                         :else                                     (types/effective-type-for-coercion
+                                                                    (keyword coercion-strategy)))
+        removed-fk?    (and (contains? body :semantic_type)
+                            (isa? (:semantic_type field) :type/FK)
+                            (not (isa? (some-> (:semantic_type body) keyword) :type/FK)))]
+    (when (and (contains? body :coercion_strategy)
+               coercion-strategy
+               (not (types/is-coercible? (keyword coercion-strategy) (:base_type field) effective-type)))
+      (throw (ex-info (i18n/tru "Incompatible coercion strategy.")
+                      {:status-code       400
+                       :base-type         (:base_type field)
+                       :coercion-strategy (keyword coercion-strategy)
+                       :effective-type    effective-type
+                       :response/keys     #{:base-type :coercion-strategy :effective-type}})))
+    (check-can-point-at-field! (:fk_target_field_id body) (:fk_target_field_id field))
+    (schema.field-user-settings/upsert-field-user-settings!
+     field
+     (cond-> body
+       removed-fk?
+       (assoc :fk_target_field_id nil)
 
-              (nil? coercion-strategy)
-              [(:base_type field) nil]
-
-              :else
-              (when-let [coercion-strategy (some-> coercion-strategy keyword)]
-                (let [effective (types/effective-type-for-coercion coercion-strategy)]
-                  (if (types/is-coercible? coercion-strategy (:base_type field) effective)
-                    [effective coercion-strategy]
-                    (throw (ex-info (i18n/tru "Incompatible coercion strategy.")
-                                    {:status-code 400
-                                     :base-type (:base_type field)
-                                     :coercion-strategy coercion-strategy
-                                     :effective-type effective
-                                     :response/keys #{:base-type :coercion-strategy :effective-type}}))))))
-        removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
-        fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
-    ;; validate that fk_target_field_id is a valid Field in the same database
-    (check-can-point-at-field! id fk-target-field-id (:fk_target_field_id field) :fk_target_field_id)
-    (when (and display-name
-               (not removed-fk?)
-               (not= (:display_name field) display-name))
-      (warehouse-schema-rest.db/rename-dimension-for-field! id display-name))
-    (t2/with-transaction [_conn]
-      (when removed-fk?
-        (clear-dimension-on-fk-change! field))
-      (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-      (schema.field-user-settings/upsert-field-user-settings!
-       field
-       (cond-> body
-         (or removed-fk? (contains? body :fk_target_field_id))
-         (assoc :fk_target_field_id (when-not removed-fk? fk-target-field-id))
-
-         (contains? body :coercion_strategy)
-         (assoc :effective_type effective-type :coercion_strategy coercion-strategy))))
-    (when (some? json-unfolding)
-      (update-nested-fields-on-json-unfolding-change! field json-unfolding))
+       (contains? body :coercion_strategy)
+       (assoc :effective_type effective-type :coercion_strategy (some-> coercion-strategy keyword))))
+    (when (and json-unfolding (not (:json_unfolding field)))
+      (sync-table-when-unfolding-finds-no-fields! field))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
     (let [updated (warehouse-schema-rest.db/field id)]
@@ -257,14 +191,8 @@
        [:name                    ms/NonBlankString]
        [:human_readable_field_id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/write-check :model/Field id)
-  (api/check (or (= dimension-type :internal)
-                 (and (= dimension-type :external)
-                      human-readable-field-id))
-             [400 "Foreign key based remappings require a human readable field id"])
   (let [existing-dimension (warehouse-schema-rest.db/dimension-for-field id)]
-    (check-can-point-at-field! id human-readable-field-id
-                               (:human_readable_field_id existing-dimension)
-                               :human_readable_field_id)
+    (check-can-point-at-field! human-readable-field-id (:human_readable_field_id existing-dimension))
     (if-let [dimension existing-dimension]
       (warehouse-schema-rest.db/update-dimension! (u/the-id dimension)
                                                   {:type                    dimension-type
@@ -303,17 +231,6 @@
   (let [field (api/query-check (warehouse-schema-rest.db/field id))]
     (parameters.field/field->values field)))
 
-(defn- validate-human-readable-pairs
-  "Human readable values are optional, but if present they must be present for each field value. Throws if invalid,
-  returns a boolean indicating whether human readable values were found."
-  [value-pairs]
-  (let [human-readable-missing? #(= ::not-found (get % 1 ::not-found))
-        has-human-readable-values? (not-any? human-readable-missing? value-pairs)]
-    (api/check (or has-human-readable-values?
-                   (every? human-readable-missing? value-pairs))
-               [400 "If remapped values are specified, they must be specified for all field values"])
-    has-human-readable-values?))
-
 (api.macros/defendpoint :post "/:id/values" :- [:map {:closed true} [:status [:= :success]]]
   "Update the fields values and human-readable values for a `Field` whose semantic type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
@@ -326,12 +243,10 @@
     (api/check (field-values/field-should-have-field-values? field)
                [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                          "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
-    (let [human-readable-values? (validate-human-readable-pairs value-pairs)
-          values                 (map first value-pairs)
-          human-readable-values  (when human-readable-values?
-                                   (map second value-pairs))
-          updated-pk             (warehouse-schema-rest.db/update-or-insert-full-field-values!
-                                  (u/the-id field) values human-readable-values)]
+    (let [values                (map first value-pairs)
+          human-readable-values (not-empty (into [] (comp (filter #(= 2 (count %))) (map second)) value-pairs))
+          updated-pk            (warehouse-schema-rest.db/update-or-insert-full-field-values!
+                                 (u/the-id field) values human-readable-values)]
       (api/check-500 (pos? updated-pk))))
   {:status :success})
 

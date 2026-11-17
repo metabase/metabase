@@ -10,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.serialization.core :as serialization]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -159,18 +160,68 @@
           (assoc field :effective_type base-raw))
       field)))
 
+(defn- coercion-strategy
+  "The `:coercion_strategy` of `field` as a keyword, or nil when it has none or one the column does not take."
+  [field]
+  (let [coercion (some-> (:coercion_strategy field) keyword)]
+    (when (isa? coercion :Coercion/*)
+      coercion)))
+
+(defn- coercion-changes
+  "The `:coercion_strategy` and `:effective_type` to write for `field` given the columns `changes` writes: the effective
+  type of a newly set strategy that comes without one, and neither once the `:base_type` moves away from the strategy."
+  [{:keys [base_type] :as field} changes]
+  (when-let [coercion (coercion-strategy field)]
+    (cond
+      (and (contains? changes :coercion_strategy) (not (contains? changes :effective_type)))
+      {:effective_type (types/effective-type-for-coercion coercion)}
+
+      (and (contains? changes :base_type)
+           (not (contains? changes :coercion_strategy))
+           (not (types/is-coercible-from? coercion (keyword base_type))))
+      {:coercion_strategy nil, :effective_type base_type})))
+
+(defn- check-fk-target
+  "Throws a 400 unless the `:fk_target_field_id` of `field` is a Field of the Database of its Table."
+  [{:keys [table_id fk_target_field_id]}]
+  (let [target-database-id (get (warehouse-schema.db/field-database-ids #{fk_target_field_id}) fk_target_field_id)]
+    (api/checkp target-database-id :fk_target_field_id (tru "Invalid target field"))
+    (api/checkp (= target-database-id (warehouse-schema.db/table-database-id table_id))
+                :fk_target_field_id (tru "Target field must belong to the same database"))))
+
+(defn nested-fields-pattern
+  "The SQL LIKE pattern matching the NFC paths of the Fields nested in the JSON Field named `field-name`."
+  [field-name]
+  (str "[\"" field-name "\",%]"))
+
 (t2/define-before-insert :model/Field
   [field]
-  (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
-    (-> (merge defaults field)
-        enforce-effective-type-invariant)))
+  (let [field (merge field
+                     {:display_name (:display_name field (humanization/name->human-readable-name (:name field)))}
+                     (coercion-changes field field))]
+    (when (:fk_target_field_id field)
+      (check-fk-target field))
+    (enforce-effective-type-invariant field)))
 
 (t2/define-before-update :model/Field
-  [field]
-  (when (false? (:active (t2/changes field)))
-    (warehouse-schema.db/clear-user-settings-fk-targets-to-field! (:id field))
-    (warehouse-schema.db/clear-fk-targets-to-field! (:id field)))
-  (enforce-effective-type-invariant field))
+  [{:keys [id table_id] :as field}]
+  (let [changes (t2/changes field)
+        field   (merge field (coercion-changes field changes))]
+    (when (contains? changes :table_id)
+      (throw (ex-info (tru "You cannot move a Field to another Table.") {:status-code 400})))
+    (when (and (contains? changes :fk_target_field_id) (:fk_target_field_id field))
+      (check-fk-target field))
+    (when (false? (:active changes))
+      (warehouse-schema.db/clear-user-settings-fk-targets-to-field! id)
+      (warehouse-schema.db/clear-fk-targets-to-field! id)
+      (warehouse-schema.db/delete-dimensions-reading-field! id))
+    (when (:display_name changes)
+      (warehouse-schema.db/rename-dimension-for-field! id (:display_name field)))
+    (when (contains? changes :json_unfolding)
+      (warehouse-schema.db/set-nested-fields-active! table_id
+                                                     (nested-fields-pattern (:name field))
+                                                     (boolean (:json_unfolding field))))
+    (enforce-effective-type-invariant field)))
 
 (t2/define-before-delete :model/Field
   [field]

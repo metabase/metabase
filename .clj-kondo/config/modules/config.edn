@@ -3568,6 +3568,7 @@
            lib.be
            lib.metadata
            lib.schema
+           lib.types
            models
            parameters.schema
            permissions
