@@ -184,6 +184,8 @@
     (pull-ok! url nil)
     (let [id (plugin-id "thumbs")]
       (upload! 403 (plugin-files "ops" "ops();"))
+      (testing "an invalid bundle is refused before it is validated"
+        (upload! 403 (dissoc (plugin-files "ops" "ops();") "dist/index.js")))
       (replace-bundle! 403 id (plugin-files "thumbs" "v2();"))
       (delete-plugin! 403 id)
       (testing "`enabled` and dev-only plugins stay this instance's"

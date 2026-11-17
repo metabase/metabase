@@ -171,11 +171,11 @@
    _query-params
    {:keys [file]} :- BundleUploadParts]
   (api/check-superuser)
+  (check-creatable!)
   (let [tempfile (check-upload! file)]
     (try
       (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
             validated    (cache/check-bundle-icon! (cache/validate-bundle! bundle-bytes))
-            _            (check-creatable!)
             identifier   (get-in validated [:manifest :name])
             _            (check-identifier-free! identifier)
             plugin       (cache/insert-bundle! identifier validated)]
