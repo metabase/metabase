@@ -129,8 +129,16 @@
           {:result result :entry-count entry-count})))))
 
 (defn untgz
-  "Extract tar+gzip to disk, skipping hidden and special entries. Return the non-hidden entry count.
-  Accepts any `io/input-stream` source. Optional `:max-uncompressed-bytes` and `:max-entries` limit extraction."
+  "Uncompress tar+gzip `archive` into directory `dst`.
+
+  `archive` can be anything `io/input-stream` coerces — a `File`, a byte array,
+  or a raw `InputStream`. Skips hidden and special entries. Returns the number of
+  non-hidden entries.
+
+  Optional `opts` (default unset, no behavior change):
+  - `:max-uncompressed-bytes` — abort with ex-info when total extracted bytes
+    would exceed this. Defends against tar bombs.
+  - `:max-entries` — abort with ex-info when entry count would exceed this."
   ([archive ^File dst]
    (untgz archive dst nil))
   ([archive ^File dst opts]
