@@ -10,6 +10,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.filter :as lib.schema.filter]
+   [metabase.util :as u]
    [metabase.util.performance :refer [some mapv update-keys]]))
 
 ;; Oracle and SQLServer (and maybe others) use 0 and 1 for boolean constants, but, for example, none of the following
@@ -49,7 +50,7 @@
         (some-isa? ((some-fn :base-type :effective-type)
                     ;; :value clauses have snake keys like :base_type, but field metadata is a snake-hating-map and
                     ;; will throw if you try to access snake keys, so normalize them first.
-                    (update-keys m driver-api/normalize-token))
+                    (update-keys m u/->kebab-case-en))
                    boolean-types))))
 
 (defn- boolean-typed-clause? [[_tag options _x]]

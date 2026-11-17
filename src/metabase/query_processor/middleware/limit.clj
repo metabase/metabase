@@ -39,19 +39,24 @@
            (not (lib/aggregated-output? query)))
       (lib/limit -1 max-rows))))
 
-(defn determine-query-max-rows
+(mu/defn determine-query-max-rows
   "Given a `query`, return the max rows that should be returned. This is the minimum of:
-  1. the output of [[metabase.legacy-mbql.util/query->max-rows-limit]] when called on the given query
+
+  1. the output of [[metabase.legacy-mbql.util/query->max-rows-limit]] when called on the given query (for a legacy
+     MBQL query) or [[metabase.lib.core/max-rows-limit]] (for an MBQL 5 query)
+
   2. the value of [[download-row-limit]] if this is for a download
+
   3. the value of [[attachment-row-limit]] if this is for a dashboard subscription
 
   If those three values are not set we fall back to [[metabase.query-processor.limit/absolute-max-results]],
   which is also the maximum row count allowed for xlsx downloads due to Excel sheet constraints."
-  [query]
+  [query :- ::qp.schema/any-query]
   (if-not (:lib/type query)
     ;; handle legacy queries... for now.
     ;;
-    ;; TODO (Cam 8/19/25) -- update this to be MBQL 5 only once the preprocessor spits out MBQL 5.
+    ;; TODO (Cam 2026-11-16) We can remove support for Legacy MBQL once we remove the `:mbql-5-native-query-execution`
+    ;; feature in 69.
     (recur (lib/query (qp.store/metadata-provider) (case (:type query)
                                                      ;; sometimes this is called with a compiled query that has both
                                                      ;; MBQL plus native.
@@ -65,7 +70,12 @@
             attachment-context? #{:dashboard-subscription :pulse :notification}
             download-limit      (when (download-context? context) (qp.settings/download-row-limit))
             attachment-limit    (when (attachment-context? context) (qp.settings/attachment-row-limit))
-            res                 (u/safe-min (lib/max-rows-limit query)
+            ;; a query that was compiled from MBQL arrives here from the driver with a single native stage and
+            ;; the MBQL stages it was compiled from in `:qp/original-stages` (see
+            ;; [[metabase.query-processor.execute]]); the limit has to come from the MBQL stages.
+            res                 (u/safe-min (lib/max-rows-limit (cond-> query
+                                                                  (:qp/original-stages query)
+                                                                  (assoc :stages (:qp/original-stages query))))
                                             download-limit
                                             attachment-limit)]
         (if (#{:xlsx-download :embedded-xlsx-download :public-xlsx-download} context)
