@@ -407,7 +407,7 @@
       (mt/with-model-cleanup [:model/Collection]
         (let [{id :id} (mt/user-http-request :crowberto :post 200 "collection/" {:namespace collection/shared-tenant-ns
                                                                                  :name (mt/random-name)})
-              coll (t2/select-one :model/Collection id)]
+              coll (t2/select-one :model/Collection :id id)]
           (is (some? coll))
           (is (= collection/shared-tenant-ns (:namespace coll))))))))
 
@@ -421,7 +421,7 @@
       (mt/with-temp [:model/Collection {parent-id :id} {:namespace collection/shared-tenant-ns}]
         (let [id (:id (mt/user-http-request :crowberto :post 200 "collection/" {:name (mt/random-name)
                                                                                 :parent_id parent-id}))
-              coll (t2/select-one :model/Collection id)]
+              coll (t2/select-one :model/Collection :id id)]
           (is (some? id))
           (is (= collection/shared-tenant-ns (:namespace coll))))))))
 
@@ -813,6 +813,17 @@
         (mt/with-temp [:model/Collection {shared-id :id}  {:namespace collection/shared-tenant-ns}
                        :model/Collection {regular-id :id} {}]
           (mt/user-http-request :crowberto :put 400 (str "collection/" regular-id) {:parent_id shared-id}))))))
+
+(deftest can-move-shared-tenant-collection-within-shared-tenant-namespace-test
+  (testing "PUT /api/collection/:id can nest a shared-tenant collection and move it back to root"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection {parent-id :id} {:namespace collection/shared-tenant-ns}
+                       :model/Collection {child-id :id}  {:namespace collection/shared-tenant-ns}]
+          (mt/user-http-request :crowberto :put 200 (str "collection/" child-id) {:parent_id parent-id})
+          (is (= (format "/%d/" parent-id) (t2/select-one-fn :location :model/Collection :id child-id)))
+          (mt/user-http-request :crowberto :put 200 (str "collection/" child-id) {:parent_id nil})
+          (is (= "/" (t2/select-one-fn :location :model/Collection :id child-id))))))))
 
 (deftest can-create-dashboards-in-shared-tenant-collections-test
   (testing "POST /api/dashboard can save a dashboard to a shared-tenant-namespace collection"

@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: duplicate_versionless_id
+      author: test
+      changes:
+        - createTable:
+            tableName: duplicate_versionless_a
+            columns:
+              - column:
+                  name: id
+                  type: int

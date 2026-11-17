@@ -16,13 +16,13 @@ The hook handles the HTTP request, exposes loading and error state as React stat
 ```ts
 const { execute, isExecuting, result, error, reset } = useAction<
   TParameters,
-  TKind   // optional — drives the typed `result` shape
+  TKind // optional — drives the typed `result` shape
 >(actionId);
 ```
 
 - `actionId` — the action's numeric id, its `entity_id` string, or `null`. Find the numeric id in Metabase by opening the action editor and copying it from the URL.
 - `TParameters` — a TypeScript type describing the parameters object that will be passed to `execute`. Keys are the action's parameter slugs (the names shown in the action editor).
-- `TKind` (optional) — the action's kind literal. Pass one of `"create"`, `"update"`, `"delete"`, `"bulk"`, or `"sql"` to get a typed `result` for that single shape. If you omit `TKind`, `result` defaults to a union of every possible response body (`AnyActionResult`), which you can narrow with `"<key>" in result`. See [Typing the response](#typing-the-response).
+- `TKind` (optional) — the action's kind literal. Pass one of `"create"`, `"update"`, `"delete"`, or `"sql"` to get a typed `result` for that single shape. If you omit `TKind`, `result` defaults to a union of every possible response body (`AnyActionResult`), which you can narrow with `"<key>" in result`. See [Typing the response](#typing-the-response).
 - `execute(parameters)` — call `execute` from an event handler to trigger the action. The hook doesn't auto-fire on mount. Resolves to the response body on success, throws on failure, or resolves to `null` if `actionId` is `null`, or the SDK isn't yet initialized. You can `await execute(parameters)` or fire and forget. The same error is written to `error` state either way, so a render-time error message will appear even without a `try`/`catch`.
 - `isExecuting` — `true` between the call and its resolution. Use `isExecuting` to disable the trigger and prevent double-clicks.
 - `result` — the response body, or `null` before the first call and after `reset()`.
@@ -78,13 +78,12 @@ The action's **kind** drives the shape of `result`. Pass it as the second generi
 
 {% include_file "{{ dirname }}/api/snippets/ActionKind.md" %}
 
-| Action kind        | What it covers                                   | `result` shape                                                                                    |
-| ------------------ | ------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| `"create"`         | Single-row insert (basic action)                 | `{ "created-row": Record<string, RowValue> }`                                                     |
-| `"update"`         | Single-row update                                | `{ "rows-updated": readonly RowValue[] }`                                                         |
-| `"delete"`         | Single-row delete                                | `{ "rows-deleted": readonly RowValue[] }`                                                         |
-| `"bulk"`           | Any bulk variant (bulk create / update / delete) | `{ success: boolean; "rows-created"?: number; "rows-updated"?: number; "rows-deleted"?: number }` |
-| `"sql"`            | Custom SQL action                                | `{ "rows-affected": number }`                                                                     |
+| Action kind | What it covers                   | `result` shape                                |
+| ----------- | -------------------------------- | --------------------------------------------- |
+| `"create"`  | Single-row insert (basic action) | `{ "created-row": Record<string, RowValue> }` |
+| `"update"`  | Single-row update                | `{ "rows-updated": number }`                  |
+| `"delete"`  | Single-row delete                | `{ "rows-deleted": number }`                  |
+| `"sql"`     | Custom SQL action                | `{ "rows-affected": number }`                 |
 
 #### API Reference
 
@@ -94,7 +93,6 @@ The action's **kind** drives the shape of `result`. Pass it as the second generi
 - [ActionResultForCreate](./api/ActionResultForCreate.html)
 - [ActionResultForUpdate](./api/ActionResultForUpdate.html)
 - [ActionResultForDelete](./api/ActionResultForDelete.html)
-- [ActionResultForBulk](./api/ActionResultForBulk.html)
 - [ActionResultForSql](./api/ActionResultForSql.html)
 
 Example with a known kind:
@@ -109,7 +107,7 @@ It's common not to read the result at all (see [After an action succeeds, you mu
 
 But if you do read the result, specify `TKind` if you know the action's result up front.
 
-If you don't supply `TKind`, the `result` defaults to `AnyActionResult`, which is the union of every possible response body. TypeScript knows the result is one of the five known shapes, just not which one. You can then narrow with the `in` operator:
+If you don't supply `TKind`, the `result` defaults to `AnyActionResult`, which is the union of every possible response body. TypeScript knows the result is one of the four known shapes, just not which one. You can then narrow with the `in` operator:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/actions/typed-response.tsx" snippet="narrow-result" %}

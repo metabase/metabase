@@ -5,9 +5,11 @@
    [clojure.test :refer :all]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.transforms.jobs :as jobs]
    [metabase.transforms.test-util :refer [parse-instant
                                           utc-timestamp
                                           with-transforms-api-users!]]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -245,3 +247,23 @@
         (mt/with-temp [:model/Transform {tid :id} {:name "Seed"}]
           (mt/user-http-request :rasta :post 403 (str "transform/" tid "/run-dag")
                                 {:direction "upstream"}))))))
+
+(deftest run-dag-coordinator-failure-logs-error-test
+  (testing "POST /api/transform/:id/run-dag logs an ERROR when the DAG run coordinator fails"
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temp [:model/Transform {tid :id} {:name "Seed" :table_dependencies []}]
+          (mt/with-log-messages-for-level [messages :warn]
+            (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [& _] (throw (ex-info "coordinator crashed" {})))]
+              (let [{run-id :dag_run_id} (mt/user-http-request :crowberto :post 202 (str "transform/" tid "/run-dag")
+                                                               {:direction "upstream"})
+                    timer                (u/start-timer)]
+                ;; the run continues on a virtual thread after the 202; its last act is the fallback WARN
+                (while (and (not-any? #(re-find #"Async run failed" (:message %)) (messages))
+                            (< (u/since-ms timer) 10000))
+                  (Thread/sleep 50))
+                (is (= :failed (t2/select-one-fn :status :model/TransformDagRun :id run-id)))
+                (is (some #(and (= :error (:level %))
+                                (re-find #"coordinator crashed" (str (:message %) (some-> (:e %) ex-message))))
+                          (messages))
+                    (pr-str (map (juxt :level :namespace :message) (messages))))))))))))

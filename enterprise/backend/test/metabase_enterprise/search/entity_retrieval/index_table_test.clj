@@ -10,6 +10,8 @@
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
 
+(set! *warn-on-reflection* true)
+
 (deftest legacy-meta-table-without-ownership-test
   (testing "a grant-only role neither attempts ALTER nor repeatedly warns"
     (log.capture/with-log-messages-for-level [messages [metabase-enterprise.search.entity-retrieval.index-table :warn]]

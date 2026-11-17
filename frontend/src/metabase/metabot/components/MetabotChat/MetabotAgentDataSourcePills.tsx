@@ -17,6 +17,10 @@ import {
   getCollectionLocationLabel,
   getDatabaseLocationLabel,
 } from "metabase/metabot/utils/source-location";
+import {
+  type DraftQuestionBuilder,
+  useQuestionFromOptsBuilder,
+} from "metabase/metadata-store";
 import { EntitySmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/EntitySmartLink";
 import { useEntityData } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/use-entity-data";
 import {
@@ -35,13 +39,11 @@ import {
 } from "metabase/ui";
 import { getName } from "metabase/utils/name";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type {
   DatasetQuery,
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   MetabotSourceFeedback,
-  NativeDatasetQuery,
   TemplateTags,
 } from "metabase-types/api";
 
@@ -79,33 +81,36 @@ type SourceFeedbackTarget = Pick<
   "source_id" | "source_type"
 >;
 
-const isNativeDatasetQuery = (
-  datasetQuery: DatasetQuery,
-): datasetQuery is NativeDatasetQuery =>
-  "type" in datasetQuery && datasetQuery.type === "native";
-
-const decodeQuery = (datasetQuery: DatasetQuery | undefined): DecodedQuery => {
+const decodeQuery = (
+  datasetQuery: DatasetQuery | undefined,
+  buildQuestion: DraftQuestionBuilder,
+): DecodedQuery => {
   try {
     if (!datasetQuery) {
       return { kind: "none" };
     }
 
-    if (isNativeDatasetQuery(datasetQuery)) {
-      const sql = datasetQuery.native.query;
-      const databaseId = datasetQuery.database;
-      if (typeof sql === "string" && typeof databaseId === "number") {
-        return {
-          kind: "native",
-          databaseId,
-          sql,
-          templateTags: datasetQuery.native["template-tags"],
-        };
-      }
-      return { kind: "none" };
-    }
-
-    const question = Question.create({ dataset_query: datasetQuery });
+    const question = buildQuestion({ dataset_query: datasetQuery });
     const query = question.query();
+    const isNativeOnly =
+      Lib.queryDisplayInfo(query).isNative && Lib.stageCount(query) === 1;
+
+    if (isNativeOnly) {
+      const databaseId = Lib.databaseID(query);
+      if (databaseId == null) {
+        return { kind: "none" };
+      }
+      const templateTags = Lib.templateTags(query);
+      return {
+        kind: "native",
+        databaseId,
+        sql: Lib.rawNativeQuery(query),
+        templateTags:
+          templateTags.length > 0
+            ? Object.fromEntries(templateTags.map((tag) => [tag.name, tag]))
+            : undefined,
+      };
+    }
 
     return {
       kind: "mbql",
@@ -365,7 +370,7 @@ const SourcesSection = ({
 
   return (
     <Stack gap="lg" className={S.sources}>
-      <Stack gap="sm">
+      <Stack gap="xxs">
         <Text fz="sm" lh="lg" c="text-secondary">
           {ngettext(
             msgid`Data source used`,
@@ -486,7 +491,11 @@ const DatasetQueryTablePills = ({
   messageId?: string;
   datasetQuery: DatasetQuery | undefined;
 }) => {
-  const decoded = useMemo(() => decodeQuery(datasetQuery), [datasetQuery]);
+  const buildQuestion = useQuestionFromOptsBuilder();
+  const decoded = useMemo(
+    () => decodeQuery(datasetQuery, buildQuestion),
+    [datasetQuery, buildQuestion],
+  );
 
   if (decoded.kind === "none") {
     return null;

@@ -22,7 +22,6 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.util :as lib.util]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.metadata :as qp.metadata]
@@ -37,6 +36,7 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.setup :as qp.setup]
+   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -234,7 +234,8 @@
     ;; Single query - use normal QP pipeline to preserve userland metadata
     (qp/process-query (maybe-userland first-query) rff)
     ;; Multiple queries - use custom pivot pipeline
-    (let [{:keys [rff execute reduce]} (append-queries-rff-and-fns info rff more-queries pivot-limit)
+    ;; Only the first query, whose execution spans all the others, records its running time under the pivot's hash.
+    (let [{:keys [rff execute reduce]} (append-queries-rff-and-fns (dissoc info :pivot/query-hash) rff more-queries pivot-limit)
           first-query                  (maybe-userland first-query)]
       (binding [qp.pipeline/*execute* (or execute qp.pipeline/*execute*)
                 qp.pipeline/*reduce*  (or reduce qp.pipeline/*reduce*)]
@@ -244,7 +245,7 @@
   "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
   `pivot-cols` to use for generating subqueries. Supports column name-based settings only."
   [query        :- ::qp.schema/any-query
-   viz-settings :- [:maybe :metabase.lib.schema.common/visualization-settings]]
+   viz-settings :- [:maybe :metabase.lib.schema.visualization/visualization-settings]]
   (let [{:keys [rows columns values]} (:pivot_table.column_split viz-settings)
         show-row-totals    (get viz-settings :pivot.show_row_totals true)
         show-column-totals (get viz-settings :pivot.show_column_totals true)
@@ -275,7 +276,7 @@
   "Looks at the `pivot_table.column_sort_order` key in the card's visualization settings and generates a map from the
   column's index to the setting (either ascending or descending)."
   [query        :- ::qp.schema/any-query
-   viz-settings :- [:maybe :metabase.lib.schema.common/visualization-settings]]
+   viz-settings :- [:maybe :metabase.lib.schema.visualization/visualization-settings]]
   (let [metadata-provider  (or (:lib/metadata query)
                                (lib-be/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
@@ -283,19 +284,16 @@
                                  (comp (filter (some-fn :lib/breakout? #(= (:lib/source %) :source/aggregations)))
                                        (map-indexed (fn [i column] [(:name column) i])))
                                  (lib/returned-columns query))]
-    (-> (or (:column_settings viz-settings)
-            (::mb.viz/column-settings viz-settings))
+    (-> (:column_settings viz-settings)
         (update-keys (fn [k]
-                       (if (string? k)
-                         (-> k json/decode last index-in-breakouts)
-                         (->> k ::mb.viz/column-name index-in-breakouts))))
+                       (-> k json/decode last index-in-breakouts)))
         (update-vals (comp keyword :pivot_table.column_sort_order)))))
 
 (mu/defn- field-ref-pivot-options :- ::pivot-opts
   "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
   `pivot-cols` to use for generating subqueries. Supports field ref-based settings only."
   [query        :- ::qp.schema/any-query
-   viz-settings :- [:maybe :metabase.lib.schema.common/visualization-settings]]
+   viz-settings :- [:maybe :metabase.lib.schema.visualization/visualization-settings]]
   (let [{:keys [rows columns values]} (:pivot_table.column_split viz-settings)
         show-row-totals    (get viz-settings "pivot.show_row_totals" true)
         show-column-totals (get viz-settings "pivot.show_column_totals" true)
@@ -341,7 +339,7 @@
   Field ref-based visualization settings are considered legacy and are not used for new questions. To not break existing
   questions we need to support both old- and new-style settings until they are fully migrated."
   [query        :- ::qp.schema/any-query
-   viz-settings :- [:maybe :metabase.lib.schema.common/visualization-settings]]
+   viz-settings :- [:maybe :metabase.lib.schema.visualization/visualization-settings]]
   (when viz-settings
     (let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
       (merge
@@ -372,7 +370,7 @@
   against the last stage's breakouts in `query`. Returns nil when there is no `:pivot_table.column_split` or when
   neither rows nor columns resolve."
   [query        :- :metabase.lib.schema/query
-   viz-settings :- [:maybe :metabase.lib.schema.common/visualization-settings]]
+   viz-settings :- [:maybe :metabase.lib.schema.visualization/visualization-settings]]
   (when-let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
     (let [row-uuids (resolve-refs-to-uuids query rows)
           col-uuids (resolve-refs-to-uuids query columns)]
@@ -389,7 +387,7 @@
   Returns `query` unchanged when the last stage already has `:pivot`, when `viz-settings` is empty, or when no refs
   resolve."
   [query        :- ::lib.schema/query
-   viz-settings :- [:maybe :metabase.lib.schema.common/visualization-settings]]
+   viz-settings :- [:maybe :metabase.lib.schema.visualization/visualization-settings]]
   (let [clause (when (and (not (lib.pivot/has-pivot? query))
                           (seq viz-settings))
                  (build-pivot-clause query viz-settings))]
@@ -831,15 +829,16 @@
         cause-chain     (fn [^Throwable t]
                           (loop [t t, acc []]
                             (if t (recur (.getCause t) (conj acc (.getMessage t))) acc)))]
-    (log/warnf "pivot-parity %s"
-               (pr-str {:driver  (:engine (query-database query))
-                        :primary primary-flow
-                        :flows   (update-vals outcomes
-                                              (fn [{:keys [throwable elapsed-ms]}]
-                                                (cond-> {:elapsed-ms elapsed-ms
-                                                         :ok?        (nil? throwable)}
-                                                  throwable (assoc :cause (cause-chain throwable)))))
-                        :divergent-pairs divergent-pairs}))
+    (when (seq divergent-pairs)
+      (log/warnf "pivot-parity %s"
+                 (pr-str {:driver  (:engine (query-database query))
+                          :primary primary-flow
+                          :flows   (update-vals outcomes
+                                                (fn [{:keys [throwable elapsed-ms]}]
+                                                  (cond-> {:elapsed-ms elapsed-ms
+                                                           :ok?        (nil? throwable)}
+                                                    throwable (assoc :cause (cause-chain throwable)))))
+                          :divergent-pairs divergent-pairs})))
     (when (seq divergent-pairs)
       (on-parity-mismatch {:outcomes outcomes, :divergent-pairs divergent-pairs}))
     (let [{:keys [outcome throwable]} (get outcomes primary-flow)]
@@ -892,7 +891,10 @@
    ;; redundant and could mis-set it for ad-hoc queries that carry a :card-id in :info.
    (qp.setup/with-qp-setup [query query]
      (let [query (cond-> query
-                   (seq (:info query)) qp/userland-query)
+                   ;; Hash the query before it gets rewritten so its running time is recorded under the same hash
+                   ;; that `metabase.query-processor.card/enrich-strategy` looks up for the cache strategy.
+                   (seq (:info query)) (-> (assoc-in [:info :pivot/query-hash] (qp.util/query-hash query))
+                                           qp/userland-query))
            rff   (or rff qp.reducible/default-rff)
            ;; Everything between here and the first `qp/process-query`
            ;; runs outside the QP's own middleware, so wrap it in the same exception-catching middleware

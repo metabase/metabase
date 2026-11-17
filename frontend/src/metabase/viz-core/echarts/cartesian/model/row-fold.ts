@@ -108,3 +108,13 @@ export const foldRowChartModel = <Model extends BaseCartesianChartModel>(
     },
   };
 };
+
+/** The model a chart renders at this height: a row chart folds the rows that don't fit. */
+export const getChartModelAtHeight = <Model extends BaseCartesianChartModel>(
+  chartModel: Model,
+  height: number,
+  settings: ComputedVisualizationSettings,
+): Model =>
+  chartModel.isRowChart
+    ? foldRowChartModel(chartModel, height, settings)
+    : chartModel;

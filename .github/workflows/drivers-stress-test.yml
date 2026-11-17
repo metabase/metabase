@@ -430,11 +430,14 @@ jobs:
       MB_ORACLE_TEST_USER: system
       MB_ORACLE_TEST_PASSWORD: password
       MB_ORACLE_TEST_SERVICE_NAME: XEPDB1
+      # second PDB (created by ORACLE_DATABASE below) for the database routing tests
+      MB_ORACLE_TEST_SERVICE_NAME_ROUTING: MBROUTE
     services:
       oracle:
         image: gvenzl/oracle-xe:18.4.0-slim
         env:
           ORACLE_PASSWORD: password
+          ORACLE_DATABASE: MBROUTE
         ports:
           - "1521:1521"
     steps:
@@ -456,6 +459,8 @@ jobs:
       MB_ORACLE_TEST_HOST: localhost
       MB_ORACLE_TEST_PORT: 2484
       MB_ORACLE_TEST_SERVICE_NAME: XEPDB1
+      # second PDB (created by ORACLE_DATABASE below) for the database routing tests
+      MB_ORACLE_TEST_SERVICE_NAME_ROUTING: MBROUTE
       MB_ORACLE_TEST_SSL: true
       MB_ORACLE_TEST_SSL_USE_TRUSTSTORE: true
       MB_ORACLE_TEST_SSL_TRUSTSTORE_PATH: './test_resources/ssl/oracle/truststore.p12'
@@ -471,6 +476,7 @@ jobs:
         image: metabase/qa-databases:oracle-xe-21.3
         env:
           ORACLE_PASSWORD: password
+          ORACLE_DATABASE: MBROUTE
         ports:
           - "2484:2484"
     steps:

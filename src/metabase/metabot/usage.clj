@@ -48,12 +48,13 @@
 
 (defenterprise check-usage-limits!
   "Check all usage limits for the current user. Returns nil if all limits are within bounds,
-  or a user-friendly error message string if any limit is exceeded.
+  or a user-friendly error message string if any limit is exceeded. `request-id` is the id of the agent loop the
+  call belongs to; a message limit does not count that loop's earlier calls.
 
   In OSS, always returns nil (no limits enforced)."
   metabase-enterprise.metabot.usage
-  []
-  nil)
+  ([] nil)
+  ([_request-id] nil))
 
 (defn- meter-value
   [meters meter-key]

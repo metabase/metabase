@@ -5,12 +5,10 @@
    [metabase.bookmarks.db :as bookmarks.db]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
+   [metabase.permissions.test-util :as perms.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
-
-(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (deftest bookmarks-test
   (mt/initialize-if-needed! :db)
@@ -154,10 +152,10 @@
                (bookmarked-items :rasta)))
         (testing "moving each item into an unreadable collection (admin action; nothing archived) hides its bookmark"
           ;; stand in for the admin PUT /api/card|document ... {:collection_id hidden} in the attack
-          (t2/update! :model/Card card-id {:collection_id hidden-id})
-          (t2/update! :model/Dashboard dash-id {:collection_id hidden-id})
-          (t2/update! :model/Document doc-id {:collection_id hidden-id})
-          (t2/update! :model/Exploration expl-id {:collection_id hidden-id})
+          (t2/update! :model/Card :id card-id {:collection_id hidden-id})
+          (t2/update! :model/Dashboard :id dash-id {:collection_id hidden-id})
+          (t2/update! :model/Document :id doc-id {:collection_id hidden-id})
+          (t2/update! :model/Exploration :id expl-id {:collection_id hidden-id})
           (is (= #{} (bookmarked-items :rasta))))))))
 
 (deftest bookmark-card-type-tracks-current-card-type-test
@@ -165,7 +163,7 @@
     (mt/with-temp [:model/Card {card-id :id} {:name "My Card"}]
       (mt/user-http-request :rasta :post 200 (str "bookmark/card/" card-id))
       (is (= "question" (:card_type (first (mt/user-http-request :rasta :get 200 "bookmark")))))
-      (t2/update! :model/Card card-id {:type :model})
+      (t2/update! :model/Card :id card-id {:type :model})
       (is (= "model" (:card_type (first (mt/user-http-request :rasta :get 200 "bookmark"))))))))
 
 (defn bookmark-models [user-id & models]
@@ -324,3 +322,13 @@
       (testing "archived explorations don't appear in bookmark list"
         (is (empty? (filter #(= (:type %) "exploration")
                             (mt/user-http-request :rasta :get 200 "bookmark"))))))))
+
+(deftest data-analyst-transforms-collection-bookmark-test
+  (testing "GET /api/bookmark lists transforms Collection bookmarked by data analyst"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection         {coll-id :id} {:name "Transforms folder" :namespace "transforms"}
+                     :model/CollectionBookmark _             {:user_id (mt/user->id :rasta) :collection_id coll-id}]
+        (let [bookmarked-ids #(into #{} (map :item_id) (mt/user-http-request :rasta :get 200 "bookmark"))]
+          (is (not (contains? (bookmarked-ids) coll-id)))
+          (perms.tu/with-data-analyst-role! (mt/user->id :rasta)
+            (is (contains? (bookmarked-ids) coll-id))))))))

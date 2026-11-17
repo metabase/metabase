@@ -1,3 +1,4 @@
+import type { SdkEntityId } from "embedding-sdk-bundle/types/entity";
 import { DashboardClickAction } from "metabase/dashboard/click-behavior/DashboardClickAction";
 import {
   getClickBehavior,
@@ -20,6 +21,7 @@ import type { CardId, DashboardId, DashboardTabId } from "metabase-types/api";
 
 type ParameterizedTarget = {
   name: string;
+  entityId: SdkEntityId;
   parameters: ParameterValues;
   /**
    * Same parameter values as {@link parameters}, but keyed by parameter id.
@@ -90,6 +92,7 @@ export const getClickBehaviorTarget = (
     return {
       type: "dashboard",
       id: dashboard.id,
+      entityId: dashboard.entity_id,
       name: dashboard.name,
       parameters,
       parameterIdValuePairs,
@@ -124,6 +127,7 @@ export const getClickBehaviorTarget = (
   return {
     type: "question",
     id: targetCard.id,
+    entityId: targetCard.entity_id,
     name: targetCard.name,
     parameters,
     parameterIdValuePairs,

@@ -15,14 +15,23 @@
     {:type :symbol
      :symbol pattern}
 
+    ;; Var pattern (var fn-name) - the result of reader processing #'fn-name syntax.
+    (and (seq? pattern) (= (first pattern) 'var) (= (count pattern) 2))
+    {:type :guard
+     :symbol '_
+     :predicate (nth pattern 1)}
+
     ;; Guard pattern
     (and (seq? pattern) (symbol? (first pattern)) (>= (count pattern) 3))
-    (let [preds (apply hash-map (rest pattern))]
-      (cond-> {:type :guard
-               :symbol (nth pattern 0)
-               :predicate (nth pattern 2)}
-        (:guard preds) (assoc :predicate (:guard preds))
-        (:len preds) (assoc :length (:len preds))))
+    (let [m (apply hash-map (rest pattern))
+          {:keys [guard len]} m]
+      (doseq [k (keys m)
+              :when (not (#{:guard :len} k))]
+        (throw (ex-info (str "Unsupported guard pattern key: " k) {})))
+      {:type :guard
+       :symbol (nth pattern 0)
+       :predicate guard
+       :length len})
 
     ;; (:or ...) pattern
     (and (seq? pattern) (= (first pattern) :or) (>= (count pattern) 2))
@@ -52,16 +61,28 @@
      :value pattern}
 
     (set? pattern)
-    {:type :set
-     :value pattern}
+    (if (= (count pattern) 1)
+      {:type :equality
+       :value (first pattern)}
+      {:type :set
+       :value pattern})
 
     :else
     (throw (ex-info "Invalid pattern" {:pattern pattern}))))
 
 (declare process-clauses)
 
+(defn- strip-meta [expr]
+  (if (instance? clojure.lang.IObj expr)
+    (vary-meta expr dissoc :depends-on :vector-check)
+    expr))
+
 (defn- process-pattern [pattern value bindings conditions return]
-  (let [{:keys [parts rest-part predicate] :as parsed} (parse-pattern pattern)]
+  (let [{:keys [parts rest-part predicate] :as parsed} (parse-pattern pattern)
+        ;; The metadata on `value` is only for an equality condition to inherit its `:depends-on`.
+        ;; Left on the emitted code, it would do nothing.
+        value-meta (meta value)
+        value      (if (symbol? value) value (strip-meta value))]
     (case (:type parsed)
       :symbol (when-not (= (:symbol parsed) '_)
                 (vswap! bindings conj [(:symbol parsed) value]))
@@ -114,7 +135,7 @@
                (when (:length parsed)
                  (vswap! conditions conj (with-meta (list `metabase.util.match.impl/count= s (:length parsed))
                                                     {:depends-on s}))))
-      :equality (vswap! conditions conj (with-meta (list `= value (:value parsed)) (meta value)))
+      :equality (vswap! conditions conj (with-meta (list `= value (:value parsed)) value-meta))
       :set (vswap! conditions conj (list (:value parsed) value)))))
 
 (defn- process-clause [[pattern ret] value-sym]
@@ -126,11 +147,6 @@
 
 (defn- seq-contains? [coll item]
   (some #(= % item) coll))
-
-(defn- strip-meta [expr]
-  (if (instance? clojure.lang.IObj expr)
-    (vary-meta expr dissoc :depends-on :vector-check)
-    expr))
 
 (defn- collect-common [bindings conditions]
   (let [common-bindings (filter (fn [bind] (every? #(seq-contains? % bind) bindings))
@@ -150,7 +166,7 @@
                           (mapv (fn [conditions]
                                   (->> conditions
                                        (remove #(seq-contains? common-conditions %))
-                                       strip-meta))))}))
+                                       (mapv strip-meta)))))}))
 
 (defn- expand-conditions [combiner conditions body & [bool?]]
   (case (count conditions)
@@ -272,6 +288,8 @@
   - (sym :guard pred :len size) - bind with predicate check. The predicate should either be a symbol denoting a
                                   function, keyword, set, or an invocation snippet (but not a lambda). Can optionally
                                   check for collection length.
+  - #'pred - same as (_ :guard pred) - just a predicate check without binding to a symbol. Note that even though it
+             looks like a var, nothing is resolved this way, and you can even use it as #'local-fn, but you shouldn't.
   - vector - binds positional values inside a sequence against other patterns. Can have & to bind remaining elements.
   - map - binds associative values inside a map against other patterns. Special symbols can be used as patterns:
           `&truthy` - matches if the map contains any truthy value for the key
@@ -331,7 +349,7 @@
   [value & clauses]
   (match-one* value clauses))
 
-(defn- match-many* [value clauses]
+(defn- match-many* [value clauses all?]
   (when (odd? (count clauses))
     (throw (ex-info "match-many requires even number of clauses" {})))
   (let [pairs (partition 2 clauses)
@@ -339,8 +357,8 @@
         [pairs default] (if has-default?
                           [(butlast pairs) (second (last pairs))]
                           [pairs nil])
-        ;; match-many is always recursive unless there is a default clause
-        recursive? (not has-default?)
+        ;; match-many is always recursive unless there is a default clause and it's not all?
+        recursive? (or all? (not has-default?))
         ;; Search for &recur and &parents usage in clauses.
         contains-&recur? (contains-symbol? pairs '&recur)
         contains-&parents? (contains-symbol? pairs '&parents)
@@ -348,20 +366,31 @@
         ;; Wrap explicit nil values.
         value (if (nil? value) `(identity nil) value)
         value-binding (when-not (or recursive? contains-&recur?) value)
+        acc (gensym "acc_")
         body (process-clauses pairs '&match value-binding)]
-    `(let [acc# (volatile! [])]
+    `(let [~acc (volatile! [])]
        ((fn ~'&recur [~'&match ~'&parents]
-          (if-some [result# ~(expand-or-some
-                              (cond-> [body]
-                                (some? default) (conj default)))]
-            ;; Important: a clause may return `nil` to stop further recursive search, yet we don't want that nil to
-            ;; wind up in results.
-            (do (some->> (metabase.util.match.impl/unwrap-nil result#) (vswap! acc# conj))
-                nil)
-            (metabase.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents)))
+          ;; When all? is true, always recur down regardless if the current level matched. Otherwise, stop at the
+          ;; first matched level.
+          ~(if all?
+             `(do (when-some [result# ~(expand-or-some
+                                        (cond-> [body]
+                                          (some? default) (conj default)))]
+                    ;; See note below. For [[match-all]] it makes less sense because we always continue the recursion
+                    ;; anyway, but we still don't want to collect nils.
+                    (some->> (metabase.util.match.impl/unwrap-nil result#) (vswap! ~acc conj)))
+                  (metabase.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents))
+             `(if-some [result# ~(expand-or-some
+                                  (cond-> [body]
+                                    (some? default) (conj default)))]
+                ;; Important: a clause may return `nil` to stop further recursive search, yet we don't want that
+                ;; nil to wind up in results.
+                (do (some->> (metabase.util.match.impl/unwrap-nil result#) (vswap! ~acc conj))
+                    nil)
+                (metabase.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents))))
         ~value
         ~(when contains-&parents? []))
-       (perf/not-empty @acc#))))
+       (perf/not-empty @~acc))))
 
 (defmacro match-many
   "Pattern matching macro, returns multiple things that match one of the `clauses` inside `value. See `match-one` for
@@ -382,7 +411,7 @@
     Note that returning `nil` still prevents other clauses from being checked, and causes recursion to stop."
   {:style/indent :defn}
   [value & clauses]
-  (match-many* value clauses))
+  (match-many* value clauses false))
 
 (defn- matches?* [value clause]
   (let [;; Wrap explicit nil values.
@@ -390,7 +419,7 @@
         processed (process-clause [clause true] '&match)]
     `(let [~'&match ~value
            ~@(mapcat identity (:bindings processed))]
-       ~(expand-conditions `and (:conditions processed) true true))))
+       ~(expand-conditions `and (mapv strip-meta (:conditions processed)) true true))))
 
 (defmacro matches?
   "Pattern matching macro for a single clause that returns `true` if the pattern matches, and `false` otherwise. See
@@ -399,18 +428,24 @@
   [value clause]
   (matches?* value clause))
 
-;; TODO - it would be ultra handy to have a `match-all` function that could handle clauses with recursive matches,
-;; e.g. with a query like
-;;
-;;    {:query {:source-table 1, :joins [{:source-table 2, ...}]}}
-;;
-;; it would be useful to be able to do
-;;
-;;
-;;    ;; get *all* the source tables
-;;    (match/match-all query
-;;      (&match :guard (every-pred map? :source-table))
-;;      (:source-table &match))
+(defmacro match-all
+  "Like [[match-many]], keeps looking recursively inside the matched values too. Returns a vector of all non-nil return
+  values, outer matches before inner ones, or `nil` if nothing matched. See [[match-one]] for pattern and return
+  expression syntax. Like the rest match macros, looks into map values and sequential collections, but not into map
+  keys or sets.
+
+  Differences from [[match-many]]:
+
+  1. A match doesn't stop the recursion, so nested matches are collected as well:
+
+    (match-all {:filter [:= [:field 1 {:source-field [:field 2 nil]}] 3]}
+      [:field id & _] id)
+    ;; -> [1 2]
+
+  2. Returning `nil` only leaves that value out of the results, the search inside it still continues."
+  {:style/indent :defn}
+  [value & clauses]
+  (match-many* value clauses true))
 
 (defmacro replace
   "Walk `form` recursively and replace all patterns matched with `match-one` by the respective return expressions. The

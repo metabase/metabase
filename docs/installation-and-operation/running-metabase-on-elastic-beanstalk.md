@@ -1,5 +1,6 @@
 ---
 title: Running Metabase on AWS Elastic Beanstalk
+summary: Metabase no longer recommends Elastic Beanstalk. Find an alternative, decouple your RDS application database, or upgrade your existing deployment.
 redirect_from:
   - /docs/latest/operations-guide/running-metabase-on-elastic-beanstalk
   - /docs/latest/installation-and-operation/advanced-topics-for-running-Metabase-in-AWS-ElasticBeanstalk

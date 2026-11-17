@@ -3,9 +3,9 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase.util :as u]
-   [metabase.util.markdown.image :as markdown.image])
+   [metabase.util.markdown.image :as markdown.image]
+   [metabase.util.match :as match])
   (:import
    (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock HardLineBreak
                              Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline HtmlInlineBase HtmlInlineComment
@@ -114,8 +114,7 @@
   LinkRef
   (to-clojure [this]
     {:tag     (node-to-tag this)
-     :attrs   {:reference (-> (.getDocument this)
-                              (.get Parser/REFERENCES)
+     :attrs   {:reference (-> (.get Parser/REFERENCES (.getDocument this))
                               (get (u/lower-case-en (str (.getReference this))))
                               to-clojure)}
      :content (convert-children this)})
@@ -123,8 +122,7 @@
   ImageRef
   (to-clojure [this]
     {:tag     (node-to-tag this)
-     :attrs   {:reference (-> (.getDocument this)
-                              (.get Parser/REFERENCES)
+     :attrs   {:reference (-> (.get Parser/REFERENCES (.getDocument this))
                               (get (u/lower-case-en (str (.getReference this))))
                               to-clojure)}
      :content (convert-children this)})
@@ -232,12 +230,8 @@
   instances of the tag in the content to `:default` tags. This is used to suppress rendering of nested bold and italic
   tags, which Slack doesn't support."
   [content tag]
-  (walk/postwalk
-   (fn [node]
-     (if (and (map? node) (= (:tag node) tag))
-       (assoc node :tag :default)
-       node))
-   content))
+  (match/replace-all content
+    {:tag #{tag}} (assoc &match :tag :default)))
 
 (defmulti ast->slack
   "Takes an AST representing Markdown input, and converts it to a string that will render nicely in Slack.
@@ -421,9 +415,7 @@
   and Markdown rendering on the frontend."
   [^Node node]
   (and (instance? LinkRef node)
-       (-> (.getDocument node)
-           (.get Parser/REFERENCES)
-           empty?)))
+       (empty? (.get Parser/REFERENCES (.getDocument node)))))
 
 (def ^:private renderer
   "An instance of a Flexmark HTML renderer"

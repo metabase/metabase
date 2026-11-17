@@ -23,7 +23,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.performance :as perf :refer [every? mapv run! some empty? not-empty get-in #?(:clj for)]]))
+   [metabase.util.performance :refer [every? mapv run! some empty? not-empty get-in #?(:clj for)]]))
 
 (defn- stage-paths
   [query stage-number]
@@ -355,10 +355,12 @@
 
 (defn- local-replace
   [stage target replacement]
-  (->> (if (lib.util/expression-name target)
-         (local-replace-expression stage target replacement)
-         (perf/postwalk #(if (= % target) replacement %) stage))
-       (perf/postwalk #(if (= % (lib.options/uuid target)) (lib.options/uuid replacement) %))))
+  (let [target-uuid      (lib.options/uuid target)
+        replacement-uuid (lib.options/uuid replacement)]
+    (-> (if (lib.util/expression-name target)
+          (local-replace-expression stage target replacement)
+          (match/replace-all stage #{target} replacement))
+        (match/replace-all #{target-uuid} replacement-uuid))))
 
 (defn- returned-columns-at-stage
   [query stage-number]
@@ -459,12 +461,12 @@
   (let [a-conds (match/replace new-join-conditions
                   {:join-alias (ja :guard (= ja new-join-alias))}
                   (dissoc &match :join-alias :effective-type)
-                  {:effective-type (_ :guard identity)}
+                  {:effective-type &truthy}
                   (dissoc &match :effective-type))
         b-conds (match/replace join-conditions-b
                   {:join-alias (ja :guard (= ja join-alias-b))}
                   (dissoc &match :join-alias :effective-type)
-                  {:effective-type (_ :guard identity)}
+                  {:effective-type &truthy}
                   (dissoc &match :effective-type))]
     (not (lib.equality/= a-conds b-conds))))
 

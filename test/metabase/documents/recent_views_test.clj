@@ -160,22 +160,21 @@
       (let [results (#'recent-views.model/document-recents [doc1-id doc2-id doc1-id])]
         ;; Should return unique documents even if IDs are duplicated
         (is (= 2 (count results)))
-        (is (= #{doc1-id doc2-id} (set (map :id results)))))))
-  (deftest recents-api-with-documents-premium-feature-test
-    (testing "/recents API returns documents when :document premium feature is enabled"
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
-                     :model/Document {doc-id :id} {:name "Test Document"
-                                                   :collection_id coll-id
-                                                   :archived false}]
-        ;; Add document to recent views
-        (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document doc-id :view)
-        ;; Call the API
-        (let [response (mt/user-http-request :rasta :get 200 "activity/recents" :context [:views])]
-          (is (some #(and (= (:model %) "document")
-                          (= (:id %) doc-id)
-                          (= (:name %) "Test Document"))
-                    (:recents response))
-              "Document should be present in recents when premium feature is enabled"))))))
+        (is (= #{doc1-id doc2-id} (set (map :id results))))))))
+
+(deftest recents-api-returns-documents-test
+  (testing "/recents API returns viewed documents"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
+                   :model/Document {doc-id :id} {:name "Test Document"
+                                                 :collection_id coll-id
+                                                 :archived false}]
+      (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document doc-id :view)
+      (let [response (mt/user-http-request :rasta :get 200 "activity/recents" :context [:views])]
+        (is (some #(and (= (:model %) "document")
+                        (= (:id %) doc-id)
+                        (= (:name %) "Test Document"))
+                  (:recents response))
+            "Document should be present in recents")))))
 
 (deftest recents-api-excludes-exploration-documents-test
   (testing "/recents API hides documents attached to an exploration"

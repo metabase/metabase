@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback } from "react";
+import { type JSX, useCallback } from "react";
 import { msgid, ngettext } from "ttag";
 
 import { getEventCount } from "metabase/common/utils/timelines";

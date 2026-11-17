@@ -12,7 +12,7 @@
   number updated."
   [transform-id :- ::lib.schema.id/transform
    dependencies-json :- :string]
-  (t2/update! (t2/table-name :model/Transform) transform-id {:table_dependencies dependencies-json}))
+  (t2/update! (t2/table-name :model/Transform) :id transform-id {:table_dependencies dependencies-json}))
 
 (mu/defn succeeded-run-counts-by-meter
   "Rows of `:metered_as` and `:cnt` of the TransformRuns that succeeded on `date`."

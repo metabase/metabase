@@ -13,7 +13,8 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -61,7 +62,7 @@
       :else nil)))
 
 (defn- check-allowed-to-remove-from-existing-dashboards [card]
-  (let [dashboards (queries.db/card-dashboards card)]
+  (let [dashboards (t2/hydrate (queries.db/card-dashboards card) :can_write)]
     (doseq [dashboard dashboards]
       (api/write-check dashboard))))
 

@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
 import {
   AccordionList,
@@ -10,19 +10,16 @@ import CS from "metabase/css/core/index.css";
 import { Icon, Tooltip } from "metabase/ui";
 
 import { DataSelectorLoading } from "../DataSelectorLoading";
-import { RawDataBackButton } from "../RawDataBackButton";
 import type { DataSelectorDatabase, DataSelectorSchema } from "../types";
 
 type DataSelectorDatabasePickerProps = {
   databases: DataSelectorDatabase[];
-  hasBackButton?: boolean;
   hasFiltering?: boolean;
   hasInitialFocus?: boolean;
   hasNextStep?: boolean;
   isLoading?: boolean;
   selectedDatabase?: DataSelectorDatabase;
   selectedSchema?: DataSelectorSchema;
-  onBack?: () => void;
   onChangeDatabase: (database: DataSelectorDatabase) => void;
   onChangeSchema: (schema?: DataSelectorSchema) => void;
   databaseIsDisabled?: (database: DataSelectorDatabase) => boolean;
@@ -42,38 +39,21 @@ export const DataSelectorDatabasePicker = ({
   selectedDatabase,
   onChangeDatabase,
   hasNextStep,
-  onBack,
   hasInitialFocus,
   databaseIsDisabled,
   databaseDisabledTooltip,
 }: DataSelectorDatabasePickerProps) => {
-  const sections = useMemo(() => {
-    const sections: Section<Item>[] = [];
-
-    if (onBack) {
-      sections.push({ name: <RawDataBackButton /> });
-    }
-
-    sections.push({
-      items: databases.map((database, index) => ({
-        name: database.name,
-        index,
-        database,
-      })),
-    });
-
-    return sections;
-  }, [databases, onBack]);
-
-  const handleChangeSection = useCallback(
-    (_section: Section<Item>, sectionIndex: number) => {
-      const isNavigationSection = onBack && sectionIndex === 0;
-      if (isNavigationSection) {
-        onBack();
-      }
-      return false;
-    },
-    [onBack],
+  const sections = useMemo(
+    (): Section<Item>[] => [
+      {
+        items: databases.map((database, index) => ({
+          name: database.name,
+          index,
+          database,
+        })),
+      },
+    ],
+    [databases],
   );
 
   if (databases.length === 0) {
@@ -89,7 +69,6 @@ export const DataSelectorDatabasePicker = ({
       sections={sections}
       globalSearch={true}
       onChange={(item: Item) => onChangeDatabase(item.database)}
-      onChangeSection={handleChangeSection}
       itemIsClickable={(item: Item) => !databaseIsDisabled?.(item.database)}
       itemIsSelected={(item: Item) =>
         selectedDatabase && item.database.id === selectedDatabase.id

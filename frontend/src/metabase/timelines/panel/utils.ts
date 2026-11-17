@@ -1,6 +1,4 @@
-import { updateIn } from "icepick";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getSortedTimelines } from "metabase/common/utils/timelines";
 import { type Dayjs, dayjs } from "metabase/dayjs";
@@ -21,13 +19,10 @@ import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 export const transformTimelines = (timelines: Timeline[]): Timeline[] =>
   getSortedTimelines(
-    timelines.map((timeline) =>
-      updateIn(timeline, ["events"], (events: TimelineEvent[] = []) =>
-        _.chain(events)
-          .filter((event) => !event.archived)
-          .value(),
-      ),
-    ),
+    timelines.map((timeline) => ({
+      ...timeline,
+      events: (timeline.events ?? []).filter((event) => !event.archived),
+    })),
   );
 
 const filterTimelineEvents = (

@@ -8,6 +8,7 @@
    [colorize.core :as colorize]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -19,9 +20,11 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
@@ -29,6 +32,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -44,7 +48,7 @@
 (deftest default-schema-test
   (mt/test-driver :sqlserver
     (is (= "dbo"
-           (driver.sql/default-schema :sqlserver (mt/db))))))
+           (driver.sql/default-schema :sqlserver (lib.metadata/database (mt/metadata-provider)))))))
 
 (deftest ^:parallel hour-bucketing-time-without-database-type-test
   (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
@@ -304,6 +308,44 @@
           (is (= "ActiveDirectoryManagedIdentity" (:authentication spec)))
           (is (not (contains? spec :user))))))))
 
+(deftest connection-spec-ad-managed-identity-hosted-rejected-test
+  (testing "auth-mode 'ad-managed-identity' is rejected on Metabase Cloud (ambient Azure identity, not available on AWS hosts)"
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (doseq [[label details] [["default identity"       {:auth-mode "ad-managed-identity"
+                                                          :host      "sql.example.com"
+                                                          :db        "metabase_test"}]
+                               ["user-assigned identity" {:auth-mode                     "ad-managed-identity"
+                                                          :ad-managed-identity-client-id "4e027ad8-5e10-4e05-b5a6-c071b9b61b37"
+                                                          :host                          "sql.example.com"
+                                                          :db                            "metabase_test"}]]]
+        (testing label
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"not available on Metabase Cloud"
+               (sql-jdbc.conn/connection-details->spec :sqlserver details)))))))
+  (testing "Off Metabase Cloud, ad-managed-identity continues to work."
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
+      (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                         {:auth-mode "ad-managed-identity"
+                                                          :host      "sql.example.com"
+                                                          :db        "metabase_test"})]
+        (is (= "ActiveDirectoryManagedIdentity" (:authentication spec)))))))
+
+(deftest auth-mode-options-hidden-when-hosted-test
+  (let [auth-mode-values
+        (fn [] (->> (:details-fields (:sqlserver (driver.u/available-drivers-info)))
+                    (m/find-first #(= "auth-mode" (:name %)))
+                    :options
+                    (mapv :value)))]
+    (testing "On Metabase Cloud, ad-managed-identity is stripped from the auth-mode select."
+      (mt/with-premium-features #{:hosting}
+        (is (= ["sql" "ad-service-principal" "ad-service-principal-certificate"]
+               (auth-mode-values)))))
+    (testing "Off Metabase Cloud, every auth-mode option is offered."
+      (mt/with-premium-features #{}
+        (is (= ["sql" "ad-service-principal" "ad-service-principal-certificate" "ad-managed-identity"]
+               (auth-mode-values)))))))
+
 (deftest ^:parallel reject-inherited-disallowed-parameters-in-host-test
   (mt/test-driver :sqlserver
     (testing "parameters every SQL-JDBC driver disallows are refused in `host` too"
@@ -368,17 +410,18 @@
   (mt/test-driver :sqlserver
     (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "
                   "equivalent of LIMIT). Make sure we add a max-results LIMIT to the nested query")
-      (is (= {:query ["SELECT"
+      (is (= {:query ["WITH \"__mb_stage_0\" AS ("
+                      "  SELECT"
+                      "    TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
+                      "  FROM"
+                      "    \"dbo\".\"venues\""
+                      "  ORDER BY"
+                      "    \"dbo\".\"venues\".\"id\" ASC"
+                      ")"
+                      "SELECT"
                       "  TOP(1048575) \"__mb_source\".\"name\" AS \"name\""
                       "FROM"
-                      "  ("
-                      "    SELECT"
-                      "      TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
-                      "    FROM"
-                      "      \"dbo\".\"venues\""
-                      "    ORDER BY"
-                      "      \"dbo\".\"venues\".\"id\" ASC"
-                      "  ) AS \"__mb_source\""]
+                      "  \"__mb_stage_0\" AS \"__mb_source\""]
               :params nil}
              (-> (mt/mbql-query venues
                    {:source-query {:source-table $$venues
@@ -391,17 +434,18 @@
   (mt/test-driver :sqlserver
     (testing (str "make sure when adding TOP clauses to make ORDER BY work we don't stomp over any explicit TOP "
                   "clauses that may have been set in the query")
-      (is (= {:query  ["SELECT"
+      (is (= {:query  ["WITH \"__mb_stage_0\" AS ("
+                       "  SELECT"
+                       "    TOP(20) \"dbo\".\"venues\".\"name\" AS \"name\""
+                       "  FROM"
+                       "    \"dbo\".\"venues\""
+                       "  ORDER BY"
+                       "    \"dbo\".\"venues\".\"id\" ASC"
+                       ")"
+                       "SELECT"
                        "  TOP(10) \"__mb_source\".\"name\" AS \"name\""
                        "FROM"
-                       "  ("
-                       "    SELECT"
-                       "      TOP(20) \"dbo\".\"venues\".\"name\" AS \"name\""
-                       "    FROM"
-                       "      \"dbo\".\"venues\""
-                       "    ORDER BY"
-                       "      \"dbo\".\"venues\".\"id\" ASC"
-                       "  ) AS \"__mb_source\""]
+                       "  \"__mb_stage_0\" AS \"__mb_source\""]
               :params nil}
              (-> (qp.compile/compile
                   (mt/mbql-query venues
@@ -426,17 +470,18 @@
                              qp.preprocess/preprocess
                              (lib/limit nil))]
         (mt/with-metadata-provider (mt/id)
-          (is (= {:query  ["SELECT"
+          (is (= {:query  ["WITH \"__mb_stage_0\" AS ("
+                           "  SELECT"
+                           "    TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
+                           "  FROM"
+                           "    \"dbo\".\"venues\""
+                           "  ORDER BY"
+                           "    \"dbo\".\"venues\".\"id\" ASC"
+                           ")"
+                           "SELECT"
                            "  \"__mb_source\".\"name\" AS \"name\""
                            "FROM"
-                           "  ("
-                           "    SELECT"
-                           "      TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
-                           "    FROM"
-                           "      \"dbo\".\"venues\""
-                           "    ORDER BY"
-                           "      \"dbo\".\"venues\".\"id\" ASC"
-                           "  ) AS \"__mb_source\""
+                           "  \"__mb_stage_0\" AS \"__mb_source\""
                            "ORDER BY"
                            "  \"__mb_source\".\"id\" ASC"]
                   :params nil}
@@ -491,7 +536,7 @@
       ;; are working we need to add to in from of the query we're trying to check
       (sql-jdbc.execute/do-with-connection-with-options
        :sqlserver
-       (mt/db)
+       (mt/id)
        {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
        (fn [^java.sql.Connection conn]
          (.setAutoCommit conn false)
@@ -521,7 +566,7 @@
       ;; persist otherwise
       (sql-jdbc.execute/do-with-connection-with-options
        :sqlserver
-       (mt/db)
+       (mt/id)
        {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
        (fn [^java.sql.Connection conn]
          (doseq [datefirst (range 1 8)]
@@ -546,7 +591,7 @@
       ;; persist otherwise
       (sql-jdbc.execute/do-with-connection-with-options
        :sqlserver
-       (mt/db)
+       (mt/id)
        {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
        (fn [^java.sql.Connection conn]
          (doseq [datefirst (range 1 8)]
@@ -587,7 +632,7 @@
             (let [sql (format "SELECT %s AS t;" (sql.qp/inline-value :sqlserver t))]
               (sql-jdbc.execute/do-with-connection-with-options
                :sqlserver
-               (mt/db)
+               (mt/id)
                nil
                (fn [^java.sql.Connection conn]
                  (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql nil)
@@ -1075,7 +1120,7 @@
 
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver :sqlserver
-    (is (= "Z" (str (driver/db-default-timezone :sqlserver (mt/db)))))))
+    (is (= "Z" (str (driver/db-default-timezone :sqlserver (lib.metadata/database (mt/metadata-provider))))))))
 
 (deftest ^:parallel default-database-role-test
   (testing "SQL Server default database role handling"
@@ -1147,7 +1192,7 @@
     (mt/test-driver :sqlserver
       (mt/dataset bigint-identity-data
         (is (= :type/BigInteger
-               (t2/select-one-fn :base_type :model/Field (mt/id :bigint_identity_test :id))))))))
+               (t2/select-one-fn :base_type :model/Field :id (mt/id :bigint_identity_test :id))))))))
 
 (def ^:private udt-alias-db-details
   (delay (mt/dbdef->connection-details :sqlserver :db {:database-name "udt_alias_test"})))
@@ -1172,7 +1217,7 @@
     (mt/test-driver :sqlserver
       (create-udt-alias-db!)
       (mt/with-temp [:model/Database database {:engine :sqlserver, :details @udt-alias-db-details}]
-        (sync/sync-database! database)
+        (sync/sync-database! (:id database))
         (let [table-id (t2/select-one-pk :model/Table :db_id (:id database) :name "udt_alias_test")
               fields   (into {} (map (juxt :name identity))
                              (t2/select :model/Field :table_id table-id))]
@@ -1210,6 +1255,36 @@
                                                                      [[1 true] [2 false]] false))]
       (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)))
       (is (= [1 true 2 false] params)))))
+
+(deftest ^:parallel compile-create-temp-table-from-a-set-operation-test
+  (mt/test-driver :sqlserver
+    (let [compile! (fn [sql]
+                     (first (driver/compile-create-temp-table :sqlserver {:table "#mb_test_1" :query {:query sql :params []}})))]
+      (testing "a set operation takes the INTO in its first SELECT"
+        (is (= "SELECT 1 AS id INTO [#mb_test_1] UNION ALL SELECT 2 AS id"
+               (compile! "SELECT 1 AS id UNION ALL SELECT 2 AS id")))
+        (is (= "SELECT 1 AS id INTO [#mb_test_1] EXCEPT SELECT 2 AS id INTERSECT SELECT 3"
+               (compile! "SELECT 1 AS id EXCEPT SELECT 2 AS id INTERSECT SELECT 3"))))
+      (testing "with a WITH clause, which stays in front"
+        (is (= "WITH c AS (SELECT 1 AS id) SELECT id INTO [#mb_test_1] FROM c UNION ALL SELECT 2"
+               (compile! "WITH c AS (SELECT 1 AS id) SELECT id FROM c UNION ALL SELECT 2"))))
+      (testing "each branch's base tables are wrapped, as in a plain SELECT"
+        (is (= (str "SELECT id INTO [#mb_test_1] FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products"
+                    " UNION ALL SELECT id FROM (SELECT * FROM orders UNION ALL SELECT * FROM orders WHERE 1 = 0) AS orders")
+               (compile! "SELECT id FROM products UNION ALL SELECT id FROM orders"))))
+      (testing "a statement that is not a query is still refused"
+        (is (thrown-with-msg? Exception #"must be a SELECT statement"
+                              (compile! "UPDATE t SET a = 1"))))
+      (testing "with the Macaw parser, a set operation also takes the INTO in its first SELECT"
+        (binding [sql-tools.settings/*parser-backend-override* :macaw]
+          (is (= "SELECT 1 AS id INTO \"#mb_test_1\" UNION ALL SELECT 2 AS id"
+                 (compile! "SELECT 1 AS id UNION ALL SELECT 2 AS id")))
+          (is (thrown-with-msg? Exception #"must be a SELECT statement"
+                                (compile! "(SELECT 1 AS id) UNION ALL SELECT 2")))))
+      (testing "a transform whose query is a set operation compiles the same way"
+        (is (= ["SELECT 1 AS id INTO [t] UNION ALL SELECT 2 AS id" nil]
+               (driver/compile-transform :sqlserver {:query        {:query "SELECT 1 AS id UNION ALL SELECT 2 AS id"}
+                                                     :output-table "t"})))))))
 
 (deftest ^:parallel compile-transform-test
   (mt/test-driver :sqlserver
@@ -1300,7 +1375,7 @@
               {:query        {:query "SELECT mydb.dbo.products.id FROM mydb.dbo.products"}
                :output-table "PRODUCTS_COPY"}))))
     (testing "compile-insert generates INSERT INTO"
-      (is (= ["INSERT INTO \"PRODUCTS_COPY\" SELECT * FROM products" nil]
+      (is (= ["INSERT INTO [PRODUCTS_COPY] SELECT * FROM products" nil]
              (driver/compile-insert
               :sqlserver
               {:query        {:query "SELECT * FROM products"}
@@ -1310,7 +1385,7 @@
   (mt/test-driver :sqlserver
     (testing "`current-user-table-privileges` returns correct structure and privileges"
       (sql-jdbc.execute/do-with-connection-with-options
-       :sqlserver (mt/db) nil
+       :sqlserver (mt/id) nil
        (fn [conn]
          (let [privileges (sql-jdbc.sync/current-user-table-privileges :sqlserver {:connection conn})]
            (is (seq privileges) "Should return at least one table")
@@ -1432,12 +1507,12 @@
     (testing "a transform test's temp table is visible to its own session only"
       (let [table (driver/temp-table-name :sqlserver)]
         (driver/do-with-test-connection
-         :sqlserver (mt/db)
+         :sqlserver (lib.metadata/database (mt/metadata-provider))
          (fn [conn]
            (create-temp-table! conn table "SELECT 1 AS id" [])
            (is (= [[1]] (:rows (temp-table-rows conn table))))
            (driver/do-with-test-connection
-            :sqlserver (mt/db)
+            :sqlserver (lib.metadata/database (mt/metadata-provider))
             (fn [other-conn]
               (is (thrown-with-msg? Exception #"Invalid object name"
                                     (temp-table-rows other-conn table)))))))))))
@@ -1447,7 +1522,7 @@
     (testing "a temp table created by a query with bound parameters outlives the statement that created it"
       (let [table (driver/temp-table-name :sqlserver)]
         (driver/do-with-test-connection
-         :sqlserver (mt/db)
+         :sqlserver (lib.metadata/database (mt/metadata-provider))
          (fn [conn]
            (create-temp-table! conn table "SELECT CAST(? AS nvarchar(50)) AS name, CAST(? AS decimal(10,2)) AS price"
                                ["abc" 1.5M])
@@ -1455,10 +1530,36 @@
     (testing "the test connection runs temp table statements as batches, and gets its prepare method back afterwards"
       (let [physical (atom nil)]
         (driver/do-with-test-connection
-         :sqlserver (mt/db)
+         :sqlserver (lib.metadata/database (mt/metadata-provider))
          (fn [^java.sql.Connection conn]
            (let [sqlserver-conn (.unwrap conn com.microsoft.sqlserver.jdbc.ISQLServerConnection)]
              (reset! physical sqlserver-conn)
              (is (= "scopeTempTablesToConnection"
                     (.getPrepareMethod ^com.microsoft.sqlserver.jdbc.ISQLServerConnection sqlserver-conn))))))
         (is (= "prepexec" (.getPrepareMethod ^com.microsoft.sqlserver.jdbc.ISQLServerConnection @physical)))))))
+
+(deftest destroy-workspace-isolation-quotes-table-names-test
+  (testing "Teardown builds each DROP TABLE with QUOTENAME on the schema name and the table name. This checks the SQL text only; it does not run it on SQL Server."
+    (let [batch (atom [])
+          stmt  (reify java.sql.Statement
+                  (addBatch [_ sql] (swap! batch conj sql))
+                  (executeBatch [_] (int-array (count @batch)))
+                  (close [_]))
+          conn  (reify java.sql.Connection
+                  (createStatement [_] stmt))]
+      (with-redefs [driver.u/ensure-lib-database                         identity
+                    sql-jdbc.execute/do-with-connection-with-options (fn [_driver _db _opts f] (f conn))]
+        (driver/destroy-workspace-isolation! :sqlserver {} {:schema           "ws_schema"
+                                                            :database_details {:user "ws_user"}}))
+      (is (= [(str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
+                   "SELECT @drop_tables_sql += 'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + '; ' "
+                   "FROM sys.tables WHERE schema_id = SCHEMA_ID('ws_schema'); "
+                   "EXEC sp_executesql @drop_tables_sql")
+              "IF EXISTS (SELECT * FROM sys.schemas WHERE name = 'ws_schema') DROP SCHEMA \"ws_schema\""
+              "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = 'ws_user') DROP USER \"ws_user\""
+              (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
+                   "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                   "FROM sys.dm_exec_sessions WHERE login_name = 'ws_user'; "
+                   "EXEC sp_executesql @kill_sessions_sql")
+              "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = 'ws_user') DROP LOGIN \"ws_user\""]
+             @batch)))))

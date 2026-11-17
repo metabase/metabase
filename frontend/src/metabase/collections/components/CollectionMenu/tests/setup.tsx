@@ -10,6 +10,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import { Route } from "metabase/router";
 import type {
   Collection,
@@ -24,6 +25,11 @@ import {
 
 import { CollectionMenu } from "../CollectionMenu";
 
+const THREE_MONTHS_AGO = dayjs()
+  .startOf("day")
+  .subtract(3, "months")
+  .format("YYYY-MM-DD");
+
 export interface SetupOpts {
   collection?: Collection;
   tokenFeatures?: TokenFeatures;
@@ -34,6 +40,10 @@ export interface SetupOpts {
   moveToDashboard?: boolean;
   numberOfCollectionItems?: number;
   numberOfStaleItems?: number;
+  /**
+   * The badges that the user has already seen in the collection menu.
+   */
+  seenBadges?: string[];
 }
 
 export const setup = ({
@@ -45,17 +55,26 @@ export const setup = ({
   moveToDashboard = false,
   numberOfCollectionItems = 10,
   numberOfStaleItems = 0,
+  seenBadges = [],
 }: SetupOpts) => {
   // We need a mock to get the total number of items in a collection, but we don't need to
   // access the data - only the total
-  fetchMock.get(`path:/api/collection/${collection.id}/items`, {
-    total: numberOfCollectionItems,
-  });
+  fetchMock.get(
+    `path:/api/collection/${collection.id}/items`,
+    ({ url }) => ({
+      data: [],
+      total:
+        new URL(url).searchParams.get("limit") === "0"
+          ? numberOfCollectionItems
+          : 0,
+    }),
+    { name: "collection-item-count" },
+  );
   setupDashboardQuestionCandidatesEndpoint(dashboardQuestionCandidates);
   setupUserKeyValueEndpoints({
     namespace: "indicator-menu",
     key: "collection-menu",
-    value: [],
+    value: seenBadges,
   });
 
   setupUserKeyValueEndpoints({
@@ -78,7 +97,10 @@ export const setup = ({
   const onUpdateCollection = jest.fn();
 
   if (enterprisePlugins) {
-    setupStaleItemsEndpoint(numberOfStaleItems);
+    setupStaleItemsEndpoint(numberOfStaleItems, {
+      collectionId: collection.id,
+      beforeDate: THREE_MONTHS_AGO,
+    });
     enterprisePlugins.forEach((plugin) => setupEnterpriseOnlyPlugin(plugin));
   }
 
@@ -102,11 +124,11 @@ export const setup = ({
 };
 
 export const assertIndicatorVisible = async () => {
-  await waitFor(async () =>
+  await waitFor(() =>
     expect(
-      (await screen.findByTestId("menu-indicator-root")).querySelector(
-        "[class*=indicator]",
-      ),
+      screen
+        .getByTestId("menu-indicator-root")
+        .querySelector("[class*=indicator]"),
     ).toBeInTheDocument(),
   );
 };

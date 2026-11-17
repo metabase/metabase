@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useField } from "formik";
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
@@ -5,6 +6,9 @@ import { forwardRef, useCallback, useMemo } from "react";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { dayjs } from "metabase/dayjs";
 import { DateInput, type DateInputProps, type DateValue } from "metabase/ui";
+
+const DATE_FORMAT = "YYYY-MM-DD";
+
 export type FormDateInputProps = {
   value?: DateValue | undefined;
   className?: string;
@@ -39,7 +43,7 @@ export const FormDateInput = forwardRef(function FormDateInput(
   const handleChange = useCallback(
     (date: DateValue | undefined) => {
       if (date) {
-        setValue(dayjs(date).format("YYYY-MM-DD"));
+        setValue(dayjs(date).format(DATE_FORMAT));
       } else {
         setValue(nullable ? null : undefined);
       }
@@ -56,7 +60,7 @@ export const FormDateInput = forwardRef(function FormDateInput(
       ref={ref}
       label={title}
       name={name}
-      value={dayjs(date).toDate()}
+      value={dayjs(date).format(DATE_FORMAT)}
       error={touched && error != null}
       onBlur={onBlur}
     />

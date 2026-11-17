@@ -141,7 +141,7 @@ function dashboardSidebar() {
 
 describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
   beforeEach(() => {
-    H.prepareSdkIframeEmbedTest({ signOut: true });
+    H.prepareSdkIframeEmbedTest();
   });
 
   it("renders the exploration template with isSaveEnabled=true, targetCollection, entityTypes", () => {

@@ -9,7 +9,12 @@ import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Card, Field, NormalizedField } from "metabase-types/api";
+import type {
+  Card,
+  DatasetColumn,
+  Field,
+  NormalizedField,
+} from "metabase-types/api";
 
 interface GetPathNameFromQueryBuilderModeOptions {
   pathname: string;
@@ -90,13 +95,12 @@ export function getTableUrlForPristineQuestion(
     return null;
   }
 
-  // A card source (`card__123`) is a string id; only a real table qualifies.
-  const sourceTableId = Lib.sourceTableOrCardId(query);
-  if (typeof sourceTableId !== "number") {
+  const sourceTableId = Lib.primarySourceTableId(query);
+  if (sourceTableId == null) {
     return null;
   }
 
-  const tableMetadata = Lib.tableOrCardMetadata(query, sourceTableId);
+  const tableMetadata = Lib.tableMetadata(query, sourceTableId);
   if (!tableMetadata) {
     return null;
   }
@@ -217,7 +221,7 @@ const WRITABLE_NATIVE_COLUMN_PROPERTIES = [
 ];
 
 export function getWritableColumnProperties(
-  column: NormalizedField | Field,
+  column: DatasetColumn | NormalizedField | Field,
   isNative: boolean,
 ) {
   return _.pick(

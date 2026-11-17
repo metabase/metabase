@@ -6,6 +6,7 @@
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
@@ -92,10 +93,10 @@
               api/*current-user-id* (mt/user->id :crowberto)]
       ;; Drop the actual table/view from the database
       (try
-        (driver/drop-transform-target! driver (mt/db) (update target :type (fn [target-type]
-                                                                             (if (string? target-type)
-                                                                               (keyword target-type)
-                                                                               target-type))))
+        (driver/drop-transform-target! driver (lib.metadata/database (mt/metadata-provider)) (update target :type (fn [target-type]
+                                                                                                                    (if (string? target-type)
+                                                                                                                      (keyword target-type)
+                                                                                                                      target-type))))
         (catch Exception e
           (log/warnf e "Failed to drop transform target table %s.%s for driver %s"
                      (:schema target) (:name target) driver)))
@@ -146,7 +147,7 @@
   [table-name]
   (let [pk (or (try (mt/id (keyword table-name)) (catch Exception _ nil))
                (if-let [schema (when-let [products-id (try (mt/id :transforms_products) (catch Exception _ nil))]
-                                 (t2/select-one-fn :schema :model/Table products-id))]
+                                 (t2/select-one-fn :schema :model/Table :id products-id))]
                  (t2/select-one-pk :model/Table :db_id (mt/id) :schema schema :name table-name)
                  (t2/select-one-pk :model/Table :db_id (mt/id) :name table-name)))]
     (->>
@@ -264,7 +265,7 @@
   "Get the schema from the products table in the test dataset.
    This is needed for databases like BigQuery that require a schema/dataset."
   []
-  (t2/select-one-fn :schema :model/Table (mt/id :transforms_products)))
+  (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products)))
 
 (defn default-schema-or-public
   "Returns the driver's default schema (e.g., 'dbo' for SQL Server) or 'public' as fallback.
@@ -285,16 +286,16 @@
 
 (doseq [driver [:postgres :snowflake]]
   (defmethod delete-schema! driver [driver db schema]
-    (let [conn-spec (driver/connection-spec driver db)
+    (let [conn-spec (driver/connection-spec driver (driver.u/ensure-lib-database db))
           sql [[(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema)]]]
       (driver/execute-raw-queries! driver/*driver* conn-spec sql))))
 
 (defmethod delete-schema! :sqlserver [driver db schema]
-  (let [conn-spec (driver/connection-spec driver db)
+  (let [conn-spec (driver/connection-spec driver (driver.u/ensure-lib-database db))
         sql [[(format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA [%s];" schema schema)]]]
     (driver/execute-raw-queries! driver/*driver* conn-spec sql)))
 
 (defmethod delete-schema! :clickhouse [driver db schema]
-  (let [conn-spec (driver/connection-spec driver db)
+  (let [conn-spec (driver/connection-spec driver (driver.u/ensure-lib-database db))
         sql [[(format "DROP DATABASE IF EXISTS `%s`;" schema)]]]
     (driver/execute-raw-queries! driver/*driver* conn-spec sql)))

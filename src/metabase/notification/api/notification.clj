@@ -51,6 +51,15 @@
                       ::models.notification/NotificationRecipient)
    {:with-id? true :update-input? true}))
 
+(mr/def ::send-status
+  [:enum :sent :skipped])
+
+(mr/def ::SendNotificationResponse
+  "Response schema for the `send/` and `:id/send/` endpoints"
+  [:map {:closed true}
+   [:status ::send-status]
+   [:skip_reason {:optional true} [:maybe string?]]])
+
 (defn- check-no-resource-templates!
   "Validate that no handler uses handlebars-resource templates. That type is internal only."
   [handlers]
@@ -64,7 +73,7 @@
   "Validate that an inline `:channel` or `:channel_id` handler requires the same permission as creating one."
   [handlers]
   (when (some #(or (:channel %) (:channel_id %)) handlers)
-    (api/check-403 (mi/can-write? :model/Channel))))
+    (api/check-403 (mi/can-write? (t2/hydrate (t2/instance :model/Channel {}) :can_write)))))
 
 (defn- handler-touches-template?
   [{:keys [template template_id]}]
@@ -81,7 +90,7 @@
    (check-no-resource-templates! handlers)
    (when (or (some handler-touches-template? handlers)
              (some handler-touches-template? existing-handlers))
-     (api/check-403 (mi/can-write? :model/ChannelTemplate)))))
+     (api/check-403 (mi/can-write? (t2/hydrate (t2/instance :model/ChannelTemplate {}) :can_write))))))
 
 (defn get-notification
   "Get a notification by id."
@@ -107,9 +116,9 @@
          ;; legacy-active and legacy-user-id only used by alert api, will be removed soon
          :legacy-active            legacy-active
          :legacy-user-id           legacy-user-id})
-       (into [] (comp
-                 (map t2.realize/realize)
-                 (filter mi/can-read?)))
+       (into [] (map t2.realize/realize))
+       (#(t2/hydrate % :can_read))
+       (filterv mi/can-read?)
        models.notification/hydrate-notification))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -277,11 +286,7 @@
    body :- ::NotificationApiUpdateInput]
   (update-notification! id body))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/send"
+(api.macros/defendpoint :post "/:id/send" :- ::SendNotificationResponse
   "Send a notification by id."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query
@@ -304,11 +309,7 @@
                                           %))
        (m/update-existing :subscriptions #(map (fn [x] (t2/instance :model/NotificationSubscription x)) %))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/send"
+(api.macros/defendpoint :post "/send" :- ::SendNotificationResponse
   "Send an unsaved notification."
   [_route _query body :- ::CreateNotificationParams request]
   (check-no-resource-templates! (:handlers body))
@@ -337,11 +338,7 @@
       (events/publish-event! :event/notification-unsubscribe {:object {:id notification-id}
                                                               :user-id api/*current-user-id*}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/unsubscribe"
+(api.macros/defendpoint :post "/:id/unsubscribe" :- ::api/generic-204-no-content
   "Unsubscribe current user from a notification."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (unsubscribe-user! id api/*current-user-id*)

@@ -32,11 +32,7 @@ import {
 import * as Urls from "metabase/urls";
 import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
 import { dependencyGraph } from "metabase/urls/dependencies";
-import {
-  type FieldId,
-  type Table,
-  isConcreteTableId,
-} from "metabase-types/api";
+import type { FieldId, Table } from "metabase-types/api";
 
 import { MeasureList } from "./MeasureList";
 import { SegmentList } from "./SegmentList";
@@ -76,6 +72,7 @@ const TableSectionBase = ({
   const [modalType, setModalType] = useState<TableModalType>();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
+  const readOnly = !table.can_write;
   const isLibraryEnabled = PLUGIN_LIBRARY.isEnabled;
   const isDependencyGraphEnabled = PLUGIN_DEPENDENCIES.isEnabled;
   const remoteSyncReadOnly = useSelector(
@@ -130,13 +127,11 @@ const TableSectionBase = ({
   };
 
   const registerDependencyGraphTrackingEvent = () => {
-    if (isConcreteTableId(table.id)) {
-      trackDependencyEntitySelected({
-        entityId: table.id,
-        triggeredFrom: "data-structure",
-        eventDetail: "table",
-      });
-    }
+    trackDependencyEntitySelected({
+      entityId: table.id,
+      triggeredFrom: "data-structure",
+      eventDetail: "table",
+    });
   };
 
   return (
@@ -160,6 +155,7 @@ const TableSectionBase = ({
                   nameIcon="table2"
                   nameMaxLength={254}
                   namePlaceholder={t`Give this table a name`}
+                  readOnly={readOnly}
                   onNameChange={handleNameChange}
                   onDescriptionChange={handleDescriptionChange}
                 />
@@ -216,7 +212,7 @@ const TableSectionBase = ({
           <Tabs.Panel value="field">
             <Stack gap="lg">
               <Group gap="lg" justify="flex-start" wrap="nowrap">
-                {!isSorting && hasFields && (
+                {!isSorting && hasFields && !readOnly && (
                   <ResponsiveButton
                     icon="sort_arrows"
                     showLabel

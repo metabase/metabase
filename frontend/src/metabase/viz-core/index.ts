@@ -30,8 +30,10 @@ export {
 export {
   ROW_CHART_MIN_BAR_HEIGHT,
   foldRowChartModel,
+  getChartModelAtHeight,
 } from "./echarts/cartesian/model/row-fold";
 export { getChartLayout } from "./echarts/cartesian/layout";
+export type { ChartLayoutInput } from "./echarts/cartesian/layout";
 export type {
   ChartBoundsCoords,
   ChartLayout,
@@ -217,6 +219,7 @@ export type {
   EChartsSeriesBrushEvent,
   EChartsSeriesBrushSelectedEvent,
   EChartsSeriesMouseEvent,
+  ShowWarning,
 } from "./echarts/types";
 export {
   runWithinExportGrant,
@@ -346,6 +349,10 @@ export {
   STACKABLE_SETTINGS,
   TOOLTIP_SETTINGS,
 } from "./lib/settings/graph";
+export {
+  getLegendPositionSetting,
+  LEGEND_POSITION_SETTINGS,
+} from "./lib/settings/legend";
 export { nestedSettings } from "./lib/settings/nested";
 export { keyForSingleSeries } from "./lib/settings/series";
 export { TIMELINE_EVENTS_SETTINGS } from "./lib/settings/timelineEvents";
@@ -415,6 +422,7 @@ export { DEFAULT_VIZ_ORDER } from "./lib/viz-order";
 export {
   unaggregatedDataWarning,
   unaggregatedDataWarningMap,
+  unaggregatedDataWarningTablePivot,
 } from "./lib/warnings";
 export { getSettingsWidgets, getSettingsWidgetsForSeries } from "./lib/widgets";
 export { getSizeAdjustedSettings } from "./shared/settings-adjustments";
@@ -427,8 +435,8 @@ export {
 export {
   getDefaultPercentVisibility,
   getDefaultPieColumns,
+  getDefaultLegendPosition,
   getDefaultShowLabels,
-  getDefaultShowLegend,
   getDefaultShowTotal,
   getDefaultSliceThreshold,
   getDefaultSortRows,
@@ -492,6 +500,7 @@ export type {
   ChartSettingGoalInputProps,
   ChartSettingMaxCategoriesProps,
   ChartSettingOrderedItem,
+  ChartSettingSegmentedControlOption,
   ChartSettingSegmentedControlProps,
   ChartSettingSegmentsEditorProps,
   ChartSettingSeriesOrderItem,

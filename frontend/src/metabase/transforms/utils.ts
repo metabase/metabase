@@ -16,6 +16,8 @@ import type {
   TransformSource,
 } from "metabase-types/api";
 
+import { RUN_STATUS_FILTER_VALUES } from "./constants";
+
 export function parseTimestampWithTimezone(
   timestamp: string,
   systemTimezone: string | undefined,
@@ -48,6 +50,16 @@ export function formatStatus(status: TransformRunStatus | null) {
     case "canceled":
       return t`Canceled`;
   }
+}
+
+export function getRunStatusOptions(): {
+  value: TransformRunStatus;
+  label: string;
+}[] {
+  return RUN_STATUS_FILTER_VALUES.map((status) => ({
+    value: status,
+    label: formatStatus(status),
+  }));
 }
 
 export function formatRunMethod(trigger: TransformRunMethod) {
@@ -181,7 +193,7 @@ export type ValidationResult = {
 export function getValidationResult(query: Lib.Query): ValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {
-    const tags = Object.values(Lib.templateTags(query));
+    const tags = Lib.templateTags(query);
 
     const invalidResults = tags
       .map(validateTemplateTag)
@@ -239,10 +251,6 @@ export const isMbqlQuery = (
   }
   return !Lib.queryDisplayInfo(query).isNative;
 };
-
-export function isMissingSourceDatabase(transform: Transform) {
-  return transform.source_database_id == null;
-}
 
 /**
  * Returns the duration in ms of a transform run, or null when it cannot be

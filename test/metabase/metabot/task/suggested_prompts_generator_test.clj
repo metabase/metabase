@@ -41,13 +41,13 @@
                                               {:table_questions []
                                                :metric_questions []}))]
                 (testing "Non-verified card with use_verified_content=false generates prompts"
-                  (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false})
+                  (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content false})
                   (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                   (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                     (is (seq prompts))))
                 (testing "Non-verified card with use_verified_content=true generates no prompts"
                   (t2/delete! :model/MetabotPrompt)
-                  (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content true})
+                  (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content true})
                   (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                   (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                     (is (empty? prompts))))
@@ -62,18 +62,18 @@
                       :most_recent true}]
                     (testing "with use_verified_content=true"
                       (t2/delete! :model/MetabotPrompt)
-                      (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content true})
+                      (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content true})
                       (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                       (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                         (is (seq prompts))))
                     (testing "with use_verified_content=false"
                       (t2/delete! :model/MetabotPrompt)
-                      (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false})
+                      (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content false})
                       (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                       (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                         (is (seq prompts))))))
                 ;; Reset metabot state
-                (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false})))))))))
+                (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content false})))))))))
 
 (defn- enabled-builtin-metabots-with [internal? embedded?]
   (mt/with-dynamic-fn-redefs [metabot.settings/metabot-enabled?          (constantly internal?)
@@ -107,7 +107,7 @@
                                             (fn [_]
                                               {:table_questions [{:questions ["What is the total for this model?"]}]
                                                :metric_questions []})]
-                  (run! #(t2/update! :model/Metabot % {:use_verified_content false}) [internal-id embedded-id])
+                  (run! #(t2/update! :model/Metabot :id % {:use_verified_content false}) [internal-id embedded-id])
                   (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                   (is (seq (t2/select :model/MetabotPrompt :metabot_id internal-id :card_id card-id))
                       "internal bot is seeded")
@@ -129,7 +129,7 @@
                            {card-id :id}
                            {:type :model
                             :dataset_query query}]
-              (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false})
+              (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content false})
               (mt/with-dynamic-fn-redefs [premium-features/token-status
                                           (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
                                                                                                      :is-locked   true}}})

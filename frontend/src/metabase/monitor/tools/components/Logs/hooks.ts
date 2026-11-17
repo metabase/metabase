@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useListLogsQuery } from "metabase/api/logger";
@@ -32,7 +33,7 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
 }
 
 export function useTailLogs(logs: Log[]) {
-  const scrollRef = useRef<any>();
+  const scrollRef = useRef<any>(undefined);
   const shouldAutoFollow = useRef(true);
 
   function autoFollow() {

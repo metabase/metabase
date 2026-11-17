@@ -105,7 +105,11 @@ export function JoinComplete({
 
   return (
     <Flex direction={{ base: "column", md: "row" }} gap="sm">
-      <NotebookCell className={S.JoinConditionCell} color={color}>
+      <NotebookCell
+        className={S.JoinConditionCell}
+        color={color}
+        align="flex-start"
+      >
         <Flex gap={6} align="center">
           <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
             {tc(lhsTableName)}
@@ -141,6 +145,7 @@ export function JoinComplete({
       <NotebookCell
         className={S.JoinConditionCell}
         color={color}
+        align="flex-start"
         p={rem("10px")}
       >
         {conditions.map((condition, index) => {

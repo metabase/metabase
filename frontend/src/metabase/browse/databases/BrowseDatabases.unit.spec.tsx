@@ -106,6 +106,26 @@ describe("BrowseDatabases", () => {
       },
     );
 
+    it("opens the add database page from the add database card and tracks the click", async () => {
+      const { trackSimpleEvent } = jest.requireMock<{
+        trackSimpleEvent: jest.Mock<void, [{ event: string }]>;
+      }>("metabase/analytics");
+      const { router } = renderBrowseDatabasesWithRouter(
+        [createMockDatabase({ id: 1, name: "Sales" })],
+        { isAdmin: true },
+      );
+
+      await userEvent.click(await screen.findByText("Add a database"));
+
+      expect(router?.location.pathname).toBe("/admin/databases/create");
+      const addDatabaseEvents = trackSimpleEvent.mock.calls.filter(
+        ([event]) => event.event === "database_add_clicked",
+      );
+      expect(addDatabaseEvents).toEqual([
+        [{ event: "database_add_clicked", triggered_from: "db-list" }],
+      ]);
+    });
+
     it("opens the database options menu without opening the database", async () => {
       const { router } = renderBrowseDatabasesWithRouter(
         [databaseWithSchemas(7, "Sales", ["PUBLIC", "ANALYTICS"])],

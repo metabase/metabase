@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [metabase-enterprise.serialization.dump :as dump]
    [metabase.lib.core :as lib]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.string :as u.str]))
 
@@ -46,26 +46,39 @@
         (recur (rest remaining)
                (conj resolved unique-name))))))
 
-(defn resolve-storage-path
-  "Given ctx and entity, returns a vector of resolved (slugified, deduplicated) path strings.
-  The last element is the filename (without extension)."
-  [ctx entity]
-  (resolve-path (:unique-name-fns ctx) (serdes/storage-path entity ctx)))
+(defn file-namer
+  "A new namer of exported files: the state that keeps the names of the files an export writes to one folder
+  unique, for [[resolve-storage-paths]]."
+  []
+  (atom {}))
+
+(defn resolve-storage-paths
+  "The resolved (slugified, deduplicated) storage path of each of `entities`, as a vector of strings whose last element
+  is the file name without extension, with the names `namer` (see [[file-namer]]) has given out."
+  [namer entities]
+  (mapv #(resolve-path namer %) (serialization/batch-storage-paths entities)))
 
 (defn yaml-file-path
   "The `/`-separated path of the YAML file at the `resolved` storage path."
   [resolved]
   (str/join "/" (concat (drop-last resolved) [(str (last resolved) ".yaml")])))
 
+(defn entity-file-paths
+  "The path, relative to the export root, of the YAML file each of `entities` serializes to, with the names `namer`
+  (see [[file-namer]]) has given out."
+  [namer entities]
+  (mapv yaml-file-path (resolve-storage-paths namer entities)))
+
 (defn entity-file-path
-  "The path, relative to the export root, of the YAML file the extracted `entity` serializes to in storage context `ctx`."
-  [ctx entity]
-  (yaml-file-path (resolve-storage-path ctx entity)))
+  "The path, relative to the export root, of the YAML file `entity` serializes to, with the names `namer` (see
+  [[file-namer]]) has given out."
+  [namer entity]
+  (first (entity-file-paths namer [entity])))
 
 (defn without-resources
-  "The `entity` as written to its YAML file: [[serdes/storable]], without its `:serdes/resources`."
+  "The `entity` as written to its YAML file: [[serialization/storable]], without its `:serdes/resources`."
   [entity]
-  (serdes/storable (dissoc entity :serdes/resources)))
+  (serialization/storable (dissoc entity :serdes/resources)))
 
 (defn entity-yaml
   "The text of the YAML file the extracted `entity` serializes to."

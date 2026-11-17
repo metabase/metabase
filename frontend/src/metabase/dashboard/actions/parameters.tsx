@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import cx from "classnames";
-import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -111,10 +111,8 @@ function updateParameter(
 
   const index = _.findIndex(dashboard.parameters, (p) => p.id === id);
   if (index >= 0) {
-    const parameters = assoc(
-      dashboard.parameters,
-      index,
-      parameterUpdater(dashboard.parameters[index]),
+    const parameters = dashboard.parameters.map((parameter, i) =>
+      i === index ? parameterUpdater(parameter) : parameter,
     );
     dispatch(
       setDashboardAttributes({ id: dashboard.id, attributes: { parameters } }),
@@ -947,16 +945,17 @@ export const setParameterFilteringParameters = createThunkAction(
 
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
-  (parameterId: ParameterId, value: unknown) => (_dispatch, getState) => {
-    const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
-    const isValueEmpty = isParameterValueEmpty(value);
+  (parameterId: ParameterId, value: ParameterValuesMap[ParameterId]) =>
+    (_dispatch, getState) => {
+      const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
+      const isValueEmpty = isParameterValueEmpty(value);
 
-    return {
-      id: parameterId,
-      value: isValueEmpty ? PULSE_PARAM_EMPTY : value,
-      isDraft: isSettingDraftParameterValues,
-    };
-  },
+      return {
+        id: parameterId,
+        value: isValueEmpty ? PULSE_PARAM_EMPTY : value,
+        isDraft: isSettingDraftParameterValues,
+      };
+    },
 );
 
 // Auto-apply filters
@@ -1200,12 +1199,11 @@ export const setParameterValuesFromQueryParams =
     dispatch(setParameterValues(parameterValues));
   };
 
-/**
- * Turns auto-apply filters on or off for the loaded dashboard without saving
- * it, applying the pending filter values first.
- */
-export const setAutoApplyFilters =
-  (isEnabled: boolean) => (dispatch: Dispatch, getState: GetState) => {
+export const TOGGLE_AUTO_APPLY_FILTERS =
+  "metabase/dashboard/TOGGLE_AUTO_APPLY_FILTERS";
+export const toggleAutoApplyFilters = createThunkAction(
+  TOGGLE_AUTO_APPLY_FILTERS,
+  (isEnabled: boolean) => (dispatch, getState) => {
     const dashboardId = getDashboardId(getState());
 
     if (dashboardId) {
@@ -1216,18 +1214,6 @@ export const setAutoApplyFilters =
           attributes: { auto_apply_filters: isEnabled },
         }),
       );
-    }
-  };
-
-export const TOGGLE_AUTO_APPLY_FILTERS =
-  "metabase/dashboard/TOGGLE_AUTO_APPLY_FILTERS";
-export const toggleAutoApplyFilters = createThunkAction(
-  TOGGLE_AUTO_APPLY_FILTERS,
-  (isEnabled: boolean) => (dispatch, getState) => {
-    const dashboardId = getDashboardId(getState());
-
-    if (dashboardId) {
-      dispatch(setAutoApplyFilters(isEnabled));
       dispatch(updateDashboard({ attributeNames: ["auto_apply_filters"] }));
       if (!isEnabled) {
         trackAutoApplyFiltersDisabled(dashboardId);

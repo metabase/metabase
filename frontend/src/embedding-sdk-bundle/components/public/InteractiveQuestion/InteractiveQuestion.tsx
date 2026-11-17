@@ -51,6 +51,7 @@ export type InteractiveQuestionBaseProps = Omit<
   | "clickActionMode"
   | "navigateToNewCard"
   | "backToDashboard"
+  | "navigatedEntity"
 >;
 
 /**

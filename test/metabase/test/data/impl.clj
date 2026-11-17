@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.secrets.core :as secret]
    [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]
    [metabase.test.data.impl.verify :as verify]
@@ -217,7 +218,7 @@
 
 (mu/defn database-source-dataset-name :- :string
   "Get the name of the test dataset this Database was created from, e.g. `test-data`."
-  [database :- [:or ::warehouses.schema/database ::warehouses.schema/database.update]]
+  [database :- [:or ::lib.schema.metadata/database ::warehouses.schema/database ::warehouses.schema/database.update]]
   (get-in database [:settings :database-source-dataset-name]))
 
 (mu/defn the-table-id :- ::lib.schema.id/table
@@ -309,7 +310,7 @@
               :let                                   [new-parent-id (get old-id->new-id old-parent-id)]
               :when                                  (and new-parent-id
                                                           (not= new-parent-id old-parent-id))]
-        (t2/update! :model/Field new-id {:parent_id new-parent-id})))
+        (t2/update! :model/Field :id new-id {:parent_id new-parent-id})))
     ;; now copy the FieldValues as well. Only the full ones: an advanced FieldValues is looked up by a hash that
     ;; includes the id of the field it was cached for, so a copy of one can never be found again, and only turns
     ;; up in whatever a test counts.
@@ -357,7 +358,7 @@
                                   :source-table.active
                                   :target-table.active
                                   [:not= :source-field.fk_target_field_id nil]]})]
-    (t2/update! :model/Field (the-field-id (the-table-id new-db-id source-table) source-field)
+    (t2/update! :model/Field :id (the-field-id (the-table-id new-db-id source-table) source-field)
                 {:fk_target_field_id (the-field-id (the-table-id new-db-id target-table) target-field)})))
 
 (defn- copy-db-tables-and-fields! [old-db-id new-db-id]

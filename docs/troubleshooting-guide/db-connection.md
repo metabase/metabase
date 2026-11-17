@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting database connections
+summary: Figure out whether a failed database connection is coming from Metabase or your database server, and fix the common connection errors.
 redirect_from:
   - /docs/latest/troubleshooting-guide/datawarehouse
 ---
@@ -105,16 +106,6 @@ psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER
    ```sql
    SELECT 1
    ```
-
-## Snowflake error when running via JAR file
-
-If you're connecting to Snowflake and encounter an error like, `JDBC driver internal error: exception creating result` and are running from the JAR file, add `--add-opens java.base/java.nio=ALL-UNNAMED` to your `java` command:
-
-```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
-```
-
-See the docs on [running the Metabase jar file](../installation-and-operation/running-the-metabase-jar-file.md).
 
 ## Related problems
 

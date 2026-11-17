@@ -8,6 +8,8 @@
    [metabase.util.json :as json]
    [ring.util.codec :as codec]))
 
+(set! *warn-on-reflection* true)
+
 (defn- jwt-header
   "Parse a JWT `message` and return the header portion."
   [^String message]

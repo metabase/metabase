@@ -29,6 +29,17 @@
       (is (= (str test-uuid) (:body response)))
       (is (nil? (:cookies response))))))
 
+(deftest malformed-cookie-test
+  (testing "a DEVICE cookie that is not a UUID is replaced, since it lands in the char(36) login_history.device_id"
+    (doseq [value [(apply str (repeat 40 "z")) "not-a-uuid" "" (str "x" test-uuid)]]
+      (let [request    (-> (ring.mock/request :get "http://localhost/foo")
+                           (assoc :cookies {browser-id-cookie-name {:value value}}))
+            response   (handler request)
+            browser-id (:body response)]
+        (is (not= value browser-id))
+        (is (some? (UUID/fromString browser-id)))
+        (is (= browser-id (get-in response [:cookies browser-id-cookie-name :value])))))))
+
 (deftest no-existing-cookie
   (testing "set DEVICE cookie with SameSite=Lax if served over HTTP"
     (let [request    (ring.mock/request :get "http://localhost/foo")

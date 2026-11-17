@@ -15,13 +15,17 @@
    [mage.bot.pr-env-test]
    [mage.bot.prompt-test]
    [mage.bot.repl-eval-test]
+   [mage.docs-generate-test]
+   [mage.docs-preview-test]
    [mage.doctor-test]
    [mage.fix-unused-requires-test]
-   [mage.generate-docs-test]
    [mage.kondo-ratchet-test]
+   [mage.kondo-ratchets-history-test]
    [mage.merge-kondo-ratchets-test]
    [mage.merge-yaml-migrations-test]
+   [mage.module-history-test]
    [mage.modules-test]
+   [mage.new-migration-test]
    [mage.openapi-diff-test]
    [mage.project-tests-test]
    [mage.quick-test-runner-test]
@@ -32,9 +36,10 @@
 
 (set! *warn-on-reflection* true)
 
-;; Documented in its own namespace as manual-only: it creates temporary git repositories and branches.
+;; Documented in their own namespaces as manual-only: they create temporary git repositories and branches.
 (def ^:private not-run-by-mage-test
-  '#{mage.merge-yaml-migrations-integration-test})
+  '#{mage.merge-yaml-migrations-integration-test
+     mage.pre-commit-hook-integration-test})
 
 (defn- test-namespaces-on-disk []
   (let [root (fs/path u/project-root-directory "mage" "test")]
@@ -62,6 +67,17 @@
     (testing title
       (let [out (u/sh cmd)]
         (is (str/includes? out "The following tasks are available:"))))))
+
+(deftest public-task-has-group-test
+  (doseq [[task {:keys [group]}] (:tasks (edn/read-string (slurp (str u/project-root-directory "/bb.edn"))))
+          :when (and (symbol? task) (not (str/starts-with? (name task) "-")))]
+    (testing (str task " has a :group listed in mage.util/task-groups, so `./bin/mage` shows it in a section")
+      (is (some #{group} u/task-groups)
+          (str "Task `" task "` in bb.edn has "
+               (if group (str ":group " (pr-str group) ", which is not in mage.util/task-groups.") "no :group.")
+               "\n\nTo fix, set :group to one of " (str/join ", " (map pr-str u/task-groups)) ":\n\n"
+               "  " task "\n  {:group " (pr-str (first u/task-groups)) "\n   :doc ...}\n\n"
+               "If none fits, add a new name to mage.util/task-groups. Its position there sets the section order.")))))
 
 (deftest bb-task-has-example-test
   (doseq [task-name (u/public-bb-tasks-list)

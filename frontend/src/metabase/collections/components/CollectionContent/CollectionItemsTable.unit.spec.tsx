@@ -14,10 +14,13 @@ import * as Analytics from "metabase/analytics";
 import { Api } from "metabase/api";
 import { Route } from "metabase/router";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
+import { defer } from "metabase/utils/promise";
 import type {
   Collection,
   CollectionId,
   CollectionItem,
+  CollectionItemModel,
+  ListCollectionItemsResponse,
 } from "metabase-types/api";
 import {
   createMockCollection,
@@ -73,7 +76,32 @@ type SetupOpts = {
   collectionItems?: CollectionItem[];
   pageSize?: number;
   showFilterBar?: boolean;
+  /** Holds the items response until the returned `releaseItems` is called */
+  holdItems?: boolean;
+  /** Makes the items request fail with this message */
+  itemsError?: string;
 };
+
+function holdItemsResponse(
+  collectionId: CollectionId,
+  items: CollectionItem[],
+) {
+  const gate = defer<void>();
+  const response: ListCollectionItemsResponse = {
+    data: items,
+    total: items.length,
+    models: [],
+    limit: 25,
+    offset: 0,
+  };
+  fetchMock.modifyRoute(`collection-${collectionId}-items`, {
+    response: async () => {
+      await gate.promise;
+      return response;
+    },
+  });
+  return gate;
+}
 
 function getTable({
   collection: currentCollection = collection,
@@ -100,24 +128,42 @@ function setup({
   collectionItems: items = collectionItems,
   pageSize,
   showFilterBar = true,
+  holdItems = false,
+  itemsError,
 }: SetupOpts = {}) {
   setupCollectionItemsEndpoint({
     collection: currentCollection,
     collectionItems: items,
   });
+  const itemsGate = holdItems
+    ? holdItemsResponse(currentCollection.id, items)
+    : undefined;
+  if (itemsError != null) {
+    fetchMock.modifyRoute(`collection-${currentCollection.id}-items`, {
+      response: { status: 500, body: { message: itemsError } },
+    });
+  }
 
-  return renderWithProviders(
+  const view = renderWithProviders(
     getTable({ collection: currentCollection, pageSize, showFilterBar }),
     {
       withRouter: true,
       withDND: true,
     },
   );
+
+  return { ...view, releaseItems: () => itemsGate?.resolve() };
 }
 
 function getItemsCalls(collectionId: CollectionId = collection.id) {
   return fetchMock.callHistory.calls(
     `path:/api/collection/${collectionId}/items`,
+  );
+}
+
+function getSortDirections(collectionId: CollectionId = collection.id) {
+  return getItemsCalls(collectionId).map((call) =>
+    new URL(call.url).searchParams.get("sort-direction"),
   );
 }
 
@@ -174,6 +220,28 @@ function CollectionNavigationTest({
         collection={currentCollection}
         collectionId={currentCollection.id}
         showFilterBar
+      />
+    </>
+  );
+}
+
+function ControlledTypeFilterTest({ pageSize }: { pageSize?: number }) {
+  const [typeFilter, setTypeFilter] = useState<CollectionItemModel[] | null>(
+    null,
+  );
+
+  return (
+    <>
+      <button onClick={() => setTypeFilter(["card"])}>
+        Show only questions
+      </button>
+      <CollectionItemsTable
+        collection={collection}
+        collectionId={collection.id}
+        pageSize={pageSize}
+        showFilterBar
+        typeFilter={typeFilter}
+        onTypeFilterChange={setTypeFilter}
       />
     </>
   );
@@ -411,7 +479,7 @@ describe("CollectionItemsTable", () => {
       expect(getItemsCalls()).toHaveLength(2);
     });
 
-    const tableWasMounted = screen.queryByTestId("collection-table") != null;
+    await screen.findByTestId("collection-table");
     const emptyStateWasVisible =
       screen.queryByTestId("collection-empty-state") != null;
     await act(async () => {
@@ -422,7 +490,6 @@ describe("CollectionItemsTable", () => {
     expect(
       await screen.findByTestId("collection-empty-state"),
     ).toBeInTheDocument();
-    expect(tableWasMounted).toBe(true);
     expect(emptyStateWasVisible).toBe(false);
   });
 
@@ -978,6 +1045,34 @@ describe("CollectionItemsTable", () => {
     expect(getSearchCalls(nextCollection.id)).toHaveLength(0);
   });
 
+  it("keeps the sort order when navigating to another collection", async () => {
+    const nextCollection = createMockCollection({ id: 2, can_write: false });
+    setupCollectionItemsEndpoint({ collection, collectionItems });
+    setupCollectionItemsEndpoint({
+      collection: nextCollection,
+      collectionItems: createFillerItems(3, {
+        collection_id: nextCollection.id,
+      }),
+    });
+    renderWithProviders(
+      <CollectionNavigationTest nextCollection={nextCollection} />,
+      { withRouter: true, withDND: true },
+    );
+    expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("Name"));
+    await waitFor(() => {
+      expect(getSortDirections(collection.id).at(-1)).toBe("desc");
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Open next collection" }),
+    );
+
+    expect(await screen.findByText("Extra card 1")).toBeInTheDocument();
+    expect(getSortDirections(nextCollection.id)).toEqual(["desc"]);
+  });
+
   it("does not show the previous collection's toolbar while a smaller collection loads", async () => {
     const nextCollection = createMockCollection({ id: 2, can_write: false });
     setupCollectionItemsEndpoint({ collection, collectionItems });
@@ -1073,6 +1168,128 @@ describe("CollectionItemsTable", () => {
     expect(screen.getByText("Official collection")).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
+    });
+  });
+
+  it("shows placeholder rows while the first items load", async () => {
+    const { releaseItems } = setup({ holdItems: true });
+
+    expect(
+      await screen.findByTestId("items-table-skeleton"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("collection-empty-state"),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      releaseItems();
+      await fetchMock.callHistory.flush();
+    });
+
+    expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("items-table-skeleton"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("announces that the items are loading", async () => {
+    const { releaseItems } = setup({ holdItems: true });
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Loading…");
+
+    await act(async () => {
+      releaseItems();
+      await fetchMock.callHistory.flush();
+    });
+
+    expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("shows the error, not the empty state, when the items fail to load", async () => {
+    setup({ itemsError: "Could not load the items" });
+
+    expect(
+      await screen.findByText("Could not load the items"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("collection-empty-state"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("items-table-skeleton"),
+    ).not.toBeInTheDocument();
+  });
+
+  describe("controlled type filter", () => {
+    it("applies a filter set from outside and resets pagination", async () => {
+      setupCollectionItemsEndpoint({ collection, collectionItems });
+      renderWithProviders(<ControlledTypeFilterTest pageSize={1} />, {
+        withRouter: true,
+        withDND: true,
+      });
+
+      expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+      expect(await screen.findByText("Customer 360")).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Show only questions" }),
+      );
+
+      await waitFor(() => {
+        expect(findItemsSearchParamsByModels(["card"])?.get("offset")).toBe(
+          "0",
+        );
+      });
+      expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Filter, filters applied" }),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        screen.getByTestId("collection-type-filter-button"),
+      );
+      expect(screen.getByLabelText("Question")).toBeChecked();
+    });
+
+    it("keeps the toolbar visible in a small collection while a type filter is applied", async () => {
+      setupCollectionItemsEndpoint({
+        collection,
+        collectionItems: collectionItems.slice(0, 3),
+      });
+      renderWithProviders(<ControlledTypeFilterTest />, {
+        withRouter: true,
+        withDND: true,
+      });
+
+      expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("collection-items-toolbar"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Show only questions" }),
+      );
+
+      expect(
+        await screen.findByTestId("collection-items-toolbar"),
+      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
+      });
+      expect(screen.getByText("Customer 360")).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByTestId("collection-type-filter-button"),
+      );
+      await userEvent.click(screen.getByLabelText("Question"));
+
+      expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("collection-items-toolbar"),
+        ).not.toBeInTheDocument();
+      });
     });
   });
 });

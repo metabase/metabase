@@ -1,12 +1,12 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isTableEntityId } from "metabase/admin/permissions/utils/data-entity-id";
+import { modalRoute } from "metabase/common/components/ModalRoute";
 import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
-} from "metabase/admin/permissions/utils/urls";
-import { modalRoute } from "metabase/common/components/ModalRoute";
+  isTableEntityId,
+} from "metabase/permissions";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS,

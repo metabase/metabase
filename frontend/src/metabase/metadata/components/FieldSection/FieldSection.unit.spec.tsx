@@ -7,7 +7,6 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Database, Field, Table } from "metabase-types/api";
 import {
@@ -68,7 +67,7 @@ function setup({
     [2, "2 remapped"],
   ],
 }: SetupOpts = {}) {
-  const id = getRawTableFieldId(field);
+  const id = field.id;
 
   setupDatabaseEndpoints(database);
   setupFieldValuesEndpoint(
@@ -100,7 +99,7 @@ function setup({
  * failing that one route exercises each handler's error branch.
  */
 function failFieldUpdates(field: Field = QUANTITY_FIELD) {
-  fetchMock.modifyRoute(`field-${getRawTableFieldId(field)}-put`, {
+  fetchMock.modifyRoute(`field-${field.id}-put`, {
     response: { status: 500 },
   });
 }
@@ -111,6 +110,12 @@ async function assertErrorToast(message: string) {
       within(screen.getByTestId("undo-list")).getByText(message),
     ).toBeInTheDocument();
   });
+}
+
+function getShownListboxes() {
+  return screen
+    .queryAllByRole("listbox")
+    .filter((listbox) => !listbox.closest('[data-hidden="true"]'));
 }
 
 async function selectOption(input: HTMLElement, name: string) {
@@ -232,6 +237,57 @@ describe("FieldSection", () => {
       await userEvent.tab();
 
       await assertErrorToast("Failed to update formatting of Quantity");
+    });
+  });
+
+  describe("read-only table", () => {
+    it("shows the field settings of a table that cannot be written as read-only", async () => {
+      setup({ table: { ...ORDERS_TABLE, can_write: false } });
+
+      expect(
+        screen.getByPlaceholderText("Give this field a name"),
+      ).toHaveAttribute("readonly");
+      expect(
+        within(screen.getByTestId("field-section")).getAllByRole("img")[0],
+      ).toHaveAttribute("aria-label", expect.stringMatching(/icon$/));
+      expect(
+        screen.getByPlaceholderText("Give this field a description"),
+      ).toHaveAttribute("readonly");
+      expect(
+        screen.getByLabelText("Cast to a specific data type"),
+      ).toBeDisabled();
+      expect(screen.getByTestId("prefix")).toBeDisabled();
+      expect(
+        screen.getByPlaceholderText("Select a semantic type"),
+      ).toBeDisabled();
+      expect(
+        screen.getByPlaceholderText("Select a field visibility"),
+      ).toBeDisabled();
+      expect(
+        screen.getByPlaceholderText("Select field filtering"),
+      ).toBeDisabled();
+      expect(
+        await screen.findByPlaceholderText("Select display values"),
+      ).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: /Field values/ }),
+      ).toBeEnabled();
+      expect(screen.getByRole("button", { name: /Preview/ })).toBeEnabled();
+    });
+
+    it("keeps the field settings of a writable table editable", async () => {
+      setup({ table: { ...ORDERS_TABLE, can_write: true } });
+
+      expect(
+        screen.getByPlaceholderText("Give this field a name"),
+      ).not.toHaveAttribute("readonly");
+      expect(
+        screen.getByLabelText("Cast to a specific data type"),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        screen.getByPlaceholderText("Select a semantic type"),
+      );
+      await waitFor(() => expect(getShownListboxes()).toHaveLength(1));
     });
   });
 });

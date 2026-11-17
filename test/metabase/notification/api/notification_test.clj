@@ -233,7 +233,15 @@
                (-> (mt/user-http-request :crowberto :post 200 "notification" {:creator_id   (mt/user->id :rasta)
                                                                               :payload      {:card_id card-id}
                                                                               :payload_type "notification/card"})
-                   :creator_id)))))))
+                   :creator_id))))
+      (testing "a handler whose template has another channel type is a 400"
+        (mt/with-temp [:model/ChannelTemplate {slack-tmpl-id :id} {:channel_type :channel/slack}]
+          (is (= "Channel type and template type mismatch"
+                 (mt/user-http-request :crowberto :post 400 "notification"
+                                       {:payload      {:card_id card-id}
+                                        :payload_type "notification/card"
+                                        :handlers     [{:channel_type "channel/email"
+                                                        :template_id  slack-tmpl-id}]}))))))))
 
 (deftest notification-with-custom-template-test
   (mt/with-model-cleanup [:model/Notification]
@@ -261,7 +269,7 @@
           (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
                                 (update notification :handlers (fn [[handler]]
                                                                  [(dissoc handler :template)])))
-          (is (false? (t2/exists? :model/ChannelTemplate (:id created-template)))))
+          (is (false? (t2/exists? :model/ChannelTemplate :id (:id created-template)))))
         (testing "and re-create it again"
           (let [notification       (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
                                                          (update notification :handlers (fn [[handler]]
@@ -479,14 +487,14 @@
           (testing "\nthe notification and its payload keep their primary keys"
             (is (=? {:active     false
                      :payload_id payload-id}
-                    (t2/select-one :model/Notification notification-id)))
+                    (t2/select-one :model/Notification :id notification-id)))
             (is (true? (t2/exists? :model/NotificationCard :id payload-id)))))
         (testing "a body naming a different notification id is ignored - the URL row is updated in place"
           (is (=? {:id notification-id}
                   (put! 200 (assoc notification :id (inc notification-id)))))
           (is (=? {:active     true
                    :payload_id payload-id}
-                  (t2/select-one :model/Notification notification-id))))
+                  (t2/select-one :model/Notification :id notification-id))))
         (testing "a body payload naming a different payload row is ignored - the payload keeps its primary key"
           (is (=? {:id notification-id}
                   (put! 200 (assoc-in notification [:payload :id] (inc payload-id)))))
@@ -506,11 +514,11 @@
         (testing "superuser can reassign owner"
           (put! :crowberto 200 {:creator_id (mt/user->id :lucky)})
           (is (= (mt/user->id :lucky)
-                 (t2/select-one-fn :creator_id :model/Notification notification-id))))
+                 (t2/select-one-fn :creator_id :model/Notification :id notification-id))))
         (testing "non-superuser cannot reassign owner — even the current owner (403 from mi/can-update?)"
           (put! :lucky 403 {:creator_id (mt/user->id :rasta)})
           (is (= (mt/user->id :lucky)
-                 (t2/select-one-fn :creator_id :model/Notification notification-id))))
+                 (t2/select-one-fn :creator_id :model/Notification :id notification-id))))
         (testing "echoing back the unchanged creator_id is fine for non-superusers"
           (put! :lucky 200 {:creator_id (mt/user->id :lucky)}))))))
 
@@ -536,14 +544,14 @@
                                     :channel "#general"}]
                    :channel/http [{:body (mt/malli=? some?)}]}
                   (notification.tu/with-captured-channel-send!
-                    (mt/user-http-request :crowberto :post 204 (format "notification/%d/send" (:id notification)))))))
+                    (mt/user-http-request :crowberto :post 200 (format "notification/%d/send" (:id notification)))))))
         (testing "select handlers"
           (let [handler-ids (->> (:handlers notification)
                                  (filter (comp #{:channel/slack :channel/http} :channel_type))
                                  (map :id))]
             (is (=? #{:channel/slack :channel/http}
                     (set (keys (notification.tu/with-captured-channel-send!
-                                 (mt/user-http-request :crowberto :post 204 (format "notification/%d/send" (:id notification))
+                                 (mt/user-http-request :crowberto :post 200 (format "notification/%d/send" (:id notification))
                                                        {:handler_ids handler-ids}))))))))))))
 
 (deftest send-unsaved-notification-delivery-failure-test
@@ -582,7 +590,7 @@
                                   :channel "#general"}]
                  :channel/http  [{:body (mt/malli=? some?)}]}
                 (notification.tu/with-captured-channel-send!
-                  (mt/user-http-request :crowberto :post 204 "notification/send"
+                  (mt/user-http-request :crowberto :post 200 "notification/send"
                                         {:handlers [{:channel_type :channel/email
                                                      :recipients   [{:type    :notification-recipient/user
                                                                      :user_id (mt/user->id :crowberto)}]}
@@ -610,11 +618,11 @@
             has-link? (fn [client-header]
                         (->> (notification.tu/with-captured-channel-send!
                                (if client-header
-                                 (mt/user-http-request :crowberto :post 204 "notification/send"
+                                 (mt/user-http-request :crowberto :post 200 "notification/send"
                                                        {:request-options {:headers
                                                                           {"x-metabase-client" client-header}}}
                                                        notification-body)
-                                 (mt/user-http-request :crowberto :post 204 "notification/send"
+                                 (mt/user-http-request :crowberto :post 200 "notification/send"
                                                        notification-body)))
                              :channel/email first :message first :content
                              (re-find #"href=")
@@ -636,7 +644,7 @@
         (let [existing-payload-id (t2/select-one-fn :payload_id :model/Notification :id existing-id)]
           (notification.tu/with-channel-fixtures [:channel/email]
             (notification.tu/with-captured-channel-send!
-              (mt/user-http-request :rasta :post 204 "notification/send"
+              (mt/user-http-request :rasta :post 200 "notification/send"
                                     {:id           existing-id
                                      :payload_id   (+ existing-payload-id 999999)
                                      :payload_type :notification/card
@@ -766,9 +774,9 @@
               change-notification-creator (fn [user-id]
                                             ;; :model/Notification prevents updating creator_id, so we need to use table
                                             ;; name
-                                            (t2/update! :notification (:id notification) {:creator_id user-id}))
+                                            (t2/update! :notification :id (:id notification) {:creator_id user-id}))
               move-card-collection        (fn [user-id]
-                                            (t2/update! :model/Card (-> notification :payload :card_id)
+                                            (t2/update! :model/Card :id (-> notification :payload :card_id)
                                                         {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id user-id)}))]
           (mt/with-premium-features #{}
             (testing "admin can update"
@@ -871,17 +879,17 @@
                                                                :details      {:type    :email/handlebars-text
                                                                               :subject "updated subject"
                                                                               :body    "<h1>updated body</h1>"}})]))
-                original        (t2/select-one :model/ChannelTemplate system-template-id)]
+                original        (t2/select-one :model/ChannelTemplate :id system-template-id)]
             (testing "the owner (non-admin) cannot overwrite the referenced template - the row is untouched"
               (put! :rasta 403 (overwrite-with "renamed"))
               (is (=? (select-keys original [:name :details])
-                      (select-keys (t2/select-one :model/ChannelTemplate system-template-id) [:name :details]))))
+                      (select-keys (t2/select-one :model/ChannelTemplate :id system-template-id) [:name :details]))))
             (testing "the owner (non-admin) cannot delete the referenced template by omitting it"
               (put! :rasta 403 (fn [[handler]] [(dissoc handler :template :template_id)]))
-              (is (true? (t2/exists? :model/ChannelTemplate system-template-id))))
+              (is (true? (t2/exists? :model/ChannelTemplate :id system-template-id))))
             (testing "an admin can overwrite the template"
               (put! :crowberto 200 (overwrite-with "admin-renamed"))
-              (is (= "admin-renamed" (t2/select-one-fn :name :model/ChannelTemplate system-template-id))))))))))
+              (is (= "admin-renamed" (t2/select-one-fn :name :model/ChannelTemplate :id system-template-id))))))))))
 
 (deftest send-saved-notification-permissions-test
   (mt/with-temp [:model/User {third-user-id :id} {:is_superuser false}]
@@ -909,7 +917,7 @@
         (mt/with-temp
           [:model/Card {card-id :id} {:collection_id (personal-collection-id user)}]
           (let [create-notification! (fn [user-or-id expected-status]
-                                       (mt/with-dynamic-fn-redefs [notification/send-notification! (fn [& _args] :done)]
+                                       (mt/with-dynamic-fn-redefs [notification/send-notification! (fn [& _args] {:status :sent})]
                                          (mt/user-http-request user-or-id :post expected-status "notification/send"
                                                                {:payload_type  "notification/card"
                                                                 :creator_id    (mt/user->id :rasta)
@@ -944,7 +952,7 @@
                                          :recipients   [{:type    :notification-recipient/user
                                                          :user_id (mt/user->id :lucky)}]}]}]
           (let [send! (fn [user-or-id expected-status]
-                        (mt/with-dynamic-fn-redefs [notification/send-notification! (fn [& _args] :done)]
+                        (mt/with-dynamic-fn-redefs [notification/send-notification! (fn [& _args] {:status :sent})]
                           (mt/user-http-request user-or-id :post expected-status
                                                 (format "notification/%d/send" (:id notification)))))]
             (testing "admin can send"
@@ -968,7 +976,7 @@
                                                     :details {:url         "https://example.com/webhook"
                                                               :auth-method "none"}}}
                 send! (fn [user-or-id expected-status]
-                        (mt/with-dynamic-fn-redefs [notification/send-notification! (fn [& _args] :done)]
+                        (mt/with-dynamic-fn-redefs [notification/send-notification! (fn [& _args] {:status :sent})]
                           (mt/user-http-request user-or-id :post expected-status "notification/send"
                                                 {:payload_type  :notification/card
                                                  :handlers      [inline-http-handler]
@@ -987,7 +995,7 @@
                                                    :details {:url         "https://example.com/webhook"
                                                              :auth-method "none"}}]
         (let [send! (fn [user-or-id channel-id expected-status]
-                      (mt/with-dynamic-fn-redefs [notification/send-notification! (fn [& _args] :done)]
+                      (mt/with-dynamic-fn-redefs [notification/send-notification! (fn [& _args] {:status :sent})]
                         (mt/user-http-request user-or-id :post expected-status "notification/send"
                                               {:payload_type  :notification/card
                                                :handlers      [{:channel_type :channel/http
@@ -1111,7 +1119,7 @@
                                                                  :handlers     [{:channel_type "channel/email"
                                                                                  :recipients   [{:type    :notification-recipient/user
                                                                                                  :user_id (mt/user->id :lucky)}]}]}]
-        (let [card-id (-> (t2/select-one :model/Notification rasta-noti)
+        (let [card-id (-> (t2/select-one :model/Notification :id rasta-noti)
                           models.notification/hydrate-notification
                           :payload
                           :card_id)]
@@ -1144,7 +1152,7 @@
                                                                  :handlers     [{:channel_type "channel/email"
                                                                                  :recipients   [{:type    :notification-recipient/user
                                                                                                  :user_id (mt/user->id :lucky)}]}]}]
-        (let [card-id (-> (t2/select-one :model/Notification rasta-noti)
+        (let [card-id (-> (t2/select-one :model/Notification :id rasta-noti)
                           models.notification/hydrate-notification
                           :payload
                           :card_id)]
@@ -1192,7 +1200,7 @@
                                                                              {:type    :notification-recipient/user
                                                                               :user_id (mt/user->id :lucky)}]}]}]
                               (mt/user-http-request user :post status (format "notification/%d/unsubscribe" noti-id))
-                              (thunk (models.notification/hydrate-notification (t2/select-one :model/Notification noti-id)))))
+                              (thunk (models.notification/hydrate-notification (t2/select-one :model/Notification :id noti-id)))))
           email-recipients (fn [notification]
                              (->> notification :handlers (m/find-first #(= :channel/email (:channel_type %))) :recipients))]
       (testing "creator can unsubscribe themselves"
@@ -1227,7 +1235,7 @@
     (notification.tu/with-channel-fixtures [:channel/email]
       (mt/with-model-cleanup [:model/Notification]
         (let [email-recipients (fn [noti-id]
-                                 (->> (t2/select-one :model/Notification noti-id)
+                                 (->> (t2/select-one :model/Notification :id noti-id)
                                       models.notification/hydrate-notification
                                       :handlers
                                       (m/find-first #(= :channel/email (:channel_type %)))
@@ -1417,7 +1425,7 @@
                         (mt/user-http-request :crowberto :post 403 "notification/send"
                                               (assoc notification :handlers failed-handlers)))))
                (testing "success if recipients matches allowed domains"
-                 (mt/user-http-request :crowberto :post 204 "notification/send"
+                 (mt/user-http-request :crowberto :post 200 "notification/send"
                                        (assoc notification :handlers success-handlers)))))))))))
 
 (deftest send-unsaved-notification-echoed-creator-test
@@ -1434,7 +1442,7 @@
           (is (some? (get-in echoed [:creator :date_joined])))
           (is (=? {:channel/email [{:recipients ["crowberto@metabase.com"]}]}
                   (notification.tu/with-captured-channel-send!
-                    (mt/user-http-request :crowberto :post 204 "notification/send" echoed)))))))))
+                    (mt/user-http-request :crowberto :post 200 "notification/send" echoed)))))))))
 
 (deftest send-unsaved-notification-echoed-card-timestamps-test
   (testing "POST /api/notification/send accepts a saved notification sent back as fetched, card timestamps included"
@@ -1454,4 +1462,31 @@
                   (get-in echoed [:payload :card])))
           (is (=? {:channel/email [{:recipients ["crowberto@metabase.com"]}]}
                   (notification.tu/with-captured-channel-send!
-                    (mt/user-http-request :crowberto :post 204 "notification/send" echoed)))))))))
+                    (mt/user-http-request :crowberto :post 200 "notification/send" echoed)))))))))
+
+(deftest send-unsaved-notification-response-test
+  (let [make-req (fn [card-id] {:handlers [{:channel_type :channel/email
+                                            :recipients   [{:type    :notification-recipient/user
+                                                            :user_id (mt/user->id :crowberto)}]}]
+                                :subscriptions [{:type :notification-subscription/cron
+                                                 :cron_schedule "0 0 0 * * ?"}]
+                                :payload_type  :notification/card
+                                :payload       {:card_id card-id
+                                                :send_condition "has_result"}})]
+    (testing "POST /api/notification/send reports on the success status"
+      (testing "sent status"
+        (mt/with-model-cleanup [:model/Notification]
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
+            (notification.tu/with-channel-fixtures [:channel/email]
+              (notification.tu/with-captured-channel-send!
+                (is (=? {:status "sent"}
+                        (mt/user-http-request :crowberto :post 200 "notification/send"
+                                              (make-req card-id)))))))))
+      (testing "skipped status"
+        (mt/with-model-cleanup [:model/Notification]
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query products {:limit 0})}]
+            (notification.tu/with-channel-fixtures [:channel/email]
+              (notification.tu/with-captured-channel-send!
+                (is (=? {:status "skipped" :skip_reason "No results"}
+                        (mt/user-http-request :crowberto :post 200 "notification/send"
+                                              (make-req card-id))))))))))))

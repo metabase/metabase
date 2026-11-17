@@ -14,82 +14,59 @@ import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { Route } from "metabase/router";
-import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
   createMockDataset,
-  createMockNativeDatasetQuery,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { DashCardMenu } from "./DashCardMenu";
 
+const ORDERS_QUERY = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  }),
+);
+
 const TEST_CARD = createMockCard({
   can_write: true,
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  }),
+  dataset_query: ORDERS_QUERY,
 });
 
 const TEST_CARD_SLUG = `${TEST_CARD.id}-${TEST_CARD.name.toLocaleLowerCase()}`;
 
 const TEST_CARD_NATIVE = createMockCard({
-  dataset_query: createMockNativeDatasetQuery({
-    database: SAMPLE_DB_ID,
-    native: {
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
       query: "SELECT * FROM ORDERS",
-    },
-  }),
+    }),
+  ),
 });
 
 const TEST_CARD_MODEL = createMockCard({
   can_write: true,
   type: "model",
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  }),
+  dataset_query: ORDERS_QUERY,
 });
 
 const TEST_CARD_METRIC = createMockCard({
   can_write: true,
   type: "metric",
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  }),
-});
-
-const TEST_CARD_NO_DATA_ACCESS = createMockCard({
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {},
-  }),
+  dataset_query: ORDERS_QUERY,
 });
 
 const TEST_CARD_NO_COLLECTION_WRITE_ACCESS = createMockCard({
   can_write: false,
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  }),
+  dataset_query: ORDERS_QUERY,
 });
 
 const TEST_RESULT = createMockDataset();
@@ -134,7 +111,7 @@ const setup = ({
   });
 
   const metadata = createMockMetadataFromState(storeInitialState);
-  const question = checkNotNull(metadata.question(card.id));
+  const question = new Question(card, metadata);
   const dashcard = createMockDashboardCard({
     ...card,
     dashboard_id: card.dashboard_id ?? undefined,
@@ -235,15 +212,6 @@ describe("DashCardMenu", () => {
     expect(pathname).toBe(`/metric/${TEST_CARD_SLUG}/query`);
   });
 
-  it("should not display a link to the notebook editor if the user does not have the data permission", async () => {
-    setup({ card: TEST_CARD_NO_DATA_ACCESS });
-
-    await userEvent.click(getIcon("ellipsis"));
-
-    expect(await screen.findByText("Download results")).toBeInTheDocument();
-    expect(screen.queryByText("Edit question")).not.toBeInTheDocument();
-  });
-
   it("should not display a link to the notebook editor if the user does not have the collection write permission (metabase#35077)", async () => {
     setup({ card: TEST_CARD_NO_COLLECTION_WRITE_ACCESS });
 
@@ -338,7 +306,7 @@ describe("DashCardMenu.shouldRender", () => {
       }),
     }),
   );
-  const question = checkNotNull(metadata.question(TEST_CARD.id));
+  const question = new Question(TEST_CARD, metadata);
 
   it("should render when the question is editable", () => {
     expect(

@@ -9,7 +9,7 @@ skills:
 
 You decide how Metabase backend code is organized into modules: names, nesting, public surface, dependency edges, and where a namespace or query lives. You handle one self-contained question or change. Return a summary the caller can act on; don't drive multi-step plans. Module changes cascade (config, init chain, model resolution, routes, requires), so name the cascade instead of silently doing all of it.
 
-The preloaded `backend-module-conventions` skill covers the standard namespaces, the `<module>.db` rule, and the default checks. Project `CLAUDE.md` covers `fix-modules-config`, nested-module basics, `project-tests`, and ratchet workflow.
+The preloaded `backend-module-conventions` skill covers the standard namespaces, the `<module>.db` rule, and the default checks. Project `AGENTS.md` covers `fix-modules-config`, nested-module basics, `project-tests`, and ratchet workflow.
 
 ## Map
 
@@ -20,7 +20,7 @@ The preloaded `backend-module-conventions` skill covers the standard namespaces,
 | `.clj-kondo/src/hooks/metabase/toucan/db_ns.clj` | `:metabase/t2-query-namespace` lint (app-DB calls only in `<module>.db`). |
 | `.clj-kondo/config/modules/ratchets.edn` | Escape-hatch budgets: `:api-any`, `:friend-edges`, `:model-imports-bypass`, `:ns-prefixes`, `:uses-any`. |
 | `.clj-kondo/ratchets.edn` | Inline-ignore budgets, incl. `:metabase/modules` and `:metabase/t2-query-namespace`. |
-| `dev.deps-graph` | Graph analysis: `dependencies`, `module-dependencies`, `full-dependencies`, `external-usages`, `external-usages-by-namespace`, `module-usages-of-other-module`, `circular-dependencies`, `cyclic-components`, `module-boundary-stats`, `leaf-modules`, `dependencies-eliminated-by-removing-namespaces`, `dependencies-eliminated-by-renaming-namespaces`, `source-filenames->relevant-test-filenames`, `model-ownership`, `model-boundary-violations`, `print-kondo-config-diff`. |
+| `dev.deps-graph` | Graph analysis: `dependencies`, `module-dependencies`, `full-dependencies`, `external-usages`, `external-usages-by-namespace`, `module-usages-of-other-module`, `circular-dependencies`, `cyclic-components`, `module-boundary-stats`, `upward-references`, `leaf-modules`, `dependencies-eliminated-by-removing-namespaces`, `dependencies-eliminated-by-renaming-namespaces`, `source-filenames->relevant-test-filenames`, `model-ownership`, `model-boundary-violations`, `print-kondo-config-diff`. |
 | `dev.modules-config` | The writer behind `./bin/mage fix-modules-config` (`update-config!` warm, `fix-config!` cold). |
 | `dev.model-boundary-config` | `compute-model-boundaries`: desired `:model-exports`/`:model-imports`. |
 | `dev.module-score` | Health score: `info`, `stats`, `score`, `scores`, `csv`; call as `(info (deps) (config) 'search)`. |

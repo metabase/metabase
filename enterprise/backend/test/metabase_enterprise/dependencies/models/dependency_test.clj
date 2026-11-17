@@ -7,6 +7,7 @@
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -204,13 +205,13 @@
             (mt/with-temp [:model/Transform transform]
               (is (not (t2/exists? :model/DependencyStatus :entity_type :transform :entity_id (:id transform))))
               (computed! :transform (:id transform))
-              (t2/update! :model/Transform (:id transform) {:source {:type "query" :query (mt/mbql-query products)}})
+              (t2/update! :model/Transform :id (:id transform) {:source {:type :query :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}})
               (is (pending? :transform (:id transform)))))
           (testing "snippets"
             (mt/with-temp [:model/NativeQuerySnippet snippet]
               (is (not (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id (:id snippet))))
               (computed! :snippet (:id snippet))
-              (t2/update! :model/NativeQuerySnippet (:id snippet) {:content "new content"})
+              (t2/update! :model/NativeQuerySnippet :id (:id snippet) {:content "new content"})
               (is (pending? :snippet (:id snippet))))))))))
 
 (deftest dependency-status-absent-until-backfill-on-card-create-test

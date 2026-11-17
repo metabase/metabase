@@ -16,7 +16,7 @@
                                               :definition "Application Programming Interface"})
               crowberto-id (mt/user->id :crowberto)
               glossary-id (:id response)
-              creator-id (t2/select-one-fn :creator_id :model/Glossary glossary-id)]
+              creator-id (t2/select-one-fn :creator_id :model/Glossary :id glossary-id)]
           (is (= "API" (:term response)))
           (is (= "Application Programming Interface" (:definition response)))
           (is (pos-int? (:id response)))

@@ -18,6 +18,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2])
   (:import
    (java.time Instant)
@@ -410,16 +411,17 @@
   (search.tu/with-temp-index-table
     (testing "measures and segments follow a table published and unpublished through its user settings"
       (collections.tu/with-library [{data :data}]
-        (mt/with-temp [:model/Table   {table-id :id} {:name "tbl"}
+        (mt/with-temp [:model/Table   {table-id :id :as table} {:name "tbl"}
                        :model/Measure _ {:name "foo measure" :table_id table-id}
                        :model/Segment _ {:name "foo segment" :table_id table-id}]
           (let [curated #(mapv :curated (search-results** "foo" {:context :metabot :models #{"measure" "segment"}}))]
             (is (= [[false false] [true true] [false false]]
                    [(curated)
-                    (do (t2/insert! :model/TableUserSettings
-                                    {:table_id table-id :is_published true :collection_id (:id data)})
+                    (do (table-user-settings/upsert-table-user-settings!
+                         table {:is_published true :collection_id (:id data)})
                         (curated))
-                    (do (t2/update! :model/TableUserSettings table-id {:is_published false :collection_id nil})
+                    (do (table-user-settings/upsert-table-user-settings!
+                         table {:is_published false :collection_id nil})
                         (curated))]))))))))
 
 (deftest ^:parallel data-layer-test

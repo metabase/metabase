@@ -36,6 +36,6 @@
 (deftest sync-nested-fields-test
   (testing "basic test to make sure syncing nested fields works. This is sort of a higher-level test."
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
-      (sync/sync-database! db)
+      (sync/sync-database! (:id db))
       (is (= (remove-nonsense toucanery/toucanery-tables-and-fields)
              (remove-nonsense (get-tables db)))))))

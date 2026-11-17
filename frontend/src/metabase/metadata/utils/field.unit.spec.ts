@@ -3,6 +3,7 @@ import MetabaseSettings from "metabase/utils/settings";
 import {
   createMockDatabase,
   createMockField,
+  createMockFieldDimension,
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
@@ -17,7 +18,6 @@ import {
   canFieldUnfoldJson,
   getFieldCurrency,
   getFieldDisplayName,
-  getRawTableFieldId,
   isFieldJsonUnfolded,
 } from "./field";
 
@@ -123,22 +123,6 @@ describe("canCoerceFieldType", () => {
   });
 });
 
-describe("getRawTableFieldId", () => {
-  it("should return the field id when it's a number", () => {
-    const field = createMockField({ id: 123 });
-
-    expect(getRawTableFieldId(field)).toBe(123);
-  });
-
-  it("should throw an error when field id is not a number", () => {
-    const field = createMockField({ id: ["field", 1, null] });
-
-    expect(() => getRawTableFieldId(field)).toThrow(
-      "getRawFieldId supports only raw table fields",
-    );
-  });
-});
-
 describe("getFieldCurrency", () => {
   it("returns currency from field settings when available", () => {
     const field = createMockField({
@@ -192,7 +176,7 @@ describe("getFieldDisplayName", () => {
     const field = createMockField({
       name: "Name",
       display_name: "My field",
-      dimensions: [{ id: 1, type: "internal", name: "Dimension Name" }],
+      dimensions: [createMockFieldDimension({ id: 1, name: "Dimension Name" })],
     });
 
     expect(getFieldDisplayName(field)).toBe("Dimension Name");

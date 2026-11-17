@@ -8,6 +8,8 @@
    [metabase.util.log :as log]
    [metabase.warehouse-schema.humanization :as humanization]))
 
+(set! *warn-on-reflection* true)
+
 (defn- set-humanization-strategy!
   "Set `humanization-strategy` to `new-value`, throwing for an unknown strategy, then re-humanize every Table and
   Field display name.

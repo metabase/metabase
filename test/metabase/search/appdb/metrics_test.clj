@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.metrics :as metrics]
    [metabase.search.engine :as search.engine]
@@ -20,7 +21,7 @@
     (search.tu/with-temp-index-table
       (binding [search.ingestion/*force-sync* true]
         (mt/dataset test-data
-          (mt/with-temp [:model/User       {}           (when-not (t2/exists? :model/User 1) {:id 1})
+          (mt/with-temp [:model/User       {}           (when-not (t2/exists? :model/User :id 1) {:id 1})
                          :model/Collection {col-id :id} {:name "Collection"}
                          :model/Card       {}           {:name "Customer Satisfaction" :collection_id col-id}
                          :model/Card       {}           {:name "Projected Revenue"     :collection_id col-id}]
@@ -37,7 +38,7 @@
     (search.tu/with-temp-index-table
       (binding [search.ingestion/*force-sync* true]
         (mt/dataset test-data
-          (mt/with-temp [:model/User       {}           (when-not (t2/exists? :model/User 1) {:id 1})
+          (mt/with-temp [:model/User       {}           (when-not (t2/exists? :model/User :id 1) {:id 1})
                          :model/Collection {col-id :id} {:name "Collection"}
                          :model/Card       {}           {:name "Quarterly Forecast" :collection_id col-id}]
             ;; a full (not in-place) reindex populates a pending table, then activates it
@@ -47,5 +48,5 @@
               (is (= exact (#'metrics/active-index-size)))))))))
   (testing "returns nil when this instance has no active index to serve from"
     (search.tu/with-temp-index-table
-      (reset! @#'search.index/*indexes* {:active nil :pending nil})
+      (mc/reset! (search.index/indexes-handle) {:active nil :pending nil})
       (is (nil? (#'metrics/active-index-size))))))

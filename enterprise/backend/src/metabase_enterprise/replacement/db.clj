@@ -13,7 +13,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn run
@@ -75,7 +74,7 @@
 (mu/defn tables-with-ids
   "The Tables with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Table :id [:in ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in ids]))
 
 (mu/defn dashboards-with-ids
   "The Dashboards with `ids`."
@@ -122,7 +121,7 @@
   "Apply `changes` to the Card with `card-id`, returning the number updated."
   [card-id :- ::lib.schema.id/card
    changes :- ::queries.schema/card.update]
-  (t2/update! :model/Card card-id changes))
+  (t2/update! :model/Card :id card-id changes))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
@@ -133,7 +132,7 @@
   "Apply `changes` to the Transform with `transform-id`, returning the number updated."
   [transform-id :- ::lib.schema.id/transform
    changes      :- ::transforms.schema/transform.update]
-  (t2/update! :model/Transform transform-id changes))
+  (t2/update! :model/Transform :id transform-id changes))
 
 (mu/defn segment
   "The Segment with `segment-id`, or nil."
@@ -144,7 +143,7 @@
   "Apply `changes` to the Segment with `segment-id`, returning the number updated."
   [segment-id :- ::lib.schema.id/segment
    changes    :- ::segments.schema/segment.update]
-  (t2/update! :model/Segment segment-id changes))
+  (t2/update! :model/Segment :id segment-id changes))
 
 (mu/defn measure
   "The Measure with `measure-id`, or nil."
@@ -155,7 +154,7 @@
   "Apply `changes` to the Measure with `measure-id`, returning the number updated."
   [measure-id :- ::lib.schema.id/measure
    changes    :- ::measures.schema/measure.update]
-  (t2/update! :model/Measure measure-id changes))
+  (t2/update! :model/Measure :id measure-id changes))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
@@ -166,7 +165,7 @@
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard
    changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard dashboard-id changes))
+  (t2/update! :model/Dashboard :id dashboard-id changes))
 
 (mu/defn dashboard-cards
   "The DashboardCards of the Dashboard with `dashboard-id`."
@@ -177,28 +176,28 @@
   "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
   [dashcard-id :- ::lib.schema.id/dashcard
    changes     :- ::dashboards.schema/dashboard-card.update]
-  (t2/update! :model/DashboardCard dashcard-id changes))
+  (t2/update! :model/DashboardCard :id dashcard-id changes))
 
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :db_id :model/Table :id table-id))
 
 (mu/defn active-fields-of-table
   "The active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :table_id table-id :active true))
 
 (mu/defn active-field-ids-of-table
   "The IDs of the active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-pks-set :model/Field :table_id table-id :active true))
 
 (mu/defn active-fk-to-fields-exists?
   "Whether an active Field on an active Table points at one of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/exists? :model/Field {:from  [(warehouse-schema-overlay/field-query)]
-                            :join  [(warehouse-schema-overlay/table-query {:user-settings? false})
+  (t2/exists? :model/Field {:from  [(t2/table-name :model/Field)]
+                            :join  [(t2/table-name :model/Table)
                                     [:= :metabase_field.table_id :metabase_table.id]]
                             :where [:and
                                     [:in :metabase_field.fk_target_field_id field-ids]

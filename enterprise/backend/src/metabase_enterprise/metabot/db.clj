@@ -94,7 +94,7 @@
   "Set the maximum usage of the MetabotGroupLimit with `limit-id`."
   [limit-id  :- ms/PositiveInt
    max-usage :- [:maybe :int]]
-  (t2/update! :model/MetabotGroupLimit limit-id {:max_usage max-usage}))
+  (t2/update! :model/MetabotGroupLimit :id limit-id {:max_usage max-usage}))
 
 (mu/defn delete-group-limit!
   "Delete the MetabotGroupLimit of the group with `group-id`."
@@ -123,7 +123,7 @@
   "Set the maximum usage of the MetabotInstanceLimit with `limit-id`."
   [limit-id  :- ms/PositiveInt
    max-usage :- [:maybe :int]]
-  (t2/update! :model/MetabotInstanceLimit limit-id {:max_usage max-usage}))
+  (t2/update! :model/MetabotInstanceLimit :id limit-id {:max_usage max-usage}))
 
 (mu/defn delete-instance-limit!
   "Delete the MetabotInstanceLimit of the Tenant with `tenant-id`."
@@ -152,13 +152,22 @@
                  :where  (usage-window-expr period-start user-id tenant-id)}))
 
 (mu/defn usage-message-count
-  "The `:cnt` row of messages logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`."
+  "The `:cnt` row of messages sent since `period-start`, narrowed by the optional `user-id` and `tenant-id`.
+
+  A message is one agent loop. The LLM calls of a loop log one `ai_usage_log` row each, under the loop's
+  `request_id`, so the count is the number of distinct ids among the rows from `sources`. The loop that asks,
+  `request-id`, is left out, so a turn's earlier calls do not count against its later ones; nil leaves every loop
+  in. Rows without a `request_id` do not count."
   [period-start :- ms/TemporalInstant
+   sources      :- [:set :string]
+   request-id   :- [:maybe :string]
    user-id      :- [:maybe ::lib.schema.id/user]
    tenant-id    :- [:maybe ms/PositiveInt]]
-  (t2/query-one {:select [[[:count :*] :cnt]]
+  (t2/query-one {:select [[[:count [:distinct :request_id]] :cnt]]
                  :from   [:ai_usage_log]
-                 :where  (usage-window-expr period-start user-id tenant-id)}))
+                 :where  (cond-> (usage-window-expr period-start user-id tenant-id)
+                           (seq sources) (conj [:in :source sources])
+                           request-id    (conj [:not= :request_id request-id]))}))
 
 (mu/defn delete-usage-logs-created-before!
   "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."

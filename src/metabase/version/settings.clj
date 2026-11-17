@@ -21,7 +21,7 @@
   :default true)
 
 (defsetting upgrade-threshold
-  (deferred-tru "Threshold (value in 0-100) indicating at which threshold it should offer an upgrade to the latest major version.")
+  "Threshold (value in 0-100) indicating at which threshold it should offer an upgrade to the latest major version."
   :visibility :internal
   :export?    false
   :type       :integer

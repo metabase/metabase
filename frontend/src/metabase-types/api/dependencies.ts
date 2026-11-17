@@ -4,17 +4,32 @@
 // (See entity-select-fields map)
 
 import type { WritebackActionBase, WritebackActionType } from "./actions";
-import type { Card, CardType } from "./card";
+import type { Card, CardQueryType, CardType } from "./card";
 import type { Collection } from "./collection";
 import type { Dashboard } from "./dashboard";
+import type { DataApp } from "./data-app";
 import type { Document } from "./document";
 import type { Measure } from "./measure";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Segment } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
 import type { SortDirection } from "./sorting";
-import type { ConcreteTableId, Table } from "./table";
+import type { Table, TableId } from "./table";
 import type { Transform } from "./transform";
+
+export type GetDependencyCountsRequest = {
+  "breaking-types"?: DependencyType[];
+  "breaking-card-types"?: CardType[];
+  "breaking-include-personal-collections"?: boolean;
+  "unreferenced-types"?: DependencyType[];
+  "unreferenced-card-types"?: CardType[];
+  "unreferenced-include-personal-collections"?: boolean;
+};
+
+export type DependencyCountsResponse = {
+  breaking: number;
+  unreferenced: number;
+};
 
 export type DependencyId = number;
 
@@ -29,6 +44,7 @@ export const DEPENDENCY_TYPES = [
   "segment",
   "measure",
   "action",
+  "data-app",
 ] as const;
 export type DependencyType = (typeof DEPENDENCY_TYPES)[number];
 
@@ -45,6 +61,7 @@ export const DEPENDENCY_GROUP_TYPES = [
   "segment",
   "measure",
   "action",
+  "data-app",
 ] as const;
 export type DependencyGroupType = (typeof DEPENDENCY_GROUP_TYPES)[number];
 
@@ -74,7 +91,7 @@ export type TableDependencyNodeData = Pick<
   | "fields"
   | "transform"
   | "owner"
-> & { table_id?: ConcreteTableId };
+> & { table_id?: TableId };
 
 export type TransformDependencyNodeData = Pick<
   Transform,
@@ -100,7 +117,7 @@ export type CardDependencyNodeData = Pick<
   | "last-edit-info"
 > & {
   view_count?: number | null;
-  query_type?: "native" | "query";
+  query_type?: CardQueryType;
 };
 
 export type SnippetDependencyNodeData = Pick<
@@ -138,7 +155,7 @@ export type DocumentDependencyNodeData = Pick<
 >;
 
 export type SandboxDependencyNodeData = {
-  table_id: ConcreteTableId;
+  table_id: TableId;
   table?: Table | null;
 };
 
@@ -221,6 +238,15 @@ export type ActionDependencyNode = BaseDependencyNode<
   ActionDependencyNodeData
 >;
 
+// The API sends `description` and `created_at` to admins only.
+export type DataAppDependencyNodeData = Pick<DataApp, "slug" | "name"> &
+  Partial<Pick<DataApp, "description" | "created_at">>;
+
+export type DataAppDependencyNode = BaseDependencyNode<
+  "data-app",
+  DataAppDependencyNodeData
+>;
+
 export type DependencyNode =
   | TableDependencyNode
   | TransformDependencyNode
@@ -231,7 +257,8 @@ export type DependencyNode =
   | SandboxDependencyNode
   | SegmentDependencyNode
   | MeasureDependencyNode
-  | ActionDependencyNode;
+  | ActionDependencyNode
+  | DataAppDependencyNode;
 
 export type AnalysisFindingErrorId = number;
 

@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.db :as model-persistence.db]
@@ -22,6 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [potemkin.types :as p]
    [toucan2.core :as t2])
   (:import
@@ -44,13 +46,16 @@
   (unpersist! [this database persisted-info]))
 
 (def ^:private dispatching-refresher
-  "Refresher implementation that dispatches to the multimethods in [[metabase.driver.ddl.interface]]."
+  "Refresher implementation that dispatches to the multimethods in [[metabase.driver.ddl.interface]]. Both methods
+  throw on a workspace instance: they write to the warehouse with the database's own login."
   (reify Refresher
     (refresh! [_ database definition card]
+      (workspaces/check-not-in-workspace-mode! "Model persistence")
       (binding [persisted-info/*allow-persisted-substitution* false]
         (let [query (qp/disable-max-results (:dataset_query card))]
           (ddl.i/refresh! (:engine database) database definition query))))
     (unpersist! [_ database persisted-info]
+      (workspaces/check-not-in-workspace-mode! "Model persistence")
       (ddl.i/unpersist! (:engine database) database persisted-info))))
 
 (defn- refresh-with-stats! [refresher database stats persisted-info]
@@ -131,7 +136,9 @@
   "Seam for tests to pass in specific deletables to drop."
   [refresher deletables]
   (when (seq deletables)
-    (let [db-id->db    (m/index-by :id (model-persistence.db/databases (map :database_id deletables)))
+    (let [db-id->db    (into {}
+                             (map (fn [{:keys [id]}] [id (driver.u/lib-database id)]))
+                             (model-persistence.db/databases (distinct (map :database_id deletables))))
           unpersist-fn (fn []
                          (reduce (fn [stats persisted-info]
                                    ;; Since this could be long running, double check state just before deleting
@@ -183,7 +190,7 @@
   [database-id refresher trigger]
   (log/infof "Starting persisted model refresh task for Database %s." database-id)
   (persisted-info/ready-unpersisted-models! database-id)
-  (let [database  (model-persistence.db/database database-id)
+  (let [database  (driver.u/lib-database database-id)
         persisted (refreshable-models database-id)
         thunk     (fn []
                     (reduce (partial refresh-with-stats! refresher database)
@@ -197,8 +204,8 @@
   "Refresh an individual model based on [[PersistedInfo]]."
   [persisted-info-id refresher trigger]
   (let [persisted-info (model-persistence.db/persisted-info persisted-info-id)
-        database       (when persisted-info
-                         (model-persistence.db/database (:database_id persisted-info)))]
+        database       (when (and persisted-info (model-persistence.db/database (:database_id persisted-info)))
+                         (driver.u/lib-database (:database_id persisted-info)))]
     (if (and persisted-info database)
       (do
         (save-task-history! "persist-refresh" (u/the-id database)
@@ -212,18 +219,25 @@
       (log/infof "Unable to refresh model with card-id %s" (:card_id persisted-info)))))
 
 (defn- refresh-job-fn!
-  "Refresh tables. Gets the database id from the job context and calls `refresh-tables!'`."
+  "Refresh tables. Gets the database id from the job context and calls `refresh-tables!'`. Does nothing on a workspace
+  instance: the PersistedInfo rows keep their state."
   [^org.quartz.JobExecutionContext job-context]
-  (let [{:strs [type db-id persisted-id] :as _payload} (job-context->job-type job-context)
-        trigger                                        (.getTrigger job-context)]
-    (case type
-      "database"   (refresh-tables!     db-id        dispatching-refresher trigger)
-      "individual" (refresh-individual! persisted-id dispatching-refresher trigger)
-      (log/infof "Unknown payload type %s" type))))
+  (let [{:strs [type db-id persisted-id] :as payload} (job-context->job-type job-context)
+        trigger                                       (.getTrigger job-context)]
+    (if (workspaces/workspace-mode?)
+      (log/warnf "Skipping persisted model refresh %s: model persistence is not supported on a workspace instance."
+                 (pr-str payload))
+      (case type
+        "database"   (refresh-tables!     db-id        dispatching-refresher trigger)
+        "individual" (refresh-individual! persisted-id dispatching-refresher trigger)
+        (log/infof "Unknown payload type %s" type)))))
 
 (defn- prune-job-fn!
+  "Drop the tables of deletable PersistedInfo rows. Does nothing on a workspace instance: the rows keep their state."
   [_job-context]
-  (prune-all-deletable! dispatching-refresher))
+  (if (workspaces/workspace-mode?)
+    (log/warn "Skipping persisted model prune: model persistence is not supported on a workspace instance.")
+    (prune-all-deletable! dispatching-refresher)))
 
 (task/defjob PersistenceRefresh
   "Refresh persisted tables job"

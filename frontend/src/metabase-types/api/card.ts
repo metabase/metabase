@@ -12,12 +12,18 @@ import type {
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
-import type { RowValue } from "./dataset";
+import type { DatasetColumn, RowValue } from "./dataset";
 import type { Document, DocumentId } from "./document";
 import type { EmbeddingParameters, EmbeddingType } from "./embed";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
-import type { CurrencyStyle, TimeOnlyOptions } from "./formatting";
+import type {
+  CurrencyPosition,
+  CurrencyStyle,
+  DurationStyle,
+  DurationUnit,
+  TimeOnlyOptions,
+} from "./formatting";
 import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type {
@@ -40,6 +46,8 @@ import type {
 
 export const CARD_TYPES = ["model", "question", "metric"] as const;
 export type CardType = (typeof CARD_TYPES)[number];
+
+export type CardQueryType = "query" | "native";
 
 export type CardCreationType =
   | "simple_question"
@@ -66,6 +74,7 @@ export interface Card<
   name: string;
   description: string | null;
   type: CardType;
+  query_type?: CardQueryType;
   public_uuid: string | null;
 
   /* Indicates whether static embedding for this card has been published */
@@ -82,7 +91,8 @@ export interface Card<
   collection?: Collection | null;
   collection_id: CollectionId | null;
   collection_position: number | null;
-  dashboard: CardDashboardInfo | null;
+  /** Hydrated by the card endpoints only; a dashcard's card has no such key */
+  dashboard?: CardDashboardInfo | null;
   dashboard_id: DashboardId | null;
   document_id?: DocumentId | null;
   document?: CardDocumentInfo | null;
@@ -92,7 +102,7 @@ export interface Card<
   parameter_usage_count?: number | null;
   parameter_mappings?: CardParameterMapping[] | null;
 
-  result_metadata: Field[] | null;
+  result_metadata: DatasetColumn[] | null;
   param_fields?: Record<ParameterId, Field[]>;
   moderation_reviews?: ModerationReview[];
   persisted?: boolean;
@@ -259,6 +269,16 @@ export type StackType = "stacked" | "normalized" | null;
 export type StackValuesDisplay = "total" | "all" | "series";
 export type StackValueFormat = "value" | "percentage";
 
+export const LEGEND_POSITIONS = [
+  "auto",
+  "top",
+  "bottom",
+  "left",
+  "right",
+  "off",
+] as const;
+export type LegendPosition = (typeof LEGEND_POSITIONS)[number];
+
 export const numericScale = ["linear", "pow", "log"] as const;
 export type NumericScale = (typeof numericScale)[number];
 
@@ -285,11 +305,15 @@ export type ColumnSettings = TimeOnlyOptions & {
   compact?: boolean;
   currency?: string;
   currency_style?: CurrencyStyle;
+  currency_position?: CurrencyPosition;
   date_abbreviate?: boolean;
   date_format?: string;
   date_separator?: string;
   date_style?: string | null;
   decimals?: number;
+  duration_precision?: DurationUnit;
+  duration_style?: DurationStyle;
+  duration_unit?: DurationUnit;
   isExclude?: boolean;
   jsx?: boolean;
   link_text?: string;
@@ -418,6 +442,14 @@ export type VisualizationSettings = {
   "graph.split_panels"?: boolean;
 
   /**
+   * Where the legend sits on charts that have one: cartesian, row, scatter,
+   * and box plot charts with several series or a breakout, pies, bar-type
+   * funnels, and region maps. "auto" lets the chart pick a side that fits;
+   * "off" hides the legend.
+   */
+  "legend.position"?: LegendPosition;
+
+  /**
    * Result column names used for the x-axis, category, or grouping dimension.
    * Prefer Metabase defaults unless the query needs a specific split.
    */
@@ -502,7 +534,7 @@ export type VisualizationSettings = {
   /** Sort pie slices by metric value. */
   "pie.sort_rows"?: boolean;
 
-  /** Show the pie legend. */
+  /** @deprecated Use `legend.position`. Read only as the pie's fallback. */
   "pie.show_legend"?: boolean;
 
   /** Show the total value in the center of the pie. */
@@ -621,6 +653,7 @@ export type CardQueryMetadata = {
   databases: Database[];
   tables: Table[];
   fields: Field[];
+  cards: Card[];
 };
 
 export type ListCardsRequest = {
@@ -630,8 +663,6 @@ export type ListCardsRequest = {
 
 export interface GetCardRequest {
   id: CardId | EntityToken;
-  context?: "collection";
-  ignore_view?: boolean;
   ignore_error?: boolean;
 }
 
@@ -649,7 +680,7 @@ export interface CreateCardRequest {
   document_id?: DocumentId | null;
   dashboard_tab_id?: DashboardTabId;
   collection_position?: number | null;
-  result_metadata?: Field[] | null;
+  result_metadata?: DatasetColumn[] | null;
   cache_ttl?: number | null;
   size?: DashboardCardSize;
   source_card_id?: CardId;
@@ -677,9 +708,8 @@ export interface UpdateCardRequest {
   dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
   collection_position?: number | null;
-  result_metadata?: Field[] | null;
+  result_metadata?: DatasetColumn[] | null;
   cache_ttl?: number;
-  collection_preview?: boolean;
   delete_old_dashcards?: boolean;
 }
 
@@ -705,7 +735,6 @@ export type InvalidCard = Pick<
   | "creator"
 > & {
   collection: CollectionEssentials;
-  collection_preview: boolean;
   entity_id: string;
   errors: CardError[];
   display: CardDisplayType;
@@ -730,7 +759,6 @@ export type StoredResultSort =
 export type CardQueryRequest = {
   cardId: CardId;
   dashboardId?: DashboardId;
-  collection_preview?: boolean;
   ignore_cache?: boolean;
   parameters?: unknown[];
   stored_result_id?: number;

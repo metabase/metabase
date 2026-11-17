@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { act, renderRoutes, renderWithProviders, screen } from "__support__/ui";
 import { Outlet, Route } from "metabase/router";
+import { Modal } from "metabase/ui";
 
 import {
   type ModalComponentProps,
@@ -20,14 +21,17 @@ function CollectionPage() {
 
 function TestModal({ params, onClose }: ModalComponentProps) {
   return (
-    <div>
+    <Modal
+      opened
+      onClose={onClose}
+      withCloseButton={false}
+      transitionProps={{ duration: 0 }}
+    >
       <span>Modal for {params.slug ?? params.pulseId}</span>
       <button onClick={onClose}>Close</button>
-    </div>
+    </Modal>
   );
 }
-
-const modalProps = { transitionProps: { duration: 0 } };
 
 function setup(routes: React.ReactNode, initialRoute: string) {
   const { router } = renderWithProviders(<>{routes}</>, {
@@ -46,7 +50,7 @@ describe("modalRoute", () => {
   it("renders the page and the modal when deep-linking to a modal URL", () => {
     setup(
       <Route path="collection/:slug" element={<CollectionPage />}>
-        {modalRoute("archive", TestModal, { modalProps })}
+        {modalRoute("archive", TestModal)}
       </Route>,
       "/collection/5/archive",
     );
@@ -58,7 +62,7 @@ describe("modalRoute", () => {
   it("returns to the parent URL on close", async () => {
     const { pathname } = setup(
       <Route path="collection/:slug" element={<CollectionPage />}>
-        {modalRoute("archive", TestModal, { modalProps })}
+        {modalRoute("archive", TestModal)}
       </Route>,
       "/collection/5/archive",
     );
@@ -73,7 +77,7 @@ describe("modalRoute", () => {
   it("closes a modal whose path spans several segments to the right parent", async () => {
     const { pathname } = setup(
       <Route path="account/notifications" element={<CollectionPage />}>
-        {modalRoute("pulse/:pulseId/archive", TestModal, { modalProps })}
+        {modalRoute("pulse/:pulseId/archive", TestModal)}
       </Route>,
       "/account/notifications/pulse/7/archive",
     );
@@ -92,7 +96,7 @@ describe("modalRoute", () => {
   it("closes to the right parent under a variable-depth parent route", async () => {
     const { pathname } = setup(
       <Route path="database/:databaseId" element={<CollectionPage />}>
-        {modalRoute("impersonated/group/:groupId", TestModal, { modalProps })}
+        {modalRoute("impersonated/group/:groupId", TestModal)}
       </Route>,
       "/database/1/impersonated/group/2",
     );
@@ -112,7 +116,6 @@ describe("modalRoute", () => {
           <Route path="archive" element={<span>Archive list</span>} />
           <Route path=":timelineId">
             {modalRoute("delete", TestModal, {
-              modalProps,
               closeTo: "../../archive",
             })}
           </Route>
@@ -129,27 +132,15 @@ describe("modalRoute", () => {
     expect(screen.getByText("Archive list")).toBeInTheDocument();
   });
 
-  it("wraps the modal component in a dialog by default", () => {
+  it("renders the modal component without wrapping it in another dialog", () => {
     setup(
       <Route path="collection/:slug" element={<CollectionPage />}>
-        {modalRoute("archive", TestModal, { modalProps })}
+        {modalRoute("archive", TestModal)}
       </Route>,
       "/collection/5/archive",
     );
 
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-  });
-
-  it("renders the modal component on its own with noWrap", () => {
-    setup(
-      <Route path="collection/:slug" element={<CollectionPage />}>
-        {modalRoute("archive", TestModal, { noWrap: true })}
-      </Route>,
-      "/collection/5/archive",
-    );
-
-    expect(screen.getByText("Modal for 5")).toBeInTheDocument();
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
   });
 });
 
@@ -160,9 +151,7 @@ describe("lazyModalRoute", () => {
         {
           path: "collection/:slug",
           element: <CollectionPage />,
-          children: [
-            lazyModalRoute("archive", async () => TestModal, { modalProps }),
-          ],
+          children: [lazyModalRoute("archive", async () => TestModal)],
         },
       ],
       { initialRoute },
@@ -198,9 +187,7 @@ describe("lazyModalRoute", () => {
         {
           path: "collection/:slug",
           element: <CollectionPage />,
-          children: [
-            lazyModalRoute("archive", async () => TestModal, { modalProps }),
-          ],
+          children: [lazyModalRoute("archive", async () => TestModal)],
         },
       ],
       { initialRoute: "/collection/5" },

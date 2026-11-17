@@ -1,5 +1,6 @@
 ---
 title: Isnull
+summary: Check whether a value is null, for filters, custom columns, or swapping in another value where data is missing.
 ---
 
 # Isnull

@@ -151,13 +151,12 @@
 
       :else
       ;; `:database` here is whatever the user submitted, so a destination at this point is a direct
-      ;; request to query one; reject it before building a provider. Legitimate routing never passes
+      ;; request to query one; reject it before running anything. Legitimate routing never passes
       ;; through this branch: when a router query is routed to a destination, that swap happens later,
       ;; in the execution middleware, binding its own metadata provider.
-      (do
-        (database-routing/check-allowed-access! (:database query))
-        (qp.store/with-metadata-provider (:database query)
-          (f (maybe-attach-metadata-provider-to-query query)))))))
+      (qp.store/with-metadata-provider (:database query)
+        (database-routing/check-allowed-access! (lib.metadata/database (qp.store/metadata-provider)))
+        (f (maybe-attach-metadata-provider-to-query query))))))
 
 (mu/defn- do-with-driver :- fn?
   [f :- fn?]

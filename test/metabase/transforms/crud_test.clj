@@ -1,13 +1,17 @@
 (ns metabase.transforms.crud-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.transforms.crud :as transforms.crud]))
 
 (set! *warn-on-reflection* true)
 
 (defn- lookback-transform [field-id lookback]
-  {:source {:type "query"
+  {:name   "Lookback transform"
+   :target {:type "table" :name "lookback_target"}
+   :source {:type :query
+            :query (lib/native-query (mt/metadata-provider) "SELECT 1")
             :source-incremental-strategy {:type "checkpoint"
                                           :checkpoint-filter-field-id field-id
                                           :lookback lookback}}})

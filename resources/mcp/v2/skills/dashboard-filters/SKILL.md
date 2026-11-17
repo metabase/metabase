@@ -15,7 +15,7 @@ dashboard_write {"method": "update", "id": 40,
                           "target_field": 18, "autowire": true}]}
 ```
 
-`parameter_id` is a short slug you choose and reuse in later ops; the server derives the URL slug from `name`. `get_content` on the dashboard lists each parameter's id, type, and wired dashcard ids.
+`parameter_id` is a short slug you choose and reuse in later ops; the server derives the URL slug from `name`. `get_content` on the dashboard lists each parameter's id, name, type, `default`, `required`, value source (`values_source_type` and `values_source_config`), and wired dashcard ids.
 
 ## Parameter types
 
@@ -68,8 +68,8 @@ Two hard constraints: linked filters read **table-metadata foreign keys only** �
 - Don't link a child filter that has a static-list/card source, or across a question/model join — the cascade silently doesn't apply.
 - Don't pass null to clear a default or link — it reads as omitted; use `clear`.
 - Don't hand-build a raw `target` when `target_field` or `target_tag` fits.
-- Don't report a default or link as set from the write response — read it back.
+- Don't report a link as set from the write response — read it back.
 
 ## To confirm
 
-`get_content {"type": "dashboard", "id": 40, "include": ["parameters"]}` — the write response is a skeleton without `default`, `filteringParameters`, or value-source config; read them back before reporting a default or link as set. Dropdown contents: `get_parameter_values`.
+`get_content {"items": [{"type": "dashboard", "id": 40}], "include": ["parameters"]}` — the write response shows each parameter's `default`, `required`, and value source, but not `filteringParameters`, `values_query_type`, or `isMultiSelect`; read those back before reporting a link or widget mode as set. Dropdown contents: `get_parameter_values`.

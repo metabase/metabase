@@ -210,12 +210,16 @@ export type VisualizationSettingsDefinitions = {
   column_title?: DatasetColumnSettingDefinition<Value, Props>;
   currency?: DatasetColumnSettingDefinition<Value, Props>;
   currency_in_header?: DatasetColumnSettingDefinition<Value, Props>;
+  currency_position?: DatasetColumnSettingDefinition<Value, Props>;
   currency_style?: DatasetColumnSettingDefinition<Value, Props>;
   date_abbreviate?: DatasetColumnSettingDefinition<Value, Props>;
   date_separator?: DatasetColumnSettingDefinition<Value, Props>;
   date_style?: DatasetColumnSettingDefinition<Value, Props>;
   decimals?: DatasetColumnSettingDefinition<Value, Props>;
   display?: SingleSeriesSettingDefinition<Value, Props>;
+  duration_precision?: DatasetColumnSettingDefinition<Value, Props>;
+  duration_style?: DatasetColumnSettingDefinition<Value, Props>;
+  duration_unit?: DatasetColumnSettingDefinition<Value, Props>;
   "gauge.range"?: SeriesSettingDefinition<Value, Props>;
   "gauge.segments"?: SeriesSettingDefinition<
     Value,
@@ -289,6 +293,7 @@ export type VisualizationSettingsDefinitions = {
   "graph.y_axis.title_text"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.unpin_from_zero"?: SeriesSettingDefinition<Value, Props>;
   "legend.is_reversed"?: SeriesSettingDefinition<Value, Props>;
+  "legend.position"?: SeriesSettingDefinition<Value, Props>;
   "line.interpolate"?: SingleSeriesSettingDefinition<Value, Props>;
   "line.marker_enabled"?: SingleSeriesSettingDefinition<Value, Props>;
   "line.missing"?: SingleSeriesSettingDefinition<Value, Props>;
@@ -318,7 +323,6 @@ export type VisualizationSettingsDefinitions = {
   "pie.rows"?: SeriesSettingDefinition<Value, Props>;
   "pie.slice_threshold"?: SeriesSettingDefinition<Value, Props>;
   "pie.show_labels"?: SeriesSettingDefinition<Value, Props>;
-  "pie.show_legend"?: SeriesSettingDefinition<Value, Props>;
   "pie.show_total"?: SeriesSettingDefinition<Value, Props>;
   "pie.sort_rows"?: SeriesSettingDefinition<Value, Props>;
   "pie.sort_rows_dimension"?: SeriesSettingDefinition<Value, Props>;

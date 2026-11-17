@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { useDispatch } from "metabase/redux";
 import { Box, Button, Icon, Text, Tooltip } from "metabase/ui";
 import {

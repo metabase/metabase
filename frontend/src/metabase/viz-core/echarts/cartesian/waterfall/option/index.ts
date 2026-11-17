@@ -24,12 +24,12 @@ import {
   getGoalLineParams,
   getGoalLineSeriesOption,
 } from "../../option/goal-line";
-import { applyResponsiveYAxisTicks } from "../../option/responsive-axis";
 import {
   buildEChartsLabelOptions,
   computeContinuousScaleBarWidth,
   getDataLabelFormatter,
 } from "../../option/series";
+import { applyYAxisTicks } from "../../option/y-axis";
 import { getTimelineEventsSelectionSeries } from "../../timeline-events/option";
 import type { TimelineEventsModel } from "../../timeline-events/types";
 import {
@@ -219,6 +219,13 @@ export const getWaterfallChartOption = (
   isAnimated: boolean,
   renderingContext: RenderingContext,
 ): EChartsCoreOption => {
+  // A render with no series (an empty-data transient under React 19) would
+  // crash building the single waterfall series and the cartesian axes. Render
+  // an empty chart instead.
+  if (chartModel.seriesModels.length === 0) {
+    return {};
+  }
+
   const dataSeriesOptions = buildEChartsWaterfallSeries(
     chartModel,
     settings,
@@ -266,11 +273,6 @@ export const getWaterfallChartOption = (
     dataset: echartsDataset,
     series: seriesOption,
     ...axes,
-    yAxis: applyResponsiveYAxisTicks(
-      axes.yAxis,
-      chartModel,
-      chartLayout,
-      settings,
-    ),
+    yAxis: applyYAxisTicks(axes.yAxis, chartModel, chartLayout, settings),
   };
 };

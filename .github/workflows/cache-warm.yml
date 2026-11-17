@@ -118,8 +118,8 @@ jobs:
           combos=(
             ":build:dev:ee:ee-dev:drivers:drivers-dev:cljs"     # build + uberjar (combined classpath)
             ":cljs"                                             # shadow-cljs (build:cljs); resolves :cljs alone -> covers asm:9.2
-            ":dev:ee:ee-dev:drivers:drivers-dev:test:eastwood"  # backend.yml (eastwood)
-            ":dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test" # backend.yml (eastwood tests)
+            ":dev:ee:ee-dev:drivers:drivers-dev:test:eastwood"  # eastwood.yml (source)
+            ":dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test" # eastwood.yml (tests)
             ":dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci" # run-tests.yml (project tests)
             ":dev:ci:ee:ee-dev:drivers:drivers-dev:test"        # test-driver.yml (ee) -> covers data.json:2.4.0
             ":dev:ci:oss:oss-dev:drivers:drivers-dev:test"      # test-driver.yml (oss)
@@ -130,7 +130,7 @@ jobs:
             ":dev:drivers:build:build-dev:build-test:ci"        # build-scripts.yml
             ":test"                                             # build-scripts.yml (bin/build unit tests)
             ":ee:drivers:load-namespaces"                       # backend.yml (load-namespaces)
-            ":ee:doc"                                           # mage generate-docs (docs-generate-base.yml)
+            ":ee:doc"                                           # mage docs-generate (docs-generate-base.yml)
             ":kondo"                                            # resolve-backport-conflicts.yml (replace-deps)
             ":run:ee"                                           # cross-branch-migration-test
             ":dev:ee:migrate"                                   # cross-branch-migration-test

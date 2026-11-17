@@ -103,7 +103,7 @@ function DataComplexityCard({
       <Stack component={UnstyledButton} onClick={open} flex={1} gap={0}>
         <Flex align="center" justify="space-between" gap="sm">
           <Text fw={700}>{title}</Text>
-          <Icon name="expand" c="text-disabled" />
+          <Icon name="expand" c="text-secondary" />
         </Flex>
         <Text c="text-secondary">{subtitle}</Text>
         {catalog.score !== null ? (
@@ -291,7 +291,7 @@ function DataComplexityComponentItem({
             {count}
           </Text>
           <Tooltip label={description}>
-            <Icon name="info" c="text-disabled" size={14} />
+            <Icon name="info" c="text-secondary" size={14} />
           </Tooltip>
           <ScoreDisplayInline score={component} />
         </Flex>

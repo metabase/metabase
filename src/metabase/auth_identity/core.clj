@@ -71,7 +71,8 @@
   create-password-reset!
   create-reset-token-metadata
   generate-reset-token
-  mark-token-consumed])
+  mark-token-consumed
+  parse-token-user-id])
 
 (defn with-fallback
   "Try multiple providers until one works. Always returns the result of the last provider run."

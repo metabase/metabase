@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, JSX } from "react";
 
 import { Flex } from "metabase/ui";
 import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption";

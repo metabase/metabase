@@ -4,6 +4,7 @@ import type {
   ListTransformJobRunsRequest,
   ListTransformJobRunsResponse,
   ListTransformJobsRequest,
+  RunTransformJobResponse,
   Transform,
   TransformJob,
   TransformJobId,
@@ -75,7 +76,7 @@ export const transformJobApi = Api.injectEndpoints({
         idTag("transform-job", jobId),
       ],
     }),
-    runTransformJob: builder.mutation<void, TransformJobId>({
+    runTransformJob: builder.mutation<RunTransformJobResponse, TransformJobId>({
       query: (id) => ({
         method: "POST",
         url: `/api/transform-job/${id}/run`,
