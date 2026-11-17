@@ -499,6 +499,27 @@
        (is (= "The AI provider is rate limiting requests right now. Please try again in a moment."
               (mt/user-http-request :rasta :post 429 endpoint (request-body))))))))
 
+(deftest summary-formula-provider-auth-error-test
+  (testing "summary-formula returns a 502 with the credentials message when the provider rejects the credentials"
+    (do-with-llm
+     (provider-api-error 401)
+     (fn [_calls]
+       (is (= "The AI provider rejected the credentials that Metabase sent. Please contact your administrator."
+              (mt/user-http-request :rasta :post 502 endpoint (request-body))))
+       (is (= "OpenAI rejected the API key or credentials that Metabase sent. Check them in the AI settings."
+              (mt/user-http-request :crowberto :post 502 endpoint (request-body))))))))
+
+(deftest summary-formula-provider-billing-error-test
+  (testing "summary-formula returns a 502 with the billing message when the provider rejects the request for billing"
+    (do-with-llm
+     (provider-api-error 402)
+     (fn [_calls]
+       (is (= "The AI provider rejected the request because of a billing issue. Please contact your administrator."
+              (mt/user-http-request :rasta :post 502 endpoint (request-body))))
+       (is (= (str "OpenAI rejected the request because of a billing issue, such as running out of credits. "
+                   "Check the billing settings for your account.")
+              (mt/user-http-request :crowberto :post 502 endpoint (request-body))))))))
+
 (deftest summary-formula-provider-overloaded-test
   (testing "summary-formula returns a 503 without the provider's message when the provider is overloaded"
     (do-with-llm
