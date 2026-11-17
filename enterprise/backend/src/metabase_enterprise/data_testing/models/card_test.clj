@@ -105,7 +105,8 @@
   "Whether the current user may run the saved `card-test`: they may read its card and run the card's query, and write
   the native SQL of a test against the Database of the card's query."
   [card-test :- ::data-testing.schema/card-test]
-  ;; Input SQL can read any table of the Database, and the guards do not check it, so reading the card is not enough.
+  ;; Input SQL can read any table of the Database: the validator checks the tables that the query under test and the
+  ;; expectations read, and not the tables an input reads. So reading the card is not enough.
   (card-allows? mi/can-read? :can_read (:card_id card-test)))
 
 (methodical/defmethod t2/simple-hydrate [:model/CardTest :can_read]
