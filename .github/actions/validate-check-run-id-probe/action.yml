@@ -54,32 +54,51 @@ runs:
         [ "$ID" = "$FIRST_CHECK_RUN_ID" ] || fail "job.check_run_id changed between steps: $FIRST_CHECK_RUN_ID -> $ID"
         [ "${JOB_ID:-}" = "$ID" ] || fail "resolve-job-id exported JOB_ID='${JOB_ID:-}', expected $ID"
 
+        legacy_lookup() {
+          gh api --paginate --slurp "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
+            | jq -r --arg r "$RUNNER_NAME" '[.[].jobs[] | select(.runner_name == $r and .status == "in_progress" and .completed_at == null)] | max_by(.started_at) | .id'
+        }
+
         job=$(gh api "/repos/$GITHUB_REPOSITORY/actions/jobs/$ID") || fail "GET actions/jobs/$ID failed"
         echo "$job" | jq '{id, run_id, run_attempt, name, runner_name, status, html_url, check_run_url}'
         [ "$(jq -r .id <<<"$job")" = "$ID" ] || fail "jobs API id differs"
         [ "$(jq -r .run_id <<<"$job")" = "$GITHUB_RUN_ID" ] || fail "run_id differs: $(jq -r .run_id <<<"$job") vs $GITHUB_RUN_ID"
         [ "$(jq -r .run_attempt <<<"$job")" = "$GITHUB_RUN_ATTEMPT" ] || fail "run_attempt differs: $(jq -r .run_attempt <<<"$job") vs $GITHUB_RUN_ATTEMPT"
-        [ "$(jq -r .runner_name <<<"$job")" = "$RUNNER_NAME" ] || fail "runner_name differs: $(jq -r .runner_name <<<"$job") vs $RUNNER_NAME"
-        [ "$(jq -r .status <<<"$job")" = "in_progress" ] || fail "job status is $(jq -r .status <<<"$job"), expected in_progress"
         [ "$(jq -r .html_url <<<"$job")" = "${JOB_HTML_URL:-}" ] || fail "JOB_HTML_URL='${JOB_HTML_URL:-}' differs from html_url $(jq -r .html_url <<<"$job")"
+        first_status=$(jq -r .status <<<"$job")
+        first_runner=$(jq -r .runner_name <<<"$job")
+        legacy_first=$(legacy_lookup) || legacy_first=error
+        echo "first API view: status=$first_status runner_name=$first_runner legacy_lookup=$legacy_first"
+
+        lag=0
+        while [ "$lag" -lt 90 ]; do
+          job=$(gh api "/repos/$GITHUB_REPOSITORY/actions/jobs/$ID")
+          [ "$(jq -r .status <<<"$job")" = "in_progress" ] && [ "$(jq -r .runner_name <<<"$job")" != "null" ] && break
+          sleep 3
+          lag=$((lag + 3))
+        done
+        echo "API showed in_progress with runner_name after about ${lag}s"
+        [ "$(jq -r .runner_name <<<"$job")" = "$RUNNER_NAME" ] || fail "runner_name differs: $(jq -r .runner_name <<<"$job") vs $RUNNER_NAME"
+        [ "$(jq -r .status <<<"$job")" = "in_progress" ] || fail "job status is $(jq -r .status <<<"$job") after ${lag}s, expected in_progress"
 
         check=$(gh api "/repos/$GITHUB_REPOSITORY/check-runs/$ID") || fail "GET check-runs/$ID failed"
         [ "$(jq -r .id <<<"$check")" = "$ID" ] || fail "check run id differs"
         [ "$(jq -r .status <<<"$check")" = "in_progress" ] || fail "check run status is $(jq -r .status <<<"$check")"
 
-        legacy=$(gh api --paginate --slurp "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
-          | jq -r --arg r "$RUNNER_NAME" '[.[].jobs[] | select(.runner_name == $r and .status == "in_progress" and .completed_at == null)] | max_by(.started_at) | .id')
+        legacy=$(legacy_lookup) || legacy=error
         echo "legacy runner_name lookup id=$legacy"
         [ "$legacy" = "$ID" ] || fail "legacy runner_name lookup gave $legacy, expected $ID"
 
+        ok=$([ "$failed" = 0 ] && echo true || echo false)
         mkdir -p "$RUNNER_TEMP/check-run-id"
         jq -n --arg label "$LABEL" --argjson id "$ID" --argjson attempt "$GITHUB_RUN_ATTEMPT" \
-          --arg name "$(jq -r .name <<<"$job")" --arg runner "$RUNNER_NAME" --argjson ok "$([ $failed = 0 ] && echo true || echo false)" \
-          '{label: $label, id: $id, attempt: $attempt, job_name: $name, runner: $runner, ok: $ok}' \
+          --arg name "$(jq -r .name <<<"$job")" --arg runner "$RUNNER_NAME" --argjson ok "$ok" \
+          --arg first_status "$first_status" --arg legacy_first "$legacy_first" --argjson api_lag_s "$lag" \
+          '{label: $label, id: $id, attempt: $attempt, job_name: $name, runner: $runner, ok: $ok, first_status: $first_status, legacy_first: $legacy_first, api_lag_s: $api_lag_s}' \
           > "$RUNNER_TEMP/check-run-id/$LABEL-attempt-$GITHUB_RUN_ATTEMPT.json"
         cat "$RUNNER_TEMP/check-run-id/$LABEL-attempt-$GITHUB_RUN_ATTEMPT.json"
 
-        echo "| $LABEL | $ID | $GITHUB_RUN_ATTEMPT | $([ $failed = 0 ] && echo ok || echo FAIL) |" >> "$GITHUB_STEP_SUMMARY"
+        echo "| $LABEL | $ID | $GITHUB_RUN_ATTEMPT | $first_status | $legacy_first | ${lag}s | $ok |" >> "$GITHUB_STEP_SUMMARY"
         exit "$failed"
 
     - name: Upload result

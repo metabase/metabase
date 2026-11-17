@@ -111,4 +111,6 @@ jobs:
           dups=$(jq '[group_by(.id)[] | select(length > 1)]' all.json)
           [ "$(jq length <<<"$dups")" = 0 ] || { echo "::error::duplicate ids: $dups"; exit 1; }
           echo "Attempts seen: $(jq -c '[.[].attempt] | unique' all.json)"
+          echo "API lag (first status, first legacy lookup, seconds until in_progress):"
+          jq -r '.[] | "\(.attempt)\t\(.label)\t\(.first_status)\t\(.legacy_first)\t\(.api_lag_s)s"' all.json
           echo "All $count ids for attempt $GITHUB_RUN_ATTEMPT are unique and match their jobs."
