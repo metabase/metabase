@@ -10,8 +10,8 @@ info:
     (https://linear.app/metabase/document/decision-log-6af7826ea1e4).
 
     Terms added here:
-    - Workspace mode: the state of an instance whose `workspaces-enabled` setting is on (master: whose
-      `instance-workspace` setting is set). "Workspace" alone always means the parent's row, never this mode.
+    - Workspace mode: the state of an instance whose `workspaces-enabled` setting is on. "Workspace" alone
+      always means the parent's row, never this mode.
     - Workspace copy: the table in the output namespace that a transform writes in place of its production table.
     - Remap row: a `TableRemapping` row. It sends reads of one production table to its workspace copy.
 
@@ -24,30 +24,25 @@ info:
     In workspace mode the sidecar redirects transform output into the output namespace and records a remap row
     per redirected table. Queries that name a remapped table read the workspace copy; every other table is read
     from production. Remap rows are written by the transform hook, not through this API.
-    (`EE/transform_hooks.clj:11`, `EE/query_processor/middleware.clj`.)
+    (`EE/transform_hooks.clj:27`, `EE/query_processor/middleware.clj`.)
 
     Workspace mode is not a security boundary. Isolation comes only from the workspace user's privileges in the
-    warehouse. Workspace mode redirects transform output. It refuses four features with 400 ("<feature> is not
-    supported on a workspace instance.", where <feature> is "Actions", "CSV upload", "Model persistence" or
-    "Database routing"): running a saved action, CSV upload, enabling model persistence
-    (`POST /api/persist/enable`) and setting up database routing. Native SQL writes still reach production when the
+    warehouse. Workspace mode redirects transform output. It refuses five features with 400 ("<feature> is not
+    supported on a workspace instance.", where <feature> is "Actions", "Editing table data", "CSV upload", "Model
+    persistence" or "Database routing"): running a saved action, a data-grid edit (#86603), CSV upload,
+    model-persistence writes and setting up database routing. Native SQL writes still reach production when the
     workspace user can write there.
-    Model persistence, master: only `POST /api/persist/enable` is refused. The settings API and
-    `MB_PERSISTED_MODELS_ENABLED` still turn `persisted-models-enabled` on, and per-database model persistence
-    then writes to production.
-    Model persistence, #87213 (hardening, decision 0026): workspace mode refuses model-persistence writes at the
+    Model persistence (#87213, decision 0026): workspace mode refuses model-persistence writes at the
     point of the write, whatever turned persistence on. `POST /api/persist/enable`,
     `POST /api/persist/database/{id}/persist`, `POST /api/persist/card/{id}/persist` and
     `POST /api/persist/card/{id}/refresh` answer 400. The scheduled refresh and prune jobs do nothing and log a
     warning.
-    master: data-grid edits also reach production. #86603: the sidecar refuses a data-grid edit with 400 ("Editing
-    table data is not supported on a workspace instance.").
-    master: `POST /current` checks only the shape of the body, not the namespaces or the database ids it names
-    (`src/metabase/workspaces/core.clj:46-77,100-112`). #86735: it also refuses an unknown database id with 400.
+    `POST /current` checks the shape of the body and refuses an unknown database id with 400 (#86735). It does not
+    check the schemas it names (`EE/core.clj:184`).
 
     Remapping follows remap rows, not the mode: queries are rewritten whenever rows exist
-    (`src/metabase/workspaces/core.clj:14-19`). master: booting without the `config.yml` `workspace:` section does
-    not clear the stored `instance-workspace` setting; an app DB that was a sidecar's stays in workspace mode with
+    (`src/metabase/workspaces/core.clj:12-17`). Booting without the `config.yml` `workspace:` section does
+    not turn `workspaces-enabled` off; an app DB that was a sidecar's stays in workspace mode with
     its remap rows. To stop using an app DB as a sidecar's, start a new Metabase on a new app DB. `DELETE /current`
     leaves workspace mode, but entering it again afterwards is not supported (decision 0035).
 
@@ -68,14 +63,14 @@ info:
     that as version 1, as `parent.openapi.yaml` describes. The two core routes at the end of `paths` never carry
     the header.
 
-    #86735 (hardening) makes workspace mode two ordinary settings, so the settings API, env vars and `config.yml`
-    set it as well as `/current`:
+    Workspace mode is two ordinary settings (#86735), so the settings API, env vars and `config.yml` set it as
+    well as `/current`:
     - `workspaces-enabled`: instance setting, boolean, env `MB_WORKSPACES_ENABLED`. On = this instance is in
       workspace mode. `PUT /api/setting/workspaces-enabled` with `true` returns 400 on an instance that has
       workspaces of its own (a parent); a write of `false` or `null` there returns 204. Turning it off through a
       setter (`DELETE /current`, the settings API) deletes every remap row. The env var is not a setter:
       `MB_WORKSPACES_ENABLED=false` turns the mode off but leaves the remap rows.
-      As on master, booting without the `workspace:` section does not turn `workspaces-enabled` off.
+      Booting without the `workspace:` section does not turn `workspaces-enabled` off.
     - `database-workspace-schema`: database-local string, set with `PUT /api/database/{id}`
       `{"settings": {"database-workspace-schema": "..."}}`. It names the output namespace: the schema that
       database's transforms write to (on MySQL, a database name).
@@ -88,8 +83,8 @@ info:
     Under the env var, `database-workspace-schema` changes only through `config.yml` or a restart with new
     configuration.
 
-    `/current` becomes a wrapper over the two settings (`WorkspaceInstanceSettings`). `name`, `input_schemas` and
-    `can_write` go away. The `instance-workspace` setting and `MB_INSTANCE_WORKSPACE` are removed. At startup, a
+    `/current` is a wrapper over the two settings (`WorkspaceInstanceSettings`). It has no `name`, `input_schemas`
+    or `can_write`. The `instance-workspace` setting and `MB_INSTANCE_WORKSPACE` are removed. At startup, a
     stored `instance-workspace` value or `MB_INSTANCE_WORKSPACE` is translated into `workspaces-enabled` and each
     database's `database-workspace-schema`, unless `workspaces-enabled` is already stored or set by its env var.
     The stored `instance-workspace` value is then deleted.
@@ -97,9 +92,9 @@ info:
     A sidecar does not record which workspace of which parent it serves. No request or response of this API
     carries the parent's workspace id or URL (decision 0034).
 
-    #86735 also:
-    - Fails closed: in workspace mode, a transform whose database has no `database-workspace-schema` is
-      refused with 400 instead of writing to production. Master writes to production here.
+    Also (#86735):
+    - In workspace mode, a transform whose database has no `database-workspace-schema` is refused with 400. It
+      does not write to production.
     - Deletes a database's remap rows whenever its `database-workspace-schema` changes, by any route: `POST
       /current`, `PUT /api/database/{id}`, and the `config.yml` `databases[].settings` loader. Reads then do not
       follow old rows into the old schema.
@@ -116,12 +111,10 @@ info:
        `POST /api/database/{id}/sync_schema`. Stub databases and the sample database are optional; they only make
        the sidecar's metadata match the parent's.
     3. Enter workspace mode with the sidecar's new database ids:
-       - master: `POST /current` `{name, databases: {"<id>": {input_schemas, output}}}`, copied from
-         `config.workspace` with names replaced by ids.
-       - #86735: `POST /current` `{databases: [{database_id, schema}]}`, where `schema` is `output.schema`
-         (`output.db` on MySQL). Equivalent: `PUT /api/database/{id}` `{"settings": {"database-workspace-schema":
-         "..."}}` per database (`setDatabaseWorkspaceSchema`), then `PUT /api/setting/workspaces-enabled`
-         `{"value": true}` last (`setWorkspacesEnabled`).
+       `POST /current` `{databases: [{database_id, schema}]}`, where `schema` is `output.schema`
+       (`output.db` on MySQL). Equivalent: `PUT /api/database/{id}` `{"settings": {"database-workspace-schema":
+       "..."}}` per database (`setDatabaseWorkspaceSchema`), then `PUT /api/setting/workspaces-enabled`
+       `{"value": true}` last (`setWorkspacesEnabled`).
     4. Check with `GET /current`.
     The details from step 1 contain the workspace user's password: treat the response as a secret, as `config.yml`.
 servers:
@@ -140,10 +133,10 @@ paths:
       operationId: getCurrentWorkspace
       summary: The workspace-mode settings of this instance, or null when it is not in workspace mode.
       x-status: master
-      x-source: EE/api/workspace_instance.clj:74
+      x-source: EE/api/workspace_instance.clj:48
       x-pr: 86735
       description: |
-        #86735: `data` becomes `WorkspaceInstanceSettings`, or null when `workspaces-enabled` is off. It does not
+        `data` is `WorkspaceInstanceSettings`, or null when `workspaces-enabled` is off (#86735). It does not
         say which workspace of the parent the sidecar serves (decision 0034).
       responses:
         "200":
@@ -157,11 +150,7 @@ paths:
                 properties:
                   data:
                     oneOf:
-                      - x-status: master
-                        x-removed-in: hardening
-                        allOf: [{ $ref: "#/components/schemas/WorkspaceInstance" }]
-                      - x-status: hardening
-                        x-pr: 86735
+                      - x-pr: 86735
                         allOf: [{ $ref: "#/components/schemas/WorkspaceInstanceSettings" }]
                       - { type: "null" }
           description: "`data` is null when the instance is not in workspace mode."
@@ -173,13 +162,12 @@ paths:
       summary: Enter workspace mode at runtime, without a restart. Persists across restarts.
       description: |
         Keyed by database id (config.yml keys by database name). The sidecar must already have the databases,
-        connected as the workspace user; this call does not carry credentials. master: the ids are not checked
-        against the instance's databases.
+        connected as the workspace user; this call does not carry credentials.
 
-        #86735: the body and response become `WorkspaceInstanceSettings`. It sets each listed database's
+        The body and response are `WorkspaceInstanceSettings` (#86735). It sets each listed database's
         `database-workspace-schema`, clears it on every other database, and turns `workspaces-enabled` on. It
         writes the schemas first and the flag last, in one transaction. A database whose schema changes or is
-        cleared loses its remap rows. There is no config lock. It answers 400:
+        cleared loses its remap rows. It answers 400:
         - for an unknown database id;
         - on a parent (an instance that has workspaces of its own);
         - while `MB_WORKSPACES_ENABLED=false`;
@@ -191,44 +179,24 @@ paths:
         (decision 0035).
       x-status: master
       x-pr: 86735
-      x-source: EE/api/workspace_instance.clj:91, src/metabase/workspaces/core.clj:68
+      x-source: EE/api/workspace_instance.clj:56, EE/core.clj:184
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              oneOf:
-                - x-status: master
-                  x-removed-in: hardening
-                  allOf: [{ $ref: "#/components/schemas/WorkspaceInstanceConfig" }]
-                - x-status: hardening
-                  x-pr: 86735
-                  allOf: [{ $ref: "#/components/schemas/WorkspaceInstanceSettings" }]
+            schema: { $ref: "#/components/schemas/WorkspaceInstanceSettings" }
       responses:
         "200":
           headers:
             X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json:
-              schema:
-                oneOf:
-                  - x-status: master
-                    x-removed-in: hardening
-                    allOf: [{ $ref: "#/components/schemas/WorkspaceInstance" }]
-                  - x-status: hardening
-                    x-pr: 86735
-                    allOf: [{ $ref: "#/components/schemas/WorkspaceInstanceSettings" }]
+              schema: { $ref: "#/components/schemas/WorkspaceInstanceSettings" }
           description: The stored workspace-mode settings.
         "400":
           description: |
-            Invalid body.
-
-            master: also when deployment config locked the workspace (a `workspace:` section in `config.yml`, or
-            `MB_INSTANCE_WORKSPACE`).
-
-            #86735: no such lock exists. The other causes are an unknown database id, a parent,
-            `MB_WORKSPACES_ENABLED=false`, and a schema change while `MB_WORKSPACES_ENABLED` is set (see the
-            operation's description).
+            Invalid body. The other causes are an unknown database id, a parent, `MB_WORKSPACES_ENABLED=false`,
+            and a schema change while `MB_WORKSPACES_ENABLED` is set (see the operation's description).
           x-pr: 86735
           headers:
             X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
@@ -239,10 +207,7 @@ paths:
       operationId: clearCurrentWorkspace
       summary: Leave workspace mode and delete every remap row.
       description: |
-        master: clears the `instance-workspace` setting and deletes every remap row. 400 when deployment config
-        locked the workspace.
-
-        #86735: turns `workspaces-enabled` off and deletes every remap row. It keeps each database's
+        Turns `workspaces-enabled` off and deletes every remap row (#86735). It keeps each database's
         `database-workspace-schema`. 400 only while `MB_WORKSPACES_ENABLED=true`: the env var's value overrides the
         stored value.
 
@@ -251,7 +216,7 @@ paths:
         that the new setup does not name.
       x-status: master
       x-pr: 86735
-      x-source: EE/api/workspace_instance.clj:107
+      x-source: EE/api/workspace_instance.clj:72
       responses:
         "204":
           description: Not in workspace mode.
@@ -259,8 +224,7 @@ paths:
             X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
         "400":
           description: |
-            master: deployment config locked the workspace (a `workspace:` section in `config.yml`, or
-            `MB_INSTANCE_WORKSPACE`). #86735: no such lock exists; 400 only while `MB_WORKSPACES_ENABLED=true`.
+            Only while `MB_WORKSPACES_ENABLED=true`.
           x-pr: 86735
           headers:
             X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
@@ -273,7 +237,7 @@ paths:
       operationId: listTableRemappings
       summary: Every remap row, ordered by id.
       x-status: master
-      x-source: EE/api/workspace_instance.clj:122
+      x-source: EE/api/workspace_instance.clj:83
       responses:
         "200":
           headers:
@@ -320,7 +284,7 @@ paths:
       responses:
         "204": { description: Remap row gone. }
 
-  # Two Metabase core routes, outside /api/ee/workspace-instance. With #86735 they set workspace mode without /current.
+  # Two Metabase core routes, outside /api/ee/workspace-instance. They set workspace mode without /current (#86735).
   # Their responses never carry X-Metabase-Workspaces-Version.
   /database/{id}:
     servers:
@@ -343,9 +307,9 @@ paths:
 
         Env lock (decision 0014): while `MB_WORKSPACES_ENABLED` is set, to `true` or to `false`, a request that
         would change the stored value is refused with 400. A request that sends the stored value passes.
-      x-status: hardening
+      x-status: master
       x-pr: 86735
-      x-source: src/metabase/warehouses_rest/api.clj:833, EE/settings.clj:39, EE/events.clj:11
+      x-source: src/metabase/warehouses_rest/api.clj:834, EE/settings.clj:54, EE/events.clj:11
       parameters:
         - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
       requestBody:
@@ -417,7 +381,7 @@ paths:
 
         Turning it on again after it was turned off is not supported (decision 0035). Each database's kept
         `database-workspace-schema` takes effect again.
-      x-status: hardening
+      x-status: master
       x-pr: 86735
       x-source: src/metabase/settings_rest/api.clj:83, EE/settings.clj:22
       requestBody:
@@ -477,7 +441,7 @@ components:
         `status: "error-premium-feature-not-available"`, or only `{"message": "Something went wrong"}` when the
         instance hides stack traces. The server builds this response before the request reaches the workspace
         routes, so it carries no version header.
-      x-source: enterprise/backend/src/metabase_enterprise/api_routes/routes.clj:175, src/metabase/premium_features/token_check.clj:766
+      x-source: enterprise/backend/src/metabase_enterprise/api_routes/routes.clj:173, src/metabase/premium_features/token_check.clj:817
       content:
         application/json:
           schema:
@@ -493,54 +457,7 @@ components:
         text/plain: { schema: { type: string } }
 
   schemas:
-    TableNamespace:
-      description: |
-        Where a table lives. Which keys are set depends on the engine: `schema` on Postgres, Redshift and
-        ClickHouse; `db` and `schema` on SQL Server; `db` on MySQL. At least one is non-null.
-      type: object
-      additionalProperties: false
-      properties:
-        db: { type: [string, "null"] }
-        schema: { type: [string, "null"] }
-      anyOf:
-        - { required: [db], properties: { db: { type: string } } }
-        - { required: [schema], properties: { schema: { type: string } } }
-      x-source: src/metabase/workspaces/core.clj:46
-
-    WorkspaceDatabaseConfig:
-      type: object
-      additionalProperties: false
-      required: [input_schemas, output]
-      properties:
-        input_schemas: { type: array, items: { type: string } }
-        output: { $ref: "#/components/schemas/TableNamespace" }
-
-    WorkspaceInstanceConfig:
-      description: Unknown keys are ignored.
-      type: object
-      additionalProperties: false
-      required: [name, databases]
-      properties:
-        name: { type: string, minLength: 1 }
-        databases:
-          type: object
-          description: Keys are database ids, as strings.
-          propertyNames: { pattern: "^[0-9]+$" }
-          additionalProperties: { $ref: "#/components/schemas/WorkspaceDatabaseConfig" }
-
-    WorkspaceInstance:
-      type: object
-      additionalProperties: false
-      required: [name, databases, can_write]
-      properties:
-        name: { type: string, minLength: 1 }
-        databases: { $ref: "#/components/schemas/WorkspaceInstanceConfig/properties/databases" }
-        can_write:
-          type: boolean
-          description: "master: false when deployment config set the workspace; POST and DELETE then return 400."
-
     WorkspaceInstanceSettings:
-      x-status: hardening
       x-pr: 86735
       description: |
         Each database with a `database-workspace-schema`. `databases` is a list, not a map keyed by id.
@@ -566,10 +483,7 @@ components:
       description: |
         A row does not mean that a run succeeded. Check the run's own status in the transform API.
 
-        master: a row means a transform run targeted the table. The row is written when a run starts and kept
-        after a failed run (`src/metabase/transforms/execute.clj:37`).
-
-        #86604: the row is written after the run's write to the workspace copy returns. A run that fails before
+        The row is written after the run's write to the workspace copy returns (#86604). A run that fails before
         its write records nothing. A run can still fail after the row is written.
       type: object
       required: [id, database_id, from_db, from_schema, from_table_name, to_db, to_schema, to_table_name, created_at]
@@ -584,5 +498,5 @@ components:
         to_schema: { type: string, description: '"" when absent. Never null.' }
         to_table_name:
           type: string
-          description: "`<from_schema>__<from_table_name>`, shortened with a hash when too long (`EE/table_remapping.clj:138`)."
-        created_at: { type: string, description: "master: when the first run that targeted the table started, not the latest run. #86604: when the first run whose write returned recorded the row." }
+          description: "`<from_schema>__<from_table_name>`, shortened with a hash when too long (`EE/table_remapping.clj:139`)."
+        created_at: { type: string, description: "When the first run whose write returned recorded the row, not the latest run (#86604)." }
