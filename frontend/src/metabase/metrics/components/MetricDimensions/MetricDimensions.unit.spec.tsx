@@ -1029,7 +1029,7 @@ describe("MetricDimensions", () => {
 
       // make it the default
       const setDefaultRoute = `metric-${METRIC_ID}-dimensions-set-default`;
-      await userEvent.click(
+      await clickWhenEnabled(
         settings.getByRole("button", { name: "Set as default" }),
       );
       expect(await getLastPostBody(setDefaultRoute)).toEqual({
@@ -1050,7 +1050,7 @@ describe("MetricDimensions", () => {
       ]);
 
       // remove the default (UXW-4988)
-      await userEvent.click(
+      await clickWhenEnabled(
         await settings.findByRole("button", { name: "Remove default" }),
       );
       expect(await getLastPostBody(setDefaultRoute)).toEqual({
@@ -1070,7 +1070,7 @@ describe("MetricDimensions", () => {
       ]);
 
       // make it the default again
-      await userEvent.click(
+      await clickWhenEnabled(
         await settings.findByRole("button", { name: "Set as default" }),
       );
       await waitFor(() => {
@@ -1131,6 +1131,14 @@ describe("MetricDimensions", () => {
     });
   });
 });
+
+// The default buttons stay disabled while the list refetches after an edit
+async function clickWhenEnabled(button: HTMLElement) {
+  await waitFor(() => {
+    expect(button).toBeEnabled();
+  });
+  await userEvent.click(button);
+}
 
 const ROW_HEIGHT = 40;
 

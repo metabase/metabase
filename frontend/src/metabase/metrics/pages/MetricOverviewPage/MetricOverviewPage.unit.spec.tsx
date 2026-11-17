@@ -324,8 +324,11 @@ describe("MetricOverviewPage", () => {
       screen.queryByRole("button", { name: /Show more/ }),
     ).not.toBeInTheDocument();
 
-    fireEvent.wheel(window, { deltaY: 100 });
+    // The trigger at the end of the grid is in view, but more charts load
+    // only once the user scrolls.
     intersectionObserver.setAllIntersecting(true);
+    expect(getCardTitles()).toHaveLength(4);
+    fireEvent.wheel(window, { deltaY: 100 });
 
     await waitFor(() => {
       expect(getCardTitles()).toEqual(

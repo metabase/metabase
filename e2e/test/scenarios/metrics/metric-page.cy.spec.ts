@@ -190,8 +190,14 @@ describe("scenarios > metrics > metric page", () => {
     settingsPanel().findByRole("button", { name: "Set as default" }).click();
     cy.wait("@setDefaultDimension");
 
+    cy.log("the About page charts the new default dimension by week");
+    H.MetricPage.aboutTab().click();
+    assertAboutChartsCreatedAtByWeek();
+
     cy.log("the curation is persisted");
     cy.reload();
+    assertAboutChartsCreatedAtByWeek();
+    H.MetricPage.dimensionsTab().click();
     cy.wait("@listDimensions");
     dimensionRow("Created At").findByText("Default").should("exist");
     dimensionList().findAllByText("Default").should("have.length", 1);
@@ -203,17 +209,15 @@ describe("scenarios > metrics > metric page", () => {
     settingsPanel()
       .findByLabelText("Description")
       .should("have.value", "Category of the ordered product");
-
-    cy.log("the About page charts the default dimension by week");
-    H.MetricPage.aboutTab().click();
-    H.MetricPage.aboutPage()
-      .findByRole("button", {
-        name: "Select dimension: Created At: Week",
-      })
-      .should("be.visible");
-    H.MetricPage.aboutPage()
-      .findByTestId("visualization-root")
-      .should("be.visible")
-      .and("have.attr", "data-viz-ui-name", "Line");
   });
 });
+
+function assertAboutChartsCreatedAtByWeek() {
+  H.MetricPage.aboutPage()
+    .findByRole("button", { name: "Select dimension: Created At: Week" })
+    .should("be.visible");
+  H.MetricPage.aboutPage()
+    .findByTestId("visualization-root")
+    .should("be.visible")
+    .and("have.attr", "data-viz-ui-name", "Line");
+}
