@@ -272,8 +272,8 @@
 
 (mu/defn- with-default-values :- RequestParameters
   "`request-parameters`, of shape `{<parameter-id> <value>}`, with the default value of each parameter of `action` that
-  `request-parameters` leaves out. Throws a 400 when `request-parameters` gives a value for a hidden parameter or for
-  no parameter of `action`."
+  `request-parameters` leaves out and that has a default. Throws a 400 when `request-parameters` gives a value for a
+  hidden parameter or for no parameter of `action`."
   [action             :- ::actions.schema/action.executable
    request-parameters :- RequestParameters]
   (let [;; if a value is supplied for a hidden parameter, it should raise an error
@@ -295,10 +295,10 @@
     (merge missing-param-defaults request-parameters)))
 
 (mu/defn parameter-values :- RequestParameters
-  "Returns the value of each parameter of `action` for a run from the action endpoint with `request-parameters`, keyed
-  by parameter id. `request-parameters` maps a parameter's id or slug to its value, and a parameter it leaves out takes
-  its default value. Throws a 400 when `request-parameters` gives a value for a hidden parameter or for no parameter of
-  `action`."
+  "Returns the values of the parameters of `action` for a run from an `/api/action` execute endpoint with
+  `request-parameters`, keyed by parameter id. `request-parameters` maps a parameter's id or slug to its value, and a
+  parameter it leaves out takes its default value; one with no default has no entry. Throws a 400 when
+  `request-parameters` gives a value for a hidden parameter or for no parameter of `action`."
   [action             :- ::actions.schema/action.executable
    request-parameters :- RequestParameters]
   (with-default-values action (remap-parameter-keys action request-parameters)))
