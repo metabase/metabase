@@ -1,0 +1,92 @@
+name: Validate job.check_run_id probe
+description: >
+  Checks that job.check_run_id is the current job's workflow_jobs.id, that it
+  is the same in the workflow, in a composite action and across steps, and
+  that resolve-job-id exports it. Uploads the result for the summary job.
+
+inputs:
+  label:
+    description: Unique label for this job in the validation run.
+    required: true
+  workflow-check-run-id:
+    description: The value of job.check_run_id as seen by the calling workflow step.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Read job.check_run_id in composite action
+      shell: bash
+      env:
+        COMPOSITE_ID: ${{ job.check_run_id }}
+        WORKFLOW_ID: ${{ inputs.workflow-check-run-id }}
+      run: |
+        echo "workflow job.check_run_id=$WORKFLOW_ID"
+        echo "composite job.check_run_id=$COMPOSITE_ID"
+        if ! [[ "$COMPOSITE_ID" =~ ^[0-9]+$ ]]; then
+          echo "::error::job.check_run_id in composite action is not numeric: '$COMPOSITE_ID'"
+          exit 1
+        fi
+        if [ "$COMPOSITE_ID" != "$WORKFLOW_ID" ]; then
+          echo "::error::job.check_run_id differs: workflow=$WORKFLOW_ID composite=$COMPOSITE_ID"
+          exit 1
+        fi
+        echo "FIRST_CHECK_RUN_ID=$COMPOSITE_ID" >> "$GITHUB_ENV"
+
+    - name: Run resolve-job-id
+      uses: ./.github/actions/resolve-job-id
+
+    - name: Compare with the Actions API
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        ID: ${{ job.check_run_id }}
+        LABEL: ${{ inputs.label }}
+        RUNNER_NAME: ${{ runner.name }}
+      run: |
+        failed=0
+        fail() { echo "::error::$LABEL: $*"; failed=1; }
+
+        for tool in gh jq; do
+          command -v "$tool" >/dev/null || { echo "::error::$tool is not installed on this runner"; exit 1; }
+        done
+
+        [ "$ID" = "$FIRST_CHECK_RUN_ID" ] || fail "job.check_run_id changed between steps: $FIRST_CHECK_RUN_ID -> $ID"
+        [ "${JOB_ID:-}" = "$ID" ] || fail "resolve-job-id exported JOB_ID='${JOB_ID:-}', expected $ID"
+
+        job=$(gh api "/repos/$GITHUB_REPOSITORY/actions/jobs/$ID") || fail "GET actions/jobs/$ID failed"
+        echo "$job" | jq '{id, run_id, run_attempt, name, runner_name, status, html_url, check_run_url}'
+        [ "$(jq -r .id <<<"$job")" = "$ID" ] || fail "jobs API id differs"
+        [ "$(jq -r .run_id <<<"$job")" = "$GITHUB_RUN_ID" ] || fail "run_id differs: $(jq -r .run_id <<<"$job") vs $GITHUB_RUN_ID"
+        [ "$(jq -r .run_attempt <<<"$job")" = "$GITHUB_RUN_ATTEMPT" ] || fail "run_attempt differs: $(jq -r .run_attempt <<<"$job") vs $GITHUB_RUN_ATTEMPT"
+        [ "$(jq -r .runner_name <<<"$job")" = "$RUNNER_NAME" ] || fail "runner_name differs: $(jq -r .runner_name <<<"$job") vs $RUNNER_NAME"
+        [ "$(jq -r .status <<<"$job")" = "in_progress" ] || fail "job status is $(jq -r .status <<<"$job"), expected in_progress"
+        [ "$(jq -r .html_url <<<"$job")" = "${JOB_HTML_URL:-}" ] || fail "JOB_HTML_URL='${JOB_HTML_URL:-}' differs from html_url $(jq -r .html_url <<<"$job")"
+
+        check=$(gh api "/repos/$GITHUB_REPOSITORY/check-runs/$ID") || fail "GET check-runs/$ID failed"
+        [ "$(jq -r .id <<<"$check")" = "$ID" ] || fail "check run id differs"
+        [ "$(jq -r .status <<<"$check")" = "in_progress" ] || fail "check run status is $(jq -r .status <<<"$check")"
+
+        legacy=$(gh api --paginate --slurp "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
+          | jq -r --arg r "$RUNNER_NAME" '[.[].jobs[] | select(.runner_name == $r and .status == "in_progress" and .completed_at == null)] | max_by(.started_at) | .id')
+        echo "legacy runner_name lookup id=$legacy"
+        [ "$legacy" = "$ID" ] || fail "legacy runner_name lookup gave $legacy, expected $ID"
+
+        mkdir -p "$RUNNER_TEMP/check-run-id"
+        jq -n --arg label "$LABEL" --argjson id "$ID" --argjson attempt "$GITHUB_RUN_ATTEMPT" \
+          --arg name "$(jq -r .name <<<"$job")" --arg runner "$RUNNER_NAME" --argjson ok "$([ $failed = 0 ] && echo true || echo false)" \
+          '{label: $label, id: $id, attempt: $attempt, job_name: $name, runner: $runner, ok: $ok}' \
+          > "$RUNNER_TEMP/check-run-id/$LABEL-attempt-$GITHUB_RUN_ATTEMPT.json"
+        cat "$RUNNER_TEMP/check-run-id/$LABEL-attempt-$GITHUB_RUN_ATTEMPT.json"
+
+        echo "| $LABEL | $ID | $GITHUB_RUN_ATTEMPT | $([ $failed = 0 ] && echo ok || echo FAIL) |" >> "$GITHUB_STEP_SUMMARY"
+        exit "$failed"
+
+    - name: Upload result
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: check-run-id-${{ inputs.label }}-attempt-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/check-run-id/
+        if-no-files-found: ignore
+        retention-days: 7

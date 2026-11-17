@@ -1,0 +1,28 @@
+name: Validate job.check_run_id (reusable)
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+
+jobs:
+  reusable:
+    name: reusable (${{ matrix.shard }})
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github
+      - name: Probe
+        uses: ./.github/actions/validate-check-run-id-probe
+        with:
+          label: reusable-${{ matrix.shard }}
+          workflow-check-run-id: ${{ job.check_run_id }}

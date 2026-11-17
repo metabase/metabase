@@ -1,0 +1,114 @@
+name: Validate job.check_run_id
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/validate-check-run-id.yml
+      - .github/workflows/validate-check-run-id-reusable.yml
+      - .github/actions/validate-check-run-id-probe/**
+      - .github/actions/resolve-job-id/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+
+jobs:
+  direct:
+    name: direct (${{ matrix.runner }}, ${{ matrix.shard }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-slim]
+        shard: [1, 2, 3]
+    steps:
+      - name: Read job.check_run_id in workflow step
+        env:
+          ID: ${{ job.check_run_id }}
+        run: |
+          echo "job.check_run_id=$ID"
+          [[ "$ID" =~ ^[0-9]+$ ]] || { echo "::error::job.check_run_id is not numeric: '$ID'"; exit 1; }
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github
+      - name: Probe
+        uses: ./.github/actions/validate-check-run-id-probe
+        with:
+          label: direct-${{ matrix.runner }}-${{ matrix.shard }}
+          workflow-check-run-id: ${{ job.check_run_id }}
+
+  reusable:
+    uses: ./.github/workflows/validate-check-run-id-reusable.yml
+
+  fallback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github
+      - name: Extract resolve-job-id script
+        run: yq '.runs.steps[0].run' .github/actions/resolve-job-id/action.yml > "$RUNNER_TEMP/resolve.sh"
+      - name: Fallback with a working token resolves the same id
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUNNER_NAME: ${{ runner.name }}
+          EXPECTED: ${{ job.check_run_id }}
+          CHECK_RUN_ID: ""
+        run: |
+          env_file=$(mktemp)
+          set +e
+          GITHUB_ENV="$env_file" bash --noprofile --norc -eo pipefail "$RUNNER_TEMP/resolve.sh" > "$RUNNER_TEMP/out.log" 2>&1
+          status=$?
+          set -e
+          cat "$RUNNER_TEMP/out.log" | sed 's/^::/:: /'
+          echo "--- exported:"; cat "$env_file"
+          [ "$status" = 0 ] || { echo "::error::script exited $status"; exit 1; }
+          grep -q "falling back to the Actions API" "$RUNNER_TEMP/out.log" || { echo "::error::fallback did not run"; exit 1; }
+          grep -qx "JOB_ID=$EXPECTED" "$env_file" || { echo "::error::fallback did not export JOB_ID=$EXPECTED"; exit 1; }
+      - name: Fallback with a bad token shows errors and exits 0
+        env:
+          GH_TOKEN: not-a-valid-token
+          RUNNER_NAME: ${{ runner.name }}
+          CHECK_RUN_ID: ""
+        run: |
+          env_file=$(mktemp)
+          set +e
+          GITHUB_ENV="$env_file" bash --noprofile --norc -eo pipefail "$RUNNER_TEMP/resolve.sh" > "$RUNNER_TEMP/out.log" 2>&1
+          status=$?
+          set -e
+          cat "$RUNNER_TEMP/out.log" | sed 's/^::/:: /'
+          [ "$status" = 0 ] || { echo "::error::script exited $status, expected 0"; exit 1; }
+          [ ! -s "$env_file" ] || { echo "::error::script exported values with a bad token"; cat "$env_file"; exit 1; }
+          grep -q "gh api failed with exit code" "$RUNNER_TEMP/out.log" || { echo "::error::no gh failure warning"; exit 1; }
+          grep -qiE "HTTP 401|Bad credentials" "$RUNNER_TEMP/out.log" || { echo "::error::gh error text is hidden"; exit 1; }
+          grep -q "Could not resolve current job id" "$RUNNER_TEMP/out.log" || { echo "::error::no final warning"; exit 1; }
+
+  summary:
+    needs: [direct, reusable]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: check-run-id-*
+          path: results
+          merge-multiple: true
+      - name: Check ids are unique and complete
+        env:
+          EXPECTED_COUNT: 8
+        run: |
+          ls -la results
+          jq -s 'sort_by(.attempt, .label)' results/*.json | tee all.json
+          current=$(jq --argjson a "$GITHUB_RUN_ATTEMPT" '[.[] | select(.attempt == $a)]' all.json)
+          count=$(jq length <<<"$current")
+          [ "$count" = "$EXPECTED_COUNT" ] || { echo "::error::expected $EXPECTED_COUNT results for attempt $GITHUB_RUN_ATTEMPT, got $count"; exit 1; }
+          [ "$(jq '[.[] | select(.ok | not)] | length' <<<"$current")" = 0 ] || { echo "::error::some probes failed"; exit 1; }
+          dups=$(jq '[group_by(.id)[] | select(length > 1)]' all.json)
+          [ "$(jq length <<<"$dups")" = 0 ] || { echo "::error::duplicate ids: $dups"; exit 1; }
+          echo "Attempts seen: $(jq -c '[.[].attempt] | unique' all.json)"
+          echo "All $count ids for attempt $GITHUB_RUN_ATTEMPT are unique and match their jobs."
