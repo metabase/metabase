@@ -771,6 +771,9 @@
             (str/join " or to "
                       (cond-> []
                         (seq cards)  (conj (dashcards-text cards))
+                        ;; A series is named by its dashcard, not its card: [[card-shown-fn]] judges only each
+                        ;; dashcard's own card, so a series card's name could show one the user can't read, or one
+                        ;; that isn't curated.
                         (seq series) (conj (str "the series on " (dashcards-text series)))))
             "."))
      (when (some (complement :series) dropped)
