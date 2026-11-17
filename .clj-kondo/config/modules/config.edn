@@ -159,7 +159,6 @@
            api.eid-translation
            collections
            data-apps
-           events
            lib.schema
            models
            permissions
@@ -1116,11 +1115,9 @@
            metabase.events.init}
    :uses #{models
            util}
-   :model-imports #{:model/Action
-                    :model/Card
+   :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/Field
                     :model/NativeQuerySnippet
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership

@@ -616,7 +616,7 @@
                                  (contains? (methods after-archived-change) model#))
                         (rows-changing-archived model# parsed-args# resolved-query# changes#))]
          (if (seq rows#)
-           (events.batch/do-with-batched-events
+           (events.batch/do-with-write-batch
              #(u/prog1 (~'next-method rf# query-type# model# parsed-args# resolved-query#)
                (after-archived-change model# rows# changes#)))
            (~'next-method rf# query-type# model# parsed-args# resolved-query#))))))

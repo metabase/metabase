@@ -1809,7 +1809,9 @@
                                     :put 200 (format "document/%s" doc-id)
                                     {:archived true})
               ;; Should have published document-archive event
-              (is (some #(= :event/document-delete (:topic %)) @events))))))
+              (is (some #(and (= :event/document-update (:topic %))
+                              (true? (:archived (:changes (:event %)))))
+                        @events))))))
       (testing "unarchiving document publishes update event"
         (mt/with-model-cleanup [:model/Document]
           (let [events (atom [])]
@@ -1819,8 +1821,9 @@
                                     :put 200 (format "document/%s" doc-id)
                                     {:archived false})
               ;; Should have published document-update event (not archive event)
-              (is (some #(= :event/document-update (:topic %)) @events))
-              (is (not (some #(= :event/document-delete (:topic %)) @events))))))))))
+              (is (some #(and (= :event/document-update (:topic %))
+                              (false? (:archived (:changes (:event %)))))
+                        @events)))))))))
 
 (deftest document-archive-transaction-rollback-test
   (testing "Document archiving transaction rollback on failure"

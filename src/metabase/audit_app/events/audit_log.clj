@@ -8,11 +8,18 @@
 
 (events/derive! ::event :metabase/event)
 
+(defn- unchanged-details?
+  "Whether the update `event` leaves what the audit log records of the object as it was."
+  [stored-topic {:keys [object previous-object]}]
+  (let [kw (keyword (name stored-topic))]
+    (= (audit-log/model-details object kw) (audit-log/model-details previous-object kw))))
+
 (defn- record-lifecycle!
   "Record the lifecycle `event` of a write by a user under `stored-topic`, with the changes of an update when
-  `previous?`, and nothing for a write without a user."
-  [stored-topic {:keys [user-id object previous-object changes context]} previous?]
-  (when user-id
+  `previous?`, and nothing for a write without a user or an update that changes nothing the log records."
+  [stored-topic {:keys [user-id object previous-object changes context] :as event} previous?]
+  (when (and user-id
+             (not (and previous? changes previous-object (unchanged-details? stored-topic event))))
     (audit-log/record-event! stored-topic
                              (cond-> {:object object :user-id user-id}
                                (and previous? changes previous-object) (assoc :previous-object previous-object)

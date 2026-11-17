@@ -163,7 +163,7 @@
                 :has_multiple_changes false}]
               (get-revisions :card id))))))
 
-(deftest transform-revert-publishes-audit-event-test
+(deftest transform-revert-publishes-update-event-test
   (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform {transform-id :id} {:name "Before"}]
@@ -177,7 +177,7 @@
             (mt/user-http-request :crowberto :post 200 "revision/revert"
                                   {:entity "transform" :id transform-id :revision_id revision-id}))
           (is (= "Before" (t2/select-one-fn :name :model/Transform :id transform-id)))
-          (is (some #{[:event/update-transform transform-id]} @topics)))))))
+          (is (some #{[:event/transform-update transform-id]} @topics)))))))
 
 (deftest transform-revisions-guard-prior-source-per-entitlement-test
   (testing "a Transform's revision history is authorized per snapshot: a prior :source is served only to callers

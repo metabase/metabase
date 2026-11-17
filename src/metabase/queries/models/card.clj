@@ -1390,6 +1390,7 @@
   ;; test id of the test's runs to null. A delete of cards that skips this hook leaves those runs' test id naming no
   ;; test.
   (delete-card-tests! id)
+  (queries.db/delete-actions-of-model! id)
   ;; delete any ParameterCard that the parameters on this card linked to
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card

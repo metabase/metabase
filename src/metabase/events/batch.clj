@@ -148,17 +148,33 @@
       (swap! batch update :events conj event)
       (deliver! [event]))))
 
+(defn- run-batch
+  "Run `thunk` in a batch, joining the batch there already is, in its transaction when `join-transaction?` and in a
+  nested one that rolls back alone otherwise."
+  [join-transaction? thunk]
+  (let [run (fn []
+              (let [batch (atom {:events []})]
+                (binding [*batch* batch]
+                  (u/prog1 (thunk)
+                    (finish! batch)))))]
+    (cond
+      *batch*           (thunk)
+      join-transaction? (t2.conn/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
+                          (run))
+      :else             (t2.conn/with-transaction [_conn]
+                          (run)))))
+
 (defn do-with-batched-events
   "Run `thunk` in a transaction, with the events of the writes in it delivered once, merged per row, when it ends and
-  before the transaction commits, and not at all when it throws; inside another batch, join it."
+  before the transaction commits, and not at all when it throws; inside another batch, join it, and inside another
+  transaction, have a nested one that rolls back alone."
   [thunk]
-  (if *batch*
-    (thunk)
-    (t2.conn/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
-      (let [batch (atom {:events []})]
-        (binding [*batch* batch]
-          (u/prog1 (thunk)
-            (finish! batch)))))))
+  (run-batch false thunk))
+
+(defn do-with-write-batch
+  "Run `thunk`, the write of a row, as [[do-with-batched-events]] does, but in the transaction there already is."
+  [thunk]
+  (run-batch true thunk))
 
 (defmacro with-batched-events
   "Run `body` in a transaction, with the events of the writes in it delivered once, merged per row, when it ends and

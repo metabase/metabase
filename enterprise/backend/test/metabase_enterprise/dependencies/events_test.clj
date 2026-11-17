@@ -307,7 +307,7 @@
             (testing "moving a card in"
               (is (=? one-update? (marks #(t2/update! :model/Card :id (:id card) {:collection_id collection-id})))))
             (testing "deleting a card"
-              (is (=? one-update? (marks #(t2/delete! :model/Card :id (:id card)))))))))))))
+              (is (=? one-update? (marks #(t2/delete! :model/Card :id (:id card))))))))))))
 
 (deftest entity-delete-test
   (testing "the dependency job drops the dependencies and status of a deleted entity"

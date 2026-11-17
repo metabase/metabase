@@ -31,7 +31,7 @@
   [instance]
   (let [changes (t2/changes instance)]
     (when (seq changes)
-      (collect! &model :update instance {:previous-object (t2.realize/realize (t2/original instance))
+      (collect! &model :update instance {:previous-object (t2/instance &model (t2.realize/realize (t2/original instance)))
                                          :changes         changes})))
   instance)
 
@@ -48,7 +48,7 @@
   [query-type]
   `(methodical/defmethod t2.pipeline/transduce-query :around [~query-type :hook/events :default]
      [rf# query-type# model# parsed-args# resolved-query#]
-     (events.batch/do-with-batched-events
+     (events.batch/do-with-write-batch
       #(~'next-method rf# query-type# model# parsed-args# resolved-query#))))
 
 (define-write-batch :toucan.query-type/insert.*)

@@ -884,7 +884,7 @@
                    :model/Field       {field-id :id} {:table_id table-id}
                    :model/FieldValues {fv-id :id}    {:field_id field-id, :values [1 2 3 4]}]
       (let [deleted (atom #{})]
-        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
+        (with-redefs [events/publish-event! (fn [topic event]
                                                        (when (= :event/field-values-delete topic)
                                                          (swap! deleted conj (:id (:object event)))))]
           (warehouse-schema-rest.db/delete-field-values-for-fields! #{field-id}))

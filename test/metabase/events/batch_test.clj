@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
+   [metabase.events.models.events-test-timeline]
    [metabase.test :as mt]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -18,15 +19,6 @@
   (swap! received conj {:topic       topic
                         :event       event
                         :in-tx?      (mdb/in-transaction?)}))
-
-#_{:clj-kondo/ignore [:metabase/toucan-model-ns]}
-(methodical/defmethod t2/table-name :model/EventsTestTimeline [_model] :timeline)
-
-(doto :model/EventsTestTimeline
-  (derive :metabase/model)
-  (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive :hook/events))
 
 (def ^:private topic-names
   [:event/events-test-timeline-create :event/events-test-timeline-update :event/events-test-timeline-delete])
