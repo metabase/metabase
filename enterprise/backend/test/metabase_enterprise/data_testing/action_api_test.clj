@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.workspaces.core :as ws]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
@@ -16,20 +15,12 @@
 (defn- inputs
   "An input standing in for the categories table with categories 1 `Toy` and 2 `Food`."
   []
-  (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id :categories))]
-    [{:table   {:schema schema :name name}
-      :format  "rows"
-      :columns [{:name "id" :cast_type "INTEGER"} {:name "name" :cast_type "VARCHAR"}]
-      :rows    [{"id" 1 "name" "Toy"} {"id" 2 "name" "Food"}]}]))
+  [(data-testing.test-util/categories-input)])
 
 (defn- expectations
   "An expectation that the default query action, with `id` 1 and `name` `Wood`, renamed category 1 only."
   []
-  (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id :categories))]
-    [{:type "empty"
-      :name "only category 1 is renamed"
-      :sql  (format "SELECT * FROM %s.%s WHERE (id = 1 AND name <> 'Wood Shop') OR (id = 2 AND name <> 'Food')"
-                    schema name)}]))
+  [(data-testing.test-util/categories-named "Wood Shop" "Food")])
 
 (def ^:private parameters
   {"id" 1 "name" "Wood"})
@@ -144,7 +135,7 @@
                                (try
                                  (testing "a run reports each expectation"
                                    (is (=? {:status       "passed"
-                                            :expectations [{:name "only category 1 is renamed" :status "passed"}]}
+                                            :expectations [{:name "1 is Wood Shop and 2 is Food" :status "passed"}]}
                                            (mt/user-http-request :crowberto :post 200 (str path "/run")))))
                                  (testing "the run is the test's newest run, and is in the run history of action tests"
                                    (let [{:keys [last_run]} (mt/user-http-request :crowberto :get 200 path)]
@@ -165,7 +156,7 @@
   "Call `thunk` with this instance in workspace mode, the test database in the workspace, and the real categories table
   remapped to a workspace copy, `ws_action_test.categories`, which does not exist: a query that reached it would fail."
   [thunk]
-  (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id :categories))]
+  (let [{:keys [schema name]} (data-testing.test-util/categories-table)]
     (try
       (ws/set-instance-workspace! {:name      "action-test-ws"
                                    :databases {(mt/id) {:input_schemas [schema]
@@ -186,7 +177,7 @@
   "The default query action, with its SQL naming the categories table with its schema: the workspace remapping rewrites
   only a name written with its schema."
   []
-  (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id :categories))]
+  (let [{:keys [schema name]} (data-testing.test-util/categories-table)]
     {:dataset_query {:database (mt/id)
                      :type     :native
                      :native   {:query         (format "UPDATE %s.%s\nSET name = concat([[{{name}}, ' ',]] 'Sh', 'op')\nWHERE id = {{id}}"
