@@ -148,6 +148,10 @@ const openOrdersFilterPopover = async () => {
   return await screen.findByTestId("segment-popover");
 };
 
+// Matches the whole text of an element, like Cypress's `have.text`.
+const exactText = (text: string) =>
+  new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
+
 const pickUnit = async (unitInput: HTMLElement, unitName: string) => {
   await userEvent.click(unitInput);
   const listbox = await screen.findByRole("listbox");
@@ -411,7 +415,7 @@ describe("SegmentApp", () => {
       );
 
       expect(await screen.findByTestId("filter-pill")).toHaveTextContent(
-        pillText,
+        exactText(pillText),
       );
       expect(screen.queryByTestId("segment-popover")).not.toBeInTheDocument();
     },
@@ -423,14 +427,14 @@ describe("SegmentApp", () => {
 
     await userEvent.click(within(popover).getByText("Total"));
     const operatorButton = await screen.findByLabelText("Filter operator");
-    expect(operatorButton).toHaveTextContent("Between");
+    expect(operatorButton).toHaveTextContent(exactText("Between"));
 
     await userEvent.click(operatorButton);
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Less than" }),
     );
     expect(screen.getByLabelText("Filter operator")).toHaveTextContent(
-      "Less than",
+      exactText("Less than"),
     );
 
     const segmentPopover = screen.getByTestId("segment-popover");
@@ -443,7 +447,7 @@ describe("SegmentApp", () => {
     );
 
     expect(await screen.findByTestId("filter-pill")).toHaveTextContent(
-      "Total is less than 1000",
+      exactText("Total is less than 1000"),
     );
   });
 
