@@ -1,5 +1,5 @@
 (ns metabase.model-persistence.events.persisted-info
-  "Handlers of the lifecycle events that have a model Card persisted when its database persists models."
+  "Handlers of the lifecycle events that have a model Card persisted when its database persists models, for the user who wrote it."
   (:require
    [metabase.events.core :as events]
    [metabase.model-persistence.db :as model-persistence.db]
@@ -30,5 +30,5 @@
 
 (methodical/defmethod events/publish-event! ::event
   [_topic {:keys [object user-id]}]
-  (when (= (keyword (:type object)) :model)
-    (turn-on-model! (:id object) (or user-id (:creator_id object)))))
+  (when (and user-id (= (keyword (:type object)) :model))
+    (turn-on-model! (:id object) user-id)))
