@@ -163,10 +163,8 @@ function getSections({
         groups
           .filter((group) => group.magic_group_type !== "admin")
           .map((group) => {
-            // the Permissions group sidebar pins these (`group-sidebar.ts`)
-            const isBuiltIn =
-              group.magic_group_type != null &&
-              group.magic_group_type !== "data-analyst";
+            // the Permissions group sidebar gives these the bolt (`group-sidebar.ts`)
+            const isBuiltIn = group.magic_group_type != null;
             const isTenantGroup = Boolean(group.is_tenant_group);
             return {
               isTenantGroup,
@@ -234,21 +232,26 @@ type GroupEntry = {
   row: PrincipalRow;
 };
 
-/** Internal groups, then tenant groups, built-in ones first, as in the Permissions group sidebar. */
+/**
+ * Internal groups, built-in ones first, then tenant groups by name, as in the Permissions group sidebar
+ * (`getOrderedGroups` in `groups.ts` pins only internal groups).
+ */
 function getGroupSections(
   hasTenants: boolean,
   groups: GroupEntry[],
 ): PrincipalSection[] {
-  const sorted = _.sortBy(
-    _.sortBy(groups, (group) => group.row.name.toLowerCase()),
-    (group) => (group.isBuiltIn ? 0 : 1),
-  );
   const [tenantGroups, internalGroups] = _.partition(
-    sorted,
+    _.sortBy(groups, (group) => group.row.name.toLowerCase()),
     (group) => group.isTenantGroup,
   );
+  const sortedInternalGroups = _.sortBy(internalGroups, (group) =>
+    group.isBuiltIn ? 0 : 1,
+  );
   return toSections(hasTenants, [
-    { title: t`Internal groups`, rows: internalGroups.map(({ row }) => row) },
+    {
+      title: t`Internal groups`,
+      rows: sortedInternalGroups.map(({ row }) => row),
+    },
     { title: t`Tenant groups`, rows: tenantGroups.map(({ row }) => row) },
   ]);
 }

@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { entityIdApi } from "metabase/api";
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
+
+import { CONTENT_PREVIEW_ALL_COLLECTIONS_PATH } from "../content-preview";
 
 import {
   NUMERIC_ID_TYPES,
@@ -10,6 +14,7 @@ import {
   getEntityPath,
   getNumericIdPath,
   parseLinkInput,
+  parseOpenedItem,
 } from "./item-path";
 
 const ENTITY_ID_TYPES = ["card", "dashboard", "collection"] as const;
@@ -25,6 +30,7 @@ export function LinkBar({ framePath, onOpen }: LinkBarProps) {
   const [text, setText] = useState(framePath);
   const [numericId, setNumericId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const applicationName = useSelector(getApplicationName);
   const [translateEntityId, { isFetching }] =
     entityIdApi.useLazyTranslateEntityIdQuery();
 
@@ -40,6 +46,16 @@ export function LinkBar({ framePath, onOpen }: LinkBarProps) {
     }
     switch (input.kind) {
       case "path":
+        // the frame shows only items and its collection browser; any other path would drop back to it unsaid
+        if (
+          input.path !== CONTENT_PREVIEW_ALL_COLLECTIONS_PATH &&
+          parseOpenedItem(input.path) == null
+        ) {
+          setError(
+            t`Paste a ${applicationName} link, an entity ID, or a numeric ID.`,
+          );
+          return;
+        }
         onOpen(input.path);
         return;
       case "numeric-id":
