@@ -258,6 +258,18 @@
               {:columns       (vec repeated)
                :response/keys #{:columns}})))))
 
+(mu/defn- run-subject! :- :any
+  "Call `thunk`, which runs the query under test, and return what it returns. Rethrows its failure as
+  `::data-testing.errors/query-failed`, quoting the warehouse with each temp table of `labels` named as the author
+  wrote it."
+  [labels :- ::labels
+   thunk  :- ifn?]
+  ;; The query names only the inputs' temp tables, which hold the test's fixture data.
+  (try
+    (thunk)
+    (catch Exception e
+      (rethrow-remapped e ::data-testing.errors/query-failed (tru "The query under test failed to run:") labels))))
+
 (mu/defn- create-output! :- :nil
   "Run the query under test on `conn`, materializing its output as the temp table `output-table`. Throws
   `::data-testing.errors/duplicate-output-columns` when two columns of the output share a name, as `driver` compares
@@ -267,32 +279,12 @@
    output-table :- :string
    compiled     :- ::data-testing.compile/compiled-query
    labels       :- ::labels]
-  (let [run-query! (fn [thunk]
-                     (try
-                       (thunk)
-                       (catch Exception e
-                         (rethrow-remapped e ::data-testing.errors/query-failed
-                                           (tru "The query under test failed to run:")
-                                           labels))))]
-    ;; The query reads only the inputs' temp tables, which hold the test's fixture data.
-    (check-output-columns!
-     driver
-     (:columns (run-query! #(data-testing.executor/run-query driver conn
-                                                             [(:query compiled) (vec (:params compiled))] 1))))
-    (run-query! #(data-testing.executor/create-temp-table! driver conn output-table compiled))
-    nil))
-
-(mu/defn- run-write! :- :nil
-  "Run the write under test, `compiled`, on `conn`."
-  [driver   :- :keyword
-   conn     :- ::data-testing.schema/connection
-   compiled :- ::data-testing.compile/compiled-query
-   labels   :- ::labels]
-  ;; The write names only the inputs' temp tables, which hold the test's fixture data.
-  (try
-    (data-testing.executor/execute! driver conn compiled)
-    (catch Exception e
-      (rethrow-remapped e ::data-testing.errors/query-failed (tru "The query under test failed to run:") labels))))
+  (check-output-columns!
+   driver
+   (:columns (run-subject! labels #(data-testing.executor/run-query driver conn
+                                                                    [(:query compiled) (vec (:params compiled))] 1))))
+  (run-subject! labels #(data-testing.executor/create-temp-table! driver conn output-table compiled))
+  nil)
 
 (mu/defn- check-expectations :- [:sequential ::data-testing.schema/expectation-result]
   "The result of every expectation, passing ones included, against the output temp table, or against the input temp
@@ -386,7 +378,7 @@
                (try
                  (create-inputs! driver conn input->table labels)
                  (if writes?
-                   (run-write! driver conn compiled labels)
+                   (run-subject! labels #(data-testing.executor/execute! driver conn compiled))
                    (create-output! driver conn output-table compiled labels))
                  (let [results (check-expectations driver conn
                                                    {:driver driver
