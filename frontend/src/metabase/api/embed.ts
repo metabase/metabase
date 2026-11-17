@@ -4,6 +4,7 @@ import type {
   DashCardId,
   Dashboard,
   Dataset,
+  ReferencedEntitiesResults,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -31,6 +32,16 @@ export type EmbedDashcardQueryRequest = {
   cardId: CardId;
   parameters?: string;
   ignore_cache?: boolean;
+};
+
+export type GetEmbedCardGoalValuesRequest = {
+  token: string;
+};
+
+export type GetEmbedDashcardGoalValuesRequest = {
+  token: string;
+  dashcardId: DashCardId;
+  cardId: CardId;
 };
 
 export const embedApi = Api.injectEndpoints({
@@ -86,6 +97,26 @@ export const embedApi = Api.injectEndpoints({
         params,
       }),
       keepUnusedDataFor: 0,
+    }),
+    getEmbedCardGoalValues: builder.query<
+      ReferencedEntitiesResults,
+      GetEmbedCardGoalValuesRequest
+    >({
+      query: ({ token }) => ({
+        method: "GET",
+        url: `/api/embed/card/${token}/goal-values`,
+        noEvent: true,
+      }),
+    }),
+    getEmbedDashcardGoalValues: builder.query<
+      ReferencedEntitiesResults,
+      GetEmbedDashcardGoalValuesRequest
+    >({
+      query: ({ token, dashcardId, cardId }) => ({
+        method: "GET",
+        url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/goal-values`,
+        noEvent: true,
+      }),
     }),
   }),
 });

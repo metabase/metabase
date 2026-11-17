@@ -6,6 +6,7 @@ import type {
 } from "metabase-types/api";
 
 import type { Card, CardId, ColumnSettings, UnsavedCard } from "./card";
+import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
 import type { Insight } from "./insight";
@@ -284,6 +285,12 @@ export type ReferencedEntity =
   | { type: "card"; id: CardId; columns?: string[] }
   | { type: "measure"; id: MeasureId; columns?: string[] };
 
+export type GetGoalValuesRequest = {
+  sources: ReferencedEntity[];
+  dashboard_id?: DashboardId;
+  ignore_cache?: boolean;
+};
+
 export type ReferencedEntitiesResults = {
   card?: Record<CardId, ReferencedEntityResult>;
   measure?: Record<MeasureId, ReferencedEntityResult>;
@@ -292,7 +299,12 @@ export type ReferencedEntitiesResults = {
 export interface ReferencedEntityResult {
   status: "completed" | "failed";
   error?: string;
-  error_type?: "too-many-rows" | "not-found" | "has-parameters" | "withheld";
+  error_type?:
+    | "too-many-rows"
+    | "not-found"
+    | "has-parameters"
+    | "withheld"
+    | "too-many-sources";
   data?: {
     cols: DatasetColumn[];
     rows: RowValues[];

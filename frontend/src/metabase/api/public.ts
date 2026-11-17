@@ -9,6 +9,7 @@ import type {
   Document,
   ParametersForActionExecution,
   PrefetchPublicDashcardValuesRequest,
+  ReferencedEntitiesResults,
   WritebackAction,
 } from "metabase-types/api";
 
@@ -60,6 +61,21 @@ export type PublicDashcardQueryRequest = {
 };
 
 export type PublicDocumentCardQueryRequest = {
+  uuid: string;
+  cardId: CardId;
+};
+
+export type GetPublicCardGoalValuesRequest = {
+  uuid: string;
+};
+
+export type GetPublicDashcardGoalValuesRequest = {
+  uuid: string;
+  dashcardId: DashCardId;
+  cardId: CardId;
+};
+
+export type GetPublicDocumentCardGoalValuesRequest = {
   uuid: string;
   cardId: CardId;
 };
@@ -175,6 +191,36 @@ export const publicApi = Api.injectEndpoints({
         url: `/api/public/document/${uuid}/card/${cardId}`,
       }),
     }),
+    getPublicCardGoalValues: builder.query<
+      ReferencedEntitiesResults,
+      GetPublicCardGoalValuesRequest
+    >({
+      query: ({ uuid }) => ({
+        method: "GET",
+        url: `/api/public/card/${uuid}/goal-values`,
+        noEvent: true,
+      }),
+    }),
+    getPublicDashcardGoalValues: builder.query<
+      ReferencedEntitiesResults,
+      GetPublicDashcardGoalValuesRequest
+    >({
+      query: ({ uuid, dashcardId, cardId }) => ({
+        method: "GET",
+        url: `/api/public/dashboard/${uuid}/dashcard/${dashcardId}/card/${cardId}/goal-values`,
+        noEvent: true,
+      }),
+    }),
+    getPublicDocumentCardGoalValues: builder.query<
+      ReferencedEntitiesResults,
+      GetPublicDocumentCardGoalValuesRequest
+    >({
+      query: ({ uuid, cardId }) => ({
+        method: "GET",
+        url: `/api/public/document/${uuid}/card/${cardId}/goal-values`,
+        noEvent: true,
+      }),
+    }),
   }),
 });
 
@@ -191,4 +237,5 @@ export const {
   useGetPublicDashcardQueryQuery,
   useGetPublicDashcardQueryPivotQuery,
   useGetPublicDocumentCardQueryQuery,
+  useGetPublicDocumentCardGoalValuesQuery,
 } = publicApi;
