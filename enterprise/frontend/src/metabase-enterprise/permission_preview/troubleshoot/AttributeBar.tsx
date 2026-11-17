@@ -31,13 +31,16 @@ type AttributeBarProps = {
   pickedValues: Record<string, string>;
   /** `null` resets the attribute to the person's own value. */
   onPick: (attribute: string, value: string | null) => void;
-  /** "User attributes:" above the chips, for a narrow panel. */
+  /** "User attributes used by rules:" above the chips, for a narrow panel. */
   isLabelOnOwnRow?: boolean;
   /** A group's size, so its chips say how many members share the value: "Gadget · 2 of 7 members". */
   groupMemberCount?: number | null;
 };
 
-/** The previewed person's attributes, as chips under the band; each opens its picker and says where it's used. */
+/**
+ * The previewed person's attributes that a permission rule reads, as chips under the band; each opens its picker and
+ * says where it's used. Nothing when no rule reads any: the others can't change what the preview shows.
+ */
 export function AttributeBar({
   principalType,
   whoName,
@@ -48,9 +51,13 @@ export function AttributeBar({
   isLabelOnOwnRow = false,
   groupMemberCount,
 }: AttributeBarProps) {
-  // nothing beside "User attributes:" until they load
+  const ruleAttributes = getRuleAttributes(attributes);
+  if (!isLoading && ruleAttributes.length === 0) {
+    return null;
+  }
+  // nothing beside the label until they load
   const label = !isLoading && (
-    <Text fz="sm" c="text-secondary">{t`User attributes:`}</Text>
+    <Text fz="sm" c="text-secondary">{t`User attributes used by rules:`}</Text>
   );
 
   return (
@@ -58,18 +65,13 @@ export function AttributeBar({
       {isLabelOnOwnRow && label}
       <Group
         gap="xs"
-        aria-label={t`User attributes`}
+        aria-label={t`User attributes used by rules`}
         role="toolbar"
         wrap="wrap"
         mih="1.75rem"
       >
         {!isLabelOnOwnRow && label}
-        {!isLoading && attributes.length === 0 && (
-          <Text c="text-secondary" fz="sm">
-            {t`No user attributes`}
-          </Text>
-        )}
-        {attributes.map((attribute) => (
+        {ruleAttributes.map((attribute) => (
           <AttributeChip
             key={attribute.attribute}
             principalType={principalType}
@@ -83,6 +85,11 @@ export function AttributeBar({
       </Group>
     </Stack>
   );
+}
+
+/** The attributes a permission rule on the person's groups reads; only these can change what the preview shows. */
+export function getRuleAttributes(attributes: AffectingAttribute[]) {
+  return attributes.filter((attribute) => attribute.uses.length > 0);
 }
 
 type AttributeChipProps = {
@@ -252,12 +259,9 @@ function getOwnValueLabel(whoName: string, attribute: AffectingAttribute) {
 
 /**
  * Where the person's rules read the attribute, whatever page is open: "Used by row and column security on Orders and
- * Products", one line per kind of rule, or "No permission rule uses this attribute."
+ * Products", one line per kind of rule.
  */
 function getUseLines(uses: AttributeUse[]) {
-  if (uses.length === 0) {
-    return [t`No permission rule uses this attribute.`];
-  }
   const labelsOf = (kind: AttributeRuleKind) =>
     _.uniq(uses.filter((use) => use.kind === kind).map((use) => use.label));
   const sandboxTables = labelsOf("sandbox");

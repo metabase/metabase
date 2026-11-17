@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupPermissionPreviewAttributesEndpoint,
+  setupPermissionPreviewCollectionsEndpoint,
   setupPermissionPreviewPrincipalsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -103,6 +104,8 @@ describe("PreviewBanner", () => {
         }),
       ).toHaveFocus();
       await userEvent.tab();
+      expect(screen.getByRole("button", { name: "Sandy Sales" })).toHaveFocus();
+      await userEvent.tab();
       expect(
         screen.getByRole("button", { name: "Explain access" }),
       ).toHaveFocus();
@@ -139,6 +142,23 @@ async function setup({ widthPx }: SetupOpts) {
     ],
     groups: [],
     tenants: [],
+  });
+  // the name's card, open while the name has focus
+  setupPermissionPreviewCollectionsEndpoint("default", {
+    principal: {
+      type: "user",
+      id: 2,
+      name: "Sandy Sales",
+      detail: null,
+      member_count: null,
+      superuser: false,
+      tenant_side: false,
+      attributes: null,
+      groups: [{ id: 1, name: "All internal users" }],
+    },
+    applies: true,
+    reason: null,
+    collections: [],
   });
 
   renderWithProviders(<PreviewBanner state={STATE} />, { withRouter: true });

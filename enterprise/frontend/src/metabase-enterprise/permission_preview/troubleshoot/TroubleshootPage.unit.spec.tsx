@@ -4,6 +4,8 @@ import fetchMock from "fetch-mock";
 import {
   setupGroupsEndpoint,
   setupPermissionPreviewAttributesEndpoint,
+  setupPermissionPreviewCollectionsEndpoint,
+  setupPermissionPreviewPrincipalsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -41,12 +43,41 @@ describe("TroubleshootPage", () => {
     setup({ isNarrow: true });
 
     expect(
-      await screen.findByText("Previewing as Sandy Sales"),
+      await screen.findByRole("button", { name: "Sandy Sales" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("· Read-only · Audited")).toBeInTheDocument();
+    expect(
+      screen.getByRole("status", { name: "Previewing as" }),
+    ).toHaveTextContent("Previewing as Sandy Sales");
+    expect(screen.getByText("Read-only")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Explain access" }),
     ).toHaveTextContent("Explain access");
+  });
+
+  it("says what Read-only means in its tooltip, without Audited next to the name", async () => {
+    setup({});
+
+    await userEvent.hover(await screen.findByText("Read-only"));
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Nothing you change here is saved. Previews are recorded in the audit log.",
+    );
+    expect(screen.queryByText(/Audited/)).not.toBeInTheDocument();
+  });
+
+  it("shows the user's email, groups and every user attribute on hovering their name", async () => {
+    setup({});
+
+    await userEvent.hover(
+      await screen.findByRole("button", { name: "Sandy Sales" }),
+    );
+
+    expect(await screen.findByText("sandy@example.com")).toBeInTheDocument();
+    expect(screen.getByText("All internal users, Sales")).toBeInTheDocument();
+    expect(screen.getByText("category")).toBeInTheDocument();
+    expect(screen.getByText("Gizmo")).toBeInTheDocument();
+    expect(screen.getByText("country")).toBeInTheDocument();
+    expect(screen.getByText("US")).toBeInTheDocument();
   });
 
   it("goes back to all collections from an item the person may not be able to open", async () => {
@@ -96,6 +127,40 @@ function setup({ isNarrow = false }: SetupOpts) {
   ]);
   setupGroupsEndpoint([]);
   setupPermissionPreviewAttributesEndpoint([]);
+  setupPermissionPreviewPrincipalsEndpoint({
+    users: [
+      {
+        id: 3,
+        name: "Sandy Sales",
+        detail: null,
+        member_count: null,
+        tenant_side: false,
+        email: "sandy@example.com",
+        group_ids: [1, 2],
+      },
+    ],
+    groups: [],
+    tenants: [],
+  });
+  setupPermissionPreviewCollectionsEndpoint("default", {
+    principal: {
+      type: "user",
+      id: 3,
+      name: "Sandy Sales",
+      detail: null,
+      member_count: null,
+      superuser: false,
+      tenant_side: false,
+      attributes: { category: "Gizmo", country: "US" },
+      groups: [
+        { id: 1, name: "All internal users" },
+        { id: 2, name: "Sales" },
+      ],
+    },
+    applies: true,
+    reason: null,
+    collections: [],
+  });
   fetchMock.post(
     "path:/api/ee/permission_debug/preview/session",
     SANDY_SESSION,

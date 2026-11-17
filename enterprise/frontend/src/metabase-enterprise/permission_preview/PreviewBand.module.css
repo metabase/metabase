@@ -14,6 +14,18 @@
   min-width: 0;
 }
 
+/* the name in the sentence, underlined so it reads as something to hover */
+.userName {
+  font: inherit;
+  color: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+}
+
+.userName:focus-visible {
+  outline: 2px solid var(--mb-color-input-focus);
+}
+
 /* on a row of its own, How it works sits at the right end */
 .sentenceSection {
   margin-inline-start: auto;

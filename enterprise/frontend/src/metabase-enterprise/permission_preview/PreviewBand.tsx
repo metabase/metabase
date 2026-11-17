@@ -1,11 +1,12 @@
 import { useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { Banner } from "metabase/common/components/Banner";
-import { Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import { Badge, Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 
 import S from "./PreviewBand.module.css";
+import { PreviewedUserName } from "./PreviewedUserName";
 import type { PrincipalType } from "./api";
 
 /** Below the theme's `lg` breakpoint (1280px): tablets, and narrow windows. */
@@ -16,6 +17,8 @@ type PreviewBandProps = {
   variant: "troubleshoot" | "full-screen";
   /** "Sandy Sales", "a member of Sales", "a user of Acme"; null while the preview starts. */
   whoName: string | null;
+  /** A user preview's user, whose name opens a card with their email, groups and user attributes. */
+  previewedUserId?: number;
   /** Before the eye icon: the full-screen band's "Preview settings". */
   leftSection?: ReactNode;
   /** Right after the sentence, outside its truncation: a group preview's "How group preview works". */
@@ -32,10 +35,26 @@ type PreviewBandProps = {
 export function PreviewBand({
   variant,
   whoName,
+  previewedUserId,
   leftSection,
   sentenceSection,
   children,
 }: PreviewBandProps) {
+  const whoSentence =
+    whoName != null
+      ? getWhoSentence(
+          previewedUserId != null ? (
+            <PreviewedUserName
+              key="name"
+              userId={previewedUserId}
+              name={whoName}
+            />
+          ) : (
+            whoName
+          ),
+        )
+      : t`Starting the preview…`;
+
   if (variant === "troubleshoot") {
     return (
       <Banner
@@ -57,16 +76,10 @@ export function PreviewBand({
               <Flex align="center" gap="sm">
                 <Icon name="eye" c="text-primary" style={{ flexShrink: 0 }} />
                 <Text fw="bold" c="text-primary">
-                  {whoName != null
-                    ? getWhoSentence(whoName)
-                    : t`Starting the preview…`}
+                  {whoSentence}
                 </Text>
               </Flex>
-              {whoName != null && (
-                <Text fw="bold" c="text-primary">
-                  {`· ${getReadOnlySentence()}`}
-                </Text>
-              )}
+              {whoName != null && <ReadOnlyBadge />}
               {sentenceSection && (
                 <div className={S.sentenceSection}>{sentenceSection}</div>
               )}
@@ -94,13 +107,15 @@ export function PreviewBand({
             c="text-primary"
             truncate
             miw={0}
-            flex={1}
             style={{ flexShrink: 1 }}
-            title={whoName != null ? getSentence(whoName) : undefined}
+            title={whoName != null ? t`Previewing as ${whoName}` : undefined}
           >
-            {whoName != null ? getSentence(whoName) : t`Starting the preview…`}
+            {whoSentence}
           </Text>
+          {whoName != null && <ReadOnlyBadge />}
           {sentenceSection}
+          {/* the badge stays beside the name, the buttons at the right end */}
+          <Box flex={1} />
           {children}
         </>
       }
@@ -162,16 +177,20 @@ export function ExplainAccessButton({
   );
 }
 
-function getSentence(whoName: string) {
-  return `${getWhoSentence(whoName)} · ${getReadOnlySentence()}`;
+function getWhoSentence(whoName: ReactNode) {
+  return jt`Previewing as ${whoName}`;
 }
 
-function getWhoSentence(whoName: string) {
-  return t`Previewing as ${whoName}`;
-}
-
-function getReadOnlySentence() {
-  return t`Read-only · Audited`;
+function ReadOnlyBadge() {
+  return (
+    <Tooltip
+      label={t`Nothing you change here is saved. Previews are recorded in the audit log.`}
+    >
+      <Badge variant="outline" color="neutral" style={{ flexShrink: 0 }}>
+        {t`Read-only`}
+      </Badge>
+    </Tooltip>
+  );
 }
 
 /** Who the band names: "Sandy Sales", "a member of Sales", "a user of Acme". */

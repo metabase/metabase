@@ -36,16 +36,27 @@ const VENDOR: AffectingAttribute = {
 };
 
 describe("AttributeBar", () => {
-  it("shows every attribute the same way, without marking the ones the open page doesn't use", () => {
+  it("shows only the attributes a rule uses, after User attributes used by rules", () => {
     setup({ attributes: [CATEGORY, VENDOR] });
 
+    expect(
+      screen.getByText("User attributes used by rules:"),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /category/ })).toHaveTextContent(
       "categoryGizmo",
     );
-    expect(screen.getByRole("button", { name: /vendor/ })).toHaveTextContent(
-      "vendorZemlak-Wiegand and Sons",
-    );
-    expect(screen.queryByText(/Not used here/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /vendor/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows no line at all when no rule uses any attribute", () => {
+    setup({ attributes: [VENDOR] });
+
+    expect(
+      screen.queryByRole("toolbar", { name: "User attributes used by rules" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/User attributes/)).not.toBeInTheDocument();
   });
 
   it("says in the popover which tables' row and column security uses the attribute", async () => {
@@ -60,16 +71,6 @@ describe("AttributeBar", () => {
     ).toBeInTheDocument();
   });
 
-  it("says in the popover when no row security uses the attribute", async () => {
-    setup({ attributes: [VENDOR] });
-
-    await userEvent.click(screen.getByRole("button", { name: /vendor/ }));
-
-    expect(
-      await screen.findByText("No permission rule uses this attribute."),
-    ).toBeInTheDocument();
-  });
-
   it("says a user's value comes from their tenant when the tenant has no name", async () => {
     setup({ attributes: [{ ...CATEGORY, source: "tenant" }] });
 
@@ -80,10 +81,15 @@ describe("AttributeBar", () => {
     ).toBeInTheDocument();
   });
 
-  it("hides the User attributes label while the attributes load", () => {
+  it("hides the User attributes used by rules label while the attributes load", () => {
     setup({ attributes: [], isLoading: true });
 
-    expect(screen.queryByText("User attributes:")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("toolbar", { name: "User attributes used by rules" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("User attributes used by rules:"),
+    ).not.toBeInTheDocument();
   });
 
   it("says on a group's chip how many of its members have the value", () => {

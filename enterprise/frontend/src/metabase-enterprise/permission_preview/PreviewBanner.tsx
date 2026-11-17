@@ -40,7 +40,7 @@ import {
   clearPreviewState,
   getPreviewUrl,
 } from "./preview-state";
-import { AttributeBar } from "./troubleshoot/AttributeBar";
+import { AttributeBar, getRuleAttributes } from "./troubleshoot/AttributeBar";
 import { WhyListSidesheet } from "./troubleshoot/WhyListSidesheet";
 import { parseOpenedItem } from "./troubleshoot/item-path";
 
@@ -159,6 +159,9 @@ export function PreviewBanner({ state }: { state: PreviewState }) {
         <PreviewBand
           variant="full-screen"
           whoName={whoName}
+          previewedUserId={
+            state.principalType === "user" ? state.principalId : undefined
+          }
           sentenceSection={
             state.principalType !== "user" && (
               <GroupPreviewInfo
@@ -240,21 +243,26 @@ export function PreviewBanner({ state }: { state: PreviewState }) {
               onClick={() => handlePanelToggle(false)}
             />
           </Group>
-          <Box
-            p="sm"
-            style={{ borderBottom: "1px solid var(--mb-color-border-neutral)" }}
-          >
-            <AttributeBar
-              isLabelOnOwnRow
-              principalType={state.principalType}
-              whoName={whoName}
-              attributes={attributes}
-              isLoading={isLoadingAttributes}
-              pickedValues={state.attributes}
-              groupMemberCount={groupMemberCount}
-              onPick={handlePick}
-            />
-          </Box>
+          {(isLoadingAttributes ||
+            getRuleAttributes(attributes).length > 0) && (
+            <Box
+              p="sm"
+              style={{
+                borderBottom: "1px solid var(--mb-color-border-neutral)",
+              }}
+            >
+              <AttributeBar
+                isLabelOnOwnRow
+                principalType={state.principalType}
+                whoName={whoName}
+                attributes={attributes}
+                isLoading={isLoadingAttributes}
+                pickedValues={state.attributes}
+                groupMemberCount={groupMemberCount}
+                onPick={handlePick}
+              />
+            </Box>
+          )}
           <Text fw="bold" px="sm" pt="sm" pb="xs">{t`View as`}</Text>
           <PrincipalList
             principal={principal}

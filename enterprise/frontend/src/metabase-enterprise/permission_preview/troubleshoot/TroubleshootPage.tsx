@@ -175,6 +175,9 @@ export function TroubleshootPage() {
           <PreviewBand
             variant="troubleshoot"
             whoName={preview != null ? whoName : null}
+            previewedUserId={
+              principal.type === "user" ? principal.id : undefined
+            }
             sentenceSection={
               principal.type !== "user" &&
               preview != null && (

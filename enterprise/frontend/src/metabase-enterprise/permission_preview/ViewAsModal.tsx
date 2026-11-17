@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
@@ -17,7 +17,7 @@ import {
   type PrincipalSection,
   usePrincipalSections,
 } from "./principal-sections";
-import { AttributeBar } from "./troubleshoot/AttributeBar";
+import { AttributeBar, getRuleAttributes } from "./troubleshoot/AttributeBar";
 import { useUnsavedEdits } from "./unsaved-edits";
 
 type ViewAsModalProps = {
@@ -112,26 +112,29 @@ export function ViewAsModal({
       <Stack gap="lg">
         <Text c="text-secondary">
           {hasEdits
-            ? t`See the app the way a user, group, or tenant sees it, in a new tab that includes your unsaved changes. The preview is read-only and saves nothing.`
-            : t`See the app the way a user, group, or tenant sees it, in this tab. The preview stays read-only until you exit it.`}
+            ? `${t`Opens a read-only preview in a new tab.`} ${getEditsSentence(edits.length)}`
+            : t`Opens a read-only preview in this tab.`}
         </Text>
         <PrincipalPicker value={principal} onChange={handlePrincipalChange} />
-        {pickedPrincipal != null && attributes.length > 0 && (
-          <Stack gap="xs">
-            <Text c="text-secondary" size="sm">
-              {getAttributesHint(pickedPrincipal.type)}
-            </Text>
-            <AttributeBar
-              key={`${pickedPrincipal.type}-${pickedPrincipal.id}`}
-              principalType={pickedPrincipal.type}
-              whoName={getRowName(sections, pickedPrincipal.id)}
-              attributes={attributes}
-              isLoading={isLoadingAttributes}
-              pickedValues={pickedValues}
-              onPick={handlePick}
-            />
-          </Stack>
-        )}
+        {pickedPrincipal != null &&
+          getRuleAttributes(attributes).length > 0 && (
+            <Stack gap="xs">
+              {pickedPrincipal.type !== "user" && (
+                <Text c="text-secondary" size="sm">
+                  {getAttributesHint(pickedPrincipal.type)}
+                </Text>
+              )}
+              <AttributeBar
+                key={`${pickedPrincipal.type}-${pickedPrincipal.id}`}
+                principalType={pickedPrincipal.type}
+                whoName={getRowName(sections, pickedPrincipal.id)}
+                attributes={attributes}
+                isLoading={isLoadingAttributes}
+                pickedValues={pickedValues}
+                onPick={handlePick}
+              />
+            </Stack>
+          )}
         {error != null && (
           <Text c="feedback-negative">{getErrorMessage(error)}</Text>
         )}
@@ -155,12 +158,18 @@ function getTitle(entityName?: string) {
   return entityName ? t`View “${entityName}” as…` : t`View app as…`;
 }
 
-function getAttributesHint(type: PrincipalType) {
+function getEditsSentence(count: number) {
+  return ngettext(
+    msgid`Includes your ${count} unsaved change.`,
+    `Includes your ${count} unsaved changes.`,
+    count,
+  );
+}
+
+function getAttributesHint(type: Exclude<PrincipalType, "user">) {
   switch (type) {
     case "group":
       return t`Pick the user attribute values to preview this group with.`;
-    case "user":
-      return t`Their user attributes. Change any value to preview with a different one; their saved values stay the same.`;
     case "tenant":
       return t`This tenant's user attributes.`;
   }
