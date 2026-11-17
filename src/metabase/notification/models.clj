@@ -43,6 +43,7 @@
                :model/NotificationCard]]
   (doto model
     (derive :metabase/model)
+    (derive :hook/change-log)
     (derive (if (= model :model/NotificationSubscription)
               :hook/created-at-timestamped?
               :hook/timestamped?))))

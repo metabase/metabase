@@ -37,6 +37,7 @@
   (derive :metabase/model)
   (derive :hook/updated-at-timestamped?)
   (derive :hook/entity-id)
+  (derive :hook/change-log)
   (derive ::mi/create-policy.superuser))
 
 (events/derive! :event/user-create :metabase/event)

@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.cache.core :as cache]
+   [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.dashboards.db :as dashboards.db]
@@ -52,7 +53,11 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies))
+  (derive :hook/dependencies)
+  (derive :hook/change-log))
+
+(methodical/defmethod change-log/ignored-columns :model/Dashboard [_model]
+  #{:last_viewed_at :view_count})
 
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})

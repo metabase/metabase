@@ -1041,6 +1041,28 @@
                (metabot.persistence/extract-usage parts)))
         (is (= 730 (metabot.persistence/extract-context-tokens parts)))))))
 
+(defn- llm-span-usages
+  "The `:ai/usage` of each `llm` span in `spans`, in the order of the iterations."
+  [spans]
+  (->> (map :attributes spans)
+       (sort-by :ai/iteration)
+       (map :ai/usage)))
+
+(deftest step-limit-reply-eval-usage-test
+  (testing "the last call of a turn at its step limit has its own usage on its eval span, and the turn has the sum"
+    (mt/as-admin
+      (let [reply           #(mut/mock-llm-response [{:type :text :text "The customer table has no link to orders."}
+                                                     {:type  :usage
+                                                      :usage {:promptTokens 700 :completionTokens 30}}])
+            {:keys [trace]} (ait/capturing (step-limit-turn! :document-generate-content reply))
+            turn            (first trace)]
+        (is (= [{test-provider {:promptTokens 100 :completionTokens 20}}
+                {test-provider {:promptTokens 100 :completionTokens 20}}
+                {test-provider {:promptTokens 700 :completionTokens 30}}]
+               (llm-span-usages (:children turn))))
+        (is (= {test-provider {:promptTokens 900 :completionTokens 70}}
+               (get-in turn [:attributes :ai/usage])))))))
+
 (def ^:private partial-reply
   "The text that the last call streams before it stops."
   "I couldn't chart revenue by customer segment because")
@@ -1631,6 +1653,12 @@
                   (is (= 2 (count llms)))
                   (is (every? #(= :llm (:type %)) llms))
                   (is (every? #(= (:id turn) (:parent-id %)) llms)))
+                (testing "each llm.call has the usage of its own call, and the turn has the sum"
+                  (is (= [{test-provider {:promptTokens 100 :completionTokens 20}}
+                          {test-provider {:promptTokens 200 :completionTokens 10}}]
+                         (llm-span-usages llms)))
+                  (is (= {test-provider {:promptTokens 300 :completionTokens 30}}
+                         (get-in turn [:attributes :ai/usage]))))
                 (testing "the search tool span nests under the llm.call it ran in"
                   (is (= :tool (:type search)))
                   ;; the decoded tool arguments are recorded on the span (metabase.metabot.self.core)

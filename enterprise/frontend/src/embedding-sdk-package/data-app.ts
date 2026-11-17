@@ -13,11 +13,11 @@ defineGlobalDependencies();
 export {
   DataAppRouter,
   type DataAppRouterProps,
-} from "./components/public/DataAppRouter";
+} from "./data-apps/public/components/DataAppRouter";
 export {
   DataAppLink,
   type DataAppLinkProps,
-} from "./components/public/DataAppLink";
+} from "./data-apps/public/components/DataAppLink";
 export { DateRangeCalendar } from "./components/public/DateRangeCalendar";
 export { DateRangePopover } from "./components/public/DateRangePopover";
 export type {
@@ -40,7 +40,7 @@ export { copy } from "./lib/public/copy";
 export {
   useDataAppLocation,
   type UseDataAppLocationResult,
-} from "./hooks/public/use-data-app-location";
+} from "./data-apps/public/hooks/use-data-app-location";
 export { defineQuery } from "./hooks/public/use-metabase-query/define-query";
 export { defineAction } from "./hooks/public/use-action/define-action";
 export { useDataAppAction as useAction } from "./hooks/public/use-action";
