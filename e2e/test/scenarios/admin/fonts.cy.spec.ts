@@ -7,6 +7,23 @@ const EVERY_CODEPOINT = "U+0-10FFFF";
 // How the browser writes back the range of the chunk a latin page draws from.
 const LATIN_CHUNK_RANGE_START = "U+20-FF";
 
+const charactersOutside = (unicodeRange: string, text: string) => {
+  const ranges = unicodeRange.split(",").map((token) => {
+    const [from, to = from] = token.trim().replace("U+", "").split("-");
+    return { from: parseInt(from, 16), to: parseInt(to, 16) };
+  });
+  const codePoints = Array.from(text, (character) => character.codePointAt(0))
+    .filter((codePoint) => codePoint !== undefined)
+    .filter((codePoint) => codePoint >= 0x20)
+    .filter(
+      (codePoint) =>
+        !ranges.some(({ from, to }) => from <= codePoint && codePoint <= to),
+    );
+  return [...new Set(codePoints)].map(
+    (codePoint) => `U+${codePoint.toString(16).toUpperCase()}`,
+  );
+};
+
 const bundledFaces = (win: Window) => {
   const faces: FontFace[] = [];
   win.document.fonts.forEach((face) => faces.push(face));
@@ -43,21 +60,27 @@ describe("scenarios > admin > fonts", () => {
     cy.visit("/");
     H.main().should("be.visible");
 
-    cy.window()
-      .then((win) => win.document.fonts.ready.then(() => bundledFaces(win)))
-      .then((faces) => {
-        const downloadedRanges = faces
-          .filter((face) => face.status === "loaded")
-          .map((face) => face.unicodeRange);
+    cy.window().then((win) =>
+      win.document.fonts.ready.then(() => {
+        const downloaded = bundledFaces(win).filter(
+          (face) => face.status === "loaded",
+        );
+        const scriptChunks = downloaded.filter(
+          (face) => !face.unicodeRange.startsWith(LATIN_CHUNK_RANGE_START),
+        );
+        const latinChunk = downloaded.find((face) =>
+          face.unicodeRange.startsWith(LATIN_CHUNK_RANGE_START),
+        );
 
-        expect(downloadedRanges, "the page drew text in a bundled face").not.to
-          .be.empty;
+        expect(latinChunk, "the page drew text in a bundled face").to.exist;
         expect(
-          downloadedRanges.filter(
-            (range) => !range.startsWith(LATIN_CHUNK_RANGE_START),
-          ),
-          "chunks downloaded for a script the page does not render",
-        ).to.be.empty;
-      });
+          scriptChunks.map((face) => `${face.family} ${face.weight}`),
+          `script chunks downloaded, for these characters on the page: ${charactersOutside(
+            latinChunk?.unicodeRange ?? "",
+            win.document.body.innerText,
+          ).join(" ")}`,
+        ).to.deep.equal([]);
+      }),
+    );
   });
 });
