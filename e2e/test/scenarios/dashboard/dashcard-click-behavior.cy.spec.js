@@ -2205,8 +2205,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior > native ques
         H.editDashboard();
         H.showDashcardVisualizationSettings();
         H.modal().within(() => {
-          cy.findByRole("button", { name: "Reset to defaults" }).click();
-          cy.findByRole("button", { name: "Done", exact: true }).click();
+          cy.findByText("Reset to defaults").click();
+          cy.button("Done").click();
         });
         H.saveDashboard();
         cy.reload();
