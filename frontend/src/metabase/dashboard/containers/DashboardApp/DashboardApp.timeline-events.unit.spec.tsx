@@ -967,9 +967,10 @@ describe("DashboardApp > timeline events", () => {
       source: "dashboard",
       timestamp: expect.stringMatching(/^2027-12-15/),
     });
-    await waitFor(() => expect(getTimelineCheckbox("Releases")).toBeChecked());
+    // the created event is listed once the timelines are fetched again
+    await waitFor(() => expect(getTimelineEventCheckbox("RC2")).toBeChecked());
+    expect(getTimelineCheckbox("Releases")).toBeChecked();
     expect(getTimelineEventCheckbox("RC1")).toBeChecked();
-    expect(getTimelineEventCheckbox("RC2")).toBeChecked();
     expect(await findEventChip(card.name, "RC1")).toBeInTheDocument();
     expect(await findEventChip(card.name, "RC2")).toBeInTheDocument();
   });

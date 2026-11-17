@@ -92,6 +92,8 @@ describe("PublicOrEmbeddedDashboardPage (public link)", () => {
       await userEvent.keyboard("{Enter}");
 
       const popover = await screen.findByTestId("timeline-event-popover");
+      // the keyboard-opened details take the focus, so Escape has to return it
+      await waitFor(() => expect(chip).not.toHaveFocus());
       expect(within(popover).getByText(RC1.name)).toBeInTheDocument();
       expect(
         within(popover).getByText("The first release candidate is ready."),
@@ -128,6 +130,8 @@ describe("PublicOrEmbeddedDashboardPage (public link)", () => {
       await userEvent.keyboard("{Enter}");
 
       const popover = await screen.findByTestId("timeline-event-popover");
+      // the keyboard-opened details take the focus, so Escape has to return it
+      await waitFor(() => expect(chip).not.toHaveFocus());
       expect(within(popover).getByText(RC1.name)).toBeInTheDocument();
       expect(within(popover).getByText(RC2.name)).toBeInTheDocument();
       expect(within(popover).queryByText("See all")).not.toBeInTheDocument();
