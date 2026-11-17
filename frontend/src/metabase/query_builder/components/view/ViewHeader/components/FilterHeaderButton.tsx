@@ -1,25 +1,13 @@
-import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
-import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
-import type { FilterChangeOpts } from "metabase/querying/filters/components/FilterPicker/types";
-import { useDispatch } from "metabase/redux";
 import type { QueryBuilderMode } from "metabase/redux/store";
-import {
-  Badge,
-  Button,
-  Icon,
-  Popover,
-  Tooltip,
-  useStablePopoverPosition,
-} from "metabase/ui";
+import { Badge, Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import { updateQuestion } from "../../../../actions";
 import ViewTitleHeaderS from "../ViewTitleHeader.module.css";
 
 interface FilterHeaderButtonProps {
@@ -27,6 +15,7 @@ interface FilterHeaderButtonProps {
   isExpanded: boolean;
   onExpand: () => void;
   onCollapse: () => void;
+  onAddFilter: () => void;
 }
 
 export function FilterHeaderButton({
@@ -34,84 +23,67 @@ export function FilterHeaderButton({
   isExpanded,
   onExpand,
   onCollapse,
+  onAddFilter,
 }: FilterHeaderButtonProps) {
-  const dispatch = useDispatch();
-  const [isOpened, { close, toggle }] = useDisclosure();
-  const stablePositionProps = useStablePopoverPosition("bottom-start");
   const query = question.query();
   const items = useMemo(() => (query ? getFilterItems(query) : []), [query]);
   const hasFilters = items.length > 0;
-  const label = isExpanded ? t`Hide filters` : t`Show filters`;
-
-  const handleQueryChange = (newQuery: Lib.Query, opts: FilterChangeOpts) => {
-    const newQuestion = question.setQuery(newQuery);
-    dispatch(
-      updateQuestion(newQuestion, { run: opts.run, shouldUpdateUrl: true }),
-    );
-  };
+  const label = getButtonLabel(hasFilters, isExpanded);
 
   useRegisterShortcut([
     {
       id: "query-builder-visualization-open-filter",
-      perform: toggle,
+      perform: onAddFilter,
+    },
+    // Prototype: Shift+F only hides the bar, and keeps the filters.
+    {
+      id: "query-builder-visualization-close-filter",
+      perform: onCollapse,
     },
   ]);
 
   return (
-    <Button.Group>
-      <Popover
-        position={stablePositionProps.position}
-        middlewares={stablePositionProps.middlewares}
-        onClose={stablePositionProps.onClose}
-        opened={isOpened}
-        onDismiss={close}
-      >
-        <Popover.Target>
-          <Button
-            classNames={{
-              root: ViewTitleHeaderS.ActionButtonRoot,
-              label: ViewTitleHeaderS.ActionButtonLabel,
-              section: ViewTitleHeaderS.ActionButtonSection,
-            }}
-            leftSection={<Icon name={hasFilters ? "filter_plus" : "filter"} />}
-            onClick={toggle}
-            data-testid="question-filter-header"
+    <Button
+      classNames={{
+        root: ViewTitleHeaderS.ActionButtonRoot,
+        label: ViewTitleHeaderS.ActionButtonLabel,
+        section: ViewTitleHeaderS.ActionButtonSection,
+      }}
+      leftSection={<Icon name="filter" />}
+      rightSection={
+        hasFilters && (
+          <Badge
+            size="xs"
+            variant="filled"
+            color="neutral"
+            bg={isExpanded ? "core-filter-strong" : undefined}
+            c={isExpanded ? "text-primary-inverse" : undefined}
+            style={{ cursor: "inherit" }}
           >
-            {t`Filter`}
-          </Button>
-        </Popover.Target>
-        <Popover.Dropdown>
-          <MultiStageFilterPicker
-            query={query}
-            canAppendStage={question.display() !== "pivot"}
-            onChange={handleQueryChange}
-            onClose={close}
-          />
-        </Popover.Dropdown>
-      </Popover>
-      {hasFilters && (
-        <Tooltip label={label}>
-          <Button
-            aria-label={label}
-            onClick={isExpanded ? onCollapse : onExpand}
-            data-testid="filters-visibility-control"
-            data-expanded={isExpanded}
-          >
-            <Badge
-              size="xs"
-              variant="filled"
-              color="neutral"
-              bg={isExpanded ? "core-filter-strong" : undefined}
-              c={isExpanded ? "text-primary-inverse" : undefined}
-              style={{ cursor: "inherit" }}
-            >
-              {items.length}
-            </Badge>
-          </Button>
-        </Tooltip>
-      )}
-    </Button.Group>
+            {items.length}
+          </Badge>
+        )
+      }
+      // With no filters there is nothing to show: the click opens the bar
+      // with its caret, as the shortcut does.
+      onClick={!hasFilters ? onAddFilter : isExpanded ? onCollapse : onExpand}
+      aria-expanded={isExpanded}
+      data-testid="question-filter-header"
+    >
+      {label}
+    </Button>
   );
+}
+
+/**
+ * Prototype: the button says what a click does. With no filters it adds one;
+ * with filters it shows or hides the filter bar.
+ */
+function getButtonLabel(hasFilters: boolean, isExpanded: boolean) {
+  if (!hasFilters) {
+    return t`Filter`;
+  }
+  return isExpanded ? t`Hide filters` : t`Show filters`;
 }
 
 interface RenderCheckOpts {

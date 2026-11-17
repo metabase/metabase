@@ -44,6 +44,7 @@ import bubble_component from "./bubble.svg?component";
 import bug_component from "./bug.svg?component";
 import burger_component from "./burger.svg?component";
 import cake_component from "./cake.svg?component";
+import calculator_component from "./calculator.svg?component";
 import calendar_component from "./calendar.svg?component";
 import camera_component from "./camera.svg?component";
 import chart_layout_default_component from "./chart_layout_default.svg?component";
@@ -273,6 +274,7 @@ import telescope_component from "./telescope.svg?component";
 import test_tube_component from "./test_tube.svg?component";
 import text_bold_component from "./text_bold.svg?component";
 import text_italic_component from "./text_italic.svg?component";
+import text_quote_component from "./text_quote.svg?component";
 import text_strike_component from "./text_strike.svg?component";
 import thumbs_down_component from "./thumbs_down.svg?component";
 import thumbs_up_component from "./thumbs_up.svg?component";
@@ -351,6 +353,7 @@ export const Icons: Record<IconName, React.FC> = {
   bubble: bubble_component,
   burger: burger_component,
   cake: cake_component,
+  calculator: calculator_component,
   calendar: calendar_component,
   camera: camera_component,
   chart_layout_default: chart_layout_default_component,
@@ -577,6 +580,7 @@ export const Icons: Record<IconName, React.FC> = {
   telescope: telescope_component,
   text_bold: text_bold_component,
   text_italic: text_italic_component,
+  text_quote: text_quote_component,
   text_strike: text_strike_component,
   thumbs_down: thumbs_down_component,
   thumbs_up: thumbs_up_component,

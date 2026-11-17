@@ -13,6 +13,7 @@ import {
   cardQueryIsEquivalent,
 } from "metabase/common/utils/card";
 import { selectQuestionFromCard } from "metabase/metadata-store";
+import { isSlowData } from "metabase/prototype";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
@@ -21,7 +22,7 @@ import {
   REVERT_CARD_TO_REVISION,
   questionUpdated,
 } from "metabase/redux/query-builder";
-import type { Dispatch, GetState } from "metabase/redux/store";
+import type { Dispatch, GetState, State } from "metabase/redux/store";
 import {
   LIST_TIMELINES_REQUEST,
   getTransformedTimelines,
@@ -48,6 +49,7 @@ import {
   trackNewQuestionSaved,
   trackQuestionTimelineEventsSaved,
 } from "../../analytics";
+import { isFilterOnlyChange } from "../../components/view/FilterAutoApply/utils";
 import { updateModelIndexes } from "../../model-indexes/actions";
 import {
   API_CREATE_QUESTION,
@@ -196,6 +198,20 @@ export const navigateToNewCardInsideQB = createThunkAction(
         const url = Urls.serializedQuestion(cardAfterClick);
         if (Urls.shouldOpenInBlankWindow(url, { blankOnMetaOrCtrlKey: true })) {
           dispatch(openUrl(url));
+        } else if (isSlowFilterDrill(getState(), cardAfterClick)) {
+          // Prototype: on slow data, a drill that only changes the filters
+          // keeps the result, and the user reruns the question with the run
+          // button, like the other filter changes.
+          dispatch(onCloseSidebars());
+          dispatch(
+            updateQuestion(
+              selectQuestionFromCard(getState(), {
+                ...cardAfterClick,
+                type: "question",
+              }),
+              { run: false, shouldUpdateUrl: true },
+            ),
+          );
         } else {
           dispatch(onCloseSidebars());
           if (!cardQueryIsEquivalent(previousCard, adjustedNextCard)) {
@@ -217,6 +233,15 @@ export const navigateToNewCardInsideQB = createThunkAction(
     };
   },
 );
+
+function isSlowFilterDrill(state: State, nextCard: Card) {
+  const question = getQuestion(state);
+  if (question == null) {
+    return false;
+  }
+  const nextQuery = selectQuestionFromCard(state, nextCard).query();
+  return isSlowData() && isFilterOnlyChange(question.query(), nextQuery);
+}
 
 export const setQuery =
   (query: Lib.Query) => (dispatch: Dispatch, getState: GetState) => {

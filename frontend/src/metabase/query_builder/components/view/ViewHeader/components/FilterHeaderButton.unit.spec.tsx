@@ -59,6 +59,7 @@ function setup({
       isExpanded={isExpanded}
       onExpand={onExpand}
       onCollapse={onCollapse}
+      onAddFilter={jest.fn()}
     />,
   );
 

@@ -54,6 +54,8 @@ export type QueryVisualizationProps = VisualizationPassThroughProps & {
 
   runQuestionQuery?: () => void;
   cancelQuery?: () => void;
+  /** Prototype: puts back the question of the result, without a rerun. */
+  onResetChanges?: () => void;
   navigateToNewCardInsideQB?: (opts: {
     nextCard: SeriesCard;
     previousCard: SeriesCard;

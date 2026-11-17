@@ -8,6 +8,7 @@ import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
+import { useReportDraftFilter } from "../use-report-draft-filter";
 
 import { useDefaultFilter } from "./hooks";
 
@@ -21,6 +22,7 @@ export function DefaultFilterPicker({
   withSubmitButton,
   onBack,
   onChange,
+  onDraftChange,
   readOnly,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(
@@ -36,6 +38,10 @@ export function DefaultFilterPicker({
       filter,
       hasInitialOperator: true,
     });
+
+  useReportDraftFilter(onDraftChange, { operator }, () =>
+    getFilterClause(operator),
+  );
 
   const handleOperatorChange = (operator: string) => {
     const option = availableOptions.find(
@@ -76,7 +82,7 @@ export function DefaultFilterPicker({
       />
       <div>
         <Radio.Group value={operator} onChange={handleOperatorChange}>
-          <Stack p="lg" gap="sm">
+          <Stack px="xl" py="lg" gap="sm">
             {availableOptions.map((option) => (
               <Radio
                 key={option.operator}
