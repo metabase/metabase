@@ -155,9 +155,14 @@ describe("QueryBuilder > revision history", () => {
 });
 
 describe("QueryBuilder > last edit info", () => {
-  const CURRENT_USER = createMockUser();
+  const CURRENT_USER = createMockUser({
+    id: 7,
+    first_name: "Testy",
+    last_name: "McTestface",
+    email: "testy@metabase.test",
+  });
   const OTHER_EDITOR = createMockUser({
-    id: CURRENT_USER.id + 1,
+    id: 8,
     first_name: "Robert",
     last_name: "Tableton",
     email: "robert@metabase.test",
@@ -207,7 +212,7 @@ describe("QueryBuilder > last edit info", () => {
     });
     setupListNotificationEndpoints({ card_id: card.id }, []);
 
-    await setup({ card });
+    await setup({ card, currentUser: CURRENT_USER });
 
     return { card };
   }
