@@ -3193,6 +3193,15 @@
                  (mt/user-http-request :rasta :post 403 "collection"
                                        {:name "Bar" :parent_id (u/the-id lucky-collection)}))))))))
 
+(deftest blank-collection-name-test
+  (testing "a whitespace-only name is refused on create and update"
+    (is (=? {:errors {:name "value must be a non-blank string."}}
+            (mt/user-http-request :crowberto :post 400 "collection" {:name "   "})))
+    (mt/with-temp [:model/Collection {:keys [id]} {}]
+      (is (contains? (:errors (mt/user-http-request :crowberto :put 400 (str "collection/" id) {:name "   "})) :name))
+      (is (=? {:name "Renamed"}
+              (mt/user-http-request :crowberto :put 200 (str "collection/" id) {:name "Renamed"}))))))
+
 (deftest create-collection-different-namespace-test
   (testing "POST /api/collection"
     (testing "\nShould be able to create a Collection in a different namespace"

@@ -69,6 +69,19 @@
               (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
                                                                     :definition {:aggregation [[:count]]}}))))))
 
+(deftest blank-measure-name-test
+  (testing "a whitespace-only name is refused on create and update"
+    (is (=? {:errors {:name "value must be a non-blank string."}}
+            (mt/user-http-request :crowberto :post 400 "measure"
+                                  {:name       "   "
+                                   :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))})))
+    (mt/with-temp [:model/Measure {:keys [id]} {}]
+      (is (contains? (:errors (mt/user-http-request :crowberto :put 400 (str "measure/" id)
+                                    {:name "   " :revision_message "blank"})) :name))
+      (is (=? {:name "Renamed"}
+              (mt/user-http-request :crowberto :put 200 (str "measure/" id)
+                                    {:name "Renamed" :revision_message "rename"}))))))
+
 (deftest create-measure-test
   (testing "POST /api/measure"
     (is (=? {:name        "A Measure"

@@ -187,6 +187,14 @@
 (defmacro ^:private with-temp-native-card-with-params {:style/indent 1} [[db-binding card-binding] & body]
   `(do-with-temp-native-card-with-params (fn [~(or db-binding '_) ~(or card-binding '_)] ~@body)))
 
+(deftest blank-card-name-test
+  (testing "a whitespace-only name is refused on create and update"
+    (is (contains? (:errors (mt/user-http-request :crowberto :post 400 "card" {:name "   "})) :name))
+    (mt/with-temp [:model/Card {:keys [id]} {}]
+      (is (contains? (:errors (mt/user-http-request :crowberto :put 400 (str "card/" id) {:name "   "})) :name))
+      (is (=? {:name "Renamed"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" id) {:name "Renamed"}))))))
+
 (deftest ^:parallel run-query-with-parameters-test
   (testing "POST /api/card/:id/query"
     (testing "should respect `:parameters`"

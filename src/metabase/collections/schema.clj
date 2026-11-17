@@ -150,10 +150,13 @@
    "trash" "tenant-specific-root-collection" "instance-analytics"
    "library" "library-data" "library-metrics" "library-dashboards"])
 
+(mr/def ::collection.name
+  ms/NonBlankString)
+
 (mr/def ::collection.update
   "What an update (or insert) of a Collection accepts: every column of `:collection` except `id`, all optional."
   [:map {:closed true}
-   [:name                 {:optional true} [:maybe :string]]
+   [:name                 {:optional true} [:maybe ::collection.name]]
    [:description          {:optional true} [:maybe :string]]
    [:archived             {:optional true} [:maybe :boolean]]
    [:location             {:optional true} [:maybe :string]]

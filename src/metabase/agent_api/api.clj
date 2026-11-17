@@ -19,6 +19,7 @@
    [metabase.channel.urls :as channel.urls]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.schema :as collections.schema]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
@@ -38,6 +39,7 @@
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
@@ -916,7 +918,7 @@
 
 (mr/def ::create-question-request
   [:map {:closed true}
-   [:name                   ms/NonBlankString]
+   [:name                   ::queries.schema/card.name]
    [:query                  ms/NonBlankString]
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
@@ -967,7 +969,7 @@
 
 (mr/def ::create-metric-request
   [:map {:closed true}
-   [:name                   ms/NonBlankString]
+   [:name                   ::queries.schema/card.name]
    [:query                  ms/NonBlankString]
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
@@ -1035,7 +1037,7 @@
   passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID
   resolved upstream in the MCP layer) and must still describe a valid metric."
   [:map {:closed true}
-   [:name                   {:optional true} [:maybe ms/NonBlankString]]
+   [:name                   {:optional true} [:maybe ::queries.schema/card.name]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
@@ -1094,7 +1096,7 @@
   passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID
   resolved upstream in the MCP layer)."
   [:map {:closed true}
-   [:name                   {:optional true} [:maybe ms/NonBlankString]]
+   [:name                   {:optional true} [:maybe ::queries.schema/card.name]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
@@ -1636,7 +1638,7 @@
   the internal `:parent_id` field to make the LLM-facing API less ambiguous (the caller is
   saying \"put it under this parent\", not echoing back a server-set field)."
   [:map {:closed true}
-   [:name                 ms/NonBlankString]
+   [:name                 ::collections.schema/collection.name]
    [:description          {:optional true} [:maybe :string]]
    [:parent_collection_id {:optional true} [:maybe ms/PositiveInt]]])
 

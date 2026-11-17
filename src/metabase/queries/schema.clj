@@ -173,12 +173,15 @@
   "One entry of the `:dimension_mappings` column of a Card, decoded."
   ::lib-metric.schema/dimension-mapping)
 
+(mr/def ::card.name
+  ms/NonBlankString)
+
 (mr/def ::card.update
   "What an update (or insert) of a Card accepts: every column of `:report_card` except `id`, all optional, plus `:verified-result-metadata?` consumed by the model's hooks."
   [:map {:closed true}
    [:created_at                                {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                                {:optional true} [:maybe [:or ms/TemporalInstant [:= :updated_at]]]]
-   [:name                                      {:optional true} [:maybe :string]]
+   [:name                                      {:optional true} [:maybe ::card.name]]
    [:description                               {:optional true} [:maybe :string]]
    [:display                                   {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:dataset_query                             {:optional true} [:maybe ::card.dataset-query]]

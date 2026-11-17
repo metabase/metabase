@@ -14,6 +14,7 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.collections.schema :as collections.schema]
    [metabase.documents.core :as documents]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
@@ -485,7 +486,7 @@
   [_route-params
    _query-params
    body :- [:map {:closed true}
-            [:name            ms/NonBlankString]
+            [:name            ::collections.schema/collection.name]
             [:description     {:optional true} [:maybe ms/NonBlankString]]
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
             [:namespace       {:optional true} [:maybe ms/NonBlankString]]
@@ -609,7 +610,7 @@
                     [:id ms/PositiveInt]]
    _query-params
    collection-updates :- [:map {:closed true}
-                          [:name             {:optional true} [:maybe ms/NonBlankString]]
+                          [:name             {:optional true} [:maybe ::collections.schema/collection.name]]
                           [:description      {:optional true} [:maybe ms/NonBlankString]]
                           [:archived         {:optional true} [:maybe ms/BooleanValue]]
                           [:parent_id        {:optional true} [:maybe ms/PositiveInt]]

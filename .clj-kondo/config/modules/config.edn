@@ -1496,6 +1496,7 @@
            lib.metadata
            lib.schema
            mcp.oauth-server
+           measures.schema
            metabot
            metabot.agent-api
            metabot.llm
@@ -1510,6 +1511,7 @@
            queries
            query-processor
            request
+           segments.schema
            server
            session
            settings

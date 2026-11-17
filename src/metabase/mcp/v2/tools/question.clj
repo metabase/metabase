@@ -22,6 +22,7 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -518,7 +519,7 @@
                                                              "\"id\".")}]]]
                         [:required {:optional true} [:maybe :boolean]]
                         [:default {:optional true} [:maybe :any]]]]]]]]]
-   [:name {:optional true} [:maybe [:string {:min 1 :description "Question title. Required on create."}]]]
+   [:name {:optional true :description "Question title. Required on create."} [:maybe ::queries.schema/card.name]]
    [:description {:optional true}
     [:maybe [:string {:description "One or two sentences on what the question answers."}]]]
    [:collection_id {:optional true}

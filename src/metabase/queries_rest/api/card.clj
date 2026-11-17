@@ -447,7 +447,7 @@
 (def ^:private CardCreateSchema
   "Schema for creating a new card"
   [:map {:closed true}
-   [:name                   ms/NonBlankString]
+   [:name                   ::queries.schema/card.name]
    [:type                   {:optional true} [:maybe ::queries.schema/card.type]]
    [:dataset_query          ::lib-be.schema/maybe-legacy-query]
    ;; TODO: Make entity_id a NanoID regex schema?
@@ -533,7 +533,7 @@
 ;;; TODO -- merge this into `:metabase.queries.schema/card`
 (def ^:private CardUpdateSchema
   [:map {:closed true}
-   [:name                   {:optional true} [:maybe ms/NonBlankString]]
+   [:name                   {:optional true} [:maybe ::queries.schema/card.name]]
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-query]]

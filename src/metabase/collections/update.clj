@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.schema :as collections.schema]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    ;; `metabase.notification.card`, not `notification.core`: `core` pulls the payload/send chain,
@@ -30,7 +31,7 @@
   "The arguments to an update-collection call — what the public API surface accepts. Absent keys
   are left alone; `:archived` and `:parent_id` are acted on only when present."
   [:map {:closed true}
-   [:name            {:optional true} [:maybe ms/NonBlankString]]
+   [:name            {:optional true} [:maybe ::collections.schema/collection.name]]
    [:description     {:optional true} [:maybe ms/NonBlankString]]
    [:archived        {:optional true} [:maybe :boolean]]
    [:parent_id       {:optional true} [:maybe ms/PositiveInt]]

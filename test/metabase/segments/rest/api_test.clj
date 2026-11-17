@@ -78,6 +78,19 @@
               (mt/user-http-request :crowberto :post 400 "segment" {:name       "abc"
                                                                     :definition "foobar"}))))))
 
+(deftest blank-segment-name-test
+  (testing "a whitespace-only name is refused on create and update"
+    (is (=? {:errors {:name "value must be a non-blank string."}}
+            (mt/user-http-request :crowberto :post 400 "segment"
+                                  {:name       "   "
+                                   :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :id) 20)})))
+    (mt/with-temp [:model/Segment {:keys [id]} {}]
+      (is (contains? (:errors (mt/user-http-request :crowberto :put 400 (str "segment/" id)
+                                    {:name "   " :revision_message "blank"})) :name))
+      (is (=? {:name "Renamed"}
+              (mt/user-http-request :crowberto :put 200 (str "segment/" id)
+                                    {:name "Renamed" :revision_message "rename"}))))))
+
 (deftest create-segment-test
   (doseq [[format-name definition-fn] {"MBQL4" (partial mbql4-segment-definition (mt/id :users))
                                        "MBQL5" (partial mbql5-segment-definition (mt/id :users))}]

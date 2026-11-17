@@ -35,7 +35,7 @@
   [_route-params
    _query-params
    body :- [:map {:closed true}
-            [:name        ms/NonBlankString]
+            [:name        ::segments.schema/segment.name]
             [:definition  ::segments.schema/definition]
             [:description {:optional true} [:maybe :string]]]]
   (create-segment! body))
@@ -93,7 +93,7 @@
                     [:id ms/PositiveInt]]
    _query-params
    body :- [:map {:closed true}
-            [:name                    {:optional true} [:maybe ms/NonBlankString]]
+            [:name                    {:optional true} [:maybe ::segments.schema/segment.name]]
             [:definition              {:optional true} [:maybe ::segments.schema/definition]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]

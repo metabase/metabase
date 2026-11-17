@@ -49,7 +49,7 @@
   [_route-params
    _query-params
    body :- [:map {:closed true}
-            [:name        ms/NonBlankString]
+            [:name        ::measures.schema/measure.name]
             [:definition  ::measures.schema/definition]
             [:description {:optional true} [:maybe :string]]]]
   (create-measure! body))
@@ -113,7 +113,7 @@
                     [:id ms/PositiveInt]]
    _query-params
    body :- [:map {:closed true}
-            [:name                    {:optional true} [:maybe ms/NonBlankString]]
+            [:name                    {:optional true} [:maybe ::measures.schema/measure.name]]
             [:definition              {:optional true} [:maybe ::measures.schema/definition]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
