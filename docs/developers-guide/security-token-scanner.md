@@ -1,3 +1,7 @@
+---
+summary: Catch leaked API keys and secrets before they get committed, with a scanner that runs as a git pre-commit hook.
+---
+
 # Security Token Scanner
 
 Security token scanner detects potentially leaked API keys and secrets in the Metabase codebase. Runs automatically as a git precommit hook on staged files.

@@ -1382,66 +1382,6 @@ LIMIT
     });
   });
 
-  describe("disconnected database", () => {
-    it("should warn about transforms when deleting a database and show disconnected banner on transform pages", () => {
-      cy.log("create a transform");
-      createMbqlTransform({ visitTransform: false });
-
-      cy.log("go to admin and delete the writable database");
-      cy.intercept("GET", "/api/database/*/usage_info").as("usageInfo");
-      cy.intercept("DELETE", "/api/database/*").as("deleteDb");
-      cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
-      cy.button("Remove this database").click();
-      cy.wait("@usageInfo");
-
-      cy.log(
-        "verify the delete modal warns about transforms that will stop working",
-      );
-      H.modal().within(() => {
-        cy.findByLabelText(/1 transform will stop working/)
-          .should("not.be.checked")
-          .click()
-          .should("be.checked");
-        cy.findByTestId("database-name-confirmation-input").type(DB_NAME);
-        cy.findByText("Delete this DB connection").click();
-        cy.wait("@deleteDb");
-      });
-
-      cy.log(
-        "visit the transform query page and verify the disconnected banner",
-      );
-      cy.visit("/data-studio/transforms/1");
-      verifyDisconnectedDatabaseBanner();
-
-      cy.log("edit definition button should not be visible");
-      H.DataStudio.Transforms.editDefinitionButton().should("not.exist");
-
-      cy.log(
-        "visit the run page and verify the disconnected banner is visible",
-      );
-      H.DataStudio.Transforms.runTab().click();
-      verifyDisconnectedDatabaseBanner();
-
-      cy.log(
-        "visit the settings page and verify the disconnected banner is visible",
-      );
-      H.DataStudio.Transforms.settingsTab().click();
-      verifyDisconnectedDatabaseBanner();
-
-      cy.log(
-        "visit the inspect page and verify the disconnected banner is visible",
-      );
-      H.DataStudio.Transforms.inspectTab().click();
-      verifyDisconnectedDatabaseBanner();
-
-      cy.log(
-        "visit the dependencies page and verify the disconnected banner is visible",
-      );
-      H.DataStudio.Transforms.dependenciesTab().click();
-      verifyDisconnectedDatabaseBanner();
-    });
-  });
-
   describe("cancelation", () => {
     function createSlowTransform(seconds: number = 100) {
       H.createTransform(
@@ -2041,16 +1981,32 @@ LIMIT
       ]);
     });
 
-    it("should edit collection details and archive a collection with transforms", () => {
+    it("should edit collection details and delete a collection with transforms", () => {
+      cy.intercept("DELETE", "/api/transform/collection/*").as(
+        "deleteTransformsFolder",
+      );
       H.createTransformCollection({ name: "Original Name" });
       H.createTransformCollection({ name: "Target Parent" });
-      H.createTransformCollection({ name: "Archive Me" }).then((collection) => {
+      H.createTransformCollection({ name: "Delete Me" }).then((collection) => {
         createMbqlTransform({
           name: "Transform In Collection",
-          targetTable: "archived_transform_table",
+          targetTable: "deleted_transform_table",
           collectionId: collection.body.id,
+        }).then(({ body: transform }) => {
+          H.runTransformAndWaitForSuccess(transform.id);
         });
       });
+      H.createTransformCollection({ name: "Delete Tables Too" }).then(
+        (collection) => {
+          createMbqlTransform({
+            name: "Transform With Table",
+            targetTable: TARGET_TABLE_2,
+            collectionId: collection.body.id,
+          }).then(({ body: transform }) => {
+            H.runTransformAndWaitForSuccess(transform.id);
+          });
+        },
+      );
 
       visitTransformListPage();
 
@@ -2086,39 +2042,112 @@ LIMIT
         cy.findByText("Renamed Collection").should("be.visible");
       });
 
-      cy.log("archive a collection with transforms");
+      cy.log("expand the collection to see the transform in it");
       getTransformsList().within(() => {
-        cy.findByText("Archive Me").should("be.visible");
-        cy.findByText("Archive Me").click();
+        cy.findByText("Delete Me").should("be.visible");
+        cy.findByText("Delete Me").click();
         cy.findByText("Transform In Collection").should("be.visible");
       });
 
-      cy.log("archive the collection via menu");
+      cy.log("delete the collection via menu, keeping the output tables");
       getTransformsList()
-        .findByText("Archive Me")
+        .findByText("Delete Me")
         .closest('[role="row"]')
         .findByRole("button", { name: "Collection options" })
         .click();
 
-      H.popover().findByText("Archive").click();
+      H.popover().within(() => {
+        cy.findByText("Delete").should("be.visible");
+        cy.findByText("Archive").should("not.exist");
+        cy.findByText("Delete").click();
+      });
 
       H.modal().within(() => {
-        cy.findByText('Archive "Archive Me"?').should("be.visible");
-        cy.findByText("This will also archive 1 transform inside it.").should(
+        cy.findByText('Delete "Delete Me" and its contents?').should(
           "be.visible",
         );
-        cy.button("Archive").click();
+        cy.findByText(
+          "This will delete this folder, its subfolders, and the 1 transform inside it. This can’t be undone.",
+        ).should("be.visible");
+        cy.findByLabelText(
+          "Also delete the tables generated by these transforms.",
+        ).should("not.be.checked");
+        cy.findByText("Here’s what will be deleted:").should("be.visible");
+        cy.findByText("Transform In Collection").should("be.visible");
+        cy.button("Delete folder and contents").click();
       });
+
+      cy.wait("@deleteTransformsFolder")
+        .its("request.url")
+        .should("not.contain", "delete-tables");
 
       H.undoToast()
-        .findByText('"Archive Me" has been archived')
+        .findByText('Deleted "Delete Me" and 1 transform')
         .should("be.visible");
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_folder_deleted",
+        event_detail: "transforms_only",
+        triggered_from: "transform_list_page",
+        result: "success",
+      });
 
-      cy.log("verify collection and its children are no longer visible");
+      cy.log("verify collection and its transform are gone");
       getTransformsList().within(() => {
-        cy.findByText("Archive Me").should("not.exist");
+        cy.findByText("Target Parent").should("be.visible");
+        cy.findByText("Delete Me").should("not.exist");
         cy.findByText("Transform In Collection").should("not.exist");
       });
+
+      cy.log(
+        "make sure the output table of the deleted transform still exists",
+      );
+      visitTableQuestion({ targetTable: "deleted_transform_table" });
+      H.assertQueryBuilderRowCount(3);
+
+      cy.log("delete the other collection together with the output tables");
+      visitTransformListPage();
+      getTransformsList()
+        .findByText("Delete Tables Too")
+        .closest('[role="row"]')
+        .findByRole("button", { name: "Collection options" })
+        .click();
+      H.popover().findByText("Delete").click();
+
+      H.modal().within(() => {
+        cy.findByText('Delete "Delete Tables Too" and its contents?').should(
+          "be.visible",
+        );
+        cy.findByLabelText(
+          "Also delete the tables generated by these transforms.",
+        ).click();
+        cy.findByText("Transform With Table").should("be.visible");
+        cy.findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_2}`).should(
+          "be.visible",
+        );
+        cy.button("Delete folder, contents, and tables").click();
+      });
+
+      cy.wait("@deleteTransformsFolder")
+        .its("request.url")
+        .should("contain", "delete-tables=true");
+
+      H.undoToast()
+        .findByText('Deleted "Delete Tables Too", 1 transform and its table')
+        .should("be.visible");
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_folder_deleted",
+        event_detail: "transforms_and_tables",
+        triggered_from: "transform_list_page",
+        result: "success",
+      });
+      getTransformsList().within(() => {
+        cy.findByText("Delete Tables Too").should("not.exist");
+        cy.findByText("Transform With Table").should("not.exist");
+      });
+
+      cy.log("make sure the output table is deleted");
+      visitTableQuestion({ targetTable: TARGET_TABLE_2 });
+      assertTableDoesNotExistError({ targetTable: TARGET_TABLE_2 });
     });
   });
 
@@ -2225,9 +2254,12 @@ LIMIT
         tableVariableTable: SOURCE_TABLE,
         tableVariableSchema: TARGET_SCHEMA,
       });
-      cy.log("set up remote sync");
+      cy.log("set up remote sync and push the transform");
       H.setupGitSync();
+      H.configureGit("read-write");
+      H.pushChangesWithApi();
       H.configureGit("read-only");
+      H.pollForTask({ taskName: "import" });
     });
 
     it("should make transform pages read-only", () => {
@@ -3302,26 +3334,16 @@ describe("scenarios > admin > transforms", () => {
     );
     H.DataStudio.Transforms.sectionHeader().should("be.visible");
     H.DataStudio.Transforms.sectionHeader()
-      .findByRole("link", { name: "Transforms" })
+      .findByRole("tab", { name: "Transforms" })
       .should("not.exist");
     H.DataStudio.Transforms.sectionHeader()
-      .findByRole("link", { name: "Jobs" })
+      .findByRole("tab", { name: "Jobs" })
       .should("not.exist");
     H.DataStudio.Transforms.sectionHeader()
-      .findByRole("link", { name: "Runs" })
+      .findByRole("tab", { name: "Runs" })
       .should("not.exist");
   });
 });
-
-function verifyDisconnectedDatabaseBanner() {
-  return cy
-    .findByRole("alert")
-    .should("be.visible")
-    .and(
-      "contain.text",
-      "The database this transform depends on has been disconnected",
-    );
-}
 
 function getTransformsNavLink() {
   return H.DataStudio.nav().findByRole("link", { name: "Data transformation" });

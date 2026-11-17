@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { supportsImplicitActions } from "metabase/actions/utils";
 import {
   useDeleteActionMutation,
   useListActionsQuery,
@@ -25,6 +26,7 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import {
   canDeleteAction,
@@ -57,11 +59,11 @@ export function ModelActionDetails({ model }: ModelActionDetailsProps) {
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
 
-  const database = model.database();
-  const hasActionsEnabled = database != null && database.hasActionsEnabled();
+  const databaseInfo = Lib.databaseDisplayInfo(model.query());
+  const hasActionsEnabled = databaseInfo?.isActionsEnabled ?? false;
   const isAdmin = useSelector(getUserIsAdmin);
   const canWrite = isAdmin && model.canWriteActions();
-  const supportsImplicitActions = model.supportsImplicitActions();
+  const hasImplicitActionsSupport = supportsImplicitActions(model.query());
 
   const actionsSorted = useMemo(
     () => _.sortBy(actions, mostRecentFirst),
@@ -87,7 +89,7 @@ export function ModelActionDetails({ model }: ModelActionDetailsProps) {
   }, [implicitActions, askConfirmation, onDeleteAction]);
 
   const hasImplicitActions = implicitActions.length > 0;
-  const hasActionsMenu = hasImplicitActions || supportsImplicitActions;
+  const hasActionsMenu = hasImplicitActions || hasImplicitActionsSupport;
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
@@ -148,14 +150,14 @@ export function ModelActionDetails({ model }: ModelActionDetailsProps) {
           )}
         </Flex>
       )}
-      {database && !hasActionsEnabled && (
+      {databaseInfo && !hasActionsEnabled && (
         <Alert
           size="compact"
           w="70%"
           icon={<Icon name="warning" />}
           color="error"
         >
-          {t`Running Actions is not enabled for database ${database.displayName()}`}
+          {t`Running Actions is not enabled for database ${databaseInfo.displayName}`}
         </Alert>
       )}
       {actions.length > 0 ? (
@@ -170,7 +172,7 @@ export function ModelActionDetails({ model }: ModelActionDetailsProps) {
         </Stack>
       ) : (
         <NoActionsState
-          hasCreateButton={canWrite && supportsImplicitActions}
+          hasCreateButton={canWrite && hasImplicitActionsSupport}
           onCreateClick={onEnableImplicitActions}
         />
       )}

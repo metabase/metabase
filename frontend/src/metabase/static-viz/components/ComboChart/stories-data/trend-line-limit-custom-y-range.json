@@ -13,7 +13,6 @@
         "graph.dimensions": ["CREATED_AT"],
         "graph.metrics": ["sum"]
       },
-      "collection_preview": true,
       "entity_id": "_dvAKhcvnWqqF3GQ2I34G",
       "display": "line",
       "parameter_mappings": [],

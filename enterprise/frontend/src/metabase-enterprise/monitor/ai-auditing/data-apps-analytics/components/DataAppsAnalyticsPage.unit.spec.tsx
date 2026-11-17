@@ -285,13 +285,13 @@ function setup({
   setupListDataAppsEndpoint([
     createMockDataApp({
       id: 1,
-      name: "product-reviews",
-      display_name: "Reviews",
+      slug: "product-reviews",
+      name: "Reviews",
     }),
     createMockDataApp({
       id: 2,
-      name: "store-archive",
-      display_name: "Archive",
+      slug: "store-archive",
+      name: "Archive",
       enabled: false,
     }),
   ]);

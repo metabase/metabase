@@ -1,0 +1,114 @@
+import { type ResolvedConfig, type Rollup, build } from "vite";
+
+import { dataAppBuildPlugins, dataAppLibBuild } from "../config/build-config";
+import { getDataAppDefine } from "../config/define";
+import { DATA_APP_PUBLIC_ENV_PREFIX } from "../config/env-prefix";
+
+export interface AppBundleOptions {
+  root: string;
+  /** Where the dev server reads `.env` files: the repo root, not the app's folder. */
+  envDir: ResolvedConfig["envDir"];
+  mode: string;
+  onError: (message: string) => void;
+}
+
+export interface AppBundle {
+  /** Resolves `true` only for the call that produced fresh output. */
+  rebuild: () => Promise<boolean>;
+  readonly code: string;
+  readonly lastRebuildAt: number | null;
+  readonly buildId: number;
+}
+
+export function createAppBundle({
+  root,
+  envDir,
+  mode,
+  onError,
+}: AppBundleOptions): AppBundle {
+  let code = "";
+  let lastRebuildAt: number | null = null;
+  let buildId = 0;
+  let building = false;
+  let stale = false;
+
+  const buildOnce = async (): Promise<boolean> => {
+    try {
+      const result = await build({
+        root,
+        mode,
+        configFile: false,
+        // The app's code gets the env the preview page and a production build get.
+        envDir,
+        envPrefix: DATA_APP_PUBLIC_ENV_PREFIX,
+        define: getDataAppDefine(mode),
+        logLevel: "warn",
+        plugins: dataAppBuildPlugins(),
+        build: {
+          write: false,
+          minify: mode === "production",
+          // Inline: only `chunk.code` is kept, so a sibling `.map` has nothing
+          // to resolve against.
+          sourcemap: "inline",
+          ...dataAppLibBuild("data-app-bundle.js"),
+        },
+      });
+
+      const outputs = Array.isArray(result) ? result : [result];
+
+      code =
+        outputs
+          .flatMap((output) => ("output" in output ? output.output : []))
+          .find((chunk): chunk is Rollup.OutputChunk => chunk.type === "chunk")
+          ?.code ?? "";
+
+      lastRebuildAt = Date.now();
+      buildId += 1;
+
+      return true;
+    } catch (error) {
+      onError(
+        `[data-app-dev] failed to build the app bundle: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+
+      return false;
+    }
+  };
+
+  return {
+    rebuild: async () => {
+      if (building) {
+        stale = true;
+
+        return false;
+      }
+
+      building = true;
+      try {
+        let built = false;
+        do {
+          stale = false;
+          built = await buildOnce();
+        } while (stale);
+
+        return built;
+      } finally {
+        building = false;
+      }
+    },
+
+    get code() {
+      return code;
+    },
+
+    get lastRebuildAt() {
+      return lastRebuildAt;
+    },
+
+    get buildId() {
+      return buildId;
+    },
+  };
+}

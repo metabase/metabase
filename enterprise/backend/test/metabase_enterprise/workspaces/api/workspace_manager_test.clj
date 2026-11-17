@@ -1,0 +1,597 @@
+(ns metabase-enterprise.workspaces.api.workspace-manager-test
+  "HTTP smoke tests for the workspace-manager API. Permission rules are exercised at the
+   model level — see workspace_test.clj and workspace_database_test.clj. These tests just
+   verify routing, request/response shape, and that the model-level permission predicates
+   are wired into the endpoints (one 403 spot-check is enough)."
+  (:require
+   [clojure.test :refer [deftest is testing use-fixtures]]
+   [java-time.api :as t]
+   [metabase-enterprise.workspaces.models.workspace :as workspace]
+   [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase.permissions.test-util :as perms.test-util]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
+
+(defn- with-premium-feature [f]
+  (mt/with-premium-features #{:workspaces}
+    (f)))
+
+(use-fixtures :each with-premium-feature)
+
+(defn- stub-provisioner []
+  (reify provisioning/Provisioner
+    (details [_ _ _ _]
+      {:schema "mb_iso_stub" :database_details {:user "stub_user" :password "stub_pass"}})
+    (init! [_ _ _ _] nil)
+    (grant! [_ _ _ _ _] nil)
+    (destroy! [_ _ _ _] nil)))
+
+(deftest crud-smoke-test
+  (testing "create, get, list, delete round-trip"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+          (let [{ws-id :id :as ws} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                         {:name "Smoke Test" :database_ids [db-id]})]
+            (is (=? {:id        pos-int?
+                     :name      "Smoke Test"
+                     :databases [{:database_id db-id}]
+                     :creator   some?}
+                    ws))
+            (testing "get"
+              (is (=? {:id ws-id :name "Smoke Test"}
+                      (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id)))))
+            (testing "list"
+              (is (=? [{:id ws-id}]
+                      (mt/user-http-request :crowberto :get 200 "ee/workspace-manager/"))))
+            (testing "delete"
+              (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id))
+              (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id)))))))))
+
+(deftest delete-workspace-pending-databases-test
+  (testing "DELETE tears down a stale pending database (left by a crashed instance) like any other state"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+          (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                  {:name "Pending" :database_ids [db-id]})
+                wsd-id      (t2/select-one-pk :model/WorkspaceDatabase :workspace_id ws-id)]
+            (t2/update! :model/WorkspaceDatabase {:id wsd-id}
+                        {:status     :provisioning
+                         :updated_at (t/minus (t/offset-date-time) (t/hours 1))})
+            (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id))
+            (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id))))))))
+
+(deftest delete-workspace-during-create-test
+  (testing "DELETE while a create is still provisioning answers 409 at once, and the create still succeeds"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (let [started  (promise)
+              release  (promise)
+              blocking (reify provisioning/Provisioner
+                         (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                         (init!    [_ _ _ _]   (deliver started true) (deref release 30000 nil) nil)
+                         (grant!   [_ _ _ _ _] nil)
+                         (destroy! [_ _ _ _]   nil))]
+          (with-redefs [provisioning/dispatching-provisioner blocking]
+            (let [create (future (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                       {:name "Slow create" :database_ids [db-id]}))]
+              (try
+                (is (true? (deref started 10000 false)) "the create reached the warehouse step")
+                (let [ws-id (t2/select-one-pk :model/Workspace :name "Slow create")]
+                  (is (=? {:error-code "workspace_busy"}
+                          (mt/user-http-request :crowberto :delete 409 (str "ee/workspace-manager/" ws-id))))
+                  (deliver release true)
+                  (is (=? {:id ws-id :databases [{:status "provisioned"}]}
+                          (deref create 10000 ::timed-out))
+                      "the refused delete left the create alone")
+                  (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))
+                (finally
+                  (deliver release true)
+                  (deref create 10000 nil))))))))))
+
+(deftest delete-workspace-in-progress-test
+  (testing "while a DELETE is in a database's destroy, other requests answer 409 and change nothing"
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                  :details  {}
+                                                  :settings {:database-enable-workspaces true}}
+                     :model/Table _ {:db_id db-id :schema "public" :active true}]
+        (mt/with-model-cleanup [:model/Workspace]
+          (let [{ws-id :id} (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                              (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                    {:name "Slow delete" :database_ids [db-id]}))
+                in-destroy  (promise)
+                release     (promise)
+                destroys    (atom 0)
+                blocking    (reify provisioning/Provisioner
+                              (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                              (init!    [_ _ _ _]   nil)
+                              (grant!   [_ _ _ _ _] nil)
+                              (destroy! [_ _ _ _]
+                                (swap! destroys inc)
+                                (deliver in-destroy true)
+                                (deref release 30000 nil)
+                                nil))
+                row         #(t2/select-one [:model/WorkspaceDatabase :status :updated_at :output_namespace]
+                                            :workspace_id ws-id)]
+            (with-redefs [provisioning/dispatching-provisioner blocking]
+              (let [delete (future (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))]
+                (try
+                  (is (true? (deref in-destroy 10000 false)) "premise: the DELETE reached the destroy")
+                  (let [during (row)]
+                    (is (=? {:status :deprovisioning} during))
+                    (testing "a second DELETE"
+                      ;; in a future: without the mark it waits for the first DELETE's per-row lock
+                      (is (=? {:error-code "workspace_busy"}
+                              (deref (future (mt/user-http-request :crowberto :delete 409 (str "ee/workspace-manager/" ws-id)))
+                                     5000 ::still-waiting))))
+                    (testing "a second DELETE with force"
+                      (is (=? {:error-code "workspace_busy"}
+                              (deref (future (mt/user-http-request :crowberto :delete 409 (str "ee/workspace-manager/" ws-id)
+                                                                   :force true))
+                                     5000 ::still-waiting))))
+                    (testing "the config download"
+                      (mt/user-http-request :crowberto :get 409 (str "ee/workspace-manager/" ws-id "/config")))
+                    (is (= during (row)) "the refused requests changed nothing")
+                    (is (= 1 @destroys) "and reached no warehouse"))
+                  (deliver release true)
+                  (is (nil? (deref delete 10000 ::timed-out)) "the first DELETE finishes")
+                  (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id))
+                  (finally
+                    (deliver release true)
+                    (deref delete 10000 nil)))))))))))
+
+(deftest delete-workspace-teardown-failure-test
+  (testing "DELETE returns a 500 with the database's error and keeps the workspace when a teardown fails"
+    ;; Committed `with-temp`: the teardown-failure bookkeeping writes on a fresh autocommit connection, which
+    ;; cannot see rows inside the default rollback-only `with-temp` transaction.
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                  :details  {}
+                                                  :settings {:database-enable-workspaces true}}
+                     :model/Table _ {:db_id db-id :schema "public" :active true}]
+        (mt/with-model-cleanup [:model/Workspace]
+          (let [{ws-id :id} (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                              (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                    {:name "Unreachable" :database_ids [db-id]}))
+                boom        (reify provisioning/Provisioner
+                              (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                              (init!    [_ _ _ _]   nil)
+                              (grant!   [_ _ _ _ _] nil)
+                              (destroy! [_ _ _ _]   (throw (ex-info "Connection refused" {}))))]
+            (with-redefs [provisioning/dispatching-provisioner boom]
+              (is (=? {:message "Connection refused"}
+                      (mt/user-http-request :crowberto :delete 500 (str "ee/workspace-manager/" ws-id)))))
+            (testing "the workspace survives, its database shown as teardown_failed, and a retry deletes it"
+              (is (=? {:databases [{:database_id      db-id
+                                    :output_namespace "mb_iso_stub"
+                                    :status           "teardown_failed"}]}
+                      (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))
+              (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))
+              (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id)))))))))
+
+(deftest delete-workspace-force-test
+  (testing "DELETE ?force=true drops teardown_failed databases without a warehouse teardown"
+    ;; Committed `with-temp`: the teardown-failure bookkeeping writes on a fresh autocommit connection, which
+    ;; cannot see rows inside the default rollback-only `with-temp` transaction.
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                  :details  {}
+                                                  :settings {:database-enable-workspaces true}}
+                     :model/Table _ {:db_id db-id :schema "public" :active true}]
+        (mt/with-model-cleanup [:model/Workspace]
+          (let [{ws-id :id} (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                              (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                    {:name "Gone for good" :database_ids [db-id]}))
+                destroys    (atom 0)
+                boom        (reify provisioning/Provisioner
+                              (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                              (init!    [_ _ _ _]   nil)
+                              (grant!   [_ _ _ _ _] nil)
+                              (destroy! [_ _ _ _]   (swap! destroys inc) (throw (ex-info "Connection refused" {}))))]
+            (with-redefs [provisioning/dispatching-provisioner boom]
+              (testing "force does not skip the teardown of a database that is not teardown_failed"
+                (mt/user-http-request :crowberto :delete 500 (str "ee/workspace-manager/" ws-id) :force true)
+                (is (= 1 @destroys)))
+              (testing "without force, a teardown_failed database keeps failing"
+                (mt/user-http-request :crowberto :delete 500 (str "ee/workspace-manager/" ws-id))
+                (is (= 2 @destroys)))
+              (testing "with force, the workspace is deleted without calling destroy!, and the leftovers are logged"
+                (mt/with-log-messages-for-level [messages [metabase-enterprise.workspaces.provisioning :warn]]
+                  (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id) :force true)
+                  (is (= 2 @destroys))
+                  (is (some #(re-find #"mb_iso_stub.*stub_user" (:message %)) (messages)))))
+              (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id))
+              (is (not (t2/exists? :model/WorkspaceDatabase :database_id db-id))
+                  "no row is left to block deleting the Database"))))))))
+
+(deftest delete-workspace-force-while-busy-abandons-nothing-test
+  (testing "DELETE ?force=true while a create is still running answers 409 and keeps the teardown_failed row"
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [:model/Database {db1-id :id} {:engine   :postgres
+                                                   :details  {}
+                                                   :settings {:database-enable-workspaces true}}
+                     :model/Database {db2-id :id} {:engine   :postgres
+                                                   :details  {}
+                                                   :settings {:database-enable-workspaces true}}]
+        (mt/with-model-cleanup [:model/Workspace]
+          (let [ws-id     (t2/insert-returning-pk! :model/Workspace {:name       "Forced while busy"
+                                                                     :creator_id (mt/user->id :crowberto)})
+                _         (t2/insert! :model/WorkspaceDatabase {:workspace_id     ws-id
+                                                                :database_id      db1-id
+                                                                :status           :teardown_failed
+                                                                :output_namespace "left_behind"
+                                                                :database_details {:user "left_user"}
+                                                                :input_schemas    ["public"]})
+                _         (t2/insert! :model/WorkspaceDatabase {:workspace_id     ws-id
+                                                                :database_id      db2-id
+                                                                :status           :provisioning
+                                                                :output_namespace ""
+                                                                :database_details {}
+                                                                :input_schemas    ["public"]})
+                statuses  #(t2/select-fn-vec :status :model/WorkspaceDatabase :workspace_id ws-id {:order-by [:id]})
+                destroys  (atom 0)
+                recording (reify provisioning/Provisioner
+                            (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                            (init!    [_ _ _ _]   nil)
+                            (grant!   [_ _ _ _ _] nil)
+                            (destroy! [_ _ _ _]   (swap! destroys inc)))]
+            (try
+              (with-redefs [provisioning/dispatching-provisioner recording]
+                (testing "without force"
+                  (is (=? {:error-code "workspace_busy"}
+                          (mt/user-http-request :crowberto :delete 409 (str "ee/workspace-manager/" ws-id))))
+                  (is (= [:teardown_failed :provisioning] (statuses))))
+                (testing "with force"
+                  (is (=? {:error-code "workspace_busy"}
+                          (mt/user-http-request :crowberto :delete 409 (str "ee/workspace-manager/" ws-id)
+                                                :force true)))
+                  (is (= [:teardown_failed :provisioning] (statuses))
+                      "a 409 changes nothing: the record of the leftover warehouse objects stays")
+                  (is (zero? @destroys))))
+              (finally
+                (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)))))))))
+
+(deftest never-started-database-test
+  (testing "a never_started database is shown, refuses the config download, and a plain DELETE removes it without a warehouse call"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (let [ws-id     (t2/insert-returning-pk! :model/Workspace {:name       "Never started"
+                                                                   :creator_id (mt/user->id :crowberto)})
+              _         (t2/insert! :model/WorkspaceDatabase {:workspace_id     ws-id
+                                                              :database_id      db-id
+                                                              :status           :never_started
+                                                              :output_namespace ""
+                                                              :database_details {}
+                                                              :input_schemas    ["public"]})
+              calls     (atom [])
+              recording (reify provisioning/Provisioner
+                          (details  [_ _ _ _]   (swap! calls conj :details)
+                            {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                          (init!    [_ _ _ _]   nil)
+                          (grant!   [_ _ _ _ _] nil)
+                          (destroy! [_ _ _ _]   (swap! calls conj :destroy)))]
+          (with-redefs [provisioning/dispatching-provisioner recording]
+            (is (=? {:databases [{:database_id db-id :status "never_started"}]}
+                    (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))
+            (mt/user-http-request :crowberto :get 409 (str "ee/workspace-manager/" ws-id "/config"))
+            (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id))
+            (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id))
+            (is (= [] @calls)
+                "no destroy and no details call: the computed names may belong to another Metabase instance")))))))
+
+(deftest delete-workspace-teardown-conflict-test
+  (testing "DELETE passes a database's 409 from teardown through, so the caller can tell retry-later from broken"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (let [{ws-id :id} (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                            (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                  {:name "Session open" :database_ids [db-id]}))
+              busy        (reify provisioning/Provisioner
+                            (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                            (init!    [_ _ _ _]   nil)
+                            (grant!   [_ _ _ _ _] nil)
+                            (destroy! [_ _ _ _]   (throw (ex-info "1 session(s) of the workspace user are still open"
+                                                                  {:status-code 409}))))]
+          (with-redefs [provisioning/dispatching-provisioner busy]
+            (is (=? {:message "1 session(s) of the workspace user are still open"}
+                    (mt/user-http-request :crowberto :delete 409 (str "ee/workspace-manager/" ws-id)))))
+          (testing "the workspace survives and a retry deletes it"
+            (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))
+            (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+              (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))))))))
+
+(deftest create-workspace-provisioning-failure-test
+  (testing "POST / never returns 200 when provisioning fails"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (letfn [(provisioner [init-error destroy-error]
+                  (reify provisioning/Provisioner
+                    (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                    (init!    [_ _ _ _]   (throw init-error))
+                    (grant!   [_ _ _ _ _] nil)
+                    (destroy! [_ _ _ _]   (when destroy-error (throw destroy-error)))))
+                (create! [status-code]
+                  (mt/user-http-request :crowberto :post status-code "ee/workspace-manager/"
+                                        {:name "Failing" :database_ids [db-id]}))]
+          (doseq [status-code [409 412]]
+            (testing (str "a database's " status-code " reaches the caller")
+              (with-redefs [provisioning/dispatching-provisioner
+                            (provisioner (ex-info "refused" {:status-code status-code}) nil)]
+                (is (=? {:message "refused" :cleanup_required false}
+                        (create! status-code))))))
+          (testing "an error without a status code is a 500"
+            (with-redefs [provisioning/dispatching-provisioner (provisioner (ex-info "boom" {}) nil)]
+              (is (=? {:message "boom" :cleanup_required false}
+                      (create! 500)))))
+          (is (not (t2/exists? :model/Workspace :name "Failing"))
+              "a create whose cleanup succeeded leaves no workspace")
+          (testing "a failed cleanup is a 500 that says the kept workspace needs a delete"
+            (with-redefs [provisioning/dispatching-provisioner
+                          (provisioner (ex-info "refused" {:status-code 409}) (ex-info "warehouse down" {}))]
+              (let [response (create! 500)
+                    kept-id  (t2/select-one-pk :model/Workspace :name "Failing")]
+                (is (=? {:message "refused; warehouse down" :cleanup_required true} response))
+                (is (= kept-id (:workspace_id response))
+                    "the 500 names the kept workspace, so the client can delete it")))
+            (let [ws-id (t2/select-one-pk :model/Workspace :name "Failing")]
+              (is (some? ws-id))
+              (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id))))))))))
+
+(deftest create-workspace-row-delete-failure-test
+  (testing "POST / is a 500 that asks for a delete when the warehouse is clean but the Workspace row stays"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (let [failing (reify provisioning/Provisioner
+                        (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                        (init!    [_ _ _ _]   (throw (ex-info "refused" {:status-code 409})))
+                        (grant!   [_ _ _ _ _] nil)
+                        (destroy! [_ _ _ _]   nil))]
+          (with-redefs [provisioning/dispatching-provisioner failing
+                        workspace/delete-workspace!          (fn [_id] (throw (ex-info "app db down" {})))]
+            (is (=? {:message "refused; Could not delete the workspace row." :cleanup_required true}
+                    (mt/user-http-request :crowberto :post 500 "ee/workspace-manager/"
+                                          {:name "Row kept" :database_ids [db-id]}))))
+          (let [ws-id (t2/select-one-pk :model/Workspace :name "Row kept")]
+            (is (some? ws-id) "the Workspace row is kept, so the caller must delete it")
+            (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+              (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))))))))
+
+(deftest create-workspace-second-database-failure-test
+  (testing "POST / with two databases: the second fails to provision, and the first one's warehouse objects are torn down"
+    (mt/with-temp [:model/Database {db1-id :id} {:engine   :postgres
+                                                 :details  {}
+                                                 :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db1-id :schema "public" :active true}
+                   :model/Database {db2-id :id} {:engine   :postgres
+                                                 :details  {}
+                                                 :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db2-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (let [inited    (atom #{})
+              destroyed (atom #{})
+              failing   (reify provisioning/Provisioner
+                          (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                          (init!    [_ _ db _]
+                            (when (= db2-id (:id db))
+                              (throw (ex-info "refused" {:status-code 409})))
+                            (swap! inited conj (:id db)))
+                          (grant!   [_ _ _ _ _] nil)
+                          (destroy! [_ _ db _]  (swap! destroyed conj (:id db))))]
+          (with-redefs [provisioning/dispatching-provisioner failing]
+            (is (=? {:message "refused" :cleanup_required false}
+                    (mt/user-http-request :crowberto :post 409 "ee/workspace-manager/"
+                                          {:name "Two" :database_ids [db1-id db2-id]}))))
+          (is (= #{db1-id} @inited) "the first database was provisioned before the second failed")
+          (is (contains? @destroyed db1-id) "the first database's warehouse objects are torn down")
+          (is (not (t2/exists? :model/Workspace :name "Two")))
+          (is (not (t2/exists? :model/WorkspaceDatabase :database_id [:in [db1-id db2-id]]))))))))
+
+(deftest create-workspace-with-database-ids-test
+  (testing "POST / attaches and provisions the given databases (each must be eligible) with their schemas"
+    (mt/with-temp [:model/Database {eligible-id :id} {:engine   :postgres
+                                                      :details  {}
+                                                      :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id eligible-id :schema "public" :active true}
+                   :model/Table _ {:db_id eligible-id :schema "analytics" :active true}
+                   :model/Database {ineligible-id :id} {:engine :postgres :details {}}
+                   :model/Database {tableless-id :id} {:engine   :postgres
+                                                       :details  {}
+                                                       :settings {:database-enable-workspaces true}}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+          (is (=? {:databases [{:database_id   eligible-id
+                                :input_schemas ["analytics" "public"]
+                                :status        "provisioned"}]}
+                  (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                        {:name "With dbs" :database_ids [eligible-id]})))
+          (testing "an ineligible database is rejected"
+            (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
+                                  {:name "Nope" :database_ids [ineligible-id]}))
+          (testing "a database with no synced schemas is rejected"
+            (is (=? #".*no synced schemas.*"
+                    (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
+                                          {:name "Nope" :database_ids [tableless-id]}))))
+          (testing "at least one database is required"
+            (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
+                                  {:name "Nope" :database_ids []})))))))
+
+(deftest create-workspace-over-long-name-returns-400-test
+  (testing "POST / with a name longer than 254 characters returns 400"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+          (testing "a 254-character name is accepted"
+            (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                  {:name (apply str (repeat 254 "n")) :database_ids [db-id]}))
+          (testing "a 255-character name is a 400 that names the field"
+            (is (=? {:errors {:name some?}}
+                    (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
+                                          {:name (apply str (repeat 255 "n")) :database_ids [db-id]}))))
+          (testing "a 300-character name is a 400"
+            (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
+                                  {:name (apply str (repeat 300 "n")) :database_ids [db-id]}))
+          (testing "the limit counts UTF-16 code units, so 128 two-unit characters are a 400 that names the unit"
+            (is (=? {:errors          {:name #".*at most 254 UTF-16 code units.*"}
+                     :specific-errors {:name [#".*at most 254 UTF-16 code units.*"]}}
+                    (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
+                                          {:name (apply str (repeat 128 "\uD83D\uDE00")) :database_ids [db-id]}))))
+          (testing "no over-long name reached the app DB"
+            (is (= [254]
+                   (t2/select-fn-vec (comp count :name) :model/Workspace
+                                     :id [:in (t2/select-fn-set :workspace_id :model/WorkspaceDatabase
+                                                                :database_id db-id)])))))))))
+
+(deftest rename-workspace-over-long-name-returns-400-test
+  (testing "PUT /:id with a name longer than 254 characters returns 400 and keeps the name"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "Before"}]
+      (is (=? {:name (apply str (repeat 254 "n"))}
+              (mt/user-http-request :crowberto :put 200 (str "ee/workspace-manager/" ws-id)
+                                    {:name (apply str (repeat 254 "n"))})))
+      (is (=? {:errors {:name some?}}
+              (mt/user-http-request :crowberto :put 400 (str "ee/workspace-manager/" ws-id)
+                                    {:name (apply str (repeat 255 "n"))})))
+      (testing "the limit counts UTF-16 code units, so 128 two-unit characters are a 400 that names the unit"
+        (is (=? {:errors          {:name #".*at most 254 UTF-16 code units.*"}
+                 :specific-errors {:name [#".*at most 254 UTF-16 code units.*"]}}
+                (mt/user-http-request :crowberto :put 400 (str "ee/workspace-manager/" ws-id)
+                                      {:name (apply str (repeat 128 "\uD83D\uDE00"))}))))
+      (is (= 254 (count (t2/select-one-fn :name :model/Workspace :id ws-id)))))))
+
+(deftest rename-workspace-test
+  (testing "PUT /:id renames a workspace and returns the updated WorkspaceResponse"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "Before"}]
+      (is (=? {:id ws-id :name "After"}
+              (mt/user-http-request :crowberto :put 200 (str "ee/workspace-manager/" ws-id) {:name "After"})))
+      (is (= "After" (t2/select-one-fn :name :model/Workspace :id ws-id)))
+      (testing "404 for a missing id"
+        (mt/user-http-request :crowberto :put 404 "ee/workspace-manager/13371337" {:name "X"})))))
+
+(deftest download-config-endpoint-test
+  (testing "GET /:id/config"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :postgres :details {}}
+                   :model/Workspace {ws-id :id} {:name "Cfg WS"}
+                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                               :database_id      db-id
+                                               :database_details {}
+                                               :output_namespace ""
+                                               :input_schemas    ["public"]
+                                               :status           :provisioned}]
+      (testing "returns application/x-yaml with an attachment Content-Disposition"
+        (is (=? {:status  200
+                 :headers {"Content-Type"        "application/x-yaml"
+                           "Content-Disposition" "attachment; filename=\"config.yml\""}}
+                (mt/user-http-request-full-response
+                 :crowberto :get 200 (str "ee/workspace-manager/" ws-id "/config")))))
+      (testing "422, not a retryable 409, when an emitted value contains a template form"
+        (t2/update! :model/Workspace :id ws-id {:name "Cfg {{env HOME}}"})
+        (mt/user-http-request :crowberto :get 422 (str "ee/workspace-manager/" ws-id "/config"))
+        (t2/update! :model/Workspace :id ws-id {:name "Cfg WS"}))
+      (testing "422, not a retryable 409, when only an admin can fix the database's connection settings"
+        (t2/update! :model/Database :id db-id {:details {:additional-options "user=parent_admin"}})
+        (mt/user-http-request :crowberto :get 422 (str "ee/workspace-manager/" ws-id "/config"))
+        (t2/update! :model/Database :id db-id {:details {}}))
+      (testing "409 when a database is not :provisioned"
+        (t2/update! :model/WorkspaceDatabase :workspace_id ws-id {:status :unprovisioned})
+        (mt/user-http-request :crowberto :get 409 (str "ee/workspace-manager/" ws-id "/config")))
+      (testing "404 for a missing workspace"
+        (mt/user-http-request :crowberto :get 404 "ee/workspace-manager/13371337/config")))))
+
+(deftest download-config-without-databases-is-refused-test
+  (testing "GET /:id/config refuses a workspace with no databases, because the config schema requires at least one"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :postgres :details {}}
+                   :model/Workspace {ws-id :id} {:name "Emptied WS"}
+                   :model/WorkspaceDatabase {wsd-id :id} {:workspace_id     ws-id
+                                                          :database_id      db-id
+                                                          :database_details {}
+                                                          :output_namespace "mb_iso_stub"
+                                                          :input_schemas    ["public"]
+                                                          :status           :provisioned}]
+      (testing "with a provisioned database, the config downloads"
+        (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id "/config")))
+      (t2/delete! :model/WorkspaceDatabase :id wsd-id)
+      (testing "with no databases left, the config is a 422: waiting does not help"
+        (is (= (str "Workspace \"Emptied WS\" has no databases, so it has no config to download. Delete the "
+                    "workspace and create a new one.")
+               (mt/user-http-request :crowberto :get 422 (str "ee/workspace-manager/" ws-id "/config"))))))))
+
+(deftest download-config-after-interrupted-delete-test
+  (testing "a DELETE that tears down every database but fails to delete the workspace leaves a workspace with no databases"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+          (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                  {:name "Half deleted" :database_ids [db-id]})]
+            (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id "/config"))
+            (mt/with-dynamic-fn-redefs [workspace/delete-workspace! (fn [_id] (throw (ex-info "app DB is down" {})))]
+              (mt/user-http-request :crowberto :delete 500 (str "ee/workspace-manager/" ws-id)))
+            (is (=? {:databases []}
+                    (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))
+            (testing "its config is a 422"
+              (mt/user-http-request :crowberto :get 422 (str "ee/workspace-manager/" ws-id "/config")))
+            (testing "a second DELETE removes it, as the message says"
+              (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))))))))
+
+(deftest download-config-local-file-ssl-root-cert-test
+  (testing "GET /:id/config answers 422 naming the database when its SSL root certificate is a file on the server"
+    (mt/with-temp [:model/Database {db-id :id} {:name    "Cert DW" :engine :postgres
+                                                :details {:ssl                   true
+                                                          :ssl-root-cert-options "local"
+                                                          :ssl-root-cert-path    "/nonexistent/fe103/root.crt"}}
+                   :model/Workspace {ws-id :id} {:name "Cert WS"}
+                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                               :database_id      db-id
+                                               :database_details {}
+                                               :output_namespace ""
+                                               :input_schemas    ["public"]
+                                               :status           :provisioned}]
+      (is (= (str "The SSL root certificate of database \"Cert DW\" is a file on this instance's server, which "
+                  "workspaces don't copy. Upload the file in the database's connection settings instead.")
+             (mt/user-http-request :crowberto :get 422 (str "ee/workspace-manager/" ws-id "/config")))))))
+
+(defmacro ^:private with-data-analyst [& body]
+  `(perms.test-util/with-data-analyst-role! (mt/user->id :rasta) ~@body))
+
+(deftest endpoints-are-superuser-only-test
+  (testing "All workspace-manager endpoints reject non-superusers, even Data Analysts"
+    (mt/with-temp [:model/Workspace {ws-id :id} {}]
+      (with-data-analyst
+        (mt/user-http-request :rasta :get 403 "ee/workspace-manager/")
+        (mt/user-http-request :rasta :get 403 (str "ee/workspace-manager/" ws-id))
+        (mt/user-http-request :rasta :post 403 "ee/workspace-manager/"
+                              {:name "Nope" :database_ids [(mt/id)]})
+        (mt/user-http-request :rasta :put 403 (str "ee/workspace-manager/" ws-id) {:name "Nope"})
+        (mt/user-http-request :rasta :get 403 (str "ee/workspace-manager/" ws-id "/config"))
+        (mt/user-http-request :rasta :delete 403 (str "ee/workspace-manager/" ws-id))))))

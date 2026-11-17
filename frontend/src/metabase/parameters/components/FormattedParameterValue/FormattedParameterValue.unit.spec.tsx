@@ -31,6 +31,16 @@ function setup({
 }
 
 describe("FormattedParameterValue", () => {
+  afterEach(() => {
+    setLocalization({
+      headers: {
+        language: "en",
+        "plural-forms": "nplurals=2; plural=(n != 1);",
+      },
+      translations: { "": {} },
+    });
+  });
+
   it("renders the raw value for a list source without connected fields (remapping is delegated to the field widget)", () => {
     setup({
       value: "A",
@@ -94,4 +104,39 @@ describe("FormattedParameterValue", () => {
 
     expect(screen.getByText("Faux")).toBeInTheDocument();
   });
+
+  it.each([
+    {
+      formatting: { date_style: "D MMMM, YYYY", date_abbreviate: false },
+      expected: "1 January, 2027",
+    },
+    {
+      formatting: { date_style: "dddd, MMMM D, YYYY", date_abbreviate: false },
+      expected: "Friday, January 1, 2027",
+    },
+    {
+      formatting: { date_style: "dddd, MMMM D, YYYY", date_abbreviate: true },
+      expected: "Fri, Jan 1, 2027",
+    },
+    { formatting: undefined, expected: "January 1, 2027" },
+  ])(
+    "should format a date value with the custom date formatting setting $formatting (metabase#68574)",
+    ({ formatting, expected }) => {
+      setup({
+        value: "2027-01-01",
+        parameter: createMockParameter({
+          name: "Start",
+          slug: "start",
+          type: "date/single",
+        }),
+        storeInitialState: createMockState({
+          settings: createMockSettingsState({
+            "custom-formatting": { "type/Temporal": formatting },
+          }),
+        }),
+      });
+
+      expect(screen.getByText(expected)).toBeInTheDocument();
+    },
+  );
 });

@@ -38,7 +38,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
   (:import
    (java.io OutputStream)))
 
@@ -52,7 +53,7 @@
   have multiple participants (e.g. multiple users in a shared Slack thread)."
   [conversation-id]
   (when-let [conversation (metabot.db/conversation conversation-id)]
-    (api/check-403 (mi/can-read? conversation))))
+    (api/check-403 (mi/can-read? (t2/hydrate conversation :can_read)))))
 
 (defn- make-out-of-sync-fn
   [conversation-id parent-message-id retry-message-id]
@@ -429,9 +430,7 @@
                         :ip-address (request/ip-address req)}]
     (streaming-request body* request-info)))
 
-(api.macros/defendpoint :post "/feedback"  :- [:map
-                                               [:status [:= 204]]
-                                               [:body :nil]]
+(api.macros/defendpoint :post "/feedback" :- ::api/generic-204-no-content
   "Persist Metabot feedback."
   [_route-params
    _query-params
@@ -445,9 +444,7 @@
   (metabot.feedback/persist-feedback! body)
   api/generic-204-no-content)
 
-(api.macros/defendpoint :post "/source-feedback" :- [:map
-                                                     [:status [:= 204]]
-                                                     [:body :nil]]
+(api.macros/defendpoint :post "/source-feedback" :- ::api/generic-204-no-content
   "Persist Metabot source feedback."
   [_route-params
    _query-params

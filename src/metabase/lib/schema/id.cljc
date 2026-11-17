@@ -98,6 +98,130 @@
   "Valid Collection ID"
   pos-int?)
 
+(mr/def ::document
+  "Valid Document ID"
+  pos-int?)
+
+(mr/def ::dashboard-tab
+  "Valid DashboardTab ID"
+  pos-int?)
+
+(mr/def ::transform-tag
+  "Valid TransformTag ID"
+  pos-int?)
+
 (mr/def ::sandbox
   "Valid Sandbox ID"
   pos-int?)
+
+(mr/def ::external-database
+  "A Database as serialization references it, by name."
+  :string)
+
+(mr/def ::external-table
+  "A Table as serialization references it, as `[db-name schema table-name]` with a nil schema for a schemaless Table."
+  [:cat ::external-database [:maybe :string] :string])
+
+(mr/def ::external-field
+  "A Field as serialization references it, as `[db-name schema table-name & field-names]`, one name per nesting
+  level."
+  [:cat ::external-database [:maybe :string] :string [:+ :string]])
+
+(mr/def ::external-card
+  "A Card as serialization references it, by entity id."
+  :string)
+
+(mr/def ::external-segment
+  "A Segment as serialization references it, by entity id."
+  :string)
+
+(mr/def ::external-measure
+  "A Measure as serialization references it, by entity id."
+  :string)
+
+(mr/def ::external-metric
+  "A Metric as serialization references it, by the entity id of its Card."
+  :string)
+
+(mr/def ::external-snippet
+  "A Snippet as serialization references it, by entity id."
+  :string)
+
+(mr/def ::external-dimension
+  "A Dimension as serialization references it, by entity id."
+  :string)
+
+(mr/def ::external-action
+  "An Action as serialization references it, by entity id."
+  :string)
+
+(mr/def ::external-dashboard
+  "A Dashboard as serialization references it, by entity id."
+  :string)
+
+(mr/def ::external-dashcard
+  "A DashboardCard as serialization references it, by entity id, or as `[dashboard-entity-id dashcard-entity-id]` in
+  older exports."
+  [:or :string [:tuple ::external-dashboard :string]])
+
+(mr/def ::external-user
+  "A User as serialization references it, by email."
+  :string)
+
+(mr/def ::external-pulse
+  "A Pulse as serialization references it, by entity id."
+  :string)
+
+(mr/def ::external-native-query-snippet
+  "A Native Query Snippet as serialization references it, by entity id."
+  :string)
+
+(mr/def ::external-transform
+  "A Transform as serialization references it, by entity id."
+  :string)
+
+(mr/def ::external-collection
+  "A Collection as serialization references it, by entity id."
+  :string)
+
+(mr/def ::external-document
+  "A Document as serialization references it, by entity id."
+  :string)
+
+(mr/def ::external-dashboard-tab
+  "A DashboardTab as serialization references it, by entity id, or as `[dashboard-entity-id tab-entity-id]` in older
+  exports."
+  [:or :string [:tuple ::external-dashboard :string]])
+
+(mr/def ::external-transform-tag
+  "A TransformTag as serialization references it, by entity id."
+  :string)
+
+(mr/def ::external-sandbox
+  "A Sandbox as serialization references it, by entity id."
+  :string)
+
+(def external-registry
+  "A local registry that swaps every id schema for its external one, so `[:schema {:registry external-registry} s]`
+  describes `s` as serialization writes it."
+  {::database             ::external-database
+   ::table                ::external-table
+   ::field                ::external-field
+   ::card                 ::external-card
+   ::segment              ::external-segment
+   ::measure              ::external-measure
+   ::metric               ::external-metric
+   ::snippet              ::external-snippet
+   ::dimension            ::external-dimension
+   ::action               ::external-action
+   ::dashboard            ::external-dashboard
+   ::dashcard             ::external-dashcard
+   ::user                 ::external-user
+   ::pulse                ::external-pulse
+   ::native-query-snippet ::external-native-query-snippet
+   ::transform            ::external-transform
+   ::collection           ::external-collection
+   ::document             ::external-document
+   ::dashboard-tab        ::external-dashboard-tab
+   ::transform-tag        ::external-transform-tag
+   ::sandbox              ::external-sandbox})

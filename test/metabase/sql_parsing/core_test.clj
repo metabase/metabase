@@ -96,6 +96,13 @@
                  (sort (keep :column (:returned-fields result))))
               (pr-str sql)))))))
 
+(deftest ^:parallel field-references-alias-per-select-item-test
+  (testing "a column selected with and without an alias keeps the alias of each select item"
+    (is (= ["b" "a"]
+           (mapv :alias (:returned-fields (sql-parsing/field-references
+                                           "postgres"
+                                           "SELECT u.a AS b, u.a FROM (SELECT a FROM x UNION SELECT a FROM y) u")))))))
+
 ;;; ------------------------------------------ single-stmt classification ------------------------------------------
 
 (deftest ^:parallel single-stmt-classification-test
@@ -106,17 +113,6 @@
             (pr-str sql))
         (is (= (sql-parsing/validate-executable-stmt dialect sql stmt-type)
                (sql-parsing/classify-stmt dialect sql stmt-type))
-            (pr-str sql))))))
-
-;;; ------------------------------------------- returned-columns-lineage -------------------------------------------
-
-(deftest ^:parallel returned-columns-lineage-test
-  (testing "the columns a query returns, which is what an expectation compares against"
-    (doseq [{:keys [name sql dialect default-schema columns]} (cases "returned_columns")]
-      (testing name
-        (is (= columns
-               (sort (map (comp u/lower-case-en first)
-                          (sql-parsing/returned-columns-lineage dialect sql default-schema {}))))
             (pr-str sql))))))
 
 ;;; ------------------------------------------------- validate-query -----------------------------------------------

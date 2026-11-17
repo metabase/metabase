@@ -43,7 +43,7 @@
                                           "    }\n"
                                           "    return pd.DataFrame(data)")
                       transform-payload {:name   "Library Test Transform"
-                                         :source {:type  "python"
+                                         :source {:type  :python
                                                   :source-database (mt/id)
                                                   :source-tables []
                                                   :body transform-body}
@@ -69,7 +69,7 @@
                                                                      :schema schema
                                                                      :name   "target_table"}]
               (let [original           {:name   "Gadget Products"
-                                        :source {:type  "python"
+                                        :source {:type  :python
                                                  :source-database (mt/id)
                                                  :source-tables [(transforms.tu/source-table-entry "transforms_customers" (mt/id :transforms_customers))]
                                                  :body  (str "import pandas as pd\n"

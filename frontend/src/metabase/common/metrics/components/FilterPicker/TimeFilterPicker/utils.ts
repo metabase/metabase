@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { t } from "ttag";
 
 import { dayjs } from "metabase/dayjs";

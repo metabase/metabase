@@ -1484,7 +1484,15 @@
                                 {:type   :tool-output :id "c1"
                                  :result {:output "Table 7 was not found. Call `search` for a table id."
                                           :error  {:class :recoverable
-                                                   :code  :metabase.metabot.tools.recoverable.common/not-found}}}]))))))))
+                                                   :code  :metabase.metabot.tools.recoverable.common/not-found}}}]))))
+        (testing (str "a call that failed with an exception no tool declared replays one neutral sentence, "
+                      "because the live text's instruction not to retry was for the turn that failed")
+          (is (= "This call failed with an unexpected error."
+                 (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
+                                {:type   :tool-output :id "c1"
+                                 :result {:output (str "This call failed with an unexpected error. Don't retry the "
+                                                       "same call. Try another approach, or tell the user it failed.")
+                                          :error  {:class :unrecoverable :code :internal}}}]))))))))
 
 (deftest history-hides-query-results-while-query-execution-is-off-test
   (testing "a stored run_query result is replayed only while query execution is on, and nothing stored changes"

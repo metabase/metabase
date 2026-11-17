@@ -2,12 +2,12 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.db :as transforms-python.db]
-   [metabase-enterprise.transforms-python.schema]
+   [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -15,6 +15,9 @@
 (set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/PythonLibrary [_model] :python_library)
+
+(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
+  (derive :model/PythonLibrary trait))
 
 (defn- normalize-path
   "Ensure the path ends with .py extension."
@@ -33,20 +36,13 @@
     (seq (dissoc (t2/changes library) :updated_at :is_default)) (assoc :is_default false)
     (:path library)                          (update :path normalize-path)))
 
-(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
-  (derive :model/PythonLibrary trait))
+(methodical/defmethod t2/simple-hydrate [:model/PythonLibrary :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (perms/user-has-transforms-permission-anywhere? (perms/user-info api/*current-user-id*)))))
 
-(defmethod mi/can-read? :model/PythonLibrary
-  ([_instance]
-   (perms/has-any-transforms-permission? api/*current-user-id*))
-  ([_model _pk]
-   (perms/has-any-transforms-permission? api/*current-user-id*)))
-
-(defmethod mi/can-write? :model/PythonLibrary
-  ([_instance]
-   (perms/has-any-transforms-permission? api/*current-user-id*))
-  ([_model _pk]
-   (perms/has-any-transforms-permission? api/*current-user-id*)))
+(methodical/defmethod t2/simple-hydrate [:model/PythonLibrary :can_write]
+  [_model k instance]
+  (assoc instance k (boolean (perms/user-has-transforms-permission-anywhere? (perms/user-info api/*current-user-id*)))))
 
 (def ^:private allowed-paths
   "Set of allowed library paths. Currently only 'common' is supported."
@@ -85,13 +81,15 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes/make-spec "PythonLibrary"
-  [_model-name _opts]
-  {:copy      [:path :source :entity_id]
-   :skip [:is_default]})
+(defmethod serialization/spec :model/PythonLibrary [_]
+  {:schema ::transforms-python.schema/external-python-library
+   :copy   [:path :source :entity_id]
+   :skip   [:is_default]})
 
-(defmethod serdes/storage-path "PythonLibrary" [entity _ctx]
-  [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
+(defmethod serialization/storage-paths :model/PythonLibrary [_ entities _ctx]
+  (mapv (fn [entity]
+          [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
+        entities))
 
 ;;; ------------------------------------------------ Event Hooks -----------------------------------------------------
 
@@ -109,3 +107,9 @@
   [library]
   (events/publish-event! :event/python-library-update {:object library})
   library)
+
+(defmethod remote-sync/spec :model/PythonLibrary
+  [_model]
+  {:name                 :path
+   :synced-items         transforms-python.db/synced-python-library-items
+   :synced-filter-clause transforms-python.db/synced-python-libraries-clause})

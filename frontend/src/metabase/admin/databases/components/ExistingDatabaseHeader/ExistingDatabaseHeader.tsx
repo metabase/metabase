@@ -1,9 +1,7 @@
-import { c } from "ttag";
-
-import { useListEnginesQuery } from "metabase/api";
-import { Flex, Stack, Text, Title } from "metabase/ui";
+import { Flex, Stack, Title } from "metabase/ui";
 import type { Database } from "metabase-types/api";
-import { isEngineKey } from "metabase-types/guards";
+
+import { DatabaseEngineAndAddedDate } from "../DatabaseEngineAndAddedDate";
 
 import { HeaderLinkGroup } from "./HeaderLinkGroup";
 
@@ -12,12 +10,6 @@ export const ExistingDatabaseHeader = ({
 }: {
   database: Database;
 }) => {
-  const { data: engines = {} } = useListEnginesQuery();
-  const engineKey = isEngineKey(database.engine) ? database.engine : undefined;
-  const driverName = engineKey
-    ? engines[engineKey]?.["driver-name"]
-    : undefined;
-
   return (
     <Flex
       data-testid="database-header-section"
@@ -28,22 +20,7 @@ export const ExistingDatabaseHeader = ({
     >
       <Stack gap="sm">
         <Title order={2}>{database?.name}</Title>
-        <Flex gap="sm">
-          {driverName && (
-            <Text size="sm" c="text-secondary">
-              {driverName}
-            </Text>
-          )}
-          <Text size="sm" c="text-secondary">
-            {c(
-              "Date on which the database was added to Metabase (e.g. Added 3/4/2025)",
-            ).t`Added ${new Intl.DateTimeFormat(undefined, {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            }).format(new Date(database.created_at))}`}
-          </Text>
-        </Flex>
+        <DatabaseEngineAndAddedDate database={database} />
       </Stack>
       <HeaderLinkGroup database={database} />
     </Flex>

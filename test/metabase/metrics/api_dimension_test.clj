@@ -343,6 +343,72 @@
           (is (= [default-id] (mapv :id (filter :default resp)))
               "the existing default is preserved"))))))
 
+(defn- do-with-removed-model-expression-dimension!
+  "Create a metric on a model with the custom column \"Is Cheap\", remove that column's dimension so it becomes
+   addable, and call `f` with the metric's id and the addable entry from GET."
+  [f]
+  (let [mp    (mt/metadata-provider)
+        price (lib.metadata/field mp (mt/id :venues :price))
+        query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                  (lib/expression "Is Cheap" (lib/case [[(lib/< price 2) true]] false)))]
+    (mt/with-temp [:model/Card model  {:name          "Venues Model"
+                                       :type          :model
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :venues)
+                                       :dataset_query query}
+                   :model/Card metric {:name          "Model Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :venues)
+                                       :dataset_query (-> (lib/query mp (lib.metadata/card mp (:id model)))
+                                                          (lib/aggregate (lib/count)))}]
+      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (mt/user-http-request :crowberto :post 200 (str "metric/" (:id metric) "/dimension/remove")
+                            {:dimension_ids [(get-dimension-id (t2/select-one :model/Card :id (:id metric))
+                                                               "Is Cheap")]})
+      (let [addable (->> (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension")
+                                               :with-addable true)
+                         :addable
+                         (mapcat :dimensions)
+                         (m/find-first #(= "Is Cheap" (:name %))))]
+        (is (some? addable))
+        (when (some? addable)
+          (f (:id metric) addable))))))
+
+(defn- add-dimensions! [metric-id status dimensions]
+  (mt/user-http-request :crowberto :post status (str "metric/" metric-id "/dimension/add") {:dimensions dimensions}))
+
+(defn- added-dimensions-named [dimension-name dimensions]
+  (filter #(= dimension-name (:name %)) dimensions))
+
+(deftest add-model-expression-dimension-echoed-from-addable-test
+  (testing "POST /api/metric/:id/dimension/add accepts an addable model custom column (#85634)"
+    (do-with-removed-model-expression-dimension!
+     (fn [metric-id addable]
+       (is (= ["field" {} "Is Cheap"] (:mapping_target addable))
+           "the addable mapping target is the type-less target key")
+       (is (=? [{:id (:id addable)
+                 :name "Is Cheap"
+                 :effective_type "type/Boolean"}]
+               (added-dimensions-named "Is Cheap" (add-dimensions! metric-id 200 [addable]))))))))
+
+(deftest add-model-expression-dimension-with-typed-target-test
+  (testing "POST /api/metric/:id/dimension/add still accepts a full field ref carrying type options"
+    (do-with-removed-model-expression-dimension!
+     (fn [metric-id addable]
+       (let [typed (assoc addable :mapping_target ["field"
+                                                   {:base-type "type/Boolean" :effective-type "type/Boolean"}
+                                                   "Is Cheap"])]
+         (is (=? [{:id (:id addable)
+                   :name "Is Cheap"}]
+                 (added-dimensions-named "Is Cheap" (add-dimensions! metric-id 200 [typed])))))))))
+
+(deftest add-dimension-rejects-non-field-target-test
+  (testing "POST /api/metric/:id/dimension/add rejects a mapping target that isn't a :field target key"
+    (do-with-removed-model-expression-dimension!
+     (fn [metric-id addable]
+       (add-dimensions! metric-id 400 [(assoc addable :mapping_target ["expression" {} "Is Cheap"])])))))
+
 (deftest add-dimension-validation-test
   (testing "POST /api/metric/:id/dimension/add validates names and descriptions"
     (with-seeded-metric [metric]

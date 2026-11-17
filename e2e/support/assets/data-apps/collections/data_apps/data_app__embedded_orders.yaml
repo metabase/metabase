@@ -1,0 +1,6 @@
+name: 'Data App: Embedded Orders'
+entity_id: embeddedAppCollection
+slug: data_app__embedded_orders
+namespace: data-apps
+serdes/meta:
+- model: Collection

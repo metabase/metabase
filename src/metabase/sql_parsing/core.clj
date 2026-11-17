@@ -7,7 +7,6 @@
   API:
     (referenced-tables sql dialect) → [[catalog schema table] ...]
     (referenced-fields dialect sql) → [[catalog schema table field] ...]
-    (returned-columns-lineage dialect sql schema schema-map) → [[col pure? deps] ...]
     (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}
 
   The parsing itself happens behind the [[metabase.sql-parsing.protocol/SqlParser]] protocol (the
@@ -356,26 +355,6 @@
   [dialect sql]
   (protocol/referenced-fields (parser) dialect (strip-large-literal-lists sql)))
 
-(defn returned-columns-lineage
-  "Extract column lineage from SQL query, showing which output columns depend on which source columns.
-
-   Returns a vector of [alias pure? [[schema table col]...]] tuples:
-   - alias: The output column name/alias
-   - pure?: Boolean - true if the column is a direct pass-through from a source column
-   - deps: Vector of [schema table column] dependencies
-
-   Requires a schema map of the form:
-   {\"schema_name\" {\"table_name\" {\"column_name\" \"TYPE\"}}}
-
-   Examples:
-   (returned-columns-lineage \"postgres\" \"SELECT id FROM users\" nil {nil {\"users\" {\"id\" \"INT\"}}})
-   => [[\"id\" true [[[nil \"users\" \"id\"]]]]]
-
-   (returned-columns-lineage \"postgres\" \"SELECT id + 1 as computed FROM users\" nil schema)
-   => [[\"computed\" false [[[nil \"users\" \"id\"]]]]]"
-  [dialect sql default-table-schema sqlglot-schema]
-  (protocol/returned-columns-lineage (parser) dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
-
 (defn validate-query
   "Validate a SQL query against a schema using sqlglot's qualify optimizer.
 
@@ -411,6 +390,8 @@
 (defn simple-query?
   "Check if SQL is a simple SELECT without LIMIT, OFFSET, or CTEs.
 
+   Used by Workspaces to determine if automatic checkpoints can be inserted.
+
    Parameters:
    - dialect: SQLGlot dialect string (e.g., \"postgres\", \"mysql\"), or nil for default
    - sql: The SQL query string to check
@@ -445,6 +426,23 @@
    Returns: Modified SQL string with INTO clause"
   [dialect sql table-name]
   (protocol/add-into-clause (parser) dialect sql table-name))
+
+(defn add-insert-clause
+  "Make an INSERT INTO statement from a SELECT statement, with any WITH clause before INSERT INTO.
+
+   Transforms: 'WITH c AS (SELECT 1 AS x) SELECT x FROM c'
+   Into:       'WITH c AS (SELECT 1 AS x) INSERT INTO \"TABLE\" SELECT x FROM c'
+
+   Used by SQL Server compile-insert, because SQL Server does not allow `INSERT INTO ... WITH`.
+
+   Parameters:
+   - dialect: SQLGlot dialect string (e.g., \"tsql\" for SQL Server)
+   - sql: The SELECT SQL query string
+   - table-name: The target table name (already formatted/quoted)
+
+   Returns: The INSERT INTO SQL string"
+  [dialect sql table-name]
+  (protocol/add-insert-clause (parser) dialect sql table-name))
 
 (defn- convert-field-type
   "Convert field type string (snake_case) to keyword (kebab-case)."

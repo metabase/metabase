@@ -49,7 +49,7 @@
      (map (partial pulse-card dashboard-id) dashcards)
      [(make-slack-channel schedule channel)]
      (-> dashboard
-         (select-keys [:collection_id :collection_position :name :parameters])
+         (select-keys [:name :parameters])
          (assoc :dashboard_id  dashboard-id
                 :creator_id    api/*current-user-id*
                 :skip_if_empty false)))))
@@ -62,7 +62,7 @@
         _         (when (shared/curated-only?)
                     (curation/check-curated-subject! (str "dashboard " dashboard-id) ["dashboard" dashboard-id]))
         dashcards (filter (comp int? :id :card) (:dashcards dashboard))]
-    (when-not (every? (comp mi/can-read? :card) dashcards)
+    (when-not (every? mi/can-read? (t2/hydrate (map :card dashcards) :can_read))
       (tools/unrecoverable!
        ::dashboard-cards-not-readable
        {:user-message (tru "You can''t subscribe to this dashboard, because you don''t have access to every question on it.")
@@ -105,13 +105,14 @@
 (defrecord CreateDashboardSubscriptionTool []
   tools/Tool
   (declaration [_]
-    {:name        "create_dashboard_subscription"
-     :description tool-description
-     :scope       scope/agent-dashboard-subscribe
-     :args        [:map {:closed true}
-                   [:dashboard_id :int]
-                   [:slack_channel [:string {:min 1}]]
-                   [:schedule tools.create-alert/schedule-schema]]})
+    {:name            "create_dashboard_subscription"
+     :description     tool-description
+     :scope           scope/agent-dashboard-subscribe
+     :args            [:map {:closed true}
+                       [:dashboard_id :int]
+                       [:slack_channel [:string {:min 1}]]
+                       [:schedule tools.create-alert/schedule-schema]]
+     :metabot/writes? true})
 
   (handle [_ {:keys [dashboard_id slack_channel schedule]} _ctx]
     (tools.create-alert/check-slack-configured!)

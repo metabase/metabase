@@ -13,7 +13,8 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -102,26 +103,20 @@
      param-map)))
 
 (defn- apply-mapping [{:keys [mapping] :as action} params inputs]
-  (let [mapping (hydrate-mapping mapping)
-        tag?    #(and (vector? %2) (= %1 (first %2)))]
+  (let [mapping (hydrate-mapping mapping)]
     (if-not mapping
       (if (or params (:param-map action))
         (map #(augment-params action % params) inputs)
         inputs)
       (for [input inputs
             :let [root (augment-params action input params)]]
-        (walk/postwalk
-         (fn [x]
-           (cond
-             (= ::root x)   root
-             (= ::input x)  input
-             (= ::params x) params
-             ;; specific key
-             (tag? ::key x)   (get root (second x))
-             (tag? ::param x) (get params (second x))
-             :else
-             x))
-         mapping)))))
+        (match/replace-all mapping
+          ::root   root
+          ::input  input
+          ::params params
+          ;; specific key
+          [::key k & _]   (get root k)
+          [::param k & _] (get params k))))))
 
 (defn- apply-mapping-nested [{:keys [inner-action] :as outer-action} params inputs-before]
   (let [inputs-after (apply-mapping outer-action params inputs-before)]

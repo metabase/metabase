@@ -1,5 +1,6 @@
 ---
 title: Development environment
+summary: Set up a Metabase development environment, including the frontend, the backend, and your editor.
 ---
 
 # Development environment

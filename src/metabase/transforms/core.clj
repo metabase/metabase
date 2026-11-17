@@ -41,6 +41,7 @@
   is-temp-transform-table?]
  [metabase.transforms.crud
   check-database-feature
+  requestable-indexes
   check-feature-enabled!
   validate-incremental-column-type!
   validate-target-schema!
@@ -49,7 +50,8 @@
   get-transform
   create-transform!
   update-transform!
-  delete-transform!]
+  delete-transform!
+  delete-transforms-folder!]
  [metabase.transforms.canceling
   cancel-run!]
  [metabase.transforms.execute

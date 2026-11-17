@@ -147,6 +147,22 @@ describe("ListField", () => {
     );
   });
 
+  it.each<RowValue>([false, "false"])(
+    "should render a selected boolean option once and checked when the value is %p (metabase#45877)",
+    (selectedValue) => {
+      setup({
+        value: [selectedValue],
+        options: [[true], [false]],
+        optionRenderer: ([value]) => <span>{String(value)}</span>,
+      });
+
+      expect(screen.getAllByTestId("true-filter-value")).toHaveLength(1);
+      expect(screen.getAllByTestId("false-filter-value")).toHaveLength(1);
+      expect(screen.getByRole("checkbox", { name: "true" })).not.toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "false" })).toBeChecked();
+    },
+  );
+
   it("should not create duplicate options on pressing Enter for non-string values", async () => {
     setup({
       value: [],

@@ -1,6 +1,9 @@
 (ns ^:mb/driver-tests metabase.transforms-base.ordering-test
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
@@ -12,6 +15,20 @@
 (defn- default-schema-or-public []
   (or (:default_schema (mt/db)) "public"))
 
+(defn- table-query [table-id]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp table-id))))
+
+(defn- native-query [sql]
+  (lib/native-query (mt/metadata-provider) sql))
+
+(defn- orders-products-query []
+  (let [mp (mt/metadata-provider)]
+    (lib/join (table-query (mt/id :orders))
+              (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                               [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                       (lib.metadata/field mp (mt/id :products :id)))]))))
+
 (defn- make-transform [query & [name schema]]
   (let [name (or name (mt/random-name))
         schema (or schema (default-schema-or-public))]
@@ -20,7 +37,7 @@
      :name (str "transform_" name)
      :target {:schema schema
               :name name
-              :type :table}}))
+              :type "table"}}))
 
 (use-fixtures :once (fn [thunk]
                       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -28,9 +45,7 @@
 
 (deftest basic-ordering-test
   (mt/with-temp [:model/Transform {t1 :id} (make-transform
-                                            {:database (mt/id),
-                                             :type     "query",
-                                             :query    {:source-table (mt/id :orders)}})]
+                                            (table-query (mt/id :orders)))]
     (is (= {t1 #{}}
            (:dependencies (ordering/transform-ordering #{t1} (t2/select :model/Transform :id t1)))))))
 
@@ -40,15 +55,11 @@
                  :model/Field _ {:table_id table
                                  :name     "foo"}
                  :model/Transform {parent :id} (-> (make-transform
-                                                    {:database (mt/id),
-                                                     :type     "query",
-                                                     :query    {:source-table (mt/id :orders)}}
+                                                    (table-query (mt/id :orders))
                                                     "orders_2")
                                                    (assoc :target_table_id table))
                  :model/Transform {child :id} (make-transform
-                                               {:database (mt/id)
-                                                :type     "query"
-                                                :query    {:source-table table}}
+                                               (table-query table)
                                                "orders_3")]
     (is (= {parent #{}
             child  #{parent}}
@@ -62,30 +73,22 @@
   (mt/test-driver (mt/normal-driver-select {:+parent :sql-jdbc})
     (testing "dependencies are correctly identified when no transforms have been run yet"
       (mt/with-temp [:model/Transform {t1 :id} (make-transform
-                                                {:database (mt/id),
-                                                 :type :native,
-                                                 :native {:query "SELECT * FROM orders LIMIT 100"}}
+                                                (native-query "SELECT * FROM orders LIMIT 100")
                                                 "orders_transform")
                      :model/Transform {t2 :id} (make-transform
-                                                {:database (mt/id),
-                                                 :type :native,
-                                                 :native {:query "SELECT * FROM products LIMIT 100"}}
+                                                (native-query "SELECT * FROM products LIMIT 100")
                                                 "products_transform")
                      :model/Transform {t3 :id} (make-transform
-                                                {:database (mt/id),
-                                                 :type :native,
-                                                 :native {:query "SELECT * FROM orders_transform ot
+                                                (native-query "SELECT * FROM orders_transform ot
                                                                   LEFT JOIN products p
                                                                   ON ot.product_id = p.id
-                                                                  LIMIT 100"}}
+                                                                  LIMIT 100")
                                                 "orders_transform_products")
                      :model/Transform {t4 :id} (make-transform
-                                                {:database (mt/id),
-                                                 :type :native,
-                                                 :native {:query "SELECT * FROM orders_transform ot
+                                                (native-query "SELECT * FROM orders_transform ot
                                                                   LEFT JOIN products_transform pt
                                                                   ON ot.product_id = pt.id
-                                                                  LIMIT 100"}}
+                                                                  LIMIT 100")
                                                 "orders_transform_products_transform")]
         (is (= #{{:transform t1} {:transform t2}}
                (transform-deps-for-db (t2/select-one :model/Transform  :id t4))))
@@ -96,22 +99,16 @@
                (:dependencies (ordering/transform-ordering #{t1 t2 t3 t4} (t2/select :model/Transform :id [:in [t1 t2 t3 t4]])))))))
     (testing "dependencies are correctly identified when some transform have been run and some haven't"
       (mt/with-temp [:model/Transform {t1 :id :as transform1} (make-transform
-                                                               {:database (mt/id),
-                                                                :type :native,
-                                                                :native {:query "SELECT * FROM checkins LIMIT 100"}}
+                                                               (native-query "SELECT * FROM checkins LIMIT 100")
                                                                "checkins_transform")
                      :model/Transform {t2 :id} (make-transform
-                                                {:database (mt/id),
-                                                 :type :native,
-                                                 :native {:query "SELECT * FROM venues LIMIT 100"}}
+                                                (native-query "SELECT * FROM venues LIMIT 100")
                                                 "venues_transform")
                      :model/Transform {t3 :id} (make-transform
-                                                {:database (mt/id),
-                                                 :type :native,
-                                                 :native {:query "SELECT * FROM venues_transform vt
+                                                (native-query "SELECT * FROM venues_transform vt
                                                                   LEFT JOIN checkins_transform ct
                                                                   ON vt.id = ct.venue_id
-                                                                  LIMIT 100"}}
+                                                                  LIMIT 100")
                                                 "venues_transform_2")]
         (try
           (transforms.execute/execute! transform1 {:run-method :manual})
@@ -130,24 +127,18 @@
     (let [[dataset] (sql.tx/qualified-name-components :bigquery-cloud-sdk nil)]
       (testing "dependencies are correctly identified when some transform have been run and some haven't"
         (mt/with-temp [:model/Transform {t1 :id} (make-transform
-                                                  {:database (mt/id),
-                                                   :type     :native,
-                                                   :native   {:query (format "SELECT * FROM `%s.checkins` LIMIT 100" dataset)}}
+                                                  (native-query (format "SELECT * FROM `%s.checkins` LIMIT 100" dataset))
                                                   "checkins_transform" dataset)
                        :model/Table {table1 :id} {:schema dataset
                                                   :name   "checkins_transform"}
                        :model/Transform {t2 :id} (make-transform
-                                                  {:database (mt/id),
-                                                   :type     :native,
-                                                   :native   {:query (format "SELECT * FROM `%s.venues` LIMIT 100" dataset)}}
+                                                  (native-query (format "SELECT * FROM `%s.venues` LIMIT 100" dataset))
                                                   "venues_transform" dataset)
                        :model/Transform {t3 :id} (make-transform
-                                                  {:database (mt/id),
-                                                   :type     :native,
-                                                   :native   {:query (format "SELECT * FROM `%s.venues_transform` vt
+                                                  (native-query (format "SELECT * FROM `%s.venues_transform` vt
                                                                             LEFT JOIN `%s.checkins_transform` ct
                                                                             ON vt.id = ct.venue_id
-                                                                            LIMIT 100" dataset dataset)}}
+                                                                            LIMIT 100" dataset dataset))
                                                   "venues_transform_2" dataset)]
           (is (= #{{:table table1} {:transform t2}}
                  (transform-deps-for-db (t2/select-one :model/Transform :id t3))))
@@ -158,77 +149,36 @@
 
 (deftest ^:parallel basic-dependencies-test
   (mt/with-temp [:model/Transform {t1 :id} (make-transform
-                                            {:database (mt/id),
-                                             :type "query",
-                                             :query {:source-table (mt/id :orders)}})]
+                                            (table-query (mt/id :orders)))]
     (is (= #{{:table (mt/id :orders)}}
            (transform-deps-for-db (t2/select-one :model/Transform :id t1))))))
 
 (deftest ^:parallel joined-dependencies-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (mt/with-temp [:model/Transform {t1 :id} (make-transform
-                                              {:database (mt/id),
-                                               :type "query",
-                                               :query {:source-table (mt/id :orders),
-                                                       :joins
-                                                       [{:fields "all",
-                                                         :strategy "left-join",
-                                                         :alias "Products",
-                                                         :condition
-                                                         [:=
-                                                          [:field
-                                                           (mt/id :orders :product_id)
-                                                           {:base-type "type/Integer"}]
-                                                          [:field
-                                                           (mt/id :products :id)
-                                                           {:base-type "type/Integer",
-                                                            :join-alias "Products"}]],
-                                                         :source-table (mt/id :products)}]},
-                                               :parameters []})]
+                                              (orders-products-query))]
       (is (= #{{:table (mt/id :orders)}
                {:table (mt/id :products)}}
              (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
 
 (deftest card-dependencies-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :left-join]})
-    (mt/with-temp [:model/Card {card :id} {:dataset_query {:database (mt/id),
-                                                           :type "query",
-                                                           :query {:source-table (mt/id :orders),
-                                                                   :joins
-                                                                   [{:fields "all",
-                                                                     :strategy "left-join",
-                                                                     :alias "Products",
-                                                                     :condition
-                                                                     [:=
-                                                                      [:field
-                                                                       (mt/id :orders :product_id)
-                                                                       {:base-type "type/Integer"}]
-                                                                      [:field
-                                                                       (mt/id :products :id)
-                                                                       {:base-type "type/Integer",
-                                                                        :join-alias "Products"}]],
-                                                                     :source-table (mt/id :products)}]},
-                                                           :parameters []}}
+    (mt/with-temp [:model/Card {card :id} {:dataset_query (orders-products-query)}
                    :model/Transform {t1 :id} (make-transform
-                                              {:database (mt/id),
-                                               :type "query",
-                                               :query
-                                               {:aggregation [["count"]],
-                                                :breakout [["field" "Products__category" {:base-type "type/Text"}]],
-                                                :source-table (str "card__" card)},
-                                               :parameters []})]
+                                              (let [mp       (mt/metadata-provider)
+                                                    query    (lib/query mp (lib.metadata/card mp card))
+                                                    category (m/find-first #(= (mt/id :products :category) (:id %))
+                                                                           (lib/breakoutable-columns query))]
+                                                (-> query
+                                                    (lib/aggregate (lib/count))
+                                                    (lib/breakout category))))]
       (is (= #{{:table (mt/id :orders)}
                {:table (mt/id :products)}}
              (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
 
 (deftest native-dependencies-test
   (mt/with-temp [:model/Transform {t1 :id} (make-transform
-                                            {:database (mt/id),
-                                             :type     :native
-                                             :native   (qp.compile/compile
-                                                        {:database (mt/id),
-                                                         :type     "query",
-                                                         :query    {:source-table (mt/id :orders)}})})]
+                                            (native-query (:query (qp.compile/compile (table-query (mt/id :orders))))))]
     (is (= #{{:table (mt/id :orders)}}
            (transform-deps-for-db (t2/select-one :model/Transform :id t1))))))
 
@@ -236,37 +186,14 @@
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table
                                                          :native-parameter-card-reference
                                                          :left-join]})
-    (mt/with-temp [:model/Card {card :id} {:dataset_query {:database (mt/id),
-                                                           :type "query",
-                                                           :query {:source-table (mt/id :orders),
-                                                                   :joins
-                                                                   [{:fields "all",
-                                                                     :strategy "left-join",
-                                                                     :alias "Products",
-                                                                     :condition
-                                                                     [:=
-                                                                      [:field
-                                                                       (mt/id :orders :product_id)
-                                                                       {:base-type "type/Integer"}]
-                                                                      [:field
-                                                                       (mt/id :products :id)
-                                                                       {:base-type "type/Integer",
-                                                                        :join-alias "Products"}]],
-                                                                     :source-table (mt/id :products)}]},
-                                                           :parameters []}}
+    (mt/with-temp [:model/Card {card :id} {:dataset_query (orders-products-query)}
                    :model/Transform {t1 :id} (make-transform
-                                              {:database (mt/id),
-                                               :type :native,
-                                               :native {:query
-                                                        (mt/native-query-with-card-template-tag
-                                                         (:engine (mt/db))
-                                                         (str "#" card)),
-                                                        :template-tags
-                                                        {(keyword (str "#" card))
-                                                         {:type "card"
-                                                          :name "card"
-                                                          :display-name "card"
-                                                          :card-id card}}}})]
+                                              (-> (native-query (mt/native-query-with-card-template-tag (:engine (mt/db)) (str "#" card)))
+                                                  (lib/with-template-tags {(str "#" card) {:type         :card
+                                                                                           :name         (str "#" card)
+                                                                                           :display-name (str "#" card)
+                                                                                           :card-id      card
+                                                                                           :id           (str (random-uuid))}})))]
       (is (= #{{:table (mt/id :orders)}
                {:table (mt/id :products)}}
              (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
@@ -298,9 +225,7 @@
                    :model/Field _ {:table_id table1
                                    :name     "foo"}
                    :model/Transform {t1 :id} (-> (make-transform
-                                                  {:database (mt/id),
-                                                   :type     "query",
-                                                   :query    {:source-table table1}}
+                                                  (table-query table1)
                                                   "table_1")
                                                  (assoc :target_table_id table1))]
       (is (= {:cycle-str "transform_table_1"
@@ -316,15 +241,11 @@
                    :model/Field _ {:table_id table2
                                    :name     "foo"}
                    :model/Transform {t1 :id} (-> (make-transform
-                                                  {:database (mt/id),
-                                                   :type     "query",
-                                                   :query    {:source-table table1}}
+                                                  (table-query table1)
                                                   "table_2")
                                                  (assoc :target_table_id table2))
                    :model/Transform {t2 :id} (-> (make-transform
-                                                  {:database (mt/id),
-                                                   :type     "query",
-                                                   :query    {:source-table table2}}
+                                                  (table-query table2)
                                                   "table_1")
                                                  (assoc :target_table_id table1))]
       (is (= {:cycle-str "transform_table_2 -> transform_table_1",
@@ -346,21 +267,15 @@
                    :model/Field _ {:table_id table3
                                    :name     "foo"}
                    :model/Transform {t1 :id} (-> (make-transform
-                                                  {:database (mt/id),
-                                                   :type     "query",
-                                                   :query    {:source-table table1}}
+                                                  (table-query table1)
                                                   "table_2")
                                                  (assoc :target_table_id table2))
                    :model/Transform {t2 :id} (-> (make-transform
-                                                  {:database (mt/id),
-                                                   :type     "query",
-                                                   :query    {:source-table table2}}
+                                                  (table-query table2)
                                                   "table_3")
                                                  (assoc :target_table_id table3))
                    :model/Transform {t3 :id} (-> (make-transform
-                                                  {:database (mt/id),
-                                                   :type     "query",
-                                                   :query    {:source-table table3}}
+                                                  (table-query table3)
                                                   "table_1")
                                                  (assoc :target_table_id table1))]
       (is (= {:cycle-str "transform_table_2 -> transform_table_1 -> transform_table_3",
@@ -374,9 +289,7 @@
                                    :name     "foo"}
                    :model/Table {table2 :id} {:schema (default-schema-or-public), :name "table_2"}
                    :model/Transform {t1 :id} (-> (make-transform
-                                                  {:database (mt/id),
-                                                   :type     "query",
-                                                   :query    {:source-table table1}}
+                                                  (table-query table1)
                                                   "table_2")
                                                  (assoc :target_table_id table2))]
       (let [transform (t2/select-one :model/Transform :id t1)]
@@ -396,15 +309,11 @@
                                    :name     "foo"}
                    :model/Table {table3 :id} {:schema (default-schema-or-public), :name "table_3"}
                    :model/Transform _ (-> (make-transform
-                                           {:database (mt/id),
-                                            :type     "query",
-                                            :query    {:source-table table1}}
+                                           (table-query table1)
                                            "table_2")
                                           (assoc :target_table_id table2))
                    :model/Transform {t2 :id} (-> (make-transform
-                                                  {:database (mt/id),
-                                                   :type     "query",
-                                                   :query    {:source-table table2}}
+                                                  (table-query table2)
                                                   "table_3")
                                                  (assoc :target_table_id table3))]
       (let [transform (t2/select-one :model/Transform :id t2)]
@@ -424,8 +333,10 @@
   (testing "an empty (non-nil) stored value means \"no dependencies\""
     (is (= [] (ordering/stored-or-live-deps {:table_dependencies []}))))
   (testing "falls back to a live computation when the stored value is nil"
-    ;; no :source and an unknown type -> the :default table-dependencies impl returns #{}
-    (is (= #{} (ordering/stored-or-live-deps {:id 1})))))
+    (mt/with-temp [:model/Transform {id :id} (make-transform (table-query (mt/id :orders)))]
+      (is (= #{{:table (mt/id :orders)}}
+             (mt/with-metadata-provider (mt/id)
+               (ordering/stored-or-live-deps {:id id})))))))
 
 (deftest transform-ordering-reads-stored-deps-test
   (testing "transform-ordering resolves dependencies from :table_dependencies, never parsing SQL"
@@ -434,7 +345,7 @@
       (is (= {1 #{} 2 #{1}}
              (:dependencies (ordering/transform-ordering #{2} [producer consumer]))))))
   (testing "a :table-ref dependency resolves to the producing transform by (db, schema, name)"
-    (let [producer {:id 1 :target {:database 10 :schema "public" :name "out"} :table_dependencies []}
+    (let [producer {:id 1 :target {:type "table" :database 10 :schema "public" :name "out"} :table_dependencies []}
           consumer {:id 2 :table_dependencies [{:table-ref {:database_id 10 :schema "public" :table "out"}}]}]
       (is (= {1 #{} 2 #{1}}
              (:dependencies (ordering/transform-ordering #{2} [producer consumer]))))))
@@ -446,9 +357,7 @@
   (testing "a transform with no cached :table_dependencies is reported in :uncached and persisted"
     (mt/test-driver (mt/normal-driver-select {:+parent :sql-jdbc})
       (mt/with-temp [:model/Transform {id :id} (make-transform
-                                                {:database (mt/id)
-                                                 :type     "query"
-                                                 :query    {:source-table (mt/id :orders)}})]
+                                                (table-query (mt/id :orders)))]
         ;; simulate a row created before the column existed
         (t2/update! (t2/table-name :model/Transform) :id id {:table_dependencies nil})
         (mt/with-metadata-provider (mt/id)
