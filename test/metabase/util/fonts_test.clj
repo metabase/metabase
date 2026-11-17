@@ -61,7 +61,7 @@
 (def ^:private ranges
   {"latin" "U+20-FF" "rest" "U+100-10FFFF"})
 
-(defn- sources-among
+(defn- sources-among!
   "What [[u.fonts/font-face-sources]] returns when the build emitted `filenames` for Roboto."
   [filenames stem]
   (with-redefs [u.fonts/emitted-filenames (delay {"Roboto" filenames})
@@ -72,24 +72,24 @@
   (testing "a split face returns every chunk, each with the range it covers"
     (is (= [{:path "/app/dist/fonts/Roboto/Roboto-Bold.a1b2c3d4.woff2"      :unicode-range "U+20-FF"}
             {:path "/app/dist/fonts/Roboto/Roboto-Bold.rest.e5f6a7b8.woff2" :unicode-range "U+100-10FFFF"}]
-           (sources-among ["Roboto-Bold.rest.e5f6a7b8.woff2"
-                           "Roboto-Bold.a1b2c3d4.woff2"
-                           "Roboto-Regular.c3d4e5f6.woff2"
-                           "Roboto-Bold.a1b2c3d4.woff"]
-                          "Roboto-Bold"))))
+           (sources-among! ["Roboto-Bold.rest.e5f6a7b8.woff2"
+                            "Roboto-Bold.a1b2c3d4.woff2"
+                            "Roboto-Regular.c3d4e5f6.woff2"
+                            "Roboto-Bold.a1b2c3d4.woff"]
+                           "Roboto-Bold"))))
   (testing "a face the build does not split has no range, so it claims every codepoint"
     (is (= [{:path "/app/dist/fonts/Roboto/Roboto-Bold.a1b2c3d4.woff2"}]
-           (sources-among ["Roboto-Bold.a1b2c3d4.woff2"] "Roboto-Bold"))))
+           (sources-among! ["Roboto-Bold.a1b2c3d4.woff2"] "Roboto-Bold"))))
   (testing "a hash made only of letters is not read as a chunk name"
     (is (= [{:path "/app/dist/fonts/Roboto/Roboto-Bold.deadbeef.woff2"}]
-           (sources-among ["Roboto-Bold.deadbeef.woff2"] "Roboto-Bold"))))
+           (sources-among! ["Roboto-Bold.deadbeef.woff2"] "Roboto-Bold"))))
   (testing "a chunk the build published no range for throws rather than claim every codepoint"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no unicode-range for font chunk \"cyrillic\""
-                          (sources-among ["Roboto-Bold.a1b2c3d4.woff2"
-                                          "Roboto-Bold.cyrillic.e5f6a7b8.woff2"]
-                                         "Roboto-Bold"))))
+                          (sources-among! ["Roboto-Bold.a1b2c3d4.woff2"
+                                           "Roboto-Bold.cyrillic.e5f6a7b8.woff2"]
+                                          "Roboto-Bold"))))
   (testing "a face that does not exist has no sources rather than a broken URL"
-    (is (= [] (sources-among ["Roboto-Bold.a1b2c3d4.woff2"] "Roboto-Black")))))
+    (is (= [] (sources-among! ["Roboto-Bold.a1b2c3d4.woff2"] "Roboto-Black")))))
 
 (deftest font-face-sources-match-the-build-output-test
   (testing "every woff2 the build emitted is a source of its face, and a split face has a range on each chunk"
