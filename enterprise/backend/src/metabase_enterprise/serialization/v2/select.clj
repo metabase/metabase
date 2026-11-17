@@ -121,8 +121,8 @@
 
 (defn select-rows
   "A reducible of the realized rows of `model` an export of `opts` takes, in stable export order: the ones with the
-  primary keys `:ids` when given, the ones [[where]] picks for the `:collection-set`, `:table-ids` or `:card-ids`
-  given, and unarchived ones with `:skip-archived`."
+  primary keys `:ids` when given, the ones [[where]] picks for the `:collection-set`, `:table-ids`, `:card-ids` or
+  `:action-ids` given, and unarchived ones with `:skip-archived`."
   [model opts]
   (if (= model :model/Setting)
     (setting/exportable-settings)
