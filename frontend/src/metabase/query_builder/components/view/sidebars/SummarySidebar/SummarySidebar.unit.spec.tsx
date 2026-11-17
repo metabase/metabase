@@ -426,26 +426,6 @@ describe("SummarySidebar", () => {
     expect(getChipLabels("values")).toEqual(["Revenue"]);
   });
 
-  it("clears every well at once", async () => {
-    const { getLastQuery } = setup({
-      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
-        stages: [
-          {
-            source: { type: "table", id: ORDERS_ID },
-            aggregations: [{ type: "operator", operator: "count" }],
-            breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
-          },
-        ],
-      }),
-    });
-
-    await userEvent.click(screen.getByRole("button", { name: "Clear all" }));
-
-    expect(getLastQuery()).toEqual({ values: [], dimensions: [] });
-    expect(getChipLabels("values")).toEqual([]);
-    expect(screen.getByRole("button", { name: "Clear all" })).toBeDisabled();
-  });
-
   describe("drag and drop", () => {
     it("adds a dragged field to the well it's dropped on", () => {
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
@@ -651,6 +631,48 @@ describe("SummarySidebar", () => {
 
       expect(getChipLabels("columns")).toEqual([]);
       expect(getChipLabels("rows")).toEqual(["Created At: Quarter"]);
+    });
+
+    it("replaces only the Columns groupings on a field click", async () => {
+      setup();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Pivot into rows and columns" }),
+      );
+      await pickInRows("categ", "Category");
+
+      await userEvent.click(getFieldButton("Product", "Vendor"));
+      await userEvent.click(getFieldButton("Orders", "Created At"));
+
+      expect(getChipLabels("rows")).toEqual(["Product → Category"]);
+      expect(getChipLabels("columns")).toEqual(["Created At: Month"]);
+    });
+
+    it("clears all the wells when Clear all is clicked", async () => {
+      const { getLastQuery } = setup({
+        query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count" }],
+              breakouts: [
+                { type: "column", name: "CREATED_AT", unit: "month" },
+              ],
+            },
+          ],
+        }),
+      });
+      await userEvent.click(
+        screen.getByRole("button", { name: "Pivot into rows and columns" }),
+      );
+      await pickInRows("categ", "Category");
+
+      await userEvent.click(screen.getByRole("button", { name: "Clear all" }));
+
+      expect(getLastQuery()).toEqual({ values: [], dimensions: [] });
+      expect(getChipLabels("values")).toEqual([]);
+      expect(getChipLabels("columns")).toEqual([]);
+      expect(getChipLabels("rows")).toEqual([]);
+      expect(screen.getByRole("button", { name: "Clear all" })).toBeDisabled();
     });
 
     it("moves the Rows groupings to Group by when the pivot mode ends", async () => {
