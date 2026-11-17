@@ -2028,9 +2028,11 @@
    :dependencies queries.dependencies/dependencies
    :analysis     queries.dependencies/analysis
 
-   :dependency-columns #{:type :dataset_query :dimension_mappings :parameters :visualization_settings}
-   :analysis-columns   #{:type :dataset_query}
-   :output-columns     #{:type :result_metadata}})
+   :dependency-columns       #{:type :dataset_query :dimension_mappings :parameters :visualization_settings}
+   ;; the dynamic goal sources are the only dependencies viz settings hold
+   :dependency-column-values {:visualization_settings queries.dependencies/goal-dependencies}
+   :analysis-columns         #{:type :dataset_query}
+   :output-columns           #{:type :result_metadata}})
 
 (defmethod replacement/spec :model/Card [_model]
   {:source-database-id :database_id

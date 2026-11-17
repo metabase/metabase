@@ -223,6 +223,26 @@
                                              {:graph.goal_value {:id card-id :type "card" :column "count"}}})
         (is (pending? :card card-id))))))
 
+(deftest card-viz-edit-without-goal-change-keeps-dependencies-test
+  (testing "a viz settings edit that reads the same goal sources leaves the card's dependencies computed"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (table-query :orders)}
+                     :model/Card {card-id :id} {:dataset_query          (table-query :products)
+                                                :visualization_settings
+                                                {:graph.goal_value {:id goal-id :type "card" :column "count"}}}]
+        (doseq [[label viz] {"an unrelated setting"       {:graph.goal_value {:id goal-id :type "card" :column "count"}
+                                                           :card.title       "renamed"}
+                             "another column of a source" {:graph.goal_value {:id goal-id :type "card" :column "sum"}
+                                                           :card.title       "renamed"}}]
+          (testing label
+            (computed! :card card-id)
+            (t2/update! :model/Card :id card-id {:visualization_settings viz})
+            (is (not (pending? :card card-id)))))
+        (testing "dropping the goal changes them"
+          (computed! :card card-id)
+          (t2/update! :model/Card :id card-id {:visualization_settings {:card.title "renamed"}})
+          (is (pending? :card card-id)))))))
+
 (deftest card-goal-only-edit-recalculates-dependencies-test
   (testing "adding a dynamic goal to a card, and nothing else, records the card it reads as a dependency"
     (mt/with-premium-features #{:dependencies}
