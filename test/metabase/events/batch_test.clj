@@ -104,7 +104,7 @@
         ids     (mapv #(t2/insert-returning-pk! :model/EventsTestTimeline {:name (str "w" %) :icon "cake" :creator_id creator})
                       (range 3))]
     (reset! received [])
-    (t2/update! :model/EventsTestTimeline {:where [:in :id ids]} {:name "same"})
+    (t2/update! :model/EventsTestTimeline :id [:in ids] {:name "same"})
     (testing "an update with a where clause publishes one event per changed row"
       (is (= 3 (count (filter #(= :event/events-test-timeline-update (:topic %)) @received)))))
     (reset! received [])
