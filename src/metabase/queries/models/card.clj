@@ -1964,7 +1964,7 @@
   [item]
   (update item :row (fn [row]
                       (apply dissoc row (filter #(nil? (get row %))
-                                                [:result_metadata :database_id :card_schema])))))
+                                                [:result_metadata :database_id :card_schema :type])))))
 
 (defmethod serialization/before-load :model/Card [_ items]
   (mapv (comp with-model-metadata keep-local-columns) items))
