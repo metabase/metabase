@@ -1379,23 +1379,23 @@ describe("DataModelV1 (backend that keeps state)", () => {
       const database = await findTablePickerDatabase("Writable Postgres12");
 
       expect(await findTablePickerSchema("Domestic")).toBeInTheDocument();
-      expect(queryBulkHideButton(database)).not.toBeInTheDocument();
+      expect(queryBulkVisibilityButton(database)).not.toBeInTheDocument();
       expect(
-        queryBulkHideButton(await findTablePickerSchema("Domestic")),
+        queryBulkVisibilityButton(await findTablePickerSchema("Domestic")),
       ).not.toBeInTheDocument();
       expect(
-        queryBulkHideButton(await findTablePickerSchema("Wild")),
+        queryBulkVisibilityButton(await findTablePickerSchema("Wild")),
       ).not.toBeInTheDocument();
 
       await userEvent.click(await findTablePickerSchema("Wild"));
       await verifyTablesVisible(["Animals", "Birds"]);
       expect(
-        queryBulkHideButton(
+        queryBulkVisibilityButton(
           await findTablePickerDatabase("Writable Postgres12"),
         ),
       ).not.toBeInTheDocument();
       expect(
-        queryBulkHideButton(await findTablePickerSchema("Domestic")),
+        queryBulkVisibilityButton(await findTablePickerSchema("Domestic")),
       ).not.toBeInTheDocument();
 
       await userEvent.click(
@@ -1550,6 +1550,7 @@ describe("DataModelV1 (backend that keeps state)", () => {
       await userEvent.click(getFieldSemanticTypeInput());
       expect(await findShownListbox()).toBeInTheDocument();
       await userEvent.keyboard("{Escape}");
+      expect(screen.getByTestId("preview-section")).toBeInTheDocument();
       await waitFor(() =>
         expect(screen.queryByRole("listbox")).not.toBeInTheDocument(),
       );
@@ -1683,8 +1684,10 @@ function getTablePickerItemNames(type: "database" | "schema" | "table") {
     .map((item) => item.textContent);
 }
 
-function queryBulkHideButton(item: HTMLElement) {
-  return within(item).queryByRole("button", { name: "Hide all tables" });
+function queryBulkVisibilityButton(item: HTMLElement) {
+  return within(item).queryByRole("button", {
+    name: /^(Hide|Unhide) all tables$/,
+  });
 }
 
 async function getBulkVisibilityButton(
