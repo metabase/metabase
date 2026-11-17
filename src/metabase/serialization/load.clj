@@ -27,6 +27,14 @@
 
 (defmethod before-load :default [_ items] items)
 
+(defmulti loaded-entities
+  "The `entities` of `model` an import loads, before they are checked against the schema of its spec, so a model can
+  leave out the shapes of older exports it no longer loads. By default, the entities."
+  {:arglists '([model entities])}
+  (fn [model _entities] model))
+
+(defmethod loaded-entities :default [_ entities] entities)
+
 (defmulti after-load
   "Runs the side effects of loading `items` of `model`, each a load item (see [[before-load]]) with the loaded
   `:instance`. By default, none."
@@ -136,7 +144,8 @@
     (when (seq parent-pks)
       (let [pk       (serialization.spec/primary-key model)
             existing (protocol/select-by-parent-pks store model parent-pks nil)
-            prepared (prepare-items model store entities opts #(rows-by-identity model existing %))
+            prepared (prepare-items model store entities (assoc opts :nested? true)
+                                    #(rows-by-identity model existing %))
             kept     (into #{} (keep #(some-> (:local %) (get pk))) prepared)
             stale    (into #{} (comp (map #(get % pk)) (remove kept)) existing)]
         (when (seq stale)
@@ -150,7 +159,7 @@
   ([model entities]
    (load model protocol.app-db/store entities import-opts))
   ([model store entities opts]
-   (let [entities (vec entities)]
+   (let [entities (vec (loaded-entities model entities))]
      (load-items! model store (prepare-items model store entities opts (fn [_] (rows-by-refs store model entities)))
                   opts))))
 

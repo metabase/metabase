@@ -105,7 +105,7 @@
             bad-card  (assoc-in card [:dataset_query :stages 0 :template-tags]
                                 {"id" {:type :tag-type-from-the-future :name "id" :display-name "ID" :id "abc-123"}})
             ingestion #(ts/ingestion-in-memory [db coll bad-card])
-            ours?     #(some (partial re-find #"does not match this Metabase's query schema") %)]
+            ours?     #(some (partial re-find #"Invalid Card .*:template-tags") %)]
         (testing "by default the schema check is what refuses the import"
           (mt/with-empty-h2-app-db!
             (is (ours? (load-failure-messages! (ingestion))))))

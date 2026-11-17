@@ -11,8 +11,7 @@
    [metabase.serialization.protocol :as protocol]
    [metabase.serialization.spec :as serialization.spec]
    [metabase.util :as u]
-   [metabase.util.malli.humanize :as mu.humanize]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.humanize :as mu.humanize]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,16 +25,54 @@
   [entity]
   (some->> entity :serdes/meta last :model (keyword "model")))
 
+(declare entity-ref)
+
+(defn external-keys
+  "The keys an entity of `model` holds as serialization writes it: its `:serdes/meta`, the keys of the columns its spec
+  copies or transforms, but the parent column a loader sets, and the keys its children nest under."
+  [model]
+  (let [spec       (serialization.spec/spec-of model)
+        parent-key (:key (:parent spec))]
+    (-> #{:serdes/meta}
+        (into (:copy spec))
+        (into (keep (fn [[k transform]]
+                      (when-not (and (= k parent-key) (not (:export transform)))
+                        (:as transform k))))
+              (:transform spec))
+        (into (keys (:children spec))))))
+
+(defn external-entity
+  "`entity`, an entity of `model`, and its nested children with only their [[external-keys]], dropping the keys their
+  specs do not read."
+  [model entity]
+  (reduce-kv (fn [entity k child-model]
+               (cond-> entity
+                 (sequential? (get entity k)) (update k (partial mapv #(external-entity child-model %)))))
+             (select-keys entity (external-keys model))
+             (serialization.spec/children model)))
+
+(defn check-entity
+  "`entity`, an entity of `model` as serialization writes it, normalized by the `:schema` of its spec, throwing when it
+  still does not match the schema."
+  [model entity]
+  (let [schema (or (:schema (serialization.spec/spec-of model))
+                   (throw (ex-info (format "No :schema in the serialization spec of %s" model)
+                                   {:model model})))]
+    (try
+      (lib/normalize schema entity {:throw? true})
+      (catch Exception e
+        (let [error (some-> (ex-data e) :error :explain mu.humanize/humanize)]
+          (throw (ex-info (format "Invalid %s %s: %s" (name model) (pr-str (entity-ref model entity))
+                                  (pr-str (or error (ex-message e))))
+                          {:model model :error error}
+                          e)))))))
+
 (defn validate-export
   "In dev and test, throws when `entity`, exported from a row of `model`, does not match the schema of its spec."
   [model entity]
   (when (or config/is-dev? config/is-test?)
-    (let [schema (or (:schema (serialization.spec/spec-of model))
-                     (throw (ex-info (format "No :schema in the serialization spec of %s" model)
-                                     {:model model})))]
-      (when-let [error (some-> (mr/explain schema entity) mu.humanize/humanize)]
-        (throw (ex-info (format "Invalid export of %s: %s" model (pr-str error))
-                        {:model model :error error}))))))
+    (check-entity model entity)
+    nil))
 
 (defn- transformed
   "The values of column `k` of the rows or entities `batch` transformed by `f`, a fn of `store`, the batch, the
@@ -93,16 +130,23 @@
     (vec (map-indexed exported rows))))
 
 (defn deserialize-entities
-  "The `entities` of `model`, normalized by the `:schema` of its spec but for the columns its import transforms
-  normalize themselves, as the rows to insert, with their references resolved to database ids in `store` with `opts`
-  all at once. Each column the spec copies or exports is set to the entity's value, or else to its default, or else to
-  nil; a column it only imports is set only when the entity holds a value, and the columns imported after insert are
-  left out."
+  "The `entities` of `model` as the rows to insert, each cut to its [[external-entity]] and passed through
+  [[check-entity]], or only normalized by the `:schema` of its spec when `opts` has `:skip-schema-validation?` or
+  `:nested?`, for children whose parent's schema checked them, but for the columns its import transforms normalize
+  themselves, with their references resolved to database ids in `store` with `opts` all at once. Each column the spec
+  copies or exports is set to the entity's value, or else to its default, or else to nil; a column it only imports is
+  set only when the entity holds a value, and the columns imported after insert are left out."
   [model store entities opts]
   (let [spec     (serialization.spec/spec-of model)
         defaults (:defaults spec)
         raw-keys (into [] (keep (fn [[k transform]] (when (:import transform) (:as transform k)))) (:transform spec))
-        entities (mapv #(merge (lib/normalize (:schema spec) (apply dissoc % raw-keys)) (select-keys % raw-keys))
+        entities (mapv (fn [entity]
+                         (merge (apply dissoc
+                                       (if (or (:nested? opts) (:skip-schema-validation? opts))
+                                         (lib/normalize (:schema spec) (external-entity model entity))
+                                         (check-entity model (external-entity model entity)))
+                                       raw-keys)
+                                (select-keys entity raw-keys)))
                        entities)
         columns  (concat (for [k (:copy spec)]
                            [k true (mapv #(get % k) entities)])

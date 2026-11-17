@@ -793,8 +793,8 @@
                                    (serialization/export-mbql-dependencies dataset_query))))))
           actions)))
 
-(defmethod serialization/before-load :model/Action [_ items]
-  (filterv #(not= "http" (some-> % :entity :type name)) items))
+(defmethod serialization/loaded-entities :model/Action [_ entities]
+  (filterv #(not= "http" (some-> % :type name)) entities))
 
 ;;; -------------------------------------------------- Remote sync ---------------------------------------------------
 

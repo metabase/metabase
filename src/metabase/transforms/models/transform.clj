@@ -597,9 +597,9 @@
                          (serialization/import-mbql-dependencies source)))))
         entities))
 
-(defmethod serialization/before-load :model/Transform [_ items]
-  (let [{unresolved true resolved false} (group-by #(boolean (get-in % [:entity :source :serdes/unresolved])) items)]
-    (doseq [{{:keys [entity_id]} :entity} unresolved]
+(defmethod serialization/loaded-entities :model/Transform [_ entities]
+  (let [{unresolved true resolved false} (group-by #(boolean (get-in % [:source :serdes/unresolved])) entities)]
+    (doseq [{:keys [entity_id]} unresolved]
       (log/warnf "Skipping transform %s, since an export from before 66 left it without its deleted source database"
                  entity_id))
     (vec resolved)))

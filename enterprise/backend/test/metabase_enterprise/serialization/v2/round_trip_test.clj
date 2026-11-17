@@ -34,6 +34,7 @@
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.util.log :as log]
    [metabase.util.match :as match]
@@ -170,6 +171,15 @@
               (is (empty? missing-files)))
             (testing "No files have been added"
               (is (empty? added-files)))
+            (testing "every file of every model this version exports passes the import check of its model"
+              (let [ingestion (ingest/ingest-yaml output-dir)
+                    ks        (vec (ingest/ingest-list ingestion))]
+                (is (empty? (set/difference (into #{} (remove covered-by-dedicated-round-trip-test?)
+                                                  serdes.models/exported-models)
+                                            (into #{} (map first) ks))))
+                (doseq [[[model :as k] entity] (map vector ks (ingest/ingest-many ingestion ks))]
+                  (testing (pr-str k)
+                    (is (map? (serialization/check-entity model (serialization/external-entity model entity))))))))
             (testing "File contents\n"
               (doseq [file source-files
                       :let [ref-file (io/file source-dir file)
