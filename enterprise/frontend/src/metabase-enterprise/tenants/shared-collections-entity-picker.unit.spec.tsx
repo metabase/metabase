@@ -1,3 +1,4 @@
+import { QueryStatus } from "@reduxjs/toolkit/query";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -21,13 +22,13 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
-  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
   within,
 } from "__support__/ui";
+import { Api } from "metabase/api";
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
@@ -36,6 +37,7 @@ import type { SaveQuestionProps } from "metabase/common/components/SaveQuestionF
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { DashboardMoveModal } from "metabase/dashboard/components/DashboardMoveModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
+import type { State } from "metabase/redux/store";
 import { Route } from "metabase/router";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -225,6 +227,17 @@ const expectButtonDisabled = (picker: HTMLElement, name: string) =>
     expect(within(picker).getByRole("button", { name })).toBeDisabled(),
   );
 
+// The move invalidates the collection items, so the open picker lists refetch.
+// Wait for them, so that they don't update the picker after the test ends.
+const waitForRefetches = (store: { getState: () => State }) =>
+  waitFor(() =>
+    expect(
+      Object.values(store.getState()[Api.reducerPath].queries).filter(
+        (query) => query?.status === QueryStatus.pending,
+      ),
+    ).toEqual([]),
+  );
+
 const findRequestsTo = async (method: "PUT" | "POST", path: string) =>
   (await findRequests(method)).filter(
     ({ url }) => new URL(url).pathname === path,
@@ -277,11 +290,11 @@ describe("entity picker > shared tenant collections", () => {
         ...JSON.parse(String(call.options.body)),
       }));
       const onClose = jest.fn();
-      renderWithProviders(
+      const { store } = renderWithProviders(
         <MoveCardModal card={cardToMove} onClose={onClose} />,
         { storeInitialState },
       );
-      return { onClose };
+      return { onClose, store };
     };
 
     it("should show Shared collections when tenants are enabled and open its sub-collections", async () => {
@@ -315,7 +328,7 @@ describe("entity picker > shared tenant collections", () => {
     });
 
     it("should not allow moving to the tenant root, but should allow moving to a tenant collection", async () => {
-      const { onClose } = setup();
+      const { onClose, store } = setup();
       const picker = await findPicker();
 
       await openTenantRoot(picker);
@@ -328,8 +341,7 @@ describe("entity picker > shared tenant collections", () => {
       );
 
       await waitFor(() => expect(onClose).toHaveBeenCalled());
-      // The move invalidates the collection items, so the open lists refetch.
-      await act(() => fetchMock.callHistory.flush(true));
+      await waitForRefetches(store);
       const puts = await findRequestsTo("PUT", `/api/card/${card.id}`);
       expect(puts).toHaveLength(1);
       expect(puts[0].body).toMatchObject({
@@ -368,7 +380,7 @@ describe("entity picker > shared tenant collections", () => {
       const { storeInitialState } = setupEnvironment();
       setupDashboardEndpoints(dashboard);
       const onClose = jest.fn();
-      renderWithProviders(
+      const { store } = renderWithProviders(
         <DashboardMoveModal dashboard={dashboard} onClose={onClose} />,
         { storeInitialState },
       );
@@ -384,8 +396,7 @@ describe("entity picker > shared tenant collections", () => {
       );
 
       await waitFor(() => expect(onClose).toHaveBeenCalled());
-      // The move invalidates the collection items, so the open lists refetch.
-      await act(() => fetchMock.callHistory.flush(true));
+      await waitForRefetches(store);
       const puts = await findRequestsTo(
         "PUT",
         `/api/dashboard/${dashboard.id}`,
