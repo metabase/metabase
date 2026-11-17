@@ -65,15 +65,18 @@
       (api/read-check (get id->row id)))))
 
 (defn- check-new-references
-  "Read-check every card and action the incoming `dashboard` newly references, relative to `stored`.
+  "Read-check every card and action the incoming `dashboard` newly references, relative to what `stored-fn` returns,
+  which is called only when `dashboard` references something.
   Lives here rather than at the REST boundary so every writer — MCP's dashboard_write included —
   gets the check."
-  [stored dashboard]
-  (let [new-references (references dashboard)
-        card-ids       (vec (set/difference (:cards new-references) (:cards stored)))
-        action-ids     (vec (set/difference (:actions new-references) (:actions stored)))]
-    (read-check-all (dashboards.db/cards-by-ids card-ids) card-ids)
-    (read-check-all (dashboards.db/actions-by-ids action-ids) action-ids)))
+  [stored-fn dashboard]
+  (let [new-references (references dashboard)]
+    (when (some seq (vals new-references))
+      (let [stored     (stored-fn)
+            card-ids   (vec (set/difference (:cards new-references) (:cards stored)))
+            action-ids (vec (set/difference (:actions new-references) (:actions stored)))]
+        (read-check-all (dashboards.db/cards-by-ids card-ids) card-ids)
+        (read-check-all (dashboards.db/actions-by-ids action-ids) action-ids)))))
 
 (def NewDashboard
   "Schema for the argument to [[create-dashboard!]]: the attributes of a new dashboard."
@@ -99,7 +102,7 @@
     {:keys [in-transaction]}           :- [:maybe [:map {:closed true} [:in-transaction {:optional true} ifn?]]]]
    ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
    (api/create-check :model/Dashboard {:collection_id collection_id})
-   (check-new-references no-references {:parameters parameters})
+   (check-new-references (constantly no-references) {:parameters parameters})
    (let [dashboard-data (cond-> {:name                name
                                  :description         description
                                  :parameters          (or parameters [])
@@ -315,7 +318,7 @@
   (span/with-span!
     {:name       "update-dashboard"
      :attributes {:dashboard/id id}}
-    (check-new-references (stored-references id) dash-updates)
+    (check-new-references #(stored-references id) dash-updates)
     (let [current-dash                       (api/check-404 (dashboards.db/dashboard id))
           ;; If there are parameters in the update, we want the old params so that we can do a check to see if any of
           ;; the notifications were broken by the update.

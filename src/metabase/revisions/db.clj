@@ -157,11 +157,13 @@
   "The ids of the Revisions of the `model-name` row with `model-id`, newest first."
   [model-name :- :string
    model-id   :- ms/PositiveInt]
-  (t2/select-fn-vec :id :model/Revision
-                    :model    model-name
-                    :model_id model-id
-                    {:order-by [[:timestamp :desc]
-                                [:id :desc]]}))
+  (mapv :id (t2/query {:select   [:id]
+                       :from     [:revision]
+                       :where    [:and
+                                  [:= :model model-name]
+                                  [:= :model_id model-id]]
+                       :order-by [[:timestamp :desc]
+                                  [:id :desc]]})))
 
 (mu/defn delete-revisions!
   "Delete the Revisions with `ids`, returning the number deleted."
@@ -169,13 +171,11 @@
   (t2/delete! :model/Revision :id [:in ids]))
 
 (mu/defn unmark-most-recent-revisions!
-  "Clear `most_recent` on the Revisions of the `model-name` row with `model-id` other than `revision-id`, returning
-  the number updated."
-  [model-name  :- :string
-   model-id    :- ms/PositiveInt
-   revision-id :- ms/PositiveInt]
+  "Clear `most_recent` on the Revisions of the `model-name` row with `model-id`, returning the number updated."
+  [model-name :- :string
+   model-id   :- ms/PositiveInt]
   (t2/update! :model/Revision
-              {:model model-name :model_id model-id :most_recent true :id [:not= revision-id]}
+              {:model model-name :model_id model-id :most_recent true}
               {:most_recent false}))
 
 (mu/defn revisions
@@ -188,13 +188,13 @@
   "The newest Revision of the `model-name` row with `model-id`, or nil."
   [model-name :- :string
    model-id   :- ms/PositiveInt]
-  (t2/select-one :model/Revision :model model-name, :model_id model-id, {:order-by [[:id :desc]]}))
+  (t2/select-one :model/Revision :model model-name, :model_id model-id, {:order-by [[:id :desc]], :limit 1}))
 
 (mu/defn latest-revision-object
   "The serialized object of the newest Revision of the `model-name` row with `model-id`, or nil."
   [model-name :- :string
    model-id   :- ms/PositiveInt]
-  (t2/select-one-fn :object :model/Revision :model model-name :model_id model-id {:order-by [[:id :desc]]}))
+  (t2/select-one-fn :object :model/Revision :model model-name :model_id model-id {:order-by [[:id :desc]], :limit 1}))
 
 (mu/defn revision-object
   "The serialized object of the Revision with `revision-id` of the `model-name` row with `model-id`, or nil."

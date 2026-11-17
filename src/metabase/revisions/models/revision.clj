@@ -136,10 +136,17 @@
 (t2/deftransforms :model/Revision
   {:object mi/transform-json})
 
+(defn- delete-old-revisions!
+  "Delete the Revisions of `model` with `id` beyond its `kept` newest."
+  [model id kept]
+  (when-let [old-revisions (seq (drop kept (revisions.db/revision-ids-newest-first (name model) id)))]
+    (revisions.db/delete-revisions! old-revisions)))
+
 (t2/define-before-insert :model/Revision
   [{:keys [model model_id] :as revision}]
-  ;; obtain a lock on the existing revisions for this entity to prevent concurrent inserts of new revisions
   (revisions.db/lock-revisions! model model_id)
+  (revisions.db/unmark-most-recent-revisions! model model_id)
+  (delete-old-revisions! model model_id (dec max-revisions))
   (assoc revision
          :timestamp (or (:timestamp revision) :%now)
          :metabase_version config/mb-version-string
@@ -167,20 +174,6 @@
       (update :object assoc :card_schema queries/starting-card-schema-version)
 
       model (update :object (partial mi/do-after-select model)))))
-
-(defn- delete-old-revisions!
-  "Delete old revisions of `model` with `id` when there are more than `max-revisions` in the DB."
-  [model id]
-  (when-let [old-revisions (seq (drop max-revisions (revisions.db/revision-ids-newest-first (name model) id)))]
-    (revisions.db/delete-revisions! old-revisions)))
-
-(t2/define-after-insert :model/Revision
-  [revision]
-  (u/prog1 revision
-    (let [{:keys [id model model_id]} revision]
-      ;; Update the last `most_recent revision` to false (not including the current revision)
-      (revisions.db/unmark-most-recent-revisions! model model_id id)
-      (delete-old-revisions! model model_id))))
 
 ;;; # Functions
 
