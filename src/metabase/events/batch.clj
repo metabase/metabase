@@ -45,7 +45,7 @@
    [:changes   {:optional true} [:maybe [:fn map?]]]
    [:user-id   [:maybe :int]]
    [:context   {:optional true} [:maybe [:fn map?]]]
-   [:captures  {:optional true} [:maybe [:fn map?]]]])
+   [:captures  {:optional true} [:maybe [:map]]]])
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *context*

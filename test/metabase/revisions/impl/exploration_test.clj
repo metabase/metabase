@@ -1,7 +1,6 @@
 (ns metabase.revisions.impl.exploration-test
   (:require
    [clojure.test :refer :all]
-   [metabase.events.core :as events]
    [metabase.revisions.init]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
@@ -26,26 +25,33 @@
         (is (contains? serialized :collection_id))
         (is (contains? serialized :collection_position))))))
 
+(defn- create-exploration!
+  "Create an Exploration as `crowberto`, which records its creation revision."
+  [attrs]
+  (mt/with-current-user (mt/user->id :crowberto)
+    (t2/insert-returning-pk! :model/Exploration (assoc attrs :creator_id (mt/user->id :crowberto)))))
+
+(defmacro ^:private with-exploration
+  [[id-sym attrs] & body]
+  `(let [~id-sym (create-exploration! ~attrs)]
+     (try
+       ~@body
+       (finally
+         (t2/delete! :model/Revision :model "Exploration" :model_id ~id-sym)
+         (t2/delete! :model/Exploration :id ~id-sym)))))
+
 (deftest create-event-records-creation-revision-test
-  (mt/with-temp [:model/Exploration {expl-id :id} {:name "starter" :creator_id (mt/user->id :crowberto)}]
-    (let [obj (t2/select-one :model/Exploration :id expl-id)]
-      (events/publish-event! :event/exploration-create
-                             {:object obj :user-id (mt/user->id :crowberto)})
-      (let [revisions (t2/select :model/Revision :model "Exploration" :model_id expl-id)]
-        (is (= 1 (count revisions)))
-        (is (true? (-> revisions first :is_creation)))
-        (is (true? (-> revisions first :most_recent)))
-        (is (= (mt/user->id :crowberto) (-> revisions first :user_id)))))))
+  (with-exploration [expl-id {:name "starter"}]
+    (let [revisions (t2/select :model/Revision :model "Exploration" :model_id expl-id)]
+      (is (= 1 (count revisions)))
+      (is (true? (-> revisions first :is_creation)))
+      (is (true? (-> revisions first :most_recent)))
+      (is (= (mt/user->id :crowberto) (-> revisions first :user_id))))))
 
 (deftest update-event-records-update-revision-and-flips-most-recent-test
-  (mt/with-temp [:model/Exploration {expl-id :id} {:name "starter" :description "desc" :creator_id (mt/user->id :crowberto)}]
-    (events/publish-event! :event/exploration-create
-                           {:object  (t2/select-one :model/Exploration :id expl-id)
-                            :user-id (mt/user->id :crowberto)})
-    (t2/update! :model/Exploration :id expl-id {:name "renamed"})
-    (events/publish-event! :event/exploration-update
-                           {:object  (t2/select-one :model/Exploration :id expl-id)
-                            :user-id (mt/user->id :rasta)})
+  (with-exploration [expl-id {:name "starter" :description "desc"}]
+    (mt/with-current-user (mt/user->id :rasta)
+      (t2/update! :model/Exploration :id expl-id {:name "renamed"}))
     (let [revs (t2/select :model/Revision :model "Exploration" :model_id expl-id
                           {:order-by [[:id :asc]]})]
       (is (= 2 (count revs)))
@@ -58,27 +64,19 @@
         (is (= "renamed" (-> revs second :object :name)))))))
 
 (deftest no-op-update-does-not-create-revision-test
-  (testing "push-revision! short-circuits when the serialized snapshot matches the previous one"
-    (mt/with-temp [:model/Exploration {expl-id :id} {:name "stable" :creator_id (mt/user->id :crowberto)}]
-      (let [obj (t2/select-one :model/Exploration :id expl-id)]
-        (events/publish-event! :event/exploration-create
-                               {:object obj :user-id (mt/user->id :crowberto)})
-        (events/publish-event! :event/exploration-update
-                               {:object obj :user-id (mt/user->id :crowberto)})
-        (is (= 1 (t2/count :model/Revision :model "Exploration" :model_id expl-id)))))))
+  (testing "an update that changes nothing records no revision"
+    (with-exploration [expl-id {:name "stable"}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (t2/update! :model/Exploration :id expl-id {:name "stable"}))
+      (is (= 1 (t2/count :model/Revision :model "Exploration" :model_id expl-id))))))
 
 (deftest revert-round-trip-test
-  (mt/with-temp [:model/Exploration {expl-id :id} {:name "original" :description "first" :creator_id (mt/user->id :crowberto)}]
-    (events/publish-event! :event/exploration-create
-                           {:object  (t2/select-one :model/Exploration :id expl-id)
-                            :user-id (mt/user->id :crowberto)})
+  (with-exploration [expl-id {:name "original" :description "first"}]
     (let [first-rev-id (t2/select-one-pk :model/Revision
                                          :model "Exploration" :model_id expl-id
                                          {:order-by [[:id :asc]]})]
-      (t2/update! :model/Exploration :id expl-id {:name "renamed" :description "later"})
-      (events/publish-event! :event/exploration-update
-                             {:object  (t2/select-one :model/Exploration :id expl-id)
-                              :user-id (mt/user->id :crowberto)})
+      (mt/with-current-user (mt/user->id :crowberto)
+        (t2/update! :model/Exploration :id expl-id {:name "renamed" :description "later"}))
       (revision/revert! {:entity      :model/Exploration
                          :id          expl-id
                          :revision-id first-rev-id
