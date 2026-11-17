@@ -15,7 +15,7 @@
 
 (methodical/defmethod t2/table-name :model/PythonLibrary [_model] :python_library)
 
-(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
+(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id :hook/events]]
   (derive :model/PythonLibrary trait))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
@@ -68,11 +68,9 @@
   "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
   [path source]
   (let [normalized-path (normalize-path path)
-        existing        (transforms-python.db/python-library-by-path normalized-path)
         id              (transforms-python.db/upsert-python-library-source!
                          normalized-path source {:entity_id builtin-entity-id :is_default (str/blank? source)})
         library         (transforms-python.db/python-library id)]
-    (events/publish-event! (if existing :event/python-library-update :event/python-library-create) {:object library})
     library))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
