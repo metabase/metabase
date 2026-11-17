@@ -6,10 +6,8 @@
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc :as sql-jdbc]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.security-center.schema :as security-center.schema]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))
 
@@ -21,32 +19,15 @@
   [(merge {:role nil, :schema "public", :table "birds", :select true, :insert false, :update false, :delete false}
           overrides)])
 
-(defn- do-with-fake-connections
-  "Calls `f` while no database is asked: a new connection is the database map itself, and `user->rows` and
-  `user->role` give the privilege rows of the connection user and the writable role it can switch to, from the `:user`
-  of the connection details."
-  [user->rows user->role f]
-  (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-new-connection        (fn [database g] (g database))
-                              read-only-connections/table-privileges (fn [_engine {{:keys [user]} :details}]
-                                                                       (user->rows user))
-                              read-only-connections/writable-role    (fn [{{:keys [user]} :details} _conn]
-                                                                       (user->role user))]
-    (f)))
-
 (defn- refresh-with!
   "Runs the refresh with the privilege rows of each database taken from `user->privileges`, keyed by the `:user` of
-  its connection details, and the writable role from `user->role`. A function as a value is called. Returns the
-  results of the databases named in `names`."
-  ([user->privileges names]
-   (refresh-with! user->privileges {} names))
-  ([user->privileges user->role names]
-   (let [value-of (fn [m user]
-                    (let [v (get m user)]
-                      (if (fn? v) (v) v)))]
-     (do-with-fake-connections
-      #(value-of user->privileges %)
-      #(value-of user->role %)
-      #(filterv (comp (set names) :name) (:databases (read-only-connections/refresh)))))))
+  its connection details. A function as the value is called. Returns the results of the databases named in `names`."
+  [user->privileges names]
+  (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-new-connection
+                              (fn [{{:keys [user]} :details} _f]
+                                (let [rows (get user->privileges user)]
+                                  (if (fn? rows) (rows) rows)))]
+    (filterv (comp (set names) :name) (:databases (read-only-connections/refresh)))))
 
 (deftest refresh-test
   (mt/with-temp [:model/Database {router-id :id} {:name "rc router", :engine :postgres, :details {:user "reader"}}
@@ -173,121 +154,37 @@
       (testing "before the first sync the server is not known, so the database is asked"
         (is (= "no-privileges" (:result (second results))))))))
 
-(deftest role-writable-test
-  (mt/with-temp [:model/Database _ {:name "rc login writes", :engine :postgres, :details {:user "writer"}}
-                 :model/Database _ {:name "rc role writes", :engine :postgres, :details {:user "reader"}}
-                 :model/Database _ {:name "rc nothing writes", :engine :postgres, :details {:user "viewer"}}]
-    (let [roles-read (atom #{})
-          results    (refresh-with! {"writer" (privileges :insert true)
-                                     "reader" (privileges)
-                                     "viewer" (privileges)}
-                                    {"writer" #(swap! roles-read conj "writer")
-                                     "reader" #(do (swap! roles-read conj "reader") "sales_writer")
-                                     "viewer" #(do (swap! roles-read conj "viewer") nil)}
-                                    ["rc login writes" "rc role writes" "rc nothing writes"])]
-      (testing "a role that the connection user can switch to and that can write fails the database"
-        (is (= [["rc login writes" "writable"] ["rc nothing writes" "read-only"] ["rc role writes" "role-writable"]]
+(deftest roles-skipped-test
+  (mt/with-temp [:model/Database         {router-id :id}    {:name "rc router", :engine :postgres, :details {:user "reader"}}
+                 :model/Database         _                  {:name               "rc destination"
+                                                             :engine             :postgres
+                                                             :details            {:user "reader"}
+                                                             :router_database_id router-id}
+                 :model/Database         {impersonated :id} {:name "rc impersonated", :engine :postgres, :details {:user "reader"}}
+                 :model/Database         {writable :id}     {:name "rc writable", :engine :postgres, :details {:user "writer"}}
+                 :model/Database         _                  {:name "rc default role", :engine :mysql
+                                                             :details {:user "reader", :role "rc_default"}}
+                 :model/Database         _                  {:name "rc plain", :engine :postgres, :details {:user "reader"}}
+                 :model/PermissionsGroup {group-id :id}     {}
+                 :model/ConnectionImpersonation _ {:db_id router-id, :group_id group-id, :attribute "db_role"}
+                 :model/ConnectionImpersonation _ {:db_id impersonated, :group_id group-id, :attribute "db_role"}
+                 :model/ConnectionImpersonation _ {:db_id writable, :group_id group-id, :attribute "db_role"}]
+    (let [results (refresh-with! {"reader" (privileges)
+                                  "writer" (privileges :insert true)}
+                                 ["rc router" "rc destination" "rc impersonated" "rc writable" "rc default role"
+                                  "rc plain"])]
+      (testing "a database where Metabase switches to database roles is not reported as read-only"
+        (is (= [["rc default role" "roles-skipped"]
+                ["rc destination" "roles-skipped"]
+                ["rc impersonated" "roles-skipped"]
+                ["rc plain" "read-only"]
+                ["rc router" "roles-skipped"]
+                ["rc writable" "writable"]]
                (map (juxt :name :result) results))))
-      (testing "the roles are not read when the connection user can write"
-        (is (= #{"reader" "viewer"} @roles-read)))
-      (testing "the item of a database with a writable role"
-        (is (=? [{:status  :fail
-                  :message "The connection user of rc role writes can switch to a role that can insert, update or delete"}]
-                (read-only-connections/items {:databases (filterv (comp #{"role-writable"} :result) results)})))))))
-
-(defn- random-identifier
-  []
-  (u/lower-case-en (mt/random-name)))
-
-(defn- database-as
-  "A database map for the test database of the current driver, with `user` and `password` as the connection user."
-  [user password]
-  {:id 1, :engine driver/*driver*, :details (assoc (:details (mt/db)) :user user :password password)})
-
-(defn- switchable-roles-as
-  [user password]
-  (set (sql-jdbc/do-with-new-connection (database-as user password)
-                                        #(#'read-only-connections/switchable-roles driver/*driver* %))))
-
-(deftest ^:mb/driver-tests postgres-roles-test
-  (mt/test-driver :postgres
-    (let [suffix        (random-identifier)
-          table         (str "rc_birds_" suffix)
-          writer        (str "rc_writer_" suffix)
-          reader        (str "rc_reader_" suffix)
-          noinherit     (str "rc_noinherit_" suffix)
-          readonly      (str "rc_readonly_" suffix)
-          inherit       (str "rc_inherit_" suffix)
-          spec          (sql-jdbc.conn/connection-details->spec :postgres (:details (mt/db)))
-          exec!         #(jdbc/execute! spec [%] {:transaction? false})
-          result-as     #(#'read-only-connections/privileges-result (database-as % "pw"))]
-      (try
-        (doseq [statement [(format "CREATE TABLE %s (id int)" table)
-                           (format "CREATE ROLE %s NOLOGIN" writer)
-                           (format "GRANT SELECT, INSERT, UPDATE, DELETE ON %s TO %s" table writer)
-                           (format "CREATE ROLE %s NOLOGIN" reader)
-                           (format "GRANT SELECT ON %s TO %s" table reader)
-                           (format "CREATE ROLE %s LOGIN PASSWORD 'pw' NOINHERIT" noinherit)
-                           (format "GRANT SELECT ON %s TO %s" table noinherit)
-                           (format "GRANT %s, %s TO %s" writer reader noinherit)
-                           (format "CREATE ROLE %s LOGIN PASSWORD 'pw' NOINHERIT" readonly)
-                           (format "GRANT SELECT ON %s TO %s" table readonly)
-                           (format "GRANT %s TO %s" reader readonly)
-                           (format "CREATE ROLE %s LOGIN PASSWORD 'pw' INHERIT" inherit)
-                           (format "GRANT %s TO %s" writer inherit)]]
-          (exec! statement))
-        (testing "a NOINHERIT connection user can switch to its roles, and one of them can write"
-          (is (= #{writer reader} (switchable-roles-as noinherit "pw")))
-          (is (= "role-writable" (result-as noinherit))))
-        (testing "a role that the connection user can't switch to is skipped, and the next role is tried"
-          (mt/with-dynamic-fn-redefs [read-only-connections/switchable-roles (fn [_engine _conn]
-                                                                               [(str "rc_missing_" suffix) writer])]
-            (is (= "role-writable" (result-as noinherit)))))
-        (testing "a NOINHERIT connection user whose roles only read"
-          (is (= #{reader} (switchable-roles-as readonly "pw")))
-          (is (= "read-only" (result-as readonly))))
-        (testing "an INHERIT connection user holds the privileges of its roles, so no role is left to switch to"
-          (is (= #{} (switchable-roles-as inherit "pw")))
-          (is (= "writable" (result-as inherit))))
-        (finally
-          (exec! (format "DROP TABLE IF EXISTS %s" table))
-          (doseq [role [noinherit readonly inherit writer reader]]
-            (exec! (format "DROP ROLE IF EXISTS %s" role))))))))
-
-(deftest ^:mb/driver-tests sqlserver-roles-test
-  (mt/test-driver :sqlserver
-    (let [suffix   (random-identifier)
-          table    (str "rc_birds_" suffix)
-          login    (str "rc_login_" suffix)
-          writer   (str "rc_writer_" suffix)
-          password (:password (:details (mt/db)))
-          spec     (sql-jdbc.conn/connection-details->spec :sqlserver (:details (mt/db)))
-          exec!    #(jdbc/execute! spec [%] {:transaction? false})]
-      (try
-        (doseq [statement [(format "CREATE TABLE dbo.%s (id int)" table)
-                           (format "CREATE LOGIN %s WITH PASSWORD = N'%s'" login password)
-                           (format "CREATE USER %s FOR LOGIN %s" login login)
-                           (format "GRANT SELECT ON dbo.%s TO %s" table login)
-                           (format "CREATE USER %s WITHOUT LOGIN" writer)
-                           (format "GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.%s TO %s" table writer)]]
-          (exec! statement))
-        (testing "a connection user that can't impersonate the writable user"
-          (is (= #{} (switchable-roles-as login password)))
-          (is (= "read-only" (#'read-only-connections/privileges-result (database-as login password)))))
-        (exec! (format "GRANT IMPERSONATE ON USER::%s TO %s" writer login))
-        (testing "a connection user that can impersonate the writable user"
-          (is (= #{writer} (switchable-roles-as login password)))
-          (is (= "role-writable" (#'read-only-connections/privileges-result (database-as login password)))))
-        (finally
-          ;; a user that a permission refers to can't be dropped, so the permissions go first
-          (doseq [statement [(format "IF USER_ID('%s') IS NOT NULL REVOKE IMPERSONATE ON USER::%s FROM %s"
-                                     writer writer login)
-                             (format "DROP TABLE IF EXISTS dbo.%s" table)
-                             (format "DROP USER IF EXISTS %s" writer)
-                             (format "DROP USER IF EXISTS %s" login)
-                             (format "IF EXISTS (SELECT 1 FROM sys.server_principals WHERE name = '%s') DROP LOGIN %s"
-                                     login login)]]
-            (exec! statement)))))))
+      (testing "the item of a database whose roles are skipped"
+        (is (=? [{:status  :unknown
+                  :message "Couldn't check the database roles that Metabase uses on rc impersonated"}]
+                (read-only-connections/items {:databases (filterv (comp #{"rc impersonated"} :name) results)})))))))
 
 (deftest log-test
   (testing "a database without an answer in time gets a line with its id and engine"
@@ -301,13 +198,10 @@
           (deliver stuck "read-only")))))
   (testing "a database that lists no table privileges gets a line with its id and engine"
     (mt/with-log-messages-for-level [messages [metabase-enterprise.security-center.read-only-connections :warn]]
-      (do-with-fake-connections
-       (constantly [])
-       (constantly nil)
-       (fn []
-         (is (= "no-privileges" (#'read-only-connections/check-database {:id 7, :engine :postgres})))
-         (is (=? [{:level :warn, :message #".*could not read the table privileges of database 7 \(postgres\)"}]
-                 (messages)))))))
+      (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-new-connection (fn [_database _f] [])]
+        (is (= "no-privileges" (#'read-only-connections/check-database {:id 7, :engine :postgres})))
+        (is (=? [{:level :warn, :message #".*could not read the table privileges of database 7 \(postgres\)"}]
+                (messages))))))
   (testing "a database with an engine outside the supported set gets a line with its id and engine"
     (mt/with-log-messages-for-level [messages [metabase-enterprise.security-center.read-only-connections :info]]
       (#'read-only-connections/check-databases [{:id 8, :engine :h2}
@@ -320,13 +214,11 @@
               (messages)))))
   (testing "a refresh writes one line with the number of databases, the duration and the results"
     (mt/with-log-messages-for-level [messages [metabase-enterprise.security-center.read-only-connections :info]]
-      (do-with-fake-connections
-       (constantly (privileges))
-       (constantly nil)
-       (fn []
-         (let [database-count (count (:databases (read-only-connections/refresh)))]
-           (is (=? [{:message (re-pattern (str ".*checked " database-count " databases in \\d+ ms: \\{.+\\}"))}]
-                   (filter #(re-find #"checked \d+ databases" (:message %)) (messages))))))))))
+      (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-new-connection (fn [_database _f]
+                                                                    (privileges))]
+        (let [database-count (count (:databases (read-only-connections/refresh)))]
+          (is (=? [{:message (re-pattern (str ".*checked " database-count " databases in \\d+ ms: \\{.+\\}"))}]
+                  (filter #(re-find #"checked \d+ databases" (:message %)) (messages)))))))))
 
 (deftest ^:parallel items-test
   (testing "before the first refresh"

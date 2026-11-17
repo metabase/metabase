@@ -1,31 +1,30 @@
 (ns metabase-enterprise.security-center.read-only-connections
-  "The work of the `read-only-connections` health check: [[refresh]] asks the databases, and [[items]] turns the stored
-  answer into the items of the check."
+  "The work of the `read-only-connections` health check: [[refresh]] asks every database whether its connection user
+  can write, and [[items]] turns the stored answer into the items of the check."
   (:require
    [com.climate.claypoole :as cp]
    [metabase-enterprise.security-center.db :as security-center.db]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.util :as driver.u]
    [metabase.security-center.schema :as security-center.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [next.jdbc :as next.jdbc]
-   [next.jdbc.result-set :as next.jdbc.rs])
-  (:import
-   (java.sql Connection)))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
 (mr/def ::result
-  "What the refresh found for one database. `\"role-writable\"`: the connection user can't write, but it can switch to
-  a role that can."
-  [:enum "read-only" "writable" "role-writable" "no-privileges" "not-supported" "timed-out" "error"])
+  "What the refresh found for one database. `\"roles-skipped\"`: the connection user can't write, but Metabase
+  switches the connections of the database to database roles, and the check does not test those roles."
+  [:enum "read-only" "writable" "roles-skipped" "no-privileges" "not-supported" "timed-out" "error"])
 
 (mr/def ::stored
   "What [[refresh]] returns and the setting holds for this check. The map is closed, so connection details cannot
@@ -51,81 +50,43 @@
   ;; limits the threads of the refresh and the connections that one server gets from it at the same moment.
   10)
 
-(defn- table-privileges
-  [engine conn]
-  ;; `vec` reads every row now: the privilege method may return a lazy sequence, and the caller then switches the
-  ;; connection to a role or closes it
-  (vec (sql-jdbc.sync/current-user-table-privileges engine {:connection conn})))
+(defn- default-role?
+  [{:keys [engine] :as database}]
+  ;; a driver that needs no default role, such as Postgres with `NONE`, resets the connection to the connection user
+  (and (driver.u/supports? engine :connection-impersonation-requires-role database)
+       ;; a router has no destination to resolve here: the check connects to every database itself
+       (some? (database-routing/with-anonymous-router-access
+                (driver.sql/default-database-role engine (driver.u/ensure-lib-database database))))))
 
-(defn- writable?
-  [rows]
-  (boolean (some (some-fn :insert :update :delete) rows)))
-
-(defn- role-names
-  [conn sql]
-  (mapv :name (next.jdbc/execute! conn [sql] {:builder-fn next.jdbc.rs/as-unqualified-lower-maps})))
-
-(defn- switchable-roles
-  "The names of the roles that the connection user of `conn` can switch to with [[driver/set-role!]] and whose
-  privileges it does not hold without the switch."
-  [engine ^Connection conn]
-  (case engine
-    :postgres
-    ;; from Postgres 16 a membership grants `SET ROLE` on its own; before 16 every member can switch
-    (let [can-switch (if (>= (.getDatabaseMajorVersion (.getMetaData conn)) 16) "SET" "MEMBER")]
-      (role-names conn (str "SELECT rolname AS name FROM pg_catalog.pg_roles"
-                            " WHERE pg_catalog.pg_has_role(current_user, oid, '" can-switch "')"
-                            ;; `USAGE`: the role's privileges count without `SET ROLE`, so the privileges of the
-                            ;; connection user already include them
-                            " AND NOT pg_catalog.pg_has_role(current_user, oid, 'USAGE')")))
-    ;; `EXECUTE AS USER` switches to another database user, whose permissions are not part of the connection user's
-    :sqlserver
-    (role-names conn (str "SELECT name FROM sys.database_principals"
-                          " WHERE type IN ('S', 'U', 'E') AND name <> USER_NAME()"
-                          " AND HAS_PERMS_BY_NAME(name, 'USER', 'IMPERSONATE') = 1"))
-    ;; the MySQL privilege query already counts every role granted to the connection user; the other engines have no
-    ;; roles that Metabase switches to
-    []))
-
-(defn- writable-role
-  [{:keys [id engine]} conn]
-  (some (fn [role]
-          (when (try
-                  (driver/set-role! engine conn role)
-                  true
-                  (catch Exception e
-                    ;; a query as this connection user can't switch to the role either
-                    (log/warnf e "Health check read-only-connections could not switch database %d (%s) to the role %s"
-                               id (name engine) role)
-                    false))
-            (when (writable? (table-privileges engine conn))
-              ;; the items don't name the role, so the log is where an admin finds it
-              (log/warnf "Health check read-only-connections: database %d (%s) can write as the role %s"
-                         id (name engine) role)
-              role)))
-        (switchable-roles engine conn)))
+(defn- switches-roles?
+  "Whether Metabase switches the connections of `database` to database roles: a connection impersonation policy applies
+  to it, or its driver sets a default role on every connection."
+  [{:keys [id engine router_database_id] :as database}]
+  (and (driver.u/supports? engine :connection-impersonation database)
+       (or (default-role? database)
+           ;; a routing destination takes the policies of its router
+           (security-center.db/impersonation-exists-for-database? (or router_database_id id)))))
 
 (defn- privileges-result
-  [{:keys [engine] :as database}]
+  [database]
   ;; ends a read that the database never answers, so the thread and the connection are free again
-  (binding [driver.settings/*network-timeout-ms* timeout-ms]
-    ;; not a pooled connection: the check must also work for a database whose pool refuses connections. The new
-    ;; connection also starts with no role set, and it closes after the check, so no role needs a reset.
-    (sql-jdbc/do-with-new-connection
-     database
-     (fn [conn]
-       (let [rows (table-privileges engine conn)]
-         (cond
-           ;; one identity that can write is enough: the roles are not read
-           (writable? rows)                 "writable"
-           (writable-role database conn)    "role-writable"
-           ;; no rows says nothing about the user: the database has no tables, or the driver could not read the
-           ;; privileges, as for MariaDB
-           (empty? rows)                    "no-privileges"
-           :else                            "read-only"))))))
+  (let [rows (binding [driver.settings/*network-timeout-ms* timeout-ms]
+               ;; not a pooled connection: the check must also work for a database whose pool refuses connections
+               (sql-jdbc/do-with-new-connection
+                database
+                (fn [conn]
+                  ;; realized here: the rows may be lazy, and the connection closes when this function returns
+                  (vec (sql-jdbc.sync/current-user-table-privileges (:engine database) {:connection conn})))))]
+    (cond
+      ;; no rows says nothing about the user: the database has no tables, or the driver could not read the
+      ;; privileges, as for MariaDB
+      (empty? rows)                                 "no-privileges"
+      (some (some-fn :insert :update :delete) rows) "writable"
+      (switches-roles? database)                    "roles-skipped"
+      :else                                         "read-only")))
 
 (defn- check-database
-  "The result for one database: `\"read-only\"`, `\"writable\"`, `\"role-writable\"`, `\"no-privileges\"` when the
+  "The result for one database: `\"read-only\"`, `\"writable\"`, `\"roles-skipped\"`, `\"no-privileges\"` when the
   database lists no table privileges, or `\"error\"` when the database could not be asked."
   [{:keys [id engine] :as database}]
   (try
@@ -189,9 +150,8 @@
       (max 1)))
 
 (mu/defn refresh :- ::stored
-  "Asks every database in Admin → Databases, routing destinations included, whether its connection user, or a role
-  that the connection user can switch to, can insert, update or delete. Returns the value to store. Takes at most 30
-  seconds."
+  "Asks every database in Admin → Databases, routing destinations included, whether its connection user can insert,
+  update or delete. Returns the value to store. Takes at most 30 seconds."
   []
   (let [timer     (u/start-timer)
         databases (security-center.db/databases-with-details)
@@ -226,7 +186,7 @@
                            "writable"      [:fail (if sqlite?
                                                     (tru "SQLite has no read-only users. Move the data of {0} to another database engine." db-name)
                                                     (tru "The connection user of {0} can insert, update or delete" db-name))]
-                           "role-writable" [:fail (tru "The connection user of {0} can switch to a role that can insert, update or delete" db-name)]
+                           "roles-skipped" [:unknown (tru "Couldn''t check the database roles that Metabase uses on {0}" db-name)]
                            "no-privileges" [:unknown (tru "Couldn''t read the privileges of the connection user of {0}" db-name)]
                            "not-supported" [:unknown (tru "{0} is not supported" (engine-name engine))]
                            "timed-out"     [:unknown (tru "Timed out after 30 s")]

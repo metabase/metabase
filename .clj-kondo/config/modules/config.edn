@@ -4530,6 +4530,7 @@
            app-db
            audit-app
            channel
+           database-routing
            driver
            events
            lib.schema
@@ -4546,7 +4547,10 @@
            util
            util.config}
    :model-exports #{:model/SecurityAdvisory}
-   :model-imports #{:model/DataPermissions :model/Database :model/User}}
+   :model-imports #{:model/ConnectionImpersonation
+                    :model/DataPermissions
+                    :model/Database
+                    :model/User}}
 
   enterprise/serialization
   {:team       "Data Apps"
