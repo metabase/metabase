@@ -967,5 +967,22 @@
     (let [calls  (atom 0)
           app-db (mdb.connection/application-db :h2 (product-data-source "MariaDB" calls false))]
       (mdb.connection/with-application-db app-db
+        (mdb.connection/record-mariadb! true)
         (is (false? (mdb.connection/mariadb?)))
         (is (zero? @calls))))))
+
+(deftest record-mariadb!-test
+  (testing "a recorded answer is used without connecting"
+    (let [calls  (atom 0)
+          app-db (mdb.connection/application-db :mysql (product-data-source "MySQL" calls false))]
+      (mdb.connection/with-application-db app-db
+        (mdb.connection/record-mariadb! true)
+        (is (= {:answer true, :calls 0}
+               {:answer (mdb.connection/mariadb?), :calls @calls})))))
+  (testing "an answer already read is kept"
+    (let [calls  (atom 0)
+          app-db (mdb.connection/application-db :mysql (product-data-source "MySQL" calls false))]
+      (mdb.connection/with-application-db app-db
+        (mdb.connection/mariadb?)
+        (mdb.connection/record-mariadb! true)
+        (is (false? (mdb.connection/mariadb?)))))))

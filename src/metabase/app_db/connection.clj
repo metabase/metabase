@@ -156,18 +156,35 @@
   ^javax.sql.DataSource []
   (.data-source (current-application-db)))
 
+(defn- read-mariadb!
+  "Read whether `app-db` is MariaDB from a connection, once, and store it in its cell."
+  [^ApplicationDB app-db]
+  (let [cell (.mariadb? app-db)]
+    ;; Concurrent first callers share one read rather than each taking a connection.
+    (locking cell
+      (if-some [answer @cell]
+        answer
+        ;; Connects through `app-db` itself, so the read uses its pool and respects its lock.
+        (reset! cell (with-open [conn (.getConnection ^javax.sql.DataSource app-db)]
+                       (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))))))
+
 (defn mariadb?
   "Whether the application DB is MariaDB, which [[db-type]] reports as `:mysql`.
-  On a `:mysql` application DB, the first successful call opens a connection to read the product name."
+  On a `:mysql` application DB, the first successful call opens a connection to read the product name.
+  A failed read throws, and the next call tries again."
   []
-  (let [app-db (current-application-db)
-        cell   (.mariadb? app-db)]
-    (if-some [answer @cell]
+  (let [app-db (current-application-db)]
+    (if-some [answer @(.mariadb? app-db)]
       answer
-      ;; Connects through `app-db` itself, so the read uses its pool and respects its lock. A failed read leaves the
-      ;; cell empty, so the next call tries again.
-      (reset! cell (with-open [conn (.getConnection ^javax.sql.DataSource app-db)]
-                     (= "MariaDB" (.getDatabaseProductName (.getMetaData conn))))))))
+      (read-mariadb! app-db))))
+
+(defn record-mariadb!
+  "Record whether the application DB is MariaDB, for a caller that has already read the product name, so
+  [[mariadb?]] need not connect.
+  A no-op when the answer is already known, which it always is for types other than `:mysql`."
+  [mariadb?]
+  (compare-and-set! (.mariadb? (current-application-db)) nil (boolean mariadb?))
+  nil)
 
 (defn quartz-data-source
   "Get a [[javax.sql.DataSource]] for the Quartz JDBC job store, backed by the [[current-application-db]]'s

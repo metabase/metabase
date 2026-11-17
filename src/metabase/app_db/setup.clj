@@ -183,7 +183,8 @@
 (mu/defn verify-db-connection
   "Test connection to application database with `data-source` and throw an exception if we have any troubles
   connecting. Public so [[metabase.app-db.core/verify-application-db-connection!]] can call it from outside this
-  namespace; most callers should use that wrapper instead of invoking this directly."
+  namespace; most callers should use that wrapper instead of invoking this directly.
+  Returns whether the database is MariaDB."
   [db-type     :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name db-type)))
@@ -215,7 +216,8 @@
                                                            (:minor required-version)
                                                            (:patch required-version))))
                                             "https://www.metabase.com/docs/latest/installation-and-operation/migrating-from-h2#supported-databases-for-storing-your-metabase-application-data"])
-                        {}))))))
+                        {})))
+      (= db-type :mariadb))))
 
 (mu/defn- error-if-downgrade-required!
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
@@ -327,7 +329,9 @@
                  custom-migrations/*create-sample-content* create-sample-content?]
          (mdb.connection/with-application-db
            (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
-           (verify-db-connection db-type data-source)
+           ;; Migrations ask whether this is MariaDB while Liquibase holds a connection. Answering now spares them a
+           ;; second checkout.
+           (mdb.connection/record-mariadb! (verify-db-connection db-type data-source))
            (error-if-downgrade-required! data-source)
            (let [db-state (mdb.encryption/encryption-state)]
              (when manage-encryption-state?
