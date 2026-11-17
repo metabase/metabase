@@ -4,7 +4,8 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -35,16 +36,30 @@
    warehouse identifiers in the single workspace namespace, and so that the row
    [[record-workspace-target-remapping!]] records later points at the same place.
 
-   When no workspace is active for `db-id`, the canonical target passes through unchanged.
+   On a non-workspace instance the canonical target passes through unchanged. On a
+   workspace instance, throws a 400 when the database has no `database-workspace-schema`,
+   so that no production table is used as a transform's target: written, checked for
+   existence, or dropped.
 
    Deliberately ungated on premium features: a token expiry shouldn't silently cause
    workspace transforms to overwrite production tables. If a `WorkspaceDatabase` is
    provisioned, the rewrite must apply."
   :feature :none
   [db-id target]
-  (if (some? (ws/db-workspace-namespace db-id))
-    (retarget target (ws.table-remapping/transform-target-remapping db-id target))
-    target))
+  ;; Read the workspace schema once and decide from that read. A second read could see a schema cleared since the
+  ;; first, and return the canonical target on a workspace instance.
+  (let [workspace-ns (ws/db-workspace-namespace db-id)]
+    (cond
+      (some? workspace-ns)
+      (retarget target (ws.table-remapping/transform-target-remapping db-id target))
+
+      (ws/workspace-mode?)
+      (throw (ex-info (tru "Database {0} has no workspace schema (`database-workspace-schema`), and this instance is a workspace, so its transforms have no safe target."
+                           db-id)
+                      {:status-code 400 :database-id db-id}))
+
+      :else
+      target)))
 
 (defenterprise record-workspace-target-remapping!
   "Enterprise impl: record the `TableRemapping` from the canonical transform `target` to its

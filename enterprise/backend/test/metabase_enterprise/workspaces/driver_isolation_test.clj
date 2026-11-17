@@ -634,10 +634,13 @@
   ;; with data before init runs, the workspace user inherits read access to that
   ;; data. Whether to refuse-on-collision or clear-on-collision is a design
   ;; decision tracked separately; this test does not assert one way or the other.
+  ;; The test skips MySQL: its init refuses an existing database with a 409, which
+  ;; `metabase.driver.mysql.workspace-test` covers.
   ;; SQL Server also refuses an existing schema with a 409
   ;; (`metabase.driver.sqlserver-test/init-workspace-isolation-refuses-existing-objects-test`).
-  (mt/test-drivers (filter #(and (isa? driver/hierarchy % :sql-jdbc) (not (#{:postgres :sqlserver} %)))
-                           (mt/normal-drivers-with-feature :workspace))
+  (mt/test-drivers (->> (mt/normal-drivers-with-feature :workspace)
+                        (filter #(isa? driver/hierarchy % :sql-jdbc))
+                        (remove #{:mysql :postgres :sqlserver}))
     (testing "init-workspace-isolation! is robust when its target output namespace already exists"
       (let [driver       driver/*driver*
             database     (mt/db)
@@ -1040,10 +1043,15 @@
           ;; runs no such statement: init first looks for an existing login, user
           ;; and schema (a 409 if the low-privilege login can see ws-b's schema),
           ;; then its batch starts with the password-bearing CREATE LOGIN, which
-          ;; that login cannot run. MySQL and ClickHouse check privileges regardless,
-          ;; so on those the batch dies on the namespace statement and never
-          ;; reaches CREATE USER — the leak assertion still covers whatever
-          ;; exception surfaces, it just can't prove the echo path there.
+          ;; that login cannot run. ClickHouse checks privileges regardless, so there
+          ;; the batch dies on the namespace statement and never reaches
+          ;; CREATE USER. MySQL runs no `IF NOT EXISTS`, so the pre-created
+          ;; namespace does not matter there: its init first checks that the
+          ;; login can see and end other users' sessions, which the
+          ;; low-privilege login cannot, so init fails with a 412 before any
+          ;; DDL. On both, the
+          ;; leak assertion still covers whatever exception surfaces, it just
+          ;; can't prove the echo path there.
           (when (#{:postgres :redshift} driver)
             (jdbc/execute! admin-spec [(format "GRANT CREATE ON DATABASE \"%s\" TO \"%s\""
                                                (or (:dbname details) (:db details))

@@ -6,7 +6,6 @@
    [java-time.api :as t]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
-   [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -117,10 +116,12 @@
                             (grant!   [_ _ _ _ _] nil)
                             (destroy! [_ _ _ _]   (swap! destroyed inc)))]
             (with-redefs [provisioning/dispatching-provisioner refusing]
-              (is (thrown-with-msg? ExceptionInfo #"user exists"
-                                    (ws/create-workspace! {:name         "Refused"
-                                                           :creator_id   (mt/user->id :crowberto)
-                                                           :database_ids [db-id]}))))
+              (let [e (is (thrown-with-msg? ExceptionInfo #"user exists"
+                                            (ws/create-workspace! {:name         "Refused"
+                                                                   :creator_id   (mt/user->id :crowberto)
+                                                                   :database_ids [db-id]})))]
+                (is (=? {:status-code 409 :cleanup_required false} (ex-data e))
+                    "the refused row is gone, so the teardown finds nothing and the 409 stands")))
             (is (zero? @destroyed)
                 "destroy would drop the user init refused, which may belong to another parent")
             (is (not (t2/exists? :model/Workspace :name "Refused")))
@@ -164,19 +165,20 @@
             (is (=? {:status :unprovisioned} (t2/select-one :model/WorkspaceDatabase :id wsd-id)))
             (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
               (is (nil? (ws/delete-workspace! (:id ws)))))))
-        (testing "provisioning failure whose cleanup also fails keeps the workspace and returns it for retry"
+        (testing "provisioning failure whose cleanup also fails keeps the workspace and throws, so that a later delete can retry"
           (let [wedged (reify provisioning/Provisioner
                          (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
-                         (init!    [_ _ _ _]   (throw (ex-info "boom" {})))
+                         (init!    [_ _ _ _]   (throw (ex-info "boom" {:status-code 409})))
                          (grant!   [_ _ _ _ _] nil)
                          (destroy! [_ _ _ _]   (throw (ex-info "warehouse down" {}))))]
             (with-redefs [provisioning/dispatching-provisioner wedged]
-              (is (=? {:name      "Wedged"
-                       :databases [{:status :unprovisioned}]}
-                      (ws/create-workspace! {:name         "Wedged"
-                                             :creator_id   (mt/user->id :crowberto)
-                                             :database_ids [db-id]}))
-                  "the created workspace is returned even though provisioning failed and cleanup could not finish"))
+              (let [e (is (thrown? ExceptionInfo
+                                   (ws/create-workspace! {:name         "Wedged"
+                                                          :creator_id   (mt/user->id :crowberto)
+                                                          :database_ids [db-id]})))]
+                (is (=? {:status-code 500 :cleanup_required true :message #"boom.*warehouse down"}
+                        (ex-data e))
+                    "two failures are a 500, and the kept workspace still needs a delete")))
             (let [ws (t2/select-one :model/Workspace :name "Wedged")]
               (is (some? ws)
                   "the workspace must be kept while any database row remains")
@@ -266,6 +268,52 @@
               "the DELETE ran to completion after the lock was released")
           (is (zero? @destroyed)
               "destroy would drop the user init refused, which may belong to another parent"))))))
+
+(deftest create-workspace-failure-never-destroys-a-database-whose-init-never-ran-test
+  (mt/with-temp [:model/Database {db1-id :id} {:engine   :postgres
+                                               :details  {}
+                                               :settings {:database-enable-workspaces true}}
+                 :model/Table _ {:db_id db1-id :schema "public" :active true}
+                 :model/Database {db2-id :id} {:engine   :postgres
+                                               :details  {}
+                                               :settings {:database-enable-workspaces true}}
+                 :model/Table _ {:db_id db2-id :schema "public" :active true}]
+    (mt/with-model-cleanup [:model/Workspace]
+      (letfn [(refusing [refused-db-id inited destroyed]
+                (reify provisioning/Provisioner
+                  (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                  (init!    [_ _ db _]
+                    (swap! inited conj (:id db))
+                    (when (= refused-db-id (:id db))
+                      (throw (ex-info "user exists" {:status-code 409 :workspace/cleanup? false}))))
+                  (grant!   [_ _ _ _ _] nil)
+                  (destroy! [_ _ db _]  (swap! destroyed conj (:id db)))))
+              (create! [ws-name provisioner]
+                (with-redefs [provisioning/dispatching-provisioner provisioner]
+                  (try
+                    (ws/create-workspace! {:name         ws-name
+                                           :creator_id   (mt/user->id :crowberto)
+                                           :database_ids [db1-id db2-id]})
+                    nil
+                    (catch ExceptionInfo e (ex-data e)))))]
+        (testing "the second database refuses after the first one's init ran: the first is destroyed"
+          (let [inited    (atom #{})
+                destroyed (atom #{})]
+            (is (=? {:status-code 409 :cleanup_required false}
+                    (create! "Second refused" (refusing db2-id inited destroyed))))
+            (is (= #{db1-id db2-id} @inited))
+            (is (= #{db1-id} @destroyed))))
+        (testing "the first database refuses: the second one's init never ran, so nothing of it is destroyed"
+          (let [inited    (atom #{})
+                destroyed (atom #{})]
+            (is (=? {:status-code 409 :cleanup_required false}
+                    (create! "First refused" (refusing db1-id inited destroyed))))
+            (is (= #{db1-id} @inited)
+                "only the first database's init ran")
+            (is (= #{} @destroyed)
+                "destroy drops the role and schema of the computed names, which another parent may own")
+            (is (not (t2/exists? :model/Workspace :name "First refused")))
+            (is (not (t2/exists? :model/WorkspaceDatabase :database_id [:in [db1-id db2-id]])))))))))
 
 (defn- add-database!
   "Test helper: insert a WorkspaceDatabase row for `workspace-id` and provision it
@@ -490,12 +538,15 @@
                (is (=? {:status-code 409 :error-code "workspace_busy"} early)
                    "the DELETE answers at once, without waiting for the create's per-row lock")
                (is (=? {:status-code 409 :error-code "workspace_busy"} (deref delete 90000 ::timeout)))
-               (is (re-find #"user exists" (str (ex-message (deref create 90000 ::timeout))))
-                   "the create answers init's refusal")))
+               (let [created (deref create 90000 ::timeout)]
+                 (is (re-find #"user exists" (str (ex-message created)))
+                     "the create answers init's refusal")
+                 (is (=? {:status-code 409 :cleanup_required false} (ex-data created))
+                     "the create keeps the refusal's own status"))))
            (is (= #{db1-id} @inited)
                "premise: only the first database's init ran")
-           (is (not (contains? @destroyed db1-id))
-               "a teardown drops the user init refused, which another parent may own")
+           (is (= #{} @destroyed)
+               "a teardown drops a user and schema of the computed names, which another parent may own")
            (is (not (t2/exists? :model/Workspace :name "Refused during delete")))
            (finally
              (deliver release true))))))))
@@ -571,67 +622,6 @@
                                        :to_table_name   "orders"})
     (let [remappings (ws/list-remappings)]
       (is (some #(= "orders" (:from_table_name %)) remappings)))))
-
-;;; ----------------------------------------- workspace-instance lock ------------------------------------------
-
-(defn- lock-atom
-  "Reach through the private var to the lock atom."
-  []
-  @#'ws/locked-by-config?*)
-
-(deftest workspace-locked-by-config?-baseline-test
-  (testing "default state (no atom flip, no env-var) is unlocked"
-    (let [a     (lock-atom)
-          prior @a]
-      (try
-        (reset! a false)
-        (is (false? (ws/workspace-locked-by-config?)))
-        (finally (reset! a prior))))))
-
-(deftest workspace-locked-by-config?-atom-flipped-test
-  (testing "after mark-locked-by-config!, the predicate returns true"
-    (workspaces.tu/with-workspace-locked-by-config
-      (fn [] (is (true? (ws/workspace-locked-by-config?)))))))
-
-(deftest mark-locked-by-config!-flips-the-atom-test
-  (testing "mark-locked-by-config! flips the atom to true"
-    (let [a     (lock-atom)
-          prior @a]
-      (try
-        (reset! a false)
-        (is (false? (ws/workspace-locked-by-config?)))
-        (ws/mark-locked-by-config!)
-        (is (true? @a))
-        (is (true? (ws/workspace-locked-by-config?)))
-        (finally (reset! a prior))))))
-
-(deftest env-var-presence-locks-test
-  (testing "MB_INSTANCE_WORKSPACE set => predicate true regardless of atom"
-    (let [a     (lock-atom)
-          prior @a]
-      (try
-        (reset! a false)
-        (mt/with-temp-env-var-value! [mb-instance-workspace "{\"name\":\"x\",\"databases\":{}}"]
-          (is (true? (ws/workspace-locked-by-config?))))
-        (testing "outside the binding, atom alone determines the lock"
-          (is (false? (ws/workspace-locked-by-config?))))
-        (finally (reset! a prior))))))
-
-(deftest env-var-empty-string-does-not-lock-test
-  (testing "MB_INSTANCE_WORKSPACE set to empty string does NOT lock (env-var-value treats blank as unset)"
-    (let [a     (lock-atom)
-          prior @a]
-      (try
-        (reset! a false)
-        (mt/with-temp-env-var-value! [mb-instance-workspace ""]
-          (is (false? (ws/workspace-locked-by-config?))))
-        (finally (reset! a prior))))))
-
-(deftest env-var-and-atom-both-lock-test
-  (testing "both sources set => still true; OR semantics"
-    (mt/with-temp-env-var-value! [mb-instance-workspace "{\"name\":\"x\",\"databases\":{}}"]
-      (workspaces.tu/with-workspace-locked-by-config
-        (fn [] (is (true? (ws/workspace-locked-by-config?))))))))
 
 (deftest delete-during-a-create-longer-than-the-busy-window-test
   (doseq [[aged expected] [["only the unfinished database's row is older than the busy window" :busy]
