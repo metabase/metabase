@@ -1328,6 +1328,24 @@
         (finally
           (t2/delete! :model/Database :id db-id))))))
 
+(deftest provider-name-heals-test
+  (testing "a stored provider_name that is not the one the engine and host tell is corrected"
+    (mt/with-temp [:model/Database {db-id :id} {:engine  :postgres
+                                                :details {:host "ep-autumn-frost-alwlmval-pooler.ap-southeast-1.aws.neon.tech"}}]
+      (let [stale! (fn []
+                     (t2/query {:update (t2/table-name :model/Database)
+                                :set    {:provider_name nil}
+                                :where  [:= :id db-id]})
+                     (is (nil? (t2/select-one-fn :provider_name :model/Database :id db-id))))]
+        (testing "by any update of the database"
+          (stale!)
+          (t2/update! :model/Database :id db-id {:name "Renamed Provider Database"})
+          (is (= "Neon" (t2/select-one-fn :provider_name :model/Database :id db-id))))
+        (testing "by the health check, which stores the name of a database nobody edits"
+          (stale!)
+          (#'database/refresh-provider-name! (t2/select-one :model/Database :id db-id))
+          (is (= "Neon" (t2/select-one-fn :provider_name :model/Database :id db-id))))))))
+
 (deftest stub-cleared-when-details-change-test
   (testing "a stub that gets connection details is a database to sync"
     (mt/with-temp [:model/Database {db-id :id} {:is_stub true, :initial_sync_status "complete"}]

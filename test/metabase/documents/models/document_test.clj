@@ -229,7 +229,7 @@
 (deftest public-uuid-prefix-is-derived-test
   (testing "the public UUID prefix follows the public UUID and is not written alone"
     (mt/with-temp [:model/Document {doc-id :id} {}]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"derived"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"follows its public UUID"
                             (t2/update! :model/Document :id doc-id {:public_uuid_prefix "abcdefgh"})))
       (let [uuid (str (random-uuid))]
         (t2/update! :model/Document :id doc-id {:public_uuid uuid})

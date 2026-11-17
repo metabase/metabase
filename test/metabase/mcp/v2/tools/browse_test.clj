@@ -733,7 +733,8 @@
 (deftest browse-allows-router-blocks-destinations-test
   (testing "GHY-4138: the router is browsable, but its destination databases are unreachable
             directly through every action — and the caller here holds FULL data permissions, so the
-            refusal is provably the routing guard, not a permission failure"
+            refusal is provably the routing guard, not a permission failure; the destination's table row is
+            written without its model, whose insert grants permissions a destination cannot carry"
     (mt/with-temp [:model/Database {router :id}   {:name "Sales Router"}
                    :model/Table    {router-t :id} {:db_id router :schema "public" :name "router_orders"}
                    :model/Field    _              {:table_id router-t :name "id"
@@ -741,8 +742,6 @@
                    ;; two tenants' destinations; tenant B holds data tenant A must never see
                    :model/Database {tenant-a :id} {:name "Tenant A DB" :router_database_id router}
                    :model/Database {tenant-b :id} {:name "Tenant B DB" :router_database_id router}]
-      ;; The table row is written without its model: inserting it through the model on a destination trips
-      ;; the after-insert permission grant, which destinations are forbidden to carry, and a Table cannot move.
       (let [b-orders (t2/insert-returning-pk! (t2/table-name :model/Table)
                                               {:db_id tenant-b :schema "public" :name "tenant_b_orders" :active true
                                                :created_at :%now :updated_at :%now})]
@@ -774,7 +773,7 @@
                   "list_schemas" {:database_id tenant-b}
                   "list_tables"  {:database_id tenant-b :schema "public"}
                   "list_models"  {:database_id tenant-b}))
-              (testing "adversarial — get_fields leaks nothing from a destination, even mixed with a
+              (testing "get_fields returns nothing from a destination, even mixed with a
                         legitimate router table in the same request"
                 (let [[envelope] (call! {:action "get_fields" :table_ids [router-t b-orders]})]
                   (is (= [router-t] (map :id (:tables envelope)))

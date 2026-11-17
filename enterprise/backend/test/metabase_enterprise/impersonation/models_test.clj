@@ -33,11 +33,11 @@
                                                                          :attribute "role"}]
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"You cannot change the group ID of a connection impersonation"
+         #"You cannot change the group of a connection impersonation"
          (t2/update! :model/ConnectionImpersonation :id impersonation-id {:group_id other-group-id})))
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"You cannot change the database ID of a connection impersonation"
+         #"You cannot change the database of a connection impersonation"
          (t2/update! :model/ConnectionImpersonation :id impersonation-id {:db_id other-db-id})))
     (is (=? {:group_id group-id :db_id (mt/id)}
             (t2/select-one :model/ConnectionImpersonation :id impersonation-id)))))

@@ -1162,6 +1162,24 @@
                         "F" {"G" {}}}}}
              (collection-locations (vals collections) :archived false))))))
 
+(deftest archiving-collection-with-descendant-of-lower-id-than-parent-test
+  (testing "a descendant moved under a Collection created after it is archived as part of the archive, not on its own"
+    (mt/with-temp [:model/Collection {root-id :id}  {:location "/"}
+                   :model/Collection {inner-id :id} {:location (str "/" root-id "/")}
+                   :model/Collection {outer-id :id} {:location (str "/" root-id "/")}]
+      (t2/update! :model/Collection :id inner-id {:location (str "/" root-id "/" outer-id "/")})
+      (is (< inner-id outer-id))
+      (let [flags (fn []
+                    (into {} (map (juxt :id (juxt :archived :archived_directly)))
+                          (t2/select [:model/Collection :id :archived :archived_directly]
+                                     :id [:in [root-id outer-id inner-id]])))]
+        (t2/update! :model/Collection :id root-id {:archived true})
+        (is (= {root-id [true true], outer-id [true false], inner-id [true false]}
+               (flags)))
+        (t2/update! :model/Collection :id root-id {:archived false})
+        (is (= {root-id [false false], outer-id [false false], inner-id [false false]}
+               (flags)))))))
+
 (deftest nested-collection-archiving-objects-test
   (doseq [model [:model/Card :model/Dashboard :model/NativeQuerySnippet :model/Pulse]]
     (testing (format "Test that archiving applies to %ss" (name model))

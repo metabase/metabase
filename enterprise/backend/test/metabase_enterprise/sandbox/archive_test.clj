@@ -113,7 +113,7 @@
     false
     (fn [{:keys [snippet]} user status] (mt/user-http-request user :put status (str "native-query-snippet/" (:id snippet)) {:archived true}))]])
 
-(deftest only-admins-archive-or-restore-what-a-sandbox-is-built-out-of-test
+(deftest only-admins-archive-or-restore-sandbox-sources-test
   (mt/with-premium-features #{:sandboxes}
     (doseq [[scenario-name starts-archived? request] scenarios]
       (testing scenario-name

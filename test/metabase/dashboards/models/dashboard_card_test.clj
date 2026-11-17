@@ -493,10 +493,10 @@
                    :model/DashboardTab tab       {:dashboard_id (u/the-id dash)}
                    :model/DashboardTab other-tab {:dashboard_id (u/the-id other)}
                    :model/DashboardCard dashcard {:dashboard_id (u/the-id dash) :dashboard_tab_id (u/the-id tab)}]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"tab must belong"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"The tab of a dashboard card must belong to its dashboard"
                             (t2/insert! :model/DashboardCard {:dashboard_id (u/the-id dash) :dashboard_tab_id (u/the-id other-tab)
                                                               :size_x 4 :size_y 4 :row 0 :col 0})))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"tab must belong"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"The tab of a dashboard card must belong to its dashboard"
                             (t2/update! :model/DashboardCard :id (u/the-id dashcard) {:dashboard_tab_id (u/the-id other-tab)})))
       (is (= (u/the-id tab) (t2/select-one-fn :dashboard_tab_id :model/DashboardCard :id (u/the-id dashcard)))))))
 

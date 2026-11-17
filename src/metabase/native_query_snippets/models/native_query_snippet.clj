@@ -64,12 +64,6 @@
    [:fn {:json-schema {:type "string"}} valid-name?]
    name-error))
 
-(defn- check-name
-  "Throws a 400 unless the name of `snippet` is valid."
-  [{snippet-name :name}]
-  (when-not (valid-name? snippet-name)
-    (throw (ex-info (str name-error) {:status-code 400, :errors {:name (str name-error)}}))))
-
 (defn- snippet-tag?
   "Whether `tag` is a reference to a snippet."
   [tag]
@@ -113,7 +107,6 @@
 (t2/define-before-insert :model/NativeQuerySnippet
   [snippet]
   (collection/check-collection-for :model/NativeQuerySnippet snippet)
-  (check-name snippet)
   (assoc snippet :template_tags (snippet-template-tags snippet (referenced-snippet-ids snippet))))
 
 (t2/define-after-insert :model/NativeQuerySnippet
@@ -128,8 +121,6 @@
       (collection/check-collection-for :model/NativeQuerySnippet snippet))
     (when (contains? changes :creator_id)
       (throw (ex-info (tru "You cannot update the creator_id of a NativeQuerySnippet.") {:status-code 400})))
-    (when (contains? changes :name)
-      (check-name snippet))
     (cond-> snippet
       (contains? changes :archived) (assoc :archived_directly (mi/archived-directly snippet #(collection/archived? (:collection_id snippet))))
       (:content snippet)            (assoc :template_tags (snippet-template-tags snippet (referenced-snippet-ids snippet))))))

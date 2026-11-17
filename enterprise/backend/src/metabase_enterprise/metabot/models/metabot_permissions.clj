@@ -31,21 +31,21 @@
   (boolean (setting/get-value-of-type :boolean :metabot-advanced-permissions)))
 
 (defn- check-perm-value
-  "Throw a 400 unless `perm-value` is one of the values of `perm-type`."
+  "Throws a 400 unless `perm-value` is one of the values of `perm-type`."
   [perm-type perm-value]
   (let [perm-type  (some-> perm-type keyword)
         perm-value (some-> perm-value keyword)]
     (when-not (some #{perm-value} (get-in scope/metabot-permissions [perm-type :values]))
-      (throw (ex-info (tru "Invalid perm_value {0} for perm_type {1}"
+      (throw (ex-info (tru "Invalid perm_value {0} for perm_type {1}."
                            (some-> perm-value name) (some-> perm-type u/qualified-name))
                       {:status-code 400})))))
 
 (defn- check-visible-group
-  "Throw a 400 unless the stored permission mode shows the group with `group-id`, since a row written for a hidden
+  "Throws a 400 unless the stored permission mode shows the group with `group-id`, since a row written for a hidden
   group would take effect unseen on the next mode switch."
   [group-id]
   (when-not (usage-controls/visible-group? group-id (stored-advanced-mode?))
-    (throw (ex-info (tru "The current permission mode hides group {0}" (str group-id)) {:status-code 400}))))
+    (throw (ex-info (tru "Group {0} has no AI permissions in the current permission mode." (str group-id)) {:status-code 400}))))
 
 (t2/define-before-insert :model/MetabotPermissions
   [{:keys [group_id perm_type perm_value] :as row}]

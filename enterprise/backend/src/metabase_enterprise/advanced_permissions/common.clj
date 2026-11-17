@@ -29,7 +29,7 @@
   (perms/at-least-as-permissive? :perms/manage-table-metadata (perms/some-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/manage-table-metadata db-id schema-name) :yes))
 
 (defenterprise current-user-managed-database-ids
-  "Enterprise version. The ids among `db-ids` of the Databases the current user manages, from one bulk question."
+  "The ids among `db-ids` of the Databases the current user manages, from one bulk question."
   :feature :advanced-permissions
   [db-ids]
   (let [values (perms/database-permissions-for-user (perms/user-info api/*current-user-id*)

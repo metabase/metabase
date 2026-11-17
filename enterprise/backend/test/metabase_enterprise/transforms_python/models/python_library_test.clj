@@ -95,14 +95,14 @@
         (is (=? {:entity_id python-library/builtin-entity-id :is_default default?}
                 (t2/select-one :model/PythonLibrary :path "common.py")))))))
 
-(deftest only-common-path-is-allowed-test
+(deftest only-common-path-is-written-by-request-test
   (t2/delete! :model/PythonLibrary)
-  (testing "inserting library at other path is refused"
+  (testing "a request to write a library at another path is refused"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid library path"
-                          (t2/insert! :model/PythonLibrary {:path "other" :source "" :entity_id (u/generate-nano-id)})))
+                          (python-library/update-python-library-source! "other" "")))
     (is (zero? (t2/count :model/PythonLibrary))))
-  (testing "moving library to other path is refused"
-    (let [id (t2/insert-returning-pk! :model/PythonLibrary {:path "common" :source "" :entity_id (u/generate-nano-id)})]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid library path"
-                            (t2/update! :model/PythonLibrary :id id {:path "other"})))
-      (is (= "common.py" (t2/select-one-fn :path :model/PythonLibrary :id id))))))
+  (testing "a library of another path that is stored or imported is accepted by the model"
+    (let [id (t2/insert-returning-pk! :model/PythonLibrary {:path "shared" :source "" :entity_id (u/generate-nano-id)})]
+      (is (= "shared.py" (t2/select-one-fn :path :model/PythonLibrary :id id)))
+      (t2/update! :model/PythonLibrary :id id {:source "def helper(): pass"})
+      (is (= "def helper(): pass" (t2/select-one-fn :source :model/PythonLibrary :id id))))))

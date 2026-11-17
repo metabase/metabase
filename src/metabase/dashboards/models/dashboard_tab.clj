@@ -33,13 +33,13 @@
   "Throws a 400 unless `tab` has a name."
   [{tab-name :name}]
   (when (str/blank? tab-name)
-    (throw (ex-info (tru "A DashboardTab needs a name.") {:status-code 400}))))
+    (throw (ex-info (tru "A tab needs a name.") {:status-code 400}))))
 
 (defn- check-position
   "Throws a 400 unless the `:position` of `tab` is not negative."
   [{:keys [position]}]
   (when-not (nat-int? position)
-    (throw (ex-info (tru "A DashboardTab''s position is not negative.") {:status-code 400}))))
+    (throw (ex-info (tru "The position of a tab must not be negative.") {:status-code 400}))))
 
 (t2/define-before-insert :model/DashboardTab
   [tab]
@@ -52,7 +52,7 @@
   [tab]
   (let [changes (t2/changes tab)]
     (when (contains? changes :dashboard_id)
-      (throw (ex-info (tru "A DashboardTab cannot move to another Dashboard.") {:status-code 400})))
+      (throw (ex-info (tru "You cannot move a tab to another dashboard.") {:status-code 400})))
     (when (contains? changes :name)
       (check-name tab))
     (when (contains? changes :position)

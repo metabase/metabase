@@ -226,7 +226,7 @@
                                                         :model_id      model-id
                                                         :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))
               existing  (action/select-action :id action-id)]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"derived from its query"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"follows its query"
                                 (action/update! {:id action-id, :database_id Integer/MAX_VALUE} existing)))
           (is (= model-db-id (:database_id (action/select-action :id action-id)))))))))
 
@@ -256,10 +256,10 @@
 (deftest action-type-is-query-or-implicit-test
   (testing "an action is a query action or an implicit action, however it is written"
     (mt/with-model-cleanup [:model/Action]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is a query or an implicit action"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Action type must be query or implicit"
                             (insert-bare-action! :http)))
       (let [action-id (insert-bare-action! :query)]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is a query or an implicit action"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Action type must be query or implicit"
                               (t2/update! :model/Action :id action-id {:type :http})))
         (is (= :query (t2/select-one-fn :type :model/Action :id action-id)))))))
 
@@ -285,7 +285,7 @@
                                         :dataset_query (lib/native-query mp "UPDATE categories SET name = 'x'")})
         (is (= (mt/id) (t2/select-one-fn :database_id :model/QueryAction :action_id action-id)))
         (testing "and can't be changed without its query"
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"derived from its query"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"follows its query"
                                 (t2/update! :model/QueryAction :action_id action-id {:database_id Integer/MAX_VALUE})))
           (is (= (mt/id) (t2/select-one-fn :database_id :model/QueryAction :action_id action-id))))
         (testing "while a new query sets it"

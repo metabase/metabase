@@ -471,6 +471,11 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/delete! :model/Timeline :collection_id [:in collection-ids]))
 
+(mu/defn delete-notifications!
+  "Delete the Notifications with `notification-ids`, returning the number deleted."
+  [notification-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/Notification :id [:in notification-ids]))
+
 (defn cards-in-collection
   "The Cards in the Collection with `collection-id`."
   [collection-id]

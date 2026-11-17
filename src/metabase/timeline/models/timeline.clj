@@ -36,7 +36,7 @@
   "Throws unless the `:name` and `:icon` among `columns`, the columns a Timeline is written with, are valid."
   [columns]
   (when (and (contains? columns :name) (str/blank? (:name columns)))
-    (throw (ex-info (tru "A Timeline must have a name.") {:status-code 400})))
+    (throw (ex-info (tru "A Timeline needs a name.") {:status-code 400})))
   (when (and (contains? columns :icon) (not (mr/validate timeline-event/Icon (:icon columns))))
     (throw (ex-info (tru "Invalid Timeline icon.") {:status-code 400}))))
 

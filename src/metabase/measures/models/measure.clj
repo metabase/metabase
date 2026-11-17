@@ -63,9 +63,9 @@
   [{:keys [id definition] :as measure}]
   (let [changes (t2/changes measure)]
     (when (contains? changes :creator_id)
-      (throw (ex-info (tru "You cannot update the creator_id of a Measure.") {:status-code 400})))
+      (throw (ex-info (tru "You cannot change the creator of a Measure.") {:status-code 400})))
     (when (and (contains? changes :table_id) (not (contains? changes :definition)))
-      (throw (ex-info (tru "The table of a Measure is derived from its definition.") {:status-code 400})))
+      (throw (ex-info (tru "The table of a Measure follows its definition; change the definition instead.") {:status-code 400})))
     (when (contains? changes :definition)
       (check-definition definition)
       (lib/check-measure-overwrite id (lib-be/normalize-query definition)))

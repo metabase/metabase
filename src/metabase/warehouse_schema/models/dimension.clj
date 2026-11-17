@@ -38,7 +38,7 @@
   [{dimension-type :type, :keys [human_readable_field_id]}]
   (let [dimension-type (some-> dimension-type keyword)]
     (when-not (#{:internal :external} dimension-type)
-      (throw (ex-info (tru "A Dimension is internal or external.") {:status-code 400})))
+      (throw (ex-info (tru "Dimension type must be internal or external.") {:status-code 400})))
     (when (and (= :external dimension-type) (nil? human_readable_field_id))
       (throw (ex-info (tru "Foreign key based remappings require a human readable field id") {:status-code 400})))))
 

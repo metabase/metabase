@@ -3361,7 +3361,24 @@
                          :subject "One of your alerts has stopped working"
                          :body    [{"the question was archived by Crowberto Corv" true}]}
                         (mt/summarize-multipart-single-email email #"the question was archived by Crowberto Corv"))))
-              (= nil (t2/select-one :model/Notification :id (:id notification))))))))))
+              (is (nil? (t2/select-one :model/Notification :id (:id notification)))))))))))
+
+(deftest archive-collection-alerts-of-cards-in-sub-collections-test
+  (testing "PUT /api/collection/:id"
+    (testing "Archiving a collection deletes the alerts of the cards directly in it, not those of cards in its sub-collections"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Collection {sub-id :id}  {:location (str "/" coll-id "/")}]
+        (notification.tu/with-card-notification
+          [direct {:card {:collection_id coll-id}}]
+          (notification.tu/with-card-notification
+            [nested {:card {:collection_id sub-id}}]
+            (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived true})
+            (is (not (t2/exists? :model/Notification :id (:id direct))))
+            (is (t2/exists? :model/Notification :id (:id nested)))
+            (testing "restoring the collection brings back no alert"
+              (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived false})
+              (is (not (t2/exists? :model/Notification :id (:id direct))))
+              (is (t2/exists? :model/Notification :id (:id nested))))))))))
 
 (deftest archive-collection-perms-test
   (testing "PUT /api/collection/:id"

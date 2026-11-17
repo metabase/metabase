@@ -7,7 +7,8 @@
    [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.schema :as timeline.schema]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -33,6 +34,20 @@
   [:enum default-icon "cake" "mail" "mail_at" "warning" "bell" "cloud"
    "info" "note" "event"])
 
+(defn valid-timezone?
+  "Whether `timezone` names a time zone."
+  [timezone]
+  (try
+    (boolean (java.time.ZoneId/of timezone java.time.ZoneId/SHORT_IDS))
+    (catch java.time.DateTimeException _
+      false)))
+
+(def Timezone
+  "Schema for the `timezone` of a TimelineEvent a request writes: a string naming a time zone."
+  (mu/with-api-error-message
+   [:and :string [:fn valid-timezone?]]
+   (deferred-tru "Invalid Timeline event timezone.")))
+
 (def Source
   "Timeline Event Source Schema. For Snowplow Events, where the Event is created from is important.
   Events are added from one of four sources: `collections`, `question` (cards in backend code), `dashboard`, or directly
@@ -48,24 +63,14 @@
 
 ;;; ------------------------------------------------------ Hooks -------------------------------------------------------
 
-(defn- valid-timezone?
-  "Whether `timezone` names a time zone."
-  [timezone]
-  (try
-    (boolean (java.time.ZoneId/of timezone java.time.ZoneId/SHORT_IDS))
-    (catch java.time.DateTimeException _
-      false)))
-
 (defn- check-columns
-  "Throws unless those of `:name`, `:icon`, `:timezone`, `:time_matters` and `:timestamp` among `columns`, the columns
+  "Throws unless those of `:name`, `:icon`, `:time_matters` and `:timestamp` among `columns`, the columns
   a TimelineEvent is written with, are valid."
   [columns]
   (when (and (contains? columns :name) (str/blank? (:name columns)))
-    (throw (ex-info (tru "A Timeline event must have a name.") {:status-code 400})))
+    (throw (ex-info (tru "A Timeline event needs a name.") {:status-code 400})))
   (when (and (contains? columns :icon) (not (mr/validate Icon (:icon columns))))
     (throw (ex-info (tru "Invalid Timeline event icon.") {:status-code 400})))
-  (when (and (contains? columns :timezone) (not (and (string? (:timezone columns)) (valid-timezone? (:timezone columns)))))
-    (throw (ex-info (tru "Invalid Timeline event timezone.") {:status-code 400})))
   (when (and (contains? columns :time_matters) (not (boolean? (:time_matters columns))))
     (throw (ex-info (tru "A Timeline event''s time_matters must be a boolean.") {:status-code 400})))
   (when (and (contains? columns :timestamp) (nil? (:timestamp columns)))
@@ -75,7 +80,7 @@
   "Throws a 400 when `row`, which is not archived, is in an archived Timeline."
   [{:keys [archived timeline_id]}]
   (when (and timeline_id (not archived) (timeline.db/timeline-archived? timeline_id))
-    (throw (ex-info (tru "An archived Timeline cannot hold a Timeline event that is not archived.")
+    (throw (ex-info (tru "You cannot put an unarchived Timeline event in an archived Timeline.")
                     {:status-code 400}))))
 
 (t2/define-before-insert :model/TimelineEvent
@@ -90,7 +95,7 @@
   [event]
   (let [changes (t2/changes event)]
     (when (contains? changes :creator_id)
-      (throw (ex-info (tru "You cannot update the creator_id of a Timeline event.") {:status-code 400})))
+      (throw (ex-info (tru "You cannot change the creator of a Timeline event.") {:status-code 400})))
     (when (contains? changes :timeline_id)
       (check-timeline-not-archived event))
     (check-columns changes)

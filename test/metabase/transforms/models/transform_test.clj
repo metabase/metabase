@@ -174,6 +174,25 @@
       (testing (str "changing only " (pr-str (keys changes)))
         (is (= 400 (status-code-of #(t2/update! :model/Transform :id id changes))))))))
 
+(deftest source-database-id-is-the-callers-when-source-names-none-test
+  (testing "a Python source without a database leaves source_database_id to the writer"
+    (let [defaults (mt/with-temp-defaults :model/Transform)]
+      (mt/with-temp [:model/Database {other-db :id} {}
+                     :model/Transform {id :id} (assoc defaults
+                                                      :source {:type :python :source-tables [] :body "print(\"hello\")"}
+                                                      :source_database_id other-db)]
+        (is (= other-db (t2/select-one-fn :source_database_id :model/Transform :id id)))
+        (testing "writing the same value again changes nothing"
+          (t2/update! :model/Transform :id id {:source_database_id other-db})
+          (is (= other-db (t2/select-one-fn :source_database_id :model/Transform :id id))))
+        (testing "it changes alone"
+          (t2/update! :model/Transform :id id {:source_database_id (mt/id)})
+          (is (= (mt/id) (t2/select-one-fn :source_database_id :model/Transform :id id))))
+        (testing "a source that names a database derives it again"
+          (t2/update! :model/Transform :id id {:source {:type :python :source-tables [] :body "print(1)" :source-database other-db}})
+          (is (= other-db (t2/select-one-fn :source_database_id :model/Transform :id id)))
+          (is (= 400 (status-code-of #(t2/update! :model/Transform :id id {:source_database_id (mt/id)})))))))))
+
 (deftest target-database-must-accept-transforms-test
   (mt/when-ee-evailable
    (mt/with-temp [:model/Database {audit-db :id}  {:is_audit true}

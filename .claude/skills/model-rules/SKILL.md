@@ -6,12 +6,12 @@ description: Where a rule about a Toucan 2 model lives and how to write it. Hook
 # Model rules
 
 Every writer of a `:model/X` row goes through the model: REST endpoints, MCP and Metabot tools, the Agent API,
-revision revert, SerDes import, remote-sync pull, sync, tasks. Hooks run for all of them; only some ask a permission
-question. So a rule lives where every writer that must obey it meets it.
+revision revert, and the sanctioned writers, which the product itself runs without a user (SerDes import, remote-sync
+pull, sync, the audit and sample loaders, scheduled tasks). Hooks run for every writer; permission checks run only for
+the user-facing ones. Put a rule every writer must obey in a hook and a rule only users must obey in a permission check.
 
-Copy `metabase.segments.models.segment` (hooks, derived column, permissions) and
-`metabase.collections.models.collection` (cascade, archiving). `src/metabase/segments/rest/api.clj` is the endpoint
-shape.
+Copy `metabase.segments.models.segment` (hooks, derived column, permissions), `metabase.collections.models.collection`
+(cascade, archiving) and `src/metabase/segments/rest/api.clj` (the endpoint shape).
 
 ## Pick the home for a rule
 
@@ -22,28 +22,33 @@ shape.
 | Computes a column from other columns of the row | hooks; the caller does not supply it |
 | Reads another entity's column that cannot change | hooks of the referring model |
 | Reads another entity's column that can change | freeze it, cascade from it, or check at use (below) |
-| Keeps other rows in step (cascade, cleanup) | `before-update` / `before-delete` of the model whose change causes it |
+| Keeps other rows in step (cascade, cleanup) | the model whose change causes it: `mi/after-archived-change!` for `archived`, else `before-update` / `before-delete` |
 | Shapes a request (required key, friendly message, status order) | the write function or endpoint |
 | Can only be known when the entity is used | the code that uses it |
 
-A rule is an invariant only if every stored row and every sanctioned writer satisfies it. Either a data migration
-makes stored rows satisfy it (rename duplicates, rewrite a legacy shape), or it is a request check on the write path
-and not a hook: stored rows, e2e fixtures and SerDes import of old content must keep working. If a sanctioned writer
-must write through it (remote-sync pull on a read-only instance, the audit loader), it is a permission check.
+A rule is an invariant only if every stored row satisfies it and no sanctioned writer needs an exception. If stored
+rows break it, a data migration fixes them first (rename duplicates, rewrite a legacy shape) or the rule is a request
+check on the write path: stored rows, e2e fixtures and SerDes import of old content must keep working. If a sanctioned
+writer must be exempt (remote-sync pull on a read-only instance, the audit loader), the rule is a permission check.
 
 ## Hooks
 
-Stock Toucan hooks, one per model and operation (a second definition replaces the first):
-`t2/define-before-insert`, `t2/define-before-update`, `t2/define-before-delete`.
+Stock Toucan hooks, one per model and operation (a second definition replaces the first): `t2/define-before-insert`,
+`t2/define-before-update`, `t2/define-before-delete`, and `t2/define-after-insert` / `t2/define-after-update` for work
+that needs the row as stored.
 
 ```clojure
 (t2/define-before-update :model/Segment
   [{:keys [id definition] :as segment}]
   (let [changes (t2/changes segment)]
     (when (contains? changes :creator_id)
-      (throw (ex-info (tru "You cannot update the creator_id of a Segment.") {:status-code 400})))
+      (throw (ex-info (tru "You cannot change the creator of a Segment.") {:status-code 400})))
+    (when (and (contains? changes :table_id) (not (contains? changes :definition)))
+      (throw (ex-info (tru "The table of a Segment follows its definition; change the definition instead.")
+                      {:status-code 400})))
     (when (contains? changes :definition)
-      (check-definition definition))
+      (check-definition definition)
+      (lib/check-segment-overwrite id (lib-be/normalize-query definition)))
     (cond-> segment
       (contains? changes :definition) (assoc :table_id (definition-table-id definition)))))
 ```
@@ -51,40 +56,37 @@ Stock Toucan hooks, one per model and operation (a second definition replaces th
 - Checks first, as a flat list of `(when ...)` that throw `(ex-info (tru "...") {:status-code 400})`; then
   derivations; then cascades, which see the derived values; return the row. A key `assoc`ed onto the returned row
   is written.
+- Word a message like others of its kind: "You cannot change the {column} of a {Thing}.", "A {Thing} needs a name."
 - The hook is where an allowed value set (an enum column) is enforced; the request schema repeats it for the message.
 - `before-update` receives the stored row with the changes merged in. `(t2/changes row)` holds only columns whose
   value differs from the stored one, and `(t2/original row)` the stored row as `after-select` returned it. Run a
   check only when a column it guards is in the changes; never validate a stored combination the write does not touch.
 - Never read the current user: no `api/*current-user-id*`, `api/*is-superuser?*`, `mi/superuser?`, or permission
-  call. Never ask who the writer is: there is no deserializing flag.
-- Hold an invariant whatever the premium token says. A `defenterprise` an invariant calls is `:feature :none`.
+  call. Never branch on which writer is calling (SerDes import, sync, an endpoint).
+- Hold an invariant whatever the premium token says. A `defenterprise` function a hook calls is declared
+  `:feature :none`, so the rule holds with or without a token.
 - A hook may read another row through a `<module>.db` function. It sees stored rows, not the other rows of its own
   statement, so a writer whose rows depend on each other writes them in separate statements, dependency first.
 - A check that needs the row's id (cycle detection) runs in `before-update` only.
 - Name helpers for what they return and `assoc` the result in the hook. `with-` is for macros only.
-- Publish no event and record no revision in a hook.
-
-**Derived column.** Never trusted from the caller: compute and overwrite on insert; recompute when its source
-changes; a change to it alone is a 400; leave it out of the request schema. A column derived only in some states
-(a model's `display` is `:table`) is overwritten in that state and the caller's otherwise.
-
-**Frozen column.** `(when (contains? changes :table_id) (throw ...))`. Freezing the column on the referred entity is
-the first choice for a rule on another entity: `table_id` on Field, `db_id` on Table, `namespace` on Collection.
-
-**Query column.** `lib-be/transform-query` in `t2/deftransforms`, as Card's `dataset_query`. Written values are full
-queries. A legacy stored shape is rewritten by a data migration, never by `after-select`.
-
-**Rule over several rows.** Uniqueness needs a unique index, added after a changeset that renames existing
-duplicates (" (2)", " (3)"); decide what a NULL parent means, since an index treats NULLs as distinct. A hook check
-may add the 400 message; the index is the enforcement. A test that provokes the index inside `mt/with-temp`
-wraps the write in `t2/with-transaction`, or Postgres aborts the test's transaction.
-
-**Cascade.** The hook of the model whose change causes it writes the followers through their models, so their hooks
-run and may refuse. `before-update` runs before Toucan opens its transaction: a model whose update hook writes other
-rows declares `(mi/define-update-in-transaction :model/X)`. Trigger on the column that causes the change.
-
-**Rule on another entity's mutable data.** In this order: freeze the column; cascade from the other entity's hook
-(archived, deleted, moved, deactivated); check where the entity is used. Do not check every direction at write time.
+- Publish no event and record no revision in a hook (the one exception: Transform's `before-delete`, for its tests).
+- **Derived column.** Never trusted from the caller: compute and overwrite on insert; recompute when its source
+  changes; a change to it alone is a 400; leave it out of the request schema. A column derived only in some states
+  (a model's `display` is `:table`) is overwritten in those states and keeps the caller's value in the others.
+- **Frozen column.** A column no update may change: `(when (contains? changes :table_id) (throw ...))`. It is the first
+  choice for a rule on another entity: `table_id` on Field, `db_id` on Table, `namespace` on Collection.
+- **Query column.** `lib-be/transform-query` in `t2/deftransforms`, as Card's `dataset_query`. Written values are full
+  queries. A legacy stored shape is rewritten by a data migration, never by `after-select`.
+- **Rule over several rows.** Uniqueness needs a unique index, added after a changeset that renames existing
+  duplicates (" (2)", " (3)"); decide what a NULL parent means, since an index treats NULLs as distinct. A hook check
+  may add the 400 message; the index is the enforcement. A test that provokes the index inside `mt/with-temp`
+  wraps the write in `t2/with-transaction`, or Postgres aborts the test's transaction.
+- **Cascade.** The model whose change causes it writes the followers through their models, so their hooks run and may
+  refuse: in `mi/after-archived-change!` when it follows `archived` (see Archiving), else in `before-update` or
+  `before-delete`, only when the causing column is in `(t2/changes row)`. `before-update` runs before Toucan opens its
+  transaction, so a model whose update writes other rows declares `(mi/define-update-in-transaction :model/X)`.
+- **Rule on another entity's mutable data.** In this order: freeze the column; cascade from the other entity (archived,
+  deleted, moved, deactivated); check where the entity is used. Do not check the same rule in the hooks of both.
 
 ## Permissions
 
@@ -99,16 +101,14 @@ rows declares `(mi/define-update-in-transaction :model/X)`. Trigger on the colum
 - `mi/can-read?`, `can-write?` and `can-query?` read the hydrated answer and throw when it is missing. For a list,
   `(mi/readable rows)` and `(mi/writable rows)` hydrate once and filter.
 - A hydration answers a whole list in a fixed number of queries: load the parents (tables, collections) once.
-- `can-update?` answers the whole question and calls `(mi/can-write? row)` itself; nothing adds it for you. A change
-  that needs no write access is a named predicate with a docstring saying who it is for: only the public link of a
-  Dashboard or Card, and a change to unsynced columns on a read-only remote-sync instance. On top of write access it
-  adds what depends on the change: write access to the collection
-  or table the row moves to, a superuser-only column (`(mi/superuser?)`), a sandbox restriction. `changes` may repeat
-  stored values, so test a column with `(api/column-will-change? (:col row) (get changes :col ::api/not-provided))`.
-  `can-create?` and `can-update?` share a private predicate; neither calls the other. Both return a boolean and
-  never throw to refuse.
-- A row no writer may change (an audit collection, a built-in group) is refused by one predicate in the hook, and
-  the same predicate makes `:can_write` false so the UI can show it.
+- `can-update?` answers the whole question: it calls `(mi/can-write? row)` itself and adds what depends on the change
+  (write access to the collection or table the row moves to, a superuser-only column with `(mi/superuser?)`, a sandbox
+  restriction). Only two changes need no write access, each a named predicate: the public link of a Dashboard or Card,
+  for a settings manager, and unsynced columns on a read-only remote-sync instance. `changes` may repeat stored values,
+  so test a column with `(api/column-will-change? (:col row) (get changes :col ::api/not-provided))`.
+- A rule `can-create?` and `can-update?` both apply is one private predicate. Both return a boolean and never throw.
+- A row no writer may change (a built-in permissions group) is refused by one predicate in the hook, and the same
+  predicate makes `:can_write` false so the UI can show it.
 - `api/read-check` and `api/write-check` take the row (or model and id), throw 404 for nil and 403 when refused, and
   return the row. `api/create-check` and `api/update-check` throw 403. All four publish a permission-failure event.
 
@@ -123,8 +123,8 @@ endpoint's own helper.
 - Every user-facing writer of a model calls the check: REST, MCP and Metabot tools, Agent API, bulk endpoints,
   revision revert, copy. Grep for the model's `update-...!` and `t2/update! :model/X` callers when adding a rule.
 - A bulk endpoint hydrates `:can_write` on all rows once, then checks each.
-- The write function publishes the events (`events/publish-event!`) and so the audit and revision rows. SerDes and
-  remote sync call no write function and publish nothing.
+- The write function publishes the events (`events/publish-event!`); the audit log and revisions are written from
+  them. SerDes and remote sync call no write function and publish nothing.
 - The caller sets provenance (`creator_id`); a hook may forbid changing it.
 - The request schema is closed and lists only what a caller may set: no derived columns, no `archived_directly`.
 - App-DB queries live in `<module>.db`, with caller-supplied values bound: `(t2/select-one :model/X :id [:auto/param id])`.
@@ -135,18 +135,18 @@ endpoint's own helper.
 `(t2/update! :model/X :id id {:archived true})` does everything, for every writer. No archive logic in endpoints.
 
 - `archived` is the state; `archived_directly` is the cause: true when archived on its own, false when it follows a
-  parent. In `before-update`, when `archived` changes and the cause is not in the changes:
-  `(assoc row :archived_directly (mi/archived-directly row parent-archived?))`, where `parent-archived?` is a function
-  that asks whether the row's parent is archived (its Collection, `collection/archived?`; for a Card also its Dashboard
-  or Document, for a Document also its Exploration). A restore is never direct; an explicit cause in the changes is kept.
+  parent. In `before-update`, when `archived` changes:
+  `(assoc row :archived_directly (mi/archived-directly row parent-archived?))`; `parent-archived?` is a function of no
+  arguments returning whether the parent is archived (its Collection, `collection/archived?`; for a Card also its
+  Dashboard or Document, for a Document also its Exploration). A cause given in the changes is kept; a restore is false.
 - The parent is written first and the followers after it, in the same transaction: a model with followers declares
   `(mi/define-update-in-transaction :model/X)` and a `(defmethod mi/after-archived-change! :model/X [model rows changes])`
   that writes them through their models, one statement per kind. The followers then find their parent archived and
-  derive their cause from it; there is no binding.
+  derive their cause from it.
 - Collection archives its subtree in a fixed number of statements; a collection that inherits an archive does not
   cascade again. Dashboard carries its dashboard questions, Document its cards, Exploration its summary documents,
   Timeline its events (a follower without `archived_directly` always follows).
-- A live row cannot be inserted into or moved into an archived parent
+- A live row (a row that is not archived) cannot be inserted into or moved into an archived parent
   (`collection/check-collection-not-archived`), checked only when the parent changes.
 - A user-facing writer asks `api/update-check` on the parent with `{:archived x}`: the parent's `mi/can-update?` also
   covers every row the archive or restore writes, each kind loaded once by the same `<module>.db` selection the cascade
@@ -155,8 +155,9 @@ endpoint's own helper.
 
 ## Lay out a model file
 
-Headers in this order: model setup (`t2/table-name`, `t2/deftransforms`, `derive`), `Hooks`, `Permissions`,
-`Hydration`, `Serialization` (spec, import dependencies, storage paths), `Remote sync`, `Search`.
+Banners of the form `;;; ---- Hooks ----`, padded with dashes to 120 columns, in this order: `Model setup`
+(`t2/table-name`, `t2/deftransforms`, `derive`), `Hooks`, `Permissions`, `Hydration`, `Writes`, `Revisions`,
+`Serialization` (spec, import dependencies, storage paths), `Remote sync`, `Search`.
 
 ## Tests
 
@@ -166,7 +167,7 @@ Headers in this order: model setup (`t2/table-name`, `t2/deftransforms`, `derive
   rule through `api/create-check` / `api/update-check` as each kind of user, and once through the endpoint.
 - Before moving a per-user rule, pin today's answers in a user-by-change table test on the unmodified code.
 - Assert a list endpoint stays batched with `t2/with-call-count` at two sizes.
-- A new model or column breaks the enumeration tests (entity ids, serdes specs, stats): run them.
+- A new model or column breaks the enumeration tests (entity ids, SerDes specs, stats): run them.
 
 ## Before handing off
 

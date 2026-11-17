@@ -111,12 +111,31 @@
 
 ;;; ------------------------------------------------ Serialization -------------------------------------------------
 
+(defn- built-in-name-kept
+  "`item`, a load item, with the name of the built-in tag it updates."
+  [{:keys [local row] :as item}]
+  (cond-> item
+    (and (some? (:built_in_type local)) (= (:built_in_type local) (:built_in_type row)))
+    (update :row assoc :name (:name local))))
+
+(defn- free-name-taken
+  "`item`, a load item, with the first of its name, then the name followed by \" (2)\", \" (3)\" and so on, that no other
+  tag has, `taken` being the names the items before it took, each with its entity id."
+  [taken {{:keys [entity_id] tag-name :name} :row, :keys [local] :as item}]
+  (let [own?  (fn [owner] (or (nil? owner) (= owner entity_id) (= owner (:entity_id local))))
+        free? (fn [candidate] (own? (or (get taken candidate) (transforms.db/tag-entity-id-by-name candidate))))
+        n     (first (filter free? (cons tag-name (map #(str tag-name " (" % ")") (iterate inc 2)))))]
+    [(assoc-in item [:row :name] n) (assoc taken n entity_id)]))
+
 (defmethod serialization/before-load :model/TransformTag [_ items]
-  (mapv (fn [{:keys [local row] :as item}]
-          (cond-> item
-            (and (some? (:built_in_type local)) (= (:built_in_type local) (:built_in_type row)))
-            (update :row assoc :name (:name local))))
-        items))
+  (first
+   (reduce (fn [[items taken] item]
+             (if (not (string? (not-empty (get-in item [:row :name]))))
+               [(conj items item) taken]
+               (let [[item taken] (free-name-taken taken item)]
+                 [(conj items item) taken])))
+           [[] {}]
+           (map built-in-name-kept items))))
 
 (defmethod serialization/spec :model/TransformTag [_]
   {:schema    ::transforms.schema/external-transform-tag

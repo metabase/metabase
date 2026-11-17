@@ -17,7 +17,7 @@
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (defn- check-max-usage
-  "Throw a 400 unless `max-usage` is nil or a non-negative integer."
+  "Throws a 400 unless `max-usage` is nil or a non-negative integer."
   [max-usage]
   (when-not (or (nil? max-usage) (nat-int? max-usage))
     (throw (ex-info (tru "max_usage must be a non-negative integer") {:status-code 400}))))

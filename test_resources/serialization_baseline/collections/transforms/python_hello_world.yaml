@@ -11,7 +11,6 @@ source:
             "greeting": ["Hello", "World"],
             "number": [1, 2]
         })
-  source-database: Sample Database
   source-tables: []
   type: python
 source_database_id: Sample Database

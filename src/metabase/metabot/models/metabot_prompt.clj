@@ -35,7 +35,7 @@
   [prompt]
   (let [changes (t2/changes prompt)]
     (when (and (contains? changes :model) (not (contains? changes :card_id)))
-      (throw (ex-info (tru "A suggested prompt''s model is the type of its Card.") {:status-code 400})))
+      (throw (ex-info (tru "The model of a suggested prompt follows the type of its Card; change the Card instead.") {:status-code 400})))
     (cond-> prompt
       (contains? changes :card_id) (assoc :model (card-model prompt)))))
 

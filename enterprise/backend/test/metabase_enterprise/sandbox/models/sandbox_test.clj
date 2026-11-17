@@ -30,7 +30,7 @@
                                         :group_id (u/the-id (perms-group/all-users))}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"You cannot change the table ID of a sandbox once it has been created"
+           #"You cannot change the table of a sandbox"
            (t2/update! :model/Sandbox :id (:id gtap) {:table_id (mt/id :checkins)}))))))
 
 (deftest group-id-is-frozen-test
@@ -39,7 +39,7 @@
                  :model/Sandbox          {sandbox-id :id} {:table_id (mt/id :venues) :group_id group-id}]
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"You cannot change the group ID of a sandbox once it has been created"
+         #"You cannot change the group of a sandbox"
          (t2/update! :model/Sandbox :id sandbox-id {:group_id other-group-id})))
     (is (= group-id (t2/select-one-fn :group_id :model/Sandbox :id sandbox-id)))
     (testing "writing the same group id is no change"
@@ -251,7 +251,7 @@
                  :model/Sandbox          _     {:table_id (mt/id :venues), :group_id (:id group), :card_id (:id card)}]
     (f {:card card, :other other})))
 
-(deftest only-admins-can-delete-a-card-a-sandbox-is-built-out-of-test
+(deftest only-admins-delete-sandbox-source-card-test
   (mt/with-premium-features #{:sandboxes}
     (testing "a non-admin who writes the card may not delete it, through the permission question or the endpoint"
       (with-card-policy
@@ -278,7 +278,7 @@
      (fn [{:keys [other]}]
        (t2/update! :model/Card :id (:id other) {:dataset_query (mt/mbql-query venues {:limit 1})})))))
 
-(deftest only-admins-can-update-a-card-a-sandbox-is-built-out-of-through-the-permission-check-test
+(deftest only-admins-pass-update-check-on-sandbox-source-card-test
   (mt/with-premium-features #{:sandboxes}
     (letfn [(update-check [card changes]
               (api/update-check (t2/select-one :model/Card :id (:id card)) changes))
@@ -314,7 +314,7 @@
             (mt/with-test-user :rasta
               (is (true? (update-check other {:dataset_query (mt/mbql-query venues {:limit 1})}))))))))))
 
-(deftest only-admins-can-change-a-card-a-sandbox-is-built-out-of-through-every-write-path-test
+(deftest only-admins-change-sandbox-source-card-through-every-write-path-test
   (mt/with-premium-features #{:sandboxes}
     (with-card-policy
       (fn [{:keys [card]}]
@@ -371,7 +371,7 @@
                                                           :card_id  (:id policy)}]
       (f {:inner inner, :outer outer, :other other, :nested-card nested-card}))))
 
-(deftest only-admins-can-change-a-card-a-sandbox-reads-through-a-snippet-test
+(deftest only-admins-change-card-read-by-sandbox-through-snippet-test
   (mt/with-premium-features #{:sandboxes}
     (letfn [(update-check [nested-card]
               (api/update-check (t2/select-one :model/Card :id (:id nested-card)) {:dataset_query (mt/mbql-query venues)}))]
@@ -420,7 +420,7 @@
             (mt/with-test-user :rasta
               (is (true? (update-check other {:content "2 = 2"}))))))))))
 
-(deftest only-admins-can-change-a-snippet-a-sandbox-is-built-out-of-through-the-endpoint-test
+(deftest only-admins-change-sandbox-source-snippet-through-endpoint-test
   (mt/with-premium-features #{:sandboxes}
     (letfn [(put-url [snippet]
               (str "native-query-snippet/" (:id snippet)))]

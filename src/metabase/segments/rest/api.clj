@@ -16,8 +16,7 @@
    [toucan2.core :as t2]))
 
 (defn create-segment!
-  "Create-check and insert a new Segment; publishes `:event/segment-create` and returns the hydrated Segment. The
-  shared domain create path, so the create-check runs wherever a Segment is authored."
+  "Create-check and insert a new Segment; publishes `:event/segment-create` and returns the hydrated Segment."
   [{:keys [name description definition], :as body}]
   (let [definition (lib-be/normalize-query definition)]
     (api/create-check :model/Segment (assoc body :definition definition))
@@ -65,9 +64,8 @@
       (t2/hydrate :creator :definition_description)))
 
 (defn write-check-and-update-segment!
-  "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate
-  event and returns updated/hydrated Segment. The shared domain update path, so the checks run wherever a Segment is
-  edited."
+  "Applies `body` to the Segment with `id` after its update check, publishes the update event and returns the hydrated
+  Segment."
   [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check :model/Segment id)
         clean-body (u/select-keys-when body

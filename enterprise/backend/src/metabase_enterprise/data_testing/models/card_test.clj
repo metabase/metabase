@@ -133,8 +133,8 @@
   nil)
 
 (defenterprise delete-card-tests!
-  "Enterprise implementation: delete the tests of the card `card-id`, each through its own hook, and publish a delete
-  event for each. Runs whatever the token says, since the rows outlive the feature."
+  "Deletes the tests of the card `card-id` and publishes a delete event for each, whatever the token says, since the
+  rows outlive the feature."
   :feature :none
   [card-id]
   (let [card-tests (data-testing.db/card-tests {:card-id card-id})]

@@ -33,7 +33,8 @@
   #{"common.py"})
 
 (defn- check-path
-  "Throws a 400 unless `path`, normalized, is one of [[allowed-paths]]."
+  "Throws a 400 unless `path`, normalized, is one of [[allowed-paths]], which a request to write a library must satisfy
+  and a stored or imported one need not."
   [path]
   (let [normalized-path (normalize-path path)]
     (when-not (contains? allowed-paths normalized-path)
@@ -44,13 +45,10 @@
 
 (t2/define-before-insert :model/PythonLibrary
   [library]
-  (check-path (:path library))
   (update library :path normalize-path))
 
 (t2/define-before-update :model/PythonLibrary
   [library]
-  (when (contains? (t2/changes library) :path)
-    (check-path (:path library)))
   (cond-> library
     (seq (dissoc (t2/changes library) :updated_at :is_default)) (assoc :is_default false)
     (:path library)                          (update :path normalize-path)))
@@ -87,6 +85,7 @@
 (defn update-python-library-source!
   "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
   [path source]
+  (check-path path)
   (let [normalized-path (normalize-path path)
         existing        (transforms-python.db/python-library-by-path normalized-path)
         id              (transforms-python.db/upsert-python-library-source!

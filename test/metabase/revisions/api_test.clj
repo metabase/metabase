@@ -345,6 +345,26 @@
                               {:entity :card, :id card-id, :revision_id earlier-revision-id})
         (is (= 2 (-> (t2/select-one :model/Card :id card-id) :dataset_query lib/fields count)))))))
 
+(deftest revert-card-to-revision-stored-with-public-link-and-embedding-columns-test
+  (testing "a non-admin who writes a card reverts it to a revision whose object carries unchanged public-link and embedding columns"
+    (mt/with-temp [:model/Card {card-id :id} {:name "Before", :dataset_query (mt/mbql-query venues)}]
+      (let [object (-> (t2/select-one :model/Card :id card-id)
+                       (select-keys [:name :description :display :dataset_query :visualization_settings
+                                     :collection_id :archived :type :parameters :parameter_mappings])
+                       (assoc :public_uuid nil :made_public_by_id nil
+                              :enable_embedding false :embedding_params nil))
+            rev-id (:id (t2/insert-returning-instance! :model/Revision
+                                                       {:model       "Card"
+                                                        :model_id    card-id
+                                                        :user_id     (mt/user->id :crowberto)
+                                                        :object      object
+                                                        :is_creation true}))]
+        (t2/update! :model/Card :id card-id {:name "After"})
+        (create-card-revision! card-id false :crowberto)
+        (mt/user-http-request :rasta :post 200 "revision/revert"
+                              {:entity :card, :id card-id, :revision_id rev-id})
+        (is (= "Before" (t2/select-one-fn :name :model/Card :id card-id)))))))
+
 (deftest dashboard-revision-description-test
   (testing "revision description for dashboard are generated correctly"
     (mt/with-temp

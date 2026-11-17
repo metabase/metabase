@@ -125,6 +125,11 @@
   [tag-name :- :string]
   (t2/select-one-pk :model/TransformTag :name tag-name))
 
+(mu/defn tag-entity-id-by-name :- [:maybe :string]
+  "The entity id of the TransformTag named `tag-name`, or nil."
+  [tag-name :- :string]
+  (t2/select-one-fn :entity_id :model/TransformTag :name [:auto/param tag-name]))
+
 (mu/defn transform-tag-links
   "The tag links of the Transforms with `transform-ids`, ordered by position."
   [transform-ids :- [:or [:set [:maybe ::lib.schema.id/transform]] [:sequential [:maybe ::lib.schema.id/transform]]]]

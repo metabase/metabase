@@ -147,10 +147,10 @@
   [sandbox]
   (let [changes (t2/changes sandbox)]
     (when (contains? changes :table_id)
-      (throw (ex-info (tru "You cannot change the table ID of a sandbox once it has been created.")
+      (throw (ex-info (tru "You cannot change the table of a sandbox.")
                       {:id (:id sandbox), :status-code 400})))
     (when (contains? changes :group_id)
-      (throw (ex-info (tru "You cannot change the group ID of a sandbox once it has been created.")
+      (throw (ex-info (tru "You cannot change the group of a sandbox.")
                       {:id (:id sandbox), :status-code 400})))
     (when (contains? changes :attribute_remappings)
       (check-attribute-remappings sandbox))
@@ -206,9 +206,7 @@
                               e)))))))))
 
 (defenterprise pre-update-check-sandbox-constraints
-  "Refuses an update to a Card a sandbox is built out of that changes its result metadata so that it stops matching the
-  Tables the sandboxes built out of it, which the Card cannot do by adding fields or changing types vs. the original
-  Table."
+  "Throws when `changes` give a Card result metadata that no longer matches the Tables of the sandboxes that use it."
   :feature :sandboxes
   [{new-result-metadata :result_metadata, card-id :id} changes]
   (when (contains? changes :result_metadata)

@@ -2328,8 +2328,49 @@
         (testing "an unchanged embedding value needs nothing"
           (is (true? (mt/with-current-user (mt/user->id :rasta)
                        (mi/can-update? (t2/hydrate card :can_write) {:enable_embedding (:enable_embedding card)})))))
+        (testing "an unchanged public link needs nothing"
+          (is (true? (mt/with-current-user (mt/user->id :rasta)
+                       (mi/can-update? (t2/hydrate card :can_write) {:public_uuid nil :made_public_by_id nil})))))
         (testing "removing a public link"
-          (is (false? (mt/with-current-user (mt/user->id :rasta)
-                        (boolean (mi/can-update? (t2/hydrate card :can_write) {:public_uuid nil :made_public_by_id nil})))))
-          (is (true? (mt/with-current-user (mt/user->id :crowberto)
-                       (mi/can-update? (t2/hydrate card :can_write) {:public_uuid nil :made_public_by_id nil})))))))))
+          (t2/update! :model/Card :id (:id card) {:public_uuid (str (random-uuid)) :made_public_by_id (mt/user->id :crowberto)})
+          (let [card (t2/select-one :model/Card :id (:id card))]
+            (is (false? (mt/with-current-user (mt/user->id :rasta)
+                          (boolean (mi/can-update? (t2/hydrate card :can_write) {:public_uuid nil :made_public_by_id nil})))))
+            (is (true? (mt/with-current-user (mt/user->id :crowberto)
+                         (mi/can-update? (t2/hydrate card :can_write) {:public_uuid nil :made_public_by_id nil}))))))))))
+
+(deftest alerts-survive-failed-card-update-test
+  (testing "a Card update that fails after the Card hook deleted the alerts rolls the deletion back and tells nobody"
+    (notification.tu/with-channel-fixtures [:channel/email]
+      (notification.tu/with-card-notification
+        [notification {:card     {:display :line}
+                       :handlers [{:channel_type :channel/email
+                                   :recipients  [{:type    :notification-recipient/user
+                                                  :user_id (mt/user->id :rasta)}]}]}]
+        (let [card-id (-> notification :payload :card_id)
+              emails  (notification.tu/with-mock-inbox-email!
+                        (mt/with-dynamic-fn-redefs [queries.db/move-actions-of-model!
+                                                    (fn [& _] (throw (ex-info "after-update failed" {})))]
+                          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"after-update failed"
+                                                (mt/with-test-user :crowberto
+                                                  (card/update-card! {:card-before-update (t2/select-one :model/Card :id card-id)
+                                                                      :card-updates       {:display :table}}))))))]
+          (is (t2/exists? :model/Notification :id (:id notification)))
+          (is (= :line (t2/select-one-fn :display :model/Card :id card-id)))
+          (is (empty? emails)))))))
+
+(deftest alerts-are-deleted-only-when-card-is-archived-directly-test
+  (testing "the alerts of a Card that follows the archive of its Collection or Dashboard are left to that archive"
+    (mt/with-temp [:model/Collection {collection-id :id} {}
+                   :model/Dashboard  {dashboard-id :id}  {:collection_id collection-id}]
+      (notification.tu/with-card-notification
+        [in-collection {:card {:collection_id collection-id}}]
+        (notification.tu/with-card-notification
+          [in-dashboard {:card {:collection_id collection-id :dashboard_id dashboard-id}}]
+          (let [collection-card (-> in-collection :payload :card_id)
+                dashboard-card  (-> in-dashboard :payload :card_id)]
+            (t2/update! :model/Collection :id collection-id {:archived true})
+            (is (every? #(false? (:archived_directly %))
+                        (t2/select [:model/Card :archived_directly] :id [:in [collection-card dashboard-card]])))
+            (is (t2/exists? :model/Notification :id (:id in-collection)))
+            (is (t2/exists? :model/Notification :id (:id in-dashboard)))))))))

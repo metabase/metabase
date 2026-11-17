@@ -95,7 +95,7 @@
     (testing "PUT /api/ee/ai-controls/permissions refuses a group the current permission mode hides"
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Hidden Group"}]
         (mt/with-temporary-setting-values [metabot-advanced-permissions false]
-          (is (= (str "The current permission mode hides group " group-id)
+          (is (= (str "Group " group-id " has no AI permissions in the current permission mode.")
                  (mt/user-http-request :crowberto :put 400 "ee/ai-controls/permissions"
                                        {:permissions [{:group_id   group-id
                                                        :perm_type  "permission/metabot-nlq"

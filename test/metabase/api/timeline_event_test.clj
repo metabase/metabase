@@ -101,6 +101,19 @@
         (is (= "Not found."
                (mt/user-http-request :crowberto :put 404 (str "timeline-event/" ev-id) {:timeline_id Integer/MAX_VALUE})))))))
 
+(deftest timeline-event-timezone-must-name-a-time-zone-test
+  (mt/with-temp [:model/Timeline      {tl-id :id} {}
+                 :model/TimelineEvent {id :id}    {:timeline_id tl-id}]
+    (testing "POST /api/timeline-event"
+      (is (= {:errors {:timezone "Invalid Timeline event timezone."}}
+             (-> (mt/user-http-request :rasta :post 400 "timeline-event"
+                                       {:name "RC1" :timestamp "2027-10-20" :timezone "Nowhere/Land" :timeline_id tl-id})
+                 (select-keys [:errors])))))
+    (testing "PUT /api/timeline-event/:id"
+      (is (= {:errors {:timezone "nullable Invalid Timeline event timezone."}}
+             (-> (mt/user-http-request :rasta :put 400 (str "timeline-event/" id) {:timezone "Nowhere/Land"})
+                 (select-keys [:errors])))))))
+
 (deftest create-timeline-event-defaults-test
   (testing "POST /api/timeline-event gives an event without an icon the icon of its timeline"
     (mt/with-temp [:model/Timeline {tl-id :id} {:icon "cake"}]

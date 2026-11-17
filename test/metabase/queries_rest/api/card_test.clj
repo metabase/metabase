@@ -3526,6 +3526,28 @@
                   (name->position (:data (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-2)
                                                                :model "card" :archived "false"))))))))
 
+(deftest bulk-move-hydrates-card-permissions-once-test
+  (testing "POST /api/card/collections reads the write permissions of all the cards together"
+    (let [hydrations (fn [card-count]
+                       (mt/with-temp [:model/Collection {from-id :id} {}
+                                      :model/Collection {to-id :id}   {}]
+                         (let [card-ids (mapv :id (t2/insert-returning-instances!
+                                                   :model/Card
+                                                   (for [i (range card-count)]
+                                                     (assoc (mt/with-temp-defaults :model/Card)
+                                                            :collection_id from-id
+                                                            :name (str "bulk move " i)))))
+                               calls    (atom 0)
+                               original (mt/original-fn #'collection/content-writable-collection-ids)]
+                           (mt/with-dynamic-fn-redefs [collection/content-writable-collection-ids
+                                                       (fn [& args]
+                                                         (swap! calls inc)
+                                                         (apply original args))]
+                             (mt/user-http-request :rasta :post 200 "card/collections"
+                                                   {:collection_id to-id, :card_ids card-ids}))
+                           @calls)))]
+      (is (= 1 (hydrations 2) (hydrations 8))))))
+
 (deftest moving-a-card-without-a-collection-position-keeps-the-collection-position-nil
   (mt/with-temp [:model/Collection  {coll-id-1 :id}      {:name "Old Collection"}
                  :model/Collection  {coll-id-2 :id

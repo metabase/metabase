@@ -2084,11 +2084,17 @@
         (restore-subtree! before)))))
 
 (defn- archived-columns
-  "`row`, an update, with the `archived_directly` and `archive_operation_id` its change of `archived` gives."
+  "`row`, an update, with the `archived_directly` and `archive_operation_id` its change of `archived` gives: a write that
+  carries an archive operation is the cascade of an archive and gives an inherited archive."
   [row]
-  (let [row (assoc row :archived_directly (mi/archived-directly row #(archived? (location-path->parent-id (:location row)))))]
+  (let [changes    (t2/changes row)
+        inherited? (and (:archived row) (some? (:archive_operation_id changes)))
+        row        (if inherited?
+                     (cond-> row
+                       (not (contains? changes :archived_directly)) (assoc :archived_directly false))
+                     (assoc row :archived_directly (mi/archived-directly row #(archived? (location-path->parent-id (:location row))))))]
     (cond-> row
-      (not (contains? (t2/changes row) :archive_operation_id))
+      (not (contains? changes :archive_operation_id))
       (assoc :archive_operation_id (when (and (:archived row) (:archived_directly row))
                                      (str (random-uuid)))))))
 

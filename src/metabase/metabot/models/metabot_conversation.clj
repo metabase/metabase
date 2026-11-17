@@ -17,7 +17,7 @@
 (t2/define-before-update :model/MetabotConversation
   [row]
   (when (contains? (t2/changes row) :user_id)
-    (throw (ex-info (tru "A conversation''s originator cannot be changed.") {:status-code 400})))
+    (throw (ex-info (tru "You cannot change the originator of a conversation.") {:status-code 400})))
   row)
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------

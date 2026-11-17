@@ -45,6 +45,13 @@
              :when         notifications]
          [card notifications])))
 
+(defn- delete-stopped-alerts!
+  "Deletes the alerts of `stopped`, which archiving a Collection stops: the Cards in it follow its archive, so their
+  own hooks leave their alerts."
+  [stopped]
+  (when-let [notification-ids (seq (for [[_card notifications] stopped, notification notifications] (:id notification)))]
+    (collections.db/delete-notifications! (vec notification-ids))))
+
 (defn- notify-stopped-alerts!
   "Tells the recipients of the alerts of `stopped`, which archiving a Collection deleted, as archiving their Card does."
   [stopped actor]
@@ -104,6 +111,7 @@
       (check-can-restore collection-before-update collection-updates))
     (let [stopped (when archive? (stopped-alerts id))]
       (collections.db/update-collection! id {:archived archive?})
+      (delete-stopped-alerts! stopped)
       (publish-document-updates! document-ids)
       (when archive?
         (notify-stopped-alerts! stopped @api/*current-user*))

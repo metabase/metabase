@@ -467,7 +467,8 @@
       (dissoc :cards)
       ;; TODO (Kelvin 2025-12-19) Remove this once we support alerts on modular embedding,
       ;; as we only currently have `disable_links` column on Subscriptions.
-      (dissoc :disable_links)))
+      (dissoc :disable_links)
+      (dissoc :archived_directly)))
 
 (mu/defn retrieve-alert :- [:maybe (ms/InstanceOf :model/Pulse)]
   "Fetch a single Alert by its `id` value, do the standard hydrations, and put it in the standard `Alert` format."

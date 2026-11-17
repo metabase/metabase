@@ -176,9 +176,8 @@
   nil)
 
 (defenterprise delete-transform-tests!
-  "Enterprise implementation: delete the tests of the transform `transform-id`, each through its own hook, and publish
-  a delete event for each. Runs whatever the token says, since the rows outlive the feature. See the OSS declaration in
-  `metabase.transforms.models.transform`."
+  "Deletes the tests of the transform `transform-id` and publishes a delete event for each, whatever the token says,
+  since the rows outlive the feature."
   :feature :none
   [transform-id]
   (let [transform-tests (data-testing.db/transform-tests {:transform-id transform-id})]

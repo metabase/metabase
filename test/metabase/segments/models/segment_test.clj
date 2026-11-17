@@ -30,7 +30,7 @@
                 [:segment {:lib/uuid (str (random-uuid))} segment-id])))
 
 (defn- set-stored-definition!
-  "Overwrites the stored definition of the Segment with `id` with the JSON of `definition`, bypassing the model hooks."
+  "Overwrites the stored definition of the Segment with `id` with the JSON of `definition`, written to the table without the model hooks."
   [id definition]
   (t2/query-one {:update :segment
                  :set    {:definition (json/encode definition)}
@@ -60,12 +60,12 @@
       (testing "you should not be able to change the creator_id of a Segment"
         (is (thrown-with-msg?
              Exception
-             #"You cannot update the creator_id of a Segment"
+             #"You cannot change the creator of a Segment"
              (t2/update! :model/Segment :id id {:creator_id (mt/user->id :crowberto)}))))
       (testing "you shouldn't be able to set it to `nil` either"
         (is (thrown-with-msg?
              Exception
-             #"You cannot update the creator_id of a Segment"
+             #"You cannot change the creator of a Segment"
              (t2/update! :model/Segment :id id {:creator_id nil}))))
       (testing "calling `update!` with a value that is the same as the current value shouldn't throw an Exception"
         (is (= 0

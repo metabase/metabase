@@ -73,7 +73,7 @@
   [{:keys [size_x size_y row col]}]
   (when (or (some #(and (some? %) (not (pos-int? %))) [size_x size_y])
             (some #(and (some? %) (not (nat-int? %))) [row col]))
-    (throw (ex-info (tru "A DashboardCard needs a positive size and a position that is not negative.")
+    (throw (ex-info (tru "A dashboard card needs a positive size and a position that is not negative.")
                     {:status-code 400}))))
 
 (defn- check-parameter-mappings
@@ -87,7 +87,7 @@
   [{:keys [dashboard_id dashboard_tab_id]}]
   (when (and dashboard_tab_id
              (not= dashboard_id (:dashboard_id (dashboards.db/dashboard-tab dashboard_tab_id))))
-    (throw (ex-info (tru "A DashboardCard''s tab must belong to its Dashboard.") {:status-code 400}))))
+    (throw (ex-info (tru "The tab of a dashboard card must belong to its dashboard.") {:status-code 400}))))
 
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
@@ -104,7 +104,7 @@
   [dashcard]
   (let [changes (t2/changes dashcard)]
     (when (contains? changes :dashboard_id)
-      (throw (ex-info (tru "A DashboardCard cannot move to another Dashboard.") {:status-code 400})))
+      (throw (ex-info (tru "You cannot move a dashboard card to another dashboard.") {:status-code 400})))
     (when (contains? changes :dashboard_tab_id)
       (check-tab dashcard))
     (when (some #(contains? changes %) [:size_x :size_y :row :col])

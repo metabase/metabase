@@ -5227,9 +5227,9 @@
 (deftest dashboardcard-series-position-unique-test
   (testing "dcs8w3 renumbers the series of a dashcard that share a position and dcs5n7 makes the positions unique"
     (impl/test-migrations ["dcs8w3" "dcs5n7"] [migrate!]
-      (let [user-id     (t2/insert-returning-pk! :core_user {:first_name  "Series"
-                                                             :last_name   "Owner"
-                                                             :email       "series-owner@metabase.com"
+      (let [user-id     (t2/insert-returning-pk! :core_user {:first_name  "Test"
+                                                             :last_name   "User"
+                                                             :email       "user@example.com"
                                                              :password    "superstrong"
                                                              :entity_id   (u/generate-nano-id)
                                                              :date_joined :%now})
@@ -5285,9 +5285,9 @@
 (deftest archived-directly-columns-test
   (testing "pu1a7q, nq3c9x and tl5e3m add archived_directly, and pu2b8r, nq4d1y and tl6f4n mark archived rows whose collection is live"
     (impl/test-migrations ["pu1a7q" "tl6f4n"] [migrate!]
-      (let [user-id       (t2/insert-returning-pk! :core_user {:first_name  "Archive"
-                                                               :last_name   "Owner"
-                                                               :email       "archive-owner@metabase.com"
+      (let [user-id       (t2/insert-returning-pk! :core_user {:first_name  "Test"
+                                                               :last_name   "User"
+                                                               :email       "user@example.com"
                                                                :password    "superstrong"
                                                                :entity_id   (u/generate-nano-id)
                                                                :date_joined :%now})

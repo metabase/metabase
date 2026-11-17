@@ -71,15 +71,15 @@
   (mt/with-temp [:model/Timeline      {timeline-id :id} {}
                  :model/TimelineEvent {event-id :id}    {:timeline_id timeline-id}]
     (testing "a blank name is refused"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must have a name"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Timeline event needs a name"
                             (t2/insert! :model/TimelineEvent (event-row timeline-id {:name " "}))))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must have a name"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Timeline event needs a name"
                             (t2/update! :model/TimelineEvent :id event-id {:name ""}))))
-    (testing "an unknown timezone is refused"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Timeline event timezone"
-                            (t2/insert! :model/TimelineEvent (event-row timeline-id {:timezone "Nowhere/Land"}))))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Timeline event timezone"
-                            (t2/update! :model/TimelineEvent :id event-id {:timezone "Nowhere/Land"}))))
+    (testing "a timezone the request check would refuse is stored, as an import of an old event carries it"
+      (mt/with-temp [:model/TimelineEvent {odd-id :id} (event-row timeline-id {:timezone "Nowhere/Land"})]
+        (is (= "Nowhere/Land" (t2/select-one-fn :timezone :model/TimelineEvent :id odd-id)))
+        (t2/update! :model/TimelineEvent :id event-id {:timezone "Nowhere/Land"})
+        (is (= "Nowhere/Land" (t2/select-one-fn :timezone :model/TimelineEvent :id event-id)))))
     (testing "time_matters must be a boolean"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"time_matters"
                             (t2/insert! :model/TimelineEvent (event-row timeline-id {:time_matters nil}))))
@@ -91,7 +91,7 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must have a timestamp"
                             (t2/update! :model/TimelineEvent :id event-id {:timestamp nil}))))
     (testing "the creator cannot change"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"creator_id"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot change the creator of a Timeline event"
                             (t2/update! :model/TimelineEvent :id event-id {:creator_id (mt/user->id :crowberto)}))))))
 
 (deftest update-check-test

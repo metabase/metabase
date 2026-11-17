@@ -707,11 +707,8 @@
 (def ^:private permission-batch-size 1000)
 
 (defn batch-insert-permissions!
-  "In certain cases, when updating the permissions for many tables at once, we need to batch the insertions to avoid
-  hitting database limits for the number of parameters in a prepared statement. This is only really applicable when a DB
-  has more than ~10k tables and we're transitioning from database-level permissions to table-level permissions. The
-  transforms rows go in by later statements, so the create-queries rows the DataPermissions insert hook checks them
-  against are stored already."
+  "Inserts `new-perms` in batches that stay under the database limit on the parameters of a prepared statement, the
+  transforms rows last so that the create-queries rows the DataPermissions insert hook checks them against are stored."
   [new-perms]
   ;; The before-insert hook already runs this per row, so this call is dormant. Un-comment it if perms
   ;; are ever inserted by a path that bypasses the hook (e.g. t2/query).

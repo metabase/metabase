@@ -166,7 +166,7 @@
   "Throws a 400 for a change in `changes` that `original`, the Table as stored, cannot take."
   [changes original]
   (when (contains? changes :db_id)
-    (throw (ex-info (tru "A Table cannot move to another Database.") {:status-code 400})))
+    (throw (ex-info (tru "You cannot move a Table to another Database.") {:status-code 400})))
   (when (:collection_id changes)
     (collection/check-allowed-content :table (:collection_id changes)))
   (when (and (not= (keyword (:data_authority original :unconfigured)) :unconfigured)

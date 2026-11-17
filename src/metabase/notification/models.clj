@@ -335,7 +335,7 @@
   (mu/validate-throw ::NotificationSubscription subscription))
 
 (defn- check-cron-schedule
-  "Throw a 400 when a cron subscription's `cron_schedule` is not a valid Quartz cron string."
+  "Throws a 400 when a cron subscription's `cron_schedule` is not a valid Quartz cron string."
   [{:keys [type cron_schedule]}]
   (when (and (= :notification-subscription/cron (keyword type))
              (not (mr/validate ::u.cron/CronScheduleString cron_schedule)))

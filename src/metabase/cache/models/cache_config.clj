@@ -80,7 +80,7 @@
   [cache-config]
   (let [changes (t2/changes cache-config)]
     (when (or (contains? changes :model) (contains? changes :model_id))
-      (throw (ex-info (tru "The target of a cache configuration cannot be changed.") {:status-code 400})))
+      (throw (ex-info (tru "You cannot change the target of a cache configuration.") {:status-code 400})))
     (when (some #(contains? changes %) [:strategy :config :refresh_automatically])
       (check-strategy cache-config))
     cache-config))

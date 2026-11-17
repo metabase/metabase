@@ -1084,20 +1084,38 @@
   [card changes columns]
   (into {} (filter (fn [[k v]] (changed? card {k v}))) (select-keys changes columns)))
 
-(defn- public-link-changes-only?
-  "Whether `changes` is not empty and touches nothing but the public link of a Card, the one change that needs no write access to it: a settings manager may remove the
-  link of a Card they cannot write."
-  [changes]
-  (and (seq changes) (every? public-link-columns (keys changes))))
+(defn- changes-embedding?
+  "Whether `changes` change the embedding of `card`."
+  [card changes]
+  (boolean (some #(api/column-will-change? (get card %) (get changes % ::api/not-provided)) embedding-columns)))
 
-(defn- public-link-change-permitted?
-  "Whether the current user may apply the public link entries of `changes`: an admin to make a Card public, and a user
-  with the settings permission to make it private again."
-  [changes]
-  (cond
-    (not-any? #(contains? changes %) public-link-columns) true
-    (some? (:public_uuid changes))                        (boolean api/*is-superuser?*)
-    :else                                                 (perms/has-application-permission? :setting)))
+(defn- can-change-embedding?
+  "Whether the current user may do what `changes` do to the embedding of `card`: only a superuser changes it."
+  [card changes]
+  (or (not (changes-embedding? card changes))
+      (boolean (mi/superuser?))))
+
+(defn- public-link-change
+  "Whether `changes` set, `:set`, or clear, `:clear`, the public link of `card`, and nil when they leave it."
+  [card changes]
+  (when (some #(api/column-will-change? (get card %) (get changes % ::api/not-provided)) public-link-columns)
+    (if (:public_uuid changes) :set :clear)))
+
+(defn- can-change-public-link?
+  "Whether the current user may do what `changes` do to the public link of `card`: a superuser sets it, and one with
+  the application permission to change settings clears it."
+  [card changes]
+  (case (public-link-change card changes)
+    :set   (boolean (mi/superuser?))
+    :clear (boolean (or (mi/superuser?) (perms/current-user-has-application-permissions? :setting)))
+    true))
+
+(defn- changes-only-public-link?
+  "Whether `changes` change the public link of `card` and nothing else, the one change that needs no write access to
+  it: a settings manager may remove the link of a Card they cannot write."
+  [card changes]
+  (boolean (and (public-link-change card changes)
+                (every? public-link-columns (keys changes)))))
 
 (defmethod mi/can-create? :model/Card
   [_model {collection-id :collection_id :as card}]
@@ -1116,12 +1134,11 @@
 
 (defmethod mi/can-update? :model/Card
   [card changes]
-  (and (or (public-link-changes-only? changes) (mi/can-write? card))
-       (public-link-change-permitted? changes)
+  (and (or (changes-only-public-link? card changes) (mi/can-write? card))
+       (can-change-public-link? card changes)
        (collection/can-move? card changes)
        (dashboard-move-permitted? card changes)
-       (or (empty? (changing-columns card changes embedding-columns))
-           (boolean api/*is-superuser?*))
+       (can-change-embedding? card changes)
        (timeline-selection-readable? (merge card changes) card)
        (sandboxes-allow-card-update? card (changing-columns card changes sandbox-guarded-columns))))
 
@@ -1223,6 +1240,13 @@
   (when-let [notification-ids (seq (queries.db/card-notification-ids card-id))]
     (queries.db/delete-notifications! notification-ids)))
 
+(defn- delete-alerts-if-archived-directly
+  "Deletes the alerts of `card`, which `changes` archive on its own: the Card hooks leave the alerts of a Card that
+  follows the archive of its Collection, Dashboard or Document."
+  [card changes]
+  (when (and (:archived changes) (:archived_directly card))
+    (delete-notifications-of-card (:id card))))
+
 (t2/define-before-insert :model/Card
   [card]
   (check-timeline-settings card)
@@ -1291,6 +1315,8 @@
     (assoc card :metabot_conversation_id nil :metabot_chart_id nil)
     card))
 
+(mi/define-update-in-transaction :model/Card)
+
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
   (let [changes  (some-> card t2/changes normalize-card)
@@ -1304,10 +1330,9 @@
       (collection/check-allowed-content (:type card) (:collection_id card)))
     (when (some #(contains? changes %) [:collection_id :dashboard_id :document_id])
       (check-not-in-archived-container card))
-    (when (:archived changes)
-      (delete-notifications-of-card (:id card)))
     (-> card
         (cond-> (contains? changes :archived) (assoc :archived_directly (mi/archived-directly card #(card-parent-archived? card))))
+        (doto (delete-alerts-if-archived-directly changes))
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
         (apply-dashboard-question-updates changes)
@@ -1715,8 +1740,8 @@
   an action event for each action of the card that the update deletes, archives, unarchives, or moves."
   [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
   ;; The card hooks delete, archive, or move a card's actions without events, so compare the actions before and after.
-  (let [actions-before         (queries.db/actions-for-model (:id card-before-update))
-        archived-notifications (pulse/alerts-of-card-being-archived card-before-update card-updates)]
+  (let [actions-before (queries.db/actions-for-model (:id card-before-update))
+        notifications  (pulse/alerts-of-card-being-changed card-before-update card-updates)]
     (update-card-in-db! card-before-update card-updates actor delete-old-dashcards?)
     (when (seq actions-before)
       (doseq [[topic action] (changed-action-events actions-before (queries.db/actions-for-model (:id card-before-update)))]
@@ -1725,7 +1750,7 @@
     (let [card (queries.db/card (:id card-before-update))]
       ;;; TODO -- this should be triggered indirectly by `:event/card-update`
       (pulse/delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor
-                                      :archived-notifications archived-notifications)
+                                      :notifications notifications)
       ;; skip publishing the event if it's just a change in its collection position
       (when-not (= #{:collection_position}
                    (set (keys card-updates)))
@@ -2074,13 +2099,13 @@
                             metadata stored)))))
 
 (defn- with-model-metadata
-  "The load `item` of a Card that updates a model, without the exported overrides of its metadata when the local row
+  "The load `item` of a Card that writes a model, without the exported overrides of its metadata when the local row
   stores them, with the exported metadata of a native query, whose columns can't be inferred without running it, or
   with the overrides applied to freshly inferred metadata, as an update of its query would store them."
   [{:keys [row local] :as item}]
   (let [{query :dataset_query metadata :result_metadata card-type :type} row]
     (cond
-      (not (and local query (seq metadata) (= :model (keyword card-type)) (not-any? :id metadata)))
+      (not (and query (seq metadata) (= :model (keyword card-type)) (not-any? :id metadata)))
       item
 
       (overrides-stored? metadata (:result_metadata local))

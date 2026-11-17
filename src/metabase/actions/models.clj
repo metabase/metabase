@@ -89,7 +89,7 @@
   "Throws a 400 unless `action` is a query or an implicit action."
   [{action-type :type}]
   (when-not (contains? #{:query :implicit} (some-> action-type keyword))
-    (throw (ex-info (tru "An action is a query or an implicit action.") {:status-code 400}))))
+    (throw (ex-info (tru "Action type must be query or implicit.") {:status-code 400}))))
 
 (defn- check-model-card
   "Throws a 400 unless `card`, the Card an implicit action is made on, is a model."
@@ -250,7 +250,7 @@
   [query-action]
   (let [changes (t2/changes query-action)]
     (when (and (contains? changes :database_id) (not (contains? changes :dataset_query)))
-      (throw (ex-info (tru "The database of a query action is derived from its query.") {:status-code 400})))
+      (throw (ex-info (tru "The database of a query action follows its query; change the query instead.") {:status-code 400})))
     (when (contains? changes :dataset_query)
       (check-query query-action))
     (cond-> query-action

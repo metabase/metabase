@@ -511,7 +511,7 @@
     (mt/with-temp [:model/Database {db-1 :id} {}
                    :model/Database {db-2 :id} {}
                    :model/Table    {table-id :id} {:db_id db-1}]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Table cannot move to another Database"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot move a Table to another Database"
                             (t2/update! :model/Table :id table-id {:db_id db-2})))
       (is (= db-1 (t2/select-one-fn :db_id :model/Table :id table-id))))))
 

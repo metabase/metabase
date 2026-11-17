@@ -42,10 +42,10 @@
   [impersonation]
   (let [changes (t2/changes impersonation)]
     (when (contains? changes :group_id)
-      (throw (ex-info (tru "You cannot change the group ID of a connection impersonation once it has been created.")
+      (throw (ex-info (tru "You cannot change the group of a connection impersonation.")
                       {:status-code 400})))
     (when (contains? changes :db_id)
-      (throw (ex-info (tru "You cannot change the database ID of a connection impersonation once it has been created.")
+      (throw (ex-info (tru "You cannot change the database of a connection impersonation.")
                       {:status-code 400})))
     (when (contains? changes :attribute)
       (check-attribute impersonation))

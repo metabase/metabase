@@ -205,7 +205,7 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid slug"
                             (t2/insert! :model/Tenant {:name "Upper Slug Tenant" :slug "UPPER"}))))
     (testing "name cannot be blank"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A tenant name cannot be blank"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A tenant needs a name"
                             (t2/insert! :model/Tenant {:name " " :slug "blank-name-tenant"}))))
     (testing "attribute keys cannot start with @"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"attribute keys must not start with `@`"
@@ -236,7 +236,7 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot change the collection of a tenant"
                               (t2/update! :model/Tenant :id id {:tenant_collection_id coll-id})))))
     (testing "name cannot become blank"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A tenant name cannot be blank"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A tenant needs a name"
                             (t2/update! :model/Tenant :id id {:name ""}))))
     (testing "name cannot be taken by another tenant"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This name is already taken"

@@ -21,5 +21,5 @@
   update-pulse!]
  [metabase.pulse.update-alerts
   delete-alerts-if-card-changed!
-  alerts-of-card-being-archived
+  alerts-of-card-being-changed
   delete-alerts-if-needed!])

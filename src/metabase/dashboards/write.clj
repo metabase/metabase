@@ -64,10 +64,8 @@
       (api/read-check (get id->row id)))))
 
 (defn- check-new-references
-  "Read-check every card and action the incoming `dashboard` newly references, relative to what `stored-fn` returns,
-  which is called only when `dashboard` references something.
-  Lives here rather than at the REST boundary so every writer — MCP's dashboard_write included —
-  gets the check."
+  "Throws unless the current user can read every card and action `dashboard` references beyond those `stored-fn`
+  returns."
   [stored-fn dashboard]
   (let [new-references (references dashboard)]
     (when (some seq (vals new-references))
@@ -90,10 +88,8 @@
    [:auto_apply_filters  {:optional true} [:maybe :boolean]]])
 
 (mu/defn create-dashboard! :- :map
-  "Create a Dashboard owned by the current user and return the saved row. `:width` and
-  `:auto_apply_filters` fall back to the column defaults when omitted or nil.
-  Requires create permission on `:collection_id` (nil = root). Publishes `:event/dashboard-create`.
-  `:in-transaction`, when given, is called with the inserted row inside the creating transaction."
+  "Creates a Dashboard owned by the current user after its create check, calls `:in-transaction`, when given, with the
+  inserted row inside the creating transaction, publishes `:event/dashboard-create` and returns the row."
   ([attrs :- NewDashboard]
    (create-dashboard! attrs nil))
   ([{:keys [name description parameters cache_ttl collection_id collection_position

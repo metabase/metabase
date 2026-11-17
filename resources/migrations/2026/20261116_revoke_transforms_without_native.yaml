@@ -1,6 +1,6 @@
 ## A group may hold the transforms permission on a database only while it has "Query builder and native" access to the
 ## whole database. Revoke transforms for every group and database that lost native access through a table-level
-## create-queries change, which used to leave transforms in place.
+## create-queries change.
 
 databaseChangeLog:
   - changeSet:

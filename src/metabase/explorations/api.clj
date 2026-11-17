@@ -565,12 +565,7 @@
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private updatable-columns
-  "Columns a client may set through `PUT /api/exploration/:id`. `UpdateExploration` is an open map,
-  so extra body keys survive decoding; the request is `select-keys`'d to this set before
-  `t2/update!` to prevent mass-assignment of protected columns (`creator_id`, `entity_id`,
-  timestamps, ...). `:archived_directly` is intentionally excluded — the model derives it, and a
-  client never sets it. Keep in sync with
-  `UpdateExploration`."
+  "The columns `PUT /api/exploration/:id` passes to `t2/update!`."
   #{:name :description :archived :collection_id :collection_position})
 
 ;;; ----------------------------------------- /dimensions schemas + helpers -----------------------------------------
@@ -797,11 +792,10 @@
   "Update an exploration's metadata, archive state, or move it to a different collection.
 
   When `collection_id` changes, the caller must have write perms on the destination collection
-  (or the root collection when `collection_id` is nil). Source perms are enforced by
-  `api/write-check` against the exploration itself, which reads its Collection.
-  Moving an exploration cascades the new `collection_id` onto its Summary document; flipping
-  `archived` cascades to the same document in the model's hooks (skipping any that were directly
-  user-archived, mirroring the dashboard / dashboard-question cascade)."
+  (or the root collection when `collection_id` is nil). The caller must pass
+  `api/update-check` on the exploration.
+  Moving an exploration cascades the new `collection_id` onto its Summary document; changing
+  `archived` archives or restores its Summary documents, except those archived on their own."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    updates :- UpdateExploration]

@@ -59,9 +59,9 @@
   [{:keys [id definition] :as segment}]
   (let [changes (t2/changes segment)]
     (when (contains? changes :creator_id)
-      (throw (ex-info (tru "You cannot update the creator_id of a Segment.") {:status-code 400})))
+      (throw (ex-info (tru "You cannot change the creator of a Segment.") {:status-code 400})))
     (when (and (contains? changes :table_id) (not (contains? changes :definition)))
-      (throw (ex-info (tru "The table of a Segment is derived from its definition.") {:status-code 400})))
+      (throw (ex-info (tru "The table of a Segment follows its definition; change the definition instead.") {:status-code 400})))
     (when (contains? changes :definition)
       (check-definition definition)
       (lib/check-segment-overwrite id (lib-be/normalize-query definition)))

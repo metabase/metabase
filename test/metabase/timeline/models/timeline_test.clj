@@ -72,9 +72,9 @@
 (deftest name-test
   (mt/with-temp [:model/Timeline {timeline-id :id} {}]
     (testing "a blank name is refused on insert and update"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must have a name"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Timeline needs a name"
                             (t2/insert! :model/Timeline {:name "  " :creator_id (mt/user->id :rasta)})))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must have a name"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Timeline needs a name"
                             (t2/update! :model/Timeline :id timeline-id {:name ""}))))))
 
 (deftest collection-namespace-test

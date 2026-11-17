@@ -1,6 +1,7 @@
 (ns metabase.native-query-snippets.models.native-query-snippet-test
   (:require
    [clojure.test :refer :all]
+   [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -17,24 +18,19 @@
       (is (= (mt/user->id :lucky)
              (t2/select-one-fn :creator_id :model/NativeQuerySnippet :id snippet-id))))))
 
-(deftest snippet-name-format-test
-  (doseq [invalid-name [" starts with a space" "\tstarts with a tab" "contains a } character"]]
-    (testing (format "A snippet cannot be inserted with the name %s" (pr-str invalid-name))
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"snippet names cannot include"
-           (t2/insert! :model/NativeQuerySnippet
-                       {:name invalid-name, :content "1 = 1", :creator_id (mt/user->id :rasta)}))))
-    (testing (format "A snippet cannot be renamed to %s" (pr-str invalid-name))
-      (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "valid name"}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"snippet names cannot include"
-             (t2/update! :model/NativeQuerySnippet :id snippet-id {:name invalid-name})))
-        (is (= "valid name" (t2/select-one-fn :name :model/NativeQuerySnippet :id snippet-id))))))
-  (testing "A name with whitespace after its first character and no brace is valid"
-    (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "valid name"}]
-      (is (= 1 (t2/update! :model/NativeQuerySnippet :id snippet-id {:name "also valid "}))))))
+(deftest snippet-name-format-is-checked-by-request-only-test
+  (testing "the model stores a name that a request would refuse, as an import of an old snippet carries it"
+    (doseq [odd-name [" starts with a space" "\tstarts with a tab" "contains a } character"]]
+      (testing (pr-str odd-name)
+        (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name odd-name :content "1 = 1"}]
+          (is (= odd-name (t2/select-one-fn :name :model/NativeQuerySnippet :id snippet-id)))
+          (t2/update! :model/NativeQuerySnippet :id snippet-id {:name "valid name"})
+          (t2/update! :model/NativeQuerySnippet :id snippet-id {:name odd-name})
+          (is (= odd-name (t2/select-one-fn :name :model/NativeQuerySnippet :id snippet-id)))))))
+  (testing "the request check refuses them"
+    (doseq [odd-name [" starts with a space" "\tstarts with a tab" "contains a } character"]]
+      (is (not (native-query-snippet/valid-name? odd-name))))
+    (is (native-query-snippet/valid-name? "also valid "))))
 
 (deftest insert-resolves-snippet-references-test
   (testing "Inserted snippets resolve their references to stored snippets"

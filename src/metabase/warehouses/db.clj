@@ -46,6 +46,12 @@
    details     :- ::warehouses.schema/database.details]
   (t2/update! :model/Database :id database-id {:details details}))
 
+(mu/defn set-database-provider-name!
+  "Set the provider name of the Database with `database-id`, returning the number updated."
+  [database-id   :- ::lib.schema.id/database
+   provider-name :- [:maybe :string]]
+  (t2/update! :model/Database :id database-id {:provider_name provider-name}))
+
 (mu/defn health-check-candidate-ids
   "The `:id` of the lowest-id non-audit, non-sample, non-stub, non-destination Database of each engine."
   []

@@ -73,7 +73,7 @@
   "Throws a 400 when `tenant-name` is blank."
   [tenant-name]
   (when (str/blank? tenant-name)
-    (throw (ex-info (tru "A tenant name cannot be blank.") {:status-code 400}))))
+    (throw (ex-info (tru "A tenant needs a name.") {:status-code 400}))))
 
 (defn- check-attributes
   "Throws a 400 when a key of `attributes` starts with `@`, which marks the attributes Metabase sets itself."

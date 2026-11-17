@@ -717,8 +717,10 @@
           ;; whole, as the update event's previous object: a listener reads a card's metadata from it
           before (when (seq cards) (queries-rest.db/cards-by-id (map u/the-id cards)))]
       ;; ...check that we have write permissions for it...
-      (doseq [card cards]
-        (api/update-check card {:collection_id new-collection-id-or-nil}))
+      (doseq [card (t2/hydrate (vec cards) :can_write)]
+        (when-not (mi/can-update? card {:collection_id new-collection-id-or-nil})
+          (events/publish-event! :event/update-permission-failure {:user-id api/*current-user-id* :object card})
+          (api/check-403 false)))
       ;; ...and check that we have write permissions for the old collections, root included
       (doseq [old-collection-id (set (map :collection_id cards))]
         (write-check-collection-or-root old-collection-id))

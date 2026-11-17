@@ -25,7 +25,7 @@
                    :model/DatabaseRouter {router-id :id} {:database_id db-id :user_attribute "tenant"}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Cannot change the database of a router"
+           #"You cannot change the database of a router"
            (t2/update! :model/DatabaseRouter :id router-id {:database_id other-id}))))))
 
 (deftest destination-cannot-be-router-test

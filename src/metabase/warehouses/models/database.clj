@@ -383,15 +383,12 @@
   (when (some-> engine keyword driver.impl/registered?)
     (provider-detection/detect-provider-from-database (update database :engine keyword))))
 
-(def ^:private provider-name-sources
-  "The columns `provider_name` is derived from."
-  [:engine :details])
-
 (defn- check-provider-name-change
-  "Throws a 400 when `changes` set `provider_name` without changing a column it is derived from."
-  [changes]
+  "Throws a 400 when `changes` set `provider_name` to a name other than the one `database` has, as its engine and host
+  tell it."
+  [database changes]
   (when (and (contains? changes :provider_name)
-             (not-any? #(contains? changes %) provider-name-sources))
+             (not= (:provider_name changes) (provider-name database)))
     (throw (ex-info (tru "provider_name is derived from the engine and the host and cannot be set.")
                     {:status-code 400}))))
 
@@ -405,7 +402,7 @@
   (let [changes  (t2/changes database)
         original (t2/original database)]
     (assert-router-database-id-not-mutated! database)
-    (check-provider-name-change changes)
+    (check-provider-name-change database changes)
     (check-destination-overlays database changes)
     ;; An engine change can make existing detail keys acquire new meaning, so validate every details map under the new
     ;; driver. Otherwise validate only the ones being written, so an unrelated update to a grandfathered database does
@@ -421,7 +418,7 @@
     (when (contains? changes :settings)
       (check-settings-driver-features database (changed-settings (:settings changes) (:settings original))))
     (cond-> database
-      (some #(contains? changes %) provider-name-sources)
+      (not= (:provider_name database) (provider-name database))
       (assoc :provider_name (provider-name database))
 
       (and (:is_stub original)
@@ -862,6 +859,18 @@
         (analytics/inc! :metabase-database/status {:driver engine :healthy false :reason reason :connection-type connection-type}))
       false)))
 
+(defn- refresh-provider-name!
+  "Stores the provider name of `database`, as its engine and host tell it, when it is not the stored one."
+  [database]
+  (let [provider (provider-name database)]
+    (when (not= provider (:provider_name database))
+      (try
+        (log/infof "Provider detection: updating database {:id %d} from '%s' to '%s'"
+                   (:id database) (:provider_name database) provider)
+        (warehouses.db/set-database-provider-name! (:id database) provider)
+        (catch Throwable e
+          (log/warnf "Error during provider detection for database {:id %d}: %s" (:id database) (ex-message e)))))))
+
 (defn health-check-database!
   "Checks database health off-thread.
    - checks connectivity for the default connection
@@ -879,7 +888,8 @@
              driver      (keyword engine-str)
              details-map (assoc details :engine engine-str)
              lib-db      (driver.u/ensure-lib-database database)]
-         (check-connection! database driver engine-str details-map "default")
+         (when (check-connection! database driver engine-str details-map "default")
+           (refresh-provider-name! database))
          (when (driver.conn/database-write-data-details lib-db)
            (let [write-details (merge details (driver.conn/details-for-exact-type lib-db :write-data))]
              (check-connection! database driver engine-str (assoc write-details :engine engine-str) "write-data")))

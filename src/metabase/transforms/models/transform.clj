@@ -91,13 +91,20 @@
                (m/update-existing target :type #(cond-> % (keyword? %) name))
                (tru "The transform target is invalid.")))
 
+(defn- source-database-id
+  "The Database id the source of `transform` names, or nil when it names none, as a Python source without a
+  `:source-database` does."
+  [transform]
+  (transforms-base.i/source-db-id (dissoc transform :target_db_id)))
+
 (defn- derived-columns
-  "The columns of `transform` computed from its source and target, whatever values it came with."
+  "The columns of `transform` computed from its source and target, whatever values it came with: `source_database_id`
+  only when the source names a Database, else it is the caller's."
   [{:keys [source] :as transform}]
   (let [transform (dissoc transform :target_db_id)]
-    {:source_type        (transforms-base.u/transform-source-type source)
-     :source_database_id (transforms-base.i/source-db-id transform)
-     :target_db_id       (transforms-base.i/target-db-id transform)}))
+    (cond-> {:source_type  (transforms-base.u/transform-source-type source)
+             :target_db_id (transforms-base.i/target-db-id transform)}
+      (source-database-id transform) (assoc :source_database_id (source-database-id transform)))))
 
 (defn- check-target-database
   "Throws a 400 unless the target Database of `transform` can hold the tables of a transform."
@@ -187,7 +194,8 @@
   (let [changes    (t2/changes transform)
         _          (when (contains? changes :collection_id) (check-collection transform))
         definition (when (definition-changed? transform) (check-and-derive-definition transform))]
-    (when (and (or (contains? changes :source_type) (contains? changes :source_database_id))
+    (when (and (or (contains? changes :source_type)
+                   (and (contains? changes :source_database_id) (source-database-id transform)))
                (not (contains? changes :source)))
       (throw (ex-info (tru "source_type and source_database_id are derived from the source and cannot be set.")
                       {:status-code 400})))

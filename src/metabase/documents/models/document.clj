@@ -106,7 +106,7 @@
       (check-content (:content_type document) (:document document)))
     (when (and (contains? changes :public_uuid_prefix)
                (not (contains? changes :public_uuid)))
-      (throw (ex-info (tru "The public UUID prefix of a Document is derived from its public UUID.")
+      (throw (ex-info (tru "The public UUID prefix of a Document follows its public UUID; change the public UUID instead.")
                       {:status-code 400})))
     (when (contains? changes :collection_id)
       (documents.db/update-cards-for-document! id {:collection_id (:collection_id document)}))

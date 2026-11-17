@@ -34,8 +34,7 @@
    [:result_column_name  {:optional true} [:maybe :string]]])
 
 (defn create-measure!
-  "Create-check and insert a new Measure; publishes `:event/measure-create` and returns the hydrated Measure. The
-  shared domain create path, so the create-check runs wherever a Measure is authored."
+  "Create-check and insert a new Measure; publishes `:event/measure-create` and returns the hydrated Measure."
   [{:keys [name description definition], :as body}]
   (let [definition (lib-be/normalize-query definition)]
     (api/create-check :model/Measure (assoc body :definition definition))
@@ -89,9 +88,8 @@
        (mapv with-api-dimensions)))
 
 (defn write-check-and-update-measure!
-  "Check whether current user has write permissions, then update Measure with values in `body`. Publishes appropriate
-  event and returns updated/hydrated Measure. The shared domain update path, so the checks run wherever a Measure is
-  edited."
+  "Applies `body` to the Measure with `id` after its update check, publishes the update event and returns the hydrated
+  Measure."
   [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check :model/Measure id)
         clean-body (cond-> (u/select-keys-when body

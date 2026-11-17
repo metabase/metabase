@@ -4,6 +4,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.models.interface :as mi]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.queries.models.parameter-card :as parameter-card]
@@ -616,3 +617,14 @@
           (is (false? (mi/can-create? :model/Dashboard {:collection_id (u/the-id writable) :enable_embedding true}))))
         (mt/with-test-user :crowberto
           (is (true? (mi/can-create? :model/Dashboard {:collection_id (u/the-id writable) :enable_embedding true}))))))))
+
+(deftest archiving-dashboard-keeps-alerts-of-its-questions-test
+  (testing "archiving a Dashboard leaves the alerts of the questions that belong to it, which restoring the Dashboard brings back"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+      (notification.tu/with-card-notification
+        [notification {:card {:dashboard_id dashboard-id}
+                       :notification-card {:send_condition :has_result}}]
+        (t2/update! :model/Dashboard :id dashboard-id {:archived true})
+        (is (t2/exists? :model/Notification :id (:id notification)))
+        (t2/update! :model/Dashboard :id dashboard-id {:archived false})
+        (is (t2/exists? :model/Notification :id (:id notification)))))))

@@ -42,7 +42,7 @@
   [router]
   (let [changes (t2/changes router)]
     (when (contains? changes :database_id)
-      (throw (ex-info (tru "Cannot change the database of a router.") {:status-code 400})))
+      (throw (ex-info (tru "You cannot change the database of a router.") {:status-code 400})))
     (when (contains? changes :user_attribute)
       (check-user-attribute (:user_attribute changes)))
     router))
