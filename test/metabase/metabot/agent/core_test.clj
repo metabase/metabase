@@ -18,6 +18,7 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.api :as metabot.api]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.persistence :as metabot.persistence]
@@ -36,6 +37,7 @@
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.search :as metabot-search]
+   [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.metabot.util :as metabot.u]
    [metabase.native-query-snippets.core :as snippets]
@@ -632,6 +634,19 @@
               (is (= text (apply str (keep #(when (= :text (:type %)) (:text %)) parts)))
                   "what the user reads"))))))))
 
+(deftest run-agent-loop-binds-metabot-while-building-prompt-test
+  (testing "the viewing context is built with the turn's Metabot and profile bound, as a tool call binds them"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [format-viewing-context (mt/original-fn #'user-context/format-viewing-context)
+            seen                   (atom [])]
+        (mt/with-dynamic-fn-redefs [user-context/format-viewing-context
+                                    (fn [context]
+                                      (swap! seen conj [(:id tools.shared/*metabot*) tools.shared/*profile-id*])
+                                      (format-viewing-context context))]
+          (run-turn! :internal "Hello" []))
+        (is (seq @seen))
+        (is (every? #{[(:id (internal-metabot)) :internal]} @seen))))))
+
 (deftest the-turn-stops-when-the-client-leaves-during-a-tool-call-test
   (mt/with-current-user (mt/user->id :crowberto)
     (let [create-sql-query (mt/original-fn #'create-sql-query-tools/create-sql-query)]
@@ -1025,6 +1040,28 @@
         (is (= {test-provider {:prompt 900 :completion 70}}
                (metabot.persistence/extract-usage parts)))
         (is (= 730 (metabot.persistence/extract-context-tokens parts)))))))
+
+(defn- llm-span-usages
+  "The `:ai/usage` of each `llm` span in `spans`, in the order of the iterations."
+  [spans]
+  (->> (map :attributes spans)
+       (sort-by :ai/iteration)
+       (map :ai/usage)))
+
+(deftest step-limit-reply-eval-usage-test
+  (testing "the last call of a turn at its step limit has its own usage on its eval span, and the turn has the sum"
+    (mt/as-admin
+      (let [reply           #(mut/mock-llm-response [{:type :text :text "The customer table has no link to orders."}
+                                                     {:type  :usage
+                                                      :usage {:promptTokens 700 :completionTokens 30}}])
+            {:keys [trace]} (ait/capturing (step-limit-turn! :document-generate-content reply))
+            turn            (first trace)]
+        (is (= [{test-provider {:promptTokens 100 :completionTokens 20}}
+                {test-provider {:promptTokens 100 :completionTokens 20}}
+                {test-provider {:promptTokens 700 :completionTokens 30}}]
+               (llm-span-usages (:children turn))))
+        (is (= {test-provider {:promptTokens 900 :completionTokens 70}}
+               (get-in turn [:attributes :ai/usage])))))))
 
 (def ^:private partial-reply
   "The text that the last call streams before it stops."
@@ -1616,6 +1653,12 @@
                   (is (= 2 (count llms)))
                   (is (every? #(= :llm (:type %)) llms))
                   (is (every? #(= (:id turn) (:parent-id %)) llms)))
+                (testing "each llm.call has the usage of its own call, and the turn has the sum"
+                  (is (= [{test-provider {:promptTokens 100 :completionTokens 20}}
+                          {test-provider {:promptTokens 200 :completionTokens 10}}]
+                         (llm-span-usages llms)))
+                  (is (= {test-provider {:promptTokens 300 :completionTokens 30}}
+                         (get-in turn [:attributes :ai/usage]))))
                 (testing "the search tool span nests under the llm.call it ran in"
                   (is (= :tool (:type search)))
                   ;; the decoded tool arguments are recorded on the span (metabase.metabot.self.core)

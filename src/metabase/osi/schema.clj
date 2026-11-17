@@ -28,7 +28,8 @@
   "A OsiAiContext as selected from the app DB: every column of `:osi_ai_context`."
   [:merge
    ::osi-ai-context.update
-   [:map {:closed true}]])
+   [:map {:closed true}
+    [:id {:optional true} pos-int?]]])
 
 (mr/def ::osi-ai-context.update
   "What an update (or insert) of a OsiAiContext accepts: every column of `:osi_ai_context` except `id`, all optional."

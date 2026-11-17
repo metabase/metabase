@@ -20,6 +20,8 @@ import type { Field } from "./field";
 import type {
   CurrencyPosition,
   CurrencyStyle,
+  DurationStyle,
+  DurationUnit,
   TimeOnlyOptions,
 } from "./formatting";
 import type { ModerationReview } from "./moderation";
@@ -309,6 +311,9 @@ export type ColumnSettings = TimeOnlyOptions & {
   date_separator?: string;
   date_style?: string | null;
   decimals?: number;
+  duration_precision?: DurationUnit;
+  duration_style?: DurationStyle;
+  duration_unit?: DurationUnit;
   isExclude?: boolean;
   jsx?: boolean;
   link_text?: string;

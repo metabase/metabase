@@ -2,4 +2,4 @@
 export {
   dataAppConfig,
   type DataAppConfigOverrides,
-} from "./data-app-dev/index";
+} from "./data-apps/dev/index";

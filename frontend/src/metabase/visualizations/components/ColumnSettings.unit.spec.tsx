@@ -231,8 +231,8 @@ describe("ColumnSettings", () => {
     );
     expect(
       format.getAllByRole("radio").map((radio) => radio.getAttribute("value")),
-    ).toEqual(["decimal", "percent", "currency", "scientific"]);
-    ["1,23", "123%", "€1,23", "1,23e+0"].forEach((name) =>
+    ).toEqual(["decimal", "percent", "currency", "scientific", "duration"]);
+    ["1,23", "123%", "€1,23", "1,23e+0", "1:02:03"].forEach((name) =>
       expect(format.getByRole("radio", { name })).toBeInTheDocument(),
     );
   });

@@ -139,6 +139,20 @@ const elements = [
   // embedding-iframe-sdk, embedding-iframe-sdk-setup and mcp-app must come before
   // shared/embedding: their patterns are subfolders of
   // frontend/src/metabase/embedding/, and the first matching element wins.
+  // The data-app-* elements are the Data Apps team's folders inside embedding
+  // code. Each one takes its parent's tier and comes before its parent.
+  createElement({
+    type: "app",
+    name: "data-app-iframe-sdk",
+    pattern:
+      "frontend/src/metabase/embedding/embedding-iframe-sdk/data-apps/**",
+  }),
+  createElement({
+    type: "app",
+    name: "data-app-iframe-sdk-setup",
+    pattern:
+      "frontend/src/metabase/embedding/embedding-iframe-sdk-setup/data-apps/**",
+  }),
   createElement({
     type: "app",
     name: "embedding-iframe-sdk",
@@ -171,8 +185,18 @@ const elements = [
   ].map((pattern) =>
     createElement({ type: "app", name: "mcp-app", pattern, mode: "full" }),
   ),
+  createElement({
+    type: "shared",
+    name: "data-app-embedding",
+    pattern: "frontend/src/metabase/embedding/data-apps/**",
+  }),
   createElement({ type: "shared", name: "embedding" }),
   createElement({ type: "shared", name: "embedding-sdk" }),
+  createElement({
+    type: "app",
+    name: "data-app-sdk-bundle",
+    pattern: "frontend/src/embedding-sdk-bundle/components/public/DataApp/**",
+  }),
   createElement({
     type: "app",
     name: "embedding-sdk-bundle",
@@ -187,6 +211,11 @@ const elements = [
     type: "app",
     name: "embedding-sdk-ee",
     pattern: "enterprise/frontend/src/embedding-sdk-ee/**",
+  }),
+  createElement({
+    type: "app",
+    name: "data-app-sdk-package",
+    pattern: "enterprise/frontend/src/embedding-sdk-package/data-apps/**",
   }),
   createElement({
     type: "app",
@@ -217,6 +246,11 @@ const elements = [
     name: "misc",
     pattern: "frontend/src/embedding-sdk-shared/.storybook/**",
     mode: "full",
+  }),
+  createElement({
+    type: "shared",
+    name: "data-app-embedding-sdk-shared",
+    pattern: "frontend/src/embedding-sdk-shared/data-apps/**",
   }),
   createElement({
     type: "shared",
@@ -325,7 +359,6 @@ const elements = [
   ),
   ...[
     "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/auth-manager/AuthManager.ts",
-    "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/auth-manager/data-app-auth.unit.spec.ts",
     "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/handle-link.ts",
     "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/sdk-iframe-embedding-script-ee-plugins.ts",
     "enterprise/frontend/src/metabase-enterprise/sdk-iframe-embedding-plugins.ts",
@@ -338,6 +371,13 @@ const elements = [
       mode: "full",
     }),
   ),
+  createElement({
+    type: "app",
+    name: "data-app-iframe-sdk-ee",
+    pattern:
+      "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/data-apps/**",
+    mode: "full",
+  }),
   // The Near-Membrane sandbox + its ABI (globals map, factory/provider-props
   // contract). Feature tier on purpose: it's a library consumed by the app-tier
   // entries (runtime + SDK package dev preset), and the tier guarantees it only
@@ -389,7 +429,6 @@ const elements = [
     "frontend/src/metabase/app-static-viz.ts",
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/AppComponent.unit.spec.tsx",
-    "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
     "frontend/src/metabase/reducers-main.ts",
     "frontend/src/metabase/reducers-public.ts",

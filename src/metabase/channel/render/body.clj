@@ -18,10 +18,10 @@
    [metabase.formatter.core :as formatter]
    [metabase.geojson.core :as geojson.core]
    [metabase.geojson.settings :as geojson.settings]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
-   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.pivot.core :as pivot.core]
    [metabase.pivot.postprocess :as pivot.postprocess]
    [metabase.query-processor.compile :as qp.compile]
@@ -83,7 +83,7 @@
   [timezone-id            :- [:maybe :string]
    value                  :- [:or ms/FieldValue [:sequential ms/FieldValue]]
    col                    :- [:maybe :metabase.legacy-mbql.schema/legacy-column-metadata]
-   visualization-settings :- [:maybe ::lib.schema.visualization-settings/visualization-settings]]
+   visualization-settings :- [:maybe ::lib.schema.visualization/visualization-settings]]
   (cond
     ;; legacy usage -- do not use going forward
     #_{:clj-kondo/ignore [:deprecated-var]}
@@ -112,14 +112,10 @@
 (defn- column-name
   "Returns first column name from a hierarchy of possible column names"
   [card col]
-  (let [col-settings (-> (mb.viz/db->norm (:visualization_settings card))
-                         ::mb.viz/column-settings
-                         ;; field-ref keys can come in with additional stuff like :meta-data or unit maps,
-                         ;; so we select only those keys we CAN use to match with by using select-keys
-                         (update-keys #(select-keys % [::mb.viz/column-name ::mb.viz/field-id])))]
+  (let [viz-settings (:visualization_settings card)]
     (name (or (when-let [[_ id] (:field_ref col)]
-                (get-in col-settings [{::mb.viz/field-id id} ::mb.viz/column-title]))
-              (get-in col-settings [{::mb.viz/column-name (:name col)} ::mb.viz/column-title])
+                (:column_title (lib/column-settings-for-field-id viz-settings id)))
+              (:column_title (lib/column-settings-for-name viz-settings (:name col)))
               (table-data/remapped-display-name col)
               (:name col)))))
 
@@ -141,7 +137,7 @@
   [timezone-id  :- [:maybe :string]
    visible-cols :- [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]
    rows         :- [:sequential [:sequential ms/FieldValue]]
-   viz-settings :- [:maybe ::lib.schema.visualization-settings/visualization-settings]]
+   viz-settings :- [:maybe ::lib.schema.visualization/visualization-settings]]
   (let [formatters (mapv #(formatter/create-formatter timezone-id % viz-settings) visible-cols)]
     (for [row rows]
       {:row (mapv (fn [value fmt-fn]
@@ -176,7 +172,7 @@
    [:map {:closed true}
     [:cols             {:optional true} [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
     [:rows             {:optional true} [:maybe [:sequential [:sequential [:or ms/FieldValue [:sequential ms/FieldValue]]]]]]
-    [:viz-settings     {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
+    [:viz-settings     {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
     [:results_metadata {:optional true} [:maybe [:map {:closed true}
                                                  [:columns [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]]]
     [:results_timezone {:optional true} [:maybe :string]]
@@ -268,7 +264,7 @@
   "Schema for an ad-hoc (unsaved) card."
   [:map {:closed true}
    [:display :keyword]
-   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
    [:name {:optional true} [:maybe :string]]])
 
 (mr/def ::card
@@ -487,11 +483,11 @@
                   :measure-names  [(:name (nth cols cell))]}))
 
 (defn- order-data [data viz-settings]
-  (if (some? (::mb.viz/table-columns viz-settings))
+  (if (some? (:table.columns viz-settings))
     (let [;; Deduplicate table-columns by name to handle duplicated viz settings
-          deduped-table-columns       (->> (::mb.viz/table-columns viz-settings)
-                                           (m/distinct-by ::mb.viz/table-column-name))
-          deduped-viz-settings        (assoc viz-settings ::mb.viz/table-columns deduped-table-columns)
+          deduped-table-columns       (->> (:table.columns viz-settings)
+                                           (m/distinct-by :name))
+          deduped-viz-settings        (assoc viz-settings :table.columns deduped-table-columns)
           [ordered-cols output-order] (qp.streaming/order-cols (:cols data) deduped-viz-settings)
           ;; table-columns from viz-settings only includes remapped columns, not the source columns
           santized-ordered-cols       (map #(dissoc % :remapped_from :remapped_to) ordered-cols)
@@ -507,9 +503,7 @@
   "Return a list of column definitions for which minibar charts are enabled"
   [cols viz-settings]
   (filter
-   (fn [col] (get-in viz-settings [::mb.viz/column-settings
-                                   {::mb.viz/column-name (:name col)}
-                                   ::mb.viz/show-mini-bar]))
+   (fn [col] (:show_mini_bar (lib/column-settings-for-name viz-settings (:name col))))
    cols))
 
 (mu/defn- flat-table-content
@@ -635,7 +629,7 @@
                          :month "MMMM, YYYY"}})
 
 (defn- update-date-style
-  [date-style unit {::mb.viz/keys [date-abbreviate date-separator]}]
+  [date-style unit {date-abbreviate :date_abbreviate, date-separator :date_separator}]
   (let [unit (or unit :default)]
     (cond-> (or (get-in override-date-styles [date-style unit])
                 (get default-date-styles unit)
@@ -655,14 +649,14 @@
 
 (defn- update-col-for-js
   [col-settings col]
-  (-> (m/map-keys (fn [k] (-> k name (str/replace #"-" "_") keyword)) col-settings)
+  (-> col-settings
       (backfill-currency)
       (u/update-if-exists :date_style update-date-style (:unit col) col-settings)))
 
 (defn- settings-from-column
-  [col column-settings]
-  (-> (or (get column-settings {::mb.viz/field-id (:id col)})
-          (get column-settings {::mb.viz/column-name (:name col)}))
+  [col viz-settings]
+  (-> (or (lib/column-settings-for-field-id viz-settings (:id col))
+          (lib/column-settings-for-name viz-settings (:name col)))
       (update-col-for-js col)))
 
 (defn- ->js-viz
@@ -671,9 +665,9 @@
   - there are some date overrides done from lib/formatting.js
   - chop off and underscore the nasty keys in our map
   - backfill currency to the default of USD if not present"
-  [x-col y-col {::mb.viz/keys [column-settings] :as viz-settings}]
-  (let [x-col-settings (settings-from-column x-col column-settings)
-        y-col-settings (settings-from-column y-col column-settings)]
+  [x-col y-col viz-settings]
+  (let [x-col-settings (settings-from-column x-col viz-settings)
+        y-col-settings (settings-from-column y-col viz-settings)]
     (cond-> {:colors (appearance/application-colors)
              :visualization_settings (or viz-settings {})}
       x-col-settings
@@ -963,9 +957,7 @@
   assembly ([[pivot.postprocess/build-pivot-output]] + [[pivot.core]]) and the row/col/measure indices the
   pivot QP already computed in `:pivot-export-options`."
   [card dashcard {:keys [cols pivot-export-options] :as data}]
-  (let [;; db->norm gives the same settings shape the CSV/xlsx pivot exports pass build-pivot-output: per-column
-        ;; overrides (e.g. a renamed column title) under the normalized ::mb.viz/column-settings key, pivot keys raw.
-        settings (mb.viz/db->norm (merge (:visualization_settings card) (:visualization_settings dashcard)))
+  (let [settings (render.util/merged-viz-settings card dashcard)
         split    (setting-value settings :pivot_table.column_split)
         pg-idx   (pivot.postprocess/pivot-grouping-index (mapv :name cols))]
     (when (and split pivot-export-options pg-idx)

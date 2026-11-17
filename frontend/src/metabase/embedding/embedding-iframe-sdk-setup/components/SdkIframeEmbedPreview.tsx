@@ -22,12 +22,12 @@ import { Card } from "metabase/ui";
 import { colors as defaultMetabaseColors } from "metabase/ui/colors";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
+import { SdkIframeDataAppEmbedPreview } from "../data-apps/SdkIframeDataAppEmbedPreview";
 import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";
 import { resolveSavedTheme } from "../utils/resolve-saved-theme";
 import { getConfigurableThemeColors } from "../utils/theme-colors";
 
 import { EmbedPreviewLoadingOverlay } from "./EmbedPreviewLoadingOverlay";
-import { SdkIframeDataAppEmbedPreview } from "./SdkIframeDataAppEmbedPreview";
 import S from "./SdkIframeEmbedPreview.module.css";
 
 declare global {

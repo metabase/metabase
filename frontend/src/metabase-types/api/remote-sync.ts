@@ -59,7 +59,7 @@ export type RemoteSyncDocumentData = Pick<
 
 export type RemoteSyncFieldUserSettingsData = Pick<
   FieldUserSettings,
-  "field_id" | "display_name" | "field"
+  "id" | "field_id" | "display_name" | "field"
 >;
 
 export type RemoteSyncGlossaryData = Pick<GlossaryItem, "id" | "term">;
@@ -85,7 +85,7 @@ export type RemoteSyncSegmentData = Pick<
 
 export type RemoteSyncTableUserSettingsData = Pick<
   TableUserSettings,
-  "table_id" | "display_name" | "collection_id" | "table" | "collection"
+  "id" | "table_id" | "display_name" | "collection_id" | "table" | "collection"
 >;
 
 export type RemoteSyncTimelineData = Pick<

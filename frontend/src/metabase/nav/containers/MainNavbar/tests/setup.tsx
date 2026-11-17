@@ -80,7 +80,7 @@ export type SetupOpts = {
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
   id: 1,
-  name: "'Your personal collection",
+  name: "John Doe Personal Collection",
   originalName: "John's Personal Collection",
 });
 
@@ -242,7 +242,7 @@ export async function setup({
     });
   }
 
-  renderWithProviders(
+  const { router } = renderWithProviders(
     <Route
       path={route}
       element={<RoutedMainNavbar isOpen dashboard={storeDashboard} />}
@@ -257,6 +257,8 @@ export async function setup({
 
   await waitForLoaderToBeRemoved();
   await waitForLoaderToBeRemoved(); // tests will fail without the 2nd call
+
+  return { router };
 }
 
 export async function setupCollectionPage({

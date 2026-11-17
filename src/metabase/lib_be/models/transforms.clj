@@ -8,6 +8,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
@@ -113,3 +114,9 @@
 (def transform-query
   "Toucan 2 transform spec for Card `dataset_query` and other columns that store MBQL."
   {:in transform-query-in, :out transform-query-out})
+
+(def transform-visualization-settings
+  "Toucan 2 transform spec for the `visualization_settings` of Cards and DashboardCards, normalized both ways."
+  (let [normalize #(lib/normalize ::lib.schema.visualization/visualization-settings %)]
+    {:in  (comp mi/json-in normalize)
+     :out (comp normalize mi/json-out-without-keywordization)}))

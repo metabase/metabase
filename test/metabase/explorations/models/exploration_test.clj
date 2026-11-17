@@ -55,16 +55,16 @@
                                          :collection_id (:id (collection/user->personal-collection (:id owner)))}]
       (testing "owner can read and write"
         (mt/with-current-user (:id owner)
-          (is (true? (mi/can-read?  :model/Exploration (:id e))))
-          (is (true? (mi/can-write? :model/Exploration (:id e))))))
+          (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_read))))
+          (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_write))))))
       (testing "other user cannot read or write"
         (mt/with-current-user (:id other)
-          (is (false? (mi/can-read?  :model/Exploration (:id e))))
-          (is (false? (mi/can-write? :model/Exploration (:id e))))))
+          (is (false? (mi/can-read? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_read))))
+          (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_write))))))
       (testing "superuser can read and write"
         (mt/with-test-user :crowberto
-          (is (true? (mi/can-read?  :model/Exploration (:id e))))
-          (is (true? (mi/can-write? :model/Exploration (:id e)))))))))
+          (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_read))))
+          (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_write)))))))))
 
 (deftest exploration-thread-perms-delegate-to-exploration-test
   (mt/with-temp [:model/User owner {}
@@ -74,9 +74,9 @@
                                        :collection_id (:id (collection/user->personal-collection (:id owner)))}
                  :model/ExplorationThread t {:exploration_id (:id e)}]
     (mt/with-current-user (:id owner)
-      (is (true? (mi/can-read? :model/ExplorationThread (:id t)))))
+      (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/ExplorationThread :id (:id t)) :can_read)))))
     (mt/with-current-user (:id other)
-      (is (false? (mi/can-read? :model/ExplorationThread (:id t)))))))
+      (is (false? (mi/can-read? (t2/hydrate (t2/select-one :model/ExplorationThread :id (:id t)) :can_read)))))))
 
 (deftest exploration-in-shared-collection-uses-collection-perms-test
   (testing "When an exploration lives in a shared collection, can-read?/can-write? use that collection's perms."
@@ -101,24 +101,24 @@
       (mt/with-non-admin-groups-no-collection-perms (:id coll)
         (testing "user with no collection perms cannot read"
           (mt/with-test-user :rasta
-            (is (false? (mi/can-read?  :model/Exploration (:id e))))
-            (is (false? (mi/can-write? :model/Exploration (:id e))))
-            (is (false? (mi/can-read?  :model/ExplorationThread (:id t))))
-            (is (false? (mi/can-read?  :model/ExplorationQuery (:id q))))))
+            (is (false? (mi/can-read? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_read))))
+            (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_write))))
+            (is (false? (mi/can-read? (t2/hydrate (t2/select-one :model/ExplorationThread :id (:id t)) :can_read))))
+            (is (false? (mi/can-read? (t2/hydrate (t2/select-one :model/ExplorationQuery :id (:id q)) :can_read))))))
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
         (testing "user with collection-read can read but not write"
           (mt/with-test-user :rasta
-            (is (true?  (mi/can-read?  :model/Exploration (:id e))))
-            (is (false? (mi/can-write? :model/Exploration (:id e))))
-            (is (true?  (mi/can-read?  :model/ExplorationThread (:id t))))
-            (is (true?  (mi/can-read?  :model/ExplorationQuery (:id q))))))
+            (is (true?  (mi/can-read? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_read))))
+            (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_write))))
+            (is (true?  (mi/can-read? (t2/hydrate (t2/select-one :model/ExplorationThread :id (:id t)) :can_read))))
+            (is (true?  (mi/can-read? (t2/hydrate (t2/select-one :model/ExplorationQuery :id (:id q)) :can_read))))))
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)
         (testing "user with collection-write can read and write"
           (mt/with-test-user :rasta
-            (is (true? (mi/can-read?  :model/Exploration (:id e))))
-            (is (true? (mi/can-write? :model/Exploration (:id e))))
-            (is (true? (mi/can-write? :model/ExplorationThread (:id t))))
-            (is (true? (mi/can-write? :model/ExplorationQuery (:id q))))))))))
+            (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_read))))
+            (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_write))))
+            (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/ExplorationThread :id (:id t)) :can_write))))
+            (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/ExplorationQuery :id (:id q)) :can_write))))))))))
 
 (deftest exploration-in-root-collection-uses-root-perms-test
   (testing "collection_id=NULL → root collection perms apply."
@@ -129,18 +129,18 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (testing "no root perms → cannot read"
           (mt/with-test-user :rasta
-            (is (false? (mi/can-read?  :model/Exploration (:id e))))))
+            (is (false? (mi/can-read? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_read))))))
         (mt/with-temp [:model/PermissionsGroup       g {}
                        :model/PermissionsGroupMembership _ {:group_id (:id g) :user_id (mt/user->id :rasta)}]
           (perms/grant-permissions! (:id g) "/collection/root/read/")
           (testing "root-read granted → can read but not write"
             (mt/with-test-user :rasta
-              (is (true?  (mi/can-read?  :model/Exploration (:id e))))
-              (is (false? (mi/can-write? :model/Exploration (:id e))))))
+              (is (true?  (mi/can-read? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_read))))
+              (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_write))))))
           (perms/grant-permissions! (:id g) "/collection/root/")
           (testing "root-write granted → can write"
             (mt/with-test-user :rasta
-              (is (true? (mi/can-write? :model/Exploration (:id e)))))))))))
+              (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_write)))))))))))
 
 (deftest exploration-query-json-transforms-test
   ;; ExplorationBlock's :metrics/:dimensions JSON roundtrip is covered by

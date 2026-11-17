@@ -1,6 +1,8 @@
 (ns metabase.explorations.models.exploration
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.schema]
    [metabase.models.interface :as mi]
@@ -43,9 +45,37 @@
 
 (doto :model/Exploration
   (derive :metabase/model)
-  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defn- check-can-read-keys
+  "Throws unless `exploration` has the columns its `:can_read` and `:can_write` hydrations read."
+  [exploration]
+  (api/check-500 (contains? exploration :collection_id) "No :collection_id is set for an Exploration."))
+
+(methodical/defmethod t2/batched-hydrate [:model/Exploration :can_read]
+  "Whether the current user reads each of `explorations`, as the content of its Collection."
+  [_model _k explorations]
+  (run! #(when % (check-can-read-keys %)) explorations)
+  (let [readable (collection/content-readable-collection-ids (map :collection_id (remove nil? explorations))
+                                                             {:root-namespace nil, :audit-rules? false})]
+    (for [exploration explorations]
+      (when exploration
+        (vary-meta exploration assoc :can_read (contains? readable (:collection_id exploration)))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Exploration :can_write]
+  "Whether the current user writes each of `explorations`, as the content of its Collection."
+  [_model _k explorations]
+  (run! #(when % (check-can-read-keys %)) explorations)
+  (let [writable (collection/content-writable-collection-ids (map :collection_id (remove nil? explorations))
+                                                             {:root-namespace nil, :audit-rules? false})]
+    (for [exploration explorations]
+      (when exploration
+        (assoc exploration :can_write (contains? writable (:collection_id exploration)))))))
+
+(defmethod mi/can-create? :model/Exploration
+  [_model {collection-id :collection_id}]
+  (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :creator]
   [_model k explorations]
