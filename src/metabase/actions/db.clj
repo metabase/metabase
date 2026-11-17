@@ -75,25 +75,20 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
 
-(mu/defn card-type
-  "The type of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :type [:model/Card :type] :id card-id))
-
-(mu/defn card-collection-id
-  "The Collection id of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :collection_id [:model/Card :collection_id] :id card-id))
+(mu/defn card-placements
+  "A map of Card id to the Card's id, type and Collection id, for the Cards with `card-ids`."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select-pk->fn identity [:model/Card :id :type :collection_id] :id [:in card-ids]))
 
 (mu/defn collection-exists?
   "Whether the Collection with `collection-id` exists."
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id))
 
-(mu/defn collection-namespace
-  "The namespace of the Collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :namespace [:model/Collection :namespace] :id collection-id))
+(mu/defn collection-namespaces
+  "A map of Collection id to the Collection's namespace, for the Collections with `collection-ids`."
+  [collection-ids :- [:set ::lib.schema.id/collection]]
+  (t2/select-pk->fn :namespace [:model/Collection :id :namespace] :id [:in collection-ids]))
 
 (mu/defn unarchived-collection-exists?
   "Whether the unarchived Collection with `collection-id` exists."
@@ -110,10 +105,10 @@
   [action-id :- ::lib.schema.id/action]
   (t2/select-one-fn :collection_id [:model/Action :collection_id] :id action-id))
 
-(mu/defn action-model-id
-  "The model Card id of the Action with `action-id`, or nil."
-  [action-id :- ::lib.schema.id/action]
-  (t2/select-one-fn :model_id [:model/Action :model_id] :id action-id))
+(mu/defn action-types-and-models
+  "A map of Action id to the Action's id, type and model Card id, for the Actions with `action-ids`."
+  [action-ids :- [:set ::lib.schema.id/action]]
+  (t2/select-pk->fn identity [:model/Action :id :type :model_id] :id [:in action-ids]))
 
 (mu/defn table
   "The Table with `table-id`, or nil."

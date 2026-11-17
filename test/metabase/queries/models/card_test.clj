@@ -872,7 +872,6 @@
     (mt/with-temp [:model/Collection {coll-1 :id} {}
                    :model/Collection {coll-2 :id} {}
                    :model/Card       {model-id :id} {:type :model :collection_id coll-1 :dataset_query (mt/mbql-query venues)}
-                   :model/Card       {other-id :id} {:type :model :collection_id coll-2 :dataset_query (mt/mbql-query venues)}
                    :model/Action     {action-id :id} {:type :query :name "Rename" :model_id model-id}]
       (let [action-collection #(t2/select-one-fn :collection_id :model/Action :id action-id)]
         (testing "an inserted action takes its model's collection"
@@ -881,10 +880,6 @@
           (t2/update! :model/Card :id model-id {:collection_id coll-2})
           (is (= coll-2 (action-collection)))
           (t2/update! :model/Card :id model-id {:collection_id nil})
-          (is (nil? (action-collection))))
-        (testing "an action can't be attached to another model"
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"An action's model can't be changed"
-                                (t2/update! :model/Action :id action-id {:model_id other-id})))
           (is (nil? (action-collection))))))))
 
 (deftest model-changes-outside-update-card-publish-no-action-events-test

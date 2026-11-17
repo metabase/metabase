@@ -11,7 +11,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
-   [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.models.query :as query]
    [metabase.remote-sync.core :as remote-sync]
@@ -20,14 +19,14 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
-
-;;; -------------------------------------------- Entity & Life Cycle ----------------------------------------------
+;;; ----------------------------------------------------- Setup ------------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Action [_model] :action)
 (methodical/defmethod t2/table-name :model/QueryAction [_model] :query_action)
@@ -79,33 +78,30 @@
 
 (t2/deftransforms :model/ImplicitAction
   {:kind mi/transform-keyword})
-
-(methodical/defmethod t2/batched-hydrate [:model/Action :model]
-  [_model k actions]
-  (mi/instances-with-hydrated-data
-   actions k
-   #(when-let [model-ids (seq (keep :model_id actions))]
-      (actions.db/cards-by-id model-ids))
-   :model_id))
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (defn- implicit?
   "Whether `action` is an implicit action."
   [action]
   (= :implicit (keyword (:type action))))
 
-(defn- check-implicit-action-model
-  "Throws a 400 unless the Card with `model-id` is a model."
-  [model-id]
-  (when-not (= (actions.db/card-type model-id) :model)
+(defn- check-type
+  "Throws a 400 unless `action` is a query or an implicit action."
+  [{action-type :type}]
+  (when-not (contains? #{:query :implicit} (some-> action-type keyword))
+    (throw (ex-info (tru "An action is a query or an implicit action.") {:status-code 400}))))
+
+(defn- check-model-card
+  "Throws a 400 unless `card`, the Card an implicit action is made on, is a model."
+  [card]
+  (when-not (= :model (some-> (:type card) keyword))
     (throw (ex-info (tru "Actions must be made with models, not cards.")
                     {:status-code 400}))))
 
-(defn check-implicit-actions-supported
-  "Throws a 400 when `action` is implicit and its model's query does not support implicit actions."
-  [{model-id :model_id, :as action}]
-  (when (and (implicit? action)
-             model-id
-             (not (query/supports-implicit-actions? (actions.db/card-query model-id))))
+(defn- check-query-supports-implicit-actions
+  "Throws a 400 unless `query`, the query of the model of an implicit action, supports implicit actions."
+  [query]
+  (when-not (query/supports-implicit-actions? query)
     (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
                     {:status-code 400}))))
 
@@ -119,40 +115,62 @@
   "The Collection namespaces an Action without a model may go in, besides the data actions root."
   #{collection/data-actions-ns collection/data-apps-ns})
 
-(defn- collection-namespace
-  "The namespace of the Collection with `collection-id` as a keyword, or nil."
-  [collection-id]
-  (some-> collection-id actions.db/collection-namespace keyword))
+(defn- collection-namespaces
+  "A map of Collection id to its namespace as a keyword, for the Collections of `actions`, loaded together."
+  [actions]
+  (when-let [collection-ids (not-empty (into #{} (keep :collection_id) actions))]
+    (update-vals (actions.db/collection-namespaces collection-ids) #(some-> % keyword))))
 
 (defn- check-model-less-collection
-  "Throws a 400 unless an Action without a model is in the data actions root or a data actions or data app Collection."
-  [{model-id :model_id, collection-id :collection_id}]
+  "Throws a 400 unless an Action without a model is in the data actions root or a data actions or data app Collection,
+  per `collection-id->namespace`."
+  [{model-id :model_id, collection-id :collection_id} collection-id->namespace]
   (when (and (nil? model-id)
              collection-id
-             (not (contains? model-less-namespaces (collection-namespace collection-id))))
+             (not (contains? model-less-namespaces (get collection-id->namespace collection-id))))
     (let [msg (tru "An action without a model can only go in a data actions or data app collection.")]
       (throw (ex-info msg {:status-code 400
                            :errors      {:collection_id msg}})))))
 
 (defn- check-collection-content
-  "Throws unless `action` may go in its Collection."
-  [{collection-id :collection_id, :as action}]
-  (collection/check-collection-namespace :model/Action collection-id)
-  (collection/check-allowed-content :action collection-id)
-  (check-model-less-collection action))
+  "Throws unless every one of `actions` may go in its Collection, whose namespace `collection-id->namespace` holds."
+  [actions collection-id->namespace]
+  (doseq [collection-id (distinct (keep :collection_id actions))]
+    (collection/check-collection-namespace :model/Action collection-id)
+    (collection/check-allowed-content :action collection-id))
+  (doseq [action actions]
+    (check-model-less-collection action collection-id->namespace)))
 
 (defn- model-collection-error
   "The 400 for an action of a model put in a Collection other than its model's."
   []
   (ex-info (tru "A model''s action goes in the model''s collection.") {:status-code 400}))
 
+(defn- model-collection-id
+  "The Collection id of the model of `action`, per `model-id->card`."
+  [{model-id :model_id} model-id->card]
+  (:collection_id (get model-id->card model-id)))
+
 (defn- set-model-collection
-  "`action` with the `:collection_id` of its model Card; throws a 400 when it is given another Collection."
-  [{model-id :model_id, collection-id :collection_id, :as action}]
-  (let [model-collection-id (actions.db/card-collection-id model-id)]
-    (when (and (some? collection-id) (not= collection-id model-collection-id))
+  "`action` with the `:collection_id` of its model Card, per `model-id->card`; throws a 400 when it is given another
+  Collection."
+  [{collection-id :collection_id, :as action} model-id->card]
+  (let [model-collection (model-collection-id action model-id->card)]
+    (when (and (some? collection-id) (not= collection-id model-collection))
       (throw (model-collection-error)))
-    (assoc action :collection_id model-collection-id)))
+    (assoc action :collection_id model-collection)))
+
+(defn- model-cards
+  "A map of model Card id to the Card's id, type and Collection id, for the models of `actions`, loaded together."
+  [actions]
+  (when-let [model-ids (not-empty (into #{} (keep :model_id) actions))]
+    (actions.db/card-placements model-ids)))
+
+(defn- model-queries
+  "A map of model Card id to the Card's query, for the models of `actions`, loaded together."
+  [actions]
+  (when-let [model-ids (not-empty (into #{} (keep :model_id) actions))]
+    (update-vals (actions.db/cards-by-id (vec model-ids)) :dataset_query)))
 
 (defn- data-app-action-error
   "A 400 error for an action in a data app's collection, with `message`."
@@ -161,9 +179,10 @@
 
 (defn- check-data-app-action
   "Throws unless `action`, when it is in a data app's collection, is an implicit action on a table, of no model, that is
-  neither archived nor public and whose parameters take no values from a card."
-  [{collection-id :collection_id, :as action}]
-  (when (and (some? collection-id) (perms/data-app-collection? collection-id))
+  neither archived nor public and whose parameters take no values from a card; `collection-id->namespace` holds the
+  namespace of its Collection."
+  [{collection-id :collection_id, :as action} collection-id->namespace]
+  (when (and (some? collection-id) (= collection/data-apps-ns (get collection-id->namespace collection-id)))
     (when (or (not= :implicit (keyword (:type action))) (:model_id action))
       (throw (data-app-action-error (tru "An action in a data app''s collection must be an implicit action on a table."))))
     (when (:archived action)
@@ -173,114 +192,137 @@
     (when (some #(= "card" (some-> (:values_source_type %) name)) (:parameters action))
       (throw (data-app-action-error (tru "An action in a data app''s collection can''t take a parameter''s values from a card."))))))
 
-(t2/define-before-insert :model/Action
-  [{model-id :model_id, :as action}]
-  (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix action)
-             model-id set-model-collection)
-    (when (and (implicit? action) model-id)
-      (check-implicit-action-model model-id))
-    (check-collection-content <>)
-    (check-data-app-action <>)))
+(mi/define-before-insert :model/Action
+  [actions]
+  (let [model-id->card (model-cards actions)
+        actions        (mapv #(cond-> (public-sharing/add-public-uuid-prefix %)
+                                (:model_id %) (set-model-collection model-id->card))
+                             actions)
+        id->namespace  (collection-namespaces actions)]
+    (doseq [action actions]
+      (check-type action)
+      (when (and (implicit? action) (:model_id action))
+        (check-model-card (get model-id->card (:model_id action)))))
+    (check-collection-content actions id->namespace)
+    (run! #(check-data-app-action % id->namespace) actions)
+    actions))
 
-(t2/define-before-update :model/Action
-  [{model-id :model_id, :as action}]
-  (let [changed? (fn [k] (contains? (t2/changes action) k))]
-    (when (and (changed? :model_id) (not mi/*deserializing?*))
-      (throw (ex-info (tru "An action''s model can''t be changed.") {:status-code 400})))
-    (when (and model-id
-               (changed? :collection_id)
-               (not= (:collection_id action) (actions.db/card-collection-id model-id)))
-      (throw (model-collection-error)))
-    (u/prog1 (public-sharing/add-public-uuid-prefix-if-changed action)
-      (when (and (implicit? action) model-id (changed? :type))
-        (check-implicit-action-model model-id)
-        (check-implicit-actions-supported action))
-      (when (contains? (t2/changes <>) :collection_id)
-        (check-collection-content <>))
-      (when (some #(contains? (t2/changes <>) %) [:collection_id :type :model_id :archived :public_uuid :parameters])
-        (check-data-app-action <>)))))
+(mi/define-before-update :model/Action
+  [actions]
+  (let [changed-any?   (fn [action ks] (some #(contains? (t2/changes action) %) ks))
+        model-actions  (filter #(and (:model_id %) (changed-any? % [:collection_id :type])) actions)
+        model-id->card (model-cards model-actions)
+        queries        (model-queries (filter #(and (implicit? %) (changed-any? % [:type])) model-actions))
+        placed-actions (filter #(changed-any? % [:collection_id :type :model_id :archived :public_uuid :parameters]) actions)
+        id->namespace  (collection-namespaces placed-actions)]
+    (doseq [{model-id :model_id, :as action} actions
+            :let [changes (t2/changes action)]]
+      (when (contains? changes :type)
+        (check-type action))
+      (when (and model-id
+                 (contains? changes :collection_id)
+                 (not= (:collection_id action) (model-collection-id action model-id->card)))
+        (throw (model-collection-error)))
+      (when (and (implicit? action) model-id (contains? changes :type))
+        (check-model-card (get model-id->card model-id))
+        (check-query-supports-implicit-actions (get queries model-id))))
+    (check-collection-content (filter #(contains? (t2/changes %) :collection_id) actions) id->namespace)
+    (doseq [action placed-actions]
+      (check-data-app-action action id->namespace))
+    (mapv public-sharing/add-public-uuid-prefix-if-changed actions)))
+
+(defn- normalized-query
+  "The query of `query-action` normalized, or nil when it has none."
+  [{query :dataset_query}]
+  (when (and (map? query) (seq query))
+    (lib-be/normalize-query query)))
+
+(defn- check-query
+  "Throws a 400 unless `query-action` has a query, which when not empty is a native query on a Database."
+  [{query :dataset_query, :as query-action}]
+  (when-not (map? query)
+    (throw (ex-info (tru "Must provide a dataset_query for query actions") {:status-code 400})))
+  (when-let [query (normalized-query query-action)]
+    (when-not (:database query)
+      (throw (ex-info (tru "Must provide a dataset_query for query actions") {:status-code 400})))
+    (when-not (lib/native-only-query? query)
+      (throw (ex-info (tru "An action''s query has to be a native query.") {:status-code 400})))))
 
 (defn- set-query-database
-  "`query-action` with the `:database_id` of its query, when it has one, as a row copied whole may hold its query
-  undecoded."
-  [{query :dataset_query, :as query-action}]
-  (if-let [database-id (when (map? query) (:database query))]
+  "`query-action` with the `:database_id` its query names, when the query names one."
+  [query-action]
+  (if-let [database-id (:database (normalized-query query-action))]
     (assoc query-action :database_id database-id)
     query-action))
 
-(defn- check-query
-  "Throws a 400 unless the query of `query-action` is empty or native."
-  [{query :dataset_query}]
-  (when (and (map? query)
-             (seq query)
-             (not (lib/native-only-query? (lib-be/normalize-query query))))
-    (throw (ex-info (tru "An action''s query has to be a native query.") {:status-code 400}))))
+(defn- action-types
+  "A map of Action id to the Action's id, type and model Card id, for the Actions the details `rows` belong to, loaded
+  together."
+  [rows]
+  (when-let [action-ids (not-empty (into #{} (keep :action_id) rows))]
+    (actions.db/action-types-and-models action-ids)))
 
-(t2/define-before-insert :model/QueryAction
-  [query-action]
-  (check-query query-action)
-  (set-query-database query-action))
+(defn- check-details-type
+  "Throws a 400 unless the Action of the details `row` is of `action-type`, per `action-id->action`."
+  [{action-id :action_id} action-type action-id->action]
+  (when-not (= action-type (some-> (get action-id->action action-id) :type keyword))
+    (throw (ex-info (tru "The details of an action have to match its type.") {:status-code 400}))))
+
+(mi/define-before-insert :model/QueryAction
+  [query-actions]
+  (let [action-id->action (action-types query-actions)]
+    (doseq [query-action query-actions]
+      (check-details-type query-action :query action-id->action)
+      (check-query query-action))
+    (mapv set-query-database query-actions)))
 
 (t2/define-before-update :model/QueryAction
   [query-action]
-  (when (contains? (t2/changes query-action) :dataset_query)
-    (check-query query-action))
-  (set-query-database query-action))
+  (let [changes (t2/changes query-action)]
+    (when (and (contains? changes :database_id) (not (contains? changes :dataset_query)))
+      (throw (ex-info (tru "The database of a query action is derived from its query.") {:status-code 400})))
+    (when (contains? changes :dataset_query)
+      (check-query query-action))
+    (cond-> query-action
+      (contains? changes :dataset_query) set-query-database)))
+
+(defn- check-kind
+  "Throws a 400 unless `implicit-action` has a kind implicit actions come in."
+  [{kind :kind}]
+  (when-not (mr/validate ::actions.schema/implicit-action.kind (some-> kind keyword))
+    (throw (ex-info (tru "Unsupported implicit action kind") {:status-code 400}))))
 
 (defn- check-implicit-action-table
-  "Throws a 400 unless `implicit-action` has a Table exactly when its Action has no model, as an action of a model writes
-  to the table its model reads when it runs."
-  [{table-id :table_id, action-id :action_id}]
-  (if (actions.db/action-model-id action-id)
+  "Throws a 400 unless `implicit-action` has a Table exactly when its Action has no model, per `action-id->action`, as an
+  action of a model writes to the table its model reads when it runs."
+  [{table-id :table_id, action-id :action_id} action-id->action]
+  (if (:model_id (get action-id->action action-id))
     (when (some? table-id)
       (throw (ex-info (tru "An action of a model writes to the model''s table, so it can''t be given one.")
                       {:status-code 400})))
     (when (nil? table-id)
       (throw (ex-info (tru "An implicit action needs a table.") {:status-code 400})))))
 
-(defn table-action-fields
-  "The fields of `table` that an implicit action without a model uses, those a new model on it returns, which leaves out
-  sensitive and retired fields."
-  [table]
-  (remove #(#{:sensitive :retired} (keyword (:visibility_type %))) (:fields table)))
+(mi/define-before-insert :model/ImplicitAction
+  [implicit-actions]
+  (let [action-id->action (action-types implicit-actions)]
+    (doseq [implicit-action implicit-actions]
+      (check-details-type implicit-action :implicit action-id->action)
+      (check-implicit-action-table implicit-action action-id->action)
+      (check-kind implicit-action))
+    implicit-actions))
 
-(defn check-implicit-action-table-pk
-  "Throws a 400 when `action` is an implicit action without a model whose Table lacks exactly one usable primary key,
-  which the API checks rather than a hook as a load can bring the table's fields after the action."
-  [{model-id :model_id, table-id :table_id, :as action}]
-  (when (and (implicit? action) (nil? model-id) table-id)
-    (let [fields (table-action-fields (first (actions.db/tables-with-fields [table-id])))]
-      (when-not (= 1 (count (filter #(isa? (:semantic_type %) :type/PK) fields)))
-        (throw (ex-info (tru "An implicit action needs a table with exactly one primary key.") {:status-code 400}))))))
-
-(t2/define-before-update :model/ImplicitAction
-  [implicit-action]
-  (u/prog1 implicit-action
-    (when (contains? (t2/changes implicit-action) :table_id)
-      (check-implicit-action-table implicit-action))))
-
-(t2/define-before-insert :model/ImplicitAction
-  [implicit-action]
-  (u/prog1 implicit-action
-    (check-implicit-action-table implicit-action)))
-
-(defn- action-database-ids
-  "The ids of the Databases `action` runs against: its query's, or for an implicit action its model's or its table's."
-  [{model-id :model_id, action-id :id, table-id :table_id, query :dataset_query, :as action}]
-  (case (keyword (:type action))
-    :implicit [(if model-id
-                 (:database_id (actions.db/card-scope-columns model-id))
-                 (some-> (or table-id (some-> action-id actions.db/implicit-action-table-id))
-                         actions.db/table-database-id))]
-    :query    [(:database query)]
-    []))
-
-(defn check-action-databases-enabled
-  "Throws a 400 unless actions are enabled on every Database `action` runs against."
-  [action]
-  (doseq [database-id (action-database-ids action)
-          :when       database-id]
-    (actions/check-actions-enabled-for-database (actions.db/database database-id))))
+(mi/define-before-update :model/ImplicitAction
+  [implicit-actions]
+  (let [table-changed     (filter #(contains? (t2/changes %) :table_id) implicit-actions)
+        action-id->action (action-types table-changed)]
+    (doseq [implicit-action implicit-actions]
+      (when (contains? (t2/changes implicit-action) :kind)
+        (check-kind implicit-action)))
+    (doseq [implicit-action table-changed]
+      (check-implicit-action-table implicit-action action-id->action))
+    implicit-actions))
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (defn- effective-collection-id
   "The id of the Collection `action` goes in, its model's when it has one; throws a 404 when either does not exist."
@@ -361,13 +403,51 @@
   [action changes]
   (and (mi/can-write? (t2/hydrate action :can_write))
        (collection-writable? (merge action changes))))
+;;; ------------------------------------------- Request checks and CRUD fns ------------------------------------------
+
+(defn check-implicit-actions-supported
+  "Throws a 400 when `action` is implicit and its model's query does not support implicit actions."
+  [{model-id :model_id, :as action}]
+  (when (and (implicit? action) model-id)
+    (check-query-supports-implicit-actions (actions.db/card-query model-id))))
+
+(defn table-action-fields
+  "The fields of `table` that an implicit action without a model uses, those a new model on it returns, which leaves out
+  sensitive and retired fields."
+  [table]
+  (remove #(#{:sensitive :retired} (keyword (:visibility_type %))) (:fields table)))
+
+(defn check-implicit-action-table-pk
+  "Throws a 400 when `action` is an implicit action without a model whose Table lacks exactly one usable primary key,
+  which the API checks rather than a hook as a load can bring the table's fields after the action."
+  [{model-id :model_id, table-id :table_id, :as action}]
+  (when (and (implicit? action) (nil? model-id) table-id)
+    (let [fields (table-action-fields (first (actions.db/tables-with-fields [table-id])))]
+      (when-not (= 1 (count (filter #(isa? (:semantic_type %) :type/PK) fields)))
+        (throw (ex-info (tru "An implicit action needs a table with exactly one primary key.") {:status-code 400}))))))
+
+(defn- action-database-ids
+  "The ids of the Databases `action` runs against: its query's, or for an implicit action its model's or its table's."
+  [{model-id :model_id, action-id :id, table-id :table_id, query :dataset_query, :as action}]
+  (case (keyword (:type action))
+    :implicit [(if model-id
+                 (:database_id (actions.db/card-scope-columns model-id))
+                 (some-> (or table-id (some-> action-id actions.db/implicit-action-table-id))
+                         actions.db/table-database-id))]
+    :query    [(:database query)]
+    []))
+
+(defn check-action-databases-enabled
+  "Throws a 400 unless actions are enabled on every Database `action` runs against."
+  [action]
+  (doseq [database-id (action-database-ids action)
+          :when       database-id]
+    (actions/check-actions-enabled-for-database (actions.db/database database-id))))
 
 (def ^:private action-columns
   "The columns that are common to all Action types."
   [:archived :archived_directly :collection_id :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name
    :parameter_mappings :parameters :public_uuid :public_uuid_prefix :type :updated_at :visualization_settings])
-
-;;; ------------------------------------------------ CRUD fns -----------------------------------------------------
 
 ;;; TODO (Cam 10/2/25) -- this should just be the default Toucan 2 insert behavior for an action
 (mu/defn- insert*! :- ::actions.schema/id
@@ -391,8 +471,11 @@
   [{:keys [id] :as updates} :- ::actions.schema/action.for-update
    existing-action          :- ::actions.schema/action]
   (let [updates (assoc updates :type (or (:type updates) (:type existing-action)))]
+    (when (and (contains? updates :model_id) (not= (:model_id updates) (:model_id existing-action)))
+      (throw (ex-info (tru "An action''s model can''t be changed.") {:status-code 400})))
     (t2/with-transaction [_conn]
-      ;; the query row first: a move into a data app's collection checks the query the action then holds
+      (when-let [action-row (not-empty (select-keys updates action-columns))]
+        (actions.db/update-action! id action-row))
       (when-let [type-row (not-empty (cond-> (apply dissoc updates :id action-columns)
                                        (= (or (:type updates) (:type existing-action))
                                           :implicit)
@@ -409,8 +492,6 @@
             (case (:type existing-action)
               :query    (actions.db/update-query-action! id type-row)
               :implicit (actions.db/update-implicit-action! id type-row)))))
-      (when-let [action-row (not-empty (select-keys updates action-columns))]
-        (actions.db/update-action! id action-row))
       (when (and (:archived updates) (not (:archived existing-action)))
         (actions.db/delete-dashcards-for-action! id))
       (when-let [collection-id (and (contains? updates :collection_id)
@@ -671,6 +752,22 @@
   ;; never be done server-side. I don't have time to fix this right now. -- Cam
   (first (apply select-actions options)))
 
+(defn dashcard->action
+  "Get the unarchived action associated with a dashcard if exists, return `nil` otherwise."
+  [dashcard-or-dashcard-id]
+  (when-let [action-id (actions.db/dashcard-action-id (u/the-id dashcard-or-dashcard-id))]
+    (select-action :id action-id :archived false)))
+
+;;; ------------------------------------------------- Hydration ------------------------------------------------------
+
+(methodical/defmethod t2/batched-hydrate [:model/Action :model]
+  [_model k actions]
+  (mi/instances-with-hydrated-data
+   actions k
+   #(when-let [model-ids (seq (keep :model_id actions))]
+      (actions.db/cards-by-id model-ids))
+   :model_id))
+
 (defn- map-assoc-database-enable-actions
   "Adds a boolean field `:database-enabled-actions` to each action according to the `database-enable-actions` setting for
    the action's database."
@@ -700,12 +797,6 @@
           :let [action-id (:action_id dashcard)
                 action    (get actions-by-id action-id)]]
       (m/assoc-some dashcard :action action))))
-
-(defn dashcard->action
-  "Get the unarchived action associated with a dashcard if exists, return `nil` otherwise."
-  [dashcard-or-dashcard-id]
-  (when-let [action-id (actions.db/dashcard-action-id (u/the-id dashcard-or-dashcard-id))]
-    (select-action :id action-id :archived false)))
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
@@ -749,29 +840,6 @@
                         "main")))
         entities))
 
-;;;; ------------------------------------------------- Search ----------------------------------------------------------
-
-(search/define-spec "action"
-  {:model        :model/Action
-   :attrs        {:archived       true
-                  :collection-id  true
-                  :creator-id     true
-                  :database-id    :query_action.database_id
-                  :native-query   :query_action.dataset_query
-                  ;; workaround for actions not having revisions (yet)
-                  :last-edited-at :updated_at
-                  :created-at     true
-                  :updated-at     true}
-   :search-terms [:name :description]
-   :render-terms {:model-id   :model.id
-                  :model-name :model.name}
-   :where        [:and [:= :collection.namespace nil] [:not= :this.model_id nil]]
-   :joins        {:model        [:model/Card [:= :model.id :this.model_id]]
-                  :query_action [:model/QueryAction [:= :query_action.action_id :this.id]]
-                  :collection   [:model/Collection [:= :collection.id :this.collection_id]]}})
-
-;;; ---------------------------------------------- SerDes dependencies -------------------------------------------------
-
 (defmethod serialization/import-dependencies :model/Action [_ entities]
   (mapv (fn [action]
           (set (concat (when-let [collection-id (:collection_id action)]
@@ -793,10 +861,10 @@
                                    (serialization/export-mbql-dependencies dataset_query))))))
           actions)))
 
-;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
-
 (defmethod serialization/before-load :model/Action [_ items]
   (filterv #(not= "http" (some-> % :entity :type name)) items))
+
+;;; -------------------------------------------------- Remote sync ---------------------------------------------------
 
 (defmethod remote-sync/spec :model/Action
   [_model]
@@ -810,3 +878,24 @@
 (defmethod remote-sync/spec :model/ImplicitAction
   [_model]
   {:synced-filter-clause actions.db/synced-action-details-clause})
+
+;;; ---------------------------------------------------- Search ------------------------------------------------------
+
+(search/define-spec "action"
+  {:model        :model/Action
+   :attrs        {:archived       true
+                  :collection-id  true
+                  :creator-id     true
+                  :database-id    :query_action.database_id
+                  :native-query   :query_action.dataset_query
+                  ;; workaround for actions not having revisions (yet)
+                  :last-edited-at :updated_at
+                  :created-at     true
+                  :updated-at     true}
+   :search-terms [:name :description]
+   :render-terms {:model-id   :model.id
+                  :model-name :model.name}
+   :where        [:and [:= :collection.namespace nil] [:not= :this.model_id nil]]
+   :joins        {:model        [:model/Card [:= :model.id :this.model_id]]
+                  :query_action [:model/QueryAction [:= :query_action.action_id :this.id]]
+                  :collection   [:model/Collection [:= :collection.id :this.collection_id]]}})
