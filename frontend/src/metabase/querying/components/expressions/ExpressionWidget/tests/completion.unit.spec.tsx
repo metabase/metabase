@@ -3,7 +3,8 @@ jest.unmock("@uiw/react-codemirror");
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import { screen, waitFor } from "__support__/ui";
+import { act, fireEvent, screen, waitFor, within } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   SAMPLE_PROVIDER,
@@ -15,6 +16,7 @@ import {
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  PEOPLE_ID,
   PRODUCTS_ID,
   REVIEWS_ID,
   createOrdersCreatedAtDatasetColumn,
@@ -600,3 +602,309 @@ async function replaceSource(source: string) {
 async function typeName(name: string) {
   await userEvent.type(screen.getByTestId("expression-name"), name);
 }
+
+describe("ExpressionWidget > editor", () => {
+  it("should not erase the formula and the name on cursor moves or window resize (metabase#15734, metabase#16127)", async () => {
+    await setup({ query: createOrdersQuery() });
+    // written without spaces on purpose
+    await typeText("1+1");
+    await typeName("Math");
+    const doneButton = screen.getByRole("button", { name: "Done" });
+    await waitFor(() => expect(doneButton).toBeEnabled());
+
+    // jsdom has no layout for Home and End, so move to the ends directly
+    await act(async () => getEditorView().focus());
+    await setCursorPosition(getEditorValue().length);
+    await pressKey("ArrowLeft");
+    await setCursorPosition(0);
+    await pressKey("ArrowRight", { times: 2 });
+    expect(getEditorView().state.selection.main.head).toBe(2);
+    await act(async () => screen.getByTestId("expression-name").focus());
+    await waitForValidationDebounce();
+    expect(doneButton).toBeEnabled();
+    expect(getEditorValue()).toBe("1+1");
+
+    await act(async () => {
+      window.dispatchEvent(new Event("resize"));
+    });
+    expect(screen.getByTestId("expression-name")).toHaveValue("Math");
+    expect(getEditorValue()).toBe("1+1");
+    expect(doneButton).toBeEnabled();
+  });
+
+  it("should not erase the formula and the name when the expression is incomplete (metabase#16126)", async () => {
+    await setup({ query: createOrdersQuery() });
+    await typeText("1+1");
+    await typeName("Math");
+    const doneButton = screen.getByRole("button", { name: "Done" });
+    await waitFor(() => expect(doneButton).toBeEnabled());
+
+    await act(async () => getEditorView().focus());
+    await setCursorPosition(getEditorValue().length);
+    await pressKey("Backspace");
+    await blurEditor();
+
+    expect(await screen.findByText("Expected expression")).toBeInTheDocument();
+    expect(doneButton).toBeDisabled();
+    expect(getEditorValue()).toBe("1+");
+    expect(screen.getByTestId("expression-name")).toHaveValue("Math");
+  });
+});
+
+describe("ExpressionWidget > functions the database supports", () => {
+  it.each([
+    {
+      title: "convertTimezone without the optional source timezone",
+      tableId: ORDERS_ID,
+      formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh")',
+      feature: "convert-timezone" as const,
+    },
+    {
+      title: "splitPart with a positive index",
+      tableId: PEOPLE_ID,
+      formula: "splitPart([Name], ' ', 1)",
+      feature: "split-part" as const,
+    },
+    {
+      title: "today",
+      tableId: PRODUCTS_ID,
+      formula: "today()",
+      feature: "expressions/today" as const,
+    },
+  ])(
+    "should accept $title when the database supports it",
+    async ({ tableId, formula, feature }) => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [{ source: { type: "table", id: tableId } }],
+      });
+      const database = createSampleDatabase({
+        engine: "postgres",
+        features: [...COMMON_DATABASE_FEATURES, feature],
+      });
+      await setup({ query, database });
+
+      await pasteText(formula);
+      await blurEditor();
+      await typeName("Name");
+      const doneButton = screen.getByRole("button", { name: "Done" });
+      await waitFor(() => expect(doneButton).toBeEnabled());
+    },
+  );
+
+  it("should reject a splitPart index below 1", async () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: PEOPLE_ID } }],
+    });
+    const database = createSampleDatabase({
+      engine: "postgres",
+      features: [...COMMON_DATABASE_FEATURES, "split-part"],
+    });
+    await setup({ query, database });
+
+    await pasteText("splitPart([Name], ' ', 0)");
+    await blurEditor();
+    await typeName("Split Title");
+
+    expect(
+      await screen.findByText("Expected positive integer but found 0"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+  });
+});
+
+describe("ExpressionWidget > custom aggregations", () => {
+  function createQueryWithCustomSum() {
+    return Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [
+            {
+              name: "Custom Sum",
+              value: {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TOTAL" }],
+              },
+            },
+          ],
+        },
+      ],
+    });
+  }
+
+  async function selectCompletion(label: string) {
+    await waitForCompletions();
+    const suggestions = screen.getByTestId(
+      "custom-expression-editor-suggestions",
+    );
+    const option = checkNotNull(
+      within(suggestions)
+        .getAllByRole("option")
+        .find((option) => option.textContent === label),
+    );
+    fireEvent.mouseDown(option);
+  }
+
+  async function formatExpression() {
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Auto-format" }),
+    );
+  }
+
+  /** The column a clause references on its own, e.g. `[Custom Sum]`. */
+  function getReferencedColumnInfo(
+    query: Lib.Query,
+    stageIndex: number,
+    clause: Lib.AggregationClause | Lib.ExpressionClause,
+  ) {
+    const parts = Lib.expressionParts(query, stageIndex, clause);
+    if (!Lib.isColumnMetadata(parts)) {
+      throw new Error("The clause does not reference a column on its own");
+    }
+    return Lib.displayInfo(query, stageIndex, parts);
+  }
+
+  it("should be possible to resolve aggregations from the question directly", async () => {
+    const query = createQueryWithCustomSum();
+    const { onChangeClause } = await setup({
+      query,
+      expressionMode: "aggregation",
+    });
+
+    await typeText("[Custom");
+    await selectCompletion("Custom Sum");
+    expect(getEditorValue()).toBe("[Custom Sum]");
+
+    // keep typing after picking the completion
+    await typeText("+ 1");
+    await formatExpression();
+    await waitFor(() => expect(getEditorValue()).toBe("[Custom Sum] + 1"));
+    await typeName("Derived");
+    const doneButton = screen.getByRole("button", { name: "Done" });
+    await waitFor(() => expect(doneButton).toBeEnabled());
+
+    // reference the aggregation on its own
+    await act(async () => getEditorView().focus());
+    await setCursorPosition(getEditorValue().length);
+    await pressKey("Backspace", { times: 4 });
+    expect(getEditorValue()).toBe("[Custom Sum]");
+    await formatExpression();
+    await waitFor(() => expect(doneButton).toBeEnabled());
+    await userEvent.click(doneButton);
+
+    expect(onChangeClause).toHaveBeenCalledTimes(1);
+    const [name, clause] = onChangeClause.mock.calls[0];
+    expect(name).toBe("Derived");
+    const nextQuery = Lib.aggregate(query, -1, clause);
+    const [, derived] = Lib.aggregations(nextQuery, -1);
+    expect(getReferencedColumnInfo(nextQuery, -1, derived)).toMatchObject({
+      name: "Custom Sum",
+      isAggregation: true,
+    });
+  });
+
+  it("should be possible to resolve aggregations from the previous stage", async () => {
+    const query = Lib.appendStage(createQueryWithCustomSum());
+    const { onChangeClause } = await setup({ query, stageIndex: 1 });
+
+    await typeText("[Custom S");
+    await selectCompletion("Custom Sum");
+    expect(getEditorValue()).toBe("[Custom Sum]");
+    await formatExpression();
+    await typeName("Derived");
+    const doneButton = screen.getByRole("button", { name: "Done" });
+    await waitFor(() => expect(doneButton).toBeEnabled());
+    await userEvent.click(doneButton);
+
+    expect(onChangeClause).toHaveBeenCalledTimes(1);
+    const [name, clause] = onChangeClause.mock.calls[0];
+    expect(name).toBe("Derived");
+    expect(getReferencedColumnInfo(query, 1, clause)).toMatchObject({
+      name: "Custom Sum",
+      isFromPreviousStage: true,
+    });
+  });
+
+  it("should not be possible to create cycles in custom aggregations", async () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [
+            {
+              name: "Custom Sum",
+              value: {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TOTAL" }],
+              },
+            },
+            {
+              name: "Custom Sum 2",
+              value: {
+                type: "operator",
+                operator: "+",
+                args: [
+                  { type: "column", name: "Custom Sum" },
+                  { type: "literal", value: 1 },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    const [customSum] = Lib.aggregations(query, -1);
+    await setup({
+      query,
+      expressionMode: "aggregation",
+      expressionIndex: 0,
+      clause: customSum,
+      name: "Custom Sum",
+    });
+    await waitFor(() => expect(getEditorValue()).toBe("Sum([Total])"));
+
+    await selectRange(0, getEditorValue().length);
+    await pasteText("[Custom Sum 2]");
+
+    expect(
+      await screen.findByText(
+        "Cycle detected: Custom Sum → Custom Sum 2 → Custom Sum",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
+  });
+
+  it("should show a custom error when there are no aggregations in a custom aggregation", async () => {
+    await setup({ query: createOrdersQuery(), expressionMode: "aggregation" });
+
+    await typeText("1 + 1");
+
+    expect(
+      await screen.findByText(
+        "Aggregations should contain at least one aggregation function.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+  });
+
+  it("should allow using aggregation functions inside expressions in aggregation (metabase#52611)", async () => {
+    const { onChangeClause } = await setup({
+      query: createOrdersQuery(),
+      expressionMode: "aggregation",
+    });
+
+    await pasteText("case(Sum([Total]) > 10, Sum([Total]), Sum([Subtotal]))");
+    await blurEditor();
+    await typeName("conditional sum");
+    const doneButton = screen.getByRole("button", { name: "Done" });
+    await waitFor(() => expect(doneButton).toBeEnabled());
+    await userEvent.click(doneButton);
+
+    expect(onChangeClause).toHaveBeenCalledWith(
+      "conditional sum",
+      expect.anything(),
+    );
+  });
+});
