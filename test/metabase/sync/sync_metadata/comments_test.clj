@@ -70,7 +70,7 @@
   [["comment_after_sync"
     [{:field-name "comment_after_sync", :base-type :type/Text}]
     [["foo"]]]]
-  {})
+  {:static false})
 
 (deftest sync-comment-on-existing-field-test
   (testing "test adding a comment to the source data that was initially empty, so we can check that the resync picks it up"
