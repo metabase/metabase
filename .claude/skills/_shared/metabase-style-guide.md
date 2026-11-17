@@ -1,95 +1,78 @@
 # Metabase writing style guide
 
-Write like people normally talk with each other. Read it out loud: if it sounds formal, rewrite it.
+Write like people normally talk with each other. Read your draft out loud. If it sounds formal, rewrite it.
 
-Priorize clarity before style.
+Prioritize clarity over style.
 
-## The readers you need to serve
+## Write for four kinds of readers
 
-- **Prospects**, working out whether Metabase solves their problem.
-- **Customers**, already running Metabase and learning how a piece of it works.
-- **Developers** building Metabase, who also read `docs/developers-guide/`.
-- **Agents** answering questions for people, or building things with Metabase.
+- **Prospects** want to know whether Metabase solves their problem.
+- **Customers** already run Metabase and want to learn how a part of it works.
+- **Developers** build Metabase. They also read `docs/developers-guide/`.
+- **Agents** answer questions for people, or build things with Metabase.
 
-## Key points
+## Cut more than you think you should
 
-- Our readers are smart and impatient.
-- Don't explain what readers already know.
-- Don't explain things readers don't need to know.
-- Tailor length to complexity, elaborating only when a topic requires it (but still cut what you can).
-- Cut more than you think you should. Writers will review your PRs; don't give them extra work.
+Readers are smart and impatient. Explain only what readers need and don't already know. Tailor length to complexity, elaborating only when a topic requires it (but still cut what you can). Cut more than you think you should. Writers review your PRs, so save them the extra work.
 
-## Document types
+## Match your edits to the page's Diátaxis type
 
-When asked to edit a doc, think Diátaxis: identifiy the type of doc you're working in (Tutorial, How-to guide, Explanation, Reference) and tailor your edits in that vein.
+When you edit a page, identify its Diátaxis type (tutorial, how-to guide, explanation, or reference), and tailor your edits to that type.
 
-## Structure and clarity
+## Put the reader's task first
 
 **Lead with the important thing.** Action first, then how, then why.
 
-**Use headings to highlight key points.** Readers should be able to read the headings and get a good idea of what you're saying. Take the following example:
+**Use headings to highlight key points.** Someone who reads only the headings gets the gist of the page: "Use headings to highlight key points," not "How to write a good heading." _Exception:_ on a troubleshooting page, make the heading the reader's symptom, in the words they'd type into search: "No access to Metabase login page."
 
-Avoid:
-
-> How to write a good heading
-
-Better:
-
-> Use headings to highlight key points
-
-Sentence case, no end punctuation, except (sparingly) bangs, and question marks on troubleshooting pages. No bold or italics, no skipped levels.
-
-_Exception:_ troubleshooting pages, where the heading is the reader's symptom. "No access to Metabase login page" is what they'd have typed into search.
+Write headings in sentence case, with no bold, no italics, and no skipped levels. Leave off end punctuation, except a question mark on a troubleshooting page or the rare exclamation point.
 
 Task headings are imperative: "Create a dashboard," not "Creating a dashboard." A heading that's a UI label matches the label's case.
 
-**Commands go in fenced blocks, in the order they're run.** Explanation comes after, never wrapped around the command.
+**Commands go in fenced blocks, in the order people run them.** The explanation comes after the block, not wrapped around it.
 
-**Frame use cases, not software.** Readers arrive from search, trying to solve a problem, and may not know Metabase's terminology yet. Headings and framing should emphasize what readers are trying to do, not how Metabase talks about the items involved. Only then follow with the feature that does it. Mirror the UI's framing where it helps, and break from it where a use case is easier to find.
+**Frame use cases, not software.** Readers arrive from search with a problem to solve, and may not know Metabase's terms yet. Frame headings around what readers are trying to do, then name the feature that does it. Mirror the UI's wording where it helps, and break from it where a use case is easier to find. "Embed a view-only dashboard," not "Embedded dashboards with guest authentication." Readers don't know what guest authentication is until they've used it, though they may see the term in the product and look it up.
 
-- "Embed a view-only dashboard": good.
-- "Embedded dashboards with guest authentication": not as good. Readers don't know what guest authentication is until they've used it (but keep in mind, they may see guest authentication in the product, and look it up).
-
-**Each section stands alone.** Readers arrive from search, mid-page. Put the condition in the heading with its consequence: "If you're using H2, stop Metabase before importing," not a list of conditions above a consequence.
+**Make each section stand alone.** Readers often land mid-page. Put a condition in the heading with its consequence: "If you're using H2, stop Metabase before importing," not a list of conditions above a consequence.
 
 **One job per paragraph.** Cut what doesn't help the reader. When in doubt, cut.
 
-**Cut filler** These add length and nothing else:
+**Cut filler.** It adds length and nothing else:
 
 - An opening paragraph that restates the H1, or "In this section, we'll…"
 - A closing summary, or a "Next steps" list that doesn't link somewhere real
 - "Note that," "It's worth noting," "Keep in mind"
-- Hedges on deterministic behavior: Metabase "caches results," it doesn't "typically" or "may" cache them
+- Hedges on deterministic behavior: Metabase "caches results," not "typically caches" or "may cache" them
 
-**Images are minimal and scoped** to the UI element you're pointing at. A screenshot goes stale faster than the prose around it. Leave the image out if people can follow without it. For query results, use a Markdown table.
+**Scope images to the UI element you're pointing at.** A screenshot goes stale faster than the prose around it, so leave the screenshot out if people can follow without it. For query results, use a Markdown table.
 
-**Numbers go stale.** Versions, limits, quotas: point at where the value lives, or craft the sentence so it survives changes.
+**Write versions, limits, and quotas so they survive a change.** Point at where the value lives, or word the sentence so it stays true.
 
-**Explain in prose, not bullets.** Bullets are for parallel items: options, requirements. Steps go in numbered lists, not bullets or a click path in a paragraph. _Exception:_ reference material readers scan.
+**Explain in prose, not bullets.** Bullets are for parallel items, like options and requirements, and for reference material readers scan. Steps go in numbered lists, not in bullets or in a click path inside a paragraph.
 
-**Answer the questions you had when learning.** And instead of presenting the question ("Does Metabase support pivot tables?"), write the answer outright: "Metabase supports pivot tables."
+**Answer the questions you had when learning.** State the answer, not the question: "Metabase supports pivot tables," not "Does Metabase support pivot tables?"
 
-**Repeat new terms** before falling back to pronouns or stand-ins like "the former" and "the latter." Avoid pronouns when they could introduce ambiguity.
+**Repeat a new term** instead of switching to a pronoun or a stand-in like "the former" or "the latter." Use a pronoun only when it can point at one thing.
 
-**Subject, verb, object.** Deviate only with good reason, like a leading conditional. "Create summary tables for frequently aggregated data," not "Since summary tables get written to the warehouse, having them can streamline things."
+**Subject, verb, object.** Deviate only with good reason, like a leading conditional. "Create summary tables for data you summarize often," not "Since summary tables get written to the warehouse, having them can streamline things."
 
 **Prefer positive constructions.** Say what to do, not what to avoid: "Keep your encryption key somewhere safe," not "Don't lose your encryption key."
 
-## Tone and voice
+## Sound friendly, not peppy
 
-**Friendly, not peppy.** One exclamation point per page is plenty. Jokes and Easter eggs are fine; don't overdo them, and keep them out of steps, warnings, and troubleshooting pages. The test: would the joke annoy someone whose production Metabase is down? No tired tropes about nerdiness.
+One exclamation point per page is plenty. Jokes and Easter eggs are fine in moderation. Keep them out of steps, warnings, and troubleshooting pages, and out of anything that would annoy someone whose production Metabase is down. Skip tired tropes about nerdiness.
 
 **Acknowledge frustration when it's warranted**, like on a troubleshooting page.
 
-**Describe what it does instead of praising it.** "Loads in under a second," not "powerful," "seamless," or "robust."
+**Describe what the feature does instead of praising it.** "Loads in under a second," not "powerful," "seamless," or "robust."
 
 **If a sentence could caption a stock photo** of people in an office, rewrite it.
 
-**Don't describe tasks as easy.** "A simple bar chart" is fine. "Setup is easy," "just click," and "simply run" aren't.
+**Let readers decide whether a task is easy.** "A simple bar chart" is fine. "Setup is easy," "just click," and "simply run" aren't.
 
-## Word choice
+## Prefer everyday words to database terms
 
-Prefer words people know from spreadsheet apps, like summarize and filter, to database terms. Though use the correct term where possible. Jargon can be okay if it clarifies, rather than confuses.
+Prefer words people know from spreadsheet apps, like "summarize" and "filter," to database terms. Use jargon when it's the correct term and it clarifies.
 
 | Write                                                   | Not                                  | Exception                                                                                               |
 | ------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------- |
@@ -109,9 +92,9 @@ Prefer words people know from spreadsheet apps, like summarize and filter, to da
 | quick check                                             | sanity check                         |                                                                                                         |
 | they                                                    | he, she                              | A real person's stated pronouns.                                                                        |
 
-"Metabase" or "it," not "we," for what the product does. "We" makes it sound like the Metabase team can see people's data.
+"We" for what the product does makes it sound like the Metabase team can see people's data.
 
-## Metabase terms
+## Use Metabase's names for things
 
 | Write                                                                                   | Not                                          | Exception                                                                   |
 | --------------------------------------------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------- |
@@ -128,35 +111,35 @@ Prefer words people know from spreadsheet apps, like summarize and filter, to da
 
 Spell third-party names the way the vendor does.
 
-Spelling: timezone, dropdown, environment variable (not "env var"). "Set up" is the verb, "setup" the noun. "Drill-through" is the noun, "drill through" the verb.
+**Spelling**: timezone, dropdown, environment variable (not "env var"). "Set up" is the verb, "setup" the noun. "Drill through" is the verb, "drill-through" the noun.
 
-## UI references
+## Point at the UI the same way every time
 
 - **Navigation paths**: Italics for a path, bold for a single thing to click: "Go to _Admin > Settings > Domains_ and click **Save**."
-- **Icons**: "the **grid** icon," with only the name in bold. "The three-dot menu (**...**)."
-- **Verbs**: "click," not "click on." "Select" for options in a list. "Press" for keys. "Go to," not "navigate to."
+- **Icons**: Bold only the name: "the **grid** icon." For the three-dot menu, bold the dots: "the three-dot menu (**...**)."
+- **Verbs**: Write "click," not "click on," and "go to," not "navigate to." Use "select" for options in a list, and "press" for keys.
 - **Keyboard shortcuts**: Plain text, with no backticks or bold: Cmd/Ctrl + K.
 - **Steps**: Put the result in the same step, in present tense. Mark optional steps with "Optional:" at the start.
 
-## Formatting
+## Format for the docs site
 
-**Backticks** for code, variables, parameters, file paths. **Bold** for anything a person clicks or sees labeled on the screen: buttons, menu items, tabs, settings, option values. "Click the **Save** button," not "Click the `Save` button" or "Click the "Save" button." Italics, with underscores, for emphasis, never all caps.
+**Use backticks for code, variables, parameters, and file paths.** Use bold for anything a person clicks or sees labeled on the screen: buttons, menu items, tabs, settings, option values. "Click the **Save** button," not "Click the `Save` button" or "Click the 'Save' button." Use italics, with underscores, for emphasis, never all caps.
 
-**List punctuation.** `- **Term**: Description.` with the colon outside the bold. If any item is a full sentence, every item starts with a capital letter and ends with a period. If every item is a fragment, none gets a period.
+**List punctuation.** Write `- **Term**: Description.`, with the colon outside the bold. If any item is a full sentence, every item starts with a capital letter and ends with a period. If every item is a fragment, none gets a period.
 
-**Callouts are plain blockquotes.** No labels like "Note:" or "WARNING:" and no emoji. For a risk of losing data or getting locked out, open the blockquote with a bold sentence stating the risk.
+**Callouts are plain blockquotes**, with no labels like "Note:" or "WARNING:" and no emoji. For a risk of losing data or getting locked out, open the blockquote with a bold sentence stating the risk.
 
-**Paid features carry a plan blockquote**, at the top of the smallest section it gates, or under the H1 if the whole page covers a paid feature:
+**Paid features carry a plan blockquote**, at the top of the smallest section that covers the feature, or under the H1 if the whole page covers a paid feature:
 
 ```html
 {% include plans-blockquote.html feature="Official collections" %}
 ```
 
-The include lives in the docs site repo, not here.
+The include lives in the docs site repo, not in this one.
 
 A paid item in a list or table gets a short parenthetical instead: "(Pro and Enterprise plans)."
 
-**Deprecated features get a blockquote** under the heading that says what's deprecated, since which version, and what to use instead. Not "(DEPRECATED)" in the heading.
+**Deprecated features get a blockquote**, not "(DEPRECATED)" in the heading. Put it under the heading, and say what's deprecated, since which version, and what to use instead.
 
 **Put links on the words in the sentence that name the destination**: "[Turn on caching](./caching.md) for slow questions," not "Turn on caching for slow questions. See [Caching](./caching.md)." When a separate pointer reads better, any casual verb works: see, check out, take a look at. Never link "here." Links to other docs pages are relative: `[text](./page.md)`, not `https://www.metabase.com/docs/latest/...`.
 
@@ -164,32 +147,33 @@ A paid item in a list or table gets a short parenthetical instead: "(Pro and Ent
 
 **Document settings with a heading per setting**, so each has an anchor to link to.
 
-**American spelling, serial commas**, and consistent list formatting within a page.
+**Use American spelling and serial commas**, and keep list formatting consistent within a page.
 
-**Numbers**: words for zero to nine, numerals for 10 and up: "three dashboards," "50 questions." Write "hundreds," not "100s." _Exception:_ versions, units, setting values, and anything the reader types: "Metabase 57," "5 GB," "set it to 2."
+**Numbers**: Words for zero to nine, numerals for 10 and up: "three dashboards," "50 questions." Write "hundreds," not "100s." _Exception:_ versions, units, setting values, and anything the reader types: "Metabase 57," "5 GB," "set it to 2."
 
 **Periods and commas go inside quotation marks**: call them "people," not "users." _Exception:_ code and anything in backticks.
 
-**Em dashes**: type `---` with a space on each side: "settings --- everything in your Metabase." The site renders it as an em dash, and it's easier to read in Markdown than the "—" character. Never at the start of a line, where `---` is a horizontal rule.
+**Em dashes**: Type `---` with a space on each side: "settings --- everything in your Metabase." The site renders `---` as an em dash, and `---` is easier to read in Markdown than a literal em dash character. Never at the start of a line, where `---` is a horizontal rule.
 
-**Version numbers**: "Metabase 57," not "v57," "version 57," or "Metabase 0.57." Write the full `v0.57.2` or `v1.57.2` only when a person has to type it, like a Docker tag.
+**Version numbers**: "Metabase 57," not "v57," "version 57," or "Metabase 0.57." Write the full `v0.57.2` or `v1.57.2` only when a person types it, like a Docker tag.
 
-**Match the surrounding file's formatting.** Don't reformat lines you didn't change. On lines you change, this guide wins. For things it doesn't cover, like list markers or table layout, match the file.
+**Match the surrounding file's formatting.** Reformat only the lines you change, and on those lines, this guide wins. For things the guide doesn't cover, like list markers or table layout, match the file.
 
-**Docs markdown is unwrapped.** One line per paragraph, however long. Never hard-wrap, and never reflow a paragraph you're only editing part of.
+**Docs Markdown is unwrapped.** Keep each paragraph on one line, however long. When you edit part of a paragraph, leave the line breaks in the rest of it as they are.
 
-## Code
+## Make code examples pasteable
 
-- **Every fence gets a lowercase language tag.** Write `sh`, not `bash` or `shell`, and `text`, not `txt` or `plaintext`, for output, logs, and custom expressions. For other languages, any standard tag works. No shell prompt (`$`).
-- **Complete examples**: A query has its `FROM`, and a command has every flag it needs. People paste them.
-- **Placeholders** for secrets and IDs: `YOUR_API_KEY`, `YOUR_MODEL_ID`. Not `<your-value>` or `{your-value}`, which can be mistaken for syntax.
-- **Example domains**: `metabase.example.com` for a Metabase, `example.com` for any other site, `person@example.com` for an email.
+- **Language tags**: Every fence gets a lowercase one. Write `sh`, not `bash` or `shell`, and `text`, not `txt` or `plaintext`, for output, logs, and custom expressions. For other languages, any standard tag works.
+- **Shell prompts**: Leave out the `$` (so commands are easy to copy and paste).
+- **Complete examples**: A query has its `FROM`, and a command has every flag it needs. People paste examples.
+- **Placeholders**: Write secrets and IDs as `YOUR_API_KEY` and `YOUR_MODEL_ID`, not `<your-value>` or `{your-value}`, which people can mistake for syntax.
+- **Example domains**: Use `metabase.example.com` for a Metabase, `example.com` for any other site, and `person@example.com` for an email.
 - **SQL**: Uppercase keywords, `{{variable}}` with no spaces inside the braces, `[[ optional clause ]]` with spaces inside the brackets.
 - **Double braces**: Wrap anything containing `{{ }}` in `{% raw %}` and `{% endraw %}`, or Jekyll evaluates it and the variable disappears from the page. In a code fence, put the tags on their own lines inside the fence.
 
-## Generated pages
+## Change generated pages at their source
 
-These are generated from source, most of them every weeknight. Don't edit or review them. Change the source instead.
+Scripts generate the following pages from source, most of them every weeknight. To change one of these pages, change its source. Skip these pages in reviews.
 
 - `docs/configuring-metabase/environment-variables.md` and `config-template.md`
 - `docs/installation-and-operation/commands.md`
@@ -197,8 +181,8 @@ These are generated from source, most of them every weeknight. Don't edit or rev
 - `docs/usage-and-performance-tools/usage-analytics-reference.md`
 - `docs/questions/visualizations/country-codes.md`
 - `docs/embedding/sdk/api/` and `docs/embedding/eajs/snippets/`
-- Code pulled into a page with `include_file`, which lives under `snippets/`
+- Code under `snippets/` that a page pulls in with `include_file`
 
 ## This style guide is aspirational
 
-You'll find places in existing docs that break this guide. If you find one while working in an existing doc, like a "user" that should be a "person," fix it. But don't go outside of the current work to fix them. Treat it as a "while I'm on this page, I might as well tidy up" kind of thing.
+Existing docs break this guide in places. When you find a break on a page you're working on, like a "user" that needs to be a "person," fix it. Leave breaks on other pages for later. The rule is "while I'm on this page, I might as well tidy up."

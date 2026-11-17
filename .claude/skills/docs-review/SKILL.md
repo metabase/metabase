@@ -6,27 +6,31 @@ allowed-tools: Read, Grep, Bash, Glob
 
 # Documentation review skill
 
-@./../\_shared/metabase-style-guide.md
+@./../_shared/metabase-style-guide.md
 
-## The standard
+## Read the guide, then read the change for intent
 
-If you haven't already, read `../_shared/metabase-style-guide.md` (relative to this skill's directory) before anything else.
+If you haven't already, read `../_shared/metabase-style-guide.md` (relative to this skill's directory) before anything else. Then read the diff once for intent before you flag anything. When you review a file instead of a diff, every line is in scope.
 
-Read the diff once for intent before flagging anything.
+## Review clarity, style, and formatting, not accuracy
 
-## Scope
+Accuracy is a separate check, so skip verifying facts against the source code. If something looks wrong on its face, say so in one line at the end of the review, marked "Not checked," and move on.
 
-This review covers clarity, style, and formatting. Accuracy is a separate check, so don't verify facts against the source code. If something looks wrong on its face, say so in one line at the end of the review, marked "Not checked," and move on. Reviewing a file, not a diff? Every line is in scope.
+## Rank issues by tier
 
-## Tiers
+Existential questions come first, then broken things, then clarity, then style. One issue outranks any number of issues in a lower tier.
 
-Broken things come first, then clarity, then style. One finding outranks any number of findings in a lower tier.
+**Tier 0: Existential.** Ask whether the page, section, or sentence needs to exist at all. Be ruthless with cutting. A page or section nobody reads costs maintenance and clutters the content people actually need. If the content really helps people solve problems in or with Metabase, look for a relevant section to merge it into, or trim it. If you don't think readers care about it, wince and cut it completely.
 
-**Tier 0: Existential** Ask whether the page/section/sentence should exist at all. Be ruthless with cutting. A page or section nobody will read costs maintenance and clutters the content people actually need. If the info really is germane to people solving problems (in Metabase or with Metabase): look for opportunities to consolidate the info with another relevant section, trim the section, or wince and cut it completely if you don't think readers will care about it.
+**Tier 1: Broken.** Check these only in a diff.
 
-**Tier 1 — Broken.** Only in a diff.
+- A moved or renamed page with no `redirect_from` entry for its old path, like `/docs/latest/old-section/old-page`, or one that drops the old page's own `redirect_from` entries.
+- A link that still points at a moved page's old path, in `docs/`, in a frontend `useDocsUrl` call, or in backend code. Search for the old page name:
 
-- A moved or renamed page with no `redirect_from` entry for its old path, like `/docs/latest/old-section/old-page`. The old page's own `redirect_from` entries carry over too.
+  ```sh
+  grep -rn "old-page" docs/ frontend/src enterprise/frontend/src src enterprise/backend/src
+  ```
+
 - A changed heading whose old anchor is still linked. Search for the anchor, without the `#`:
 
   ```sh
@@ -35,42 +39,43 @@ Broken things come first, then clarity, then style. One finding outranks any num
 
 - A new page with no `title` or `summary` front matter.
 
-**Tier 2 — Clarity.**
+**Tier 2: Clarity.** The rules under the guide's "Put the reader's task first" heading, like:
 
-- Action buried under explanation.
-- A heading naming a topic instead of a point.
-- Commands out of the order they're run.
-- A paragraph doing two jobs or none.
-- A concept in bullets that should be prose.
-- Pronouns that impair clarity.
-- Full-page screenshot where a scoped one would do.
+- Action buried under explanation
+- A heading naming a topic instead of a point
+- Commands out of the order people run them
+- A paragraph doing two jobs or none
+- A concept in bullets that belongs in prose
+- A pronoun that could point at two things
+- A full-page screenshot where a scoped one would do
 
-**Tier 3 — Style.**
+**Tier 3: Style.** The rules under these guide headings:
 
-- Tone
-- Word choice
-- Formatting
+- Sound friendly, not peppy
+- Prefer everyday words to database terms
+- Use Metabase's names for things
+- Point at the UI the same way every time
+- Format for the docs site
+- Make code examples pasteable
 
-## What NOT to post
+## Post only issues, numbered by tier
 
-Only post findings. If a doc is clean, say so in one line and post nothing else.
-
-## Output
+If a page is clean, say so in one line and post nothing else.
 
 Cut anything that won't materially help the reader, then number remaining issues from 1, organized by tier.
 
 ```markdown
 ## Issues
 
-**Issue 1 (Clarity)** — Line 8
+**Issue 1 (Clarity)**: Line 8
 "Cache configuration" names the topic. State the point: "Turn on caching for slow questions."
 
-**Issue 2 (Clarity)** — Lines 12–14
+**Issue 2 (Clarity)**: Lines 12–14
 The command comes after two sentences of explanation. Lead with the command, then explain.
 
-**Issue 3 (Style)** — Lines 15–22
-"cannot" → "can't"; "users" → "people";
+**Issue 3 (Style)**: Lines 15–22
+"cannot" → "can't," "users" → "people."
 
-**Not checked** — Line 30
+**Not checked**: Line 30
 The page says caching is on by default, but the steps start by turning it on.
 ```
