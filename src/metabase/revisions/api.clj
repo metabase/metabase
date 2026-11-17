@@ -3,16 +3,15 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision :as revision]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]
    [toucan2.core :as t2]
@@ -141,19 +140,11 @@
       ;; restoring saved content, so a reverted query may keep referencing columns marked "Do not include"
       (query-perms/check-run-permissions-for-query (dissoc (get-in revision [:object :dataset_query]) :query-permissions/perms)
                                                    {:allow-sensitive-fields? true}))
-    (when (contains? #{:model/Transform :model/TransformTest :model/CardTest} model)
+    (when (contains? #{:model/TransformTest :model/CardTest} model)
       (api/check-403 (mi/can-write? (t2/hydrate (merge instance (:object revision)) :can_write))))
-    ;; for Segments and Measures `table_id` is re-derived from `definition` on update, so when the restored definition
-    ;; specifies a source table, check write perms against that table rather than the revision's stored `table_id`
-    (when (contains? #{:model/Segment :model/Measure} model)
-      (let [table-id (some-> (get-in revision [:object :definition])
-                             not-empty
-                             lib-be/normalize-query
-                             lib/primary-source-table-id)]
-        (api/check-403 (mi/can-write? (t2/hydrate (cond-> (merge instance (:object revision))
-                                                    table-id (assoc :table_id table-id)) :can_write)))))
+    (when (contains? #{:model/Transform :model/Segment :model/Measure :model/Dashboard :model/Card} model)
+      (api/update-check instance (:object revision)))
     (when (contains? #{:model/Dashboard :model/Card} model)
-      (collection/check-allowed-to-change-collection instance (:object revision))
       (when (api/column-will-change? (:dashboard_id instance) (get (:object revision) :dashboard_id ::api/not-provided))
         (let [dashboard-ids (vec (keep identity [(:dashboard_id instance)
                                                  (:dashboard_id (:object revision))]))
@@ -164,11 +155,13 @@
             (api/write-check (get id->dashboard dashboard-id)))))
       (check-new-revision-card-references model id revision))
     ;; ok, we're g2g
-    (revision/revert!
-     {:entity      model
-      :id          id
-      :user-id     api/*current-user-id*
-      :revision-id revision-id})))
+    (u/prog1 (revision/revert!
+              {:entity      model
+               :id          id
+               :user-id     api/*current-user-id*
+               :revision-id revision-id})
+      (when (= model :model/Transform)
+        (events/publish-event! :event/update-transform {:object (revisions.db/entity model id)})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

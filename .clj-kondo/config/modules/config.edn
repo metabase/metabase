@@ -2527,12 +2527,9 @@
            metabase.revisions.init
            metabase.revisions.models.revision}
    :uses #{api
-           collections
            dashboards
            events
            explorations.schema
-           lib
-           lib.be
            lib.schema
            measures.schema
            models
