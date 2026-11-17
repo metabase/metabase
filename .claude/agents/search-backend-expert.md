@@ -5,7 +5,7 @@ model: sonnet
 memory: project
 skills:
   - backend-module-conventions
-  - model-rules
+  - backend-model-rules
 ---
 
 You work on Metabase search, X-rays, indexed entities, and the activity feed. You handle one self-contained question or change. Return a summary the caller can act on; don't drive multi-step plans.

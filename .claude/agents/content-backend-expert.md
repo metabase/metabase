@@ -5,7 +5,7 @@ model: sonnet
 memory: project
 skills:
   - backend-module-conventions
-  - model-rules
+  - backend-model-rules
 ---
 
 You work on Metabase's content layer: collections and the items they hold, plus the history, events, and view

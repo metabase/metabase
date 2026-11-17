@@ -93,7 +93,7 @@ liability it usually is.
 
 ### Models
 
-See the `model-rules` skill.
+See the `backend-model-rules` skill.
 
 - [ ] A rule every writer must obey is in a hook, so a writer that calls no endpoint still obeys it
 - [ ] Hooks read no current user and do not depend on who the writer is

@@ -28,7 +28,7 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 
 ### Models
 
-- **[model-rules](.claude/skills/model-rules/SKILL.md)** - Where a rule about a model lives: hooks for invariants, `mi/can-*?` for per-user rules, write-path checks for the rest
+- **[backend-model-rules](.claude/skills/backend-model-rules/SKILL.md)** - Where a rule about a model lives: hooks for invariants, `mi/can-*?` for per-user rules, write-path checks for the rest
 
 ### Application database
 
