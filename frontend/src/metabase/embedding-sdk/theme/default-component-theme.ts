@@ -1,10 +1,8 @@
-import { merge } from "icepick";
-
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseComponentTheme } from "metabase/embedding-sdk/theme";
 import type { MantineThemeOverride } from "metabase/ui";
 import { OVERLAY_Z_INDEX } from "metabase/ui/component-theme";
-import type { DeepPartial } from "metabase-types/utils/types";
+import { deepMerge } from "metabase/utils/deep-merge";
 
 export const DEFAULT_SDK_FONT_SIZE = 14;
 
@@ -101,37 +99,35 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
  * Default theme options, with overrides specific to the
  * Embedding SDK environment to provide nicer defaults.
  */
-export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
-  MetabaseComponentTheme,
-  DeepPartial<MetabaseComponentTheme>
->(DEFAULT_METABASE_COMPONENT_THEME, {
-  table: {
-    cell: {
-      fontSize: FONT_SIZES.tableCell.em,
-    },
-  },
-  pivotTable: {
-    cell: {
-      fontSize: FONT_SIZES.pivotTableCell.em,
-    },
-  },
-  cartesian: {
-    padding: "0.5rem 1rem",
-    label: { fontSize: FONT_SIZES.label.em },
-    goalLine: {
-      label: { fontSize: FONT_SIZES.goalLabel.em },
-    },
-  },
-  collectionBrowser: {
-    breadcrumbs: {
-      expandButton: {
-        backgroundColor: "transparent",
-        hoverTextColor: "var(--mb-color-text-primary-inverse)",
-        hoverBackgroundColor: "var(--mb-color-core-brand)",
+export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme =
+  deepMerge(DEFAULT_METABASE_COMPONENT_THEME, {
+    table: {
+      cell: {
+        fontSize: FONT_SIZES.tableCell.em,
       },
     },
-  },
-});
+    pivotTable: {
+      cell: {
+        fontSize: FONT_SIZES.pivotTableCell.em,
+      },
+    },
+    cartesian: {
+      padding: "0.5rem 1rem",
+      label: { fontSize: FONT_SIZES.label.em },
+      goalLine: {
+        label: { fontSize: FONT_SIZES.goalLabel.em },
+      },
+    },
+    collectionBrowser: {
+      breadcrumbs: {
+        expandButton: {
+          backgroundColor: "transparent",
+          hoverTextColor: "var(--mb-color-text-primary-inverse)",
+          hoverBackgroundColor: "var(--mb-color-core-brand)",
+        },
+      },
+    },
+  });
 
 // What's up with the commented `satisfies`?
 // Mantine docs says they don't typecheck default props because of performance reasons.

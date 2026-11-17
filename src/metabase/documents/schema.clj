@@ -2,6 +2,7 @@
   (:require
    [metabase.collections.schema]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
@@ -35,7 +36,7 @@
    [:name                {:optional true} [:maybe :string]]
    [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:document            {:optional true} [:maybe ::document.document]]
-   [:content_type        {:optional true} [:maybe [:or :keyword :string]]]
+   [:content_type        {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:creator_id          {:optional true} [:maybe ::lib.schema.id/user]]
    [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:collection_id       {:optional true} [:maybe ::lib.schema.id/collection]]

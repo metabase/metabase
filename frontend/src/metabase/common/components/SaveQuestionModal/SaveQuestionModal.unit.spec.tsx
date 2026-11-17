@@ -410,6 +410,27 @@ describe("SaveQuestionModal", () => {
       expect(newQuestion.collectionId()).toBe(1);
     });
 
+    it("should offer to save to 'Our analytics' if the user has curate access to it", async () => {
+      const rootCollection = { ...ROOT_TEST_COLLECTION, can_write: true };
+      const { onCreateMock } = await setup(getQuestion(), null, {
+        collectionEndpoints: {
+          collections: [rootCollection, BOBBY_TEST_COLLECTION],
+          rootCollection,
+        },
+      });
+
+      await waitFor(() =>
+        expect(saveLocDropdown()).toHaveTextContent("Our analytics"),
+      );
+      expect(saveLocDropdown()).not.toHaveTextContent(
+        BOBBY_TEST_COLLECTION.name,
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(onCreateMock).toHaveBeenCalledTimes(1));
+      expect(onCreateMock.mock.calls[0][0].collectionId()).toBeNull();
+    });
+
     it("shouldn't call onSave when form is submitted", async () => {
       const question = getQuestion();
       const { onSaveMock } = await setup(question);
@@ -629,9 +650,9 @@ describe("SaveQuestionModal", () => {
       expect(
         await screen.findByLabelText(/Which tab should this go on/),
       ).toBeInTheDocument();
-      await waitFor(async () => {
+      await waitFor(() => {
         expect(
-          await screen.findByLabelText(/Which tab should this go on/),
+          screen.getByLabelText(/Which tab should this go on/),
         ).toHaveValue("Foo Tab 1");
       });
     });
@@ -1060,9 +1081,9 @@ describe("SaveQuestionModal", () => {
           await userEvent.click(saveLocDropdown());
           await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
           await userEvent.click(newCollBtn());
-          await waitFor(async () => {
+          await waitFor(() => {
             expect(
-              await screen.findByRole("heading", {
+              screen.getByRole("heading", {
                 name: "Create a new collection",
               }),
             ).toBeInTheDocument();

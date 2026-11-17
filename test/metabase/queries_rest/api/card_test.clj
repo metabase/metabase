@@ -28,7 +28,7 @@
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.parameters.custom-values :as custom-values]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries-rest.api.card :as api.card]
@@ -345,7 +345,7 @@
                          {:database (mt/id)
                           :type     :native
                           :native   {:query         "SELECT id FROM venues where {{venue_id}}"
-                                     :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil],
+                                     :template-tags {"venue_id" {:field-id (mt/id :venues :id),
                                                                  :display-name "Venue ID",
                                                                  :id           "_VENUE_ID_",
                                                                  :name         "venue_id",
@@ -944,6 +944,14 @@
                                :visualization_settings ["Value must be a map., received: \"ABC\""]}}
             (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))))
 
+(deftest ^:parallel create-card-blank-display-test
+  (testing "POST /api/card refuses a blank display"
+    (is (=? {:errors {:display "value must be a non-blank string."}}
+            (mt/user-http-request :crowberto :post 400 "card" {:name                   "Blank display"
+                                                               :display                ""
+                                                               :dataset_query          (mt/mbql-query venues)
+                                                               :visualization_settings {}})))))
+
 (deftest ^:parallel create-card-validation-test-1b
   (testing "POST /api/card"
     (is (=? {:errors {:name          "value must be a non-blank string."
@@ -958,8 +966,7 @@
                                                                :parameters             "abc"})))))
 
 (defn- malformed-native-dataset-query
-  "Payload from #74615: legacy-envelope native query whose template-tag :dimension uses an
-  MBQL 5 field reference shape ([:field {opts} id] instead of legacy [:field id opts])."
+  "Legacy-envelope native query whose template-tag `:field-id` is not a Field ID (#74615)."
   []
   {:type     :native
    :database (mt/id)
@@ -969,9 +976,7 @@
                                     :display-name "DF"
                                     :type         :dimension
                                     :widget-type  :date/range
-                                    :dimension    [:field
-                                                   {:base-type :type/DateTime}
-                                                   (mt/id :orders :created_at)]}}}})
+                                    :field-id     "created_at"}}}})
 
 (deftest ^:parallel post-card-with-malformed-dataset-query-returns-400-test
   (testing "POST /api/card with structurally malformed :dataset_query returns 400 with the specific error, not 500 (#74615)"
@@ -2558,9 +2563,9 @@
                    :model/Action {query :id}    {:type :query :name "Rename" :model_id model-id}
                    :model/Action {archived :id} {:type :query :name "Old" :model_id model-id :archived true}]
       (let [published (atom #{})]
-        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic {:keys [object]}]
-                                                            (when (= :event/action-delete topic)
-                                                              (swap! published conj (:id object))))]
+        (with-redefs [events/publish-event! (fn [topic {:keys [object]}]
+                                              (when (= :event/action-delete topic)
+                                                (swap! published conj (:id object))))]
           (mt/user-http-request :crowberto :delete 204 (str "card/" model-id)))
         (is (= #{query archived} @published))))))
 
@@ -2994,25 +2999,33 @@
                                                    :middleware {:add-default-userland-constraints? true
                                                                 :userland-query?                   true}}}]
     (with-cards-in-readable-collection! card
-      (let [orig (mt/original-fn #'qp.card/process-query-for-card)]
-        (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card (fn [card export-format & options]
-                                                                     (apply orig card export-format
-                                                                            :make-run (constantly (fn [{:keys [constraints]} _]
-                                                                                                    {:constraints constraints}))
-                                                                            options))]
+      (let [orig                (mt/original-fn #'qp.card/process-query-for-card)
+            constraints         (atom ::not-run)
+            ;; record the constraints each query runs with, then run it for real: the endpoint still has to return a
+            ;; streaming response to pass its response schema
+            make-run            (fn [qp export-format]
+                                  (let [run (qp.card/process-query-for-card-default-run-fn qp export-format)]
+                                    (fn [query info]
+                                      (reset! constraints (:constraints query))
+                                      (run query info))))
+            request-constraints (fn [status url]
+                                  (reset! constraints ::not-run)
+                                  (mt/user-http-request :rasta :post status url)
+                                  @constraints)]
+        (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card
+                                    (fn [card export-format & options]
+                                      (apply orig card export-format :make-run make-run options))]
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
-            (is (= {:constraints nil}
-                   (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
+            (is (nil? (request-constraints 200 (format "card/%d/query/csv" (u/the-id card))))))
           (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
             (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even "
                           "if the query comes in with `add-default-userland-constraints` (as will be the case if the query "
                           "gets saved from one that had it -- see #9831)")
-              (is (= {:constraints nil}
-                     (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
-            (testing (str "non-\"download\" queries should still get the default constraints (this also is a sanitiy "
+              (is (nil? (request-constraints 200 (format "card/%d/query/csv" (u/the-id card))))))
+            (testing (str "non-\"download\" queries should still get the default constraints (this also is a sanity "
                           "check to make sure the `with-redefs` in the test above actually works)")
-              (is (= {:constraints {:max-results 10, :max-results-bare-rows 10}}
-                     (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card))))))))))))
+              (is (= {:max-results 10, :max-results-bare-rows 10}
+                     (request-constraints 202 (format "card/%d/query" (u/the-id card))))))))))))
 
 (defn- test-download-response-headers
   [url]
@@ -3907,7 +3920,7 @@
                                                                          :name         "NAME"
                                                                          :display_name "Name"
                                                                          :type         :dimension
-                                                                         :dimension    [:field (mt/id :venues :name) nil]
+                                                                         :field-id     (mt/id :venues :name)
                                                                          :required     true}}}}
                                      :name       "native card with field filter"
                                      :parameters [{:id     "name_param_id"
@@ -3923,7 +3936,7 @@
                                                                        :name         "ID"
                                                                        :display_name "Id"
                                                                        :type         :dimension
-                                                                       :dimension    [:field (mt/id :people :id) nil]
+                                                                       :field-id     (mt/id :people :id)
                                                                        :required     true}}}}
                                      :name       "native card with named field filter"
                                      :parameters [{:id     "id"
@@ -4276,7 +4289,7 @@
                                                            :name         "ID"
                                                            :display_name "ID"
                                                            :type         :dimension
-                                                           :dimension    [:field (mt/id :venues :id) nil]
+                                                           :field-id     (mt/id :venues :id)
                                                            :required     true}}}}
                          :name       "native card with ID field filter"
                          :parameters [{:id     param-key,
@@ -4494,7 +4507,7 @@
                                                                                              :name         "FILTER"
                                                                                              :display-name "Filter"
                                                                                              :type         :dimension
-                                                                                             :dimension    [:field (mt/id :venues :name) nil]
+                                                                                             :field-id     (mt/id :venues :name)
                                                                                              :widget-type  :string/=
                                                                                              :default      nil}}}}
                                :name                   "Bad Card"
@@ -4573,8 +4586,8 @@
             (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
             (perms/revoke-collection-permissions! (perms-group/all-users) collection)
             (mt/with-test-user :rasta
-              (is (not (mi/can-read? collection)))
-              (is (not (mi/can-read? card))))
+              (is (not (mi/can-read? (t2/hydrate collection :can_read))))
+              (is (not (mi/can-read? (t2/hydrate card :can_read)))))
             (is (blocked? (process-query))))))
       (testing "Should NOT be able to run the parent Card with valid data-perms and no collection perms"
         (mt/with-no-data-perms-for-all-users!
@@ -4582,8 +4595,8 @@
             (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
             (perms/revoke-collection-permissions! (perms-group/all-users) collection)
             (mt/with-test-user :rasta
-              (is (not (mi/can-read? collection)))
-              (is (not (mi/can-read? card))))
+              (is (not (mi/can-read? (t2/hydrate collection :can_read))))
+              (is (not (mi/can-read? (t2/hydrate card :can_read)))))
             (is (blocked? (process-query))))))
       (testing "should NOT be able to run native queries with :blocked data-perms on any table"
         (mt/with-no-data-perms-for-all-users!
@@ -4591,8 +4604,8 @@
             (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
             (mt/with-test-user :rasta
-              (is (mi/can-read? collection))
-              (is (mi/can-read? card)))
+              (is (mi/can-read? (t2/hydrate collection :can_read)))
+              (is (mi/can-read? (t2/hydrate card :can_read))))
             (is (process-query)))))
       ;; delete these in place so we can reset them below, you cannot set them twice in a row
       (perms/revoke-collection-permissions! (perms-group/all-users) collection)
@@ -4602,8 +4615,8 @@
             (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
             (mt/with-test-user :rasta
-              (is (mi/can-read? collection))
-              (is (mi/can-read? card)))
+              (is (mi/can-read? (t2/hydrate collection :can_read)))
+              (is (mi/can-read? (t2/hydrate card :can_read))))
             (is (= [[1] [2]] (mt/rows (process-query))))))))))
 
 (deftest blocked-database-permissions-card-query-test
@@ -4628,28 +4641,28 @@
                            :display-name "Id"
                            :id           "_id_"
                            :type         :dimension
-                           :dimension    [:field (mt/id :people :id) nil]
+                           :field-id     (mt/id :people :id)
                            :widget-type  :id
                            :default      nil}
                 "name"    {:name         "name"
                            :display-name "Name"
                            :id           "_name_"
                            :type         :dimension
-                           :dimension    [:field (mt/id :people :name) nil]
+                           :field-id     (mt/id :people :name)
                            :widget-type  :category
                            :default      nil}
                 "source"  {:name         "source"
                            :display-name "Source"
                            :id           "_soure_"
                            :type         :dimension
-                           :dimension    [:field (mt/id :people :source) nil]
+                           :field-id     (mt/id :people :source)
                            :widget-type  :category
                            :default      nil}
                 "user_id" {:name         "user_id"
                            :display-name "User"
                            :id           "_user_id_"
                            :type         :dimension
-                           :dimension    [:field (mt/id :orders :user_id) nil]
+                           :field-id     (mt/id :orders :user_id)
                            :widget-type  :id
                            :default      nil}}}
     :database (mt/id)}
@@ -4678,8 +4691,8 @@
                               {:id (mt/id :orders :user_id)}
                               {:id (mt/id :people :source)}
                               {:id (mt/id :people :name)}])
-            :tables (sort-by :id
-                             [{:id (str "card__" card-id-2)}])
+            :tables empty?
+            :cards [{:id card-id-2}]
             :databases [{:id (mt/id) :engine string?}]}
            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
                (api.test-util/select-query-metadata-keys-for-debugging)))))))
@@ -4697,13 +4710,18 @@
         (api.test-util/before-and-after-deleted-card
          card-id-1
          #(testing "Before delete"
-            (doseq [[card-id table-id] [[card-id-1 (mt/id :products)]
-                                        [card-id-2 (str "card__" card-id-1)]]]
-              (is (=?
-                   {:fields empty?
-                    :tables [{:id table-id}]
-                    :databases [{:id (mt/id) :engine string?}]}
-                   (query-metadata 200 card-id)))))
+            (is (=?
+                 {:fields empty?
+                  :tables [{:id (mt/id :products)}]
+                  :cards empty?
+                  :databases [{:id (mt/id) :engine string?}]}
+                 (query-metadata 200 card-id-1)))
+            (is (=?
+                 {:fields empty?
+                  :tables [{:id (mt/id :products)}]
+                  :cards [{:id card-id-1}]
+                  :databases [{:id (mt/id) :engine string?}]}
+                 (query-metadata 200 card-id-2))))
          #(testing "After delete"
             ;; card-id-1 is deleted, so it should return 404
             (is (= "Not found."
@@ -4711,18 +4729,17 @@
             ;; card-id-2 still exists but its source is gone, so it should return empty metadata
             (is (=? {:fields empty?
                      :tables empty?
+                     :cards empty?
                      :databases [{:id (mt/id) :engine string?}]}
                     (query-metadata 200 card-id-2)))))))))
 
 (deftest card-query-metadata-no-tables-test
   (testing "Don't throw an error if users doesn't have access to any tables #44043"
-    (let [original-can-read? mi/can-read?]
-      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 1})}]
-        (with-redefs [mi/can-read? (fn [& args]
-                                     (if (= :model/Table (apply mi/dispatch-on-model args))
-                                       false
-                                       (apply original-can-read? args)))]
-          (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" (:id card))))))))))
+    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 1})}]
+      (mt/with-dynamic-fn-redefs [mi/can-read? (fn [instance]
+                                                 (and (not (t2/instance-of? :model/Table instance))
+                                                      (:can_read (meta instance))))]
+        (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" (:id card)))))))))
 
 (deftest ^:mb/driver-tests pivot-tables-with-model-sources-show-row-totals
   (testing "Pivot Tables with a model source will return row totals (#46575)"
@@ -5728,7 +5745,10 @@
                                 {:dataset_query (lib/native-query (mt/metadata-provider)
                                                                   "select 1 as A, 2 as B, 3 as C, 4 as D")})
           (let [cols (->> (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" tgt))
-                          :tables first :fields (map :name))]
+                          :cards
+                          (m/find-first #(= (:id %) src))
+                          :result_metadata
+                          (map :name))]
             (is (some #{"D"} cols))))))))
 
 (deftest copy-card-preserves-non-default-display-test

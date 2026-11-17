@@ -31,16 +31,19 @@ import {
 const groupingCol = createMockColumn({
   name: "Category",
   display_name: "Category",
+  source: "breakout",
   base_type: "type/Text",
 });
 const subGroupingCol = createMockColumn({
   name: "Product",
   display_name: "Product",
+  source: "breakout",
   base_type: "type/Text",
 });
 const valueCol = createMockColumn({
   name: "Sales",
   display_name: "Sales",
+  source: "aggregation",
   base_type: "type/Number",
   semantic_type: "type/Number",
 });
@@ -429,7 +432,10 @@ describe("getTreemapClickData", () => {
           }),
           query_type: "native",
         }),
-        data: rawSeries2[0].data,
+        data: {
+          ...rawSeries2[0].data,
+          cols: cols2.map((col) => ({ ...col, source: "native" })),
+        },
       },
     ] as RawSeries;
 

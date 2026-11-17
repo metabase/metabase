@@ -31,6 +31,7 @@
    "starburst" "trino",
    ;; Analytics engines
    "clickhouse" "clickhouse",
+   "motherduck" "duckdb",
    ;; Spark family
    "databricks" "databricks",
    "sparksql" "spark",

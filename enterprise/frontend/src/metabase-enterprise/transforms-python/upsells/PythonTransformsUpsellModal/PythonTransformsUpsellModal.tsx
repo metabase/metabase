@@ -153,22 +153,19 @@ export function PythonTransformsUpsellModal({
   }, []);
 
   return (
-    <Modal.Root
-      onClose={onClose}
+    <Modal
       opened
       size={shouldShowLeftColumn ? "xl" : "md"}
+      padding={0}
+      withCloseButton={false}
+      onClose={onClose}
     >
-      <Modal.Overlay />
-      <Modal.Content>
-        <Modal.Body p={0}>
-          <PythonTransformsUpsell
-            shouldShowLeftColumn={shouldShowLeftColumn}
-            onClose={onClose}
-            onSuccess={onSuccess}
-          />
-        </Modal.Body>
-      </Modal.Content>
-    </Modal.Root>
+      <PythonTransformsUpsell
+        shouldShowLeftColumn={shouldShowLeftColumn}
+        onClose={onClose}
+        onSuccess={onSuccess}
+      />
+    </Modal>
   );
 }
 

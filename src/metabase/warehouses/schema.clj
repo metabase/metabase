@@ -1,6 +1,7 @@
 (ns metabase.warehouses.schema
   "Malli schemas for the warehouses module."
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.util.cron]
@@ -48,6 +49,8 @@
     [:features                    {:optional true} [:maybe [:set :keyword]]]
     [:can-manage                  {:optional true} [:maybe :boolean]]
     [:can_upload                  {:optional true} [:maybe :boolean]]
+    [:can_write                   {:optional true} [:maybe :boolean]]
+    [:can_query                   {:optional true} [:maybe :boolean]]
     [:tables                      {:optional true} [:maybe [:sequential [:ref :metabase.warehouse-schema.schema/table]]]]
     [:native_permissions          {:optional true} [:maybe [:enum :write :none]]]
     [:router_user_attribute       {:optional true} [:maybe :string]]
@@ -64,7 +67,7 @@
    [:name                        {:optional true} [:maybe :string]]
    [:description                 {:optional true} [:maybe :string]]
    [:details                     {:optional true} [:maybe ::database.details]]
-   [:engine                      {:optional true} [:maybe [:or :keyword :string]]]
+   [:engine                      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:is_sample                   {:optional true} [:maybe :boolean]]
    [:is_full_sync                {:optional true} [:maybe :boolean]]
    [:points_of_interest          {:optional true} [:maybe :string]]
@@ -77,7 +80,7 @@
    [:auto_run_queries            {:optional true} [:maybe :boolean]]
    [:refingerprint               {:optional true} [:maybe :boolean]]
    [:cache_ttl                   {:optional true} [:maybe :int]]
-   [:initial_sync_status         {:optional true} [:maybe [:or :keyword :string]]]
+   [:initial_sync_status         {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:initial_sync_error          {:optional true} [:maybe :string]]
    [:creator_id                  {:optional true} [:maybe ::lib.schema.id/user]]
    [:settings                    {:optional true} [:maybe ::database.settings]]

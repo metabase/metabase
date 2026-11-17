@@ -1,0 +1,43 @@
+diff --git a/src/create-chrome-target.js b/src/create-chrome-target.js
+index 69878eff92fdb2efaabf61eef2fb42049f4a4e6e..41eeedaf082d4b9f9825689b81a5bc060518f903 100644
+--- a/src/create-chrome-target.js
++++ b/src/create-chrome-target.js
+@@ -288,7 +288,12 @@ function createChromeTarget(
+         }
+ 
+         // Clap width/height to fit in viewport
+-        if (clip.x + clip.width > deviceMetrics.width) {
++        // Despite its name, disableAutomaticViewportHeight also stops the
++        // window growing to fit wide content, so the story keeps a fixed size.
++        if (
++          options.disableAutomaticViewportHeight &&
++          clip.x + clip.width > deviceMetrics.width
++        ) {
+           clip.width = deviceMetrics.width - clip.x;
+         }
+ 
+@@ -299,16 +304,21 @@ function createChromeTarget(
+           clip.height = deviceMetrics.height - clip.y;
+         }
+ 
++        // Grow the window to fit wide content the same way as tall content,
++        // instead of cropping it at the right edge.
++        const contentEndX = clip.x + clip.width;
+         const contentEndY = clip.y + clip.height;
+         const shouldResizeWindowToFit =
+           !options.disableAutomaticViewportHeight &&
+-          contentEndY > deviceMetrics.height;
++          (contentEndX > deviceMetrics.width ||
++            contentEndY > deviceMetrics.height);
+ 
+         if (shouldResizeWindowToFit) {
+           const override = Object.assign({}, deviceMetrics, {
+-            height: contentEndY,
++            width: Math.max(deviceMetrics.width, contentEndX),
++            height: Math.max(deviceMetrics.height, contentEndY),
+           });
+-          debug('Resizing window to fit tall content');
++          debug('Resizing window to fit large content');
+           await Emulation.setDeviceMetricsOverride(override);
+           // This number is arbitrary and probably excessive,
+           // but there are no other events or values to observe

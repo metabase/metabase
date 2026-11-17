@@ -61,78 +61,47 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies))
 
-(defmethod mi/can-read? :model/Measure
-  ([instance]
-   (let [table (or (:table instance)
-                   (measures.db/table (:table_id instance)))]
-     (mi/can-read? table)))
-  ([_model pk]
-   (mi/can-read? (measures.db/measure pk))))
+(methodical/defmethod t2/batched-hydrate [:model/Measure :can_read]
+  "Whether the current user can read each of `measures`, which they can when they read its Table, the Tables answered
+  together."
+  [_model k measures]
+  (let [rows  (t2/hydrate (into [] (remove nil?) measures) [:table :can_read])
+        flags (into {} (map (juxt :id (comp mi/can-read? :table))) rows)]
+    (for [measure measures]
+      (when measure
+        (vary-meta measure assoc k (get flags (:id measure) false))))))
 
-;; Measures can be written by superusers or data analysts with unrestricted view data permissions,
-;; but only if the parent table is editable (not in a remote-synced collection in read-only mode).
-(defmethod mi/can-write? :model/Measure
-  ([instance]
-   (let [table (or (:table instance)
-                   (measures.db/table (:table_id instance)))]
-     (and (or api/*is-superuser?*
-              (and (api/entitled-data-analyst?)
-                   (perms/user-has-permission-for-table?
-                    api/*current-user-id*
-                    :perms/view-data
-                    :unrestricted
-                    (:db_id table)
-                    (u/the-id table))))
-          (remote-sync/table-editable? table))))
-  ([_model pk]
-   (mi/can-write? (measures.db/measure pk))))
+;; Measures can be written by superusers or data analysts with unrestricted view data permissions, but not on a
+;; read-only instance that syncs their table.
+(defn- measure-writable?
+  "Whether the current user can write `instance`, a Measure with or without its `:table`."
+  [instance]
+  (let [table (or (:table instance)
+                  (measures.db/table (:table_id instance)))]
+    (and (or api/*is-superuser?*
+             (and (api/entitled-data-analyst?)
+                  (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
+         (collection/remote-sync-writable-table? table))))
 
-;; Measures can be created by superusers, but only if the parent table is editable
-;; (not in a remote-synced collection in read-only mode).
+;; Measures can be created by superusers or data analysts with unrestricted view data permissions, but not on a
+;; read-only instance that syncs their table.
 (defmethod mi/can-create? :model/Measure
   [_model instance]
   (let [table (or (:table instance)
                   (measures.db/table (:table_id instance)))]
     (and (or api/*is-superuser?*
              (and (api/entitled-data-analyst?)
-                  (perms/user-has-permission-for-table?
-                   api/*current-user-id*
-                   :perms/view-data
-                   :unrestricted
-                   (:db_id table)
-                   (u/the-id table))))
-         (remote-sync/table-editable? table))))
+                  (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
+         (collection/remote-sync-writable-table? table))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Measure :can_write]
-  "Batched hydration for :can_write on measures. First hydrates :table for all measures,
-   then pre-fetches collection is_remote_synced values for those tables, and calls can-write?
-   on each measure. This avoids N+1 queries when checking permissions for multiple measures."
+  "Batched hydration for :can_write on measures, hydrating their tables first."
   [_model k measures]
-  (let [measures-with-tables (t2/hydrate (remove nil? measures) :table)
-        ;; Get all unique collection IDs from the hydrated tables
-        collection-ids (->> measures-with-tables
-                            (keep (comp :collection_id :table))
-                            distinct)
-        ;; Batch fetch is_remote_synced for all collections
-        collection-synced-map (if (seq collection-ids)
-                                (into {}
-                                      (map (juxt :id :is_remote_synced))
-                                      (measures.db/collections collection-ids))
-                                {})
-        ;; Associate collection info with each measure's table
-        measures-with-collection (for [measure measures-with-tables
-                                       :let [table (:table measure)
-                                             coll-id (:collection_id table)]]
-                                   (if (and table coll-id)
-                                     (assoc-in measure [:table :collection]
-                                               {:id coll-id
-                                                :is_remote_synced (get collection-synced-map coll-id false)})
-                                     measure))]
-    (mi/instances-with-hydrated-data
-     measures k
-     #(u/index-by :id mi/can-write? measures-with-collection)
-     :id
-     {:default false})))
+  (mi/instances-with-hydrated-data
+   measures k
+   #(u/index-by :id (comp boolean measure-writable?) (t2/hydrate (remove nil? measures) :table))
+   :id
+   {:default false}))
 
 (t2/define-before-insert :model/Measure
   [{:keys [definition] :as measure}]
@@ -173,12 +142,6 @@
   ;; additional checks (Enterprise Edition only)
   (pre-delete-check-sandbox-constraints-for-measure measure)
   measure)
-
-(defmethod mi/perms-objects-set :model/Measure
-  [measure read-or-write]
-  (let [table (or (:table measure)
-                  (measures.db/table-perms-columns (u/the-id (:table_id measure))))]
-    (mi/perms-objects-set table read-or-write)))
 
 (defn- normalize-definition-from-db
   "Normalize a measure definition read from the database.
@@ -274,3 +237,8 @@
   (mapv (fn [{:keys [definition]}]
           (serialization/import-mbql-dependencies definition))
         entities))
+
+(defmethod remote-sync/spec :model/Measure
+  [_model]
+  {:synced-items         measures.db/synced-measure-items
+   :synced-filter-clause measures.db/synced-measures-clause})

@@ -36,7 +36,7 @@
                 :linkType "question"
                 :targetId 1
                 :parameterMapping
-                {(keyword "[\"dimension\",[\"field\",54,{\"source-field\":53}]]")
+                {"[\"dimension\",[\"field\",54,{\"source-field\":53}]]"
                  {:id     "[\"dimension\",[\"field\",54,{\"source-field\":53}]]"
                   :source {:type "column", :id "Category_ID", :name "Category ID"}
                   :target {:type      "dimension"
@@ -74,7 +74,7 @@
       (is (= cleared (select-keys (import-one {} settings) (keys settings)))))))
 
 (deftest ^:parallel import-viz-settings-test
-  (let [import (partial import-one {:field (constantly 3)})]
+  (let [import-settings (partial import-one {:field (constantly 3)})]
     (is (= {:column_settings
             {"[\"ref\",[\"field\",3,null]]"
              {:click_behavior
@@ -82,9 +82,9 @@
                {"[\"dimension\",[\"field\",3,{\"source-field\":3}]]"
                 {:id     "[\"dimension\",[\"field\",3,{\"source-field\":3}]]"
                  :target {:type      "dimension"
-                          :dimension [:dimension [:field 3 {:source-field 3}]]
+                          :dimension ["dimension" [:field 3 {:source-field 3}]]
                           :id        "[\"dimension\",[\"field\",3,{\"source-field\":3}]]"}}}}}}}
-           (import
+           (import-settings
             {:column_settings
              {"[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]"
               {:click_behavior
@@ -92,7 +92,7 @@
                 {"[\"dimension\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],{\"source-field\":[\"my-db\",null,\"orders\",\"subtotal\"]}]]"
                  {:id     "[\"dimension\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],{\"source-field\":[\"my-db\",null,\"orders\",\"subtotal\"]}]]"
                   :target {:type      "dimension"
-                           :dimension [:dimension
+                           :dimension ["dimension"
                                        [:field
                                         ["my-db" nil "orders" "invoice"]
                                         {:source-field ["my-db" nil "orders" "subtotal"]}]]

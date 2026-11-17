@@ -128,37 +128,43 @@
   (u/prog1 snippet
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 
-(defmethod mi/can-read? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-read? args))
+(defn- check-permission-keys
+  "Throws unless `snippet` has the columns its `:can_read` and `:can_write` hydrations read."
+  [snippet]
+  (api/check-500 (contains? snippet :id) "No :id is set for a NativeQuerySnippet.")
+  (api/check-500 (contains? snippet :collection_id) "No :collection_id is set for a NativeQuerySnippet."))
 
-(defmethod mi/can-write? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-write? args))
-
-(defmethod mi/can-create? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-create? args))
-
-(defmethod mi/can-update? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-update? args))
+(methodical/defmethod t2/batched-hydrate [:model/NativeQuerySnippet :can_read]
+  "Whether the current user can read each of `snippets`, answered together."
+  [_model _k snippets]
+  (run! #(when % (check-permission-keys %)) snippets)
+  (let [readable (snippet.perms/permitted-snippet-ids (remove nil? snippets) :read)]
+    (for [snippet snippets]
+      (when snippet
+        (vary-meta snippet assoc :can_read (contains? readable (:id snippet)))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/NativeQuerySnippet :can_write]
-  [_model k snippets]
-  (let [non-nil-snippets (remove nil? snippets)
-        snippets-with-collections (t2/hydrate non-nil-snippets :collection)
-        editable-map (remote-sync/batch-model-editable? :model/NativeQuerySnippet non-nil-snippets)]
-    (mi/instances-with-hydrated-data
-     snippets k
-     #(into {}
-            (map (fn [snippet]
-                   [(:id snippet)
-                    (and (get editable-map (:id snippet) true)
-                         (mi/can-write? snippet))]))
-            snippets-with-collections)
-     :id
-     {:default false})))
+  "Whether the current user can write each of `snippets`, none on an instance remote sync keeps read-only, answered
+  together."
+  [_model _k snippets]
+  (run! #(when % (check-permission-keys %)) snippets)
+  (let [writable (if (remote-sync/read-only?)
+                   #{}
+                   (snippet.perms/permitted-snippet-ids (remove nil? snippets) :write))]
+    (for [snippet snippets]
+      (when snippet
+        (assoc snippet :can_write (contains? writable (:id snippet)))))))
+
+(defmethod mi/can-create? :model/NativeQuerySnippet
+  [model snippet]
+  (and (snippet.perms/can-create? model snippet)
+       (not (remote-sync/read-only?))))
+
+(defmethod mi/can-update? :model/NativeQuerySnippet
+  [snippet changes]
+  (and (snippet.perms/can-update? snippet changes)
+       (or (not (remote-sync/synced-changes? :model/NativeQuerySnippet snippet changes))
+           (not (remote-sync/read-only?)))))
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
@@ -271,3 +277,8 @@
                  [(conj items (assoc-in item [:row :name] n)) (assoc taken n entity_id)]))
              [[] taken]
              items))))
+
+(defmethod remote-sync/spec :model/NativeQuerySnippet
+  [_model]
+  {:synced-items         native-query-snippets.db/synced-snippet-items
+   :synced-filter-clause native-query-snippets.db/synced-snippets-clause})

@@ -20,6 +20,8 @@ import type { Field } from "./field";
 import type {
   CurrencyPosition,
   CurrencyStyle,
+  DurationStyle,
+  DurationUnit,
   TimeOnlyOptions,
 } from "./formatting";
 import type { ModerationReview } from "./moderation";
@@ -89,7 +91,8 @@ export interface Card<
   collection?: Collection | null;
   collection_id: CollectionId | null;
   collection_position: number | null;
-  dashboard: CardDashboardInfo | null;
+  /** Hydrated by the card endpoints only; a dashcard's card has no such key */
+  dashboard?: CardDashboardInfo | null;
   dashboard_id: DashboardId | null;
   document_id?: DocumentId | null;
   document?: CardDocumentInfo | null;
@@ -308,6 +311,9 @@ export type ColumnSettings = TimeOnlyOptions & {
   date_separator?: string;
   date_style?: string | null;
   decimals?: number;
+  duration_precision?: DurationUnit;
+  duration_style?: DurationStyle;
+  duration_unit?: DurationUnit;
   isExclude?: boolean;
   jsx?: boolean;
   link_text?: string;
@@ -647,6 +653,7 @@ export type CardQueryMetadata = {
   databases: Database[];
   tables: Table[];
   fields: Field[];
+  cards: Card[];
 };
 
 export type ListCardsRequest = {

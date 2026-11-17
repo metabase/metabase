@@ -7,9 +7,10 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SelectList } from "metabase/common/components/SelectList";
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
-import type { CardId, CollectionId, DatabaseId } from "metabase-types/api";
+import type { CollectionId, DatabaseId } from "metabase-types/api";
 
 import type { SavedEntityType } from "../types";
 
@@ -18,15 +19,15 @@ import { CARD_INFO } from "./constants";
 
 interface SavedEntityListProps {
   type: SavedEntityType;
-  selectedId?: CardId;
+  selectedSource?: DataSource;
   databaseId?: DatabaseId | null;
   collectionId?: CollectionId;
-  onSelect: (cardId: CardId) => void;
+  onSelect: (source: DataSource) => void;
 }
 
 export const SavedEntityList = ({
   type,
-  selectedId,
+  selectedSource,
   databaseId,
   collectionId,
   onSelect,
@@ -67,6 +68,8 @@ export const SavedEntityList = ({
           <Fragment>
             {filteredList.map((collectionItem) => {
               const { id, name, moderated_status } = collectionItem;
+              const source: DataSource =
+                type === "table" ? { type: "table", id } : { type: "card", id };
 
               return (
                 <SelectList.Item
@@ -76,14 +79,17 @@ export const SavedEntityList = ({
                   }}
                   key={id}
                   id={id}
-                  isSelected={selectedId === id}
+                  isSelected={
+                    selectedSource?.type === source.type &&
+                    selectedSource.id === source.id
+                  }
                   size="small"
                   name={tc(name)}
                   icon={{
                     name: CARD_INFO[type].icon,
                     size: 16,
                   }}
-                  onSelect={() => onSelect(id)}
+                  onSelect={() => onSelect(source)}
                   rightIcon={PLUGIN_MODERATION.getStatusIcon(
                     moderated_status ?? undefined,
                   )}

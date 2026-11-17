@@ -563,6 +563,27 @@
   - Uses transients and reduce where possible and tries to return the same input `form` if no changes were made."
   [inner outer form]
   (cond
+    ;; Records may implement their own reduce (e.g. toucan2's IdentityQuery reduces over its rows), so walk their
+    ;; entries through `seq` instead of `reduce-kv`.
+    (record? form)
+    (let [new-keys (volatile! (transient #{}))]
+      (-> (reduce (fn [r e]
+                    (let [k  (key e)
+                          v  (val e)
+                          k' (inner k)
+                          v' (inner v)]
+                      (if (identical? k' k)
+                        (if (identical? v' v)
+                          r
+                          (assoc r k v'))
+                        (do (vswap! new-keys conj! k')
+                            (if (contains? @new-keys k)
+                              (assoc r k' v')
+                              (-> r (dissoc k) (assoc k' v')))))))
+                  form (seq form))
+          (add-original-meta form)
+          outer))
+
     (map? form)
     (let [new-keys (volatile! (transient #{}))]
       (-> (reduce-kv (fn [m k v]
@@ -587,7 +608,7 @@
         outer)
 
     ;; Don't care much about optimizing seq and generic coll cases. When efficiency is required, use vectors.
-    (seq? form) (outer (add-original-meta (seq (mapv inner form)) form)) ;;
+    (seq? form) (outer (add-original-meta (or (seq (mapv inner form)) ()) form))
     (coll? form) (outer (add-original-meta (into (empty form) (map inner) form) form))
     :else (outer form)))
 

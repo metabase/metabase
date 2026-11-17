@@ -87,14 +87,14 @@
                     (and (= k :source-table) (vector? v))           nil
                     (and (= k :source-table) (mbql/entity-id? v)) #{[:model/Card v]}
                     (and (= k :source-card)  (mbql/entity-id? v)) #{[:model/Card v]}
-                    (and (= k :source-field) (vector? v))           nil
+                    (and (#{:source-field :field-id} k) (vector? v)) nil
                     (and (= k :snippet-id)   (mbql/entity-id? v)) #{[:model/NativeQuerySnippet v]}
                     (and (= k :table-id)     (vector? v))           nil
                     (and (#{:card_id :card-id} k) (string? v))      #{[:model/Card v]}
                     (and (= k :database)     (id-ref? v))           #{[:model/Database v]}
                     (and (= k :source-table) (id-ref? v))           #{[:model/Table v]}
                     (and (= k :source-card)  (id-ref? v))           #{[:model/Card v]}
-                    (and (= k :source-field) (id-ref? v))           #{[:model/Field v]}
+                    (and (#{:source-field :field-id} k) (id-ref? v)) #{[:model/Field v]}
                     (and (= k :snippet-id)   (id-ref? v))           #{[:model/NativeQuerySnippet v]}
                     (and (= k :table-id)     (id-ref? v))           #{[:model/Table v]}
                     (and (#{:card_id :card-id} k) (id-ref? v))      #{[:model/Card v]}

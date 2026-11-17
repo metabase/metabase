@@ -1209,7 +1209,7 @@
      (fn [mp]
        (let [venues-query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
          (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                        {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                        {:slug "birds" :name "Birds" :bundle_path "birds.js"}
                         :model/Collection {other-collection-id :id} {}
                         :model/Card {card-id :id} {:dataset_query venues-query :collection_id collection-id}
                         :model/Action {action-id :id} {:type :implicit :name "Update venue" :collection_id collection-id}
@@ -1260,8 +1260,8 @@
   (testing "the dependency job computes an app's dependencies without reading its bundle"
     (deps.test/run-with-dependencies-setup!
      (fn [_mp]
-       (mt/with-temp [:model/DataApp {app-id :id} {:name         "birds"
-                                                   :display_name "Birds"
+       (mt/with-temp [:model/DataApp {app-id :id} {:slug         "birds"
+                                                   :name         "Birds"
                                                    :bundle_path  "birds.js"
                                                    :bundle       (byte-array [1 2 3])}]
          (testing "a full row read counts"
@@ -1275,7 +1275,7 @@
       (deps.test/run-with-dependencies-setup!
        (fn [mp]
          (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                        {:name "birds" :display_name "Birds" :bundle_path "birds.js" :bundle (byte-array [1 2 3])}
+                        {:slug "birds" :name "Birds" :bundle_path "birds.js" :bundle (byte-array [1 2 3])}
                         :model/Collection {other-collection-id :id} {}]
            (mt/with-model-cleanup [:model/Card]
              (testing "a full row read counts"

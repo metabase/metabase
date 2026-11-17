@@ -24,11 +24,11 @@
   #js {"id"               36
        "name"             "CATEGORY_ID"
        "has_field_values" "none"
-       "dimensions"       #js [{"id"                      72
-                                "field_id"                36
-                                "name"                    "Category ID [external remap]"
-                                "type"                    "external"
-                                "human_readable_field_id" 67}]})
+       "dimensions"       #js [#js {"id"                      72
+                                    "field_id"                36
+                                    "name"                    "Category ID [external remap]"
+                                    "type"                    "external"
+                                    "human_readable_field_id" 67}]})
 
 (deftest ^:parallel parse-field-with-external-remap-test
   (let [metadata          #js {:fields #js {"36" mock-field-metadata-with-external-remap}}
@@ -43,15 +43,33 @@
                                  :field-id 67}}
            (lib.metadata/field metadata-provider 36)))))
 
+(deftest ^:parallel parse-card-result-metadata-with-external-remap-test
+  (let [metadata          #js {:questions #js {"1" #js {"id"              1
+                                                        "name"            "Model"
+                                                        "type"            "model"
+                                                        "result_metadata" #js [#js {"name"               "CATEGORY_ID"
+                                                                                    "base_type"          "type/Integer"
+                                                                                    "lib/external-remap" #js {"lib/type" "metadata.column.remapping/external"
+                                                                                                              "id"       72
+                                                                                                              "name"     "Category ID"
+                                                                                                              "field-id" 67}}]}}}
+        metadata-provider (lib.js.metadata/metadata-provider 1 metadata)]
+    (is (=? [{:name               "CATEGORY_ID"
+              :lib/external-remap {:lib/type :metadata.column.remapping/external
+                                   :id       72
+                                   :name     "Category ID"
+                                   :field-id 67}}]
+            (:result-metadata (lib.metadata/card metadata-provider 1))))))
+
 (def ^:private mock-field-metadata-with-internal-remap
   #js {"id"               33
        "name"             "ID"
        "has_field_values" "none"
-       "dimensions"       #js [{"id"                      66
-                                "field_id"                33
-                                "name"                    "ID [internal remap]"
-                                "type"                    "internal"
-                                "human_readable_field_id" nil}]})
+       "dimensions"       #js [#js {"id"                      66
+                                    "field_id"                33
+                                    "name"                    "ID [internal remap]"
+                                    "type"                    "internal"
+                                    "human_readable_field_id" nil}]})
 
 (deftest ^:parallel parse-field-with-internal-remap-test
   (let [metadata          #js {:fields #js {"33" mock-field-metadata-with-internal-remap}}

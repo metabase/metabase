@@ -56,4 +56,4 @@
                                              :common_name  "A B"}))]
             (is (nil? (:id snapshot)))
             (is (map? (:owner snapshot)))
-            (is (true? (revision/revision-readable? :model/Transform snapshot)))))))))
+            (is (= [true] (revision/revisions-readable? :model/Transform [snapshot])))))))))

@@ -2265,6 +2265,12 @@
    The return value is unspecified; callers should persist the precomputed details,
    not anything returned from here.
 
+   An implementation may throw `ex-info` with `:workspace/cleanup? false` in its data
+   when the failed init left nothing behind, or when it refused a user that was
+   already there, which may belong to another parent. The caller must not run
+   [[destroy-workspace-isolation!]] for this workspace after that error. The
+   `:status-code` in the error is the driver's.
+
    This is an enterprise feature. Drivers must also return true for
    (database-supports? driver :workspace database) to indicate support.
 
@@ -2299,7 +2305,7 @@
 
 (defmulti grant-workspace-read-access!
   "Grant read access on the workspace's input namespaces to the workspace's isolated
-   user/role. `input` is a sequence of `::table-namespace` maps `[{:db ?, :schema ?}]`
+   user/role. `input` is a sequence of `{:db ?, :schema ?}` maps
    identifying the namespaces to grant access to. Granularity is per-namespace
    (schema-wide / database-wide); per-table grants are not supported.
 

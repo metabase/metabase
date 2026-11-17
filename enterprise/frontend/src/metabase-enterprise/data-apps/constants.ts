@@ -26,3 +26,12 @@ export const DATA_APP_OUTDATED_ERROR_CODE = "data-app-outdated";
 
 export const getOutdatedDataAppMessage = (version: number) =>
   t`This app was built for version ${version} of data apps. Migrate it to the current version, then rebuild and sync it again.`;
+
+/** iframe to host: "my listener is installed, send me a port". */
+export const DATA_APP_BROKER_READY_MESSAGE_TYPE =
+  "metabase.data-app.broker-ready";
+/** host to iframe: the `BrokerInitMessage` that hands over the port. */
+export const DATA_APP_BROKER_INIT_MESSAGE_TYPE =
+  "metabase.data-app.broker-init";
+/** iframe to host, cross-origin: the app's route changed (`path`, a pathname), for the host's URL mirror. */
+export const DATA_APP_ROUTE_MESSAGE_TYPE = "metabase.data-app.route" as const;

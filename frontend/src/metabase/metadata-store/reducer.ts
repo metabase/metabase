@@ -1,12 +1,15 @@
 import { type Reducer, combineReducers } from "@reduxjs/toolkit";
-import { getIn } from "icepick";
 
 import { tablesReducer } from "./tables-reducer";
 
 /** One normalized record. Its keys are whatever the endpoint returned. */
 type Entity = Record<string, unknown>;
 type SliceState = Record<string, Entity>;
-type SliceAction = { type: string; payload?: any };
+type SliceAction = {
+  type: string;
+  // normalizr output of `metabase/entities/*` actions
+  payload?: { entities?: Record<string, Record<string, Entity | null>> };
+};
 type SliceReducer = Reducer<SliceState>;
 
 /**
@@ -92,11 +95,7 @@ function makeSliceReducer(
 ): SliceReducer {
   return (state = {}, action: SliceAction) => {
     let nextState = state;
-    // `getIn` walks an untyped action payload, so it can only return
-    // `unknown`. The shape is the normalizr output for this slice.
-    const entities = getIn(action, ["payload", "entities", sliceName]) as
-      | Record<string, Entity | null>
-      | undefined;
+    const entities = action.payload?.entities?.[sliceName];
     if (ACTION_PATTERN.test(action.type) && entities) {
       nextState = mergeEntities(nextState, entities);
     }

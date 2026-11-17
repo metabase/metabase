@@ -7,7 +7,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.revisions.models.revision :as revision]
@@ -1115,7 +1115,7 @@
                                             :id           "x"
                                             :type         :dimension
                                             :widget-type  :number/=
-                                            :dimension    (lib/ref reviews-rating)}})})
+                                            :field-id     (:id reviews-rating)}})})
         (let [first-rev-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:id :asc]]})]
           (mt/user-http-request :crowberto :post 200 "revision/revert"
                                 {:entity :card :id card-id :revision_id first-rev-id})

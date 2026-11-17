@@ -1,5 +1,6 @@
 ---
 title: Creating a HAR file for troubleshooting
+summary: Record a HAR file of your browser's network requests to help diagnose Metabase performance problems.
 ---
 
 # Creating a HAR file for troubleshooting

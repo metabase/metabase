@@ -33,6 +33,7 @@
    [metabase.transforms-base.db :as transforms-base.db]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
+   [metabase.transforms-base.workspace-hooks :as transforms-base.workspace-hooks]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n]
@@ -49,6 +50,8 @@
    (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
+
+(events/derive! :event/transform-run-complete :metabase/event)
 
 ;;; ------------------------------------------------- Constants -------------------------------------------------
 
@@ -575,6 +578,40 @@
         {driver :engine :as database} (driver.u/lib-database db-id)]
     (driver/table-exists? driver database target)))
 
+(defn planned-target-table-exists?
+  "Test if the table `transform` would write to already exists. For a transform that hasn't
+   been resolved for execution yet: on a workspaced database it writes to the workspace's
+   remapped copy of its target, so that is the table checked, not the canonical one. Throws a
+   400 on a workspace instance when the target database has no workspace schema."
+  [transform]
+  (if-let [db-id (transforms-base.i/target-db-id transform)]
+    (target-table-exists? (update transform :target #(transforms-base.workspace-hooks/workspace-transform-target db-id %)))
+    (target-table-exists? transform)))
+
+(mu/defn resolve-workspace-target :- ::transforms-base.schema/transform
+  "Rewrite `transform`'s `:target` to the table it writes to. On a workspaced database that is the
+  workspace's copy, and the canonical target is kept as `:workspace-canonical-target` so
+  [[record-workspace-target-remapping!]] can record the remapping once the run's write returns. Records
+  nothing itself. Unchanged off-workspace, or when the transform has no target database. Throws a
+  400 on a workspace instance when the target database has no workspace schema."
+  [transform :- ::transforms-base.schema/transform]
+  (if-let [db-id (transforms-base.i/target-db-id transform)]
+    (let [canonical (:target transform)
+          rewritten (transforms-base.workspace-hooks/workspace-transform-target db-id canonical)]
+      (cond-> (assoc transform :target rewritten)
+        (not= rewritten canonical) (assoc :workspace-canonical-target canonical)))
+    transform))
+
+(mu/defn record-workspace-target-remapping! :- :nil
+  "Record the workspace `TableRemapping` for a transform whose target [[resolve-workspace-target]]
+  rewrote to a workspace copy. The post-run sync in [[complete-execution!]] syncs the canonical table, and
+  reads the workspace copy's metadata through it. A no-op for a transform that wasn't rewritten."
+  [transform :- ::transforms-base.schema/transform]
+  (when-let [canonical (:workspace-canonical-target transform)]
+    (transforms-base.workspace-hooks/record-workspace-target-remapping!
+     (transforms-base.i/target-db-id transform) canonical))
+  nil)
+
 (defn- canonicalize-target
   "If `target` is workspace-rewritten (i.e. its `(schema, name)` matches the
    to-side of an active TableRemapping for `db-id`), return `target` with
@@ -649,38 +686,61 @@
 (defn- isolated-drop-target
   "Resolve `target` to the physical warehouse table to drop.
 
-  On a workspace child the canonical target is backed by an isolation-namespace copy recorded
-  in `table_remapping`; the workspace user can only DROP inside its isolation namespace, so the
-  drop must hit that copy — not the canonical table. Looks the copy up via the general
-  canonical→isolated workspace hook (symmetric with [[canonicalize-target]], which uses the
-  inverse). The isolated namespace lives in `:schema` for schema-based drivers and in `:db` for
-  MySQL; collapse to the single `:schema` slot the driver drop path qualifies on. Off-workspace
-  the hook returns nil and `target` is dropped unchanged."
+  A `table_remapping` row for the target decides the table whenever one exists, in workspace mode
+  or outside it: the drop names the copy the row records, the table reads of the target go to. The
+  hook is then not called.
+
+  With no row, [[transforms-base.workspace-hooks/workspace-transform-target]] decides. For a
+  database with a workspace schema it returns the copy the transform would write to (a transform
+  whose runs all failed has no row, but may have left a copy behind). The workspace user can only
+  DROP inside the workspace schema, so the drop must name the copy. The hook throws a 409 when
+  another target's row already holds that copy name, and nothing is dropped. For a database with
+  no workspace schema (outside workspace mode, or not in the workspace config) it returns `target`
+  unchanged when workspace mode is off, and the drop names the canonical table. When workspace mode
+  is on, it throws a 400 and nothing is dropped.
+
+  The workspace schema is in `:schema` for schema-based drivers and in `:db` for MySQL; collapse
+  to the single `:schema` slot the driver drop path qualifies on."
   [db-id target]
-  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}]
-    (if-let [{:keys [db schema name]} (ws.table-remapping/workspace-remap-schema+name db-id lookup-spec)]
-      (assoc target :schema (or schema db) :name name)
-      target)))
+  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}
+        copy        (or (ws.table-remapping/workspace-remap-schema+name db-id lookup-spec)
+                        (transforms-base.workspace-hooks/workspace-transform-target db-id target))]
+    (if (= copy target)
+      target
+      (assoc target :schema (or (:schema copy) (:db copy)) :name (:name copy)))))
 
 (mu/defn delete-target-table! :- [:maybe :int]
   "Drop a transform's output table and deactivate its app-db Table row.
 
-  In workspace-isolation mode the transform writes to an isolation-namespace copy, so the drop
-  resolves the canonical `:target` to that copy (see [[isolated-drop-target]]); dropping the
-  canonical name would fail (the workspace user is read-only there) or hit the wrong table. The
-  app-db Table row that gets deactivated is always the canonical `:target`, since that is what
-  sync surfaces. Off-workspace the two are identical."
+  [[isolated-drop-target]] resolves the canonical `:target` to the table to drop. A
+  `table_remapping` row for the target decides it whenever one exists, in workspace mode or
+  outside it. With no row, the drop names the workspace copy for a database with a workspace
+  schema, and throws a 409 when another target's row already holds that copy name. For a database
+  with no workspace schema (outside workspace mode, or not in the workspace config), it names the
+  canonical table when workspace mode is off, and throws a 400 when workspace mode is on. A throw
+  leaves the warehouse and the app-db Table row unchanged.
+
+  The app-db Table row to deactivate is the canonical `:target`, since that is what sync
+  surfaces. It is deactivated when the drop names the canonical table, and when a
+  `table_remapping` row records the copy the row stands in for. With no such row (every run
+  failed), for a database with a workspace schema, the Table row is the live canonical warehouse
+  table, which the drop did not touch, so it stays active."
   [{:keys [id target], :as transform} :- ::transforms-base.schema/transform]
   (when target
     (let [database-id (transforms-base.i/target-db-id transform)]
       (when database-id
         (if-let [{driver :engine :as database} (when (transforms-base.db/database-exists? database-id)
                                                  (driver.u/lib-database database-id))]
-          (let [drop-target (->> (update target :type keyword)
-                                 (isolated-drop-target database-id))]
+          (let [target      (update target :type keyword)
+                drop-target (isolated-drop-target database-id target)]
             (driver/drop-transform-target! driver database drop-target)
-            (log/info "Deactivating  target " (pr-str target) "for transform" id)
-            (deactivate-table! database target))
+            (if (or (= drop-target target)
+                    (ws.table-remapping/workspace-remap-schema+name
+                     database-id {:db (:db target) :schema (:schema target) :name (:name target)}))
+              (do (log/info "Deactivating  target " (pr-str target) "for transform" id)
+                  (deactivate-table! database target))
+              (log/infof "Not deactivating target %s for transform %d: no remapping records a workspace copy behind it"
+                         (pr-str target) id)))
           (log/warnf "Skipping drop of transform target %s for transform %d: database %d not found"
                      (pr-str target) id database-id))))))
 
@@ -837,6 +897,19 @@
             (apply-index-outcomes!
              (reconcile/classify-index-outcomes managed (reconcile/warehouse-key-set warehouse-indexes)))))))))
 
+(defn- canonical-sync-target
+  "The target [[complete-execution!]] syncs. For a workspace-rewritten transform that is the canonical target the run
+   recorded at its start. The remap row maps the written copy back to the canonical table in `:model/Table` row
+   vocabulary (nil `:db` and `:schema` on MySQL, whose Table rows carry neither). When the row is gone, the recorded
+   canonical target is used as it is, and the written copy is never synced."
+  [db-id {:keys [target] canonical :workspace-canonical-target}]
+  (if canonical
+    (let [row-target (canonicalize-target db-id target)]
+      (if (= row-target target)
+        canonical
+        (merge canonical (select-keys row-target [:db :schema :name]))))
+    target))
+
 (mu/defn complete-execution! :- :nil
   "Post-processing steps after a transform has been executed successfully.
 
@@ -856,7 +929,9 @@
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
         database (driver.u/lib-database db-id)
-        table (sync-target! target database)]
+        ;; Sync the canonical target the run recorded at its start, not the workspace copy mapped back through the
+        ;; remap row: a schema change may have deleted that row since the run recorded it.
+        table (sync-target! (canonical-sync-target db-id transform) database)]
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
     (when table
       (transforms-base.db/update-transform! (:id transform) {:target_table_id (:id table)})

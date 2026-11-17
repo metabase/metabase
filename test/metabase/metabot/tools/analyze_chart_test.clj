@@ -257,8 +257,8 @@
 (deftest analyze-chart-tool-read-values-steps-follow-run-query-test
   (let [sql-steps (str "To read the chart's values instead, call `run_query` with the ID of the unsaved SQL query"
                        " that the user is viewing.\n"
-                       "For a saved question, write SQL that reads it with `create_sql_query`, then run that query"
-                       " with `run_query`.")
+                       "For a saved question, write SQL that reads it with `create_sql_query` (pass `show_chart: false`),"
+                       " then run that query with `run_query`.")
         empty-chart {:display_type "row" :title "Empty" :series {}}]
     (testing "Chat's run_query runs a saved question by its own ID, so the step offers the question's ID"
       (is (=? {:error  {:class :recoverable :code ::analyze-chart/no-series-data}
@@ -331,7 +331,7 @@
       (t2/update! :model/Card :id card-id
                   {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))})
       (mt/with-current-user (mt/user->id :rasta)
-        (is (not (mi/can-read? :model/Card card-id))))
+        (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/Card :id card-id) :can_read)))))
       (let [parts   (agent-loop-parts! :internal
                                        {:type          "question"
                                         :id            card-id

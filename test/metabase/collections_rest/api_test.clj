@@ -2834,7 +2834,7 @@
                                                                                   :param1 {:type         "dimension"
                                                                                            :display-name "Param 1"
                                                                                            :required     true
-                                                                                           :dimension    [:field 1 nil]}}
+                                                                                           :field-id     1}}
                                                                   :query         "select {{param0}}, {{param1}}"}}}]
         (is (partial= [{:name               "Business Card"
                         :entity_id          (:entity_id card)
@@ -2897,7 +2897,7 @@
                                                                                   :param2 {:type         :number
                                                                                            :display-name "Param 2"}
                                                                                   :param3 {:type         "dimension"
-                                                                                           :dimension    [:field (mt/id :venues :id) nil]
+                                                                                           :field-id     (mt/id :venues :id)
                                                                                            :display-name "Param 3"}}
                                                                   :query         "select {{param0}}, {{param1}} [[ , {{param2}} ]] from t {{param3}}"}}}]
         (is (partial= [{:name               "Business Card"

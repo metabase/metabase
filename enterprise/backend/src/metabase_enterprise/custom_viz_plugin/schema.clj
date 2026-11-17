@@ -43,6 +43,6 @@
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
     [:select-keys ::custom-viz-plugin [:display_name :identifier :enabled :icon :manifest :metabase_version
-                                       :bundle_hash :bundle]]
+                                       :bundle]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

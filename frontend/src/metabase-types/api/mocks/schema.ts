@@ -1,11 +1,11 @@
 import type {
   NormalizedCollection,
   NormalizedDatabase,
+  NormalizedField,
   NormalizedFieldDimension,
-  NormalizedRealTable,
-  NormalizedRealTableField,
   NormalizedSchema,
   NormalizedSegment,
+  NormalizedTable,
   NormalizedTimeline,
 } from "metabase-types/api";
 
@@ -45,7 +45,7 @@ export const createMockNormalizedTable = ({
   measures,
   metrics,
   ...opts
-}: Partial<NormalizedRealTable> = {}): NormalizedRealTable => ({
+}: Partial<NormalizedTable> = {}): NormalizedTable => ({
   ...createMockTable(opts),
   db,
   schema,
@@ -71,7 +71,7 @@ export const createMockNormalizedField = ({
   name_field,
   dimensions,
   ...opts
-}: Partial<NormalizedRealTableField>): NormalizedRealTableField => ({
+}: Partial<NormalizedField>): NormalizedField => ({
   ...createMockField(opts),
   uniqueId,
   target,

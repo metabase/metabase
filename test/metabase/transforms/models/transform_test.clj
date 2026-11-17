@@ -8,15 +8,21 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.search.core :as search]
+   [metabase.search.test-util :as search.tu]
    [metabase.stale-test :as stale-test]
    [metabase.staleness.core :as staleness]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.transforms-base.db :as transforms-base.db]
    [metabase.transforms.query-test-util :as query-test-util]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest source-database-id-set-test
   (testing "inserting a transform correctly sets the source-database-id column"
@@ -115,14 +121,14 @@
                  (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
                  (mt/with-current-user (mt/user->id :rasta)
                    (testing "native transform cannot be written"
-                     (is (not (mi/can-write? native))))
+                     (is (not (mi/can-write? (t2/hydrate native :can_write)))))
                    (testing "non-native (MBQL) transform is unaffected"
-                     (is (mi/can-write? mbql)))))
+                     (is (mi/can-write? (t2/hydrate mbql :can_write))))))
                (testing "with query-builder-and-native, native transform can be written"
                  (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder-and-native)
                  (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
                  (mt/with-current-user (mt/user->id :rasta)
-                   (is (mi/can-write? native))))))))))))
+                   (is (mi/can-write? (t2/hydrate native :can_write)))))))))))))
 
 (deftest no-events-during-deserialization-test
   (testing "Transform lifecycle hooks do not publish events during deserialization"
@@ -322,14 +328,14 @@
                  (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
                  (testing "while the Card is unreadable"
                    (mt/with-current-user (mt/user->id :rasta)
-                     (is (not (mi/can-read? stored)))
-                     (is (not (mi/can-write? stored)))
+                     (is (not (mi/can-read? (t2/hydrate stored :can_read))))
+                     (is (not (mi/can-write? (t2/hydrate stored :can_write))))
                      (is (not (mi/can-create? :model/Transform body)))))
                  (perms/grant-collection-read-permissions! group-id collection)
                  (testing "once the Card is readable"
                    (mt/with-current-user (mt/user->id :rasta)
-                     (is (mi/can-read? stored))
-                     (is (mi/can-write? stored))
+                     (is (mi/can-read? (t2/hydrate stored :can_read)))
+                     (is (mi/can-write? (t2/hydrate stored :can_write)))
                      (is (mi/can-create? :model/Transform body)))))))))))))
 
 (deftest data-analyst-access-follows-the-advanced-permissions-feature-test
@@ -350,11 +356,51 @@
             (mt/with-current-user (mt/user->id :rasta)
               (mt/when-ee-evailable
                (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
-                 (is (mi/can-read? stored))
-                 (is (mi/can-write? stored))
+                 (is (mi/can-read? (t2/hydrate stored :can_read)))
+                 (is (mi/can-write? (t2/hydrate stored :can_write)))
                  (is (mi/can-create? :model/Transform (into {} stored)))))
               (testing "and none once the feature is gone"
                 (mt/with-premium-features #{:transforms-basic :hosting}
-                  (is (not (mi/can-read? stored)))
-                  (is (not (mi/can-write? stored)))
+                  (is (not (mi/can-read? (t2/hydrate stored :can_read))))
+                  (is (not (mi/can-write? (t2/hydrate stored :can_write))))
                   (is (not (mi/can-create? :model/Transform (into {} stored)))))))))))))
+
+(deftest delete-while-run-writes-transform-does-not-deadlock-test
+  (testing "Deleting a transform while a run writes the transform row succeeds without a deadlock"
+    ;; The run updates the transform row, then upserts its search-index row in the same transaction
+    ;; (`with-temp-index-table` indexes synchronously). The delete must not take the search-index row before the
+    ;; transform row; delete capture purges the search-index row only after the delete commits.
+    ;; The redef pauses the run between its two writes while the delete starts and waits on the transform row.
+    (search.tu/with-temp-index-table
+      (let [transform-id   (t2/insert-returning-pk! :model/Transform
+                                                    {:name   "Deleted while running"
+                                                     :source {:type :python :source-tables [] :body "pass"}
+                                                     :target {:type "table" :schema "public" :name "deadlock_target"}})
+            run-updated    (promise)
+            search-update! (mt/original-fn #'search/update!)]
+        (try
+          (mt/with-dynamic-fn-redefs [search/update! (fn [instance & more]
+                                                       (when (= :model/Transform (t2/model instance))
+                                                         (deliver run-updated true)
+                                                         ;; Postgres checks a lock wait for a deadlock once,
+                                                         ;; `deadlock_timeout` (1 s by default) after the wait starts.
+                                                         ;; A longer pause gives the delete's wait that check before
+                                                         ;; the run writes the search-index row.
+                                                         (Thread/sleep 1500))
+                                                       (apply search-update! instance more))]
+            (let [run     (future
+                            (transforms-base.db/update-transform! transform-id {:target_table_id (mt/id :venues)}))
+                  delete  (future
+                            (deref run-updated 30000 nil)
+                            (t2/delete! :model/Transform :id transform-id))
+                  outcome (fn [fut]
+                            (try (deref fut 90000 ::timed-out)
+                                 (catch Exception e (ex-message (or (ex-cause e) e)))))]
+              (is (= 1 (outcome delete)))
+              (testing "the run ends without a deadlock"
+                (let [run-outcome (outcome run)]
+                  (is (not= ::timed-out run-outcome))
+                  (is (not (re-find #"(?i)deadlock" (str run-outcome))))))
+              (is (not (t2/exists? :model/Transform :id transform-id)))))
+          (finally
+            (t2/delete! :model/Transform :id transform-id)))))))

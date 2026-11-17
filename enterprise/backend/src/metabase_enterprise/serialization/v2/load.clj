@@ -15,12 +15,17 @@
 
 (defn- load-settings!
   "Sets the exported `settings`, returning with `continue-on-error` the errors of those it could not set, which it
-  skips."
+  skips. Skips `workspaces-enabled`."
   [settings continue-on-error]
   (into []
         (keep (fn [{:keys [key value]}]
                 (try
-                  (setting/set-value-of-type! :string (keyword key) (some-> value str))
+                  ;; This write does not go through the setter, and the checks and the remap-row cleanup in the
+                  ;; setter of workspaces-enabled must not be skipped. The settings code also resolves a key by its
+                  ;; kebab-case form, so compare that form.
+                  (if (= (u/->kebab-case-en (keyword key)) :workspaces-enabled)
+                    (log/warnf "Skipping Setting %s: an import does not set it" key)
+                    (setting/set-value-of-type! :string (keyword key) (some-> value str)))
                   nil
                   (catch Exception e
                     (if continue-on-error

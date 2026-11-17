@@ -7,7 +7,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.response :as api.response]
@@ -31,7 +30,7 @@
    [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -49,7 +48,9 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [methodical.core :as methodical]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]))
@@ -353,28 +354,28 @@
                                                                              :display-name "Id"
                                                                              :id           "_id_"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :people :id) nil]
+                                                                             :field-id     (mt/id :people :id)
                                                                              :widget-type  :id
                                                                              :default      nil}
                                                                   "name"    {:name         "name"
                                                                              :display-name "Name"
                                                                              :id           "_name_"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :people :name) nil]
+                                                                             :field-id     (mt/id :people :name)
                                                                              :widget-type  :category
                                                                              :default      nil}
                                                                   "source"  {:name         "source"
                                                                              :display-name "Source"
                                                                              :id           "_source_"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :people :source) nil]
+                                                                             :field-id     (mt/id :people :source)
                                                                              :widget-type  :category
                                                                              :default      nil}
                                                                   "user_id" {:name         "user_id"
                                                                              :display-name "User"
                                                                              :id           "_user_id_"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :orders :user_id) nil]
+                                                                             :field-id     (mt/id :orders :user_id)
                                                                              :widget-type  :id
                                                                              :default      nil}}}
                                                       :database (mt/id)}}
@@ -440,7 +441,7 @@
                                                                               :display-name "name"
                                                                               :id           "_name_"
                                                                               :type         :dimension
-                                                                              :dimension    [:field (mt/id :people :name) nil]
+                                                                              :field-id     (mt/id :people :name)
                                                                               :widget-type  :string/contains}}}
                                                           :database (mt/id)}}
                :model/DashboardCard {dashcard-a-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
@@ -498,7 +499,7 @@
                                                                               :display-name "name"
                                                                               :id           "_name_"
                                                                               :type         :dimension
-                                                                              :dimension    [:field (mt/id :people :name) nil]
+                                                                              :field-id     (mt/id :people :name)
                                                                               :widget-type  :string/contains}}}
                                                           :database (mt/id)}}
                :model/DashboardCard {dashcard-a-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
@@ -1886,11 +1887,9 @@
   ^{:doc "Set of ids that will report [[mi/can-write]] as true."}
   *readable-card-ids* #{})
 
-(defmethod mi/can-read? ::dispatches-on-dynamic
-  ([fake-model]
-   (contains? *readable-card-ids* (:id fake-model)))
-  ([_fake-model id]
-   (contains? *readable-card-ids* id)))
+(methodical/defmethod t2/simple-hydrate [::dispatches-on-dynamic :can_read]
+  [_model k fake-model]
+  (vary-meta fake-model assoc k (boolean (contains? *readable-card-ids* (:id fake-model)))))
 
 (defn- card-model
   "Return a card \"model\" that reports as a `::dispatches-on-dynamic` model type, and checking `mi/can-write?` checks
@@ -2785,6 +2784,27 @@
                 :updated_at                 true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-2))))))))
 
+(deftest update-cards-empty-card-title-test
+  (testing "PUT /api/dashboard/:id keeps an empty card.title, so a cleared title stays cleared (metabase#12013, metabase#36788)"
+    (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                   :model/Card          {card-id :id}      {:name "Orders"}
+                   :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id, :card_id card-id}]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
+        (move-cards-to-dashboard-collection! dashboard-id [card-id])
+        (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
+                              {:dashcards [{:id                     dashcard-id
+                                            :size_x                 4
+                                            :size_y                 4
+                                            :col                    0
+                                            :row                    0
+                                            :visualization_settings {:card.title ""}}]
+                               :tabs      []})
+        (is (= {:card.title ""}
+               (-> (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))
+                   :dashcards
+                   first
+                   :visualization_settings)))))))
+
 (deftest update-cards-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
@@ -3022,11 +3042,7 @@
   tests that return byte arrays (such as things that work with query hashes), since identical arrays are not
   considered equal."
   [x]
-  (walk/postwalk (fn [form]
-                   (if (instance? (Class/forName "[B") form)
-                     (codec/base64-encode form)
-                     form))
-                 x))
+  (match/replace-all x #'bytes? (codec/base64-encode &match)))
 
 (defn- fake-query [x]
   (lib/native-query (lib.tu/mock-metadata-provider {:database (assoc meta/database :id 55001)})
@@ -3171,19 +3187,19 @@
                                                                           :display-name "Name"
                                                                           :id           "_CARD_ID_"
                                                                           :type         :dimension
-                                                                          :dimension    [:field (mt/id :categories :name) nil]
+                                                                          :field-id     (mt/id :categories :name)
                                                                           :widget-type  :string/=}
                                                               "notname"  {:name         "notname"
                                                                           :display-name "Not Name"
                                                                           :id           "_CARD_NOTNAME_"
                                                                           :type         :dimension
-                                                                          :dimension    [:field (mt/id :categories :name) nil]
+                                                                          :field-id     (mt/id :categories :name)
                                                                           :widget-type  :string/!=}
                                                               "contains" {:name         "contains"
                                                                           :display-name "Name Contains"
                                                                           :id           "_CARD_CONTAINS_"
                                                                           :type         :dimension
-                                                                          :dimension    [:field (mt/id :categories :name) nil]
+                                                                          :field-id     (mt/id :categories :name)
                                                                           :widget-type  :string/contains
                                                                           :options      {:case-sensitive false}}}}}}
       :model/DashboardCard dashcard {:card_id            (:id card)
@@ -4019,7 +4035,7 @@
                                                           :display-name "id"
                                                           :type         :dimension
                                                           :widget-type  :id
-                                                          :dimension    [:field (mt/id :people :id) nil]}})}}
+                                                          :field-id     (mt/id :people :id)}})}}
                  :model/Dashboard {dashboard-id :id}
                  {:parameters [{:name "id" :slug "id" :id "_id_" :type param-type}]}
                  :model/DashboardCard {dashcard-id :id}
@@ -4219,7 +4235,7 @@
                                                            :name         "cat"
                                                            :display-name "Cat"
                                                            :type         :dimension
-                                                           :dimension    [:field (mt/id :products :category) nil]
+                                                           :field-id     (mt/id :products :category)
                                                            :widget-type  :string/=
                                                            :default      ["Gizmo"]}}})]
         (mt/with-temp [:model/Card          {card-id :id} {:dataset_query query}
@@ -5106,28 +5122,28 @@
                                                                              :display-name "Id"
                                                                              :id           "_id_"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :people :id) nil]
+                                                                             :field-id     (mt/id :people :id)
                                                                              :widget-type  :id
                                                                              :default      nil}
                                                                   "name"    {:name         "name"
                                                                              :display-name "Name"
                                                                              :id           "_name_"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :people :name) nil]
+                                                                             :field-id     (mt/id :people :name)
                                                                              :widget-type  :category
                                                                              :default      nil}
                                                                   "source"  {:name         "source"
                                                                              :display-name "Source"
                                                                              :id           "_source_"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :people :source) nil]
+                                                                             :field-id     (mt/id :people :source)
                                                                              :widget-type  :category
                                                                              :default      nil}
                                                                   "user_id" {:name         "user_id"
                                                                              :display-name "User"
                                                                              :id           "_user_id_"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :orders :user_id) nil]
+                                                                             :field-id     (mt/id :orders :user_id)
                                                                              :widget-type  :id
                                                                              :default      nil}}}
                                                       :database (mt/id)}
@@ -5136,13 +5152,13 @@
      :model/DashboardCard       {dashcard-id-1 :id} {:dashboard_id dashboard-id,
                                                      :card_id card-id-1
                                                      :visualization_settings {:column_settings
-                                                                              {"[\"name\", 0]" ;; FE reference that must be json formatted
-                                                                               {:click_behavior {:type :link
+                                                                              {"[\"name\",\"ID\"]" ;; FE reference that must be json formatted
+                                                                               {:click_behavior {:type "link"
                                                                                                  :linkType "dashboard"
                                                                                                  :targetId link-dash}}}}}
      :model/DashboardCard       _                   {:dashboard_id dashboard-id,
                                                      :card_id card-id-2
-                                                     :visualization_settings {:click_behavior {:type :link
+                                                     :visualization_settings {:click_behavior {:type "link"
                                                                                                :linkType "question"
                                                                                                :targetId link-card}}}
      :model/Card                {series-id-1 :id}   {:name "Series Card 1"
@@ -5163,17 +5179,15 @@
                             {:id (mt/id :orders :user_id)}
                             {:id (mt/id :people :source)}
                             {:id (mt/id :people :name)}])
-          :tables (concat (sort-by :id
-                                   [{:id (mt/id :categories)}
-                                    {:id (mt/id :users)}
-                                    {:id (mt/id :checkins)}
-                                    {:id (mt/id :reviews)}
-                                    {:id (mt/id :products)
-                                     :fields sequential?}
-                                    {:id (mt/id :venues)}])
-                          [{:id (str "card__" card-id-2)
-                            :fields sequential?}])
-          :cards [{:id link-card}]
+          :tables (sort-by :id
+                           [{:id (mt/id :categories)}
+                            {:id (mt/id :users)}
+                            {:id (mt/id :checkins)}
+                            {:id (mt/id :reviews)}
+                            {:id (mt/id :products)
+                             :fields sequential?}
+                            {:id (mt/id :venues)}])
+          :cards (sort-by :id [{:id card-id-2} {:id link-card}])
           :databases [{:id (mt/id) :engine string?}]
           :dashboards [{:id link-dash}]}
          (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))))))
@@ -5195,10 +5209,10 @@
          card-id-1
          #(testing "Before delete"
             (is (=?
-                 {:cards      empty?
+                 {:cards      [{:id card-id-1}]
                   :fields     empty?
                   :dashboards empty?
-                  :tables     [{:id (str "card__" card-id-1)}]
+                  :tables     [{:id (mt/id :products)}]
                   :databases  [{:id (mt/id) :engine string?}]}
                  (query-metadata))))
          ;; After delete, card-id-2 still exists on the dashboard but its source is gone.
@@ -5237,13 +5251,11 @@
 
 (deftest dashboard-query-metadata-no-tables-test
   (testing "Don't throw an error if users doesn't have access to any tables #44043"
-    (let [original-can-read? mi/can-read?]
-      (mt/with-temp [:model/Dashboard dash {}]
-        (with-redefs [mi/can-read? (fn [& args]
-                                     (if (= :model/Table (apply mi/dispatch-on-model args))
-                                       false
-                                       (apply original-can-read? args)))]
-          (is (map? (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id dash))))))))))
+    (mt/with-temp [:model/Dashboard dash {}]
+      (mt/with-dynamic-fn-redefs [mi/can-read? (fn [instance]
+                                                 (and (not (t2/instance-of? :model/Table instance))
+                                                      (:can_read (meta instance))))]
+        (is (map? (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id dash)))))))))
 
 (deftest dashboard-field-params-field-names-test
   (mt/with-temp
@@ -5280,10 +5292,10 @@
   (let [original-admp   (mt/original-fn #'lib.metadata.jvm/application-database-metadata-provider-factory)
         uncached-calls  (atom -1)
         expected        [{:name "Some dashboard"}
-                         {:tables     [{} {}]
+                         {:tables     [{}]
                           :databases  [{}]
                           :fields     []
-                          :cards      []
+                          :cards      [{:name "Card attached to dashcard"}]
                           :dashboards []}]]
     (mt/with-temp [:model/Dashboard     dash      {:name "Some dashboard"}
                    :model/Card          card      {:name "Card attached to dashcard"
@@ -6296,7 +6308,7 @@
     (let [mp       (mt/metadata-provider)
           cat-tag  (-> (lib/native-query mp "select count(*) from products where {{cat}}")
                        (lib/with-template-tags {"cat" {:id "_CAT_TAG_" :name "cat" :display-name "Cat" :type :dimension
-                                                       :dimension (lib/ref (lib.metadata/field mp (mt/id :products :category)))
+                                                       :field-id  (mt/id :products :category)
                                                        :widget-type :string/=}}))]
       (mt/with-temp [:model/Card card {:dataset_query cat-tag}
                      :model/Dashboard dashboard {:parameters [{:id "p" :type :string/= :name "p" :slug "p"}]}

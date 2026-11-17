@@ -351,10 +351,10 @@
    :parameterMapping
    {(json/encode target)
     {:id     (json/encode target)
-     :source {:type :column
+     :source {:type "column"
               :id   "ID"
               :name "ID"}
-     :target {:type      :dimension
+     :target {:type      "dimension"
               :id        (json/encode target)
               :dimension target}}}})
 
@@ -380,7 +380,7 @@
                                                   [:table (mt/id :orders)]
                                                   [:table (mt/id :reviews)])
             (let [viz     (:visualization_settings (t2/select-one :model/DashboardCard :id dashcard-id))
-                  viz-key (keyword (json/encode target))]
+                  viz-key (json/encode target)]
               (is (=? {:click_behavior
                        {:targetId target-card-id
                         :parameterMapping

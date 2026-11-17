@@ -110,7 +110,6 @@
 (defmethod serialization/spec :model/Setting [_]
   {:schema    ::settings.schema/external-setting
    :identity  [:key]
-   :primary-key :key
    :copy      [:value]
    :skip      [:value_with_aad]
    :transform {:key {:export (fn [_ _ ks _] (mapv name ks))
@@ -310,8 +309,8 @@
   [setting-keyword-or-name]
   (contains? @registered-settings (keyword setting-keyword-or-name)))
 
-;; The actual watch that triggers this happens in [[metabase.settings.models.setting.cache/cache*]] because the cache might be
-;; swapped out depending on which app DB we have in play
+;; The actual watch that triggers this is added in [[metabase.settings.models.setting.cache/new-state]], because each app
+;; DB has its own cache
 ;;
 ;; this isn't really something that needs to be a multimethod, but I'm using it because the logic can't really live in
 ;; [[metabase.settings.models.setting.cache]] but the cache has to live here; this is a good enough way to prevent circular
@@ -563,10 +562,10 @@
   ^String [setting-name-str]
   (if config/*disable-setting-cache*
     (settings.db/setting-value setting-name-str)
-    (do
+    (let [cache-state (setting.cache/current-state)]
       ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
-      (setting.cache/restore-cache-if-needed!)
-      (let [cache (setting.cache/cache)]
+      (setting.cache/restore-cache-if-needed! :state cache-state)
+      (let [cache (setting.cache/cache cache-state)]
         (if (nil? cache)
           ;; nil if we returned early above, and the cache is still being restored - in that case hit the db
           (settings.db/setting-value setting-name-str)
@@ -609,7 +608,7 @@
     (when init
       (when (not (app-db/db-is-set-up?))
         (throw (ex-info "Cannot initialize setting before the db is set up" {:setting setting})))
-      ;; We do not need to interact with the restore-cache-lock as it is OK to race with it.
+      ;; We do not need to interact with the settings cache state's `:restore-lock`, as it is OK to race with it.
       (if-not (.tryLock init-lock 30 TimeUnit/SECONDS)
         (throw (ex-info "Unable to get initialization lock" {:setting setting-definition-or-name}))
         (try
@@ -1069,11 +1068,18 @@
          (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." s-name))))))))
 
 (defn validate-settable-for-db!
-  "Check whether the given setting can be set for the given database."
+  "Check whether the given setting can be set for the given database. `database` is the database as it would be after
+  the write, so its `:settings` hold the new value; a `:string` setting refuses a non-string one."
   [setting-definition-or-name database driver-supports?]
   (let [{:keys [driver-feature] :as setting} (resolve-setting setting-definition-or-name)
-        s-name (setting-name setting)]
+        s-name (setting-name setting)
+        value  (get-in database [:settings (keyword s-name)])]
     (validate-settable! setting)
+    ;; Database-local values skip the setter, so nothing else checks their type.
+    (when (and (= :string (:type setting)) (some? value) (not (string? value)))
+      (throw (ex-info (tru "Setting {0} must be a string." s-name)
+                      {:setting     s-name
+                       :database-id (:id database)})))
     (when (and driver-feature (not (driver-supports? database driver-feature)))
       (throw (ex-info (tru "Setting {0} requires driver feature {1}, but the database does not support it" s-name driver-feature)
                       {:setting s-name

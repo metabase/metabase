@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform :as transform]
@@ -13,6 +14,10 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(events/derive! :event/transform-tag-create :metabase/event)
+(events/derive! :event/transform-tag-update :metabase/event)
+(events/derive! :event/transform-tag-delete :metabase/event)
+
 (methodical/defmethod t2/table-name :model/TransformTag [_model] :transform_tag)
 
 (doto :model/TransformTag
@@ -20,25 +25,24 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
-(defmethod mi/can-read? :model/TransformTag
-  ([_instance]
-   (api/entitled-data-analyst?))
-  ([_model _pk]
-   (api/entitled-data-analyst?)))
+(methodical/defmethod t2/simple-hydrate [:model/TransformTag :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (api/entitled-data-analyst?))))
 
-(defmethod mi/can-write? :model/TransformTag
-  ([instance]
-   (or api/*is-superuser?*
-       (and (api/entitled-data-analyst?)
-            (let [transforms (transform/transforms-with-tags [(:id instance)])]
-              (every? mi/can-write? transforms)))))
-  ([_model pk]
-   (when-let [tag (transforms.db/tag pk)]
-     (mi/can-write? tag))))
+(methodical/defmethod t2/simple-hydrate [:model/TransformTag :can_write]
+  [_model k instance]
+  (assoc instance k
+         (boolean
+          (and (not (remote-sync/read-only?))
+               (or api/*is-superuser?*
+                   (and (api/entitled-data-analyst?)
+                        (let [transforms (transform/transforms-with-tags [(:id instance)])]
+                          (every? mi/can-write? (t2/hydrate transforms :can_write)))))))))
 
 (defmethod mi/can-create? :model/TransformTag
   [_model _instance]
-  (api/entitled-data-analyst?))
+  (and (not (remote-sync/read-only?))
+       (api/entitled-data-analyst?)))
 
 (mu/defn tag-name-exists? :- :boolean
   "Check if a tag with the given name already exists"
@@ -88,7 +92,7 @@
           ;; Fetch transforms and check can-write? for each
           transforms (when (seq transform-ids)
                        (transforms.db/transforms transform-ids))
-          transform-id->can-write (into {} (map (juxt :id mi/can-write?)) transforms)
+          transform-id->can-write (into {} (map (juxt :id mi/can-write?)) (t2/hydrate transforms :can_write))
           ;; Build tag-id -> can_run map
           tag-id->transform-ids (reduce (fn [acc {:keys [tag_id transform_id]}]
                                           (update acc tag_id (fnil conj #{}) transform_id))
@@ -122,3 +126,9 @@
 (t2/define-before-delete :model/TransformTag [tag]
   (events/publish-event! :event/transform-tag-delete {:object tag})
   tag)
+
+(defmethod remote-sync/spec :model/TransformTag
+  [_model]
+  {:synced-items           transforms.db/synced-transform-tag-items
+   :synced-filter-clause   transforms.db/synced-transform-tags-clause
+   :built-in-filter-clause transforms.db/built-in-transform-tags-clause})

@@ -5,8 +5,10 @@ import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCollectionItemsEndpoint,
+  setupLibraryEndpoints,
 } from "__support__/server-mocks";
-import { fireEvent, getIcon, screen, waitFor } from "__support__/ui";
+import { fireEvent, getIcon, screen, waitFor, within } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
 import { METAKEY, isTouchDevice } from "metabase/utils/browser";
 import { checkNotNull } from "metabase/utils/types";
@@ -21,6 +23,7 @@ import type { CardType, IconName } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
+  createMockCollectionItem,
   createMockSearchResult,
 } from "metabase-types/api/mocks";
 import {
@@ -97,6 +100,7 @@ async function setup(opts: SetupOpts = {}) {
 
 const setupEmptyQuery = async () => {
   const question = Question.create({
+    metadata: createMockMetadata(),
     DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
   });
   const query = question.query();
@@ -200,6 +204,7 @@ describe("DataStep", () => {
       createMockCardQueryMetadata({ databases: [createSampleDatabase()] }),
     );
     const emptyQuery = Question.create({
+      metadata: createMockMetadata(),
       DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
     }).query();
     const { getNextQuery } = await setup({
@@ -223,6 +228,78 @@ describe("DataStep", () => {
     await waitFor(() => {
       expect(Lib.allSourceCardIds(getNextQuery())).toEqual([card.id]);
     });
+  });
+
+  it("should show the contents of the clicked collection when collections share a name (metabase#24660)", async () => {
+    const parentCollections = [31, 32].map((id) =>
+      createMockCollectionItem({
+        id,
+        model: "collection",
+        name: "Parent",
+        collection_id: null,
+        location: "/",
+        here: ["card"],
+        below: ["card"],
+      }),
+    );
+    setupCollectionItemsEndpoint({
+      collection: { id: "root" },
+      collectionItems: parentCollections,
+    });
+    setupCollectionItemsEndpoint({
+      collection: { id: 31 },
+      collectionItems: [
+        createMockCollectionItem({
+          id: 1,
+          model: "card",
+          name: "Orders",
+          collection_id: 31,
+        }),
+      ],
+    });
+    setupCollectionItemsEndpoint({
+      collection: { id: 32 },
+      collectionItems: [
+        createMockCollectionItem({
+          id: 2,
+          model: "card",
+          name: "Orders, Count",
+          collection_id: 32,
+        }),
+      ],
+    });
+    setupLibraryEndpoints();
+    await setupEmptyQuery();
+
+    await userEvent.click(
+      within(await screen.findByTestId("mini-picker")).getByText("Browse all"),
+    );
+    const modal = await screen.findByRole("dialog");
+    await userEvent.click(await within(modal).findByText("Our analytics"));
+    const modalParents = await within(modal).findAllByText("Parent");
+    expect(modalParents).toHaveLength(2);
+    await userEvent.click(modalParents[1]);
+    expect(await within(modal).findByText("Orders, Count")).toBeInTheDocument();
+    await userEvent.click(modalParents[0]);
+    expect(await within(modal).findByText("Orders")).toBeInTheDocument();
+    expect(within(modal).queryByText("Orders, Count")).not.toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    await userEvent.click(
+      screen.getByPlaceholderText(/search for tables and more/i),
+    );
+    const miniPicker = await screen.findByTestId("mini-picker");
+    await userEvent.click(await within(miniPicker).findByText("Our analytics"));
+    const miniPickerParents = await within(miniPicker).findAllByText("Parent");
+    expect(miniPickerParents).toHaveLength(2);
+    await userEvent.click(miniPickerParents[1]);
+    expect(
+      await within(miniPicker).findByText("Orders, Count"),
+    ).toBeInTheDocument();
+    expect(within(miniPicker).queryByText("Orders")).not.toBeInTheDocument();
   });
 
   it("should remove joins when changing a table", async () => {
@@ -343,6 +420,39 @@ describe("DataStep", () => {
       expect(getNextColumn("ID").selected).toBeTruthy();
       expect(getNextColumn("TAX").selected).toBeFalsy();
       expect(getNextColumn("TOTAL").selected).toBeTruthy();
+    });
+
+    it("should keep a custom column when de-selecting a table column (metabase#20229)", async () => {
+      const baseQuery = Lib.createTestQuery(
+        SAMPLE_PROVIDER,
+        DEFAULT_TEST_QUERY,
+      );
+      const total = columnFinder(
+        baseQuery,
+        Lib.expressionableColumns(baseQuery, 0),
+      )("ORDERS", "TOTAL");
+      const query = Lib.expression(
+        baseQuery,
+        0,
+        "Adjective",
+        Lib.expressionClause("case", [
+          Lib.expressionClause(">", [total, 100]),
+          "expensive",
+          "cheap",
+        ]),
+      );
+      const step = createMockNotebookStep({ query });
+      const { getNextQuery } = await setup({ step });
+
+      await userEvent.click(screen.getByLabelText("Pick columns"));
+      await userEvent.click(screen.getByLabelText("Tax"));
+
+      const nextQuery = getNextQuery();
+      const returnedColumnNames = Lib.returnedColumns(nextQuery, 0).map(
+        (column) => Lib.displayInfo(nextQuery, 0, column).name,
+      );
+      expect(returnedColumnNames).toContain("Adjective");
+      expect(returnedColumnNames).not.toContain("TAX");
     });
 
     it("should allow selecting all columns", async () => {

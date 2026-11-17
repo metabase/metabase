@@ -105,8 +105,8 @@ export const LIST_DEFINITION: VisualizationDefinition = {
       },
       click_behavior: {},
       text_align: {
-        title: t`Align`,
-        widget: "select",
+        title: t`Alignment`,
+        widget: "segmentedControl",
         getDefault: (column) => {
           const baseColumn = column?.remapped_to_column ?? column;
           return isNumber(baseColumn) || isCoordinate(baseColumn)
@@ -116,8 +116,8 @@ export const LIST_DEFINITION: VisualizationDefinition = {
         props: {
           options: [
             { name: t`Left`, value: "left" },
-            { name: t`Right`, value: "right" },
             { name: t`Middle`, value: "middle" },
+            { name: t`Right`, value: "right" },
           ],
         },
       },
@@ -166,12 +166,12 @@ export const LIST_DEFINITION: VisualizationDefinition = {
     }
     if (!column.semantic_type) {
       defaultValue = "auto";
-      options.push({ name: t`Automatic`, value: "auto" });
+      options.push({ name: t`Choose automatically`, value: "auto" });
     }
 
     if (options.length > 1) {
       settings["view_as"] = {
-        title: t`Display as`,
+        title: t`Display as text, link, or image`,
         widget: options.length === 2 ? "radio" : "select",
         getDefault: () => defaultValue,
         props: {

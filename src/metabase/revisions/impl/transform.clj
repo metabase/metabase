@@ -22,9 +22,12 @@
 (defmethod revision/serialize-instance :model/Transform [_model _id instance]
   (apply dissoc instance excluded-columns-for-transform-revision))
 
-(defmethod revision/revision-readable? :model/Transform
-  [_model object]
+(defmethod revision/revisions-readable? :model/Transform
+  [_model objects]
   ;; A transform is readable only to callers entitled to the source database it reads from, so each historical
   ;; revision is authorized against the source *it* recorded, not the current one. The snapshot is not a live row,
   ;; so pass `can-read?` only the keys the closed create schema accepts.
-  (mi/can-read? (t2/instance :model/Transform (select-keys object snapshot-keys-for-read-check))))
+  (mapv mi/can-read? (t2/hydrate (mapv #(t2/instance :model/Transform
+                                                 (select-keys % snapshot-keys-for-read-check))
+                                    objects)
+                              :can_read)))

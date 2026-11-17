@@ -68,7 +68,9 @@
         pulses               (->> (models.pulse/retrieve-pulses {:archived?    archived?
                                                                  :dashboard-id dashboard-id
                                                                  :user-id      (when creator-or-recipient api/*current-user-id*)})
-                                  (filter (if creator-or-recipient mi/can-read? mi/can-write?))
+                                  (#(if creator-or-recipient
+                                      (filter mi/can-read? (t2/hydrate % :can_read))
+                                      (filter mi/can-write? (t2/hydrate % :can_write))))
                                   models.pulse/maybe-filter-pulses-recipients)
         pulses               (if creator-or-recipient
                                (map models.pulse/maybe-strip-sensitive-metadata pulses)
@@ -226,7 +228,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/let-404 [pulse (models.pulse/retrieve-pulse id)]
-    (api/check-403 (mi/can-read? pulse))
+    (api/check-403 (mi/can-read? (t2/hydrate pulse :can_read)))
     (-> pulse
         models.pulse/maybe-filter-pulse-recipients
         models.pulse/maybe-strip-sensitive-metadata
@@ -269,10 +271,12 @@
 (defn check-card-read-permissions
   "Users can only create a pulse for `cards` they have access to."
   [cards]
-  (doseq [card cards
-          :let [card-id (u/the-id card)]]
-    (assert (integer? card-id))
-    (api/read-check :model/Card card-id)))
+  (let [card-ids (mapv u/the-id cards)]
+    (doseq [card-id card-ids]
+      (assert (integer? card-id)))
+    (let [id->card (into {} (map (juxt :id identity)) (t2/hydrate (pulse.db/cards card-ids) :can_read))]
+      (doseq [card-id card-ids]
+        (api/read-check (get id->card card-id))))))
 
 (defn- drop-unchanged-collection-keys
   "Remove `:collection_id` and `:collection_position` from `pulse-updates` of a dashboard subscription.
@@ -399,11 +403,7 @@
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/test"
+(api.macros/defendpoint :post "/test" :- [:map {:closed true} [:ok [:= true]]]
   "Test send an unsaved pulse."
   [_route-params
    _query-params
@@ -443,11 +443,7 @@
       (pulse.send/send-pulse! pulse)))
   {:ok true})
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id/subscription"
+(api.macros/defendpoint :delete "/:id/subscription" :- ::api/generic-204-no-content
   "For users to unsubscribe themselves from a pulse subscription."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]

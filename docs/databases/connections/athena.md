@@ -1,5 +1,6 @@
 ---
 title: Amazon Athena
+summary: Connect Metabase to Amazon Athena, including every connection and sync setting and the IAM permissions Metabase needs.
 ---
 
 # Amazon Athena

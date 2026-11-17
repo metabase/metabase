@@ -158,7 +158,7 @@ function findEventRow() {
 }
 
 function getTab(section: Section) {
-  return screen.getByRole("link", { name: section.label });
+  return screen.getByRole("tab", { name: section.label });
 }
 
 function createAuditDatabase(section: Section, missingView: boolean) {
@@ -251,6 +251,7 @@ function setup({
     databases: [database],
     tables: database.tables ?? [],
     fields: database.tables?.flatMap((table) => table.fields ?? []) ?? [],
+    cards: [],
   });
   setupUsersEndpoints([createMockUser({ id: 1 })]);
   setupGroupsEndpoint([createMockGroup({ id: 1 }), createMockGroup({ id: 2 })]);
@@ -308,7 +309,7 @@ describe.each(SECTIONS)("$label tab count", (section) => {
 
     expect(await within(getTab(section)).findByText("137")).toBeVisible();
     expect(
-      within(screen.getByRole("link", { name: "Usage" })).queryByText("137"),
+      within(screen.getByRole("tab", { name: "Usage" })).queryByText("137"),
     ).not.toBeInTheDocument();
     expect(await findEventRow()).toBeVisible();
     expect(countCalls()).toHaveLength(1);
@@ -388,10 +389,10 @@ describe("audit tab count freshness and failures", () => {
     const pending = defer<Dataset>();
     setup({ getCountResponse: () => pending.promise });
     expect(await findEventRow()).toBeVisible();
-    await userEvent.click(screen.getByRole("link", { name: "Usage" }));
-    expect(screen.getByRole("link", { name: "Usage" })).toHaveAttribute(
-      "aria-current",
-      "page",
+    await userEvent.click(screen.getByRole("tab", { name: "Usage" }));
+    expect(screen.getByRole("tab", { name: "Usage" })).toHaveAttribute(
+      "aria-selected",
+      "true",
     );
     await act(async () => pending.resolve(countDataset(137)));
     expect(await within(getTab(CLI_SECTION)).findByText("137")).toBeVisible();

@@ -10,4 +10,4 @@ Do not add filters the user did not request, even when a filter looks like a sen
 
 ## One query reads one database
 
-Every table, saved question, model and metric belongs to one database in Metabase, shown by its `database_id` and `database_name`. A query can join tables from different schemas of one database, but don't combine data from two databases in Metabase (two different `database_id`s) in one query. When the data the user asks for is in two databases in Metabase, tell the user that you can't combine it in one query, and say what you can do instead.
+Every table, saved question, model and metric belongs to one database in Metabase, shown by its `database_id` and `database_name`. A query can join tables from different schemas of one database, but don't combine data from two databases in Metabase (two different `database_id`s) in one query.

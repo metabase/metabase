@@ -86,11 +86,9 @@ describe("issue 33079", () => {
 });
 
 describe("issue 34414", () => {
-  const { INVOICES_ID } = SAMPLE_DATABASE;
-
-  const INVOICE_MODEL_DETAILS = {
-    name: "Invoices Model",
-    query: { "source-table": INVOICES_ID },
+  const PRODUCTS_MODEL_DETAILS = {
+    name: "Products Model",
+    query: { "source-table": PRODUCTS_ID },
     type: "model",
   };
 
@@ -99,8 +97,8 @@ describe("issue 34414", () => {
     cy.signInAsNormalUser();
   });
 
-  it("populate field values after re-adding filter on virtual table field (metabase#34414)", () => {
-    H.createQuestion(INVOICE_MODEL_DETAILS).then((response) => {
+  it("populate field values after re-adding filter on model field (metabase#34414)", () => {
+    H.createQuestion(PRODUCTS_MODEL_DETAILS).then((response) => {
       const modelId = response.body.id;
 
       H.visitQuestionAdhoc({
@@ -116,24 +114,25 @@ describe("issue 34414", () => {
     H.filter({ mode: "notebook" });
 
     H.popover().within(() => {
-      cy.findByText("Plan").click();
-      assertPlanFieldValues();
+      cy.findByText("Category").click();
+      assertCategoryFieldValues();
 
       cy.log("Open filter again");
       cy.findByLabelText("Back").click();
 
-      cy.log("Open plan field again");
-      cy.findByText("Plan").click();
+      cy.log("Open category field again");
+      cy.findByText("Category").click();
 
-      assertPlanFieldValues();
+      assertCategoryFieldValues();
     });
   });
 });
 
-function assertPlanFieldValues() {
-  cy.findByText("Basic").should("be.visible");
-  cy.findByText("Business").should("be.visible");
-  cy.findByText("Premium").should("be.visible");
+function assertCategoryFieldValues() {
+  cy.findByText("Doohickey").should("be.visible");
+  cy.findByText("Gadget").should("be.visible");
+  cy.findByText("Gizmo").should("be.visible");
+  cy.findByText("Widget").should("be.visible");
 }
 
 describe("issue 38354", { tags: "@external" }, () => {

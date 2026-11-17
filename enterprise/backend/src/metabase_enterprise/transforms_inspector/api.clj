@@ -13,9 +13,7 @@
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
-   [metabase.server.core :as server]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.core :as transforms.core]
@@ -115,7 +113,7 @@
     result))
 
 (api.macros/defendpoint :post "/:id/inspect/:lens-id/query"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Execute a query in the context of a transform inspector lens."
   [{:keys [id lens-id]} :- [:map {:closed true}
                             [:id ms/PositiveInt]
