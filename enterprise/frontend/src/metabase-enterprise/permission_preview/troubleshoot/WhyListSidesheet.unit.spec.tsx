@@ -169,7 +169,9 @@ describe("WhyListSidesheet", () => {
     expect(screen.getByText("Opening this dashboard")).toBeInTheDocument();
     expect(getVisibleTexts("Collection")).toHaveLength(1);
     expect(getVisibleTexts("Sales reports")).toHaveLength(1);
-    expect(screen.getByText("Curate · from Sales")).toBeInTheDocument();
+    expect(
+      getRowStatus("Collection Sales reports from Sales"),
+    ).toHaveTextContent("Curate");
 
     expect(screen.getByText("Data in this dashboard")).toBeInTheDocument();
     expect(screen.getByTitle("state TX → People.State")).toHaveTextContent(
@@ -178,9 +180,19 @@ describe("WhyListSidesheet", () => {
     expect(screen.getByText("Rules set by Sales")).toBeInTheDocument();
 
     expect(screen.getByText("Exploring this dashboard")).toBeInTheDocument();
-    expect(
-      screen.getByText("Query builder only · from Sales"),
-    ).toBeInTheDocument();
+    expect(getRowStatus("Orders from Sales")).toHaveTextContent(
+      "Query builder only",
+    );
+  });
+
+  it("makes only a row's status a button, with its group on a line of its own under the name", async () => {
+    setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
+
+    const status = await findRowStatus("Collection Sales reports from Sales");
+
+    expect(status).toHaveTextContent("Curate");
+    expect(status).not.toHaveTextContent("from Sales");
+    expect(status).not.toHaveTextContent("Sales reports");
   });
 
   it("says on hover or focus that the dashboard's collection decides", async () => {
@@ -291,9 +303,8 @@ describe("WhyListSidesheet", () => {
     expect(getToggle("Orders")).toHaveAttribute("aria-expanded", "true");
     expect(getVisibleTexts("Rules set by Sales")).toHaveLength(1);
     // a blocked table has no attributes to fold: it's a line of its own, always shown
-    expect(
-      screen.getByRole("button", { name: /Reviews.*Blocked/ }),
-    ).not.toHaveAttribute("aria-expanded");
+    expect(getRowStatus("Reviews")).toHaveTextContent("Blocked");
+    expect(getRowStatus("Reviews")).not.toHaveAttribute("aria-expanded");
     expect(getToggle("1 table")).toHaveAttribute("aria-expanded", "false");
     expect(getVisibleTexts("Accounts")).toHaveLength(0);
 
@@ -329,9 +340,7 @@ describe("WhyListSidesheet", () => {
       tableIds: [ORDERS_ID, REVIEWS_ID],
     });
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: /Reviews.*Blocked/ }),
-    );
+    await userEvent.click(await findRowStatus("Reviews"));
 
     expect(
       screen.getByText(
@@ -348,9 +357,7 @@ describe("WhyListSidesheet", () => {
     await screen.findByText("Data in this dashboard");
     await userEvent.click(getToggle("1 table"));
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: /Accounts.*Full access/ }),
-    );
+    await userEvent.click(await findRowStatus("Accounts"));
 
     expect(
       screen.getByText(
@@ -363,7 +370,7 @@ describe("WhyListSidesheet", () => {
     setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
 
     await userEvent.click(
-      await screen.findByRole("button", { name: /Curate · from Sales/ }),
+      await findRowStatus("Collection Sales reports from Sales"),
     );
 
     expect(
@@ -406,9 +413,7 @@ describe("WhyListSidesheet", () => {
     });
     await userEvent.click(await findAllPermissions());
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: /Orders\s*Create queries/ }),
-    );
+    await userEvent.click(await findRowStatus("Orders Create queries"));
 
     expect(
       screen.getByText(
@@ -473,9 +478,7 @@ describe("WhyListSidesheet", () => {
       tableIds: [ORDERS_ID, ACCOUNTS_ID],
     });
     await userEvent.click(await findAllPermissions());
-    await userEvent.click(
-      await screen.findByRole("button", { name: /Orders\s*View data/ }),
-    );
+    await userEvent.click(await findRowStatus("Orders View data"));
 
     await userEvent.click(screen.getByRole("button", { name: "Back" }));
 
@@ -490,9 +493,7 @@ describe("WhyListSidesheet", () => {
     await screen.findByText("Data in this dashboard");
     await userEvent.click(getToggle("Orders"));
     await userEvent.click(getToggle("1 table"));
-    await userEvent.click(
-      await screen.findByRole("button", { name: /Accounts.*Full access/ }),
-    );
+    await userEvent.click(await findRowStatus("Accounts"));
 
     await userEvent.click(screen.getByRole("button", { name: "Back" }));
 
@@ -506,9 +507,7 @@ describe("WhyListSidesheet", () => {
     const scrollContainer = getScrollContainer();
     scrollContainer.scrollTop = 120;
 
-    await userEvent.click(
-      screen.getByRole("button", { name: /Curate · from Sales/ }),
-    );
+    await userEvent.click(getRowStatus("Collection Sales reports from Sales"));
     expect(scrollContainer.scrollTop).toBe(0);
     await userEvent.click(screen.getByRole("button", { name: "Back" }));
 
@@ -793,6 +792,19 @@ function getCollection(
   access: string,
 ): PreviewCollection {
   return { id, name, depth, source: "group", access: getCell(access) };
+}
+
+/** A row's status, its only button; the row is named by its name and the line under it. */
+function getRowStatus(rowName: string) {
+  return within(screen.getByRole("group", { name: rowName })).getByRole(
+    "button",
+  );
+}
+
+async function findRowStatus(rowName: string) {
+  return within(await screen.findByRole("group", { name: rowName })).getByRole(
+    "button",
+  );
 }
 
 /** All permissions on a dashboard with two tables: one value per table more than the cards above it show. */

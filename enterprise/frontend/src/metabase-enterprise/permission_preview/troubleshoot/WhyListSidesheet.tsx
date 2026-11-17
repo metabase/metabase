@@ -13,6 +13,7 @@ import {
   SidesheetCard,
   SidesheetCardSection,
 } from "metabase/common/components/Sidesheet";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import type { PermissionOption } from "metabase/permissions";
 import {
   Alert,
@@ -440,33 +441,29 @@ function BlockedCardRow({
   const [table] = card.tables;
   const tableNames = card.tables.map((target) => target.title).join(", ");
   return (
-    <Flex align="center" gap="sm" py="sm" wrap="nowrap">
-      <Stack gap={0} flex={1} miw={0}>
-        <Tooltip label={card.name}>
-          <Text truncate="end">{card.name}</Text>
-        </Tooltip>
-        {table != null && (
-          <Text size="sm" c="text-secondary" truncate="end">
-            {ngettext(
+    <Row
+      name={<RowName name={card.name} />}
+      detail={
+        table != null
+          ? ngettext(
               msgid`${tableNames} table blocked`,
               `${tableNames} tables blocked`,
               card.tables.length,
-            )}
-          </Text>
-        )}
-      </Stack>
-      <UnstyledButton
-        className={S.status}
-        disabled={table == null}
-        onClick={() => table != null && onOpen(table)}
-      >
-        <Flex align="center" gap="xs">
-          <Icon name="close" c="feedback-negative" />
+            )
+          : undefined
+      }
+      status={
+        table != null ? (
+          <StatusButton
+            option={getPreviewOption(table.column, table.cell.value)}
+            label={t`Can't load`}
+            onClick={() => onOpen(table)}
+          />
+        ) : (
           <Text>{t`Can't load`}</Text>
-          {table != null && <Icon name="chevronright" c="text-secondary" />}
-        </Flex>
-      </UnstyledButton>
-    </Flex>
+        )
+      }
+    />
   );
 }
 
@@ -682,15 +679,12 @@ function StatusLink({
   target: WhyTarget;
   onClick: () => void;
 }) {
-  const option = getPreviewOption(target.column, target.cell.value);
   return (
-    <UnstyledButton className={S.status} onClick={onClick}>
-      <Flex align="center" gap="xs">
-        <Icon name={option.icon} c={option.iconColor} />
-        <Text>{getDataStatusLabel(target)}</Text>
-        <Icon name="chevronright" c="text-secondary" />
-      </Flex>
-    </UnstyledButton>
+    <StatusButton
+      option={getPreviewOption(target.column, target.cell.value)}
+      label={getDataStatusLabel(target)}
+      onClick={onClick}
+    />
   );
 }
 
@@ -709,30 +703,23 @@ function ExploreRow({
       target.cell.value === first.cell.value &&
       target.cell.group_id === first.cell.group_id,
   );
-  const option = getPreviewOption(first.column, first.cell.value);
   const group = getSourceGroupName(first.cell);
-  const value = getWhyValueLabel(first.column, first.cell.value);
   return (
-    <UnstyledButton className={S.row} onClick={onOpen}>
-      <Flex align="center" gap="sm" justify="space-between">
-        <Tooltip label={tableNames}>
-          <Text truncate="end" miw={0}>
-            {tableNames}
-          </Text>
-        </Tooltip>
-        <Flex align="center" gap="xs" style={{ flexShrink: 0 }}>
-          {isSame && <Icon name={option.icon} c={option.iconColor} />}
-          <Text>
-            {!isSame
-              ? t`Varies by table`
-              : group != null
-                ? t`${value} · from ${group}`
-                : value}
-          </Text>
-          <Icon name="chevronright" c="text-secondary" />
-        </Flex>
-      </Flex>
-    </UnstyledButton>
+    <Row
+      name={<RowName name={tableNames} />}
+      detail={isSame && group != null ? t`from ${group}` : undefined}
+      status={
+        isSame ? (
+          <StatusButton
+            option={getPreviewOption(first.column, first.cell.value)}
+            label={getWhyValueLabel(first.column, first.cell.value)}
+            onClick={onOpen}
+          />
+        ) : (
+          <StatusButton label={t`Varies by table`} onClick={onOpen} />
+        )
+      }
+    />
   );
 }
 
@@ -1014,30 +1001,25 @@ function AccessRow({
   onOpen: () => void;
 }) {
   const option = getPreviewOption(target.column, target.cell.value);
-  const valueLabel = getWhyValueLabel(target.column, target.cell.value);
   const group = getSourceGroupName(target.cell);
   const isBlocking = option.iconColor === "feedback-negative";
 
   return (
-    <UnstyledButton className={S.row} onClick={onOpen}>
-      <Flex align="center" gap="sm" justify="space-between">
-        {label ?? (
-          <Text truncate="end" miw={0}>
-            {target.title}
-          </Text>
-        )}
-        <Flex align="center" gap="xs" style={{ flexShrink: 0 }}>
-          <Icon name={option.icon} c={option.iconColor} />
-          <Text>
-            {value ??
-              (group != null && !isBlocking
-                ? t`${valueLabel} · from ${group}`
-                : valueLabel)}
-          </Text>
-          <Icon name="chevronright" c="text-secondary" />
-        </Flex>
-      </Flex>
-    </UnstyledButton>
+    <Row
+      name={label ?? <RowName name={target.title} />}
+      detail={
+        value == null && group != null && !isBlocking
+          ? t`from ${group}`
+          : undefined
+      }
+      status={
+        <StatusButton
+          option={option}
+          label={value ?? getWhyValueLabel(target.column, target.cell.value)}
+          onClick={onOpen}
+        />
+      }
+    />
   );
 }
 
@@ -1049,22 +1031,81 @@ function PermissionRow({
   target: WhyTarget;
   onOpen: () => void;
 }) {
-  const option = getPreviewOption(target.column, target.cell.value);
-
   return (
-    <UnstyledButton className={S.row} onClick={onOpen}>
-      <Flex align="center" gap="sm" justify="space-between">
-        <Stack gap={0} miw={0}>
-          <Text truncate="end">{target.title}</Text>
-          <Text fz="sm" c="text-secondary">
-            {getPreviewColumnName(target.column)}
+    <Row
+      name={<RowName name={target.title} />}
+      detail={getPreviewColumnName(target.column)}
+      status={
+        <StatusButton
+          option={getPreviewOption(target.column, target.cell.value)}
+          label={getWhyValueLabel(target.column, target.cell.value)}
+          onClick={onOpen}
+        />
+      }
+    />
+  );
+}
+
+/**
+ * A row: the name, which truncates, a dimmed line under it, and the status, the row's only button. The row is a group
+ * named by its two lines, so a screen reader says which row a status belongs to.
+ */
+function Row({
+  name,
+  detail,
+  status,
+}: {
+  name: ReactNode;
+  detail?: string;
+  status: ReactNode;
+}) {
+  const nameId = useUniqueId();
+  const detailId = useUniqueId();
+  return (
+    <div
+      className={S.line}
+      role="group"
+      aria-labelledby={detail != null ? `${nameId} ${detailId}` : nameId}
+    >
+      <Stack gap={0} flex={1} miw={0}>
+        <Box id={nameId} miw={0}>
+          {name}
+        </Box>
+        {detail != null && (
+          <Text id={detailId} size="sm" c="text-secondary" truncate="end">
+            {detail}
           </Text>
-        </Stack>
-        <Flex align="center" gap="xs" style={{ flexShrink: 0 }}>
-          <Icon name={option.icon} c={option.iconColor} />
-          <Text>{getWhyValueLabel(target.column, target.cell.value)}</Text>
-          <Icon name="chevronright" c="text-secondary" />
-        </Flex>
+        )}
+      </Stack>
+      {status}
+    </div>
+  );
+}
+
+function RowName({ name }: { name: string }) {
+  return (
+    <Tooltip label={name}>
+      <Text truncate="end">{name}</Text>
+    </Tooltip>
+  );
+}
+
+/** The status that opens the why: the value's icon when it has one, its label, and a chevron. */
+function StatusButton({
+  option,
+  label,
+  onClick,
+}: {
+  option?: Pick<PermissionOption, "icon" | "iconColor">;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <UnstyledButton className={S.status} onClick={onClick}>
+      <Flex align="center" gap="xs">
+        {option != null && <Icon name={option.icon} c={option.iconColor} />}
+        <Text>{label}</Text>
+        <Icon name="chevronright" c="text-secondary" />
       </Flex>
     </UnstyledButton>
   );

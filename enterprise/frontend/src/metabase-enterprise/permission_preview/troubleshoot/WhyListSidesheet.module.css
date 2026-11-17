@@ -29,6 +29,16 @@
   background-color: var(--mb-color-background_surface-hover);
 }
 
+/* a row whose status is its only button */
+.line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: calc(100% + 1rem);
+  margin: 0 -0.5rem;
+  padding: 0.5rem;
+}
+
 .toggle {
   flex: 1;
   min-width: 0;
