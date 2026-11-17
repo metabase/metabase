@@ -167,7 +167,7 @@
   questions, embedded, publicly shared, and (where the app db supports JSON path queries) counts
   broken down by template-tag parameters and embedding-parameter locking."
   []
-  (let [json-supported? (contains? #{:mysql :mariadb :postgres} (mdb/db-type))]
+  (let [json-supported? (contains? #{:mysql :postgres} (mdb/db-type))]
     (t2/select-one
      (into [:model/Card]
            (cond-> [[:%count.* :total]
