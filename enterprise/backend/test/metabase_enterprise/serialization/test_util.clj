@@ -7,7 +7,9 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -170,9 +172,9 @@
                                                                :location
                                                                (format "/%d/%d/" (crowberto-pc-id) pc-nested-id)}
                   :model/Segment    {segment-id :id} {:name "My Segment"
-                                                      :table_id table-id
-                                                      :definition {:source-table table-id
-                                                                   :filter [:!= [:field category-field-id nil] nil]}}
+                                                      :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                    (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                        (lib/filter (lib/not-null (lib.metadata/field mp category-field-id)))))}
                   :model/Dashboard  {dashboard-id :id} {:name "My Dashboard"
                                                         :collection_id collection-id}
                   :model/Dashboard  {root-dashboard-id :id} {:name "Root Dashboard"}

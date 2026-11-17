@@ -2710,7 +2710,6 @@
            lib.legacy-mbql
            lib.metadata
            lib.schema
-           models
            parameters.schema
            util
            util.config}

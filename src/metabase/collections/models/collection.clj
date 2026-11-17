@@ -2559,20 +2559,3 @@
           (cond-> item
             (and local (system-collection-name local)) (update :row dissoc :name)))
         items))
-
-(defn check-allowed-to-change-collection
-  "Throws a 403 unless the current user may apply `object-updates` to the `:collection_id` of `object-before-update`."
-  [object-before-update object-updates]
-  (api/check-403 (can-move? object-before-update object-updates)))
-
-(defn archive-collection!
-  "Archives `collection` and what it holds."
-  [collection]
-  (t2/update! :model/Collection :id (u/the-id collection) {:archived true})
-  nil)
-
-(defn unarchive-collection!
-  "Restores `collection` and what its archive took down."
-  [collection _updates]
-  (t2/update! :model/Collection :id (u/the-id collection) {:archived false})
-  nil)

@@ -14,13 +14,13 @@
 (set! *warn-on-reflection* true)
 
 (defn- load-settings!
-  "Sets the exported `settings`, returning with `continue-on-error` the errors of those it could not set, which it
-  skips."
+  "Sets the exported `settings` the way any other write of a setting does, returning with `continue-on-error` the
+  errors of those it could not set, which it skips."
   [settings continue-on-error]
   (into []
         (keep (fn [{:keys [key value]}]
                 (try
-                  (setting/set-value-of-type! :string (keyword key) (some-> value str))
+                  (setting/set-string! (keyword key) (some-> value str))
                   nil
                   (catch Exception e
                     (if continue-on-error

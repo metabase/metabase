@@ -66,13 +66,6 @@
   model
   instance])
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *deserializing?*
-  "This is dynamically bound to true when deserializing. A few pieces of the Toucan magic are undesirable for
-  deserialization and are skipped based on this var. (Entity ids are not one of them: the insert hook generates an
-  `:entity_id` whenever it is missing, deserializing or not — ingested entities carry their own.)"
-  false)
-
 (def ^{:arglists '([x & _args])} dispatch-on-model
   "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
   ;; make sure model namespace gets loaded e.g. `:model/Database` should load `metabase.model.database` if needed.

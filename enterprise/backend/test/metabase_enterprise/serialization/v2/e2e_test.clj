@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.serialization.cmd :as cmd]
    [metabase-enterprise.serialization.dump :as dump]
@@ -191,10 +192,14 @@
                                              ;; 20 with just :field_id
                                              (many-random-fks 20 {:refs {:human_readable_field_id ::rs/omit}}
                                                               {:field_id [:field 1000]})))
-              :segment                 (many-random-fks 30 {:spec-gen {:definition {:filter [:!= [:field 60 nil] 50],
-                                                                                    :source-table 4}}}
-                                                        {:table_id   [:t 100]
-                                                         :creator_id [:u 10]})
+              :segment                 (many-random-fks 30 {:spec-gen {:definition {:lib/type :mbql/query
+                                                                                    :database 1
+                                                                                    :stages   [{:lib/type     :mbql.stage/mbql
+                                                                                                :source-table 4
+                                                                                                :filters      [[:!= {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+                                                                                                                [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 60]
+                                                                                                                50]]}]}}}
+                                                        {:creator_id [:u 10]})
               :measure                  (many-random-fks 30 {:spec-gen {:definition {:lib/type :mbql/query
                                                                                      :database 1
                                                                                      :stages   [{:lib/type     :mbql.stage/mbql
@@ -1626,9 +1631,10 @@
               (is (t2/exists? :model/CardTest :name "Revenue ignores refunds")))
             (is (zero? (t2/count :model/Revision :model "CardTest")))
             (is (zero? (t2/count :model/AuditLog :model "CardTest")))
-            (testing "control: an edit outside an import writes both"
+            (testing "control: an edit through the write function writes both"
               (mt/with-current-user (t2/select-one-pk :model/User :email "creator@example.com")
-                (t2/update! :model/CardTest :name "Revenue ignores refunds" {:description "Edited"}))
+                (data-testing.models.card-test/update-card-test!
+                 (t2/select-one-pk :model/CardTest :name "Revenue ignores refunds") {:description "Edited"}))
               (is (= 1 (t2/count :model/Revision :model "CardTest")))
               (is (= 1 (t2/count :model/AuditLog :model "CardTest"))))))))))
 
@@ -1719,3 +1725,49 @@
                                   @published))))
               (testing "no CardTest audit row is written"
                 (is (= audit-rows (t2/count :model/AuditLog :model "CardTest")))))))))))
+
+(deftest first-import-publishes-no-saved-test-event-test
+  (testing "An import that inserts a card test and a transform test publishes no event and writes no audit or revision row for them"
+    (mt/with-premium-features #{:audit-app :transforms-basic}
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (let [db        (ts/create! :model/Database :name "my-db")
+                  coll      (ts/create! :model/Collection :name "Finance")
+                  etl       (ts/create! :model/Collection :name "ETL" :namespace :transforms)
+                  creator   (ts/create! :model/User :email "creator@example.com")
+                  transform (ts/create! :model/Transform
+                                        :name          "Orders Summary"
+                                        :collection_id (:id etl)
+                                        :creator_id    (:id creator)
+                                        :source        {:type  :query
+                                                        :query (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1 AS ID")}
+                                        :target        {:database (:id db) :type "table" :schema "PUBLIC" :name "orders_summary"})]
+              (create-card-with-test! db creator "Revenue ignores refunds" :name "Revenue" :collection_id (:id coll))
+              (ts/create! :model/TransformTest
+                          :transform_id (:id transform)
+                          :creator_id   (:id creator)
+                          :name         "My test"
+                          :inputs       card-test-inputs
+                          :expectations [{:type :empty :name "no nulls" :sql "SELECT 1 WHERE 1 = 0"}])
+              (storage/store! (seq (into [] (extract/extract {:include-h2? true}))) (storage.files/file-writer dump-dir))))
+          (ts/with-db dest-db
+            (let [published (atom [])
+                  publish   events/publish-event!]
+              (with-redefs [events/publish-event! (fn [topic event]
+                                                    (swap! published conj topic)
+                                                    (publish topic event))]
+                (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
+              (testing "premise: the import inserted both tests"
+                (imported-card-test-is-the-exported-one "Revenue ignores refunds" "Revenue" "creator@example.com")
+                (is (=? {:transform_id (t2/select-one-pk :model/Transform :name "Orders Summary")
+                         :creator_id   (t2/select-one-pk :model/User :email "creator@example.com")}
+                        (t2/select-one :model/TransformTest :name "My test"))))
+              (testing "no saved-test event is published"
+                (is (= [] (filter #{:event/card-test-create :event/card-test-update :event/card-test-delete
+                                    :event/transform-test-create :event/transform-test-update
+                                    :event/transform-test-delete}
+                                  @published))))
+              (testing "no audit or revision row is written for the tests"
+                (is (zero? (t2/count :model/AuditLog :model [:in ["CardTest" "TransformTest"]])))
+                (is (zero? (t2/count :model/Revision :model [:in ["CardTest" "TransformTest"]])))))))))))

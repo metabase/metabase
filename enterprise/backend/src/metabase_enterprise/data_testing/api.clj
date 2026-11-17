@@ -26,7 +26,7 @@
    {:keys [transform-id]} :- [:map {:closed true}
                               [:transform-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-data-studio-access)
-  (-> (filter mi/can-read? (t2/hydrate (data-testing.db/transform-tests {:transform-id transform-id}) :can_read))
+  (-> (mi/readable (data-testing.db/transform-tests {:transform-id transform-id}))
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/transform-test.response
@@ -46,7 +46,7 @@
                                                 (data-testing.db/transform transform_id)
                                                 inputs
                                                 expectations))
-  (data-testing.db/insert-transform-test! (assoc body :creator_id api/*current-user-id*)))
+  (data-testing.models/create-transform-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/transform-test
   "Update a transform test."
@@ -63,7 +63,7 @@
                                                       inputs
                                                       expectations))))
     (when (seq body)
-      (data-testing.db/update-transform-test! id body)))
+      (data-testing.models/update-transform-test! id body)))
   (data-testing.db/transform-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -71,7 +71,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/TransformTest id)
-  (data-testing.db/delete-transform-test! id)
+  (data-testing.models/delete-transform-test! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result
