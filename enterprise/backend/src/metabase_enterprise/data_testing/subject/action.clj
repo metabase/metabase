@@ -5,7 +5,6 @@
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase.actions.core :as actions]
-   [metabase.query-processor.compile :as qp.compile]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
@@ -37,17 +36,10 @@
                              (tru "Actions cannot run on the action''s database:"))
     (let [values (refused-with-status-400 #(actions/parameter-values action (or parameters {}))
                                           ::data-testing.errors/invalid-parameters
-                                          (tru "The test''s parameter values do not fit the action:"))
-          {sql :query params :params}
-          (try
-            (qp.compile/compile (actions/query-with-parameter-values action values))
-            (catch Exception e
-              (throw (data-testing.errors/ex
-                      ::data-testing.errors/uncompilable-subject
-                      (tru "The action''s query could not be compiled to SQL with the test''s parameter values: {0}"
-                           (ex-message e))
-                      {}
-                      e))))]
+                                          (tru "The test''s parameter values do not fit the action:"))]
       {:database database
-       :compiled {:query sql :params params}
+       :compiled (data-testing.subject/compile-query
+                  (actions/query-with-parameter-values action values)
+                  #(tru "The action''s query could not be compiled to SQL with the test''s parameter values: {0}"
+                        (ex-message %)))
        :writes?  true})))
