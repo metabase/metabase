@@ -57,6 +57,7 @@ import {
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
+import { isObject } from "metabase-types/guards";
 
 const TEST_COLLECTION = createMockCollection();
 
@@ -83,9 +84,13 @@ function setupPersistedDashboardEndpoints(dashboard: Dashboard) {
     () => persistedDashboard,
   );
   fetchMock.put(`path:/api/dashboard/${dashboard.id}`, (call) => {
+    const body: unknown = JSON.parse(String(call.options.body));
+    if (!isObject(body) || Array.isArray(body)) {
+      throw new Error("Expected a dashboard update object");
+    }
     persistedDashboard = {
       ...persistedDashboard,
-      ...JSON.parse(String(call.options.body)),
+      ...body,
     };
     return persistedDashboard;
   });
@@ -613,8 +618,15 @@ describe("DashboardApp", () => {
       expect(getUpdateCalls(dashboardId)).toHaveLength(count);
     };
 
-    const getUpdateBody = async (dashboardId: DashboardId, index: number) =>
-      JSON.parse(String(getUpdateCalls(dashboardId)[index].options.body));
+    const getUpdateBody = async (
+      dashboardId: DashboardId,
+      index: number,
+    ): Promise<unknown> => {
+      const body: unknown = JSON.parse(
+        String(getUpdateCalls(dashboardId)[index].options.body),
+      );
+      return body;
+    };
 
     const getTitleInput = () => screen.getByTestId("dashboard-name-heading");
 
