@@ -10,9 +10,6 @@ revision revert, and the sanctioned writers, which the product itself runs witho
 pull, sync, the audit and sample loaders, scheduled tasks). Hooks run for every writer; permission checks run only for
 the user-facing ones. Put a rule every writer must obey in a hook and a rule only users must obey in a permission check.
 
-Copy `metabase.segments.models.segment` (hooks, derived column, permissions), `metabase.collections.models.collection`
-(cascade, archiving) and `src/metabase/segments/rest/api.clj` (the endpoint shape).
-
 ## Pick the home for a rule
 
 | The rule | Home |
@@ -55,18 +52,17 @@ that needs the row as stored.
 ```
 
 - Checks first, a flat list of `(when ...)` throwing `(ex-info (tru "...") {:status-code 400})`; then derivations;
-  then cascades, which see the derived values; return the row. A key `assoc`ed onto the returned row is written.
-- A hook never checks what the incoming row alone answers (length, enum, format, agreeing columns): the schema does.
+  then cascades, which see the derived values; return the row. A key `assoc`ed onto the returned row is written. A
+  hook never checks what the incoming row alone answers (length, enum, format, agreeing columns): the schema does.
 - `before-update` receives the stored row with the changes merged in. `(t2/changes row)` holds only columns whose
   value differs from the stored one, and `(t2/original row)` the stored row as `after-select` returned it. Run a
   check only when a column it guards is in the changes; never validate a stored combination the write does not touch.
 - Never read the current user (`api/*current-user-id*`, `mi/superuser?`, a permission call) or branch on which writer
   is calling (SerDes import, sync, an endpoint).
-- Hold an invariant whatever the premium token says. A `defenterprise` function a hook calls is declared
-  `:feature :none`, so the rule holds with or without a token.
-- A hook may read another row through a `<module>.db` function. It sees stored rows, not the other rows of its own
-  statement, so a writer whose rows depend on each other writes them in separate statements, dependency first. A
-  check that needs the row's id (cycle detection) runs in `before-update` only.
+- Hold an invariant whatever the premium token says: a `defenterprise` function a hook calls is `:feature :none`.
+- A hook may read another row through a `<module>.db` function. It sees stored rows, not those of its own statement,
+  so a writer whose rows depend on each other writes them in separate statements, dependency first. A check that
+  needs the row's id (cycle detection) runs in `before-update` only.
 - Publish no event and record nothing in a model's own hook: a consumer's trait (`:hook/revisions`, `:hook/pulse`)
   reacts to the write.
 - **Derived column.** Never trusted from the caller: compute and overwrite on insert; recompute when its source
@@ -105,8 +101,8 @@ that needs the row as stored.
   for a settings manager, and unsynced columns on a read-only remote-sync instance. `changes` may repeat stored values,
   so test a column with `(api/column-will-change? (:col row) (get changes :col ::api/not-provided))`.
 - A rule `can-create?` and `can-update?` both apply is one private predicate. Both return a boolean and never throw.
-- A row no writer may change (a built-in permissions group) is refused by one predicate in the hook, and the same
-  predicate makes `:can_write` false so the UI can show it.
+- A row no writer may change (a built-in permissions group) is refused by one hook predicate, which also makes
+  `:can_write` false so the UI can show it.
 - `api/read-check` and `api/write-check` take the row (or model and id), throw 404 for nil and 403 when refused, and
   return the row. `api/create-check` and `api/update-check` throw 403. All four publish a permission-failure event.
 
@@ -119,8 +115,8 @@ hydrated row. The write function is the one function per operation that every us
 endpoint's own helper.
 
 - Every user-facing writer of a model calls the check: REST, MCP and Metabot tools, Agent API, bulk endpoints,
-  revision revert, copy. Grep for the model's `update-...!` and `t2/update! :model/X` callers when adding a rule.
-- A bulk endpoint hydrates `:can_write` on all rows once, then checks each.
+  revision revert, copy; grep the model's `update-...!` and `t2/update! :model/X` callers when adding a rule. A bulk
+  endpoint hydrates `:can_write` on all rows once, then checks each.
 - Nothing publishes a model-level event. A module that reacts to a model's writes exposes `<module>/hooks.clj` (EE
   consumer: `defenterprise` there, implementation in the EE module, as `dependencies.hooks`) and a `:hook/...` trait
   from `mi/define-hook-trait`, derived in the model's setup. Upkeep (pulse sync, persisted models, personal
@@ -133,7 +129,7 @@ endpoint's own helper.
 - A moment that is no row write (a user deactivated, a Database saved) is a direct call into the consumer's hooks
   namespace. `requiring-resolve` is only for a module cycle.
 - The request schema is closed and lists only what a caller may set: no derived columns, no `archived_directly`.
-- App-DB queries live in `<module>.db`, with caller-supplied values bound: `(t2/select-one :model/X :id [:auto/param id])`.
+- App-DB queries live in `<module>.db`, caller values bound: `(t2/select-one :model/X :id [:auto/param id])`.
 
 ## Archiving
 
@@ -150,9 +146,9 @@ endpoint's own helper.
   derive their cause from it.
 - Collection archives its subtree in a fixed number of statements; a collection that inherits an archive does not
   cascade again. Dashboard carries its dashboard questions, Document its cards, Exploration its summary documents,
-  Timeline its events. The Card hooks delete the alerts of a Card only when it is archived directly.
-- A live row (a row that is not archived) cannot be inserted into or moved into an archived parent
-  (`collection/check-collection-not-archived`), checked only when the parent changes.
+  Timeline its events. Card hooks delete a Card's alerts only when it is archived directly.
+- A live row cannot be inserted or moved into an archived parent (`collection/check-collection-not-archived`),
+  checked only when the parent changes.
 - A user-facing writer asks `api/update-check` on the parent with `{:archived x}`: the parent's `mi/can-update?` also
   covers every row the archive or restore writes, each kind loaded once by the same `<module>.db` selection the cascade
   uses and hydrated once (`mi/can-update-each?`). A per-user rule such as a sandbox restriction belongs to a model's
@@ -160,20 +156,20 @@ endpoint's own helper.
 
 ## Lay out a model file
 
-Banners of the form `;;; ---- Hooks ----`, padded with dashes to 120 columns, in this order: `Model setup`
-(`t2/table-name`, `t2/deftransforms`, `derive`), `Hooks`, `Permissions`, `Hydration`, `Writes`, `Revisions`,
-`Serialization` (spec, import dependencies, storage paths), `Remote sync`, `Search`.
+Banners `;;; ---- Hooks ----` padded with dashes to 120 columns, in this order: `Model setup` (`t2/table-name`,
+`t2/deftransforms`, `derive`), `Hooks`, `Permissions`, `Hydration`, `Writes`, `Revisions`, `Serialization` (spec,
+import dependencies, storage paths), `Remote sync`, `Search`.
 
 ## Tests
 
-- One `with-temp` default per model in `with-temp-defaults-fns` (`test/metabase/test/util.clj`) that passes its
-  hooks. A fixture overrides a column only when the test depends on it. Build queries with `metabase.lib`.
-- Test a hook through `t2/insert!` / `t2/update!`: the rejection, the derivation, the cascade. Test a permission
-  rule through `api/create-check` / `api/update-check` as each kind of user, and once through the endpoint.
-- Assert a list endpoint stays batched with `t2/with-call-count` at two sizes. A new model or column breaks the
-  enumeration tests (entity ids, SerDes specs, stats): run them.
+- One `with-temp` default per model in `with-temp-defaults-fns` (`test/metabase/test/util.clj`) that passes its hooks;
+  a fixture overrides a column only when the test depends on it. Build queries with `metabase.lib`.
+- Test a hook through `t2/insert!` / `t2/update!`: the rejection, the derivation, the cascade. Test a permission rule
+  through `api/create-check` / `api/update-check` as each kind of user, and once through the endpoint.
+- Assert a list endpoint stays batched with `t2/with-call-count` at two sizes. Run the enumeration tests (entity ids,
+  SerDes specs, stats) for a new model or column.
 
 ## Before handing off
 
-`./bin/mage kondo <file>` per changed file, `./bin/mage fix-modules-config`, `./bin/mage lint-migrations` for a
-changeset, and the test namespaces of the model and of each writer you touched.
+`./bin/mage kondo <file>` per changed file, `./bin/mage fix-modules-config`, `./bin/mage lint-migrations` for a changeset, and
+the tests of the model and each writer you touched.
