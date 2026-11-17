@@ -49,7 +49,8 @@
         creator-id (when (and user-id own (creator-recorded model)) (:creator_id (:object own)))]
     (when-let [user-id (or creator-id user-id)]
       (try
-        (when-let [object (revisions.db/entity model id)]
+        (when-let [object (or (some #(when (= model (:model %)) (:object %)) events)
+                              (revisions.db/entity model id))]
           (revision/push-revision! {:entity       model
                                     :id           id
                                     :object       object
