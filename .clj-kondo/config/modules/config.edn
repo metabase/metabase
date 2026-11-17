@@ -1055,6 +1055,22 @@
            workspaces}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
+  dynamic-goals
+  {:team "Gadget"
+   :api  #{metabase.dynamic-goals.api
+           metabase.dynamic-goals.core}
+   :uses #{api
+           api-scope
+           data-apps
+           lib
+           lib.be
+           query-processor
+           request
+           server
+           util
+           visualization-settings}
+   :model-imports #{:model/Card :model/Measure}}
+
   embedding
   {:team "Embedding"
    :api  #{metabase.embedding.init
@@ -1107,6 +1123,7 @@
            api.eid-translation
            dashboards
            database-routing
+           dynamic-goals
            embedding
            events
            lib.schema
@@ -1123,6 +1140,7 @@
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/DashboardCardSeries
                     :model/EmbeddingSdkReact18Host
                     :model/EmbeddingTheme}}
 
@@ -1797,6 +1815,7 @@
               analytics.interface
               api
               channel
+              dynamic-goals
               formatter
               lib
               lib.schema
@@ -1987,6 +2006,7 @@
            channel
            dashboards
            driver
+           dynamic-goals
            embedding
            events
            lib.schema
@@ -2209,6 +2229,7 @@
            dashboards
            dashboards.rest
            documents
+           dynamic-goals
            events
            lib
            lib.metadata
@@ -2476,12 +2497,10 @@
            users
            util
            util.config
-           visualization-settings
            workspaces}
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
-                    :model/Measure
                     :model/QueryExecution
                     :model/Table}}
 
