@@ -616,8 +616,6 @@
      (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                 :description "Test description"}]
        (testing :event/transform-create
-         (is (= {:object transform :user-id (mt/user->id :rasta)}
-                (events/publish-event! :event/transform-create {:object transform :user-id (mt/user->id :rasta)})))
          (is (partial=
               {:model_id (:id transform)
                :user_id (mt/user->id :rasta)
@@ -626,26 +624,21 @@
                :topic :transform-create
                :model "Transform"}
               (mt/latest-audit-log-entry :transform-create (:id transform)))))
-       (testing :event/update-transform
-         (let [updated-transform (assoc transform :name "Updated Transform")]
-           (is (= {:object updated-transform
-                   :previous-object transform}
-                  (events/publish-event! :event/update-transform {:object updated-transform
-                                                                  :previous-object transform})))
-           (is (= {:model_id (:id transform)
-                   :user_id (mt/user->id :rasta)
-                   :details {:previous {:name "Test Transform"}
-                             :new {:name "Updated Transform"}}
-                   :topic :update-transform
-                   :model "Transform"}
-                  (mt/latest-audit-log-entry :update-transform (:id transform))))))
-       (testing :event/transform-delete
-         (is (= {:object transform :user-id (mt/user->id :rasta)}
-                (events/publish-event! :event/transform-delete {:object transform :user-id (mt/user->id :rasta)})))
+       (testing :event/transform-update
+         (t2/update! :model/Transform :id (:id transform) {:name "Updated Transform"})
          (is (partial=
               {:model_id (:id transform)
                :user_id (mt/user->id :rasta)
-               :details {:name "Test Transform"
+               :details {:name "Updated Transform"}
+               :topic :update-transform
+               :model "Transform"}
+              (mt/latest-audit-log-entry :update-transform (:id transform)))))
+       (testing :event/transform-delete
+         (t2/delete! :model/Transform :id (:id transform))
+         (is (partial=
+              {:model_id (:id transform)
+               :user_id (mt/user->id :rasta)
+               :details {:name "Updated Transform"
                          :description "Test description"}
                :topic :transform-delete
                :model "Transform"}

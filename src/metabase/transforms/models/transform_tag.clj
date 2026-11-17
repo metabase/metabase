@@ -64,7 +64,8 @@
   (if (or (nil? (:built_in_type tag))
           (empty? (dissoc (t2/changes tag) :updated_at)))
     tag
-    (-> (merge (translate-name tag)
+    (-> (merge tag
+               (translate-name tag)
                {:built_in_type nil}
                (t2/changes tag))
         (update :name str))))

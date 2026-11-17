@@ -424,6 +424,7 @@
 (events/derive! :event/card-test-delete ::lifecycle-event)
 (events/derive! :event/transform-create ::transform-event)
 (events/derive! :event/update-transform ::transform-event)
+(events/derive! :event/transform-update ::transform-event)
 (events/derive! :event/transform-delete ::transform-event)
 (events/derive! :event/transform-run-start ::transform-event)
 (events/derive! :event/transform-run-canceled ::transform-event)

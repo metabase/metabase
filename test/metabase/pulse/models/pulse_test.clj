@@ -166,17 +166,18 @@
     (mt/with-temp [:model/Card card {:name "Test Card"}]
       (mt/with-model-cleanup [:model/Pulse]
         (mt/with-premium-features #{:audit-app}
-          (let [pulse (models.pulse/create-pulse! [(models.pulse/card->ref card)]
-                                                  [{:channel_type  :email
-                                                    :schedule_type :daily
-                                                    :schedule_hour 18
-                                                    :enabled       true
-                                                    :recipients    [{:email "foo@bar.com"}]}]
-                                                  {:name          "pulse-name"
-                                                   :creator_id    (mt/user->id :rasta)
-                                                   :skip_if_empty false})]
+          (let [pulse (mt/with-current-user (mt/user->id :rasta)
+                        (models.pulse/create-pulse! [(models.pulse/card->ref card)]
+                                                    [{:channel_type  :email
+                                                      :schedule_type :daily
+                                                      :schedule_hour 18
+                                                      :enabled       true
+                                                      :recipients    [{:email "foo@bar.com"}]}]
+                                                    {:name          "pulse-name"
+                                                     :creator_id    (mt/user->id :rasta)
+                                                     :skip_if_empty false}))]
             (is (= {:topic    :subscription-create
-                    :user_id  nil
+                    :user_id  (mt/user->id :rasta)
                     :model    "Pulse"
                     :model_id (u/the-id pulse)
                     :details  {:archived     false
@@ -259,18 +260,19 @@
                                           :recipients    [{:email "foo@bar.com"}
                                                           (dissoc (user-details :crowberto) :is_superuser :is_qbnewb :tenant_id :is_data_analyst)]})]})
              (mt/derecordize
-              (update-pulse-then-select! {:id            (u/the-id pulse)
-                                          :name          "We like to party"
-                                          :cards         (map models.pulse/card->ref [card-2 card-1])
-                                          :channels      [{:channel_type  :email
-                                                           :schedule_type :daily
-                                                           :schedule_hour 18
-                                                           :enabled       true
-                                                           :recipients    [{:email "foo@bar.com"}
-                                                                           {:id (mt/user->id :crowberto)}]}]
-                                          :skip_if_empty false}))))
+              (mt/with-current-user (mt/user->id :rasta)
+                (update-pulse-then-select! {:id            (u/the-id pulse)
+                                            :name          "We like to party"
+                                            :cards         (map models.pulse/card->ref [card-2 card-1])
+                                            :channels      [{:channel_type  :email
+                                                             :schedule_type :daily
+                                                             :schedule_hour 18
+                                                             :enabled       true
+                                                             :recipients    [{:email "foo@bar.com"}
+                                                                             {:id (mt/user->id :crowberto)}]}]
+                                            :skip_if_empty false})))))
       (is (= {:topic    :subscription-update
-              :user_id  nil
+              :user_id  (mt/user->id :rasta)
               :model    "Pulse"
               :model_id (u/the-id pulse)
               :details  {:archived     false

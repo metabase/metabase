@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver.util :as driver.u]
-   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.transforms.crud :as transforms.crud]
@@ -60,15 +59,17 @@
 
 (deftest update-transform-publishes-audit-event-test
   (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
-    (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temp [:model/Transform {id :id} {:target {:type "table" :schema "PUBLIC" :name "audited_target" :database (mt/id)}}]
-        (let [topics (atom [])]
-          (mt/with-dynamic-fn-redefs [driver.u/supports? (fn [& _] true)]
-            (with-redefs [events/publish-event! (fn [topic _] (swap! topics conj topic))]
-              (mt/with-current-user (mt/user->id :crowberto)
-                (transforms.crud/update-transform! id {:name "Renamed"}))))
-          (is (= "Renamed" (t2/select-one-fn :name :model/Transform :id id)))
-          (is (some #{:event/update-transform} @topics)))))))
+    (mt/with-premium-features #{:transforms-basic :audit-app}
+      (mt/with-temp [:model/Transform {id :id} {:name   "Original"
+                                                :target {:type "table" :schema "PUBLIC" :name "audited_target" :database (mt/id)}}]
+        (mt/with-dynamic-fn-redefs [driver.u/supports? (fn [& _] true)]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (transforms.crud/update-transform! id {:name "Renamed"})))
+        (is (= "Renamed" (t2/select-one-fn :name :model/Transform :id id)))
+        (is (=? {:topic   :update-transform
+                 :user_id (mt/user->id :crowberto)
+                 :details {:name "Renamed"}}
+                (mt/latest-audit-log-entry :update-transform id)))))))
 
 (deftest check-references-test
   (let [definition {:name   "Referencing transform"

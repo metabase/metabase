@@ -84,7 +84,8 @@
 (t2/define-before-update :model/TransformJob [job]
   (if (nil? (:built_in_type job))
     job
-    (-> (merge (translated-name-and-description job)
+    (-> (merge job
+               (translated-name-and-description job)
                {:built_in_type nil}
                (t2/changes job))
         (update :name        str)
