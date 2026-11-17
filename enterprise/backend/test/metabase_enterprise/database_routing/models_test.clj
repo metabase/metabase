@@ -1,22 +1,16 @@
 (ns metabase-enterprise.database-routing.models-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (deftest router-needs-user-attribute-test
   (testing "a router routes on a non-blank user attribute"
-    (mt/with-temp [:model/Database {db-id :id} {}]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"A router needs a user attribute to route on"
-           (t2/insert! :model/DatabaseRouter {:database_id db-id :user_attribute " "})))
-      (mt/with-temp [:model/DatabaseRouter {router-id :id} {:database_id db-id :user_attribute "tenant"}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"A router needs a user attribute to route on"
-             (t2/update! :model/DatabaseRouter :id router-id {:user_attribute ""})))
-        (is (pos? (t2/update! :model/DatabaseRouter :id router-id {:user_attribute "region"})))))))
+    (doseq [user-attribute [nil "" " "]]
+      (is (not (mr/validate ::database-routing.schema/database-router.update {:user_attribute user-attribute}))))
+    (is (mr/validate ::database-routing.schema/database-router.update {:user_attribute "tenant"}))))
 
 (deftest router-database-is-frozen-test
   (testing "a router stays with the database it was made for"

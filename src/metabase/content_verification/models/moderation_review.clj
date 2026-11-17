@@ -3,21 +3,17 @@
    [metabase.api.common :as api]
    [metabase.content-verification.db :as content-verification.db]
    [metabase.content-verification.impl :as moderation]
+   [metabase.content-verification.schema :as content-verification.schema]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def statuses
-  "Schema enum of the acceptable values for the `status` column"
-  #{"verified" nil})
-
 (def Statuses
   "Schema of valid statuses"
-  [:maybe (into [:enum] statuses)])
+  ::content-verification.schema/moderation-review.status)
 
 ;;; currently unused, but I'm leaving this in commented out because it serves as documentation
 (comment
@@ -46,18 +42,6 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- check-status
-  "Throws a 400 unless `status` is one of [[statuses]]."
-  [status]
-  (when-not (contains? statuses status)
-    (throw (ex-info (tru "Invalid moderation review status.") {:status-code 400}))))
-
-(defn- check-item-type
-  "Throws a 400 unless `item-type` names a model that can be moderated."
-  [item-type]
-  (when-not (contains? moderation/moderated-item-type->model item-type)
-    (throw (ex-info (tru "Invalid moderated item type.") {:status-code 400}))))
-
 (defn- delete-extra-reviews!
   "Delete the reviews of the item with `item-id` and `item-type` beyond the newest `max-moderation-reviews`."
   [item-id item-type]
@@ -71,23 +55,12 @@
 
 (t2/define-before-insert :model/ModerationReview
   [review]
-  (check-status (:status review))
-  (check-item-type (:moderated_item_type review))
   (assoc review :most_recent true))
 
 (t2/define-after-insert :model/ModerationReview
   [{:keys [id moderated_item_id moderated_item_type] :as review}]
   (content-verification.db/unmark-most-recent-moderation-reviews! moderated_item_id moderated_item_type id)
   (delete-extra-reviews! moderated_item_id (name moderated_item_type))
-  review)
-
-(t2/define-before-update :model/ModerationReview
-  [review]
-  (let [changes (t2/changes review)]
-    (when (contains? changes :status)
-      (check-status (:status review)))
-    (when (contains? changes :moderated_item_type)
-      (check-item-type (:moderated_item_type review))))
   review)
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------

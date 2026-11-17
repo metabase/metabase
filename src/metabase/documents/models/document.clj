@@ -1,6 +1,5 @@
 (ns metabase.documents.models.document
   (:require
-   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.db :as documents.db]
@@ -24,7 +23,7 @@
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -52,29 +51,6 @@
 
 ;;; ---------- Hooks ---------------------------------------------------------------------------------------------
 
-(defn- check-name
-  "Throws a 400 unless `document-name` is a non-blank string of at most 254 characters."
-  [document-name]
-  (when-not (and (string? document-name)
-                 (not (str/blank? document-name))
-                 (<= (count document-name) 254))
-    (throw (ex-info (tru "Document name must be a non-blank string of at most 254 characters.")
-                    {:status-code 400, :errors {:name (tru "invalid document name")}}))))
-
-(defn- check-content
-  "Throws a 400 when the `document` body of a document with `content-type` is neither empty nor a ProseMirror node, which
-  has a string `:type`, and its content type is ProseMirror."
-  [content-type document]
-  (when (= content-type prose-mirror/prose-mirror-content-type)
-    (let [body (prose-mirror/normalize-document (cond-> document
-                                                  (and (string? document) (not (str/blank? document))) json/decode+kw))]
-      (when-not (or (nil? body)
-                    (= "" body)
-                    (= {} body)
-                    (and (map? body) (string? (:type body))))
-        (throw (ex-info (tru "Document content must be a ProseMirror document.")
-                        {:status-code 400, :errors {:document (tru "invalid document content")}}))))))
-
 (defn- document-parent-archived?
   "Whether the Collection that `document` is in, or the Exploration it summarizes, is archived."
   [{:keys [collection_id exploration_id]}]
@@ -91,8 +67,6 @@
 (t2/define-before-insert :model/Document
   [document]
   (collection/check-collection-for :model/Document document)
-  (check-name (:name document))
-  (check-content (:content_type document) (:document document))
   (public-sharing/add-public-uuid-prefix document))
 
 (t2/define-before-update :model/Document
@@ -100,10 +74,6 @@
   (let [changes (t2/changes document)]
     (when (contains? changes :collection_id)
       (collection/check-collection-for :model/Document document))
-    (when (contains? changes :name)
-      (check-name (:name document)))
-    (when (some #(contains? changes %) [:document :content_type])
-      (check-content (:content_type document) (:document document)))
     (when (and (contains? changes :public_uuid_prefix)
                (not (contains? changes :public_uuid)))
       (throw (ex-info (tru "The public UUID prefix of a Document follows its public UUID; change the public UUID instead.")
@@ -261,18 +231,6 @@
       (assoc doc k (get cards-maps-by-doc-id (:id doc) {})))))
 
 ;;; ---------- Write orchestration -------------------------------------------------------------------------------
-
-(def DocumentName
-  "Validations for the name of a document"
-  (mu/with-api-error-message
-   [:and
-    {:error/message "invalid document name"
-     :json-schema   {:type "string" :minLength 1 :maxLength 254}}
-    [:string {:min 1 :max 254}]
-    [:fn
-     {:error/message "invalid document name"}
-     (complement str/blank?)]]
-   (deferred-tru "value must be a non-blank string between 1 and 254 characters.")))
 
 (def CardCreateSchema
   "Schema for a card created inline with a document (the `cards` map on create/update). The
@@ -438,7 +396,7 @@
   `POST /api/document/` handler uses."
   [{:keys [name document collection_id collection_position cards]}
    :- [:map {:closed true}
-       [:name DocumentName]
+       [:name documents.schema/DocumentName]
        [:document ::documents.schema/document.document]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
@@ -493,7 +451,7 @@
   [existing-document :- ::documents.schema/document
    {:keys [name document collection_id collection_position cards] :as body}
    :- [:map {:closed true}
-       [:name {:optional true} DocumentName]
+       [:name {:optional true} documents.schema/DocumentName]
        [:document {:optional true} ::documents.schema/document.document]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]

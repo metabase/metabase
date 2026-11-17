@@ -1,6 +1,7 @@
 (ns metabase-enterprise.database-routing.api
   (:require
    [metabase-enterprise.database-routing.db :as database-routing.db]
+   [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -110,7 +111,7 @@
   depending on the value of `user_attribute`"
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [user_attribute]} :- [:map {:closed true} [:user_attribute {:optional true} [:maybe ms/NonBlankString]]]]
+   {:keys [user_attribute]} :- [:map {:closed true} [:user_attribute {:optional true} [:maybe ::database-routing.schema/database-router.user-attribute]]]]
   (workspaces/check-not-in-workspace-mode! "Database routing")
   (let [db (database-routing.db/database id)]
     (api/check-404 db)

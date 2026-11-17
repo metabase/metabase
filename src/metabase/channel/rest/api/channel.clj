@@ -43,8 +43,7 @@
 
 (def ^:private ChannelType
   (mu/with-api-error-message
-   [:fn {:decode/string keyword, :json-schema {:type "string"}}
-    #(= "channel" (namespace (keyword %)))]
+   ::channel.schema/channel.type
    (deferred-tru "Must be a namespaced channel. E.g: channel/http")))
 
 (defn- channel-body-schema

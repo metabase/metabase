@@ -1,6 +1,5 @@
 (ns metabase.dashboards.models.dashboard-tab
   (:require
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
@@ -29,34 +28,11 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- check-name
-  "Throws a 400 unless `tab` has a name."
-  [{tab-name :name}]
-  (when (str/blank? tab-name)
-    (throw (ex-info (tru "A tab needs a name.") {:status-code 400}))))
-
-(defn- check-position
-  "Throws a 400 unless the `:position` of `tab` is not negative."
-  [{:keys [position]}]
-  (when-not (nat-int? position)
-    (throw (ex-info (tru "The position of a tab must not be negative.") {:status-code 400}))))
-
-(t2/define-before-insert :model/DashboardTab
-  [tab]
-  (check-name tab)
-  (when (contains? tab :position)
-    (check-position tab))
-  tab)
-
 (t2/define-before-update :model/DashboardTab
   [tab]
   (let [changes (t2/changes tab)]
     (when (contains? changes :dashboard_id)
       (throw (ex-info (tru "You cannot move a tab to another dashboard.") {:status-code 400})))
-    (when (contains? changes :name)
-      (check-name tab))
-    (when (contains? changes :position)
-      (check-position tab))
     tab))
 ;;; --------------------------------------------------- Permissions --------------------------------------------------
 

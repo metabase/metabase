@@ -8,9 +8,11 @@
    [metabase.permissions.core :as perms]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
+   [metabase.pulse.schema :as pulse.schema]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -437,19 +439,30 @@
         (let [pulse-id (insert-pulse! {:collection_id other-collection-id})]
           (is (= other-collection-id (t2/select-one-fn :collection_id :model/Pulse :id pulse-id))))))))
 
-(deftest dashboard-subscription-shape-test
+(deftest ^:parallel dashboard-subscription-schema-test
+  (let [row (fn [overrides]
+              (merge {:dashboard_id 1 :collection_position nil :alert_condition nil
+                      :alert_first_only nil :alert_above_goal nil}
+                     overrides))]
+    (testing "dashboard subscription has none of the columns of an alert, or a collection position"
+      (doseq [overrides [{:alert_condition "rows"}
+                         {:alert_first_only false}
+                         {:alert_above_goal true}
+                         {:collection_position 1}]]
+        (testing (pr-str overrides)
+          (is (= 400 (pulse-channel-test/normalize-status ::pulse.schema/pulse.update (row overrides)))))))
+    (testing "columns of an alert and collection position are fine without dashboard"
+      (is (nil? (pulse-channel-test/normalize-status
+                 ::pulse.schema/pulse.update
+                 (row {:dashboard_id nil :alert_condition "rows" :alert_first_only false :collection_position 1})))))
+    (testing "body with only some of the columns passes"
+      (is (nil? (pulse-channel-test/normalize-status ::pulse.schema/pulse.update
+                                                     {:dashboard_id 1 :alert_condition "rows"}))))))
+
+(deftest dashboard-subscription-update-shape-test
   (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
     (mt/with-model-cleanup [:model/Pulse]
-      (testing "a dashboard subscription has none of the columns of an alert, or a collection position"
-        (doseq [overrides [{:alert_condition "rows"}
-                           {:alert_first_only false}
-                           {:alert_above_goal true}
-                           {:collection_position 1}]]
-          (testing (pr-str overrides)
-            (is (= 400 (status-code #(insert-pulse! (assoc overrides :dashboard_id dashboard-id))))))))
-      (testing "the columns of an alert and a collection position are fine without a dashboard"
-        (is (some? (insert-pulse! {:alert_condition "rows" :alert_first_only false :collection_position 1}))))
-      (testing "an update cannot give a dashboard subscription them either"
+      (testing "update cannot give dashboard subscription the columns of an alert or collection position"
         (let [pulse-id (insert-pulse! {:dashboard_id dashboard-id})]
           (doseq [changes [{:alert_condition "rows"}
                            {:alert_first_only false}
@@ -459,18 +472,13 @@
               (is (= 400 (status-code #(t2/update! :model/Pulse :id pulse-id changes))))))
           (is (=? {:alert_condition nil :collection_position nil}
                   (t2/select-one :model/Pulse :id pulse-id)))
-          (testing "while a name goes through"
+          (testing "while name goes through"
             (is (= 1 (t2/update! :model/Pulse :id pulse-id {:name "Renamed"})))))))))
 
-(deftest pulse-parameters-shape-test
-  (mt/with-model-cleanup [:model/Pulse]
-    (testing "parameters are a sequence of maps with an id"
-      (is (= 400 (status-code #(insert-pulse! {:parameters [{:value 1}]}))))
-      (is (some? (insert-pulse! {:parameters [{:id "abc" :value 1}]}))))
-    (testing "an update with other parameters is held to the same"
-      (let [pulse-id (insert-pulse! {})]
-        (is (= 400 (status-code #(t2/update! :model/Pulse :id pulse-id {:parameters [{:value 1}]}))))
-        (is (= 1 (t2/update! :model/Pulse :id pulse-id {:parameters [{:id "abc" :value 1}]})))))))
+(deftest ^:parallel pulse-parameters-schema-test
+  (testing "parameters are sequence of maps with id"
+    (is (not (mr/validate ::pulse.schema/pulse.update {:parameters [{:value 1}]})))
+    (is (mr/validate ::pulse.schema/pulse.update {:parameters [{:id "abc" :value 1}]}))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Pulse Collections Permissions Tests                                          |

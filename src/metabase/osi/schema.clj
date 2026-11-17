@@ -24,6 +24,10 @@
    [:synonyms     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]
    [:examples     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]])
 
+(mr/def ::osi-ai-context.entity-type
+  [:enum {:decode/normalize (comp entity-retrieval/normalize-entity-type lib.schema.common/normalize-string-key)}
+   "card" "table" "measure" "segment"])
+
 (mr/def ::osi-ai-context
   "A OsiAiContext as selected from the app DB: every column of `:osi_ai_context`."
   [:merge
@@ -34,7 +38,7 @@
 (mr/def ::osi-ai-context.update
   "What an update (or insert) of a OsiAiContext accepts: every column of `:osi_ai_context` except `id`, all optional."
   [:map {:closed true}
-   [:entity_type     {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
+   [:entity_type     {:optional true} ::osi-ai-context.entity-type]
    [:entity_local_id {:optional true} [:maybe ms/PositiveInt]]
    [:entity_id       {:optional true} [:maybe :string]]
    [:ai_context      {:optional true} [:maybe ::osi-ai-context.ai-context]]

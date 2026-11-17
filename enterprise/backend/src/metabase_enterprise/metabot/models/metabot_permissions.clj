@@ -2,6 +2,7 @@
   "Toucan2 model registration and DB helpers for `:model/MetabotPermissions`."
   (:require
    [metabase-enterprise.metabot.db :as metabot.db]
+   [metabase-enterprise.metabot.schema :as metabot-ee.schema]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.usage-controls :as usage-controls]
    [metabase.models.interface :as mi]
@@ -30,16 +31,6 @@
   []
   (boolean (setting/get-value-of-type :boolean :metabot-advanced-permissions)))
 
-(defn- check-perm-value
-  "Throws a 400 unless `perm-value` is one of the values of `perm-type`."
-  [perm-type perm-value]
-  (let [perm-type  (some-> perm-type keyword)
-        perm-value (some-> perm-value keyword)]
-    (when-not (some #{perm-value} (get-in scope/metabot-permissions [perm-type :values]))
-      (throw (ex-info (tru "Invalid perm_value {0} for perm_type {1}."
-                           (some-> perm-value name) (some-> perm-type u/qualified-name))
-                      {:status-code 400})))))
-
 (defn- check-visible-group
   "Throws a 400 unless the stored permission mode shows the group with `group-id`, since a row written for a hidden
   group would take effect unseen on the next mode switch."
@@ -48,8 +39,7 @@
     (throw (ex-info (tru "Group {0} has no AI permissions in the current permission mode." (str group-id)) {:status-code 400}))))
 
 (t2/define-before-insert :model/MetabotPermissions
-  [{:keys [group_id perm_type perm_value] :as row}]
-  (check-perm-value perm_type perm_value)
+  [{:keys [group_id] :as row}]
   (check-visible-group group_id)
   row)
 
@@ -57,7 +47,7 @@
   [row]
   (let [changes (t2/changes row)]
     (when (some #(contains? changes %) [:perm_type :perm_value])
-      (check-perm-value (:perm_type row) (:perm_value row)))
+      (metabot-ee.schema/check-perm-value-fits-type (select-keys row [:perm_type :perm_value])))
     (when (seq changes)
       (check-visible-group (:group_id row))))
   row)

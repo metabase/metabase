@@ -13,6 +13,7 @@
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -78,13 +79,13 @@
 (def NewDashboard
   "Schema for the argument to [[create-dashboard!]]: the attributes of a new dashboard."
   [:map {:closed true}
-   [:name                ms/NonBlankString]
+   [:name                ::dashboards.schema/dashboard.name]
    [:parameters          {:optional true} [:maybe ::parameters.schema/parameters]]
    [:description         {:optional true} [:maybe :string]]
    [:cache_ttl           {:optional true} [:maybe ms/PositiveInt]]
    [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-   [:width               {:optional true} [:maybe [:enum "fixed" "full"]]]
+   [:width               {:optional true} [:maybe ::dashboards.schema/dashboard.width]]
    [:auto_apply_filters  {:optional true} [:maybe :boolean]]])
 
 (mu/defn create-dashboard! :- :map
@@ -251,10 +252,10 @@
   create; positive ids name existing rows, and rows absent from the payload are deleted."
   [:map
    [:id                                      int?]
-   [:size_x                                  ms/PositiveInt]
-   [:size_y                                  ms/PositiveInt]
-   [:row                                     ms/IntGreaterThanOrEqualToZero]
-   [:col                                     ms/IntGreaterThanOrEqualToZero]
+   [:size_x                                  ::dashboards.schema/dashboard-card.size]
+   [:size_y                                  ::dashboards.schema/dashboard-card.size]
+   [:row                                     ::dashboards.schema/dashboard-card.position]
+   [:col                                     ::dashboards.schema/dashboard-card.position]
    [:card_id                {:optional true} [:maybe ms/PositiveInt]]
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe int?]]
@@ -268,9 +269,9 @@
   positive ids name existing rows, and rows absent from the payload are deleted."
   [:map
    [:id       ms/Int]
-   [:name     ms/NonBlankString]
+   [:name     ::dashboards.schema/dashboard-tab.name]
    ;; tab order -- `metabase.dashboards.models.dashboard-tab/do-update-tabs!` writes it alongside `:name`
-   [:position {:optional true} ms/IntGreaterThanOrEqualToZero]])
+   [:position {:optional true} ::dashboards.schema/dashboard-tab.position]])
 
 (defn- track-dashcard-and-tab-events!
   [{dashboard-id :id :as dashboard}
@@ -396,7 +397,7 @@
   "Schema for the `dash-updates` argument to [[update-dashboard!]]: dashboard attributes plus the
   optional `:dashcards`/`:tabs` full-replacement layout."
   [:map
-   [:name                    {:optional true} [:maybe ms/NonBlankString]]
+   [:name                    {:optional true} [:maybe ::dashboards.schema/dashboard.name]]
    [:description             {:optional true} [:maybe :string]]
    [:caveats                 {:optional true} [:maybe :string]]
    [:points_of_interest      {:optional true} [:maybe :string]]
@@ -406,7 +407,7 @@
    [:embedding_params        {:optional true} [:maybe ms/EmbeddingParams]]
    [:parameters              {:optional true} [:maybe ::parameters.schema/parameters]]
    [:position                {:optional true} [:maybe ms/PositiveInt]]
-   [:width                   {:optional true} [:enum "fixed" "full"]]
+   [:width                   {:optional true} ::dashboards.schema/dashboard.width]
    [:archived                {:optional true} [:maybe :boolean]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position     {:optional true} [:maybe ms/PositiveInt]]

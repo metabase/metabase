@@ -111,7 +111,7 @@
    {:keys [name description schedule ui_display_type tag_ids]} :- [:map {:closed true}
                                                                    [:name ms/NonBlankString]
                                                                    [:description {:optional true} [:maybe ms/NonBlankString]]
-                                                                   [:schedule ms/NonBlankString]
+                                                                   [:schedule ::transforms.schema/transform-job.schedule]
                                                                    [:ui_display_type
                                                                     {:default :cron/raw}
                                                                     (ms/enum-decode-keyword ui-display-types)]
@@ -173,7 +173,7 @@
     :keys [name description schedule ui_display_type active]} :- [:map {:closed true}
                                                                   [:name {:optional true} ms/NonBlankString]
                                                                   [:description {:optional true} [:maybe ms/NonBlankString]]
-                                                                  [:schedule {:optional true} ms/NonBlankString]
+                                                                  [:schedule {:optional true} ::transforms.schema/transform-job.schedule]
                                                                   [:ui_display_type
                                                                    {:optional true}
                                                                    (ms/enum-decode-keyword ui-display-types)]

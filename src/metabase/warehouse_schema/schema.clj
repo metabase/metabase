@@ -5,9 +5,25 @@
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.schema :as models.schema]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.schema]))
+
+(mr/def ::dimension.type
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :internal :external])
+
+(defn- check-external-dimension-field
+  "Returns `dimension`, or throws a 400 when it holds a `:type` that is external and a nil `:human_readable_field_id`,
+  the Field its human-readable values come from."
+  [{dimension-type :type, :keys [human_readable_field_id], :as dimension}]
+  (when (and (map? dimension)
+             (contains? dimension :type)
+             (contains? dimension :human_readable_field_id)
+             (= "external" (some-> dimension-type name))
+             (nil? human_readable_field_id))
+    (throw (ex-info (tru "Foreign key based remappings require a human readable field id") {:status-code 400})))
+  dimension)
 
 (mr/def ::dimension
   "A Dimension as selected from the app DB: every column of `:dimension`."
@@ -19,11 +35,13 @@
     [:human_readable_field    {:optional true} [:maybe [:ref ::field]]]]])
 
 (mr/def ::dimension.update
-  "What an update (or insert) of a Dimension accepts: every column of `:dimension` except `id`, all optional."
-  [:map {:closed true}
+  "What an update (or insert) of a Dimension accepts: every column of `:dimension` except `id`, all optional; an
+  external Dimension names the Field its human-readable values come from."
+  [:map {:closed           true
+         :decode/normalize {:leave check-external-dimension-field}}
    [:field_id                {:optional true} [:maybe ::lib.schema.id/field]]
    [:name                    {:optional true} [:maybe :string]]
-   [:type                    {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:type                    {:optional true} ::dimension.type]
    [:human_readable_field_id {:optional true} [:maybe ::lib.schema.id/field]]
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
@@ -125,6 +143,22 @@
    [:semantic_type_set      {:optional true} :boolean]
    [:fk_target_field_id_set {:optional true} :boolean]])
 
+(mr/def ::field-values.human-readable-values
+  [:sequential [:maybe ms/NonBlankString]])
+
+(defn- check-human-readable-values-cover-values
+  "Returns `field-values`, or throws a 400 when it has both `:values` and `:human_readable_values` and the latter are
+  neither empty nor one for each value."
+  [{values :values, human-readable-values :human_readable_values, :as field-values}]
+  (when (and (map? field-values)
+             (contains? field-values :values)
+             (contains? field-values :human_readable_values)
+             (seq human-readable-values)
+             (not= (count human-readable-values) (count values)))
+    (throw (ex-info (tru "If remapped values are specified, they must be specified for all field values")
+                    {:status-code 400})))
+  field-values)
+
 (mr/def ::field-values
   "A FieldValues as selected from the app DB: every column of `:metabase_fieldvalues`."
   [:merge
@@ -132,13 +166,26 @@
    [:map {:closed true}
     [:id                    ms/PositiveInt]]])
 
+(defn- value-pairs-agree?
+  "Whether either every pair of `value-pairs` has a human-readable value or none does."
+  [value-pairs]
+  (<= (count (into #{} (map count) value-pairs)) 1))
+
+(mr/def ::field-values.value-pairs
+  [:and
+   [:sequential [:or [:tuple ms/FieldValue ms/NonBlankString] [:tuple ms/FieldValue]]]
+   [:fn {:error/fn (fn [_ _] (tru "If remapped values are specified, they must be specified for all field values"))}
+    value-pairs-agree?]])
+
 (mr/def ::field-values.update
-  "What an update (or insert) of a FieldValues accepts: every column of `:metabase_fieldvalues` except `id`, all optional."
-  [:map {:closed true}
+  "What an update (or insert) of a FieldValues accepts: every column of `:metabase_fieldvalues` except `id`, all
+  optional; human-readable values, when given with the values, cover each of them."
+  [:map {:closed           true
+         :decode/normalize {:leave check-human-readable-values-cover-values}}
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:values                {:optional true} [:maybe ms/FieldValues]]
-   [:human_readable_values {:optional true} [:maybe ms/FieldValues]]
+   [:human_readable_values {:optional true} [:maybe ::field-values.human-readable-values]]
    [:field_id              {:optional true} [:maybe ::lib.schema.id/field]]
    [:has_more_values       {:optional true} [:maybe :boolean]]
    [:type                  {:optional true} [:maybe ::lib.schema.common/keyword]]

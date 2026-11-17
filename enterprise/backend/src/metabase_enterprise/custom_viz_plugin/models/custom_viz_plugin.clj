@@ -3,7 +3,6 @@
    [buddy.core.codecs :as codecs]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
-   [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
@@ -39,21 +38,12 @@
   (cond-> row
     (contains? row :bundle) (assoc :bundle_hash (some-> ^bytes (:bundle row) cache/bytes-hash))))
 
-(defn- check-identifier
-  "Throws a 400 when `identifier` cannot name a plugin."
-  [identifier]
-  (when-let [error (manifest/identifier-error identifier)]
-    (throw (ex-info error {:status-code 400}))))
-
 (t2/define-before-insert :model/CustomVizPlugin
   [plugin]
-  (check-identifier (:identifier plugin))
   (with-bundle-hash plugin))
 
 (t2/define-before-update :model/CustomVizPlugin
   [plugin]
-  (when (contains? (t2/changes plugin) :identifier)
-    (check-identifier (:identifier plugin)))
   (merge plugin (some-> (t2/changes plugin) with-bundle-hash)))
 
 (doto :model/CustomVizPlugin

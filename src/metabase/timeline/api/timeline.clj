@@ -9,6 +9,7 @@
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline :as timeline]
    [metabase.timeline.models.timeline-event :as timeline-event]
+   [metabase.timeline.schema :as timeline.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
@@ -34,10 +35,10 @@
   [_route-params
    _query-params
    {collection-id :collection_id, :as body} :- [:map {:closed true}
-                                                [:name          ms/NonBlankString]
+                                                [:name          ::timeline.schema/name]
                                                 [:default       {:optional true} [:maybe :boolean]]
                                                 [:description   {:optional true} [:maybe :string]]
-                                                [:icon          {:optional true} [:maybe timeline-event/Icon]]
+                                                [:icon          {:optional true} ::timeline.schema/icon]
                                                 [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                                 [:archived      {:optional true} [:maybe :boolean]]]]
   (api/create-check :model/Timeline {:collection_id collection-id})
@@ -103,10 +104,10 @@
                     [:id ms/PositiveInt]]
    _query-params
    timeline-updates :- [:map {:closed true}
-                        [:name          {:optional true} [:maybe ms/NonBlankString]]
+                        [:name          {:optional true} [:maybe ::timeline.schema/name]]
                         [:default       {:optional true} [:maybe :boolean]]
                         [:description   {:optional true} [:maybe :string]]
-                        [:icon          {:optional true} [:maybe timeline-event/Icon]]
+                        [:icon          {:optional true} ::timeline.schema/icon]
                         [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                         [:archived      {:optional true} [:maybe :boolean]]]]
   (let [existing (api/check-404 (timeline.db/timeline id))

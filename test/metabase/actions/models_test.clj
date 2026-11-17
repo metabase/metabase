@@ -18,6 +18,7 @@
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (deftest hydrate-query-action-test
@@ -231,20 +232,18 @@
           (is (= model-db-id (:database_id (action/select-action :id action-id)))))))))
 
 (deftest query-action-query-must-be-native-test
-  (mt/with-actions-enabled
-    (mt/with-actions [{model-id :id} {:type :model, :dataset_query (mt/mbql-query categories)}]
-      (let [mp      (mt/metadata-provider)
-            mbql    (lib/query mp (lib.metadata/table mp (mt/id :categories)))
-            insert! (fn [query]
-                      (action/insert! (lib/normalize ::actions.schema/action.for-insert
-                                                     {:type :query, :name "Checked", :model_id model-id, :dataset_query query})))]
-        (testing "MBQL query is rejected"
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has to be a native query" (insert! mbql))))
-        (testing "MBQL query is rejected on query update"
-          (let [action-id (insert! (lib/native-query mp "UPDATE categories SET name = 'x' WHERE id = 1"))]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has to be a native query"
-                                  (action/update! {:id action-id, :dataset_query mbql}
-                                                  (action/select-action :id action-id))))))))))
+  (let [mp     (mt/metadata-provider)
+        mbql   (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+        native (lib/native-query mp "UPDATE categories SET name = 'x' WHERE id = 1")]
+    (testing "the QueryAction schema takes a native query on a database and refuses an MBQL one"
+      (is (mr/validate ::actions.schema/query-action.update {:dataset_query native}))
+      (is (not (mr/validate ::actions.schema/query-action.update {:dataset_query mbql}))))
+    (testing "the Action create request schema needs a native query for a query action"
+      (is (not (mr/validate ::actions.schema/action.create-request
+                            {:type :query, :name "Checked", :dataset_query mbql})))
+      (is (not (mr/validate ::actions.schema/action.create-request {:type :query, :name "Checked"})))
+      (is (mr/validate ::actions.schema/action.create-request
+                       {:type :query, :name "Checked", :dataset_query native})))))
 
 (defn- insert-bare-action!
   "Insert the Action row of `action-type`, without a model, a collection or its details, and return its id."
@@ -254,26 +253,10 @@
                                           :creator_id (mt/user->id :crowberto)}))
 
 (deftest action-type-is-query-or-implicit-test
-  (testing "an action is a query action or an implicit action, however it is written"
-    (mt/with-model-cleanup [:model/Action]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Action type must be query or implicit"
-                            (insert-bare-action! :http)))
-      (let [action-id (insert-bare-action! :query)]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Action type must be query or implicit"
-                              (t2/update! :model/Action :id action-id {:type :http})))
-        (is (= :query (t2/select-one-fn :type :model/Action :id action-id)))))))
-
-(deftest query-action-needs-native-query-on-database-test
-  (testing "the details of a query action hold a native query on a database, however they are written"
-    (mt/with-model-cleanup [:model/Action]
-      (let [action-id (insert-bare-action! :query)
-            mp        (mt/metadata-provider)
-            insert!   (fn [query]
-                        (t2/insert! :model/QueryAction {:action_id action-id, :dataset_query query}))]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Must provide a dataset_query" (insert! nil)))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has to be a native query"
-                              (insert! (lib/query mp (lib.metadata/table mp (mt/id :categories))))))
-        (is (not (t2/exists? :model/QueryAction :action_id action-id)))))))
+  (testing "the Action schema takes a query or an implicit action only"
+    (is (not (mr/validate ::actions.schema/action.for-insert {:type :http, :name "Bare"})))
+    (is (not (mr/validate ::actions.schema/action.for-update {:type :http})))
+    (is (mr/validate ::actions.schema/action.for-update {:type :implicit}))))
 
 (deftest query-action-database-is-derived-test
   (testing "the database of a query action is the one of its query, however it is written"
@@ -308,15 +291,9 @@
         (is (not (t2/exists? :model/QueryAction :action_id implicit-id)))))))
 
 (deftest implicit-action-kind-test
-  (testing "an implicit action is a row create, update or delete, however it is written"
-    (mt/with-model-cleanup [:model/Action]
-      (let [action-id (insert-bare-action! :implicit)]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unsupported implicit action kind"
-                              (t2/insert! :model/ImplicitAction {:action_id action-id, :kind "row/upsert", :table_id (mt/id :venues)})))
-        (t2/insert! :model/ImplicitAction {:action_id action-id, :kind "row/create", :table_id (mt/id :venues)})
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unsupported implicit action kind"
-                              (t2/update! :model/ImplicitAction :action_id action-id {:kind "row/upsert"})))
-        (is (= :row/create (t2/select-one-fn :kind :model/ImplicitAction :action_id action-id)))))))
+  (testing "the ImplicitAction schema takes a row create, update or delete"
+    (is (not (mr/validate ::actions.schema/implicit-action.update {:kind :row/upsert})))
+    (is (mr/validate ::actions.schema/implicit-action.update {:kind :row/create}))))
 
 (deftest actions-written-together-test
   (testing "several actions inserted or updated in one statement are checked each"

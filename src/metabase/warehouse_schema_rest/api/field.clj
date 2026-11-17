@@ -23,6 +23,7 @@
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2]))
@@ -186,10 +187,11 @@
                     [:id ms/PositiveInt]]
    _query-params
    {dimension-type :type, dimension-name :name, human-readable-field-id :human_readable_field_id}
-   :- [:map {:closed true}
-       [:type                    [:enum {:decode/normalize lib.schema.common/normalize-keyword} :internal :external]]
-       [:name                    ms/NonBlankString]
-       [:human_readable_field_id {:optional true} [:maybe ms/PositiveInt]]]]
+   :- [:merge
+       [:select-keys ::warehouse-schema.schema/dimension.update [:human_readable_field_id]]
+       [:map {:closed true}
+        [:type ::warehouse-schema.schema/dimension.type]
+        [:name ms/NonBlankString]]]]
   (api/write-check :model/Field id)
   (let [existing-dimension (warehouse-schema-rest.db/dimension-for-field id)]
     (check-can-point-at-field human-readable-field-id (:human_readable_field_id existing-dimension))
@@ -238,7 +240,7 @@
                     [:id ms/PositiveInt]]
    _query-params
    {value-pairs :values} :- [:map {:closed true}
-                             [:values ms/FieldValuesList]]]
+                             [:values ::warehouse-schema.schema/field-values.value-pairs]]]
   (let [field (api/write-check (warehouse-schema-rest.db/field id))]
     (api/check (field-values/field-should-have-field-values? field)
                [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "

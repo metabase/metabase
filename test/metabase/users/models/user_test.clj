@@ -20,10 +20,12 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.users.models.user :as user]
+   [metabase.users.schema :as users.schema]
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.log.capture :as log.capture]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -721,12 +723,10 @@
                             (t2/update! :model/User :id config/internal-mb-user-id {:is_active true})))
       (is (= before (t2/select-one :model/User :id config/internal-mb-user-id))))))
 
-(deftest update-type-test
-  (mt/with-temp [:model/User {user-id :id} {}]
-    (testing "type must be one of the allowed types"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid user type"
-                            (t2/update! :model/User :id user-id {:type :robot})))
-      (is (= :personal (t2/select-one-fn :type :model/User :id user-id))))))
+(deftest schema-checks-type-test
+  (is (mr/validate ::users.schema/user.type :api-key))
+  (is (mr/validate ::users.schema/user.type "personal"))
+  (is (not (mr/validate ::users.schema/user.type :robot))))
 
 (deftest update-check-test
   (mt/with-temp [:model/User {self-id :id}   {}

@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.metabot.models.metabot-group-limit :as group-limit]
    [metabase-enterprise.metabot.models.metabot-instance-limit :as instance-limit]
+   [metabase-enterprise.metabot.schema :as metabot.schema]
    [metabase-enterprise.metabot.usage :as usage]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -24,7 +25,7 @@
   "Set or update the instance-wide metabot usage limit. Pass `max_usage: null` to remove the limit (unlimited)."
   [_route-params
    _query-params
-   body :- [:map {:closed true} [:max_usage [:maybe nat-int?]]]]
+   body :- [:map {:closed true} [:max_usage ::metabot.schema/metabot-limit.max-usage]]]
   (api/check-superuser)
   (let [result (or (some-> (instance-limit/set-instance-limit! nil (:max_usage body)) (dissoc :id :tenant_id))
                    {:max_usage nil})]
@@ -51,7 +52,7 @@
   "Set or update the metabot usage limit for a specific tenant. Pass `max_usage: null` to remove the limit."
   [{:keys [tenant-id]} :- [:map {:closed true} [:tenant-id pos-int?]]
    _query-params
-   body :- [:map {:closed true} [:max_usage [:maybe nat-int?]]]]
+   body :- [:map {:closed true} [:max_usage ::metabot.schema/metabot-limit.max-usage]]]
   (api/check-superuser)
   (let [result (or (without-id (instance-limit/set-instance-limit! tenant-id (:max_usage body)))
                    {:tenant_id tenant-id :max_usage nil})]
@@ -78,7 +79,7 @@
   "Set or update the metabot usage limit for a specific group. Pass `max_usage: null` to remove the limit."
   [{:keys [group-id]} :- [:map {:closed true} [:group-id pos-int?]]
    _query-params
-   body :- [:map {:closed true} [:max_usage [:maybe nat-int?]]]]
+   body :- [:map {:closed true} [:max_usage ::metabot.schema/metabot-limit.max-usage]]]
   (api/check-superuser)
   (let [result (or (without-id (group-limit/set-group-limit! group-id (:max_usage body)))
                    {:group_id group-id :max_usage nil})]

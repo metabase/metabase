@@ -11,6 +11,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.impl :as audit]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -18,6 +19,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -2105,14 +2107,9 @@
                                          :name     "Child Collection"
                                          :type     collection/library-data-collection-type}))))))
 
-(deftest collection-type-is-validated-test
-  (testing "An unknown type is refused on insert"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Collection type"
-                          (t2/insert! :model/Collection {:name "Typed Collection" :type "not-a-type"}))))
-  (testing "An unknown type is refused on update"
-    (mt/with-temp [:model/Collection collection {}]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Collection type"
-                            (t2/update! :model/Collection :id (:id collection) {:type "not-a-type"}))))))
+(deftest schema-checks-collection-type-test
+  (is (mr/validate ::collections.schema/collection.type collection/library-data-collection-type))
+  (is (not (mr/validate ::collections.schema/collection.type "not-a-type"))))
 
 (deftest tenant-collection-needs-tenants-test
   (testing "A Collection of the tenant namespace can't be created while tenants are off"

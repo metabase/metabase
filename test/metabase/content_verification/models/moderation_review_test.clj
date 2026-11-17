@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.content-verification.schema :as content-verification.schema]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (defn- review
@@ -15,26 +17,15 @@
           :text                "review"}
          overrides))
 
-(deftest status-and-item-type-must-be-known-test
-  (mt/with-temp [:model/Card {card-id :id} {}]
-    (mt/with-model-cleanup [:model/ModerationReview]
-      (testing "inserting unknown status is refused"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid moderation review status"
-                              (t2/insert! :model/ModerationReview (review card-id :status "approved")))))
-      (testing "inserting unknown item type is refused"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid moderated item type"
-                              (t2/insert! :model/ModerationReview (review card-id :moderated_item_type "table")))))
-      (is (not (t2/exists? :model/ModerationReview :moderated_item_id card-id)))
-      (let [id (t2/insert-returning-pk! :model/ModerationReview (review card-id))]
-        (testing "changing status to unknown value is refused"
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid moderation review status"
-                                (t2/update! :model/ModerationReview :id id {:status "approved"}))))
-        (testing "changing item type to unknown value is refused"
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid moderated item type"
-                                (t2/update! :model/ModerationReview :id id {:moderated_item_type "table"}))))
-        (testing "clearing status is accepted"
-          (t2/update! :model/ModerationReview :id id {:status nil})
-          (is (nil? (t2/select-one-fn :status :model/ModerationReview :id id))))))))
+(deftest status-and-item-type-schema-test
+  (testing "status is verified or nil"
+    (is (mr/validate ::content-verification.schema/moderation-review.update {:status "verified"}))
+    (is (mr/validate ::content-verification.schema/moderation-review.update {:status nil}))
+    (is (not (mr/validate ::content-verification.schema/moderation-review.update {:status "approved"}))))
+  (testing "item type is card or dashboard"
+    (is (mr/validate ::content-verification.schema/moderation-review.update {:moderated_item_type "dashboard"}))
+    (is (mr/validate ::content-verification.schema/moderation-review.update {:moderated_item_type :card}))
+    (is (not (mr/validate ::content-verification.schema/moderation-review.update {:moderated_item_type "table"})))))
 
 (deftest insert-keeps-single-most-recent-review-test
   (mt/with-temp [:model/Card {card-id :id} {}]

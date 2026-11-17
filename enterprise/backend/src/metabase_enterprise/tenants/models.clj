@@ -1,18 +1,13 @@
 (ns metabase-enterprise.tenants.models
   (:require
-   [clojure.string :as str]
    [metabase-enterprise.tenants.db :as tenants.db]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
    [metabase.collections.models.collection :as collection]
-   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
+   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -36,52 +31,6 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(def Slug
-  "The malli schema for a tenant's slug"
-  [:re #"^[-_a-z0-9]{1,255}$"])
-
-(def ^:private StrictAttributes
-  [:map-of
-   [:and
-    (mu/with-api-error-message
-     ms/KeywordOrString
-     (deferred-tru "attribute keys must be a keyword or string"))
-    (mu/with-api-error-message
-     [:fn (fn [k] (re-matches #"^(?!@).*" (name k)))]
-     (deferred-tru "attribute keys must not start with `@`"))]
-   :any])
-
-(def Attributes
-  "Attributes attached to a tenant that will be passed down to users in the tenant.
-
-  [[StrictAttributes]] can't be the request schema directly: request decoding drops `:map-of` entries that don't
-  match their schema, so an `@`-prefixed key would be quietly discarded and the tenant saved without it. Decoding
-  therefore sees a permissive `:map-of` that keeps every entry, and the `:fn` re-checks the strict shape afterwards,
-  so an `@`-prefixed key is a 400."
-  [:and
-   (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])
-   (mu/with-api-error-message
-    [:fn #(mr/validate StrictAttributes %)]
-    (deferred-tru "attribute keys must be a keyword or string and must not start with `@`"))])
-
-(defn- check-slug
-  "Throws a 400 unless `slug` is lower-case letters, digits, `-` and `_`."
-  [slug]
-  (when-not (mr/validate Slug slug)
-    (throw (ex-info (tru "invalid slug") {:status-code 400}))))
-
-(defn- check-name
-  "Throws a 400 when `tenant-name` is blank."
-  [tenant-name]
-  (when (str/blank? tenant-name)
-    (throw (ex-info (tru "A tenant needs a name.") {:status-code 400}))))
-
-(defn- check-attributes
-  "Throws a 400 when a key of `attributes` starts with `@`, which marks the attributes Metabase sets itself."
-  [attributes]
-  (when (some #(str/starts-with? (name %) "@") (keys attributes))
-    (throw (ex-info (tru "attribute keys must not start with `@`") {:status-code 400}))))
-
 (defn- check-new-name-and-slug
   "Throws a 400 when `tenant`, a row an INSERT writes, has the name or slug of an existing Tenant."
   [{tenant-name :name :keys [slug]}]
@@ -89,10 +38,7 @@
     (throw (ex-info (tru "This tenant name or slug is already taken.") {:status-code 400}))))
 
 (t2/define-before-insert :model/Tenant
-  [{tenant-name :name :keys [slug attributes] :as tenant}]
-  (check-name tenant-name)
-  (check-slug slug)
-  (check-attributes attributes)
+  [tenant]
   (check-new-name-and-slug tenant)
   (let [tenant-collection-id (tenants.db/insert-collection! {:type      collection/tenant-specific-root-collection-type
                                                              :name      (format "Tenant Collection: %s" (:name tenant))
@@ -106,10 +52,6 @@
       (throw (ex-info (tru "You cannot change the slug of a tenant.") {:status-code 400})))
     (when (contains? changes :tenant_collection_id)
       (throw (ex-info (tru "You cannot change the collection of a tenant.") {:status-code 400})))
-    (when (contains? changes :name)
-      (check-name (:name changes)))
-    (when (contains? changes :attributes)
-      (check-attributes (:attributes changes)))
     (when (and (contains? changes :name) (tenants.db/other-tenant-named? (:name changes) id))
       (throw (ex-info (tru "This name is already taken.") {:status-code 400})))
     (when (false? (:is_active changes))

@@ -75,7 +75,7 @@
 
               (is (<= (review-count) moderation-review/max-moderation-reviews)))
             (testing "Only allows for valid status"
-              (doseq [status moderation-review/statuses]
+              (doseq [status ["verified" nil]]
                 (is (= status (:status (moderate! status "good")))))
               (mt/user-http-request :crowberto :post 400 "moderation-review"
                                     {:text                "not a chance this works"

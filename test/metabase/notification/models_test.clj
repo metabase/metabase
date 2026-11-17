@@ -11,6 +11,7 @@
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -92,31 +93,10 @@
         (mt/with-current-user (mt/user->id :rasta)
           (is (api/update-check noti {:creator_id (mt/user->id :rasta)})))))))
 
-(deftest subscription-cron-schedule-validation-test
-  (mt/with-temp-scheduler!
-    (task/init! ::task.notification/SendNotifications)
-    (mt/with-temp [:model/Notification {noti-id :id}]
-      (testing "insert with an invalid cron schedule is a 400 and leaves no row"
-        (is (thrown-with-msg? Exception #"Invalid cron schedule string"
-                              (t2/insert! :model/NotificationSubscription {:type            :notification-subscription/cron
-                                                                           :cron_schedule   "not a cron"
-                                                                           :notification_id noti-id})))
-        (is (= 400 (-> (try (t2/insert! :model/NotificationSubscription {:type            :notification-subscription/cron
-                                                                         :cron_schedule   "not a cron"
-                                                                         :notification_id noti-id})
-                            (catch Exception e e))
-                       ex-data :status-code)))
-        (is (not (t2/exists? :model/NotificationSubscription :notification_id noti-id))))
-      (testing "update to an invalid cron schedule is a 400 and keeps the row and trigger"
-        (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
-                                                                               :cron_schedule   "0 * * * * ? *"
-                                                                               :notification_id noti-id})]
-          (is (= 400 (-> (try (t2/update! :model/NotificationSubscription :id sub-id {:cron_schedule "not a cron"})
-                              (catch Exception e e))
-                         ex-data :status-code)))
-          (is (= "0 * * * * ? *" (t2/select-one-fn :cron_schedule :model/NotificationSubscription :id sub-id)))
-          (is (= [(notification.tu/subscription->trigger-info sub-id "0 * * * * ? *")]
-                 (notification.tu/send-notification-triggers sub-id))))))))
+(deftest subscription-schema-checks-cron-schedule-test
+  (let [subscription {:type :notification-subscription/cron :notification_id 1}]
+    (is (mr/validate ::models.notification/NotificationSubscription (assoc subscription :cron_schedule "0 * * * * ? *")))
+    (is (not (mr/validate ::models.notification/NotificationSubscription (assoc subscription :cron_schedule "not a cron"))))))
 
 (deftest delete-notification-clean-up-payload-test
   (testing "cleanup :model/NotificationCard on delete"

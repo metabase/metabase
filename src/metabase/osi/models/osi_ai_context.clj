@@ -20,7 +20,6 @@
    [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -52,28 +51,14 @@
 ;;; Card-backed entities (question/metric/model) store their `entity_type` as the canonical `card`, so one
 ;;; ai_context row survives a type relabel and keys on a stable `(card, entity_local_id)`. The CRUD and tool
 ;;; APIs still speak the real types; only the stored key is normalized. Non-card types pass through.
-(def ^:private stored-entity-types
-  "The `entity_type` values a row is stored under: card flavors are stored as `card`."
-  #{"card" "table" "measure" "segment"})
-
-(defn- stored-entity-type
-  "The canonical `entity_type` to store for `entity-type`, throwing a 400 when it is not one an OsiAiContext
-  describes."
-  [entity-type]
-  (let [stored (entity-retrieval/normalize-entity-type entity-type)]
-    (when-not (contains? stored-entity-types stored)
-      (throw (ex-info (tru "entity_type must be one of: card, measure, metric, model, question, segment, table")
-                      {:status-code 400})))
-    stored))
-
 (t2/define-before-insert :model/OsiAiContext
   [row]
-  (assoc row :entity_type (stored-entity-type (:entity_type row))))
+  (update row :entity_type entity-retrieval/normalize-entity-type))
 
 (t2/define-before-update :model/OsiAiContext
   [row]
   (cond-> row
-    (contains? (t2/changes row) :entity_type) (assoc :entity_type (stored-entity-type (:entity_type row)))))
+    (contains? (t2/changes row) :entity_type) (update :entity_type entity-retrieval/normalize-entity-type)))
 
 ;;; Each write nudges a targeted reconcile of just this entity's index slice (fire-and-forget: no-op in
 ;;; OSS, error-swallowing in EE), so appdb writes never fail or slow down because of the mirror. The nudge

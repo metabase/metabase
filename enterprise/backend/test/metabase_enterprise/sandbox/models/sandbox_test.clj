@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.sandbox.models.sandbox :as sandboxes]
+   [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase-enterprise.sandbox.test-util :as sbx.tu]
    [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
@@ -22,6 +23,7 @@
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (deftest disallow-changing-table-id-test
@@ -46,31 +48,18 @@
       (is (= 0 (t2/update! :model/Sandbox :id sandbox-id {:group_id group-id}))))))
 
 (deftest attribute-remappings-shape-test
-  (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
-    (testing "insert"
-      (is (=? {:status-code 400}
-              (try (t2/insert! :model/Sandbox {:table_id             (mt/id :venues)
-                                               :group_id             group-id
-                                               :attribute_remappings {"cat" true}})
-                   (catch clojure.lang.ExceptionInfo e (ex-data e)))))
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Invalid attribute remappings"
-           (t2/insert! :model/Sandbox {:table_id             (mt/id :venues)
-                                       :group_id             group-id
-                                       :attribute_remappings {"" "CATEGORY_ID"}})))
-      (is (not (t2/exists? :model/Sandbox :group_id group-id))))
-    (testing "update"
-      (mt/with-temp [:model/Sandbox {sandbox-id :id} {:table_id             (mt/id :venues)
-                                                      :group_id             group-id
-                                                      :attribute_remappings {"cat" "CATEGORY_ID"}}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Invalid attribute remappings"
-             (t2/update! :model/Sandbox :id sandbox-id {:attribute_remappings {"cat" true}})))
-        (is (= 1 (t2/update! :model/Sandbox :id sandbox-id {:attribute_remappings {:cat (mt/id :venues :category_id)}})))
-        (is (= {"cat" (mt/id :venues :category_id)}
-               (t2/select-one-fn :attribute_remappings :model/Sandbox :id sandbox-id)))))))
+  (testing "schema"
+    (doseq [remappings [{"cat" true} {"" "CATEGORY_ID"}]]
+      (is (not (mr/validate ::sandbox.schema/sandbox.update {:attribute_remappings remappings}))))
+    (is (mr/validate ::sandbox.schema/sandbox.update {:attribute_remappings {"cat" "CATEGORY_ID"}})))
+  (testing "update normalizes the stored remappings"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                   :model/Sandbox {sandbox-id :id} {:table_id             (mt/id :venues)
+                                                    :group_id             group-id
+                                                    :attribute_remappings {"cat" "CATEGORY_ID"}}]
+      (is (= 1 (t2/update! :model/Sandbox :id sandbox-id {:attribute_remappings {:cat (mt/id :venues :category_id)}})))
+      (is (= {"cat" (mt/id :venues :category_id)}
+             (t2/select-one-fn :attribute_remappings :model/Sandbox :id sandbox-id))))))
 
 (deftest insert-removes-native-access-of-each-group-test
   (mt/with-temp [:model/PermissionsGroup {group-1 :id} {}

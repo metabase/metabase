@@ -19,7 +19,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -84,12 +83,6 @@
   "Whether `action` is an implicit action."
   [action]
   (= :implicit (keyword (:type action))))
-
-(defn- check-type
-  "Throws a 400 unless `action` is a query or an implicit action."
-  [{action-type :type}]
-  (when-not (contains? #{:query :implicit} (some-> action-type keyword))
-    (throw (ex-info (tru "Action type must be query or implicit.") {:status-code 400}))))
 
 (defn- check-model-card
   "Throws a 400 unless `card`, the Card an implicit action is made on, is a model."
@@ -179,7 +172,6 @@
         action     (cond-> (public-sharing/add-public-uuid-prefix action)
                      (:model_id action) (set-model-collection model-card))
         namespace  (collection-namespace action)]
-    (check-type action)
     (when (and (implicit? action) (:model_id action))
       (check-model-card model-card))
     (check-collection-content action namespace)
@@ -194,8 +186,6 @@
                        (actions.db/card-placement model-id))
         placed?      (changed-any? [:collection_id :type :model_id :archived :public_uuid :parameters])
         namespace    (when placed? (collection-namespace action))]
-    (when (contains? changes :type)
-      (check-type action))
     (when (and model-id
                (contains? changes :collection_id)
                (not= (:collection_id action) (:collection_id model-card)))
@@ -216,17 +206,6 @@
   (when (and (map? query) (seq query))
     (lib-be/normalize-query query)))
 
-(defn- check-query
-  "Throws a 400 unless `query-action` has a query, which when not empty is a native query on a Database."
-  [{query :dataset_query, :as query-action}]
-  (when-not (map? query)
-    (throw (ex-info (tru "Must provide a dataset_query for query actions") {:status-code 400})))
-  (when-let [query (normalized-query query-action)]
-    (when-not (:database query)
-      (throw (ex-info (tru "Must provide a dataset_query for query actions") {:status-code 400})))
-    (when-not (lib/native-only-query? query)
-      (throw (ex-info (tru "An action''s query has to be a native query.") {:status-code 400})))))
-
 (defn- set-query-database
   "`query-action` with the `:database_id` its query names, when the query names one."
   [query-action]
@@ -243,7 +222,6 @@
 (t2/define-before-insert :model/QueryAction
   [query-action]
   (check-details-type (some-> (:action_id query-action) actions.db/action-type-and-model) :query)
-  (check-query query-action)
   (set-query-database query-action))
 
 (t2/define-before-update :model/QueryAction
@@ -251,16 +229,8 @@
   (let [changes (t2/changes query-action)]
     (when (and (contains? changes :database_id) (not (contains? changes :dataset_query)))
       (throw (ex-info (tru "The database of a query action follows its query; change the query instead.") {:status-code 400})))
-    (when (contains? changes :dataset_query)
-      (check-query query-action))
     (cond-> query-action
       (contains? changes :dataset_query) set-query-database)))
-
-(defn- check-kind
-  "Throws a 400 unless `implicit-action` has a kind implicit actions come in."
-  [{kind :kind}]
-  (when-not (mr/validate ::actions.schema/implicit-action.kind (some-> kind keyword))
-    (throw (ex-info (tru "Unsupported implicit action kind") {:status-code 400}))))
 
 (defn- check-implicit-action-table
   "Throws a 400 unless `implicit-action` has a Table exactly when `action`, its Action, has no model, as an action of a
@@ -278,14 +248,11 @@
   (let [action (some-> (:action_id implicit-action) actions.db/action-type-and-model)]
     (check-details-type action :implicit)
     (check-implicit-action-table implicit-action action)
-    (check-kind implicit-action)
     implicit-action))
 
 (t2/define-before-update :model/ImplicitAction
   [implicit-action]
   (let [changes (t2/changes implicit-action)]
-    (when (contains? changes :kind)
-      (check-kind implicit-action))
     (when (contains? changes :table_id)
       (check-implicit-action-table implicit-action
                                    (some-> (:action_id implicit-action) actions.db/action-type-and-model)))

@@ -54,12 +54,6 @@
         [name description] (get values (:built_in_type job))]
     {:name name :description description}))
 
-(mu/defn- check-schedule
-  "Throws a 400 unless `schedule` is a valid cron expression."
-  [schedule :- [:maybe :string]]
-  (when-not (transforms.schedule/validate-cron-expression (str schedule))
-    (throw (ex-info (i18n/tru "Invalid cron expression: {0}" schedule) {:status-code 400}))))
-
 (mu/defn- sync-trigger! :- :nil
   "Make the Quartz trigger of the job with `job-id` match its row: scheduled while the job is active, removed otherwise."
   [job-id :- ms/PositiveInt]
@@ -69,10 +63,6 @@
         (transforms.schedule/initialize-job! job))
       (transforms.schedule/delete-trigger! job-id))
     nil))
-
-(t2/define-before-insert :model/TransformJob [job]
-  (check-schedule (:schedule job))
-  job)
 
 (t2/define-after-insert :model/TransformJob [job]
   (sync-trigger! (:id job))
@@ -84,8 +74,6 @@
     (merge job (translated-name-and-description job))))
 
 (t2/define-before-update :model/TransformJob [job]
-  (when (contains? (t2/changes job) :schedule)
-    (check-schedule (:schedule job)))
   (if (nil? (:built_in_type job))
     job
     (-> (merge (translated-name-and-description job)

@@ -56,6 +56,14 @@
            :channel/email ::email-details}
     config/is-test? (assoc :channel/metabase-test ::test-details)))
 
+(mr/def ::channel.type
+  "The `:type` column of a Channel: one of the registered channel types, as a keyword or its string."
+  [:fn {:decode/normalize keyword
+        :decode/string    keyword
+        :json-schema      {:type "string"}
+        :error/message    "must be a registered channel type"}
+   #(and (or (keyword? %) (string? %)) (contains? channel-type->details-schema (keyword %)))])
+
 (mr/def ::channel.details
   "The `:details` column of a Channel, decoded, when the channel's `:type` is not at hand to pick the schema by. Decoding
   an `:or` keeps the first branch the value satisfies once decoded, and the request decoder strips undeclared keys, so
@@ -90,7 +98,7 @@
    [:id          ms/PositiveInt]
    [:name        :string]
    [:description {:optional true} [:maybe :string]]
-   [:type        ::lib.schema.common/keyword]
+   [:type        ::channel.type]
    [:active      {:optional true} :boolean]
    [:created_at  ms/TemporalInstant]
    [:updated_at  ms/TemporalInstant]])
@@ -106,7 +114,7 @@
   [:map {:closed true}
    [:name        {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
-   [:type        {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:type        {:optional true} [:maybe ::channel.type]]
    [:details     {:optional true} [:maybe ::channel.details]]
    [:active      {:optional true} [:maybe :boolean]]
    [:created_at  {:optional true} [:maybe ms/TemporalInstant]]

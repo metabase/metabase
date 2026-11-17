@@ -2,10 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.lib.core :as lib]
    [metabase.task-history.models.task-history :as task-history]
+   [metabase.task-history.schema :as task-history.schema]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
    (java.time Clock Instant ZoneId)))
@@ -240,17 +243,7 @@
                       remaining-logs)))))))))
 
 (deftest status-must-be-known-test
-  (mt/with-model-cleanup [:model/TaskHistory]
-    (testing "inserting unknown status is refused"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid task history status"
-                            (t2/insert! :model/TaskHistory {:task       "status-check-task"
-                                                            :started_at (t/instant)
-                                                            :status     :bogus})))
-      (is (not (t2/exists? :model/TaskHistory :task "status-check-task"))))
-    (mt/with-temp [:model/TaskHistory {id :id} {:status :started}]
-      (testing "changing status to unknown value is refused"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid task history status"
-                              (t2/update! :model/TaskHistory :id id {:status :bogus}))))
-      (testing "changing status to known value is accepted"
-        (t2/update! :model/TaskHistory :id id {:status :failed})
-        (is (= :failed (t2/select-one-fn :status :model/TaskHistory :id id)))))))
+  (testing "the schema refuses an unknown status and takes a known one, as a keyword or a string"
+    (is (not (mr/validate ::task-history.schema/task-history.update {:status :bogus})))
+    (is (mr/validate ::task-history.schema/task-history.update {:status :unknown}))
+    (is (= {:status :unknown} (lib/normalize ::task-history.schema/task-history.update {:status "unknown"})))))

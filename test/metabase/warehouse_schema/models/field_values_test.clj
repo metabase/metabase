@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
@@ -17,8 +18,10 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
   (:import
@@ -489,28 +492,28 @@
                (is (= {:values [-2 -1 0] :human_readable_values ["-2" "-1" "0"]}
                       (sync-and-find-values! db field-values-id)))))))))))
 
-(deftest validate-human-readable-values-test
-  (testing "Should validate FieldValues :human_readable_values when"
-    (testing "creating"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Invalid human-readable-values"
-           (mt/with-temp [:model/FieldValues _ {:field_id (mt/id :venues :id), :human_readable_values {"1" "A", "2", "B"}}]))))
-    (testing "updating"
-      (mt/with-temp [:model/FieldValues {:keys [id]} {:field_id (mt/id :venues :id), :human_readable_values []}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Invalid human-readable-values"
-             (t2/update! :model/FieldValues :id id {:human_readable_values {"1" "A", "2", "B"}})))))))
+(deftest field-values-schema-test
+  (testing "the FieldValues schema takes human-readable values only as a list of strings or nils"
+    (is (not (mr/validate ::warehouse-schema.schema/field-values.update {:human_readable_values {"1" "A", "2" "B"}})))
+    (is (mr/validate ::warehouse-schema.schema/field-values.update {:human_readable_values ["a" nil "c"]}))))
+
+(deftest human-readable-values-cover-values-schema-test
+  (let [bad {:values [1 2 3], :human_readable_values ["a" "b"]}]
+    (testing "a FieldValues whose human-readable values do not cover its values is a 400"
+      (is (thrown-with-msg? ExceptionInfo #"must be specified for all field values"
+                            (lib/normalize ::warehouse-schema.schema/field-values bad {:throw? true}))))
+    (testing "so is a serialized one"
+      (is (thrown-with-msg? ExceptionInfo #"must be specified for all field values"
+                            (lib/normalize ::warehouse-schema.schema/external-field-values bad {:throw? true}))))
+    (testing "a body with only one of the columns passes"
+      (is (= {:values [1 2 3]}
+             (lib/normalize ::warehouse-schema.schema/field-values.update {:values [1 2 3]} {:throw? true})))
+      (is (= {:human_readable_values ["a" "b"]}
+             (lib/normalize ::warehouse-schema.schema/field-values.update {:human_readable_values ["a" "b"]}
+                            {:throw? true}))))))
 
 (deftest human-readable-values-cover-values-test
   (let [field-id (mt/id :venues :price)]
-    (testing "insert refuses human-readable values that do not match values one to one"
-      (is (thrown-with-msg? ExceptionInfo
-                            #"must be specified for all field values"
-                            (t2/insert! :model/FieldValues {:field_id              field-id
-                                                            :values                [1 2 3]
-                                                            :human_readable_values ["a" "b"]}))))
     (mt/with-temp [:model/FieldValues {:keys [id]} {:field_id              field-id
                                                     :values                [1 2 3]
                                                     :human_readable_values ["a" "b" "c"]}]

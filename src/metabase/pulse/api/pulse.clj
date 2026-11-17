@@ -135,21 +135,6 @@
         (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
         pulse))))
 
-(def ^:private PulseChannelType
-  [:enum "email" "slack" "http"])
-
-(def ^:private PulseScheduleType
-  [:enum "hourly" "daily" "weekly" "monthly"])
-
-(def ^:private PulseScheduleDay
-  [:enum "sun" "mon" "tue" "wed" "thu" "fri" "sat"])
-
-(def ^:private PulseScheduleFrame
-  [:enum "first" "mid" "last"])
-
-(def ^:private PulseScheduleHour
-  [:int {:min 0 :max 23}])
-
 (def ^:private PulseChannelRecipient
   [:map {:closed true}
    [:id    {:optional true} [:maybe ms/PositiveInt]]
@@ -167,18 +152,18 @@
 
 (def ^:private PulseChannel
   "The fields [[metabase.pulse.models.pulse-channel/create-pulse-channel!]] reads off a channel."
-  [:map {:closed true}
+  [:map {:closed true :decode/normalize {:leave pulse.schema/check-schedule}}
    [:id             {:optional true}   [:maybe ms/PositiveInt]]
-   [:channel_type                      PulseChannelType]
+   [:channel_type                      ::pulse.schema/pulse-channel.channel-type]
    [:enabled        {:optional true}   [:maybe :boolean]]
    [:pulse_id       {:optional true}   [:maybe ms/PositiveInt]]
    [:channel_id     {:optional true}   [:maybe ms/PositiveInt]]
    [:details        {:optional true}   [:maybe PulseChannelDetails]]
    [:recipients     {:optional true}   [:sequential PulseChannelRecipient]]
-   [:schedule_type  {:optional true}   [:maybe PulseScheduleType]]
-   [:schedule_day   {:optional true}   [:maybe PulseScheduleDay]]
-   [:schedule_hour  {:optional true}   [:maybe PulseScheduleHour]]
-   [:schedule_frame {:optional true}   [:maybe PulseScheduleFrame]]])
+   [:schedule_type  {:optional true}   [:maybe ::pulse.schema/pulse-channel.schedule-type]]
+   [:schedule_day   {:optional true}   [:maybe ::pulse.schema/pulse-channel.schedule-day]]
+   [:schedule_hour  {:optional true}   [:maybe ::pulse.schema/pulse-channel.schedule-hour]]
+   [:schedule_frame {:optional true}   [:maybe ::pulse.schema/pulse-channel.schedule-frame]]])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

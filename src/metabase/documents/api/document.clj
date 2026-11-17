@@ -40,7 +40,7 @@
 
 (def ^:private DocumentCreateOptions
   [:map {:closed true}
-   [:name m.document/DocumentName]
+   [:name documents.schema/DocumentName]
    [:document ::prose-mirror/ast]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
@@ -48,7 +48,7 @@
 
 (def ^:private DocumentUpdateOptions
   [:map {:closed true}
-   [:name {:optional true} m.document/DocumentName]
+   [:name {:optional true} documents.schema/DocumentName]
    [:document {:optional true} [:maybe ::prose-mirror/ast]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
@@ -237,7 +237,7 @@
                                   [:from-document-id ms/PositiveInt]]
    _query-params
    {:keys [name collection_id collection_position]} :- [:map {:closed true}
-                                                        [:name                {:optional true} [:maybe ms/NonBlankString]]
+                                                        [:name                {:optional true} [:maybe documents.schema/DocumentName]]
                                                         [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                                                         [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
   (copy-document! from-document-id {:name                name

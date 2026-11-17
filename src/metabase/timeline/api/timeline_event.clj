@@ -7,6 +7,7 @@
    [metabase.events.core :as events]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
+   [metabase.timeline.schema :as timeline.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -26,12 +27,12 @@
    _query-params
    {:keys [timestamp time_matters timeline_id source question_id] :as body}
    :- [:map {:closed true}
-       [:name         ms/NonBlankString]
+       [:name         ::timeline.schema/name]
        [:description  {:optional true} [:maybe :string]]
        [:timestamp    ms/TemporalString]
-       [:time_matters {:optional true} [:maybe :boolean]]
+       [:time_matters {:optional true} ::timeline.schema/time-matters]
        [:timezone     timeline-event/Timezone]
-       [:icon         {:optional true} [:maybe timeline-event/Icon]]
+       [:icon         {:optional true} ::timeline.schema/icon]
        [:timeline_id  ms/PositiveInt]
        [:source       {:optional true} [:maybe timeline-event/Source]]
        [:question_id  {:optional true} [:maybe ms/PositiveInt]]
@@ -76,12 +77,12 @@
    _query-params
    {:keys [timestamp]
     :as   timeline-event-updates} :- [:map {:closed true}
-                                      [:name         {:optional true} [:maybe ms/NonBlankString]]
+                                      [:name         {:optional true} [:maybe ::timeline.schema/name]]
                                       [:description  {:optional true} [:maybe :string]]
-                                      [:timestamp    {:optional true} [:maybe ms/TemporalString]]
-                                      [:time_matters {:optional true} [:maybe :boolean]]
+                                      [:timestamp    {:optional true} ms/TemporalString]
+                                      [:time_matters {:optional true} ::timeline.schema/time-matters]
                                       [:timezone     {:optional true} [:maybe timeline-event/Timezone]]
-                                      [:icon         {:optional true} [:maybe timeline-event/Icon]]
+                                      [:icon         {:optional true} ::timeline.schema/icon]
                                       [:timeline_id  {:optional true} [:maybe ms/PositiveInt]]
                                       [:archived     {:optional true} [:maybe :boolean]]]]
   (let [existing (api/check-404 (timeline.db/timeline-event id))

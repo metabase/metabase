@@ -2,13 +2,16 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.lib.core :as lib]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
+   [metabase.pulse.schema :as pulse.schema]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
    [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -457,47 +460,56 @@
     (catch clojure.lang.ExceptionInfo e
       (:status-code (ex-data e)))))
 
-(defn- insert-channel!
-  "Insert a PulseChannel made of the defaults of one, `pulse-id` and `overrides`, and return its id."
-  [pulse-id overrides]
-  (t2/insert-returning-pk! :model/PulseChannel (merge (mt/with-temp-defaults :model/PulseChannel)
-                                                      {:pulse_id pulse-id}
-                                                      overrides)))
+(defn- channel-row
+  "A PulseChannel row with every schedule column, nil unless `overrides` sets it."
+  [overrides]
+  (merge {:channel_type :email :schedule_type :daily :schedule_hour 8 :schedule_day nil :schedule_frame nil} overrides))
 
-(deftest insert-rules-test
-  (mt/with-temp [:model/Pulse {pulse-id :id} {}]
-    (mt/with-model-cleanup [:model/PulseChannel]
-      (doseq [[testing-name overrides] {"a channel type that does not exist"       {:channel_type :sms}
-                                        "a schedule type that does not exist"      {:schedule_type :yearly}
-                                        "a daily schedule without an hour"         {:schedule_type :daily, :schedule_hour nil}
-                                        "an hour past the end of the day"          {:schedule_type :daily, :schedule_hour 24}
-                                        "a weekly schedule without a day"          {:schedule_type :weekly, :schedule_hour 8}
-                                        "a monthly schedule without a frame"       {:schedule_type :monthly, :schedule_hour 8}
-                                        "a mid-month schedule with a day"          {:schedule_type :monthly, :schedule_hour 8
-                                                                                    :schedule_frame :mid, :schedule_day "mon"}
-                                        "details with a key no channel has"        {:details {:bogus true}}
-                                        "details with an emails that is not a list" {:details {:emails "a@example.com"}}}]
-        (testing testing-name
-          (is (= 400 (status-code #(insert-channel! pulse-id overrides))))))
-      (testing "schedules that are valid"
-        (doseq [overrides [{:schedule_type :hourly, :schedule_hour nil}
-                           {:schedule_type :daily, :schedule_hour 0}
-                           {:schedule_type :weekly, :schedule_hour 8, :schedule_day "mon"}
-                           {:schedule_type :monthly, :schedule_hour 8, :schedule_frame :mid}
-                           {:schedule_type :monthly, :schedule_hour 8, :schedule_frame :last, :schedule_day "fri"}
-                           {:channel_type "slack", :schedule_type "hourly", :details {:channel "#general"}}]]
-          (testing (pr-str overrides)
-            (is (some? (insert-channel! pulse-id overrides)))))))))
+(deftest ^:parallel channel-schema-test
+  (doseq [[testing-name overrides] {"channel type that does not exist"       {:channel_type :sms}
+                                    "schedule type that does not exist"      {:schedule_type :yearly}
+                                    "hour past end of day"                   {:schedule_type :daily, :schedule_hour 24}
+                                    "details with key no channel has"        {:details {:bogus true}}
+                                    "details with emails that is not a list" {:details {:emails "a@example.com"}}}]
+    (testing testing-name
+      (is (not (mr/validate ::pulse.schema/pulse-channel.update (channel-row overrides)))))))
+
+(defn normalize-status
+  "The status code of the exception normalizing `row` with `schema` throws, or nil."
+  [schema row]
+  (try
+    (lib/normalize schema row {:throw? true})
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (:status-code (ex-data e)))))
+
+(deftest ^:parallel channel-schedule-rule-test
+  (doseq [[testing-name overrides] {"daily schedule without hour"    {:schedule_type :daily, :schedule_hour nil}
+                                    "weekly schedule without day"    {:schedule_type :weekly, :schedule_hour 8}
+                                    "monthly schedule without frame" {:schedule_type :monthly, :schedule_hour 8}
+                                    "mid-month schedule with day"    {:schedule_type :monthly, :schedule_hour 8
+                                                                      :schedule_frame :mid, :schedule_day "mon"}}]
+    (testing testing-name
+      (is (= 400 (normalize-status ::pulse.schema/pulse-channel.update (channel-row overrides))))))
+  (testing "schedules that are valid"
+    (doseq [overrides [{:schedule_type :hourly, :schedule_hour nil}
+                       {:schedule_type :daily, :schedule_hour 0}
+                       {:schedule_type :weekly, :schedule_hour 8, :schedule_day "mon"}
+                       {:schedule_type :monthly, :schedule_hour 8, :schedule_frame :mid}
+                       {:schedule_type :monthly, :schedule_hour 8, :schedule_frame :last, :schedule_day "fri"}
+                       {:channel_type "slack", :schedule_type "hourly", :details {:channel "#general"}}]]
+      (testing (pr-str overrides)
+        (is (nil? (normalize-status ::pulse.schema/pulse-channel.update (channel-row overrides)))))))
+  (testing "body without every schedule column leaves combination to hook"
+    (is (nil? (normalize-status ::pulse.schema/pulse-channel.update {:schedule_type :weekly})))))
 
 (deftest update-rules-test
   (mt/with-temp [:model/Pulse        {pulse-id :id}   {}
                  :model/PulseChannel {channel-id :id} {:pulse_id pulse-id}]
-    (doseq [[testing-name changes] {"a channel type that does not exist"  {:channel_type :sms}
-                                    "a schedule type that does not exist" {:schedule_type :yearly}
-                                    "an hour past the end of the day"     {:schedule_hour 24}
-                                    "a schedule type that needs a day"    {:schedule_type :weekly}
-                                    "a monthly schedule without a frame"  {:schedule_type :monthly}
-                                    "details with a key no channel has"   {:details {:bogus true}}}]
+    (doseq [[testing-name changes] {"schedule type that does not exist" {:schedule_type :yearly}
+                                    "hour past end of day"              {:schedule_hour 24}
+                                    "schedule type that needs day"      {:schedule_type :weekly}
+                                    "monthly schedule without frame"    {:schedule_type :monthly}}]
       (testing testing-name
         (is (= 400 (status-code #(t2/update! :model/PulseChannel :id channel-id changes))))
         (is (=? {:channel_type :email, :schedule_type :daily, :schedule_hour 15}

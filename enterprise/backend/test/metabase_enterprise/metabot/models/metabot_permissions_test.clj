@@ -2,9 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.metabot.models.metabot-permissions]
+   [metabase-enterprise.metabot.schema :as metabot-ee.schema]
+   [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (defn- insert-status!
@@ -26,9 +29,25 @@
   (mt/with-premium-features #{:ai-controls}
     (mt/with-temporary-setting-values [metabot-advanced-permissions false]
       (let [admin-id (u/the-id (perms/admin-group))]
-        (testing "insert"
-          (is (= 400 (insert-status! {:group_id admin-id :perm_type :permission/metabot-nlq :perm_value :maybe})))
-          (is (= 400 (insert-status! {:group_id admin-id :perm_type :permission/unknown :perm_value :yes}))))
+        (testing "schema"
+          (is (not (mr/validate ::metabot-ee.schema/metabot-permissions.update
+                                {:group_id admin-id :perm_type :permission/unknown :perm_value :yes})))
+          (is (not (mr/validate ::metabot-ee.schema/metabot-permissions.update
+                                {:group_id admin-id :perm_type :permission/metabot-nlq :perm_value :maybe})))
+          (is (=? {:status-code 400}
+                  (try (metabot-ee.schema/check-perm-value-fits-type {:perm_type "permission/metabot-nlq" :perm_value "maybe"})
+                       (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+          (is (=? {:status-code 400}
+                  (try (lib/normalize ::metabot-ee.schema/metabot-permissions.update
+                                      {:perm_type "permission/metabot-nlq" :perm_value "maybe"}
+                                      {:throw? true})
+                       (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+          (is (= {:perm_value :yes}
+                 (lib/normalize ::metabot-ee.schema/metabot-permissions.update {:perm_value "yes"} {:throw? true})))
+          (is (= {:group_id admin-id :perm_type :permission/metabot-nlq :perm_value :yes}
+                 (lib/normalize ::metabot-ee.schema/metabot-permissions.update
+                                {:group_id admin-id :perm_type "permission/metabot-nlq" :perm_value "yes"}
+                                {:throw? true}))))
         (testing "update"
           (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}]
             (mt/with-temporary-setting-values [metabot-advanced-permissions true]

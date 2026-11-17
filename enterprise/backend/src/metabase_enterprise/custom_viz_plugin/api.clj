@@ -6,6 +6,7 @@
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
+   [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
@@ -167,7 +168,7 @@
   [_route-params
    _query-params
    {:keys [identifier dev_bundle_url]} :- [:map {:closed true}
-                                           [:identifier     {:optional true} [:maybe ms/NonBlankString]]
+                                           [:identifier     {:optional true} [:maybe ::custom-viz-plugin.schema/custom-viz-plugin.identifier]]
                                            [:dev_bundle_url ms/NonBlankString]]]
   (api/check-superuser)
   (check-dev-mode-enabled!)
@@ -178,6 +179,8 @@
                                            "metabase-plugin.json is missing a \"name\" field."
                                            "Could not fetch metabase-plugin.json from the dev server.")
                                          {:status-code 400})))
+        _            (when-let [error (manifest/identifier-error identifier)]
+                       (throw (ex-info error {:status-code 400})))
         _            (api/check-400
                       (not (custom-viz-plugin.db/plugin-identifier-exists? identifier))
                       (format "A custom visualization with identifier \"%s\" already exists." identifier))

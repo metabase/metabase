@@ -9,8 +9,6 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -26,18 +24,6 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- check-attribute
-  "Throws a 400 unless the `:attribute` of `impersonation` is a non-blank string."
-  [{:keys [attribute]}]
-  (when-not (mr/validate ms/NonBlankString attribute)
-    (throw (ex-info (tru "A connection impersonation needs a non-blank user attribute name.")
-                    {:status-code 400}))))
-
-(t2/define-before-insert :model/ConnectionImpersonation
-  [impersonation]
-  (check-attribute impersonation)
-  impersonation)
-
 (t2/define-before-update :model/ConnectionImpersonation
   [impersonation]
   (let [changes (t2/changes impersonation)]
@@ -47,8 +33,6 @@
     (when (contains? changes :db_id)
       (throw (ex-info (tru "You cannot change the database of a connection impersonation.")
                       {:status-code 400})))
-    (when (contains? changes :attribute)
-      (check-attribute impersonation))
     impersonation))
 
 ;;; ----------------------------------------------- Permissions graph ------------------------------------------------

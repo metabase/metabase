@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.glossary.core :as glossary.core]
    [metabase.glossary.db :as glossary.db]
+   [metabase.glossary.schema :as glossary.schema]
    [metabase.models.interface :as mi]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -29,8 +30,8 @@
   [_route-params
    _query-params
    body :- [:map {:closed true}
-            [:term ms/NonBlankString]
-            [:definition ms/NonBlankString]]]
+            [:term ::glossary.schema/glossary.term]
+            [:definition ::glossary.schema/glossary.definition]]]
   (api/create-check :model/Glossary body)
   (t2/hydrate (glossary.core/create-entry! api/*current-user-id* body) :creator))
 
@@ -43,8 +44,8 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- [:map {:closed true}
-            [:term ms/NonBlankString]
-            [:definition ms/NonBlankString]]]
+            [:term ::glossary.schema/glossary.term]
+            [:definition ::glossary.schema/glossary.definition]]]
   (api/update-check (api/check-404 (glossary.db/glossary-entry id)) body)
   (t2/hydrate (api/check-404 (glossary.core/update-entry! api/*current-user-id* id body)) :creator))
 

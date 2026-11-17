@@ -636,9 +636,9 @@
             (is (= (mt/id) (t2/select-one-fn :database_id :model/QueryAction :action_id (:id created)))))))))
   (testing "a query action needs a query"
     (mt/with-actions-test-data-and-actions-enabled
-      (is (= "Must provide a dataset_query for query actions"
-             (mt/user-http-request :crowberto :post 400 "action"
-                                   (dissoc (model-less-query-action nil) :dataset_query)))))))
+      (is (=? {:specific-errors {:dataset_query some?}}
+              (mt/user-http-request :crowberto :post 400 "action"
+                                    (dissoc (model-less-query-action nil) :dataset_query)))))))
 
 (defn- table-query
   "A query of the test Table `table-key`."

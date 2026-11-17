@@ -36,7 +36,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -65,21 +64,9 @@
 
 ;;; ------------------------------------------------------- Hooks ----------------------------------------------------------
 
-(defn- check-parameters
-  "Throws a 400 unless the `:parameters` of `pulse` are a sequence of maps with String `:id` keys."
-  [{:keys [parameters]}]
-  (when-not (mr/validate [:maybe
-                          [:sequential
-                           [:and
-                            [:map [:id ms/NonBlankString]]
-                            [:map-of :keyword :any]]]]
-                         parameters)
-    (throw (ex-info (tru ":parameters must be a sequence of maps with String :id keys")
-                    {:status-code 400
-                     :parameters  parameters}))))
-
 (defn- check-dashboard-subscription
-  "Throws a 400 when `pulse` is a dashboard subscription with a column of an alert or a collection position."
+  "Throws a 400 when `pulse`, as an update leaves it beside its stored columns, is a dashboard subscription with a
+  column of an alert or a collection position."
   [{:keys [dashboard_id collection_position alert_condition alert_first_only alert_above_goal]}]
   (when (and dashboard_id (some some? [alert_condition alert_first_only alert_above_goal]))
     (throw (ex-info (tru "A dashboard subscription cannot have the columns of an alert.")
@@ -101,8 +88,6 @@
 (t2/define-before-insert :model/Pulse
   [pulse]
   (u/prog1 (new-pulse pulse)
-    (check-parameters <>)
-    (check-dashboard-subscription <>)
     (collection/check-collection-for :model/Pulse <>)))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
@@ -121,8 +106,6 @@
       (throw (ex-info (tru "collection ID of a dashboard subscription cannot be directly modified") {:status-code 400})))
     (when (contains? changes :collection_id)
       (collection/check-collection-for :model/Pulse pulse))
-    (when (contains? changes :parameters)
-      (check-parameters pulse))
     (when (some #(contains? changes %) [:dashboard_id :collection_position :alert_condition :alert_first_only :alert_above_goal])
       (check-dashboard-subscription pulse))
     (when (contains? changes :archived)

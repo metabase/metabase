@@ -3,12 +3,14 @@
    [clojure.test :refer :all]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.models.card-test :as card-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -464,18 +466,12 @@
           (is (= {(:id plain) true, (:id on-hidden) true, (:id series) true}
                  (answers :can_read mi/can-read?))))))))
 
-(deftest check-dashcard-layout-test
-  (testing "A DashboardCard has a positive size and a position that is not negative"
-    (mt/with-temp [:model/Dashboard dash {}
-                   :model/DashboardCard dashcard {:dashboard_id (u/the-id dash)}]
-      (doseq [bad [{:size_x 0} {:size_y -1} {:row -1} {:col -1}]]
-        (testing (pr-str bad)
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"positive size"
-                                (t2/insert! :model/DashboardCard (merge {:dashboard_id (u/the-id dash) :size_x 4 :size_y 4 :row 0 :col 0} bad))))
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"positive size"
-                                (t2/update! :model/DashboardCard :id (u/the-id dashcard) bad)))))
-      (t2/update! :model/DashboardCard :id (u/the-id dashcard) {:col 20 :size_x 4})
-      (is (= 20 (t2/select-one-fn :col :model/DashboardCard :id (u/the-id dashcard)))))))
+(deftest ^:parallel dashcard-layout-schema-test
+  (testing "DashboardCard has positive size and position that is not negative"
+    (doseq [bad [{:size_x 0} {:size_y -1} {:row -1} {:col -1}]]
+      (testing (pr-str bad)
+        (is (not (mr/validate ::dashboards.schema/dashboard-card.update bad)))))
+    (is (mr/validate ::dashboards.schema/dashboard-card.update {:size_x 4 :size_y 4 :row 0 :col 20}))))
 
 (deftest dashcard-dashboard-is-frozen-test
   (testing "A DashboardCard does not move to another Dashboard"
@@ -500,12 +496,7 @@
                             (t2/update! :model/DashboardCard :id (u/the-id dashcard) {:dashboard_tab_id (u/the-id other-tab)})))
       (is (= (u/the-id tab) (t2/select-one-fn :dashboard_tab_id :model/DashboardCard :id (u/the-id dashcard)))))))
 
-(deftest dashcard-parameter-mappings-shape-test
-  (testing "The parameter mappings of a DashboardCard are a sequence of mappings"
-    (mt/with-temp [:model/Dashboard dash {}
-                   :model/DashboardCard dashcard {:dashboard_id (u/the-id dash)}]
-      (is (thrown? clojure.lang.ExceptionInfo
-                   (t2/insert! :model/DashboardCard {:dashboard_id (u/the-id dash) :size_x 4 :size_y 4 :row 0 :col 0
-                                                     :parameter_mappings [{:target [:dimension [:field 1 nil]]}]})))
-      (is (thrown? clojure.lang.ExceptionInfo
-                   (t2/update! :model/DashboardCard :id (u/the-id dashcard) {:parameter_mappings [{:target [:dimension [:field 1 nil]]}]}))))))
+(deftest ^:parallel dashcard-parameter-mappings-schema-test
+  (testing "parameter mappings of DashboardCard are sequence of mappings"
+    (is (not (mr/validate ::dashboards.schema/dashboard-card.update
+                          {:parameter_mappings [{:target [:dimension [:field 1 nil]]}]})))))

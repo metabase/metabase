@@ -8,7 +8,6 @@
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
-   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -27,21 +26,6 @@
   (if (.endsWith ^String path ".py")
     path
     (str path ".py")))
-
-(def ^:private allowed-paths
-  "Set of allowed library paths. Currently only 'common' is supported."
-  #{"common.py"})
-
-(defn- check-path
-  "Throws a 400 unless `path`, normalized, is one of [[allowed-paths]], which a request to write a library must satisfy
-  and a stored or imported one need not."
-  [path]
-  (let [normalized-path (normalize-path path)]
-    (when-not (contains? allowed-paths normalized-path)
-      (throw (ex-info (tru "Invalid library path. Only ''common'' is currently supported.")
-                      {:status-code 400
-                       :path normalized-path
-                       :allowed-paths allowed-paths})))))
 
 (t2/define-before-insert :model/PythonLibrary
   [library]
@@ -78,14 +62,11 @@
 (defn get-python-library-by-path
   "Get the Python library by path."
   [path]
-  (let [normalized-path (normalize-path path)]
-    (check-path normalized-path)
-    (transforms-python.db/python-library-by-path normalized-path)))
+  (transforms-python.db/python-library-by-path (normalize-path path)))
 
 (defn update-python-library-source!
   "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
   [path source]
-  (check-path path)
   (let [normalized-path (normalize-path path)
         existing        (transforms-python.db/python-library-by-path normalized-path)
         id              (transforms-python.db/upsert-python-library-source!

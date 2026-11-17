@@ -1,13 +1,11 @@
 (ns metabase.glossary.models.glossary
   (:require
-   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.glossary.db :as glossary.db]
    [metabase.glossary.schema :as glossary.schema]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -23,31 +21,8 @@
   "Schema for a glossary entry."
   [:map {:closed true}
    [:id         ms/PositiveInt]
-   [:term       ms/NonBlankString]
-   [:definition ms/NonBlankString]])
-
-;;; ----------------------------------------------------- Hooks ------------------------------------------------------
-
-(defn- check-text
-  "Throws a 400 unless `value` of the column `k` is a non-blank string."
-  [k value]
-  (when-not (and (string? value) (not (str/blank? value)))
-    (throw (ex-info (tru "A glossary entry needs a non-blank {0}." (name k)) {:status-code 400}))))
-
-(t2/define-before-insert :model/Glossary
-  [entry]
-  (check-text :term (:term entry))
-  (check-text :definition (:definition entry))
-  entry)
-
-(t2/define-before-update :model/Glossary
-  [entry]
-  (let [changes (t2/changes entry)]
-    (when (contains? changes :term)
-      (check-text :term (:term entry)))
-    (when (contains? changes :definition)
-      (check-text :definition (:definition entry))))
-  entry)
+   [:term       ::glossary.schema/glossary.term]
+   [:definition ::glossary.schema/glossary.definition]])
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

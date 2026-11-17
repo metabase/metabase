@@ -101,9 +101,6 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(def ^:private allowed-user-types
-  #{:internal :personal :api-key})
-
 (def ^:private insert-default-values
   {:date_joined     :%now
    :last_login      nil
@@ -122,12 +119,6 @@
   (when locale
     (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale)))))
 
-(defn- check-user-type
-  "Throws a 400 unless `user-type` is nil or one of the allowed types."
-  [user-type]
-  (when (and user-type (not (contains? allowed-user-types user-type)))
-    (throw (ex-info (tru "Invalid user type: {0}" (pr-str user-type)) {:status-code 400}))))
-
 (defn- validate-sso-setup!
   "Validate that SSO users can only be created after initial setup is complete."
   [sso-source]
@@ -145,7 +136,6 @@
   [{:keys [email locale sso_source] user-type :type :as user}]
   (validate-user-email! email)
   (check-superuser-has-no-tenant user)
-  (check-user-type user-type)
   (validate-user-locale! locale)
   (validate-sso-setup! sso_source)
   (when (or (nil? user-type) (= user-type :personal))
@@ -239,8 +229,6 @@
   [{:keys [id] :as user}]
   (when (and (= id config/internal-mb-user-id) (seq (t2/changes user)))
     (throw (ex-info (tru "Not able to modify the internal user") {:status-code 400})))
-  (when (contains? (t2/changes user) :type)
-    (check-user-type (:type (t2/changes user))))
   (when (:is_superuser (t2/changes user))
     (check-superuser-has-no-tenant user))
   (let [changes (t2/changes user)
@@ -489,7 +477,7 @@
   [{:keys [login_attributes jwt_attributes] :as user} :- [:merge
                                                           ::users.schema/user
                                                           [:map {:closed true}
-                                                           [:type (into [:enum] allowed-user-types)]]]]
+                                                           [:type ::users.schema/user.type]]]]
   (assoc user :attributes (if (= (:type user) :personal)
                             (merge {} (tenants/login-attributes user) jwt_attributes login_attributes)
                             {})))

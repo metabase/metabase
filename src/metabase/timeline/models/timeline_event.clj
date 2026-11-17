@@ -1,6 +1,5 @@
 (ns metabase.timeline.models.timeline-event
   (:require
-   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
@@ -9,7 +8,6 @@
    [metabase.timeline.schema :as timeline.schema]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -27,12 +25,6 @@
 (def default-icon
   "The default icon for Timeline and TimelineEvents."
   "star")
-
-(def Icon
-  "Schema for Timeline and TimelineEvents `icon`"
-  ;; using "mail" icon is deprecated, but we keep it for backwards compatibility
-  [:enum default-icon "cake" "mail" "mail_at" "warning" "bell" "cloud"
-   "info" "note" "event"])
 
 (defn valid-timezone?
   "Whether `timezone` names a time zone."
@@ -63,19 +55,6 @@
 
 ;;; ------------------------------------------------------ Hooks -------------------------------------------------------
 
-(defn- check-columns
-  "Throws unless those of `:name`, `:icon`, `:time_matters` and `:timestamp` among `columns`, the columns
-  a TimelineEvent is written with, are valid."
-  [columns]
-  (when (and (contains? columns :name) (str/blank? (:name columns)))
-    (throw (ex-info (tru "A Timeline event needs a name.") {:status-code 400})))
-  (when (and (contains? columns :icon) (not (mr/validate Icon (:icon columns))))
-    (throw (ex-info (tru "Invalid Timeline event icon.") {:status-code 400})))
-  (when (and (contains? columns :time_matters) (not (boolean? (:time_matters columns))))
-    (throw (ex-info (tru "A Timeline event''s time_matters must be a boolean.") {:status-code 400})))
-  (when (and (contains? columns :timestamp) (nil? (:timestamp columns)))
-    (throw (ex-info (tru "A Timeline event must have a timestamp.") {:status-code 400}))))
-
 (defn- check-timeline-not-archived
   "Throws a 400 when `row`, which is not archived, is in an archived Timeline."
   [{:keys [archived timeline_id]}]
@@ -86,10 +65,8 @@
 (t2/define-before-insert :model/TimelineEvent
   [row]
   (check-timeline-not-archived row)
-  (let [row (cond-> row
-              (nil? (:icon row)) (assoc :icon (or (some-> (:timeline_id row) timeline.db/timeline-icon) default-icon)))]
-    (check-columns (assoc row :name (:name row) :timezone (:timezone row) :timestamp (:timestamp row)))
-    row))
+  (cond-> row
+    (nil? (:icon row)) (assoc :icon (or (some-> (:timeline_id row) timeline.db/timeline-icon) default-icon))))
 
 (t2/define-before-update :model/TimelineEvent
   [event]
@@ -98,7 +75,6 @@
       (throw (ex-info (tru "You cannot change the creator of a Timeline event.") {:status-code 400})))
     (when (contains? changes :timeline_id)
       (check-timeline-not-archived event))
-    (check-columns changes)
     event))
 
 ;;; --------------------------------------------------- Permissions ----------------------------------------------------

@@ -8,7 +8,6 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.task-history.db :as task-history.db]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -48,24 +47,9 @@
   "Valid entity types for task runs."
   #{:database :card :dashboard})
 
-(def ^:private task-run-status #{:started :success :failed :abandoned})
-
-(defn- check-status
-  "Throws a 400 unless `status` is a TaskRun status."
-  [status]
-  (when-not (task-run-status (keyword status))
-    (throw (ex-info (tru "Invalid task run status.") {:status-code 400}))))
-
 (t2/define-before-insert :model/TaskRun
   [task-run]
-  (check-status (:status task-run))
   (merge {:started_at (mi/now), :updated_at (mi/now)} task-run))
-
-(t2/define-before-update :model/TaskRun
-  [task-run]
-  (when (contains? (t2/changes task-run) :status)
-    (check-status (:status task-run)))
-  task-run)
 
 (t2/deftransforms :model/TaskRun
   {:run_type    mi/transform-keyword

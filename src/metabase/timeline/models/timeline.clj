@@ -1,6 +1,5 @@
 (ns metabase.timeline.models.timeline
   (:require
-   [clojure.string :as str]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
@@ -9,8 +8,6 @@
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.timeline.schema :as timeline.schema]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -32,14 +29,6 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- check-columns
-  "Throws unless the `:name` and `:icon` among `columns`, the columns a Timeline is written with, are valid."
-  [columns]
-  (when (and (contains? columns :name) (str/blank? (:name columns)))
-    (throw (ex-info (tru "A Timeline needs a name.") {:status-code 400})))
-  (when (and (contains? columns :icon) (not (mr/validate timeline-event/Icon (:icon columns))))
-    (throw (ex-info (tru "Invalid Timeline icon.") {:status-code 400}))))
-
 (defmethod mi/after-archived-change :model/Timeline
   [_model rows changes]
   (doseq [{:keys [id]} rows]
@@ -48,16 +37,13 @@
 (t2/define-before-insert :model/Timeline
   [row]
   (collection/check-collection-for :model/Timeline row)
-  (let [row (cond-> row (nil? (:icon row)) (assoc :icon timeline-event/default-icon))]
-    (check-columns (assoc row :name (:name row)))
-    row))
+  (cond-> row (nil? (:icon row)) (assoc :icon timeline-event/default-icon)))
 
 (t2/define-before-update :model/Timeline
   [row]
   (let [changes (t2/changes row)]
     (when (contains? changes :collection_id)
       (collection/check-collection-for :model/Timeline row))
-    (check-columns changes)
     (cond-> row
       (contains? changes :archived) (assoc :archived_directly (mi/archived-directly row #(collection/archived? (:collection_id row)))))))
 

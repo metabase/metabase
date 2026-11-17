@@ -3,29 +3,26 @@
    [malli.util]
    [metabase-enterprise.tenants.db :as tenants.db]
    [metabase-enterprise.tenants.models :as tenant]
+   [metabase-enterprise.tenants.schema :as tenants.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
-   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def ^:private Slug (mu/with-api-error-message tenant/Slug
-                                               (deferred-tru "invalid slug")))
-
 (def ^:private CreateTenantArguments [:map {:closed true}
-                                      [:name ms/NonBlankString]
-                                      [:attributes {:optional true} [:maybe tenant/Attributes]]
-                                      [:slug Slug]])
+                                      [:name ::tenants.schema/tenant.name]
+                                      [:attributes {:optional true} [:maybe ::tenants.schema/tenant.attributes]]
+                                      [:slug ::tenants.schema/tenant.slug]])
 
 (def ^:private Tenant [:map {:closed true}
                        [:id ms/PositiveInt]
-                       [:name ms/NonBlankString]
-                       [:slug Slug]
+                       [:name ::tenants.schema/tenant.name]
+                       [:slug ::tenants.schema/tenant.slug]
                        [:is_active ms/BooleanValue]
                        [:member_count {:optional true} ms/Int]
                        [:attributes {:optional true} [:maybe [:map-of :string :string]]]
@@ -82,8 +79,8 @@
 
 (def ^:private UpdateTenantArguments
   [:map {:closed true}
-   [:name {:optional true} [:maybe ms/NonBlankString]]
-   [:attributes {:optional true} [:maybe tenant/Attributes]]
+   [:name {:optional true} [:maybe ::tenants.schema/tenant.name]]
+   [:attributes {:optional true} [:maybe ::tenants.schema/tenant.attributes]]
    [:is_active {:optional true} [:maybe ms/BooleanValue]]])
 
 (mu/defn update-tenant!

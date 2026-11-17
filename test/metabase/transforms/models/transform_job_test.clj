@@ -7,7 +7,9 @@
    [metabase.test :as mt]
    [metabase.transforms.models.transform-job :as transform-job]
    [metabase.transforms.schedule :as transforms.schedule]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util.i18n :as i18n]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (comment transform-job/keep-me)
@@ -102,20 +104,9 @@
           (is (mi/can-write? (t2/hydrate (t2/instance :model/TransformJob {}) :can_write)))
           (is (mi/can-create? :model/TransformJob {})))))))
 
-(deftest invalid-cron-schedule-is-refused-test
-  (testing "a job is inserted only with a valid cron expression"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid cron expression"
-                          (t2/insert! :model/TransformJob {:name "bad" :schedule "not a cron"})))
-    (is (= 400 (:status-code (ex-data (try (t2/insert! :model/TransformJob {:name "bad" :schedule "not a cron"})
-                                           (catch clojure.lang.ExceptionInfo e e)))))))
-  (testing "a job is updated only to a valid cron expression"
-    (mt/with-temp [:model/TransformJob job {:schedule "0 0 0 * * ?"}]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid cron expression"
-                            (t2/update! :model/TransformJob :id (:id job) {:schedule "not a cron"})))
-      (is (= "0 0 0 * * ?" (t2/select-one-fn :schedule :model/TransformJob :id (:id job))))
-      (t2/update! :model/TransformJob :id (:id job) {:name "renamed"})
-      (t2/update! :model/TransformJob :id (:id job) {:schedule "0 0 1 * * ?"})
-      (is (= "0 0 1 * * ?" (t2/select-one-fn :schedule :model/TransformJob :id (:id job)))))))
+(deftest schema-checks-schedule-test
+  (is (mr/validate ::transforms.schema/transform-job.schedule "0 0 0 * * ?"))
+  (is (not (mr/validate ::transforms.schema/transform-job.schedule "not a cron"))))
 
 (deftest quartz-trigger-follows-job-row-test
   (mt/with-temp-scheduler!

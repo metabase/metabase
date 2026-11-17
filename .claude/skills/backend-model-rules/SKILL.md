@@ -18,7 +18,8 @@ Copy `metabase.segments.models.segment` (hooks, derived column, permissions), `m
 | The rule | Home |
 |---|---|
 | Depends on who is acting | `:can_read` / `:can_write` / `:can_query` hydration, `mi/can-create?`, `mi/can-update?` |
-| Depends only on the row | `before-insert` and `before-update` |
+| Answered from the incoming row alone: type, length, range, enum, format, JSON shape, columns that must agree (`:multi` on a type column, `[:fn pred]`) | the entity schema in `<module>.schema`, which the API request schema and the SerDes spec `:schema` are built from; never a hook |
+| Needs the database or the stored row (`t2/changes`, `t2/original`) | `before-insert` and `before-update` |
 | Computes a column from other columns of the row | hooks; the caller does not supply it |
 | Reads another entity's column that cannot change | hooks of the referring model |
 | Reads another entity's column that can change | freeze it, cascade from it, or check at use (below) |
@@ -53,10 +54,9 @@ that needs the row as stored.
       (contains? changes :definition) (assoc :table_id (definition-table-id definition)))))
 ```
 
-- Checks first, as a flat list of `(when ...)` that throw `(ex-info (tru "...") {:status-code 400})`; then
-  derivations; then cascades, which see the derived values; return the row. A key `assoc`ed onto the returned row
-  is written.
-- The hook is where an allowed value set (an enum column) is enforced; the request schema repeats it for the message.
+- Checks first, a flat list of `(when ...)` throwing `(ex-info (tru "...") {:status-code 400})`; then derivations;
+  then cascades, which see the derived values; return the row. A key `assoc`ed onto the returned row is written.
+- A hook never checks what the incoming row alone answers (length, enum, format, agreeing columns): the schema does.
 - `before-update` receives the stored row with the changes merged in. `(t2/changes row)` holds only columns whose
   value differs from the stored one, and `(t2/original row)` the stored row as `after-select` returned it. Run a
   check only when a column it guards is in the changes; never validate a stored combination the write does not touch.

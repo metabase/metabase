@@ -16,25 +16,11 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- check-position
-  "Throws a 400 unless the `:position` of `series` is not negative."
-  [{:keys [position]}]
-  (when-not (nat-int? position)
-    (throw (ex-info (tru "The position of a series must not be negative.") {:status-code 400}))))
-
-(t2/define-before-insert :model/DashboardCardSeries
-  [series]
-  (when (contains? series :position)
-    (check-position series))
-  series)
-
 (t2/define-before-update :model/DashboardCardSeries
   [series]
   (let [changes (t2/changes series)]
     (when (contains? changes :dashboardcard_id)
       (throw (ex-info (tru "You cannot move a series to another dashboard card.") {:status-code 400})))
-    (when (contains? changes :position)
-      (check-position series))
     series))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------

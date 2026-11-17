@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [personal-collection-id]]
+   [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -15,6 +16,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
@@ -197,25 +199,14 @@
       (is (= 1 (t2/update! :model/Document :id (:id document) {:name "Renamed"})))
       (is (number? (t2/update! :model/Document :id (:id document) {:collection_id nil}))))))
 
-(deftest name-rules-test
-  (testing "a Document name is a non-blank string of at most 254 characters"
+(deftest document-schema-test
+  (testing "the Document schema takes a non-blank name of at most 254 characters"
     (doseq [bad-name ["" "   " (apply str (repeat 255 "a"))]]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Document name"
-                            (mt/with-temp [:model/Document _ {:name bad-name}] nil)))))
-  (mt/with-temp [:model/Document {doc-id :id} {}]
-    (doseq [bad-name ["" "   " (apply str (repeat 255 "a"))]]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Document name"
-                            (t2/update! :model/Document :id doc-id {:name bad-name}))))
-    (is (= 1 (t2/update! :model/Document :id doc-id {:name (apply str (repeat 254 "a"))})))))
-
-(deftest content-rules-test
-  (testing "the body of a ProseMirror Document is a ProseMirror node"
-    (mt/with-temp [:model/Document {doc-id :id} {}]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"ProseMirror"
-                            (t2/update! :model/Document :id doc-id {:document {:content []}})))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"ProseMirror"
-                            (mt/with-temp [:model/Document _ {:document {:content []}}] nil)))
-      (is (= 1 (t2/update! :model/Document :id doc-id {:document {:type "doc" :content []}}))))))
+      (is (not (mr/validate ::documents.schema/document.update {:name bad-name}))))
+    (is (mr/validate ::documents.schema/document.update {:name (apply str (repeat 254 "a"))})))
+  (testing "the Document schema takes a body only when it is a ProseMirror node"
+    (is (not (mr/validate ::documents.schema/document.update {:document {:content []}})))
+    (is (mr/validate ::documents.schema/document.update {:document {:type "doc" :content []}}))))
 
 (deftest collection-namespace-test
   (testing "a Document goes only in Collections of an allowed namespace"

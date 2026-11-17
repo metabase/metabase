@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
+   [metabase.lib.core :as lib]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
@@ -10,7 +11,9 @@
    [metabase.sync.util :as sync-util]
    [metabase.task-history.core :as task-history]
    [metabase.task-history.models.task-run :as task-run]
+   [metabase.task-history.schema :as task-history.schema]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -433,23 +436,7 @@
                   :payload      {}}))))))
 
 (deftest status-must-be-known-test
-  (mt/with-model-cleanup [:model/TaskRun]
-    (testing "inserting unknown status is refused"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid task run status"
-                            (t2/insert! :model/TaskRun {:run_type     :sync
-                                                        :entity_type  :database
-                                                        :entity_id    Integer/MAX_VALUE
-                                                        :process_uuid "status-check"
-                                                        :status       :bogus})))
-      (is (not (t2/exists? :model/TaskRun :process_uuid "status-check"))))
-    (let [id (t2/insert-returning-pk! :model/TaskRun {:run_type     :sync
-                                                      :entity_type  :database
-                                                      :entity_id    Integer/MAX_VALUE
-                                                      :process_uuid "status-check"
-                                                      :status       :started})]
-      (testing "changing status to unknown value is refused"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid task run status"
-                              (t2/update! :model/TaskRun :id id {:status :bogus}))))
-      (testing "changing status to known value is accepted"
-        (t2/update! :model/TaskRun :id id {:status :abandoned})
-        (is (= :abandoned (t2/select-one-fn :status :model/TaskRun :id id)))))))
+  (testing "the schema refuses an unknown status and takes a known one, as a keyword or a string"
+    (is (not (mr/validate ::task-history.schema/task-run.update {:status :bogus})))
+    (is (mr/validate ::task-history.schema/task-run.update {:status :abandoned}))
+    (is (= {:status :abandoned} (lib/normalize ::task-history.schema/task-run.update {:status "abandoned"})))))

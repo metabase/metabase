@@ -33,14 +33,12 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- check-type
-  "Throws a 400 unless `dimension` is internal, or external with the Field its values come from."
+(defn- check-external-needs-field
+  "Throws a 400 when `dimension`, with the columns a write leaves out at their stored or default values, is external
+  without a Field."
   [{dimension-type :type, :keys [human_readable_field_id]}]
-  (let [dimension-type (some-> dimension-type keyword)]
-    (when-not (#{:internal :external} dimension-type)
-      (throw (ex-info (tru "Dimension type must be internal or external.") {:status-code 400})))
-    (when (and (= :external dimension-type) (nil? human_readable_field_id))
-      (throw (ex-info (tru "Foreign key based remappings require a human readable field id") {:status-code 400})))))
+  (when (and (= :external (some-> dimension-type keyword)) (nil? human_readable_field_id))
+    (throw (ex-info (tru "Foreign key based remappings require a human readable field id") {:status-code 400}))))
 
 (defn- check-human-readable-field
   "Throws a 400 unless the `:human_readable_field_id` of `dimension` is a Field of the Database of its Field."
@@ -54,7 +52,7 @@
 
 (t2/define-before-insert :model/Dimension
   [dimension]
-  (check-type dimension)
+  (check-external-needs-field dimension)
   (when (:human_readable_field_id dimension)
     (check-human-readable-field dimension))
   dimension)
@@ -65,7 +63,7 @@
     (when (contains? changes :field_id)
       (throw (ex-info (tru "You cannot move a Dimension to another Field.") {:status-code 400})))
     (when (some #(contains? changes %) [:type :human_readable_field_id])
-      (check-type dimension))
+      (check-external-needs-field dimension))
     (when (:human_readable_field_id changes)
       (check-human-readable-field dimension))
     dimension))

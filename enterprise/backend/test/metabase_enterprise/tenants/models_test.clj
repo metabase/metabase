@@ -2,10 +2,12 @@
   (:require
    [clojure.test :refer [deftest testing is]]
    [metabase-enterprise.tenants.models :as tenants.model]
+   [metabase-enterprise.tenants.schema :as tenants.schema]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.db :as permissions.db]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -199,21 +201,15 @@
 ;;; |                                                  Tenant Hooks                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest insert-checks-tenant-columns-test
-  (mt/with-model-cleanup [:model/Tenant]
-    (testing "slug must be lower-case letters, digits, dashes and underscores"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid slug"
-                            (t2/insert! :model/Tenant {:name "Upper Slug Tenant" :slug "UPPER"}))))
-    (testing "name cannot be blank"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A tenant needs a name"
-                            (t2/insert! :model/Tenant {:name " " :slug "blank-name-tenant"}))))
-    (testing "attribute keys cannot start with @"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"attribute keys must not start with `@`"
-                            (t2/insert! :model/Tenant {:name       "At Key Tenant"
-                                                       :slug       "at-key-tenant"
-                                                       :attributes {"@tenant.slug" "other"}}))))
-    (testing "nothing was written"
-      (is (not (t2/exists? :model/Tenant :slug [:in ["UPPER" "blank-name-tenant" "at-key-tenant"]]))))))
+(deftest tenant-schema-checks-columns-test
+  (testing "slug must be lower-case letters, digits, dashes and underscores"
+    (is (not (mr/validate ::tenants.schema/tenant.update {:slug "UPPER"}))))
+  (testing "name cannot be blank"
+    (is (not (mr/validate ::tenants.schema/tenant.update {:name " "}))))
+  (testing "attribute keys cannot start with @"
+    (is (not (mr/validate ::tenants.schema/tenant.update {:attributes {"@tenant.slug" "other"}}))))
+  (testing "valid columns pass"
+    (is (mr/validate ::tenants.schema/tenant.update {:name "Tenant" :slug "tenant-1" :attributes {"env" "prod"}}))))
 
 (deftest insert-checks-name-and-slug-uniqueness-test
   (mt/with-temp [:model/Tenant _ {:name "Unique Tenant" :slug "unique-tenant"}]
@@ -235,15 +231,9 @@
       (mt/with-temp [:model/Collection {coll-id :id} {}]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot change the collection of a tenant"
                               (t2/update! :model/Tenant :id id {:tenant_collection_id coll-id})))))
-    (testing "name cannot become blank"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A tenant needs a name"
-                            (t2/update! :model/Tenant :id id {:name ""}))))
     (testing "name cannot be taken by another tenant"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This name is already taken"
                             (t2/update! :model/Tenant :id id {:name "Taken Tenant"}))))
-    (testing "attribute keys cannot start with @"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"attribute keys must not start with `@`"
-                            (t2/update! :model/Tenant :id id {:attributes {"@tenant.slug" "other"}}))))
     (testing "nothing was written"
       (is (=? {:name "Updated Tenant" :slug "updated-tenant" :attributes {"env" "prod"}}
               (t2/select-one :model/Tenant :id id))))))

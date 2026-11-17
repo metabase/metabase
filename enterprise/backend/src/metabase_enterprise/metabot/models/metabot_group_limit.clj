@@ -2,7 +2,6 @@
   (:require
    [metabase-enterprise.metabot.db :as metabot.db]
    [metabase.models.interface :as mi]
-   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -13,26 +12,6 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser)
   (derive ::mi/create-policy.superuser))
-
-;;; ----------------------------------------------------- Hooks ------------------------------------------------------
-
-(defn- check-max-usage
-  "Throws a 400 unless `max-usage` is nil or a non-negative integer."
-  [max-usage]
-  (when-not (or (nil? max-usage) (nat-int? max-usage))
-    (throw (ex-info (tru "max_usage must be a non-negative integer") {:status-code 400}))))
-
-(t2/define-before-insert :model/MetabotGroupLimit
-  [row]
-  (check-max-usage (:max_usage row))
-  row)
-
-(t2/define-before-update :model/MetabotGroupLimit
-  [row]
-  (let [changes (t2/changes row)]
-    (when (contains? changes :max_usage)
-      (check-max-usage (:max_usage changes))))
-  row)
 
 (defn all-group-limits
   "Returns all group-level limits, ordered by group_id."

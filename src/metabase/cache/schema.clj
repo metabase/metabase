@@ -70,6 +70,18 @@
    [:duration    ::cache-strategy.ee.duration]
    [:schedule    ::cache-strategy.ee.schedule]])
 
+(mr/def ::cache-config.model
+  "The `:model` column of a CacheConfig: the kind of entity caching is configured for."
+  [:enum "root" "database" "dashboard" "question"])
+
+(mr/def ::cache-config.model-id
+  "The `:model_id` column of a CacheConfig: 0 for the root config, the id of its target otherwise."
+  ms/IntGreaterThanOrEqualToZero)
+
+(mr/def ::cache-config.strategy
+  "The `:strategy` column of a CacheConfig: the type of its cache strategy."
+  [:enum {:decode/normalize keyword} :nocache :ttl :duration :schedule])
+
 (mr/def ::cache-config.config
   "The `:config` column of a CacheConfig, decoded: a cache strategy body with `:type` and `:refresh_automatically`
   stripped off, so it's whichever subset of these fields the strategy in the `:strategy` column calls for."
@@ -85,6 +97,35 @@
   "The `:state` column of a CacheConfig, decoded."
   [:map {:closed true}])
 
+(defn- check-target
+  "Returns `row`, a CacheConfig, or throws a 400 when it holds a `model_id` that does not fit its `model`: 0 for the root
+  config, a positive id otherwise."
+  [{:keys [model model_id] :as row}]
+  (when (and (contains? row :model) (contains? row :model_id)
+             (not (if (= "root" model) (= 0 model_id) (pos-int? model_id))))
+    (throw (ex-info (tru "model_id must be 0 for the root config and positive otherwise") {:status-code 400})))
+  row)
+
+(defn- check-strategy
+  "Returns `row`, a CacheConfig, or throws a 400 when it holds a `strategy` and a `config` that, with its
+  `refresh_automatically`, do not form a valid strategy."
+  [{:keys [strategy config] :as row}]
+  (let [strategy-type (some-> strategy keyword)]
+    (when (and (contains? row :strategy) (contains? row :config)
+               (not (mr/validate ::cache-strategy.ee
+                                 (cond-> (assoc config :type strategy-type)
+                                   (and (#{:duration :schedule} strategy-type) (contains? row :refresh_automatically))
+                                   (assoc :refresh_automatically (:refresh_automatically row))))))
+      (throw (ex-info (tru "strategy, config and refresh_automatically must form a valid cache strategy")
+                      {:status-code 400}))))
+  row)
+
+(defn- check-row
+  "Returns `row`, a CacheConfig, after [[check-target]] and [[check-strategy]]."
+  [row]
+  (cond-> row
+    (map? row) (-> check-target check-strategy)))
+
 (mr/def ::cache-config
   "A CacheConfig as selected from the app DB: every column of `:cache_config`."
   [:merge
@@ -93,13 +134,15 @@
     [:id                    ms/PositiveInt]]])
 
 (mr/def ::cache-config.update
-  "What an update (or insert) of a CacheConfig accepts: every column of `:cache_config` except `id`, all optional."
-  [:map {:closed true}
-   [:model                 {:optional true} [:maybe [:or :keyword :string]]]
-   [:model_id              {:optional true} [:maybe :int]]
+  "What an update (or insert) of a CacheConfig accepts: every column of `:cache_config` except `id`, all optional, its
+  `model_id` fitting its `model` and its strategy columns forming a valid strategy when it holds them."
+  [:map {:closed           true
+         :decode/normalize {:leave check-row}}
+   [:model                 {:optional true} [:maybe ::cache-config.model]]
+   [:model_id              {:optional true} [:maybe ::cache-config.model-id]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]
-   [:strategy              {:optional true} [:maybe [:or :keyword :string]]]
+   [:strategy              {:optional true} [:maybe ::cache-config.strategy]]
    [:config                {:optional true} [:maybe ::cache-config.config]]
    [:state                 {:optional true} [:maybe ::cache-config.state]]
    [:invalidated_at        {:optional true} [:maybe ms/TemporalInstant]]

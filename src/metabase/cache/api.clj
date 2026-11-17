@@ -43,8 +43,8 @@
 
 (mr/def ::cache-config-item
   [:map
-   [:model    cache-config/CachingModel]
-   [:model_id ms/IntGreaterThanOrEqualToZero]
+   [:model    ::cache.schema/cache-config.model]
+   [:model_id ::cache.schema/cache-config.model-id]
    [:strategy [:map [:type :keyword]]]
    [:name       {:optional true} [:maybe :string]]
    [:collection {:optional true} [:maybe [:map
@@ -82,7 +82,7 @@
    {:keys [model collection id] :as params}
    :- [:merge
        [:map {:closed true}
-        [:model      {:default ["root"]} (mu/with (ms/QueryVectorOf cache-config/CachingModel)
+        [:model      {:default ["root"]} (mu/with (ms/QueryVectorOf ::cache.schema/cache-config.model)
                                                   {:description "Type of model"})]
         [:collection {:optional true} (mu/with [:maybe ms/PositiveInt]
                                                {:description "Collection id to filter results. Returns everything if not supplied."})]
@@ -111,8 +111,8 @@
   [_route-params
    _query-params
    {:keys [model model_id] :as config} :- [:map {:closed true}
-                                           [:model    cache-config/CachingModel]
-                                           [:model_id ms/IntGreaterThanOrEqualToZero]
+                                           [:model    ::cache.schema/cache-config.model]
+                                           [:model_id ::cache.schema/cache-config.model-id]
                                            [:strategy ::cache-strategy]]]
   (assert-valid-models model [model_id] (premium-features/enable-cache-granular-controls?))
   (if-let [existing (first (cache.db/cache-configs-for model [model_id]))]
@@ -125,8 +125,8 @@
   [_route-params
    _query-params
    {:keys [model model_id]} :- [:map {:closed true}
-                                [:model    cache-config/CachingModel]
-                                [:model_id (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]
+                                [:model    ::cache.schema/cache-config.model]
+                                [:model_id (ms/QueryVectorOf ::cache.schema/cache-config.model-id)]]]
   (assert-valid-models model model_id (premium-features/enable-cache-granular-controls?))
   (doseq [id model_id] (api/write-check (target-config model id)))
   (cache-config/delete! api/*current-user-id* model model_id)

@@ -19,6 +19,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.transforms-base.db :as transforms-base.db]
    [metabase.transforms.query-test-util :as query-test-util]
+   [metabase.transforms.schema :as transforms.schema]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -215,17 +217,13 @@
          (is (= 400 (status-code-of #(t2/update! :model/Transform :id id
                                                  {:target {:type "table" :name "retargeted" :database dest-db}})))))))))
 
-(deftest source-and-target-shape-test
-  (let [defaults (mt/with-temp-defaults :model/Transform)]
-    (testing "a target without a name"
-      (is (= 400 (status-code-of #(t2/insert! :model/Transform (assoc defaults :target {:type "table" :database (mt/id)}))))))
-    (testing "a target of an unknown type"
-      (is (= 400 (status-code-of #(t2/insert! :model/Transform (assoc defaults :target {:type "view" :name "v" :database (mt/id)}))))))
-    (testing "a query source without a query"
-      (is (= 400 (status-code-of #(t2/insert! :model/Transform (assoc defaults :source {:type :query}))))))
-    (testing "the same rules hold for an update"
-      (mt/with-temp [:model/Transform {id :id} {}]
-        (is (= 400 (status-code-of #(t2/update! :model/Transform :id id {:target {:type "table" :database (mt/id)}}))))))))
+(deftest schema-checks-source-and-target-test
+  (testing "target without a name"
+    (is (not (mr/validate ::transforms.schema/transform-target {:type "table" :database 1}))))
+  (testing "target of an unknown type"
+    (is (not (mr/validate ::transforms.schema/transform-target {:type "view" :name "v" :database 1}))))
+  (testing "query source without a query"
+    (is (not (mr/validate ::transforms.schema/transform-source {:type :query})))))
 
 (deftest cycles-are-rejected-on-update-test
   (let [mp     (mt/metadata-provider)

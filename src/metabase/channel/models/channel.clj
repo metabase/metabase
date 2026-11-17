@@ -102,29 +102,22 @@
 
 ;;; ------------------------------------------------------- Hooks --------------------------------------------------------
 
-(defn- check-channel-details
-  "Throws unless `type` is a registered channel type and `details` has the shape that type requires: an email channel
-  may have none, every other type must."
-  [type details]
+(defn- check-type-and-details
+  "Throws a 400 unless the `:type` and `:details` of `channel`, one of which an update changes alone against the stored
+  other, still fit together as [[channel.schema/channel-type->details-schema]] says."
+  [{:keys [type details]}]
   (let [channel-type (some-> type keyword)
         schema       (channel.schema/channel-type->details-schema channel-type)
         details      (some-> details json/encode json/decode+kw stringify-auth-info-keys)]
-    (when-not schema
-      (throw (ex-info (tru "Unknown channel type: {0}" (pr-str type)) {:status-code 400})))
-    (when-not (mr/validate (if (= channel-type :channel/email) [:maybe schema] schema) details)
-      (throw (ex-info (tru "Invalid channel details") {:status-code 400})))))
-
-(t2/define-before-insert :model/Channel
-  [{:keys [type details] :as channel}]
-  (check-channel-details type details)
-  channel)
+    (when-not (and schema (mr/validate (if (= channel-type :channel/email) [:maybe schema] schema) details))
+      (throw (ex-info (tru "The details of a channel must fit its type.") {:status-code 400})))))
 
 (t2/define-before-update :model/Channel
-  [{:keys [type details] :as channel}]
+  [channel]
   (let [changes       (t2/changes channel)
         deactivation? (false? (:active changes))]
-    (when (or (contains? changes :type) (contains? changes :details))
-      (check-channel-details type details))
+    (when (not= (contains? changes :type) (contains? changes :details))
+      (check-type-and-details channel))
     (when deactivation?
       (channel.db/delete-pulse-channels-for-channel! (:id channel)))
     (cond-> channel

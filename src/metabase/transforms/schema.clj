@@ -6,6 +6,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util.cron :as u.cron]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -234,12 +235,16 @@
    [:map {:closed true}
     [:id              ms/PositiveInt]]])
 
+(mr/def ::transform-job.schedule
+  "The `:schedule` column of a TransformJob: a Quartz cron expression."
+  u.cron/CronScheduleString)
+
 (mr/def ::transform-job.update
   "What an update (or insert) of a TransformJob accepts: every column of `:transform_job` except `id`, all optional."
   [:map {:closed true}
    [:name            {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
    [:description     {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
-   [:schedule        {:optional true} [:maybe :string]]
+   [:schedule        {:optional true} [:maybe ::transform-job.schedule]]
    [:entity_id       {:optional true} [:maybe :string]]
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]

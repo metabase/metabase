@@ -27,7 +27,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -104,23 +103,6 @@
              :when table-col]
        (check-column-types-match col table-col)))))
 
-(defn- normalize-sandbox-attribute-remappings
-  "Normalize `:attribute_remappings` on a Sandbox map, if present. `before-insert`/`before-update` hooks see this
-  column in whatever raw, not-yet-normalized shape the caller supplied it in."
-  [sandbox-like]
-  (cond-> sandbox-like
-    (contains? sandbox-like :attribute_remappings)
-    (update :attribute_remappings sandbox.schema/normalize-attribute-remappings)))
-
-(defn- check-attribute-remappings
-  "Throws a 400 unless the `:attribute_remappings` of `sandbox` map user attribute names to field names, field ids, or
-  parameter targets."
-  [sandbox]
-  (when-not (mr/validate ::sandbox.schema/attribute-remappings
-                         (:attribute_remappings (normalize-sandbox-attribute-remappings sandbox)))
-    (throw (ex-info (tru "Invalid attribute remappings: each user attribute name must map to a field name, a field id, or a parameter target.")
-                    {:status-code 400}))))
-
 (defn- check-card-columns
   "Throws a 400 unless the saved result columns of the Card of `sandbox` match the columns of its Table."
   [{:keys [card_id table_id]}]
@@ -138,7 +120,6 @@
 
 (t2/define-before-insert :model/Sandbox
   [sandbox]
-  (check-attribute-remappings sandbox)
   (check-card-columns sandbox)
   (remove-native-access! sandbox)
   sandbox)
@@ -152,8 +133,6 @@
     (when (contains? changes :group_id)
       (throw (ex-info (tru "You cannot change the group of a sandbox.")
                       {:id (:id sandbox), :status-code 400})))
-    (when (contains? changes :attribute_remappings)
-      (check-attribute-remappings sandbox))
     (when (seq changes)
       (check-card-columns sandbox))
     sandbox))

@@ -1,9 +1,11 @@
 (ns metabase.channel.models.channel-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.channel.models.channel] ;; ensure known-labels are loaded
+   [metabase.channel.schema :as channel.schema]
    [metabase.models.interface :as mi]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -11,6 +13,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (deftest channel-details-is-encrypted
@@ -146,24 +149,18 @@
    :type    :channel/http
    :details {:url "https://example.com/hook" :auth-method "none"}})
 
-(deftest channel-type-and-details-are-checked-on-insert-test
-  (mt/with-model-cleanup [:model/Channel]
-    (testing "a registered type with details of its shape is accepted"
-      (is (some? (t2/insert-returning-instance! :model/Channel http-channel))))
-    (testing "an unregistered type is a 400"
-      (is (=? {:status-code 400}
-              (try (t2/insert! :model/Channel (assoc http-channel :name "Other" :type :channel/nonexistent))
-                   (catch clojure.lang.ExceptionInfo e (ex-data e))))))
-    (testing "details of another type's shape are a 400"
-      (is (=? {:status-code 400}
-              (try (t2/insert! :model/Channel (assoc http-channel :name "Bad" :details {:channel "#general"}))
-                   (catch clojure.lang.ExceptionInfo e (ex-data e))))))
-    (testing "an HTTP channel without details is a 400"
-      (is (=? {:status-code 400}
-              (try (t2/insert! :model/Channel (dissoc http-channel :details))
-                   (catch clojure.lang.ExceptionInfo e (ex-data e))))))
-    (testing "an email channel needs no details"
-      (is (some? (t2/insert-returning-instance! :model/Channel {:name "Mail" :type :channel/email :details {}}))))))
+(deftest channel-schema-checks-type-and-details-test
+  (let [row (assoc http-channel :id 1 :created_at (t/offset-date-time) :updated_at (t/offset-date-time))]
+    (testing "registered type with details of its shape is valid"
+      (is (mr/validate ::channel.schema/channel row)))
+    (testing "unregistered type is invalid"
+      (is (not (mr/validate ::channel.schema/channel (assoc row :type :channel/nonexistent)))))
+    (testing "details of another type's shape are invalid"
+      (is (not (mr/validate ::channel.schema/channel (assoc row :details {:channel "#general"})))))
+    (testing "HTTP channel without details is invalid"
+      (is (not (mr/validate ::channel.schema/channel (dissoc row :details)))))
+    (testing "email channel needs no details"
+      (is (mr/validate ::channel.schema/channel (-> row (assoc :type :channel/email) (dissoc :details)))))))
 
 (deftest channel-type-and-details-are-checked-on-update-test
   (mt/with-temp [:model/Channel {id :id} http-channel]

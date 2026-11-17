@@ -21,7 +21,6 @@
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -317,7 +316,7 @@
       [:cron_schedule {:optional true} nil?]]]
     [:notification-subscription/cron
      [:map
-      [:cron_schedule                    :string]
+      [:cron_schedule                    ::u.cron/CronScheduleString]
       [:event_name      {:optional true} nil?]
       ;; enum values can change depending on UI
       [:ui_display_type {:optional true} [:maybe (into [:enum] subscription-ui-display-types)]]]]]])
@@ -335,19 +334,9 @@
   [subscription]
   (mu/validate-throw ::NotificationSubscription subscription))
 
-(defn- check-cron-schedule
-  "Throws a 400 when a cron subscription's `cron_schedule` is not a valid Quartz cron string."
-  [{:keys [type cron_schedule]}]
-  (when (and (= :notification-subscription/cron (keyword type))
-             (not (mr/validate ::u.cron/CronScheduleString cron_schedule)))
-    (throw (ex-info (tru "Invalid cron schedule string: {0}" cron_schedule)
-                    {:status-code   400
-                     :cron_schedule cron_schedule}))))
-
 (t2/define-before-insert :model/NotificationSubscription
   [instance]
   (validate-subscription instance)
-  (check-cron-schedule instance)
   instance)
 
 (t2/define-after-insert :model/NotificationSubscription
@@ -358,8 +347,6 @@
 (t2/define-before-update :model/NotificationSubscription
   [instance]
   (validate-subscription instance)
-  (when (some #{:type :cron_schedule} (keys (t2/changes instance)))
-    (check-cron-schedule instance))
   (notification.task.send-trigger/update-subscription-trigger! instance)
   instance)
 

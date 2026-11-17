@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.models.interface :as mi]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -15,6 +16,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [toucan2.core :as t2]))
 
@@ -563,22 +565,15 @@
       (t2/update! :model/Dashboard :id (u/the-id dash) {:collection_id nil})
       (is (nil? (t2/select-one-fn :collection_id :model/Card :id (u/the-id card)))))))
 
-(deftest check-dashboard-columns-test
-  (testing "A Dashboard keeps a name, a known width and boolean auto apply filters"
-    (let [parameter (fn [id] {:id id :type :category :name id :slug id})
-          insert!   (fn [row] (t2/insert! :model/Dashboard (merge {:name "Dash" :creator_id (mt/user->id :rasta)} row)))]
-      (mt/with-temp [:model/Dashboard dash {}]
-        (doseq [[column bad] [[:name "  "]
-                              [:width "wide"]
-                              [:auto_apply_filters "yes"]]]
-          (testing (str "insert " column)
-            (is (thrown? clojure.lang.ExceptionInfo (insert! {column bad}))))
-          (testing (str "update " column)
-            (is (thrown? clojure.lang.ExceptionInfo (t2/update! :model/Dashboard :id (u/the-id dash) {column bad})))))
-        (is (some? (insert! {:width "full" :auto_apply_filters false
-                             :parameters [(parameter "a") (parameter "b")]})))
-        (t2/update! :model/Dashboard :id (u/the-id dash) {:width "full"})
-        (is (= "full" (t2/select-one-fn :width :model/Dashboard :id (u/the-id dash))))))))
+(deftest ^:parallel dashboard-columns-schema-test
+  (testing "Dashboard has non-blank name, known width and boolean auto apply filters"
+    (doseq [[column bad] [[:name "  "]
+                          [:width "wide"]
+                          [:auto_apply_filters "yes"]
+                          [:auto_apply_filters nil]]]
+      (testing (pr-str column bad)
+        (is (not (mr/validate ::dashboards.schema/dashboard.update {column bad})))))
+    (is (mr/validate ::dashboards.schema/dashboard.update {:name "Dash" :width "full" :auto_apply_filters false}))))
 
 (def ^:private change-permission-table
   "The changes of a Dashboard the permission check refuses a user, by what the user may write."

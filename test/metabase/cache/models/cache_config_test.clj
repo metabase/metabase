@@ -2,8 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.cache.schema :as cache.schema]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (defn- status-code
@@ -15,25 +18,40 @@
     (catch clojure.lang.ExceptionInfo e
       (:status-code (ex-data e)))))
 
-(deftest insert-checks-target-test
-  (mt/with-model-cleanup [:model/CacheConfig]
-    (mt/with-temp [:model/Card {card-id :id} {}]
-      (doseq [[target message] [[{:model "card" :model_id card-id} "unknown model"]
-                                [{:model "root" :model_id card-id} "root config with positive model_id"]
-                                [{:model "question" :model_id 0} "question config with model_id 0"]]]
-        (testing message
-          (is (= 400 (status-code #(t2/insert! :model/CacheConfig (merge {:strategy :nocache :config {}} target))))))))))
+(deftest schema-checks-model-test
+  (is (mr/validate ::cache.schema/cache-config.model "question"))
+  (is (not (mr/validate ::cache.schema/cache-config.model "card")))
+  (is (not (mr/validate ::cache.schema/cache-config.model-id -1))))
 
-(deftest insert-checks-strategy-test
-  (mt/with-model-cleanup [:model/CacheConfig]
-    (mt/with-temp [:model/Card {card-id :id} {}]
-      (doseq [[row message] [[{:strategy :ttl :config {}} "ttl without multiplier"]
-                             [{:strategy :schedule :config {:schedule "not a cron"}} "invalid cron schedule"]
-                             [{:strategy :duration :config {:duration 1 :unit "weeks"}} "unknown duration unit"]
-                             [{:strategy :sometimes :config {}} "unknown strategy"]]]
-        (testing message
-          (is (= 400 (status-code #(t2/insert! :model/CacheConfig
-                                               (merge {:model "question" :model_id card-id} row))))))))))
+(deftest schema-checks-strategy-test
+  (doseq [[strategy message] [[{:type :ttl} "ttl without multiplier"]
+                              [{:type :schedule :schedule "not a cron" :refresh_automatically false} "invalid cron schedule"]
+                              [{:type :duration :duration 1 :unit "weeks" :refresh_automatically false} "unknown duration unit"]
+                              [{:type :sometimes} "unknown strategy"]]]
+    (testing message
+      (is (not (mr/validate ::cache.schema/cache-strategy.ee strategy)))))
+  (is (mr/validate ::cache.schema/cache-strategy.ee {:type :ttl :multiplier 10 :min_duration_ms 100})))
+
+(defn- normalize-status
+  "The `:status-code` normalizing `row` by the CacheConfig schema throws, or nil when it throws none."
+  [row]
+  (try
+    (lib/normalize ::cache.schema/cache-config.update row {:throw? true})
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (:status-code (ex-data e)))))
+
+(deftest schema-checks-columns-together-test
+  (let [row {:model "question" :model_id 1 :strategy :ttl :config {:multiplier 10 :min_duration_ms 100}}]
+    (is (nil? (normalize-status row)))
+    (doseq [[changes message] [[{:model "root"} "root config with positive model_id"]
+                               [{:model_id 0} "question config with model_id 0"]
+                               [{:config {}} "ttl without multiplier"]]]
+      (testing message
+        (is (= 400 (normalize-status (merge row changes))))))
+    (testing "body with only one column of a pair passes"
+      (is (nil? (normalize-status {:model_id 0})))
+      (is (nil? (normalize-status {:strategy :ttl}))))))
 
 (deftest insert-accepts-valid-config-test
   (mt/with-temp [:model/Card        {card-id :id} {}
@@ -54,18 +72,6 @@
     (testing "model"
       (is (= 400 (status-code #(t2/update! :model/CacheConfig :id config-id {:model "dashboard"})))))
     (is (=? {:model "question" :model_id card-id} (t2/select-one :model/CacheConfig :id config-id)))))
-
-(deftest update-checks-strategy-test
-  (mt/with-temp [:model/Card        {card-id :id}   {}
-                 :model/CacheConfig {config-id :id} {:model "question" :model_id card-id}]
-    (testing "strategy that does not fit the stored config"
-      (is (= 400 (status-code #(t2/update! :model/CacheConfig :id config-id {:strategy :ttl})))))
-    (testing "strategy with config that fits it"
-      (t2/update! :model/CacheConfig :id config-id {:strategy :ttl :config {:multiplier 10 :min_duration_ms 100}})
-      (is (=? {:strategy :ttl} (t2/select-one :model/CacheConfig :id config-id))))
-    (testing "columns outside the strategy"
-      (t2/update! :model/CacheConfig :id config-id {:next_run_at nil})
-      (is (=? {:strategy :ttl} (t2/select-one :model/CacheConfig :id config-id))))))
 
 (deftest delete-card-deletes-its-cache-config-test
   (mt/with-temp [:model/Card        {card-id :id}   {}

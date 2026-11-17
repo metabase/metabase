@@ -40,7 +40,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
@@ -113,14 +112,9 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- assert-valid-human-readable-values [{human-readable-values :human_readable_values}]
-  (when-not (mr/validate [:maybe [:sequential [:maybe ms/NonBlankString]]] human-readable-values)
-    (throw (ex-info (tru "Invalid human-readable-values: values must be a sequence; each item must be nil or a string")
-                    {:human-readable-values human-readable-values
-                     :status-code           400}))))
-
 (defn- check-human-readable-values-cover-values
-  "Throws unless `field-values` has no human-readable values or one for each of its values."
+  "Throws a 400 unless `field-values`, as an update leaves it with its stored columns, has no human-readable values or
+  one for each of its values."
   [{values :values, human-readable-values :human_readable_values}]
   (when (and (seq human-readable-values) (not= (count human-readable-values) (count values)))
     (throw (ex-info (tru "If remapped values are specified, they must be specified for all field values")
@@ -167,8 +161,6 @@
 (t2/define-before-insert :model/FieldValues
   [{:keys [field_id] :as field-values}]
   (u/prog1 (update field-values :type #(keyword (or % :full)))
-    (assert-valid-human-readable-values field-values)
-    (check-human-readable-values-cover-values field-values)
     (assert-valid-type-hash-combo <>)
     ;; if inserting a new full fieldvalues, make sure all the advanced field-values of this field are deleted
     (when (= :full (:type <>))
@@ -179,7 +171,6 @@
   (let [changes (t2/changes field-values)]
     (u/prog1 (update field-values :type #(keyword (or % :full)))
       (assert-no-identity-changes (:id field-values) changes)
-      (assert-valid-human-readable-values field-values)
       (when (some #(contains? changes %) [:values :human_readable_values])
         (check-human-readable-values-cover-values field-values))
       ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field

@@ -139,7 +139,7 @@
    _query-params
    dashboard
    :- [:map {:closed true}
-       [:name                ms/NonBlankString]
+       [:name                :metabase.dashboards.schema/dashboard.name]
        [:parameters          {:optional true} [:maybe ::parameters.schema/parameters]]
        [:description         {:optional true} [:maybe :string]]
        [:cache_ttl           {:optional true} [:maybe ms/PositiveInt]]
@@ -534,7 +534,7 @@
    _query-params
    {:keys [name description collection_id collection_position
            is_deep_copy], :as _dashboard} :- [:map {:closed true}
-                                              [:name                {:optional true} [:maybe ms/NonBlankString]]
+                                              [:name                {:optional true} [:maybe :metabase.dashboards.schema/dashboard.name]]
                                               [:description         {:optional true} [:maybe :string]]
                                               [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                                               [:collection_position {:optional true} [:maybe ms/PositiveInt]]
@@ -862,21 +862,21 @@
   [:map {:closed true}
    [:card                   {:optional true} [:maybe TransientCard]]
    [:series                 {:optional true} [:maybe [:sequential TransientCard]]]
-   [:row                    {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
-   [:col                    {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
-   [:size_x                 {:optional true} [:maybe ms/PositiveInt]]
-   [:size_y                 {:optional true} [:maybe ms/PositiveInt]]
+   [:row                    {:optional true} [:maybe :metabase.dashboards.schema/dashboard-card.position]]
+   [:col                    {:optional true} [:maybe :metabase.dashboards.schema/dashboard-card.position]]
+   [:size_x                 {:optional true} [:maybe :metabase.dashboards.schema/dashboard-card.size]]
+   [:size_y                 {:optional true} [:maybe :metabase.dashboards.schema/dashboard-card.size]]
    [:dashboard_tab_id       {:optional true} [:maybe ms/Int]]
    [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
    [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]])
 
 (def ^:private TransientDashboard
   [:map {:closed true}
-   [:name               {:optional true} [:maybe ms/NonBlankString]]
+   [:name               {:optional true} [:maybe :metabase.dashboards.schema/dashboard.name]]
    [:description        {:optional true} [:maybe :string]]
    [:parameters         {:optional true} [:maybe [:ref ::parameters.schema/parameters]]]
    [:auto_apply_filters {:optional true} [:maybe :boolean]]
-   [:width              {:optional true} [:maybe [:enum "fixed" "full"]]]
+   [:width              {:optional true} [:maybe :metabase.dashboards.schema/dashboard.width]]
    [:dashcards          {:optional true} [:maybe [:sequential TransientDashboardCard]]]
    [:tabs               {:optional true} [:maybe [:sequential UpdatedDashboardTab]]]])
 

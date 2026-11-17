@@ -7,7 +7,9 @@
    [metabase.test :as mt]
    [metabase.timeline.models.timeline :as timeline]
    [metabase.timeline.models.timeline-event :as timeline-event]
+   [metabase.timeline.schema :as timeline.schema]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (deftest timelines-for-collection-test
@@ -59,23 +61,13 @@
       (let [id (t2/insert-returning-pk! :model/Timeline {:name "Icons" :creator_id (mt/user->id :rasta)})]
         (is (= timeline-event/default-icon (t2/select-one-fn :icon :model/Timeline :id id)))
         (t2/delete! :model/Timeline :id id)))
-    (testing "an icon outside the allowed set is refused on insert and update"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Timeline icon"
-                            (t2/insert! :model/Timeline {:name "Icons" :icon "nope" :creator_id (mt/user->id :rasta)})))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Timeline icon"
-                            (t2/update! :model/Timeline :id timeline-id {:icon "nope"})))
-      (is (= timeline-event/default-icon (t2/select-one-fn :icon :model/Timeline :id timeline-id))))
+    (testing "the Timeline schema refuses a blank name and an icon outside the allowed set"
+      (is (not (mr/validate ::timeline.schema/timeline.update {:name ""})))
+      (is (not (mr/validate ::timeline.schema/timeline.update {:icon "nope"})))
+      (is (mr/validate ::timeline.schema/timeline.update {:name "Icons" :icon "cake"})))
     (testing "an allowed icon is accepted on update"
       (t2/update! :model/Timeline :id timeline-id {:icon "cake"})
       (is (= "cake" (t2/select-one-fn :icon :model/Timeline :id timeline-id))))))
-
-(deftest name-test
-  (mt/with-temp [:model/Timeline {timeline-id :id} {}]
-    (testing "a blank name is refused on insert and update"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Timeline needs a name"
-                            (t2/insert! :model/Timeline {:name "  " :creator_id (mt/user->id :rasta)})))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Timeline needs a name"
-                            (t2/update! :model/Timeline :id timeline-id {:name ""}))))))
 
 (deftest collection-namespace-test
   (mt/with-temp [:model/Collection {snippets-id :id} {:namespace :snippets}

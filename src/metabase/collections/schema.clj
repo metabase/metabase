@@ -144,6 +144,12 @@
    [:root [:ref ::root-collection]]
    [:row  [:ref ::collection]]])
 
+(mr/def ::collection.type
+  "The `:type` column of a Collection: nil for a regular Collection, or one of these special types."
+  [:enum {:decode/normalize lib.schema.common/normalize-string-key}
+   "trash" "tenant-specific-root-collection" "instance-analytics"
+   "library" "library-data" "library-metrics" "library-dashboards"])
+
 (mr/def ::collection.update
   "What an update (or insert) of a Collection accepts: every column of `:collection` except `id`, all optional."
   [:map {:closed true}
@@ -157,7 +163,7 @@
    [:authority_level      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:entity_id            {:optional true} [:maybe :string]]
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
-   [:type                 {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
+   [:type                 {:optional true} [:maybe ::collection.type]]
    [:is_sample            {:optional true} [:maybe :boolean]]
    [:archive_operation_id {:optional true} [:maybe :string]]
    [:archived_directly    {:optional true} [:maybe :boolean]]

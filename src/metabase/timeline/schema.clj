@@ -6,6 +6,15 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::name
+  ms/NonBlankString)
+
+(mr/def ::icon
+  [:enum "star" "cake" "mail" "mail_at" "warning" "bell" "cloud" "info" "note" "event"])
+
+(mr/def ::time-matters
+  :boolean)
+
 (mr/def ::timeline
   "A Timeline as selected from the app DB: every column of `:timeline`."
   [:merge
@@ -17,9 +26,9 @@
 (mr/def ::timeline.update
   "What an update (or insert) of a Timeline accepts: every column of `:timeline` except `id`, all optional."
   [:map {:closed true}
-   [:name          {:optional true} [:maybe :string]]
+   [:name          {:optional true} ::name]
    [:description   {:optional true} [:maybe :string]]
-   [:icon          {:optional true} [:maybe :string]]
+   [:icon          {:optional true} ::icon]
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
    [:archived      {:optional true} [:maybe :boolean]]
    [:archived_directly {:optional true} [:maybe :boolean]]
@@ -40,12 +49,12 @@
   "What an update (or insert) of a TimelineEvent accepts: every column of `:timeline_event` except `id`, all optional."
   [:map {:closed true}
    [:timeline_id  {:optional true} [:maybe ms/PositiveInt]]
-   [:name         {:optional true} [:maybe :string]]
+   [:name         {:optional true} ::name]
    [:description  {:optional true} [:maybe :string]]
-   [:timestamp    {:optional true} [:maybe ms/TemporalInstant]]
-   [:time_matters {:optional true} [:maybe :boolean]]
+   [:timestamp    {:optional true} ms/TemporalInstant]
+   [:time_matters {:optional true} ::time-matters]
    [:timezone     {:optional true} [:maybe :string]]
-   [:icon         {:optional true} [:maybe :string]]
+   [:icon         {:optional true} ::icon]
    [:archived     {:optional true} [:maybe :boolean]]
    [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]

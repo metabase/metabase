@@ -10,7 +10,6 @@
    [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
-   [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
@@ -68,20 +67,6 @@
       validate-link-card-entity-id
       validate-click-behavior-target-ids))
 
-(defn- check-layout
-  "Throws a 400 unless the size of `dashcard` is positive and its position is not negative."
-  [{:keys [size_x size_y row col]}]
-  (when (or (some #(and (some? %) (not (pos-int? %))) [size_x size_y])
-            (some #(and (some? %) (not (nat-int? %))) [row col]))
-    (throw (ex-info (tru "A dashboard card needs a positive size and a position that is not negative.")
-                    {:status-code 400}))))
-
-(defn- check-parameter-mappings
-  "Throws unless the `:parameter_mappings` of `dashcard`, normalized, are a sequence of mappings."
-  [{:keys [parameter_mappings]}]
-  (params/assert-valid-parameter-mappings
-   {:parameter_mappings (some->> parameter_mappings (lib/normalize ::parameters.schema/parameter-mappings))}))
-
 (defn- check-tab
   "Throws a 400 unless the tab of `dashcard`, if any, belongs to the Dashboard of the dashcard."
   [{:keys [dashboard_id dashboard_tab_id]}]
@@ -92,8 +77,6 @@
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
   (check-tab dashcard)
-  (check-layout dashcard)
-  (check-parameter-mappings dashcard)
   (-> (merge {:parameter_mappings     []
               :visualization_settings {}
               :inline_parameters      []}
@@ -107,10 +90,6 @@
       (throw (ex-info (tru "You cannot move a dashboard card to another dashboard.") {:status-code 400})))
     (when (contains? changes :dashboard_tab_id)
       (check-tab dashcard))
-    (when (some #(contains? changes %) [:size_x :size_y :row :col])
-      (check-layout dashcard))
-    (when (contains? changes :parameter_mappings)
-      (check-parameter-mappings dashcard))
     (validate-dashcard-on-write dashcard)))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids

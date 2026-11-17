@@ -9,7 +9,6 @@
    [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -59,23 +58,10 @@
 (defn valid-schedule?
   "Is this combination of scheduling choices valid?"
   [schedule-type schedule-hour schedule-day schedule-frame]
-  (or
-   ;; hourly schedule does not care about other inputs
-   (= schedule-type :hourly)
-   ;; daily schedule requires a valid `hour`
-   (and (= schedule-type :daily)
-        (hour-of-day? schedule-hour))
-   ;; weekly schedule requires a valid `hour` and `day`
-   (and (= schedule-type :weekly)
-        (hour-of-day? schedule-hour)
-        (day-of-week? schedule-day))
-   ;; monthly schedule requires a valid `hour` and `frame`.  also a `day` if frame = first or last
-   (and (= schedule-type :monthly)
-        (schedule-frame? schedule-frame)
-        (hour-of-day? schedule-hour)
-        (or (contains? #{:first :last} schedule-frame)
-            (and (= :mid schedule-frame)
-                 (nil? schedule-day))))))
+  (pulse.schema/schedule-fits-type? {:schedule_type  schedule-type
+                                     :schedule_hour  schedule-hour
+                                     :schedule_day   schedule-day
+                                     :schedule_frame schedule-frame}))
 
 (def channel-types
   "Map which contains the definitions for each type of pulse channel we allow.  Each key is a channel type with a map
@@ -189,43 +175,8 @@
   "The columns that decide when a PulseChannel is sent."
   #{:schedule_type :schedule_hour :schedule_day :schedule_frame})
 
-(defn- check-channel-type
-  "Throws a 400 unless `channel-type` is one of the [[channel-types]]."
-  [channel-type]
-  (when-not (channel-type? (some-> channel-type keyword))
-    (throw (ex-info (tru "Invalid channel type: {0}." (pr-str channel-type)) {:status-code 400}))))
-
-(defn- check-schedule
-  "Throws a 400 unless the schedule columns of `pulse-channel` have a schedule type and the hour, day and frame it
-  requires."
-  [{:keys [schedule_type schedule_hour schedule_day schedule_frame]}]
-  (let [schedule-type  (some-> schedule_type keyword)
-        schedule-frame (some-> schedule_frame keyword)]
-    (when-not (schedule-type? schedule-type)
-      (throw (ex-info (tru "Invalid schedule type: {0}." (pr-str schedule_type)) {:status-code 400})))
-    (when-not (valid-schedule? schedule-type schedule_hour schedule_day schedule-frame)
-      (throw (ex-info (tru "Invalid schedule: a {0} schedule does not take this hour, day and frame."
-                           (name schedule-type))
-                      {:status-code 400})))))
-
-(defn- check-details
-  "Throws a 400 unless `details` of a PulseChannel has the shape of [[pulse.schema/pulse-channel.details]]."
-  [{:keys [details]}]
-  (when-not (mr/validate [:maybe ::pulse.schema/pulse-channel.details] details)
-    (throw (ex-info (tru "Invalid channel details") {:status-code 400}))))
-
-(defn- details-changed-beyond-emails?
-  "Whether the update of `pulse-channel` changes anything in its `details` but the list of emails, which is all that
-  unsubscribing and undoing it touch."
-  [pulse-channel]
-  (not= (dissoc (:details pulse-channel) :emails)
-        (dissoc (:details (t2/original pulse-channel)) :emails)))
-
 (t2/define-before-insert :model/PulseChannel
   [pulse-channel]
-  (check-channel-type (:channel_type pulse-channel))
-  (check-schedule pulse-channel)
-  (check-details pulse-channel)
   (validate-email-domains pulse-channel))
 
 (t2/define-after-insert :model/PulseChannel
@@ -238,12 +189,8 @@
   "Throws unless `pulse-channel`, a row an UPDATE writes, has valid columns after its changes."
   [pulse-channel]
   (let [changes (t2/changes pulse-channel)]
-    (when (contains? changes :channel_type)
-      (check-channel-type (:channel_type pulse-channel)))
     (when (some #(contains? changes %) schedule-columns)
-      (check-schedule pulse-channel))
-    (when (or (contains? changes :channel_type) (details-changed-beyond-emails? pulse-channel))
-      (check-details pulse-channel))
+      (pulse.schema/check-schedule pulse-channel))
     (when (contains? changes :details)
       (validate-email-domains pulse-channel))))
 

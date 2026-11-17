@@ -1,7 +1,6 @@
 (ns metabase.dashboards.models.dashboard
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.cache.core :as cache]
@@ -82,10 +81,6 @@
     ;; delete through Toucan rather than the FK cascade so the PulseChannel hook removes the SendPulse triggers
     (dashboards.db/delete-pulses-for-dashboard! dashboard-id)))
 
-(def ^:private widths
-  "The widths a Dashboard takes."
-  #{"fixed" "full"})
-
 (defmethod mi/after-archived-change :model/Dashboard
   [_model rows changes]
   (doseq [{:keys [id]} rows]
@@ -93,35 +88,12 @@
       (dashboards.db/archive-dashboard-questions! id)
       (dashboards.db/unarchive-dashboard-questions! id))))
 
-(defn- check-name
-  "Throws a 400 unless `dashboard` has a name."
-  [{dashboard-name :name}]
-  (when (str/blank? dashboard-name)
-    (throw (ex-info (tru "A Dashboard needs a name.") {:status-code 400}))))
-
-(defn- check-width
-  "Throws a 400 unless the `:width` of `dashboard` is one a Dashboard takes."
-  [{:keys [width]}]
-  (when-not (contains? widths width)
-    (throw (ex-info (tru "Dashboard width must be fixed or full.") {:status-code 400}))))
-
-(defn- check-auto-apply-filters
-  "Throws a 400 unless the `:auto_apply_filters` of `dashboard` is a boolean."
-  [{:keys [auto_apply_filters]}]
-  (when-not (boolean? auto_apply_filters)
-    (throw (ex-info (tru "Dashboard auto_apply_filters must be true or false.") {:status-code 400}))))
-
 (t2/define-before-insert :model/Dashboard
   [dashboard]
   (collection/check-collection-for :model/Dashboard dashboard)
   (let [defaults  {:parameters []}
         dashboard (-> (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))
                       maybe-populate-initially-published-at)]
-    (check-name dashboard)
-    (when (contains? dashboard :width)
-      (check-width dashboard))
-    (when (contains? dashboard :auto_apply_filters)
-      (check-auto-apply-filters dashboard))
     (u/prog1 (public-sharing/add-public-uuid-prefix dashboard)
       (params/assert-valid-parameters dashboard))))
 
@@ -136,12 +108,6 @@
         dashboard (lib/normalize ::dashboards.schema/dashboard row)]
     (when (contains? changes :collection_id)
       (collection/check-collection-for :model/Dashboard dashboard))
-    (when (contains? changes :name)
-      (check-name dashboard))
-    (when (contains? changes :width)
-      (check-width dashboard))
-    (when (contains? changes :auto_apply_filters)
-      (check-auto-apply-filters dashboard))
     (params/assert-valid-parameters dashboard)
     (let [dashboard (-> dashboard
                         (cond-> (contains? changes :archived)

@@ -77,20 +77,6 @@
     (collection/check-collection-namespace :model/Transform collection_id)
     (collection/check-allowed-content :model/Transform collection_id)))
 
-(defn- check-shape
-  "Throws a 400 with `message` unless `value`, normalized, satisfies `schema`."
-  [schema value message]
-  (when-not (mr/validate schema (lib/normalize schema value))
-    (throw (ex-info (str message) {:status-code 400}))))
-
-(defn- check-source-and-target
-  "Throws a 400 unless the source and the target of `transform` have the shape their types require."
-  [{:keys [source target]}]
-  (check-shape ::transforms.schema/transform-source source (tru "The transform source is invalid."))
-  (check-shape ::transforms.schema/transform-target
-               (m/update-existing target :type #(cond-> % (keyword? %) name))
-               (tru "The transform target is invalid.")))
-
 (defn- source-database-id
   "The Database id the source of `transform` names, or nil when it names none, as a Python source without a
   `:source-database` does."
@@ -135,9 +121,8 @@
 
 (defn- check-and-derive-definition
   "`transform`, whose source or target is being written, with the columns computed from them, after checking that the
-  source and the target have their shape and that the target Database can hold them."
+  target Database can hold them."
   [transform]
-  (check-source-and-target transform)
   (let [transform (merge transform (derived-columns transform))]
     (check-target-database transform)
     transform))

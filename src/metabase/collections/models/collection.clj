@@ -771,11 +771,6 @@
   "The types of the library collections whose sub-collections have the type of their parent."
   #{library-data-collection-type library-metrics-collection-type library-dashboards-collection-type})
 
-(def ^:private collection-types
-  "The values the `:type` of a Collection can take, besides nil."
-  (into #{trash-collection-type tenant-specific-root-collection-type "instance-analytics"}
-        library-collection-types))
-
 (defn- check-library-placement
   "Throws a 400 when a library collection of type `parent-type` can't hold content of `content-type`, a model, a card
   type or a collection type."
@@ -1730,12 +1725,6 @@
     (and parent (nil? (:is_remote_synced row)))
     (assoc :is_remote_synced (boolean (:is_remote_synced parent)))))
 
-(defn- check-type
-  "Throws a 400 unless the `type` of `row` is nil or one a Collection can have."
-  [{:keys [type]}]
-  (when-not (or (nil? type) (contains? collection-types type))
-    (throw (ex-info (tru "Invalid Collection type.") {:status-code 400, :errors {:type (tru "invalid type")}}))))
-
 (defn- check-namespace-columns
   "Throws a 400 for a tenant Collection when tenants are off, and for a Personal Collection outside the default
   namespace."
@@ -1789,7 +1778,6 @@
   (assert-not-personal-collection-for-api-key row)
   (let [parent (parent-of row ancestors)
         row    (merge row (inherited-columns row parent))]
-    (check-type row)
     (check-namespace-columns row)
     (check-parent-namespace row parent)
     (check-parent-not-archived row parent)
@@ -2113,8 +2101,6 @@
       (let [msg (tru "You cannot move a Collection to a different namespace once it has been created.")]
         (throw (ex-info msg {:status-code 400, :errors {:namespace msg}}))))
     (check-namespace-columns (merge (select-keys collection-before-updates [:namespace]) changes))
-    (when (contains? changes :type)
-      (check-type row))
     (when moved?
       (check-parent-namespace row parent)
       (check-parent-not-archived row parent))

@@ -14,7 +14,6 @@
    [metabase.task-history.models.task-run :as task-run]
    [metabase.task-history.schema :as task-history.schema]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -63,26 +62,6 @@
   (when-let [clean-before-date (task-history.db/nth-newest-task-history-ended-at num-rows-to-keep)]
     (task-history.db/delete-task-history-ended-before! clean-before-date)))
 
-(def ^:private task-history-status #{:started :success :failed :unknown})
-
-(defn- check-status
-  "Throws a 400 unless `status` is a TaskHistory status."
-  [status]
-  (when-not (task-history-status (keyword status))
-    (throw (ex-info (tru "Invalid task history status.") {:status-code 400}))))
-
-(t2/define-before-insert :model/TaskHistory
-  [task-history]
-  (when (contains? task-history :status)
-    (check-status (:status task-history)))
-  task-history)
-
-(t2/define-before-update :model/TaskHistory
-  [task-history]
-  (when (contains? (t2/changes task-history) :status)
-    (check-status (:status task-history)))
-  task-history)
-
 (t2/deftransforms :model/TaskHistory
   {:task_details mi/transform-json-eliding
    :logs         mi/transform-json
@@ -91,7 +70,7 @@
 (def FilterParams
   "Schema for filter for task history."
   [:map {:closed true}
-   [:status {:optional true} (into [:enum] task-history-status)]
+   [:status {:optional true} ::task-history.schema/task-history.status]
    [:task {:optional true} [:string {:min 1}]]])
 
 (def ^:private available-sort-columns
@@ -131,7 +110,7 @@
 
 (def ^:private TaskHistoryCallBackInfo
   [:map {:closed true}
-   [:status                        (into [:enum] task-history-status)]
+   [:status                        ::task-history.schema/task-history.status]
    [:task_details {:optional true} [:maybe :map]]])
 
 (def ^:private TaskHistoryInfo

@@ -4,12 +4,14 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase-enterprise.custom-viz-plugin.test-util :as cv.tu]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -209,17 +211,6 @@
                   (t2/select-one :model/CustomVizPlugin :id id))))))))
 
 (deftest identifier-must-not-contain-colon-test
-  (mt/with-model-cleanup [:model/CustomVizPlugin]
-    (testing "inserting identifier with colon is refused"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must not contain \":\""
-                            (t2/insert! :model/CustomVizPlugin {:identifier   "colon:insert"
-                                                                :display_name "Colon"
-                                                                :status       :active})))
-      (is (not (t2/exists? :model/CustomVizPlugin :identifier "colon:insert"))))
-    (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "plain-identifier"
-                                                    :display_name "Plain"
-                                                    :status       :active}]
-      (testing "renaming identifier to one with colon is refused"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must not contain \":\""
-                              (t2/update! :model/CustomVizPlugin :id id {:identifier "colon:update"})))
-        (is (= "plain-identifier" (t2/select-one-fn :identifier :model/CustomVizPlugin :id id)))))))
+  (is (not (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.update {:identifier "colon:insert"})))
+  (is (not (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.update {:identifier " "})))
+  (is (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.update {:identifier "plain-identifier"})))

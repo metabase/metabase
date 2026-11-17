@@ -5,22 +5,17 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.cache.db :as cache.db]
-   [metabase.cache.schema :as cache.schema]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------- Model setup --------------------------------------------------
-
-;; TODO (Cam 10/3/25) -- change these to keywords and let API coercion convert them for us automatically
-(def CachingModel "Caching is configurable for those models" [:enum "root" "database" "dashboard" "question"])
 
 (def ^:private available-sort-columns
   "Valid columns for sorting cache configs."
@@ -52,37 +47,11 @@
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
-(defn- check-target
-  "Throws unless the `model` of a CacheConfig is one caching is configurable for and `model_id` fits it: 0 for the root
-  config, a positive id otherwise."
-  [{:keys [model model_id]}]
-  (when-not (mr/validate CachingModel model)
-    (throw (ex-info (tru "Cache configuration model must be one of root, database, dashboard, question.")
-                    {:status-code 400 :model model})))
-  (when-not (if (= model "root") (= model_id 0) (pos-int? model_id))
-    (throw (ex-info (tru "Root cache configuration must have model_id 0, and any other a positive model_id.")
-                    {:status-code 400 :model model :model_id model_id}))))
-
-(defn- check-strategy
-  "Throws unless the `strategy`, `config` and `refresh_automatically` of CacheConfig `row` form a valid strategy."
-  [row]
-  (when-not (mr/validate ::cache.schema/cache-strategy.ee (row->strategy row))
-    (throw (ex-info (tru "Invalid cache strategy.")
-                    {:status-code 400 :strategy (row->strategy row)}))))
-
-(t2/define-before-insert :model/CacheConfig
-  [cache-config]
-  (check-target cache-config)
-  (check-strategy cache-config)
-  cache-config)
-
 (t2/define-before-update :model/CacheConfig
   [cache-config]
   (let [changes (t2/changes cache-config)]
     (when (or (contains? changes :model) (contains? changes :model_id))
       (throw (ex-info (tru "You cannot change the target of a cache configuration.") {:status-code 400})))
-    (when (some #(contains? changes %) [:strategy :config :refresh_automatically])
-      (check-strategy cache-config))
     cache-config))
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------

@@ -1,8 +1,8 @@
 (ns metabase.pulse.models.pulse-card
   (:require
    [metabase.pulse.db :as pulse.db]
+   [metabase.pulse.schema :as pulse.schema]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -17,25 +17,6 @@
   (derive :hook/entity-id)
   (derive :hook/change-log)
   (derive :hook/change-log-before-update-noop))
-
-;;; ------------------------------------------------------- Hooks --------------------------------------------------------
-
-(defn- check-position
-  "Throws a 400 unless the `:position` of `pulse-card` is a non-negative integer."
-  [{:keys [position]}]
-  (when-not (nat-int? position)
-    (throw (ex-info (tru "The position of a subscription card must not be negative.") {:status-code 400}))))
-
-(t2/define-before-insert :model/PulseCard
-  [pulse-card]
-  (check-position pulse-card)
-  pulse-card)
-
-(t2/define-before-update :model/PulseCard
-  [pulse-card]
-  (when (contains? (t2/changes pulse-card) :position)
-    (check-position pulse-card))
-  pulse-card)
 
 ;;; ------------------------------------------------- Persistence Functions -------------------------------------------------
 
@@ -53,7 +34,7 @@
    [:card_id                            ms/PositiveInt]
    [:pulse_id                           ms/PositiveInt]
    [:dashboard_card_id                  ms/PositiveInt]
-   [:position          {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:position          {:optional true} [:maybe ::pulse.schema/pulse-card.position]]
    [:include_csv       {:optional true} [:maybe :boolean]]
    [:include_xls       {:optional true} [:maybe :boolean]]
    [:format_rows       {:optional true} [:maybe :boolean]]
