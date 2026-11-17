@@ -685,8 +685,8 @@
   "Whether `sql` is a single statement of `stmt-type` for `dialect`, for a caller that will **execute** the
   `:sql` the verdict carries: `\"read\"` = SELECT, `\"write\"` = INSERT, UPDATE, or DELETE,
   `\"read-only\"` = a read statement that also holds nothing that writes or locks anywhere in its tree,
-  `\"confined-write\"` = a write statement that also calls no function known to write outside the tables it
-  names (`nextval`, `setval`, Postgres large objects).
+  `\"confined-write\"` = a write statement that also returns no rows and calls no function known to write outside
+  the tables it names (`nextval`, `setval`, Postgres large objects).
 
   The `:sql` is reconstructed from the parsed AST, and only ever from `sql` itself — SQL that cannot be
   parsed as it stands comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched

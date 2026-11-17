@@ -2256,8 +2256,8 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     `stmt_type` "read-only" is stricter than "read": the SELECT must also hold nothing that writes or locks anywhere in
     its tree, and statements holding only a comment after the last semicolon are not counted. "confined-write" is
     stricter than "write": the statement must also call none of `_WRITE_FUNCTIONS`, which write outside the table the
-    statement names (a sequence, a large object). When the statement is refused for what it holds, `reason` says why,
-    with `reason_detail` for the reasons that have one.
+    statement names (a sequence, a large object), and must return no rows (no RETURNING or OUTPUT clause). When the
+    statement is refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
@@ -2275,6 +2275,8 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
                 function = _write_function(stmts[0])
                 if function is not None:
                     problem = ("write-function", function)
+                elif stmts[0].args.get("returning") is not None:
+                    problem = ("returning", None)
         else:
             problem = None
         if problem is not None:

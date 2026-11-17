@@ -65,6 +65,24 @@
    :stmt-type  "confined-write"
    :expected   {:verdict :disallowed :single-stmt? true :reason "write-function" :detail "next value for"}}
 
+  {:name       "a confined write returns no rows"
+   :dialect    "postgres"
+   :sql        "UPDATE orders SET total = 0 WHERE id = 1 RETURNING id"
+   :stmt-type  "confined-write"
+   :expected   {:verdict :disallowed :single-stmt? true :reason "returning"}}
+
+  {:name       "a write may return rows"
+   :dialect    "postgres"
+   :sql        "UPDATE orders SET total = 0 WHERE id = 1 RETURNING id"
+   :stmt-type  "write"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a confined write may feed one of its CTEs' returned rows into its table"
+   :dialect    "postgres"
+   :sql        "WITH d AS (DELETE FROM orders RETURNING id) INSERT INTO archive SELECT id FROM d"
+   :stmt-type  "confined-write"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
   {:name       "a SELECT is not a confined write"
    :dialect    "postgres"
    :sql        "SELECT * FROM orders"

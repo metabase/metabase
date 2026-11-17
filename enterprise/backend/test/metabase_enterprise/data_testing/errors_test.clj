@@ -43,6 +43,7 @@
    ::errors/colliding-columns          400
    ::errors/not-a-single-write         400
    ::errors/no-output                  400
+   ::errors/write-returns-rows         400
    ::errors/unsupported-transform      422
    ::errors/unsupported-driver         422
    ::errors/uncompilable-subject       422
@@ -78,7 +79,8 @@
              ::errors/unknown-placeholder
              ::errors/colliding-columns
              ::errors/not-a-single-write
-             ::errors/no-output}
+             ::errors/no-output
+             ::errors/write-returns-rows}
            (types-with-status 400))))
   (testing "environment errors — the subject or its database prevents a run here — are 422"
     (is (= #{::errors/unsupported-transform
@@ -122,6 +124,7 @@
    ::errors/colliding-columns          "transform-test.colliding-columns"
    ::errors/not-a-single-write         "transform-test.not-a-single-write"
    ::errors/no-output                  "transform-test.no-output"
+   ::errors/write-returns-rows         "transform-test.write-returns-rows"
    ::errors/uncheckable-write          "transform-test.uncheckable-write"
    ::errors/unsupported-transform      "transform-test.unsupported-transform"
    ::errors/unsupported-driver         "transform-test.unsupported-driver"

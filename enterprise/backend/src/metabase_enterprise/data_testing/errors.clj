@@ -29,6 +29,7 @@
    ::colliding-columns          400  ; An expectation compares one output column twice, or one the comparison names itself.
    ::not-a-single-write         400  ; A subject that writes holds SQL other than one INSERT, UPDATE or DELETE, or calls a function the write check refuses.
    ::no-output                  400  ; An expectation compares the output of a subject that writes and has none.
+   ::write-returns-rows         400  ; A subject that writes returns rows (RETURNING), which a write under test cannot.
 
    ;; 422 — the subject or its environment
    ::unsupported-transform      422  ; Not a query transform (Python, say).

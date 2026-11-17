@@ -202,6 +202,38 @@
         (is (re-find #"\"person 1 only\"" (ex-message e)))
         (is (re-find #"has no output" (ex-message e)))))))
 
+(defn- validation-refusal
+  "The refusal [[data-testing.runner/validate-test]] gives a test of the write `sql` with `params`, as its `:error-type`
+  and message, or nil when it is not refused."
+  [sql params]
+  (do-with-write-subject!
+   sql params
+   (fn [card _asked]
+     (try
+       (data-testing.runner/validate-test :card card {:inputs       [(people-rows)]
+                                                      :expectations [(reading refunded-only-1)]})
+       nil
+       (catch ExceptionInfo e
+         {:error-type (:error-type (ex-data e))
+          :message    (ex-message e)})))))
+
+(deftest write-returning-rows-is-refused-test
+  (mt/test-drivers (drivers-that-write)
+    (let [returning (str (refund-1) " RETURNING id")]
+      (testing "control: an UPDATE that returns no rows is not refused"
+        (is (nil? (validation-refusal (refund-1) ["refunded" 1]))))
+      (testing "an UPDATE with RETURNING is refused when the test is saved, as a 400 that names RETURNING"
+        (let [{:keys [error-type message]} (validation-refusal returning ["refunded" 1])]
+          (is (= ::data-testing.errors/write-returns-rows error-type))
+          (is (= 400 (data-testing.errors/status-code error-type)))
+          (is (re-find #"RETURNING" (str message)))))
+      (testing "and when it is run, before any temp table is created"
+        (let [created? (atom false)]
+          (mt/with-dynamic-fn-redefs [data-testing.executor/create-temp-table! (fn [& _] (reset! created? true))]
+            (is (= ::data-testing.errors/write-returns-rows
+                   (refusal! returning ["refunded" 1] [(people-rows)] [(reading refunded-only-1)])))
+            (is (false? @created?))))))))
+
 (deftest parameters-reach-the-subject-plan-test
   (mt/test-drivers (drivers-that-write)
     (do-with-write-subject!
