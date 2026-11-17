@@ -34,6 +34,8 @@ export type ChartDirection = {
   Component: ComponentType<ChartCanvasProps>;
   /** Loads on open; defaults to the first of `EXAMPLES`. */
   initialExample?: Example;
+  /** Examples this direction can't show are disabled in the chart row. */
+  supportsExample?: (example: Example) => boolean;
   /** Tucked into the group's collapsed "Other drafts" list in the rail. */
   draft?: boolean;
 };

@@ -5,6 +5,10 @@ import type { ChartDirection } from "../types";
 
 import { AxisSideQuestPrototype } from "./axis-side-quest/AxisSideQuestPrototype";
 import { BaselinePrototype } from "./baseline/BaselinePrototype";
+import {
+  DirectManipulationPrototype,
+  supportsDirectManipulation,
+} from "./direct-manipulation/DirectManipulationPrototype";
 
 /** Today's behavior; sits above the iterations in the rail for comparison. */
 export const BASELINE_DIRECTION: ChartDirection = {
@@ -33,5 +37,19 @@ export const ITERATION_1_DIRECTIONS: ChartDirection[] = [
     },
     Component: AxisSideQuestPrototype,
     initialExample: EXAMPLES.find((example) => example.display === "bar"),
+    // A raw table has no measure or dimension to point at.
+    supportsExample: (example) => example.display !== "table",
+  },
+  {
+    id: "direct-manipulation",
+    get name() {
+      return t`Drag axes: threshold, range`;
+    },
+    get description() {
+      return t`Axes are handles. Click an axis to place a line, drag along it to select a span. On the y-axis that is a threshold or a band of values; on the x-axis a cut or a range. A line's menu flips between ≥ and ≤; the chart previews what is kept.`;
+    },
+    Component: DirectManipulationPrototype,
+    initialExample: EXAMPLES.find((example) => example.display === "line"),
+    supportsExample: supportsDirectManipulation,
   },
 ];

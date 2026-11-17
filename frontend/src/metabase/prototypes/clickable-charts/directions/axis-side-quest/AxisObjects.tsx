@@ -533,7 +533,7 @@ function RemovableValue({ label, children, onRemove }: RemovableValueProps) {
 }
 
 /** The padding and weight of the bar-click menu, so the two read as one. */
-function MenuList({ children }: { children: ReactNode }) {
+export function MenuList({ children }: { children: ReactNode }) {
   return (
     <Stack gap="sm" px="xl" py="lg" fw={700}>
       {children}
@@ -541,7 +541,7 @@ function MenuList({ children }: { children: ReactNode }) {
   );
 }
 
-function MenuDivider() {
+export function MenuDivider() {
   return <Divider mx="-xl" my="xs" />;
 }
 
@@ -552,7 +552,7 @@ type ActionProps = {
   onClick: () => void;
 };
 
-function Action({ icon, trailing, children, onClick }: ActionProps) {
+export function Action({ icon, trailing, children, onClick }: ActionProps) {
   return (
     <NestedMenuButton icon={icon} onClick={onClick}>
       <span>{children}</span>

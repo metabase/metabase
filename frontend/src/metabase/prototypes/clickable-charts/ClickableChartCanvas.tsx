@@ -90,6 +90,7 @@ function LoadedCanvas({ direction, ordersQuery }: LoadedCanvasProps) {
             size="compact-sm"
             variant="subtle"
             c="brand"
+            disabled={direction.supportsExample?.(example) === false}
             onClick={() => handleLoadExample(example)}
           >
             <Box
