@@ -211,6 +211,8 @@
 (defn- check-bundle-size!
   "Throws if the imported `row`'s bundle is over the upload limit."
   [{:keys [identifier ^bytes bundle]}]
+  ;; aborts the import instead of loading as :error like other bad bundles: an :error row still stores its bundle,
+  ;; so the oversized bytes would land in the app DB, bypassing the upload limit
   (when (and bundle (> (alength bundle) cache/max-bundle-bytes))
     (throw (ex-info (format "The bundle of custom viz plugin \"%s\" is larger than %dMB. Shrink its files and import again."
                             identifier cache/max-bundle-mib)
