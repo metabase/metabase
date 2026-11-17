@@ -58,15 +58,19 @@
       (log/warnf "Failed to process recent_views event %s: %s" topic (ex-message e)))))
 
 (events/derive! ::card-create-with-result-metadata :metabase/event)
-(events/derive! :event/card-create-with-result-metadata ::card-create-with-result-metadata)
+(events/derive! :event/card-create ::card-create-with-result-metadata)
 
 (m/defmethod events/publish-event! ::card-create-with-result-metadata
-  "Handle recent-view processing for created cards with result metadata."
-  [topic {:keys [card-id user-id]}]
-  (try
-    (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card card-id :view)
-    (catch Throwable e
-      (log/warnf "Failed to process recent_views event %s: %s" topic (ex-message e)))))
+  "Handle recent-view processing for created question cards that came with result metadata, for the user who created
+  them."
+  [topic {:keys [object user-id]}]
+  (when (and user-id
+             (some? (:result_metadata object))
+             (= "question" (name (:type object))))
+    (try
+      (recent-views/update-users-recent-views! user-id :model/Card (:id object) :view)
+      (catch Throwable e
+        (log/warnf "Failed to process recent_views event %s: %s" topic (ex-message e))))))
 
 (events/derive! ::legacy-card-event :metabase/event)
 ;; in practice, updating or creating a card will immediately trigger a card-read

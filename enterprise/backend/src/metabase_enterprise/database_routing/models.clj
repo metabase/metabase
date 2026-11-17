@@ -15,7 +15,8 @@
 (methodical/defmethod t2/table-name :model/DatabaseRouter [_model] :db_router)
 
 (doto :model/DatabaseRouter
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/events))
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 

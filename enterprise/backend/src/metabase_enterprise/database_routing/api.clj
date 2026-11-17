@@ -73,23 +73,13 @@
 
 (defn- delete-router!
   [db-id]
-  (let [db (database-routing.db/database db-id)]
-    (events/publish-event! :event/database-update {:object db
-                                                   :previous-object db
-                                                   :user-id api/*current-user-id*
-                                                   :details {:db_routing :disabled}})
-    (database-routing.db/delete-router! db-id)))
+  (database-routing.db/delete-router! db-id))
 
 (defn- create-or-update-router!
   [db-id user-attribute]
   (let [db (database-routing.db/database db-id)]
     (when-not (driver.u/supports? (:engine db) :database-routing db)
       (throw (ex-info "This database does not support DB routing" {:status-code 400})))
-    (events/publish-event! :event/database-update {:object db
-                                                   :previous-object db
-                                                   :user-id api/*current-user-id*
-                                                   :details {:db_routing :enabled
-                                                             :routing_attribute user-attribute}})
     (if (database-routing.db/router-for-database db-id)
       (database-routing.db/update-router-user-attribute! db-id user-attribute)
       (database-routing.db/insert-router! db-id user-attribute))))

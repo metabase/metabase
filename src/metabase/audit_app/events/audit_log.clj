@@ -565,3 +565,22 @@
                                               (#{:model/Card :model/Dashboard :model/User :model/Table} model))
                                      ::column-changes))
                                  record-column-changes!)
+
+(events/derive! ::database-router-event ::event)
+(events/derive! :event/database-router-create ::database-router-event)
+(events/derive! :event/database-router-update ::database-router-event)
+(events/derive! :event/database-router-delete ::database-router-event)
+
+(methodical/defmethod events/publish-event! ::database-router-event
+  [topic {:keys [object previous-object user-id]}]
+  (when user-id
+    (let [router   (or object previous-object)
+          database (audit-app.db/database (:database_id router))]
+      (audit-log/record-event! :event/database-update
+                               {:object          database
+                                :previous-object database
+                                :user-id         user-id
+                                :details         (if (= :event/database-router-delete topic)
+                                                   {:db_routing :disabled}
+                                                   {:db_routing        :enabled
+                                                    :routing_attribute (:user_attribute router)})}))))
