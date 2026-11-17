@@ -1,5 +1,6 @@
 (ns metabase-enterprise.database-routing.models
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.database-routing.common :refer [router-db->destination-db-id]]
    [metabase-enterprise.database-routing.db :as database-routing.db]
    [metabase.driver.util :as driver.u]
@@ -7,6 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.warehouse-schema.models.field :as field]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -15,6 +17,35 @@
 
 (doto :model/DatabaseRouter
   (derive :metabase/model))
+
+;;; ---------------------------------------------------- Hooks -----------------------------------------------------
+
+(defn- check-user-attribute
+  "Throws a 400 unless `user-attribute`, the user attribute a router routes on, is a non-blank string."
+  [user-attribute]
+  (when-not (and (string? user-attribute) (not (str/blank? user-attribute)))
+    (throw (ex-info (tru "A router needs a user attribute to route on.") {:status-code 400}))))
+
+(defn- check-not-destination
+  "Throws a 400 when the Database with `database-id` is a destination, since a destination cannot be a router."
+  [database-id]
+  (when (database-routing.db/destination-database? database-id)
+    (throw (ex-info (tru "Cannot make a destination database a router database") {:status-code 400}))))
+
+(t2/define-before-insert :model/DatabaseRouter
+  [{:keys [database_id user_attribute] :as router}]
+  (check-user-attribute user_attribute)
+  (check-not-destination database_id)
+  router)
+
+(t2/define-before-update :model/DatabaseRouter
+  [router]
+  (let [changes (t2/changes router)]
+    (when (contains? changes :database_id)
+      (throw (ex-info (tru "You cannot change the database of a router.") {:status-code 400})))
+    (when (contains? changes :user_attribute)
+      (check-user-attribute (:user_attribute changes)))
+    router))
 
 (defenterprise hydrate-router-user-attribute
   "Enterprise implementation. Hydrates the router user attribute on the databases"

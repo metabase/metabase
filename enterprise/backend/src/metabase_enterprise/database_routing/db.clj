@@ -24,6 +24,11 @@
    names              :- [:sequential :string]]
   (t2/exists? :model/Database :router_database_id router-database-id :name [:in names]))
 
+(mu/defn destination-database?
+  "Whether the Database with `database-id` is a routing destination."
+  [database-id :- ::lib.schema.id/database]
+  (t2/exists? :model/Database :id database-id :router_database_id [:not= nil]))
+
 (mu/defn insert-databases!
   "Insert the Database `rows` and return the new instances."
   [rows :- [:sequential

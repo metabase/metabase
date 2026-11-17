@@ -7,6 +7,11 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 ## Metabase 0.66.0
 
+- `POST /api/database` and `PUT /api/database/:id` no longer accept `provider_name`. Metabase derives it from the
+  engine and the host, and ignores a value in the request.
+
+- `PUT /api/database/:id` on the Sample Database answers `403 Forbidden` instead of `400 Bad Request`.
+
 - The Agent API (`/api/agent`) is deprecated and will be removed in Metabase 67. Use the MCP server for your agents
   instead. The Agent API is now off by default: every endpoint answers `403 Forbidden` until an admin turns it on in
   **Admin > AI > MCP**, or the instance starts with `MB_DEPRECATED_AGENT_API_ENABLED=true`.

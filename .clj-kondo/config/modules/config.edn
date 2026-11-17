@@ -3487,6 +3487,7 @@
            api
            app-db
            audit-app
+           cache
            driver
            lib.schema
            models
@@ -3497,6 +3498,7 @@
            settings
            sync
            util
+           util.config
            warehouses.secrets}
    :model-exports #{:model/Database}
    :model-imports #{:model/Action
@@ -3528,13 +3530,13 @@
            sync
            upload
            util
-           util.config
            warehouses
            warehouses.schema
            warehouses.secrets}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
+                    :model/FieldValues
                     :model/Table}}
 
   warehouses.schema
