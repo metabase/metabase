@@ -963,9 +963,9 @@
   #{})
 
 (defenterprise data-app-collection?
-  "Whether the collection is in the data-apps namespace. OSS has none."
+  "Whether the collection, an id or a row with its `:namespace`, is in the data-apps namespace. OSS has none."
   metabase-enterprise.data-apps.models.data-app
-  [_collection-id]
+  [_collection]
   false)
 
 (defenterprise collection-owned-by-data-app?

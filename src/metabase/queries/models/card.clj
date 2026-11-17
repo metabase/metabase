@@ -495,8 +495,7 @@
       (assert-valid-type card)
       (assert-not-native-audit-db-query card)
       (params/assert-valid-parameters card)
-      (params/assert-valid-parameter-mappings card)
-      (collection/check-collection-namespace :model/Card (:collection_id card)))))
+      (params/assert-valid-parameter-mappings card))))
 
 (defenterprise pre-update-check-sandbox-constraints
   "Throws when a change of the result metadata of a Card stops it matching the Tables of its sandboxes, which OSS never
@@ -1194,10 +1193,11 @@
 
 (defn- check-data-app-card
   "Throws unless `card`, when it is in a data app's collection, is a question in no dashboard or document, not archived,
-  public or embedded, with no parameters, whose query reads a table in a single stage."
-  [{:keys [collection_id] :as card}]
-  (when (and (some? collection_id)
-             (perms/data-app-collection? collection_id))
+  public or embedded, with no parameters, whose query reads a table in a single stage; `parent` is its Collection, an
+  id or the row `collection/content-parent` gives."
+  [card parent]
+  (when (and (some? parent)
+             (perms/data-app-collection? parent))
     ;; a new card without a type is a question, the column's default
     (when (or (not= :question (keyword (or (:type card) :question)))
               (:dashboard_id card)
@@ -1245,9 +1245,10 @@
     (pulse/delete-alerts-if-card-changed! :old-card original :new-card card)))
 
 (defn- check-not-in-archived-container
-  "Throws a 400 when `card`, which is not archived, is in an archived Collection, Dashboard or Document."
-  [{:keys [archived collection_id dashboard_id document_id]}]
-  (collection/check-collection-not-archived archived collection_id)
+  "Throws a 400 when `card`, which is not archived, is in an archived Collection, `parent`, a Collection id or the row
+  `collection/content-parent` gives, Dashboard or Document."
+  [{:keys [archived dashboard_id document_id]} parent]
+  (collection/check-collection-not-archived archived parent)
   (when (and (not archived)
              (or (and dashboard_id (queries.db/dashboard-archived? dashboard_id))
                  (and document_id (queries.db/document-archived? document_id))))
@@ -1255,9 +1256,10 @@
                     {:status-code 400}))))
 
 (defn- card-parent-archived?
-  "Whether the Collection, Dashboard or Document that `card` is in is archived."
-  [{:keys [collection_id dashboard_id document_id]}]
-  (boolean (or (collection/archived? collection_id)
+  "Whether the Collection, `parent`, a Collection id or the row `collection/content-parent` gives, Dashboard or Document
+  that `card` is in is archived."
+  [{:keys [dashboard_id document_id]} parent]
+  (boolean (or (collection/archived? parent)
                (and dashboard_id (queries.db/dashboard-archived? dashboard_id))
                (and document_id (queries.db/document-archived? document_id)))))
 
@@ -1277,24 +1279,27 @@
 (t2/define-before-insert :model/Card
   [card]
   (check-timeline-settings card)
-  (u/prog1
-    (-> card
-        (assoc :metabase_version config/mb-version-string
-               :card_schema current-card-schema-version)
-        normalize-card
-        ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
-        ;; since we're removing `:ident`s; we can probably remove this now.
-        (u/assoc-default :entity_id (u/generate-nano-id))
-        (u/assoc-default :type :question)
-        card.metadata/populate-result-metadata
-        derive-model-display
-        pre-insert
-        populate-query-fields
-        maybe-populate-initially-published-at
-        public-sharing/add-public-uuid-prefix)
-    (collection/check-allowed-content (:type <>) (:collection_id <>))
-    (check-not-in-archived-container <>)
-    (check-data-app-card <>)))
+  (let [card   (-> card
+                   (assoc :metabase_version config/mb-version-string
+                          :card_schema current-card-schema-version)
+                   normalize-card
+                   ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no
+                   ;; longer true, since we're removing `:ident`s; we can probably remove this now.
+                   (u/assoc-default :entity_id (u/generate-nano-id))
+                   (u/assoc-default :type :question)
+                   card.metadata/populate-result-metadata
+                   derive-model-display
+                   pre-insert)
+        parent (collection/content-parent (:collection_id card))]
+    (collection/check-collection-namespace :model/Card parent)
+    (u/prog1
+      (-> card
+          populate-query-fields
+          maybe-populate-initially-published-at
+          public-sharing/add-public-uuid-prefix)
+      (collection/check-allowed-content (:type <>) parent)
+      (check-not-in-archived-container <> parent)
+      (check-data-app-card <> parent))))
 
 (t2/define-after-insert :model/Card
   [card]
@@ -1350,15 +1355,16 @@
         ;; Captured before `normalize-card` rebinds `card`, so the migration below never depends on
         ;; normalization preserving the instance's original.
         original (t2/original card)
-        card     (normalize-card card)]
+        card     (normalize-card card)
+        parent   (memoize collection/content-parent)]
     (when (contains? changes :visualization_settings)
       (check-timeline-settings card))
     (when (or (contains? changes :collection_id) (contains? changes :type))
-      (collection/check-allowed-content (:type card) (:collection_id card)))
+      (collection/check-allowed-content (:type card) (parent (:collection_id card))))
     (when (some #(contains? changes %) [:collection_id :dashboard_id :document_id])
-      (check-not-in-archived-container card))
+      (check-not-in-archived-container card (parent (:collection_id card))))
     (-> card
-        (cond-> (contains? changes :archived) (assoc :archived_directly (mi/archived-directly card #(card-parent-archived? card))))
+        (cond-> (contains? changes :archived) (assoc :archived_directly (mi/archived-directly card #(card-parent-archived? card (parent (:collection_id card))))))
         (doto (delete-alerts-if-archived-directly changes))
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
@@ -1370,7 +1376,7 @@
         ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
         ;; Only allow it to nil out a stale table_id when the query itself is changing.
         (populate-query-fields (contains? changes :dataset_query))
-        (cond-> (some data-app-card-columns (keys changes)) (doto check-data-app-card))
+        (cond-> (some data-app-card-columns (keys changes)) (as-> row (doto row (check-data-app-card (parent (:collection_id row))))))
         (clear-metabot-origin changes)
         (pre-update changes)
         (doto (delete-alerts-if-changed original changes))

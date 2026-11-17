@@ -52,20 +52,15 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id collection-id))
 
-(mu/defn collection-id-and-namespace
-  "The ID and namespace of the ::collections.schema/collection with `collection-id`, or nil."
+(mu/defn collection-for-content-checks
+  "The ID, namespace, type and `archived` flag of the ::collections.schema/collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one [:model/Collection :id :namespace] :id collection-id))
+  (t2/select-one [:model/Collection :id :namespace :type :archived] :id [:auto/param collection-id]))
 
 (mu/defn collection-of-type
   "The ::collections.schema/collection of `type`, or nil."
   [type :- :string]
   (t2/select-one :model/Collection :type type))
-
-(mu/defn collection-type
-  "The type of the ::collections.schema/collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :type [:model/Collection :type] :id collection-id))
 
 (mu/defn collection-ids-with-type
   "The IDs of the Collections of `type`."

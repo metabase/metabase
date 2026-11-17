@@ -245,11 +245,14 @@
   (data-apps.db/resource-collection-ids))
 
 (defenterprise data-app-collection?
-  "Whether the Collection with `collection-id` is in the data-apps namespace, which holds only data apps' collections;
-  asked of the namespace, not of the apps, since a load may write a collection's content before the app that owns it."
+  "Whether `collection`, a Collection id or a row with its `:namespace`, is in the data-apps namespace, which holds only
+  data apps' collections; asked of the namespace, not of the apps, since a load may write a collection's content before
+  the app that owns it."
   :feature :none
-  [collection-id]
-  (data-apps.db/data-apps-namespace-collection? collection-id))
+  [collection]
+  (if (map? collection)
+    (= "data-apps" (some-> (:namespace collection) name))
+    (data-apps.db/data-apps-namespace-collection? collection)))
 
 (defmethod serialization/import-dependencies :model/DataApp [_ entities]
   (mapv (fn [{:keys [collection resource_collection_id]}]
