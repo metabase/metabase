@@ -50,11 +50,6 @@
                   [(-> perm-type symbol str) (into #{} (map name) values)]))
         scope/metabot-permissions))
 
-(defn- valid-perm-value?
-  "Returns true if `perm_value` is valid for the given `perm_type`."
-  [{:keys [perm_type perm_value]}]
-  (contains? (get valid-perm-values-by-type perm_type) perm_value))
-
 (def ^:private all-valid-perm-values
   "Flat set of all valid perm_value strings (for schema-level validation)."
   (into #{} (mapcat val) valid-perm-values-by-type))
@@ -70,10 +65,6 @@
                                                          [:perm_type  (into [:enum] valid-perm-types)]
                                                          [:perm_value (into [:enum] all-valid-perm-values)]]]]]]
   (api/check-superuser)
-  (doseq [perm permissions]
-    (when-not (valid-perm-value? perm)
-      (throw (ex-info (format "Invalid perm_value %s for perm_type %s" (:perm_value perm) (:perm_type perm))
-                      {:status-code 400}))))
   (t2/with-transaction [_conn]
     (doseq [{:keys [group_id perm_type perm_value]} permissions]
       (let [perm-type-kw  (keyword perm_type)
