@@ -4,10 +4,13 @@ const { H } = cy;
 // it falls back to when it cannot parse the one the face does declare.
 const EVERY_CODEPOINT = "U+0-10FFFF";
 
-const declaredRanges = (win: Window) => {
-  const ranges: string[] = [];
-  win.document.fonts.forEach((face) => ranges.push(face.unicodeRange));
-  return ranges;
+// How the browser writes back the range of the chunk a latin page draws from.
+const LATIN_CHUNK_RANGE_START = "U+20-FF";
+
+const bundledFaces = (win: Window) => {
+  const faces: FontFace[] = [];
+  win.document.fonts.forEach((face) => faces.push(face));
+  return faces;
 };
 
 describe("scenarios > admin > fonts", () => {
@@ -26,7 +29,7 @@ describe("scenarios > admin > fonts", () => {
     H.main().should("be.visible");
 
     cy.window().then((win) => {
-      const ranges = declaredRanges(win);
+      const ranges = bundledFaces(win).map((face) => face.unicodeRange);
 
       expect(ranges, "bundled faces are declared").not.to.be.empty;
       expect(
@@ -34,5 +37,27 @@ describe("scenarios > admin > fonts", () => {
         `a face matching ${EVERY_CODEPOINT} means the browser rejected its unicode-range`,
       ).to.be.empty;
     });
+  });
+
+  it("downloads only the latin chunk for a page with no other script", () => {
+    cy.visit("/");
+    H.main().should("be.visible");
+
+    cy.window()
+      .then((win) => win.document.fonts.ready.then(() => bundledFaces(win)))
+      .then((faces) => {
+        const downloadedRanges = faces
+          .filter((face) => face.status === "loaded")
+          .map((face) => face.unicodeRange);
+
+        expect(downloadedRanges, "the page drew text in a bundled face").not.to
+          .be.empty;
+        expect(
+          downloadedRanges.filter(
+            (range) => !range.startsWith(LATIN_CHUNK_RANGE_START),
+          ),
+          "chunks downloaded for a script the page does not render",
+        ).to.be.empty;
+      });
   });
 });
