@@ -1,6 +1,5 @@
 jest.unmock("@uiw/react-codemirror");
 
-import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -22,6 +21,7 @@ import {
 
 import {
   blurEditor,
+  focusEditor,
   getCompletionLabels,
   getEditorValue,
   getEditorView,
@@ -393,7 +393,7 @@ describe("ExpressionWidget > validation", () => {
     expect(onClose).not.toHaveBeenCalled();
 
     // fix the expression
-    await getEditorFocus();
+    await focusEditorAndWaitForHelpText();
     await pressKey("ArrowLeft");
     await typeText("'bar')");
     await blurEditor();
@@ -405,12 +405,23 @@ describe("ExpressionWidget > validation", () => {
   });
 });
 
-async function getEditorFocus() {
-  await act(async () => getEditorView().focus());
+/**
+ * Focuses the editor inside a function call and waits for the help text. Its
+ * example is formatted asynchronously, so the focus happens inside `waitFor`,
+ * where that update cannot escape `act`.
+ */
+async function focusEditorAndWaitForHelpText() {
+  await waitFor(() => {
+    const view = getEditorView();
+    if (!view.hasFocus) {
+      view.focus();
+    }
+    expect(screen.getByTestId("helptext-example")).toHaveTextContent(/\S/);
+  });
 }
 
 async function replaceSource(source: string) {
-  await getEditorFocus();
+  await focusEditor();
   await selectRange(0, getEditorValue().length);
   await pasteText(source);
 }

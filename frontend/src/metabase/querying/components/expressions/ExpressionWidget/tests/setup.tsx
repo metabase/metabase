@@ -222,6 +222,16 @@ export async function selectRange(from: number, to: number) {
   });
 }
 
+/**
+ * Focuses the editor. CodeMirror reports focus changes on a timer, so this
+ * waits for that update too.
+ */
+export async function focusEditor() {
+  await interact(() => {
+    getEditorView().focus();
+  });
+}
+
 /** Moves focus out of the editor, as clicking elsewhere in the widget does. */
 export async function blurEditor() {
   await interact(() => {

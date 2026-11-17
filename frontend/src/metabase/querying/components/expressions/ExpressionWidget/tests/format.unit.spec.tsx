@@ -11,8 +11,8 @@ import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import {
   blurEditor,
+  focusEditor,
   getEditorValue,
-  getEditorView,
   pasteText,
   pressKey,
   selectRange,
@@ -34,10 +34,6 @@ async function clickFormatButton() {
   await userEvent.click(
     await screen.findByRole("button", { name: "Auto-format" }),
   );
-}
-
-async function focusEditor() {
-  await act(async () => getEditorView().focus());
 }
 
 async function replaceSource(source: string) {
