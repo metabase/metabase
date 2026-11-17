@@ -315,8 +315,12 @@
 
 (methodical/defmethod events/publish-event! ::api-key-event
   [topic event]
-  (if (= :event/api-key-regenerate topic)
-    (audit-log/record-event! topic event)
+  (if (and (= :event/api-key-update topic) (u.events/changed? event :key_prefix))
+    (record-lifecycle! :event/api-key-regenerate
+                       (-> event
+                           (m/update-existing :object hydrate-api-key)
+                           (m/update-existing :previous-object hydrate-api-key))
+                       true)
     (record-lifecycle! topic
                        (-> event
                            (m/update-existing :object hydrate-api-key)
@@ -517,3 +521,43 @@
 (methodical/defmethod events/publish-event! ::security-advisory-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(defn- column-change
+  "The `[topic params]` that the lifecycle `event` of a write records for a column it changes, or nil."
+  [{:keys [model object previous-object user-id] :as event}]
+  (let [row (or object previous-object)]
+    (case model
+      (:model/Card :model/Dashboard)
+      (when (u.events/changed? event :public_uuid)
+        [(keyword "event" (str (if (= :model/Card model) "card" "dashboard")
+                               "-public-link-" (if (some? (:public_uuid object)) "created" "deleted")))
+         {:user-id user-id :model model :model-id (:id row)}])
+
+      :model/User
+      (when (and previous-object (u.events/changed? event :is_active))
+        [(if (:is_active object) :event/user-reactivated :event/user-deactivated)
+         {:user-id user-id :object object}])
+
+      :model/TableUserSettings
+      (when (u.events/changed? event :is_published)
+        (cond
+          (true? (:is_published object)) [:event/table-publish
+                                          {:user-id user-id :object (audit-app.db/table (:table_id row))}]
+          previous-object                [:event/table-unpublish
+                                          {:user-id user-id :object (audit-app.db/table (:table_id row))}]))
+      nil)))
+
+(defn- record-column-changes!
+  [_owner events _all-events]
+  (doseq [event events
+          :when (:user-id event)
+          :let  [[topic params] (column-change event)]
+          :when topic]
+    (audit-log/record-event! topic params)))
+
+(events/register-owned-consumer! ::column-changes
+                                 (fn [{:keys [model operation]}]
+                                   (when (and (#{:create :update} operation)
+                                              (#{:model/Card :model/Dashboard :model/User :model/TableUserSettings} model))
+                                     ::column-changes))
+                                 record-column-changes!)

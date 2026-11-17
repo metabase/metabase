@@ -798,11 +798,7 @@
                      (t2/with-transaction [_conn]
                        (dashboards-rest.db/update-dashboard! dashboard-id
                                                              {:public_uuid       <>
-                                                              :made_public_by_id api/*current-user-id*})
-                       (events/publish-event! :event/dashboard-public-link-created
-                                              {:object    (dashboards-rest.db/dashboard dashboard-id)
-                                               :object-id dashboard-id
-                                               :user-id   api/*current-user-id*}))))]
+                                                              :made_public_by_id api/*current-user-id*}))))]
       {:uuid uuid})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -819,11 +815,7 @@
   (t2/with-transaction [_conn]
     (dashboards-rest.db/update-dashboard! dashboard-id
                                           {:public_uuid       nil
-                                           :made_public_by_id nil})
-    (events/publish-event! :event/dashboard-public-link-deleted
-                           {:object    (dashboards-rest.db/dashboard dashboard-id)
-                            :object-id dashboard-id
-                            :user-id   api/*current-user-id*}))
+                                           :made_public_by_id nil}))
   {:status 204, :body nil})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -11,7 +11,6 @@
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.users.models.user :as user]
@@ -237,14 +236,7 @@
     (t2/with-transaction [_conn]
       (api-keys.db/update-api-key! id {:key           (hash-bcrypt new-key (:scope api-key-before))
                                        :key_prefix    new-prefix
-                                       :updated_by_id api/*current-user-id*})
-      (events/publish-event! :event/api-key-regenerate
-                             (let [key-before (-> api-key-before
-                                                  (t2/hydrate :group))]
-                               {:object          (-> key-before
-                                                     (assoc :key_prefix new-prefix))
-                                :previous-object key-before
-                                :user-id         api/*current-user-id*})))
+                                       :updated_by_id api/*current-user-id*}))
     {:unmasked-key new-key
      :masked-key   (mask new-key)
      :prefix       new-prefix}))

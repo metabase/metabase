@@ -595,7 +595,6 @@
                [400 {:message (tru "Not able to reactivate an active user")}])
     (api/check (tenants/tenant-is-active? (:tenant_id user))
                [400 {:message (tru "Not able to reactivate a user in a deactivated tenant")}])
-    (events/publish-event! :event/user-reactivated {:object user :user-id api/*current-user-id*})
     (reactivate-user! (dissoc user [:email :first_name :last_name]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -687,7 +686,6 @@
   (check-not-internal-user id)
   (api/check-404 (users-rest.db/user-exists? id))
   (users-rest.db/update-personal-user! id {:is_active false})
-  (events/publish-event! :event/user-deactivated {:object (users-rest.db/user id) :user-id api/*current-user-id*})
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
