@@ -146,7 +146,7 @@
    :delete :event/card-delete})
 
 (methodical/defmethod change-log/ignored-columns :model/Card [_model]
-  #{:last_used_at :view_count})
+  #{:last_used_at :view_count :cache_invalidated_at})
 
 (defn- summary-card-snapshots
   "The snapshots linked to `card` when it is an ephemeral card of an exploration Summary (`document`), or nil when it
@@ -495,8 +495,7 @@
       (assert-valid-type card)
       (assert-not-native-audit-db-query card)
       (params/assert-valid-parameters card)
-      (params/assert-valid-parameter-mappings card)
-      (collection/check-collection-namespace :model/Card (:collection_id card)))))
+      (params/assert-valid-parameter-mappings card))))
 
 (defenterprise pre-update-check-sandbox-constraints
   "Throws when a change of the result metadata of a Card stops it matching the Tables of its sandboxes, which OSS never
@@ -523,55 +522,49 @@
       (empty? metadata-columns)
       (nil? (lib/find-matching-column (lib/->mbql5 value-field) metadata-columns))))
 
-(defn- update-parameters-using-card-as-values-source
-  "Update the config of parameter on any Dashboard/Card use this `card` as values source .
+(defn- reset-values-sources!
+  "Resets to the default source the parameters among those of the Cards and Dashboards that `parameter-cards` link to
+  whose ids `affected-param-ids` gives from the ParameterCards of one parameterized object."
+  [parameter-cards affected-param-ids]
+  (doseq [[[po-type po-id] param-cards]
+          (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
+    (let [parameters             (case po-type
+                                   :card      (queries.db/card-parameters po-id)
+                                   :dashboard (queries.db/dashboard-parameters po-id))
+          affected-param-ids-set (affected-param-ids param-cards parameters)
+          new-parameters         (map (fn [parameter]
+                                        (if (affected-param-ids-set (:id parameter))
+                                          (-> parameter
+                                              (assoc :values_source_type nil)
+                                              (dissoc :values_source_config))
+                                          parameter))
+                                      parameters)]
+      (when-not (= parameters new-parameters)
+        (case po-type
+          :card      (queries.db/update-card! po-id {:parameters new-parameters})
+          :dashboard (queries.db/update-dashboard! po-id {:parameters new-parameters}))))))
 
-  Remove parameter.values_source_type and set parameter.values_source_type to nil ( the default type ) when:
-  - card is archived
-  - card.result_metadata changes and the parameter values source field can't be found anymore"
+(defn- update-parameters-using-card-as-values-source
+  "Resets to the default source the parameters of any Dashboard or Card that take their values from a field of `card`
+  that its new `result_metadata` in `changes` no longer has; [[after-archived-change]] resets those of archived cards."
   [{:keys [id database_id]} changes]
-  (when (some #{:archived :result_metadata} (keys changes))
-    (let [parameter-cards  (queries.db/parameter-cards-for-card id)
-          metadata-columns (when-let [result-metadata (:result_metadata changes)]
+  (when (and (contains? changes :result_metadata) (not (:archived changes)))
+    (let [metadata-columns (when-let [result-metadata (:result_metadata changes)]
                              (lib/->card-metadata-columns
                               (lib-be/application-database-metadata-provider database_id)
                               result-metadata))]
-      (doseq [[[po-type po-id] param-cards]
-              (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
-        (let [parameters             (case po-type
-                                       :card      (queries.db/card-parameters po-id)
-                                       :dashboard (queries.db/dashboard-parameters po-id))
-              affected-param-ids-set (cond
-                                       ;; update all parameters that use this card as source
-                                       (:archived changes)
-                                       (set (map :parameter_id param-cards))
-
-                                       ;; update only parameters that have value_field no longer in this card
-                                       (:result_metadata changes)
-                                       (let [param-id->parameter (m/index-by :id parameters)]
-                                         (->> param-cards
-                                              (filter (fn [param-card]
-                                                        ;; if can't find the value-field in result_metadata, then we should
-                                                        ;; remove it
-                                                        (value-field-gone?
-                                                         metadata-columns
-                                                         (get-in (param-id->parameter (:parameter_id param-card))
-                                                                 [:values_source_config :value_field]))))
-                                              (map :parameter_id)
-                                              set))
-
-                                       :else #{})
-              new-parameters (map (fn [parameter]
-                                    (if (affected-param-ids-set (:id parameter))
-                                      (-> parameter
-                                          (assoc :values_source_type nil)
-                                          (dissoc :values_source_config))
-                                      parameter))
-                                  parameters)]
-          (when-not (= parameters new-parameters)
-            (case po-type
-              :card      (queries.db/update-card! po-id {:parameters new-parameters})
-              :dashboard (queries.db/update-dashboard! po-id {:parameters new-parameters}))))))))
+      (reset-values-sources!
+       (queries.db/parameter-cards-for-card id)
+       (fn [param-cards parameters]
+         (let [param-id->parameter (m/index-by :id parameters)]
+           (->> param-cards
+                (filter (fn [param-card]
+                          (value-field-gone?
+                           metadata-columns
+                           (get-in (param-id->parameter (:parameter_id param-card))
+                                   [:values_source_config :value_field]))))
+                (map :parameter_id)
+                set)))))))
 
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
@@ -618,9 +611,8 @@
                  (= (:type old-card-info) :model)
                  (not (query/supports-implicit-actions? (:dataset_query changes))))
         (disable-implicit-action-for-model! id))
-      (when (or (:archived changes)
-                (and (= (:type changes) :question)
-                     (= (:type old-card-info) :model)))
+      (when (and (= (:type changes) :question)
+                 (= (:type old-card-info) :model))
         (queries.db/delete-actions-of-model! id))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
@@ -1194,10 +1186,11 @@
 
 (defn- check-data-app-card
   "Throws unless `card`, when it is in a data app's collection, is a question in no dashboard or document, not archived,
-  public or embedded, with no parameters, whose query reads a table in a single stage."
-  [{:keys [collection_id] :as card}]
-  (when (and (some? collection_id)
-             (perms/data-app-collection? collection_id))
+  public or embedded, with no parameters, whose query reads a table in a single stage; `parent` is its Collection, an
+  id or the row `collection/content-parent` gives."
+  [card parent]
+  (when (and (some? parent)
+             (perms/data-app-collection? parent))
     ;; a new card without a type is a question, the column's default
     (when (or (not= :question (keyword (or (:type card) :question)))
               (:dashboard_id card)
@@ -1245,9 +1238,10 @@
     (pulse/delete-alerts-if-card-changed! :old-card original :new-card card)))
 
 (defn- check-not-in-archived-container
-  "Throws a 400 when `card`, which is not archived, is in an archived Collection, Dashboard or Document."
-  [{:keys [archived collection_id dashboard_id document_id]}]
-  (collection/check-collection-not-archived archived collection_id)
+  "Throws a 400 when `card`, which is not archived, is in an archived Collection, `parent`, a Collection id or the row
+  `collection/content-parent` gives, Dashboard or Document."
+  [{:keys [archived dashboard_id document_id]} parent]
+  (collection/check-collection-not-archived archived parent)
   (when (and (not archived)
              (or (and dashboard_id (queries.db/dashboard-archived? dashboard_id))
                  (and document_id (queries.db/document-archived? document_id))))
@@ -1255,9 +1249,10 @@
                     {:status-code 400}))))
 
 (defn- card-parent-archived?
-  "Whether the Collection, Dashboard or Document that `card` is in is archived."
-  [{:keys [collection_id dashboard_id document_id]}]
-  (boolean (or (collection/archived? collection_id)
+  "Whether the Collection, `parent`, a Collection id or the row `collection/content-parent` gives, Dashboard or Document
+  that `card` is in is archived."
+  [{:keys [dashboard_id document_id]} parent]
+  (boolean (or (collection/archived? parent)
                (and dashboard_id (queries.db/dashboard-archived? dashboard_id))
                (and document_id (queries.db/document-archived? document_id)))))
 
@@ -1277,24 +1272,27 @@
 (t2/define-before-insert :model/Card
   [card]
   (check-timeline-settings card)
-  (u/prog1
-    (-> card
-        (assoc :metabase_version config/mb-version-string
-               :card_schema current-card-schema-version)
-        normalize-card
-        ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
-        ;; since we're removing `:ident`s; we can probably remove this now.
-        (u/assoc-default :entity_id (u/generate-nano-id))
-        (u/assoc-default :type :question)
-        card.metadata/populate-result-metadata
-        derive-model-display
-        pre-insert
-        populate-query-fields
-        maybe-populate-initially-published-at
-        public-sharing/add-public-uuid-prefix)
-    (collection/check-allowed-content (:type <>) (:collection_id <>))
-    (check-not-in-archived-container <>)
-    (check-data-app-card <>)))
+  (let [card   (-> card
+                   (assoc :metabase_version config/mb-version-string
+                          :card_schema current-card-schema-version)
+                   normalize-card
+                   ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no
+                   ;; longer true, since we're removing `:ident`s; we can probably remove this now.
+                   (u/assoc-default :entity_id (u/generate-nano-id))
+                   (u/assoc-default :type :question)
+                   card.metadata/populate-result-metadata
+                   derive-model-display
+                   pre-insert)
+        parent (collection/content-parent (:collection_id card))]
+    (collection/check-collection-namespace :model/Card parent)
+    (u/prog1
+      (-> card
+          populate-query-fields
+          maybe-populate-initially-published-at
+          public-sharing/add-public-uuid-prefix)
+      (collection/check-allowed-content (:type <>) parent)
+      (check-not-in-archived-container <> parent)
+      (check-data-app-card <> parent))))
 
 (t2/define-after-insert :model/Card
   [card]
@@ -1350,15 +1348,16 @@
         ;; Captured before `normalize-card` rebinds `card`, so the migration below never depends on
         ;; normalization preserving the instance's original.
         original (t2/original card)
-        card     (normalize-card card)]
+        card     (normalize-card card)
+        parent   (memoize collection/content-parent)]
     (when (contains? changes :visualization_settings)
       (check-timeline-settings card))
     (when (or (contains? changes :collection_id) (contains? changes :type))
-      (collection/check-allowed-content (:type card) (:collection_id card)))
+      (collection/check-allowed-content (:type card) (parent (:collection_id card))))
     (when (some #(contains? changes %) [:collection_id :dashboard_id :document_id])
-      (check-not-in-archived-container card))
+      (check-not-in-archived-container card (parent (:collection_id card))))
     (-> card
-        (cond-> (contains? changes :archived) (assoc :archived_directly (mi/archived-directly card #(card-parent-archived? card))))
+        (cond-> (contains? changes :archived) (assoc :archived_directly (mi/archived-directly card #(card-parent-archived? card (parent (:collection_id card))))))
         (doto (delete-alerts-if-archived-directly changes))
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
@@ -1370,12 +1369,20 @@
         ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
         ;; Only allow it to nil out a stale table_id when the query itself is changing.
         (populate-query-fields (contains? changes :dataset_query))
-        (cond-> (some data-app-card-columns (keys changes)) (doto check-data-app-card))
+        (cond-> (some data-app-card-columns (keys changes)) (as-> row (doto row (check-data-app-card (parent (:collection_id row))))))
         (clear-metabot-origin changes)
         (pre-update changes)
         (doto (delete-alerts-if-changed original changes))
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))
+
+(defmethod mi/after-archived-change :model/Card
+  [_model rows changes]
+  (when (:archived changes)
+    (let [ids (mapv :id rows)]
+      (queries.db/delete-actions-of-models! ids)
+      (reset-values-sources! (queries.db/parameter-cards-for-cards ids)
+                             (fn [param-cards _parameters] (set (map :parameter_id param-cards)))))))
 
 (t2/define-after-update :model/Card
   [card]

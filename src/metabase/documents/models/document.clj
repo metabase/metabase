@@ -67,9 +67,10 @@
 (defmethod mi/after-archived-change :model/Document
   [_model rows changes]
   (doseq [{:keys [id]} rows]
-    (if (:archived changes)
-      (documents.db/archive-document-cards! id)
-      (documents.db/restore-document-cards! id))))
+    (events/with-event-context {:archived-with [:model/Document id]}
+      (if (:archived changes)
+        (documents.db/archive-document-cards! id)
+        (documents.db/restore-document-cards! id)))))
 
 (t2/define-before-insert :model/Document
   [document]

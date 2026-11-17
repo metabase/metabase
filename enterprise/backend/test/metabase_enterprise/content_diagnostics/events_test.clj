@@ -5,9 +5,11 @@
   alone."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- mk-finding!
   ([entity-type entity-id]
@@ -24,15 +26,15 @@
 (defn- invalidated? [finding-id]
   (some? (t2/select-one-fn :invalidated_at :model/ContentDiagnosticsFinding :id finding-id)))
 
-(deftest invalidate-for-entity!-test
+(deftest invalidate-for-entities-test
   (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
     (let [target (mk-finding! :card 700001)
           other  (mk-finding! :card 700002)]
-      (finding/invalidate-for-entity! :card 700001)
+      (finding/invalidate-for! {:card #{700001}} #{})
       (is (invalidated? target) "the entity's finding is invalidated")
       (is (not (invalidated? other)) "a different entity's finding is untouched"))))
 
-(deftest invalidate-for-collection-subtree!-test
+(deftest invalidate-for-collection-subtree-test
   (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
     (mt/with-temp [:model/Collection {coll-id :id}       {}
                    :model/Collection {other-coll-id :id} {}
@@ -42,19 +44,19 @@
             inside    (mk-finding! :card inside-id coll-id)
             ;; scanned inside the subtree but since moved out: live membership decides, not scan-time scope
             moved-out (mk-finding! :card outside-id coll-id)]
-        (finding/invalidate-for-collection-subtree! [coll-id])
+        (finding/invalidate-for! {} #{coll-id})
         (is (invalidated? coll-self) "the archived collection's own finding")
         (is (invalidated? inside) "a finding for a card currently inside the subtree")
         (is (not (invalidated? moved-out)) "a finding for a card that has left the subtree is untouched")))))
 
-(deftest invalidate-for-collection-subtree!-leaves-transforms-test
+(deftest invalidate-for-collection-subtree-leaves-transforms-test
   (testing "a transform is not archived with its collection, so its finding stays active"
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
       (mt/with-temp [:model/Collection {tcoll-id :id} {:namespace "transforms"}
                      :model/Transform  {xform-id :id} {:collection_id tcoll-id}]
         (let [coll-self (mk-finding! :collection tcoll-id)
               xform     (mk-finding! :transform xform-id tcoll-id)]
-          (finding/invalidate-for-collection-subtree! [tcoll-id])
+          (finding/invalidate-for! {} #{tcoll-id})
           (is (invalidated? coll-self) "the archived collection's own finding")
           (is (not (invalidated? xform)) "the transform inside it is untouched"))))))
 
@@ -99,6 +101,23 @@
           (is (invalidated? self-finding) "the archived collection's own finding")
           (is (invalidated? child-finding) "a finding for a card in a descendant collection")
           (is (not (invalidated? outside)) "an unrelated finding is untouched"))))))
+
+(deftest collection-archive-invalidates-in-one-statement-test
+  (testing "the findings of every item a collection archive takes down are invalidated by one statement"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (doseq [n [2 6]]
+          (mt/with-temp [:model/Collection {coll-id :id} {}]
+            (let [card-ids (vec (for [_ (range n)]
+                                  (t2/insert-returning-pk! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                                                              :collection_id coll-id))))
+                  findings (mapv #(mk-finding! :card %) card-ids)
+                  updates  (atom 0)]
+              (mt/with-dynamic-fn-redefs [cd.db/invalidate-findings-where! (let [f (mt/original-fn #'cd.db/invalidate-findings-where!)]
+                                                                             (fn [where] (swap! updates inc) (f where)))]
+                (t2/update! :model/Collection :id coll-id {:archived true}))
+              (is (every? invalidated? findings))
+              (is (= 1 @updates)))))))))
 
 (deftest archive-is-a-noop-without-the-feature-test
   (mt/with-premium-features #{}

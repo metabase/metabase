@@ -58,7 +58,9 @@
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *context*
-  "The context that the events collected within it carry, such as the message of the revisions they cause."
+  "The context that the events collected within it carry, as `::events.schema/lifecycle` lists its keys: the
+  `:revision-message` of the revisions they cause, or the `[model id]` of the entity whose archive or restore carried
+  their rows, `:archived-with`."
   nil)
 
 (defonce ^:private owned-consumers
@@ -68,6 +70,9 @@
   (atom {}))
 
 (defonce ^:private statement-capturers
+  (atom {}))
+
+(defonce ^:private sinks
   (atom {}))
 
 (defonce ^:private publisher
@@ -106,6 +111,31 @@
    capture      :- ifn?]
   (swap! capturers assoc consumer-key capture)
   nil)
+
+(mu/defn register-sink!
+  "Have `flush`, a function of a vector of items, called once at the end of each batch, in its transaction and after its
+  events are delivered, with the items [[add-to-sink!]] gave `sink-key` in the batch, in their order; outside a batch
+  it is called at once with the one item."
+  [sink-key :- :keyword
+   flush    :- ifn?]
+  (swap! sinks assoc sink-key flush)
+  nil)
+
+(mu/defn add-to-sink!
+  "Give `item`, a map, to the sink `sink-key`, to be flushed with the other items of the batch, or at once outside a
+  batch."
+  [sink-key :- :keyword
+   item     :- [:map]]
+  (if-let [batch *batch*]
+    (swap! batch update-in [:sinks sink-key] (fnil conj []) item)
+    ((get @sinks sink-key) [item]))
+  nil)
+
+(defn- flush-sinks!
+  "Flush the items that the sinks of `by-sink`, `{sink-key items}`, collected."
+  [by-sink]
+  (doseq [[sink-key items] by-sink]
+    ((get @sinks sink-key) items)))
 
 (defn- capture
   "The values that the captures give for `events`, deletes of rows of one model, by consumer key."
@@ -233,13 +263,18 @@
       (handle owner-key owned events))))
 
 (defn- finish!
-  "Deliver what the batch collected, and what the delivery makes it collect, until nothing is left."
+  "Deliver what the batch collected, and what the delivery makes it collect, then flush its sinks, until nothing is
+  left."
   [batch]
   (loop []
     (let [[old _] (swap-vals! batch assoc :events [] :captures {})]
-      (when (seq (:events old))
-        (deliver! (:events old) (:captures old))
-        (recur)))))
+      (if (seq (:events old))
+        (do (deliver! (:events old) (:captures old))
+            (recur))
+        (let [[old _] (swap-vals! batch assoc :sinks {})]
+          (when (seq (:sinks old))
+            (flush-sinks! (:sinks old))
+            (recur)))))))
 
 (mu/defn collect!
   "Collect the event of a write of a row, or deliver it at once outside a batch, when the spec of its model names a
@@ -260,7 +295,7 @@
   the rows it wrote may be rolled back with a savepoint of its caller."
   [join-transaction? thunk]
   (let [run (fn []
-              (let [batch (atom {:events [] :pending [] :captures {}})]
+              (let [batch (atom {:events [] :pending [] :captures {} :sinks {}})]
                 (binding [*batch* batch]
                   (u/prog1 (thunk)
                     (finish! batch)))))]

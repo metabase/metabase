@@ -99,16 +99,6 @@
                :invalidated_at nil}
               {:invalidated_at (mi/now)}))
 
-(mu/defn invalidate-for-entity!
-  "Stamp `invalidated_at` on one entity's still-active findings; returns the row count."
-  [entity-type :- :keyword
-   entity-id   :- ms/PositiveInt]
-  (t2/update! :model/ContentDiagnosticsFinding
-              {:entity_type    entity-type
-               :entity_id      entity-id
-               :invalidated_at nil}
-              {:invalidated_at (mi/now)}))
-
 (mu/defn invalidate-findings-where!
   "Stamp `invalidated_at` on every finding matching `where`; returns the row count."
   [where :- vector?]

@@ -225,6 +225,19 @@
                                    (prepare-update-event-data object-details previous-details)
                                    object-details)))})))
 
+(mu/defn audit-row :- [:maybe :map]
+  "The Audit Log row that [[record-event!]] would insert for `topic` and `params`, or nil when it would insert none."
+  [topic :- :keyword
+   params :- ::event-params]
+  (when (premium-features/log-enabled?)
+    (let [{:keys [user-id model-name model-id details unqualified-topic]}
+          (construct-event topic params api/*current-user-id*)]
+      {:topic    unqualified-topic
+       :details  details
+       :model    model-name
+       :model_id model-id
+       :user_id  user-id})))
+
 (mu/defn record-event!
   "Records an event in the Audit Log.
 
@@ -255,9 +268,14 @@
                      (:model-id params) (assoc :model/id (:model-id params))
                      (:user-id params) (assoc :user/id (:user-id params))
                      (:model params) (assoc :model/name (u/lower-case-en (:model params))))}
-      (let [{:keys [user-id model-name model-id details unqualified-topic]}
-            (construct-event topic params api/*current-user-id*)]
-        (audit-app.db/insert-audit-log! unqualified-topic details model-name model-id user-id)))))
+      (audit-app.db/insert-audit-logs! [(audit-row topic params)]))))
+
+(defn record-rows!
+  "Insert the Audit Log `rows`, which [[audit-row]] gives, in one statement and in their order."
+  [rows]
+  (when (seq rows)
+    (span/with-span! {:name "record-rows!" :attributes {:audit/rows (count rows)}}
+      (audit-app.db/insert-audit-logs! rows))))
 
 (t2/define-before-insert :model/AuditLog
   [activity]

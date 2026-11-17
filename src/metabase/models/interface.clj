@@ -602,6 +602,13 @@
                                         :toucan.query-type/select.instances.from-update
                                         model parsed-args resolved-query)))
 
+(defn runs-statement?
+  "Whether the UPDATE of `model` as `query-type` runs its statement here, rather than handing it to Toucan's after-update
+  tool, which runs it again as a query returning instances."
+  [query-type model]
+  (or (isa? query-type :toucan.result-type/instances)
+      (methodical/is-default-primary-method? t2.after/each-row-fn [query-type model])))
+
 (defmacro define-update-in-transaction
   "Runs every UPDATE of `model`, with its before-update hooks, in one transaction, which Toucan otherwise opens only
   after them, so a hook that writes other rows commits or rolls back with the UPDATE, and then calls
@@ -613,7 +620,8 @@
      (t2.conn/with-transaction [_conn# nil {:nested-transaction-rule :ignore}]
        (let [changes# (:changes parsed-args#)
              rows#    (when (and (contains? changes# :archived)
-                                 (contains? (methods after-archived-change) model#))
+                                 (contains? (methods after-archived-change) model#)
+                                 (runs-statement? query-type# model#))
                         (rows-changing-archived model# parsed-args# resolved-query# changes#))]
          (if (seq rows#)
            (events.batch/do-with-write-batch

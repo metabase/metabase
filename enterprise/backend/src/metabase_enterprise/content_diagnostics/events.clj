@@ -8,9 +8,7 @@
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.events :as u.events]
-   [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (def ^:private entity-types
   "The entity type of the findings of each model that has them."
@@ -19,35 +17,42 @@
    :model/Document  :document
    :model/Transform :transform})
 
-(defn- invalidate!
-  "Run `invalidate-thunk`, logging a failure instead of rethrowing it, so it does not fail the write."
-  [log-ctx invalidate-thunk]
-  (try
-    (invalidate-thunk)
-    (catch Throwable e
-      (log/errorf "Failed to invalidate content-diagnostics findings %s: %s" log-ctx (ex-message e)))))
+(defn- invalidation
+  "What the lifecycle `event` invalidates: `[:collection collection-row]` for the archive of a Collection,
+  `[entity-type id]` for the archive or delete of an entity that has findings, nil otherwise."
+  [{:keys [model object previous-object] :as event}]
+  (let [row       (or object previous-object)
+        archived? (and (true? (:archived object)) (u.events/changed? event :archived))]
+    (cond
+      (and (= :model/Collection model) archived?)        [:collection row]
+      (and (entity-types model) (or (nil? object) archived?)) [(entity-types model) (:id row)])))
 
-(events/derive! ::event :metabase/event)
-(doseq [topic [:event/card-update       :event/card-delete
-               :event/dashboard-update  :event/dashboard-delete
-               :event/document-update   :event/document-delete
-               :event/transform-update  :event/transform-delete
-               :event/collection-update :event/collection-delete]]
-  (events/derive! topic ::event))
+(defn- owner
+  "The one owner of every event of a batch that invalidates findings, nil for the others and without the feature."
+  [event]
+  (when (and (invalidation event) (premium-features/has-feature? :content-diagnostics))
+    ::findings))
 
-(methodical/defmethod events/publish-event! ::event
-  [_topic {:keys [object previous-object] :as event}]
-  (when (premium-features/has-feature? :content-diagnostics)
-    (let [row       (or object previous-object)
-          model     (t2/model row)
-          deleted?  (nil? object)
-          archived? (and (true? (:archived object)) (u.events/changed? event :archived))]
-      (cond
-        (and (= :model/Collection model) archived?)
-        (invalidate! {:collection-id (:id row)}
-                     #(finding/invalidate-for-collection-subtree!
-                       (conj (collection/descendant-ids row) (:id row))))
+(defn- invalidate-batch!
+  "Invalidate in one statement the active findings of the entities that `events` archive or delete, and of the archived
+  collections with the subtrees of those archived directly, logging a failure instead of failing the write."
+  [_owner events _all-events]
+  (let [invalidations  (keep invalidation events)
+        collections    (keep (fn [[k row]] (when (= :collection k) row)) invalidations)
+        collection-ids (into #{}
+                             (mapcat (fn [row]
+                                       (cons (:id row)
+                                             (when (:archived_directly row)
+                                               (collection/descendant-ids row)))))
+                             collections)
+        entity-ids     (reduce (fn [acc [k id]]
+                                 (cond-> acc (not= :collection k) (update k (fnil conj #{}) id)))
+                               {}
+                               invalidations)]
+    (try
+      (finding/invalidate-for! entity-ids collection-ids)
+      (catch Throwable e
+        (log/errorf "Failed to invalidate content-diagnostics findings of %d entities: %s"
+                    (count invalidations) (ex-message e))))))
 
-        (and (entity-types model) (or deleted? archived?))
-        (invalidate! {:entity-type (entity-types model) :entity-id (:id row)}
-                     #(finding/invalidate-for-entity! (entity-types model) (:id row)))))))
+(events/register-owned-consumer! ::invalidate owner invalidate-batch!)

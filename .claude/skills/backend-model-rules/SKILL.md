@@ -131,10 +131,10 @@ An endpoint or tool: parse the request, load the row with `api/check-404`, call 
   log and the search index are consumers: they list their models by tag and derive `:hook/events` on them.
 - A consumer lives in `<module>/events.clj` or `<module>/events/<topic>.clj`, required from `init.clj`, as a
   `methodical/defmethod events/publish-event!` on a topic it derives; `events/register-owned-consumer!` gives it one
-  call per owner per batch.
+  call per owner per batch. Work that needs committed rows goes in `mdb/do-after-commit` inside the handler.
 - Upkeep (subscription sync, persisted models, driver pools, personal collections, session revoke, dependency marks)
-  runs for every writer. A record of a user action (revision, audit row) needs a non-nil `:user-id`.
-- Work that needs committed rows goes in `mdb/do-after-commit` inside the handler.
+  runs for every writer. A record of a user action (revision, audit row) needs a non-nil `:user-id`; the writes of an
+  archive cascade carry `:archived-with [model id]` in `:context`, which record consumers read and no hook does.
 - The request schema is closed and lists only what a caller may set: no derived columns, no `archived_directly`.
 - App-DB queries live in `<module>.db`, caller values bound: `(t2/select-one :model/X :id [:auto/param id])`.
 

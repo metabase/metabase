@@ -786,11 +786,27 @@
     (when-not (allowed-content-types content-type)
       (throw (ex-info error-message {:status-code 400})))))
 
+(defn content-parent
+  "The Collection with `collection-id` as the checks of the content put in it read it, nil for the root; throws a 404
+  when it does not exist."
+  [collection-id]
+  (when collection-id
+    (or (collections.db/collection-for-content-checks collection-id)
+        (let [msg (tru "Collection does not exist.")]
+          (throw (ex-info msg {:status-code 404, :errors {:collection_id msg}}))))))
+
+(defn- content-parent-or-nil
+  "`collection`, a Collection [[content-parent]] loaded, or the one with that id, nil when there is none."
+  [collection]
+  (if (map? collection)
+    collection
+    (some-> collection collections.db/collection-for-content-checks)))
+
 (defn- check-library-content
-  "Throws a 400 when the collection with `collection-id` can't hold content of `content-type`; with the Library feature,
-  tables go only in Data collections."
-  [content-type collection-id]
-  (let [parent-type (collections.db/collection-type collection-id)]
+  "Throws a 400 when the collection `parent` can't hold content of `content-type`; with the Library feature, tables go
+  only in Data collections."
+  [content-type parent]
+  (let [parent-type (:type parent)]
     (check-library-placement content-type parent-type)
     (when (and (= content-type :table)
                (not= parent-type library-data-collection-type)
@@ -806,13 +822,15 @@
     (throw (ex-info (tru "A data app''s collection can hold only questions and implicit actions.") {:status-code 400}))))
 
 (defn check-allowed-content
-  "Checks the content of a collection before saving it. Throws when the collection with `collection-id` can't hold
-  content of `model-type`; a data app's collection holds only what a remote-sync pull of the app accepts."
-  [model-type collection-id]
-  (when (and collection-id (some? model-type))
-    (when (perms/data-app-collection? collection-id)
-      (check-data-app-content model-type))
-    (check-library-content model-type collection-id))
+  "Checks the content of a collection before saving it. Throws when `collection`, a Collection id or the row
+  [[content-parent]] gives, can't hold content of `model-type`; a data app's collection holds only what a remote-sync
+  pull of the app accepts."
+  [model-type collection]
+  (when (and collection (some? model-type))
+    (let [parent (content-parent-or-nil collection)]
+      (when (and parent (perms/data-app-collection? parent))
+        (check-data-app-content model-type))
+      (check-library-content model-type parent)))
   true)
 
 ;; This function is defined later after children-location is available
@@ -1670,14 +1688,18 @@
         (throw (ex-info "Can't create a personal collection for an API key" {:user user-id}))))))
 
 (defn archived?
-  "Whether the Collection with `collection-id` is archived, which the root, nil, never is."
-  [collection-id]
-  (collections.db/collection-archived? collection-id))
+  "Whether `collection`, a Collection id or the row [[content-parent]] gives, is archived, which the root, nil, never
+  is."
+  [collection]
+  (if (map? collection)
+    (boolean (:archived collection))
+    (collections.db/collection-archived? collection)))
 
 (defn check-collection-not-archived
-  "Throws a 400 when `row-archived?` is false and the Collection with `collection-id`, if any, is archived."
-  [row-archived? collection-id]
-  (when (and (not row-archived?) (archived? collection-id))
+  "Throws a 400 when `row-archived?` is false and `collection`, a Collection id or the row [[content-parent]] gives, if
+  any, is archived."
+  [row-archived? collection]
+  (when (and (not row-archived?) (archived? collection))
     (throw (ex-info (tru "You cannot put an unarchived item in an archived Collection.")
                     {:status-code 400, :errors {:collection_id (tru "archived Collection")}}))))
 
@@ -2072,12 +2094,13 @@
 (defmethod mi/after-archived-change :model/Collection
   [_model rows changes]
   (doseq [before rows]
-    (if (:archived changes)
-      (let [row (collections.db/collection (:id before))]
-        (when (:archived_directly row)
-          (archive-subtree! row)))
-      (when (:archived_directly before)
-        (restore-subtree! before)))))
+    (events/with-event-context {:archived-with [:model/Collection (:id before)]}
+      (if (:archived changes)
+        (let [row (collections.db/collection (:id before))]
+          (when (:archived_directly row)
+            (archive-subtree! row)))
+        (when (:archived_directly before)
+          (restore-subtree! before))))))
 
 (defn- archived-columns
   "`row`, an update, with the `archived_directly` and `archive_operation_id` its change of `archived` gives: a write that
@@ -2272,13 +2295,12 @@
   `allowed-namespaces`), or throw an Exception.
 
     ;; Cards can only go in Collections in the default namespace (namespace = nil)
-    (check-collection-namespace Card new-collection-id)"
-  [model collection-id]
-  (when collection-id
-    (let [collection           (or (collections.db/collection-id-and-namespace collection-id)
-                                   (let [msg (tru "Collection does not exist.")]
-                                     (throw (ex-info msg {:status-code 404
-                                                          :errors      {:collection_id msg}}))))
+    (check-collection-namespace Card new-collection-id)
+
+  `collection` is a Collection id or the row [[content-parent]] gives."
+  [model collection]
+  (when collection
+    (let [collection           (if (map? collection) collection (content-parent collection))
           collection-namespace (keyword (:namespace collection))
           allowed-namespaces   (allowed-namespaces model)]
       (when-not (contains? allowed-namespaces collection-namespace)
@@ -2296,10 +2318,10 @@
   "Throws unless the Collection of `row`, if any, can hold `model`, is in an allowed namespace, and is not archived
   unless `row` is."
   [model {:keys [collection_id archived]}]
-  (when collection_id
-    (check-allowed-content model collection_id)
-    (check-collection-namespace model collection_id)
-    (check-collection-not-archived archived collection_id)))
+  (when-let [parent (content-parent collection_id)]
+    (check-allowed-content model parent)
+    (check-collection-namespace model parent)
+    (check-collection-not-archived archived parent)))
 
 (defn annotate-collections
   "Annotate collections with `:below` and `:here` keys to indicate which types are in their subtree and which types are

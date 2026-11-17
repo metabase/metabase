@@ -289,15 +289,19 @@
   (cond-> m
     (= entity :model/Card) (dissoc :card_schema)))
 
-(defn- insert-revision!
+(defn- row
   [{:keys [id entity user-id is-creation? message]} serialized-object]
-  (revisions.db/insert-revision! {:model        (name entity)
-                                  :model_id     id
-                                  :user_id      user-id
-                                  :object       serialized-object
-                                  :is_creation  (boolean is-creation?)
-                                  :is_reversion false
-                                  :message      message}))
+  {:model        (name entity)
+   :model_id     id
+   :user_id      user-id
+   :object       serialized-object
+   :is_creation  (boolean is-creation?)
+   :is_reversion false
+   :message      message})
+
+(defn- insert-revision!
+  [info serialized-object]
+  (revisions.db/insert-revisions! [(row info serialized-object)]))
 
 (defn row-changed?
   "Whether the update of the row of `entity` with `id` from `before` to `after` changes what its Revision records,
@@ -306,11 +310,15 @@
   (let [serialize #(for-comparison entity (serialize-instance entity id (assoc % :dashcards [] :tabs [])))]
     (not= (serialize before) (serialize after))))
 
-(mu/defn record-revision!
-  "Record a new Revision of `entity` with `id`, whose caller knows that it changed. Returns `object`."
+(mu/defn revision-row :- [:map [:model :string]]
+  "The new Revision row of `entity` with `id`, whose caller knows that it changed, for [[record-revisions!]]."
   [{:keys [id entity object] :as info} :- PushRevisionInput]
-  (insert-revision! info (serialize-instance entity id (dissoc object :message)))
-  object)
+  (row info (serialize-instance entity id (dissoc object :message))))
+
+(defn record-revisions!
+  "Record the Revisions `rows`, which [[revision-row]] gives, in one statement."
+  [rows]
+  (revisions.db/insert-revisions! rows))
 
 (mu/defn push-revision!
   "Record a new Revision for `entity` with `id` if it's changed compared to the last revision.
