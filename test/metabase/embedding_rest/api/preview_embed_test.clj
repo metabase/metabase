@@ -266,24 +266,36 @@
   [goal-id]
   {:scalar.segments [{:min {:id goal-id :type "card" :column "count"} :max nil :color "red"}]})
 
-(deftest query-referenced-entities-test
-  (testing "GET /api/preview_embed/card/:token/query resolves the dynamic goal in the card's viz settings"
+(deftest card-goal-values-test
+  (testing "GET /api/preview_embed/card/:token/goal-values resolves the dynamic goal in the card's viz settings"
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
         (embed-test/with-temp-card [card {:display :scalar :visualization_settings (goal-segments goal-id)}]
+          (testing "the chart response no longer carries goal values"
+            (is (not (contains? (:data (mt/user-http-request :crowberto :get 202 (card-query-url card)))
+                                :referenced_entities))))
           (is (= [[1000]]
-                 (-> (mt/user-http-request :crowberto :get 202 (card-query-url card))
-                     (get-in [:data :referenced_entities :card goal-id :data :rows])))))))))
+                 (-> (mt/user-http-request :crowberto :get 202 (str (card-url card) "/goal-values"))
+                     (get-in [:card goal-id :data :rows]))))
+          (testing "requires a superuser"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 (str (card-url card) "/goal-values"))))))))))
 
-(deftest dashcard-referenced-entities-test
-  (testing "GET /api/preview_embed/dashboard/:token/dashcard/:id/card/:id resolves the dynamic goal in the card's viz settings"
+(deftest dashcard-goal-values-test
+  (testing "GET /api/preview_embed/dashboard/:token/dashcard/:id/card/:id/goal-values resolves the dynamic goal in the card's viz settings"
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
         (embed-test/with-temp-dashcard [dashcard {:card {:display                :scalar
                                                          :visualization_settings (goal-segments goal-id)}}]
+          (testing "the chart response no longer carries goal values"
+            (is (not (contains? (:data (mt/user-http-request :crowberto :get 202 (dashcard-url dashcard)))
+                                :referenced_entities))))
           (is (= [[1000]]
-                 (-> (mt/user-http-request :crowberto :get 202 (dashcard-url dashcard))
-                     (get-in [:data :referenced_entities :card goal-id :data :rows])))))))))
+                 (-> (mt/user-http-request :crowberto :get 202 (str (dashcard-url dashcard) "/goal-values"))
+                     (get-in [:card goal-id :data :rows]))))
+          (testing "requires a superuser"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 (str (dashcard-url dashcard) "/goal-values"))))))))))
 
 (deftest dashcard-test
   (testing "/api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
