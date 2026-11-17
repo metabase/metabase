@@ -11,6 +11,7 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupEmailEndpoints,
+  setupEnginesEndpoint,
   setupGroupsEndpoint,
   setupLibraryEndpoints,
   setupNotificationChannelsEndpoints,
@@ -26,9 +27,17 @@ import {
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
-import { createMockState } from "__support__/state";
+import {
+  createMockAdminAppState,
+  createMockAdminState,
+  createMockState,
+} from "__support__/state";
 import { getTestStoreAndWrapper, screen } from "__support__/ui";
+import { getAdminPaths } from "metabase/admin/app/reducers";
+import { getRoutes as getAdminRoutes } from "metabase/admin/routes";
 import { getSettingsRoutes } from "metabase/admin/settingsRoutes";
+import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
+import { CanAccessSettings, IsAdmin } from "metabase/route-guards";
 import { Route } from "metabase/router";
 import type { TokenFeature, TokenFeatures } from "metabase-types/api";
 import {
@@ -123,6 +132,7 @@ export const setup = async ({
   features = {},
   initialRoute = "",
   waitForLayout = true,
+  withAdminApp = false,
 }: {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
   hasTokenFeatures?: boolean;
@@ -130,6 +140,11 @@ export const setup = async ({
   features?: Partial<TokenFeatures>;
   initialRoute?: string;
   waitForLayout?: boolean;
+  /**
+   * Mount the whole admin route tree, guards included, next to a home page
+   * that has the app switcher, and start on that home page.
+   */
+  withAdminApp?: boolean;
 }) => {
   const tokenFeatures = createMockTokenFeatures({});
   if (hasTokenFeatures) {
@@ -157,6 +172,10 @@ export const setup = async ({
   setupApiKeyEndpoints([]);
   setupGroupsEndpoint([]);
   setupDatabasesEndpoints([]);
+  if (withAdminApp) {
+    // The admin shell checks for deprecated database engines.
+    setupEnginesEndpoint({});
+  }
   setupTimezonesEndpoint(["Europe/Paris", "US/Mountain", "UTC"]);
   setupSlackManifestEndpoint();
   setupSlackAppInfoEndpoint();
@@ -198,6 +217,11 @@ export const setup = async ({
   const initialState = createMockState({
     currentUser: user,
     settings: mockSettings(settings),
+    ...(withAdminApp && {
+      admin: createMockAdminState({
+        app: createMockAdminAppState({ paths: getAdminPaths() }),
+      }),
+    }),
   });
 
   if (enterprisePlugins) {
@@ -209,15 +233,22 @@ export const setup = async ({
     setupTokenStatusEndpoint({ valid: hasTokenFeatures });
   }
 
-  const { wrapper, store } = getTestStoreAndWrapper({
+  const { wrapper, store, router } = getTestStoreAndWrapper({
     storeInitialState: initialState,
     withRouter: true,
-    initialRoute: `/admin/settings${initialRoute}`,
+    initialRoute: withAdminApp ? "/" : `/admin/settings${initialRoute}`,
   });
 
   testingLibraryRender(
     <>
-      <Route path="admin/settings">{getSettingsRoutes(store)}</Route>
+      {withAdminApp ? (
+        <>
+          <Route path="/" element={<AppSwitcher />} />
+          {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
+        </>
+      ) : (
+        <Route path="admin/settings">{getSettingsRoutes(store)}</Route>
+      )}
       <Route
         path="unauthorized"
         element={<div data-testid="unauthorized-page">Unauthorized</div>}
@@ -226,7 +257,9 @@ export const setup = async ({
     { wrapper },
   );
 
-  if (waitForLayout) {
+  if (waitForLayout && !withAdminApp) {
     await screen.findByTestId("admin-layout-content");
   }
+
+  return { router };
 };
