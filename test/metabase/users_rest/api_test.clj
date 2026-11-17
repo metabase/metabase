@@ -2363,6 +2363,30 @@
           (is (some? token))
           (mt/client :post 200 "session/reset_password" {:token token, :password "new-pw-2!Abc"}))))))
 
+(deftest force-password-reset-sso-user-test
+  (testing "POST /api/user/force-password-reset on someone who signs in with SSO"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                         google-auth-enabled   true]
+        (mt/with-temp [:model/User {sso-only :id} {:sso_source :google}
+                       :model/User {with-pw :id :as with-pw-user} {:sso_source :google}]
+          (t2/delete! :model/AuthIdentity :user_id sso-only :provider "password")
+          (auth-identity/set-password! with-pw "old-pw-1!Abc")
+          (mt/with-temp [:model/Session _ {:user_id sso-only, :session_key (session/generate-session-key)}]
+            (mt/with-fake-inbox
+              (testing "logs them out and is audited, even with no password to block"
+                (is (= {:users_reset 1, :emails_queued 0}
+                       (mt/user-http-request :crowberto :post 200 "user/force-password-reset" {:user_ids [sso-only]})))
+                (is (=? {:end_reason "forced-password-change", :ended_by_user_id (mt/user->id :crowberto)}
+                        (t2/select-one :model/Session :user_id sso-only)))
+                (is (=? {:topic :password-reset-forced, :model_id sso-only}
+                        (mt/latest-audit-log-entry :password-reset-forced sso-only))))
+              (testing "sends no reset link while their provider is enabled, even if they also have a password"
+                (is (= {:users_reset 1, :emails_queued 0}
+                       (mt/user-http-request :crowberto :post 200 "user/force-password-reset" {:user_ids [with-pw]})))
+                (is (true? (auth-identity/password-reset-required? with-pw)))
+                (is (empty? (get @mt/inbox (:email with-pw-user))))))))))))
+
 (deftest force-password-reset-bulk-test
   (testing "POST /api/user/force-password-reset"
     (mt/with-temp [:model/User {a :id} {}
@@ -2374,6 +2398,9 @@
         (mt/user-http-request :rasta :post 403 "user/force-password-reset" {:user_ids [a]}))
       (testing "needs exactly one of user_ids and all"
         (mt/user-http-request :crowberto :post 400 "user/force-password-reset" {})
+        (testing "an empty user_ids is refused, so it can never be read as everyone or as nobody"
+          (mt/user-http-request :crowberto :post 400 "user/force-password-reset" {:user_ids []})
+          (mt/user-http-request :crowberto :post 400 "user/force-password-reset" {:user_ids [], :all true}))
         (mt/user-http-request :crowberto :post 400 "user/force-password-reset" {:user_ids [a], :all true}))
       (testing "only takes include_self with all"
         (mt/user-http-request :crowberto :post 400 "user/force-password-reset" {:user_ids [a], :include_self true}))

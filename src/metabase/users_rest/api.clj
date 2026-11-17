@@ -34,7 +34,9 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.secret :as u.secret]
    [throttle.core :as throttle]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent Semaphore)))
 
 (set! *warn-on-reflection* true)
 
@@ -713,17 +715,28 @@
   [{:keys [sso_source]}]
   (boolean (and sso_source (sso/sso-source-enabled? sso_source))))
 
+(def ^:private max-concurrent-reset-emails
+  "How many forced-reset emails may be sent at once, so a burst of resets doesn't open a burst of SMTP connections."
+  4)
+
+(defonce ^:private reset-email-permits
+  (Semaphore. max-concurrent-reset-emails))
+
 (defn- email-password-reset!
-  "Email `user` a fresh password-reset link. A failure is logged rather than thrown: by now the user is locked out,
-  which is what matters, and a link can still be sent from the people list."
+  "Email `user` a fresh password-reset link, waiting for a free slot first (see [[max-concurrent-reset-emails]]). A
+  failure is logged rather than thrown: by now the user is locked out, which is what matters, and a link can still be
+  sent from the people list."
   [{:keys [id email] :as user}]
+  (Semaphore/.acquire reset-email-permits)
   (try
     (let [reset-token (auth-identity/create-password-reset! id)]
       (messages/send-password-reset-email! email nil (str (system/site-url) "/auth/reset_password/" reset-token) true)
       (events/publish-event! :event/password-reset-initiated
                              {:object (assoc user :token (auth-identity/reset-token-hash id))}))
     (catch Exception e
-      (log/errorf e "Failed to email a password reset link to user %d after forcing a password reset" id))))
+      (log/errorf e "Failed to email a password reset link to user %d after forcing a password reset" id))
+    (finally
+      (Semaphore/.release reset-email-permits))))
 
 (mr/def ::ForcePasswordResetResult
   [:map {:closed true}
@@ -759,21 +772,27 @@
                                 [:email      :string]
                                 [:sso_source [:maybe :keyword]]]]
    send-email? :- :boolean]
-  (let [password-users (into []
-                             (keep (fn [user]
-                                     (let [{:keys [had-password?]} (auth-identity/force-password-reset!
-                                                                    (:id user) api/*current-user-id*)]
-                                       (record-forced-password-reset! user)
-                                       (when had-password? user))))
-                             users)
-        email-user     (when (and send-email?
-                                  (= 1 (count users))
-                                  (channel.settings/email-configured?))
-                         (first (remove sso-user? password-users)))]
-    (when email-user
-      (future (email-password-reset! email-user)))
-    {:users_reset   (count users)
-     :emails_queued (if email-user 1 0)}))
+  (loop [[user & rest-users] users
+         state               {:users_reset   0
+                              :emails_queued 0}]
+    (if user
+      (let [{:keys [had-password?]} (auth-identity/force-password-reset!
+                                     (:id user)
+                                     api/*current-user-id*)
+            actually-send-emails?  (and send-email?
+                                        had-password?
+                                        (= 1 (count users))
+                                        (not (sso-user? user))
+                                        (channel.settings/email-configured?))]
+        (record-forced-password-reset! user)
+        (when actually-send-emails?
+          (Thread/startVirtualThread (bound-fn [] (email-password-reset! user))))
+        (recur rest-users
+               (-> state
+                   (update :users_reset inc)
+                   (cond-> actually-send-emails?
+                     (update :emails_queued inc)))))
+      state)))
 
 (api.macros/defendpoint :post "/force-password-reset" :- ::ForcePasswordResetResponse
   "Force users — the ones in `user_ids`, or with `all` every active user but you (and you too with `include_self`) —

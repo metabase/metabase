@@ -153,9 +153,10 @@
   ;; atomic for the same reason as `set-password!`: a lockout that ends the sessions but leaves the password working,
   ;; or the reverse, is not a lockout
   (t2/with-transaction [_]
-    (when-let [password-auth-identity-id (auth-identity.db/auth-identity-id user-id "password")]
-      (auth-identity.db/update-auth-identity! password-auth-identity-id {:expires_at (t/instant)})
-      (auth-identity.db/delete-auth-identities! user-id "emailed-secret-password-reset")
+    (let [password-auth-identity-id (auth-identity.db/auth-identity-id user-id "password")]
+      (when password-auth-identity-id
+        (auth-identity.db/update-auth-identity! password-auth-identity-id {:expires_at (t/instant)})
+        (auth-identity.db/delete-auth-identities! user-id "emailed-secret-password-reset"))
       (auth-identity.db/end-sessions-for-user! user-id ended-by "forced-password-change")
       {:had-password? (some? password-auth-identity-id)})))
 
