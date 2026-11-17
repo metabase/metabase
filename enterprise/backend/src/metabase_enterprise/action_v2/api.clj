@@ -162,8 +162,6 @@
        [:scope ::types/scope.raw]
        [:params {:optional true} ::action-value-map]
        [:input {:optional true} ::action-value-map]]]
-  ;; This check should be redundant in practice with the permission checks within perform-action!
-  ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
   (api/check-superuser)
   (events/publish-event! :event/action-v2-execute
                          {:details {:action action
@@ -201,8 +199,6 @@
        [:scope ::types/scope.raw]
        [:inputs [:sequential {:min 1} ::action-value-map]]
        [:params {:optional true} ::action-value-map]]]
-  ;; This check should be redundant in practice with the permission checks within perform-action!
-  ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
   (api/check-superuser)
   (events/publish-event! :event/action-v2-execute
                          {:details {:action action
@@ -222,8 +218,6 @@
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
        [:input {:optional true} ::action-value-map]]]
-  ;; This check should be redundant in practice with the permission checks within perform-action!
-  ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
   (api/check-superuser)
   (let [scope         (actions/hydrate-scope scope)
         unified       (fetch-unified-action scope action)
