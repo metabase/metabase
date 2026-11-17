@@ -249,6 +249,12 @@ describe("scenarios > browse > metrics", () => {
       verifiedMetricsSwitch().should("have.attr", "aria-selected", "false");
       findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
       findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
+
+      cy.log("removing the last verification hides the filter");
+      unverifyMetric(ORDERS_SCALAR_METRIC);
+      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
+      findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
+      cy.findByLabelText(/show.*verified.*metrics/i).should("not.exist");
     });
   });
 });
@@ -282,6 +288,18 @@ function verifyMetric(metric: StructuredQuestionDetailsWithName) {
   H.MetricPage.moreMenu().click();
   H.popover().findByText("Verify this metric").click();
   cy.icon("verified").should("be.visible");
+  H.navigationSidebar()
+    .findByRole("listitem", { name: "Browse metrics" })
+    .click();
+}
+
+function unverifyMetric(metric: StructuredQuestionDetailsWithName) {
+  metricsTable().findByText(metric.name).should("be.visible").click();
+  H.MetricPage.aboutPage().should("be.visible");
+
+  H.MetricPage.moreMenu().click();
+  H.popover().findByText("Remove verification").click();
+  cy.icon("verified").should("not.exist");
   H.navigationSidebar()
     .findByRole("listitem", { name: "Browse metrics" })
     .click();
