@@ -25,7 +25,8 @@
 (def ^:private ignored-columns
   "For each model, the columns whose update alone is not a change to record."
   {:model/Card      #{:updated_at :last_used_at :view_count :collection_position :cache_invalidated_at}
-   :model/Dashboard #{:updated_at :last_viewed_at :view_count :collection_position :position}})
+   :model/Dashboard #{:updated_at :last_viewed_at :view_count :collection_position :position}
+   :model/Document  #{:updated_at :last_viewed_at :view_count :collection_position}})
 
 (defn- carried-by-archive?
   "Whether `event` is an update that the archive or restore of another entity carried to its row, which records no

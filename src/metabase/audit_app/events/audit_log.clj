@@ -17,21 +17,28 @@
   (let [kw (keyword (name stored-topic))]
     (= (audit-log/model-details object kw) (audit-log/model-details previous-object kw))))
 
+(def ^:private bookkeeping-columns
+  "The columns of any audited model that the product writes to keep count or time of use, never a change to audit."
+  #{:updated_at :view_count :last_used_at :last_viewed_at :cache_invalidated_at :last_query_start
+    :collection_position :entity_id})
+
+(defn- bookkeeping-update?
+  "Whether `event` is an update that changes only [[bookkeeping-columns]]."
+  [{:keys [object previous-object] :as event}]
+  (and object previous-object (every? bookkeeping-columns (u.events/changed-keys event))))
+
 (defn- record-lifecycle!
   "Record the lifecycle `event` of a write by a user under `stored-topic`, with the changes of an update when
   `previous?`, and nothing for a write without a user or an update that changes nothing the log records."
   [stored-topic {:keys [user-id object previous-object context] :as event} previous?]
   (when (and user-id
+             (not (bookkeeping-update? event))
              (not (and previous? object previous-object (unchanged-details? stored-topic event))))
     (audit-log/record-event! stored-topic
                              (cond-> {:object (or object previous-object) :user-id user-id}
                                (and previous? object previous-object) (assoc :previous-object previous-object)
                                (:revision-message context)             (assoc :details {:revision-message (:revision-message context)})
                                (:details context)                      (update :details merge (:details context))))))
-
-(defn- noop-card-update?
-  [event]
-  (every? #{:updated_at :collection_position} (u.events/changed-keys event)))
 
 (events/derive! ::card-event ::event)
 (events/derive! :event/card-create ::card-event)
@@ -43,10 +50,14 @@
   [event]
   (some? (get-in event [:context :archived-with])))
 
+(def ^:private audited-card-columns
+  "The columns of a Card whose update the audit log records, those of its details."
+  #{:name :description :database_id :table_id :type})
+
 (methodical/defmethod events/publish-event! ::card-event
   [topic event]
   (when-not (and (= :event/card-update topic)
-                 (or (noop-card-update? event) (carried-by-archive? event)))
+                 (or (not (u.events/changed-any? event audited-card-columns)) (carried-by-archive? event)))
     (record-lifecycle! topic event true)))
 
 (events/derive! ::dashboard-event ::event)

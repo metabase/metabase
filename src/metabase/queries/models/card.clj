@@ -146,7 +146,7 @@
    :delete :event/card-delete})
 
 (methodical/defmethod change-log/ignored-columns :model/Card [_model]
-  #{:last_used_at :view_count})
+  #{:last_used_at :view_count :cache_invalidated_at})
 
 (defn- summary-card-snapshots
   "The snapshots linked to `card` when it is an ephemeral card of an exploration Summary (`document`), or nil when it
