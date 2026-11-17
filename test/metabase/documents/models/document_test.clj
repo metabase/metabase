@@ -407,8 +407,8 @@
                     :document {:type "doc"
                                :content [{:type "paragraph"
                                           :content [{:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 789}]
-                                                             "model" "card"}}]}]}
+                                                     :attrs {:entityId [{:model "Card" :id 789}]
+                                                             :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document"}]}
           deps (first (serialization/import-dependencies :model/Document [document]))]
@@ -422,14 +422,14 @@
                     :document {:type "doc"
                                :content [{:type "paragraph"
                                           :content [{:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 789}]
-                                                             "model" "card"}}
+                                                     :attrs {:entityId [{:model "Card" :id 789}]
+                                                             :model "card"}}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Dashboard" :id 456}]
-                                                             "model" "dashboard"}}
+                                                     :attrs {:entityId [{:model "Dashboard" :id 456}]
+                                                             :model "dashboard"}}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Database" :id "db"} {:model "Table" :id "t"}]
-                                                             "model" "table"}}]}]}
+                                                     :attrs {:entityId [{:model "Database" :id "db"} {:model "Table" :id "t"}]
+                                                             :model "table"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document"}]}
           deps (first (serialization/import-dependencies :model/Document [document]))]
@@ -449,8 +449,8 @@
                                           :content [{:type "listItem"
                                                      :content [{:type "paragraph"
                                                                 :content [{:type "smartLink"
-                                                                           :attrs {"entityId" [{:model "Card" :id 999}]
-                                                                                   "model" "card"}}]}]}]}]}
+                                                                           :attrs {:entityId [{:model "Card" :id 999}]
+                                                                                   :model "card"}}]}]}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document"}]}
           deps (first (serialization/import-dependencies :model/Document [document]))]
@@ -477,11 +477,11 @@
                     :document {:type "doc"
                                :content [{:type "paragraph"
                                           :content [{:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Unknown" :id 789}]
-                                                             "model" "unknown-model"}}
+                                                     :attrs {:entityId [{:model "Unknown" :id 789}]
+                                                             :model "unknown-model"}}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 456}]
-                                                             "model" "card"}}]}]}
+                                                     :attrs {:entityId [{:model "Card" :id 456}]
+                                                             :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document"}]}
           deps (first (serialization/import-dependencies :model/Document [document]))]
@@ -495,10 +495,10 @@
                     :document {:type "doc"
                                :content [{:type "paragraph"
                                           :content [{:type "smartLink"
-                                                     :attrs {"model" "card"}}
+                                                     :attrs {:model "card"}}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 456}]
-                                                             "model" "card"}}]}]}
+                                                     :attrs {:entityId [{:model "Card" :id 456}]
+                                                             :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document"}]}
           deps (first (serialization/import-dependencies :model/Document [document]))]
@@ -512,11 +512,11 @@
                     :document {:type "doc"
                                :content [{:type "paragraph"
                                           :content [{:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 789}]
-                                                             "model" "card"}}
+                                                     :attrs {:entityId [{:model "Card" :id 789}]
+                                                             :model "card"}}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 789}]
-                                                             "model" "card"}}]}]}
+                                                     :attrs {:entityId [{:model "Card" :id 789}]
+                                                             :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document"}]}
           deps (first (serialization/import-dependencies :model/Document [document]))]
@@ -542,10 +542,10 @@
                     :document {:type "doc"
                                :content [{:type "paragraph"
                                           :content [{:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 789}]}}
+                                                     :attrs {:entityId [{:model "Card" :id 789}]}}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 456}]
-                                                             "model" "card"}}]}]}
+                                                     :attrs {:entityId [{:model "Card" :id 456}]
+                                                             :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document"}]}
           deps (first (serialization/import-dependencies :model/Document [document]))]
@@ -561,8 +561,8 @@
                                           :content [{:type "smartLink"
                                                      :attrs nil}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 456}]
-                                                             "model" "card"}}]}]}
+                                                     :attrs {:entityId [{:model "Card" :id 456}]
+                                                             :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document"}]}
           deps (first (serialization/import-dependencies :model/Document [document]))]
@@ -577,22 +577,22 @@
                                :content [{:type "paragraph"
                                           :content [{:type "text" :text "Check out this "}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 789}]
-                                                             "model" "card"}}
+                                                     :attrs {:entityId [{:model "Card" :id 789}]
+                                                             :model "card"}}
                                                     {:type "text" :text " and this "}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Dashboard" :id 456}]
-                                                             "model" "dashboard"}}]}
+                                                     :attrs {:entityId [{:model "Dashboard" :id 456}]
+                                                             :model "dashboard"}}]}
                                          {:type "heading"
-                                          :attrs {"level" 2}
+                                          :attrs {:level 2}
                                           :content [{:type "text" :text "Section with table"}]}
                                          {:type "table"
                                           :content [{:type "tableRow"
                                                      :content [{:type "tableCell"
                                                                 :content [{:type "paragraph"
                                                                            :content [{:type "smartLink"
-                                                                                      :attrs {"entityId" [{:model "Database" :id "db"} {:model "Table" :id "t"}]
-                                                                                              "model" "table"}}]}]}]}]}]}
+                                                                                      :attrs {:entityId [{:model "Database" :id "db"} {:model "Table" :id "t"}]
+                                                                                              :model "table"}}]}]}]}]}]}
                     :content_type "application/json+vnd.prose-mirror"
                     :serdes/meta [{:model "Document"}]}
           deps (first (serialization/import-dependencies :model/Document [document]))]
@@ -608,8 +608,8 @@
                     :creator_id 456
                     :document {:type "doc"
                                :content [{:type "smartLink"
-                                          :attrs {"entityId" [{:model "Card" :id 456}]
-                                                  "model" "card"}}]}
+                                          :attrs {:entityId [{:model "Card" :id 456}]
+                                                  :model "card"}}]}
                     :content_type "application/json" ; Not prose-mirror
                     :serdes/meta [{:model "Document"}]}
           deps (first (serialization/import-dependencies :model/Document [document]))]
@@ -622,9 +622,9 @@
   (testing "Document export dependencies includes embedded cards"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "cardEmbed"
-                                                                            :attrs {"id" 456}}
+                                                                            :attrs {:id 456}}
                                                                            {:type "cardEmbed"
-                                                                            :attrs {"id" 789}}]}
+                                                                            :attrs {:id 789}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
       (let [deps (export-dependencies document-id)]
         (is (= #{[:model/Card 456]
@@ -635,11 +635,11 @@
   (testing "Document export dependencies includes smart links"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"
-                                                                            :attrs {"entityId" 456
-                                                                                    "model" "card"}}
+                                                                            :attrs {:entityId 456
+                                                                                    :model "card"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {"entityId" 789
-                                                                                    "model" "dashboard"}}]}
+                                                                            :attrs {:entityId 789
+                                                                                    :model "dashboard"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
       (let [deps (export-dependencies document-id)]
         (is (= #{[:model/Card 456]
@@ -650,13 +650,13 @@
   (testing "Document export dependencies includes both embedded cards and smart links"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "cardEmbed"
-                                                                            :attrs {"id" 111}}
+                                                                            :attrs {:id 111}}
                                                                            {:type "smartLink"
-                                                                            :attrs {"entityId" 222
-                                                                                    "model" "card"}}
+                                                                            :attrs {:entityId 222
+                                                                                    :model "card"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {"entityId" 333
-                                                                                    "model" "table"}}]}
+                                                                            :attrs {:entityId 333
+                                                                                    :model "table"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
       (let [deps (export-dependencies document-id)]
         (is (= #{[:model/Card 111]
@@ -677,11 +677,11 @@
   (testing "Document export dependencies ignores smart links with unknown model types"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"
-                                                                            :attrs {"entityId" 456
-                                                                                    "model" "card"}}
+                                                                            :attrs {:entityId 456
+                                                                                    :model "card"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {"entityId" 789
-                                                                                    "model" "unknown-model"}}]}
+                                                                            :attrs {:entityId 789
+                                                                                    :model "unknown-model"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
       (let [deps (export-dependencies document-id)]
         (is (= #{[:model/Card 456]}
@@ -692,10 +692,10 @@
   (testing "Document export dependencies handles duplicate references correctly"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "cardEmbed"
-                                                                            :attrs {"id" 456}}
+                                                                            :attrs {:id 456}}
                                                                            {:type "smartLink"
-                                                                            :attrs {"entityId" 456
-                                                                                    "model" "card"}}]}
+                                                                            :attrs {:entityId 456
+                                                                                    :model "card"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
       (let [deps (export-dependencies document-id)]
         (is (= #{[:model/Card 456]}
@@ -712,14 +712,14 @@
   (testing "Document export dependencies correctly maps all supported smart link model types"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"
-                                                                            :attrs {"entityId" 111
-                                                                                    "model" "card"}}
+                                                                            :attrs {:entityId 111
+                                                                                    :model "card"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {"entityId" 222
-                                                                                    "model" "dashboard"}}
+                                                                            :attrs {:entityId 222
+                                                                                    :model "dashboard"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {"entityId" 333
-                                                                                    "model" "table"}}]}
+                                                                            :attrs {:entityId 333
+                                                                                    :model "table"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
       (let [deps (export-dependencies document-id)]
         (is (= #{[:model/Card 111]
@@ -770,16 +770,16 @@
       (let [node (-> {:content_type "application/json+vnd.prose-mirror"
                       :document     {:type    "doc"
                                      :content [{:type  "cardEmbed"
-                                                :attrs {"id"               card-id
-                                                        "stored_result_id" 987654321}}]}}
+                                                :attrs {:id               card-id
+                                                        :stored_result_id 987654321}}]}}
                      export-document-ast
                      :content
                      first)]
         (testing "still rewrites its Card :id to a serdes path — the ephemeral Card is a real serdes entity"
-          (is (vector? (get-in node [:attrs "id"])))
-          (is (= "Card" (:model (first (get-in node [:attrs "id"]))))))
+          (is (vector? (get-in node [:attrs :id])))
+          (is (= "Card" (:model (first (get-in node [:attrs :id]))))))
         (testing "drops :stored_result_id — a raw local id for a row that is not a serdes entity, which would resolve to an unrelated snapshot on import"
-          (is (not (contains? (:attrs node) "stored_result_id"))))))))
+          (is (not (contains? (:attrs node) :stored_result_id))))))))
 
 (deftest document-serdes-live-card-embed-keeps-attrs-test
   (testing "A live cardEmbed exports its :id as a serdes path and is otherwise untouched"
@@ -788,12 +788,12 @@
       (let [node (-> {:content_type "application/json+vnd.prose-mirror"
                       :document     {:type    "doc"
                                      :content [{:type  "cardEmbed"
-                                                :attrs {"id" card-id "_id" "abc"}}]}}
+                                                :attrs {:id card-id :_id "abc"}}]}}
                      export-document-ast
                      :content
                      first)]
-        (is (= "Card" (:model (first (get-in node [:attrs "id"])))))
-        (is (= "abc" (get-in node [:attrs "_id"])))))))
+        (is (= "Card" (:model (first (get-in node [:attrs :id])))))
+        (is (= "abc" (get-in node [:attrs :_id])))))))
 
 (defn- import-document-ast
   "Run an exported AST back through the serdes `:document` import transform."
@@ -809,13 +809,13 @@
                       {:content_type "application/json+vnd.prose-mirror"
                        :document     {:type    "doc"
                                       :content [{:type  "cardEmbed"
-                                                 :attrs {"id" card-id}}]}})
+                                                 :attrs {:id card-id}}]}})
             imported (import-document-ast
                       {:content_type "application/json+vnd.prose-mirror"
                        :document     exported})]
         (testing "export rewrites the id to a serdes path"
-          (is (vector? (get-in exported [:content 0 :attrs "id"]))))
+          (is (vector? (get-in exported [:content 0 :attrs :id]))))
         (testing "import rewrites it back to this instance's Card id — on the serialized form the id
                   is a serdes path, so any guard that expects a raw integer skips the node and leaves
                   the path in place"
-          (is (= card-id (get-in imported [:content 0 :attrs "id"]))))))))
+          (is (= card-id (get-in imported [:content 0 :attrs :id]))))))))

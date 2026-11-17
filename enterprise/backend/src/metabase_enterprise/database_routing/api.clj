@@ -11,6 +11,7 @@
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.schema :as warehouses.schema]
    [metabase.workspaces.core :as workspaces]))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -36,7 +37,7 @@
                                                   [:sequential
                                                    [:map {:closed true}
                                                     [:name               ms/NonBlankString]
-                                                    [:details            ms/DatabaseDetails]]]]]]
+                                                    [:details            ::warehouses.schema/database.connection-details]]]]]]
   (workspaces/check-not-in-workspace-mode! "Database routing")
   (api/check-400 (database-routing.db/router-exists? router_database_id))
   (api/check-400 (not (database-routing.db/destination-name-exists? router_database_id (map :name destinations)))

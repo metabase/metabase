@@ -1058,7 +1058,7 @@
   [index block]
   (let [card-ids (->> (tree-seq :content :content block)
                       (keep #(when (= (:type %) prose-mirror/card-embed-type)
-                               (get-in % [:attrs "id"]))))
+                               (get-in % [:attrs :id]))))
         text     (prose-mirror/ast->text block)]
     (str "[" index "] " (:type block)
          (when (seq card-ids)

@@ -1664,7 +1664,7 @@
                                            (format "exploration/%d/summary/append" eid)
                                            (assoc append-display+viz :exploration_query_ids [qid]))
               card-id (-> (t2/select-one-fn :document :model/Document :id (:id doc))
-                          :content last :content first :attrs (get "id"))
+                          :content last :content first :attrs (get :id))
               use-row (t2/select-one :model/StoredResultUse :stored_result_id sr-id :card_id card-id)
               attrs   (-> (t2/select-one-fn :document :model/Document :id (:id doc))
                           :content last :content first :attrs)]
@@ -1674,13 +1674,13 @@
               "appending records a stored_result_use row for the source snapshot")
           (is (nil? (:exploration_id use-row))
               "the card-use row has no exploration_id")
-          (is (= sr-id (get attrs "stored_result_id")))
-          (is (string? (get attrs "chart_href")))
-          (is (string? (get attrs "child_target_id")))
-          (is (= [qid] (get-in attrs ["host_data" :query_ids])))
-          (is (nil? (get-in attrs ["host_data" :explore_filters]))
+          (is (= sr-id (get attrs :stored_result_id)))
+          (is (string? (get attrs :chart_href)))
+          (is (string? (get attrs :child_target_id)))
+          (is (= [qid] (get-in attrs [:host_data :query_ids])))
+          (is (nil? (get-in attrs [:host_data :explore_filters]))
               "unfiltered charts omit explore_filters from host_data")
-          (is (uuid? (parse-uuid (str (get attrs "_id"))))
+          (is (uuid? (parse-uuid (str (get attrs :_id))))
               "_id is stamped for per-node identity (string after JSON round-trip)")
           (is (false? (:is_placeholder doc))
               "first append clears is_placeholder"))))))
@@ -1720,12 +1720,12 @@
                                           (assoc append-display+viz :exploration_query_ids [qid]))
               attrs (-> (t2/select-one-fn :document :model/Document :id (:id doc))
                         :content last :content first :attrs)]
-          (is (= [qid] (get-in attrs ["host_data" :query_ids])))
+          (is (= [qid] (get-in attrs [:host_data :query_ids])))
           (is (=? [{:operator       "="
                     :value          filter-value
                     :dimension_name "Price"
                     :display_value  "2"}]
-                  (get-in attrs ["host_data" :explore_filters]))))))))
+                  (get-in attrs [:host_data :explore_filters]))))))))
 
 (deftest exploration-append-rolls-back-on-failure-test
   (testing "When a write fails partway through, the composite StoredResult / Card / use rows all roll back — no orphans"
@@ -1828,8 +1828,8 @@
                               (assoc append-display+viz :exploration_query_ids [qid]))
         (let [attrs   (-> (t2/select-one-fn :document :model/Document :id doc-id)
                           :content last :content first :attrs)
-              sr-id   (get attrs "stored_result_id")
-              old-card-id (get attrs "id")
+              sr-id   (get attrs :stored_result_id)
+              old-card-id (get attrs :id)
               draft-id -10
               ;; Simulate the editor forking the embed into a negative-id draft card on save.
               updated (mt/user-http-request u :put 200 (format "document/%d" doc-id)

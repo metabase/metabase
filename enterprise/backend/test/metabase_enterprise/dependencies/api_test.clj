@@ -1291,8 +1291,8 @@
                                                         :document {:type "doc"
                                                                    :content [{:type "paragraph"
                                                                               :content [{:type "smartLink"
-                                                                                         :attrs {"entityId" referenced-dashboard-id
-                                                                                                 "model" "dashboard"}}]}]}
+                                                                                         :attrs {:entityId referenced-dashboard-id
+                                                                                                 :model "dashboard"}}]}]}
                                                         :content_type "application/json+vnd.prose-mirror"}]
         (events/publish-event! :event/document-create {:object (t2/select-one :model/Document :id document-id) :user-id (mt/user->id :crowberto)})
         (deps.test/synchronously-run-dependency-job!)
@@ -1310,8 +1310,8 @@
                                                                  :document {:type "doc"
                                                                             :content [{:type "paragraph"
                                                                                        :content [{:type "smartLink"
-                                                                                                  :attrs {"entityId" referenced-document-id
-                                                                                                          "model" "document"}}]}]}
+                                                                                                  :attrs {:entityId referenced-document-id
+                                                                                                          :model "document"}}]}]}
                                                                  :content_type "application/json+vnd.prose-mirror"}]
         (events/publish-event! :event/document-create {:object (t2/select-one :model/Document :id unreffed-document-id) :user-id (mt/user->id :crowberto)})
         (deps.test/synchronously-run-dependency-job!)

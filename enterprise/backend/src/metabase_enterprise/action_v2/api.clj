@@ -32,10 +32,9 @@
 (mr/def ::api-action-expression
   "A more relaxed version of ::action-expression that can still have opaque identifiers inside inside.
 
-  Opaque ([[ms/OpaqueJSONObject]]) rather than a bare `:map`: the shape is deliberately unspecified here, and a closed
-  map with no declared entries would have every key stripped during request decoding, so the handler would only ever
-  see `{}`."
-  ms/OpaqueJSONObject)
+  Open rather than a bare `:map`: the shape is deliberately unspecified here, and a map with no declared entries
+  would have every key stripped during request decoding, so the handler would only ever see `{}`."
+  [:map {:closed false, :description "an action expression"}])
 
 (mr/def ::api-action-id-or-expression
   "All the various ways of referring to an action with the v2 APIs."
@@ -57,7 +56,7 @@
   Same shape as [[metabase.actions.schema/execute-parameter-values]]. Decoding sees a permissive string-keyed map and the
   values are validated against, rather than decoded through, [[strict-action-value-map]]."
   [:and
-   ms/OpaqueJSONObject
+   (ms/string-keyed-map :metabase.util.malli/value)
    [:fn {:error/message "value must be a scalar, or a sequence of scalars"}
     #(mr/validate strict-action-value-map %)]])
 

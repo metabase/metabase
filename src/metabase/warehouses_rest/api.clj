@@ -40,6 +40,7 @@
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.models.database :as database]
    [metabase.warehouses.schema :as warehouses.schema]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -633,7 +634,7 @@
    :- [:map {:closed true}
        [:name              ms/NonBlankString]
        [:engine            DBEngine]
-       [:details           ms/DatabaseDetails]
+       [:details           ::warehouses.schema/database.connection-details]
        [:is_full_sync      {:default true}   [:maybe ms/BooleanValue]]
        [:is_on_demand      {:default false}  [:maybe ms/BooleanValue]]
        [:schedules         {:optional true}  [:maybe sync.schedules/ExpandedSchedulesMap]]
@@ -742,7 +743,7 @@
    {{:keys [engine details id]} :details} :- [:map {:closed true}
                                               [:details [:map {:closed true}
                                                          [:engine  DBEngine]
-                                                         [:details ms/DatabaseDetails]
+                                                         [:details ::warehouses.schema/database.connection-details]
                                                          [:id {:optional true} [:maybe ms/PositiveInt]]]]]]
   (api/check-superuser)
   (let [database         (when id (api/write-check (warehouses-rest.db/database id)))
@@ -834,9 +835,9 @@
        [:name               {:optional true} [:maybe ms/NonBlankString]]
        [:engine             {:optional true} [:maybe DBEngine]]
        [:refingerprint      {:optional true} [:maybe :boolean]]
-       [:details            {:optional true} [:maybe ms/DatabaseDetails]]
-       [:write_data_details {:optional true} [:maybe ms/DatabaseDetails]]
-       [:admin_details      {:optional true} [:maybe ms/DatabaseDetails]]
+       [:details            {:optional true} [:maybe ::warehouses.schema/database.connection-details]]
+       [:write_data_details {:optional true} [:maybe ::warehouses.schema/database.connection-details]]
+       [:admin_details      {:optional true} [:maybe ::warehouses.schema/database.connection-details]]
        [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
        [:is_full_sync       {:optional true} [:maybe ms/BooleanValue]]
        [:is_on_demand       {:optional true} [:maybe ms/BooleanValue]]
@@ -845,7 +846,7 @@
        [:points_of_interest {:optional true} [:maybe :string]]
        [:auto_run_queries   {:optional true} [:maybe :boolean]]
        [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
-       [:settings           {:optional true} [:maybe ms/DatabaseSettings]]
+       [:settings           {:optional true} [:maybe ::warehouses.schema/database.local-settings]]
        [:is_stub            {:optional true} [:maybe :boolean]]]]
   (when (true? (:is_stub body))
     (throw (ex-info (tru "is_stub may not be set via the API")
@@ -906,6 +907,9 @@
        :body   conn-error}
       ;; no error, proceed with update
       (let [existing-settings (:settings existing-database)
+            ;; Setting names are kebab-case, and readers look them up that way. Normalize once, so a snake_case key
+            ;; can't skip the checks below and land beside the real one.
+            settings          (some-> settings (update-keys #(keyword (u/->kebab-case-en (clojure.core/name %)))))
             pending-settings  (into {}
                                     ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
                                     (remove (fn [[_k v]] (nil? v)))
@@ -937,6 +941,18 @@
                                  (sync.schedules/schedule-map->cron-strings schedules)))
             pending-db        (merge existing-database updates)
             driver-supports?  (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))]
+        ;; A database-local setting with `:visibility :admin` is hidden from non-superusers when the database is
+        ;; read, so only a superuser may send one, whatever its value. A check on the value would tell a
+        ;; non-superuser whether a guess matches the stored value.
+        (when (some (fn [setting-kw]
+                      (and (setting/registered? setting-kw)
+                           (= :admin (:visibility (setting/resolve-setting setting-kw)))))
+                    (keys settings))
+          (api/check-superuser))
+        ;; After the superuser check, so that the answer can't tell a non-superuser whether a guess matches the
+        ;; stored value.
+        (workspaces/check-database-workspace-schema-write! (:database-workspace-schema existing-settings)
+                                                           (:database-workspace-schema pending-settings))
         (doseq [setting-kw (database/changed-settings settings existing-settings)]
           (try
             (setting/validate-settable! setting-kw)

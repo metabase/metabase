@@ -77,8 +77,8 @@
   top-level blocks; `nil` appends the embed at the end and out-of-range indexes are clamped.
 
   Optional kwargs:
-  - `:extra-attrs` — string-keyed map merged onto the `cardEmbed` attrs (e.g. `\"stored_result_id\"`,
-    `\"chart_href\"`, `\"child_target_id\"`, `\"host_data\"`).
+  - `:extra-attrs` — map merged onto the `cardEmbed` attrs (e.g. `:stored_result_id`,
+    `:chart_href`, `:child_target_id`, `:host_data`).
 
   Adding a card clears `:is_placeholder` when it was set. The caller is responsible for
   write-checking the document first. The document is re-read inside the transaction so a

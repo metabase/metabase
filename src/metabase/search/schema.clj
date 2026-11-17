@@ -21,3 +21,9 @@
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:lang_code  {:optional true} [:maybe :string]]])
+
+(mr/def ::weights.overrides
+  "The search weights a client overrides, by weight name, with the context they apply to."
+  [:map {:closed false, :description "search weight overrides"}
+   [:context       {:default :default} :keyword]
+   [:search_engine {:optional true} [:maybe :string]]])

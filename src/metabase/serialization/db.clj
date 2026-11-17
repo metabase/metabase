@@ -9,7 +9,7 @@
 
 (mr/def ::row
   "A row of any serialized model, as its spec imports it; the model's own hooks and schemas check it."
-  [:map {:closed false, ::mr/deliberately-open true, :description "row of a serialized model"}])
+  [:map {:closed false, :description "row of a serialized model"}])
 
 (mr/def ::columns
   "The columns a query selects, or nil for every column."

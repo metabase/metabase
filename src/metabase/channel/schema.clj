@@ -173,3 +173,7 @@
     ::channel.details-by-type
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::bug-report.object
+  "A JSON object of diagnostic information in a bug report, forwarded as it arrived."
+  [:map {:closed false, :description "bug report diagnostic information"}])

@@ -12,13 +12,12 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::prose-mirror-node.attrs
-  "The `attrs` of a ProseMirror node in a comment: the ones this code reads by name, and whatever else the editor put
-  there. Every key, declared or not, is a string, so the map never mixes keyword and string keys."
-  (ms/string-keyed-object
-   ["model"    {:optional true} [:maybe :string]]
-   ["entityId" {:optional true} [:maybe [:or :int :string]]]
-   ["label"    {:optional true} [:maybe :string]]
-   ["level"    {:optional true} [:maybe :int]]))
+  "The `attrs` of a ProseMirror node in a comment: the ones this code reads by name, and whatever else the editor put there."
+  [:map {:closed false, :description "ProseMirror node attrs"}
+   [:model    {:optional true} [:maybe :string]]
+   [:entityId {:optional true} [:maybe [:or :int :string]]]
+   [:label    {:optional true} [:maybe :string]]
+   [:level    {:optional true} [:maybe :int]]])
 
 (mr/def ::prose-mirror-node
   "One node of the ProseMirror/TipTap document a comment is written in, in the shape ProseMirror's `Node.toJSON`
@@ -36,23 +35,9 @@
   "The `:content` column of a Comment, decoded: the ProseMirror document the comment was written in."
   ::prose-mirror-node)
 
-(mr/def ::prose-mirror-node.json-attrs
-  "The `attrs` of a ProseMirror node as decoded JSON, before normalization stringifies its keys: the keys belong to the
-  editor's node type and may be keywords or strings."
-  [:map {:closed false, ::mr/deliberately-open true, :description "ProseMirror node attrs"}])
-
-(mr/def ::prose-mirror-node.json
-  "A ProseMirror node as decoded JSON, before normalization stringifies the keys of its `attrs`."
-  [:map {:closed true}
-   [:type                     :string]
-   [:attrs   {:optional true} [:maybe [:ref ::prose-mirror-node.json-attrs]]]
-   [:content {:optional true} [:sequential [:ref ::prose-mirror-node.json]]]
-   [:marks   {:optional true} [:sequential [:ref ::prose-mirror-node.json]]]
-   [:text    {:optional true} :string]])
-
 (mu/defn normalize-content :- [:maybe ::comment.content]
   "Normalize a comment's content on its way in from the API or out of the application database."
-  [content :- [:maybe ::prose-mirror-node.json]]
+  [content :- [:maybe ::comment.content]]
   (some->> content (lib/normalize ::comment.content)))
 
 (mr/def ::comment.highlight

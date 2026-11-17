@@ -186,8 +186,8 @@
   [content]
   (into []
         (comp (filter #(and (= "smartLink" (:type %))
-                            (= "user" (get-in % [:attrs "model"]))))
-              (keep #(let [entity-id (get-in % [:attrs "entityId"])]
+                            (= "user" (get-in % [:attrs :model]))))
+              (keep #(let [entity-id (get-in % [:attrs :entityId])]
                        (when (pos-int? entity-id)
                          entity-id))))
         (tree-seq :content :content content)))

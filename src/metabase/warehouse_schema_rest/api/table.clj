@@ -407,18 +407,22 @@
                              (tru "There was an error uploading the file"))}})
     (finally (io/delete-file (:file options) :silently))))
 
+(mr/def ::csv-upload.parts
+  "The multipart parts of a CSV upload, open so that a part under any other name is kept for [[CsvUploadParts]] to refuse."
+  [:map {:closed false, :description "CSV upload multipart parts"}
+   [:file
+    [:map {:closed true}
+     [:filename :string]
+     [:tempfile (ms/InstanceOfClass java.io.File)]]]
+   [:collection_id {:optional true} :string]])
+
 (def ^:private CsvUploadParts
   "The multipart parts a CSV upload may carry. A part under any other name is rejected rather than dropped, so a second
-  file cannot be smuggled past the upload: `::mc/default` keeps the extra parts, and the check below refuses them."
+  file cannot be smuggled past the upload."
   [:and
-   (ms/string-keyed-object
-    ["file"
-     [:map {:closed true}
-      [:filename :string]
-      [:tempfile (ms/InstanceOfClass java.io.File)]]]
-    ["collection_id" {:optional true} :string])
+   ::csv-upload.parts
    (mu/with-api-error-message
-    [:fn (fn [parts] (every? #{"file" "collection_id"} (keys parts)))]
+    [:fn (fn [parts] (every? #{:file :collection_id} (keys parts)))]
     (deferred-tru "unexpected multipart part"))])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -435,7 +439,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:strs [file]} :- CsvUploadParts]
+   {:keys [file]} :- CsvUploadParts]
   (update-csv! {:table-id id
                 :filename (:filename file)
                 :file     (:tempfile file)
@@ -455,7 +459,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:strs [file]} :- CsvUploadParts]
+   {:keys [file]} :- CsvUploadParts]
   (update-csv! {:table-id id
                 :filename (:filename file)
                 :file     (:tempfile file)

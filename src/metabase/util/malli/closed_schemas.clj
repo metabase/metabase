@@ -1,14 +1,18 @@
 (ns metabase.util.malli.closed-schemas
-  "Find the schemas reachable from a schema that do not declare their shape: open maps, keyword-keyed `:map-of`s and
-  `:any`.
+  "Find the schemas reachable from a schema that let a value through undeclared.
 
-  Accepted instead: a map with a `::mc/default` entry whose schema is a map schema (and is walked), or any
-  `::mc/default` entry inside a conjunct of an `:and`, `:any` as a conjunct of an `:and`,
-  and the schemas marked `::mr/deliberately-open`. Registry schemas are walked once per `visited` set, except the ones of a
-  library."
+  - `:any`: a schema that accepts a value of any shape. For a function argument that is `:any`, `any?`, `:some` and
+    `some?`; [[passes-as-arrived?]] is the wider rule for an API request.
+  - `:keyword-keyed-map-of`: a `:map-of` whose key schema accepts a keyword, for an API request only.
+  - `:open-map`: a `[:map {:closed false} ...]`, which is allowed and only reported.
+
+  A `::mc/default` entry hands the other keys of a map to its schema, which is walked like any other. One conjunct of
+  an `:and` that lets nothing through settles the value, so only the open maps of its siblings are reported; for an
+  API request a `:fn` conjunct is a guard and settles nothing. An alternative of an `:or` or a `:multi` is reported like the schema itself."
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
+   [medley.core :as m]
    [metabase.config.core :as config]
    [metabase.util.malli.registry :as mr]))
 
@@ -18,6 +22,39 @@
 (def ^:dynamic *enabled*
   "Whether the checks in this namespace do anything; off in prod."
   (not config/is-prod?))
+
+(def ^:private value-probes
+  "Values no typed schema accepts: a map with a key of ours, and a sequence of such maps."
+  [{::probe 1} [{::probe 1}]])
+
+(def ^:private key-probes
+  "Keywords no schema declares."
+  [::probe :probe])
+
+(defn- accepts-some? [schema probes]
+  (boolean (some #(try (mr/validate schema %) (catch Throwable _ false)) probes)))
+
+(defn passes-as-arrived?
+  "Whether `schema` accepts a map with a key of ours, or a sequence of such maps, as it arrived."
+  [schema]
+  (accepts-some? schema value-probes))
+
+(defn accepts-keyword?
+  "Whether `key-schema` accepts a keyword no schema declares."
+  [key-schema]
+  (accepts-some? key-schema key-probes))
+
+(defn- external-registry-key?
+  "Whether `registry-key` belongs to a namespace outside Metabase, such as the schemas of a library."
+  [registry-key]
+  (let [ns-name (namespace registry-key)]
+    (and (not (str/starts-with? ns-name "metabase"))
+         (some? (find-ns (symbol ns-name))))))
+
+(defn- any-schema?
+  "Whether `schema` is one of the schemas that accept everything."
+  [schema]
+  (contains? #{:any 'any? :some 'some?} (mc/type schema)))
 
 (defn- ref-name
   "The registry key a schema refers to, for `[:ref ::foo]` and for a bare `::foo` reference alike."
@@ -34,140 +71,236 @@
     (when-not (identical? dereffed schema)
       dereffed)))
 
-(def ^:private open-map-of-key-schemas
-  "`:map-of` key schemas that make the map an open bag of arbitrary keys."
-  #{:keyword 'keyword? :qualified-keyword 'qualified-keyword? :simple-keyword 'simple-keyword?
-    :any :some 'any? 'some?})
-
-(defn- open-map-of-key?
-  "Whether a `:map-of` key schema accepts arbitrary keywords, alone or as an alternative."
-  [key-schema]
-  (let [key-schema (try (mc/deref-all (mc/schema key-schema)) (catch Throwable _ nil))]
-    (boolean
-     (when key-schema
-       (or (contains? open-map-of-key-schemas (mc/form key-schema))
-           (contains? open-map-of-key-schemas (mc/type key-schema))
-           (and (contains? #{:or :and :maybe :schema} (mc/type key-schema))
-                (some open-map-of-key? (mc/children key-schema))))))))
-
-(def ^:private open-map-schemas
-  "Predicate schemas that accept a map with any keys."
-  #{'map?})
-
-(def ^:private any-schemas
-  "Schemas that let a value of any shape through."
-  #{:any 'any? :some 'some?})
-
-(def ^:private value-schemas
-  "Schemas whose children are not walked: values, and the signatures of function schemas, which validate as `ifn?`."
-  #{:= :not= :enum :fn :re :=> :-> :function})
-
-(defn- external-registry-key?
-  "Whether `registry-key` belongs to a namespace outside Metabase, such as a library's schemas."
-  [registry-key]
-  (let [ns-name (namespace registry-key)]
-    (and (not (str/starts-with? ns-name "metabase"))
-         (some? (find-ns (symbol ns-name))))))
-
-(defn- deliberately-open? [schema]
-  (true? (::mr/deliberately-open (mc/properties schema))))
-
-(defn- default-entry? [child]
-  (and (vector? child) (= (first child) ::mc/default)))
-
-(defn- declaring-default-entry?
-  "Whether `child` is a `::mc/default` entry whose schema is a map schema for the other keys: a deliberately open map,
-  a `:map-of`, or a closed map."
-  [child]
-  (when (default-entry? child)
-    (when-let [default (try (mc/deref-all (mc/schema (peek child))) (catch Throwable _ nil))]
-      (or (deliberately-open? default)
-          (contains? #{:map-of :multi} (mc/type default))
-          (and (= :map (mc/type default))
-               (true? (:closed (mc/properties default))))))))
+(defn- default-entry? [[k]]
+  (= k ::mc/default))
 
 (defn- finding [schema trail kind]
   {:trail trail, :kind kind, :form (mc/form schema)})
 
-(defn- walk-schema!
-  "Walk `schema`, adding to `findings`; `conjunct?` is true inside a conjunct of an `:and`, where `:any` is allowed."
-  [schema trail {:keys [visited findings any? skip-entry?], :as options} conjunct?]
-  (when-let [schema (try (mc/schema schema) (catch Throwable _ nil))]
+(defn- unstripped
+  "Everything a result lets through, at its own level or below."
+  [{:keys [passes nested]}]
+  (concat passes nested))
+
+(defn- schema-trail
+  "The part of `trail` from the last registry key on, which names the schema a finding is in."
+  [trail]
+  (let [i (last (keep-indexed (fn [i k] (when (and (qualified-keyword? k) (not= k ::mc/default)) i)) trail))]
+    (cond-> trail i (subvec i))))
+
+(defn- one-per-schema
+  "The `found` findings with one trail kept for each schema they are in, so a result does not grow with every path."
+  [found]
+  (into [] (m/distinct-by (juxt :kind (comp schema-trail :trail))) found))
+
+(defn- under
+  "A result walked at the root, moved under `trail`."
+  [result trail]
+  (letfn [(move [found] (mapv #(update % :trail (partial into trail)) found))]
+    (-> result (update :passes move) (update :nested move))))
+
+(def ^:private alternative-schemas
+  "Schemas that accept what any one of their children accepts."
+  #{:or :orn :maybe :multi :schema})
+
+(def ^:private collection-schemas
+  "Schemas whose children describe the elements of a sequence."
+  #{:sequential :vector :set :tuple :cat :catn :alt :altn :? :* :+ :repeat})
+
+(defn- child-schemas
+  "The `[trail-key schema]` pairs of the children of `schema`, entries and plain children alike."
+  [schema]
+  (keep-indexed (fn [i child]
+                  (cond
+                    (and (vector? child) (= 3 (count child)) (mc/schema? (nth child 2)))
+                    [(first child) (nth child 2)]
+
+                    (mc/schema? child)
+                    [i child]))
+                (mc/children schema)))
+
+(defn failing
+  "The `found` findings a check throws on: every one that is not an open map."
+  [found]
+  (remove #(= (:kind %) :open-map) found))
+
+(declare walk)
+
+(def ^:private results
+  "The result of each registry key walked so far, per leaf rule, for one state of the registry."
+  (atom {}))
+
+(defn- registry-state
+  "An object that is replaced whenever a schema is registered."
+  []
+  (mr/cached ::registry-state ::registry-state #(Object.)))
+
+(defn- cached-result [cache-key registry-key]
+  (let [{:keys [state by-key]} @results]
+    (when (identical? state (registry-state))
+      (get by-key [cache-key registry-key]))))
+
+(defn- cache-result! [cache-key registry-key result]
+  (let [state (registry-state)]
+    (swap! results (fn [{current :state, :keys [by-key]}]
+                     {:state  state
+                      :by-key (assoc (if (identical? current state) by-key {}) [cache-key registry-key] result)}))))
+
+(defn- walk-registry-key
+  "The result of the schema registered as `registry-key`: walked once per walk, and cached across walks unless a
+  cycle cut it short."
+  [schema registry-key trail {:keys [in-progress cycles seen cut-short cache-key], :as state}]
+  (cond
+    (external-registry-key? registry-key)
+    {:typed? true}
+
+    (contains? @in-progress registry-key)
+    (do (vswap! cycles conj registry-key)
+        {:typed? true})
+
+    :else
+    (let [result (or (cached-result cache-key registry-key)
+                     (when-let [result (get @seen registry-key)]
+                       (when (contains? @cut-short registry-key)
+                         (vswap! cycles conj registry-key))
+                       result)
+                     (do
+                       (vswap! in-progress conj registry-key)
+                       (let [result (-> (if-let [dereffed (deref-safe schema)]
+                                          (walk dereffed [] state)
+                                          {:typed? true})
+                                        (update :passes one-per-schema)
+                                        (update :nested one-per-schema))]
+                         (vswap! in-progress disj registry-key)
+                         (vswap! cycles disj registry-key)
+                         (vswap! seen assoc registry-key result)
+                         (if (empty? @cycles)
+                           (when (mr/registered-schema registry-key)
+                             (cache-result! cache-key registry-key result))
+                           (vswap! cut-short conj registry-key))
+                         result)))]
+      (under result (conj trail registry-key)))))
+
+(defn- walk-map [schema trail state]
+  (let [children (mc/children schema)
+        skip?    (partial (:skip-entry? state) schema)
+        nested   (into []
+                       (comp (remove default-entry?)
+                             (remove (comp skip? first))
+                             (mapcat (fn [[k _ child]] (unstripped (walk child (conj trail k) state)))))
+                       children)
+        default  (some (fn [[_ _ child :as entry]]
+                         (when (default-entry? entry)
+                           (walk child (conj trail ::mc/default) state)))
+                       children)
+        passes   (into (if (false? (:closed (mc/properties schema)))
+                         [(finding schema trail :open-map)]
+                         [])
+                       (:passes default))]
+    {:passes passes
+     :typed? (empty? passes)
+     :nested (into nested (:nested default))}))
+
+(defn- walk-map-of [schema trail state]
+  (let [[key-schema value-schema] (mc/children schema)
+        open?                     ((:open-key? state) key-schema)]
+    {:passes (when open? [(finding schema trail :keyword-keyed-map-of)])
+     :typed? (not open?)
+     :nested (vec (unstripped (walk value-schema (conj trail 1) state)))}))
+
+(defn- walk-and
+  "An `:and` lets through what all its conjuncts do, so one conjunct that declares the whole value settles it."
+  [schema trail state]
+  (let [results (for [[k child] (child-schemas schema)]
+                  (walk child (conj trail k) state))
+        decides (or (seq (remove :guard? results)) results)
+        typed?  (boolean (some :typed? decides))
+        passes  (when-not typed? (mapcat :passes decides))
+        nested  (mapcat :nested results)
+        keep    (if (some (fn [result] (and (not (:guard? result)) (empty? (failing (unstripped result))))) decides)
+                  (partial filter #(= (:kind %) :open-map))
+                  identity)]
+    {:passes (vec (keep passes))
+     :typed? typed?
+     :guard? (every? :guard? results)
+     :nested (vec (keep nested))}))
+
+(defn- walk-leaf [schema trail {:keys [any-schema? guards?]}]
+  (let [guard? (and guards? (= (mc/type schema) :fn))]
+    (cond
+      (any-schema? schema)                {:passes [(finding schema trail :any)], :guard? guard?}
+      guard?                              {:guard? true}
+      :else                               {:typed? true})))
+
+(defn- walk
+  "What `schema` lets through: `:passes` at its own level and `:nested` below it, with `:typed?` when it lets nothing
+  through at its own level and `:guard?` when it is a `:fn`, which neither types nor strips."
+  [schema trail state]
+  (if-let [schema (try (mc/schema schema) (catch Throwable _ nil))]
     (let [schema-type  (mc/type schema)
           registry-key (ref-name schema)]
       (cond
         registry-key
-        (when-not (or (contains? @visited registry-key)
-                      (external-registry-key? registry-key))
-          (swap! visited conj registry-key)
-          (when-let [dereffed (deref-safe schema)]
-            (walk-schema! dereffed (conj trail registry-key) options conjunct?)))
+        (walk-registry-key schema registry-key trail state)
 
-        (deliberately-open? schema)
-        nil
+        (mc/-ref-schema? schema)
+        (if-let [dereffed (deref-safe schema)]
+          (walk dereffed trail state)
+          {:typed? true})
+
+        (= schema-type :map)
+        (walk-map schema trail state)
+
+        (= schema-type :map-of)
+        (walk-map-of schema trail state)
+
+        (= schema-type :and)
+        (walk-and schema trail state)
+
+        (contains? alternative-schemas schema-type)
+        (let [results (for [[k child] (child-schemas schema)]
+                        (walk child (conj trail k) state))
+              passes  (vec (mapcat :passes results))]
+          {:passes passes
+           :typed? (and (empty? passes) (boolean (some :typed? results)))
+           :guard? (and (seq results) (every? :guard? results))
+           :nested (vec (mapcat :nested results))})
+
+        (contains? collection-schemas schema-type)
+        {:typed? true
+         :nested (vec (mapcat (fn [[k child]] (unstripped (walk child (conj trail k) state)))
+                              (child-schemas schema)))}
 
         :else
-        (do
-          (cond
-            (or (and (= schema-type :map)
-                     (not (true? (:closed (mc/properties schema))))
-                     (not (some (if conjunct? default-entry? declaring-default-entry?) (mc/children schema))))
-                (contains? open-map-schemas schema-type))
-            (swap! findings conj (finding schema trail :open-map))
-
-            (and (= schema-type :map-of)
-                 (open-map-of-key? (first (mc/children schema))))
-            (swap! findings conj (finding schema trail :keyword-keyed-map-of))
-
-            (and any? (contains? any-schemas schema-type) (not conjunct?))
-            (swap! findings conj (finding schema trail :any)))
-          (cond
-            (mc/-ref-schema? schema)
-            (when-let [dereffed (deref-safe schema)]
-              (walk-schema! dereffed trail options conjunct?))
-
-            (contains? value-schemas schema-type)
-            nil
-
-            :else
-            (let [conjunct? (case schema-type
-                              :and                                          true
-                              (:schema :multi)                              conjunct?
-                              (:sequential :vector :set :tuple :maybe :or)  false
-                              conjunct?)]
-              (doseq [[i child] (map-indexed vector (mc/children schema))]
-                (cond
-                  (and (vector? child) (= 3 (count child)) (mc/schema? (nth child 2)))
-                  (when-not (and (= schema-type :map)
-                                 (not (default-entry? child))
-                                 (skip-entry? schema (first child)))
-                    (walk-schema! (nth child 2) (conj trail (first child)) options
-                                  (if (= schema-type :map)
-                                    (and conjunct? (default-entry? child))
-                                    conjunct?)))
-
-                  (= schema-type :map-of)
-                  (walk-schema! child (conj trail i) options (and conjunct? (zero? i)))
-
-                  (or (mc/schema? child) (vector? child) (qualified-keyword? child))
-                  (walk-schema! child (conj trail i) options conjunct?))))))))))
+        (walk-leaf schema trail state)))
+    {:typed? true}))
 
 (defn findings
-  "Every open map, keyword-keyed `:map-of` and, when `:any?`, `:any` reachable from `schema`, each with the `:trail`
-  of keys leading to it.
+  "Everything reachable from `schema` that lets a value through undeclared, each a map of `:kind` (`:any`,
+  `:keyword-keyed-map-of` or `:open-map`), the `:trail` of map keys, child indexes and registry keys that leads to it
+  from the root, and its `:form`.
 
-  Options: `:visited`, an atom of registry keys to skip and add to; `:any?`, default true; `:skip-entry?`, a
-  `(fn [map-schema k])` for map entries not to walk."
+  Options: `:any-schema?` and `:open-key?`, the rules for a leaf that accepts a value of any shape and for a `:map-of`
+  key that accepts any keyword, with `:cache-key` naming them;
+  `:guards?`, whether a `:fn` is a guard that types nothing; `:skip-entry?`, a `(fn [map-schema k])` for map entries
+  not to walk."
   ([schema]
    (findings schema {}))
-  ([schema {:keys [visited any? skip-entry?], :or {any? true, skip-entry? (constantly false)}}]
-   (let [found (atom [])]
-     (walk-schema! schema [] {:visited     (or visited (atom #{}))
-                              :findings    found
-                              :any?        any?
-                              :skip-entry? skip-entry?}
-                   false)
-     @found)))
+  ([schema {rule :any-schema?, key-rule :open-key?, :keys [cache-key skip-entry? guards?]}]
+   (one-per-schema (unstripped (walk schema [] {:in-progress (volatile! #{})
+                                                :seen        (volatile! {})
+                                                :cut-short   (volatile! #{})
+                                                :cycles      (volatile! #{})
+                                                :any-schema? (or rule any-schema?)
+                                                :open-key?   (or key-rule (constantly false))
+                                                :guards?     (boolean guards?)
+                                                :cache-key   (or cache-key ::any-schema)
+                                                :skip-entry? (or skip-entry? (constantly false))})))))
+
+(defn forget-results!
+  "Drop every cached result, so the next walk sees schemas redefined since."
+  []
+  (reset! results {}))
 
 (defn describe-findings
   "A line per finding, for an error message."
@@ -175,27 +308,26 @@
   (str/join "\n" (for [{:keys [trail kind form]} found]
                    (format "  %s at %s: %s"
                            (case kind
-                             :open-map             "open map"
-                             :keyword-keyed-map-of "keyword-keyed map-of"
-                             :any                  ":any")
+                             :any                  "any value"
+                             :keyword-keyed-map-of "keyword-keyed map-of")
                            (if (seq trail) (pr-str trail) "the root")
                            (pr-str form)))))
 
-(def ^:private visited-arg-registry-keys
-  "Registry keys [[check-args!]] has already walked."
-  (atom #{}))
+(defn failing-findings
+  "The failing findings of `schema` under `options`, walked again from scratch when the cached results report any."
+  [schema options]
+  (when (seq (failing (findings schema options)))
+    (forget-results!)
+    (not-empty (vec (failing (findings schema options))))))
 
 (defn check-args!
-  "Throw when an argument schema of `fn-name`, or an argument without one, can reach a schema that does not declare
-  its shape."
+  "Throw when an argument schema of `fn-name`, or an argument without one, can reach a schema that accepts a value of
+  any shape."
   [fn-name arg-schemas]
   (when *enabled*
-    (when-let [found (not-empty (into []
-                                      (mapcat #(findings % {:visited visited-arg-registry-keys}))
-                                      arg-schemas))]
-      (throw (ex-info (format (str "The arguments of %s reach schemas that do not declare their shape. Give every"
-                                   " argument a schema, close every map with {:closed true}, key a map-of by"
-                                   " :string, and give :any a type:\n%s")
+    (when-let [found (not-empty (into [] (mapcat #(failing-findings % {})) arg-schemas))]
+      (throw (ex-info (format (str "The arguments of %s reach schemas that accept anything. Give every argument a"
+                                   " schema and give :any a type:\n%s")
                               fn-name
                               (describe-findings found))
                       {:fn-name fn-name, :findings found})))))

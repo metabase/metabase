@@ -679,10 +679,10 @@
                                                                         :document {:type "doc"
                                                                                    :content [{:type "paragraph"
                                                                                               :content [{:type "smartLink"
-                                                                                                         :attrs {"entityId" card-id
-                                                                                                                 "model" "card"}}]}
+                                                                                                         :attrs {:entityId card-id
+                                                                                                                 :model "card"}}]}
                                                                                              {:type "cardEmbed"
-                                                                                              :attrs {"id" embedded-card-id}}]}}]
+                                                                                              :attrs {:id embedded-card-id}}]}}]
            (assert-pending :document document-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (=? #{{:from_entity_type :document
@@ -698,11 +698,11 @@
            (let [updated-doc (assoc document :document {:type "doc"
                                                         :content [{:type "paragraph"
                                                                    :content [{:type "smartLink"
-                                                                              :attrs {"entityId" dashboard-id
-                                                                                      "model" "dashboard"}}
+                                                                              :attrs {:entityId dashboard-id
+                                                                                      :model "dashboard"}}
                                                                              {:type "smartLink"
-                                                                              :attrs {"entityId" products-id
-                                                                                      "model" "table"}}]}]})]
+                                                                              :attrs {:entityId products-id
+                                                                                      :model "table"}}]}]})]
              (t2/update! :model/Document :id document-id updated-doc)
              (deps.test/synchronously-run-dependency-job!)
              (is (=? #{{:from_entity_type :document

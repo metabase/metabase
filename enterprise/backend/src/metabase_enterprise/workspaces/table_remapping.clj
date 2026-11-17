@@ -109,8 +109,8 @@
      (spec-for-table {:engine :bigquery-cloud-sdk, :details {:project-id \"p\"}}
                      {:name \"orders\", :schema \"ds\"})
      ;; => {:db \"p\", :schema \"ds\", :table \"orders\"}"
-  [database :- [:map {::mr/deliberately-open true, :description "a Database row"} [:engine :keyword]]
-   table    :- [:map {::mr/deliberately-open true, :description "a Table row"} [:name :string]]]
+  [database :- [:map {:description "a Database row"} [:engine :keyword]]
+   table    :- [:map {:description "a Table row"} [:name :string]]]
   (let [components (set (driver/qualified-name-components (:engine database)))
         positions  (ws/engine-namespace-positions database table)]
     {:db     (normalize-level (when (:db components)     (:db positions)))
@@ -571,7 +571,8 @@
   "Idempotently ensure a remapping row exists, via the active store.
 
    Idempotent on the unique key `(database_id, from_db, from_schema, from_table_name)`:
-   a duplicate is a no-op (the existing row is left untouched). Concurrent-insert races
+   a duplicate is a no-op, and a row from `from-spec` that points elsewhere is updated to
+   `to-spec`, so a run repairs a row a schema change left behind. Concurrent-insert races
    are handled portably by [[metabase.app-db.core/update-or-insert!]]. Returns truthy when
    the remapping is in place after the call.
 

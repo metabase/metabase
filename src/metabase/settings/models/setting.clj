@@ -1098,11 +1098,18 @@
                        :database-id      (:id database)})))))
 
 (defn validate-settable-for-db!
-  "Throws a 400 unless the setting can be set on `database`: its driver has the setting's driver feature, and the
-  setting's `:enabled-for-db?` gives no reason against it other than warnings."
+  "Throws a 400 unless the setting can be set on `database`, the Database as the write leaves it: a `:string` setting
+  holds a string, its driver has the setting's driver feature, and the setting's `:enabled-for-db?` gives no reason
+  against it other than warnings."
   [setting-definition-or-name database driver-supports?]
   (let [setting (resolve-setting setting-definition-or-name)
-        s-name  (setting-name setting)]
+        s-name  (setting-name setting)
+        value   (get-in database [:settings (keyword s-name)])]
+    (when (and (= :string (:type setting)) (some? value) (not (string? value)))
+      (throw (ex-info (tru "Setting {0} must be a string." s-name)
+                      {:status-code 400
+                       :setting     s-name
+                       :database-id (:id database)})))
     (validate-driver-feature-for-db! setting database driver-supports?)
     ;; Warnings are only for display and shouldn't block writing the setting.
     ;; They imply that the setting won't work until the issue is resolved, but often it is a transient problem.

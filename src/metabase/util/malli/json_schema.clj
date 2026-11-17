@@ -20,7 +20,7 @@
 
 (mr/def ::json-schema
   "A JSON Schema node, an open bag of JSON Schema keywords."
-  [:map {::mr/deliberately-open true}])
+  :map)
 
 (mr/def ::options
   "Where the generated JSON Schema keeps the definitions it refers to."

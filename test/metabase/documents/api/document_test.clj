@@ -2689,7 +2689,7 @@
 (defn- embedded-card-ids [ast]
   (->> (tree-seq map? :content ast)
        (filter #(= prose-mirror/card-embed-type (:type %)))
-       (map #(get-in % [:attrs "id"]))))
+       (map #(get-in % [:attrs :id]))))
 
 (deftest add-card-to-document-test
   (mt/with-temp [:model/Document {document-id :id} {:name           "Test Document"
@@ -2704,7 +2704,7 @@
           (is (= [card-1] (embedded-card-ids (:document result))))))
       (testing "add-card-to-document-row! returns the plain row, without hydrating it"
         (let [result (api.document/add-card-to-document-row! document-id card-2 nil
-                                                             :extra-attrs {"chart_href" "/x"})]
+                                                             :extra-attrs {:chart_href "/x"})]
           (is (=? {:id document-id :is_placeholder false} result))
           (is (not-any? #(contains? result %) [:can_write :creator]))
           (is (= [card-1 card-2]
