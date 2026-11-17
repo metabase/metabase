@@ -92,8 +92,9 @@ export interface QueryBuilderUIControls {
 
 export type MetabotCardBaseline = Pick<
   Card,
-  "dataset_query" | "display" | "visualization_settings" | "parameters"
->;
+  "dataset_query" | "visualization_settings" | "parameters"
+> &
+  Partial<Pick<Card, "display">>;
 
 /** A question Metabot is opening; the query builder init of `url` consumes it. */
 export type PendingMetabotCard = {

@@ -593,10 +593,10 @@ describe("getShouldShowUnsavedChangesWarning", () => {
         display: "table",
         dataset_query: tagQuery("text"),
       });
+      // an unlocked display is the query builder's, so the baseline leaves it out
       const baseline = _.pick(
         card,
         "dataset_query",
-        "display",
         "visualization_settings",
         "parameters",
       );
@@ -614,6 +614,12 @@ describe("getShouldShowUnsavedChangesWarning", () => {
         expect(getShouldShowUnsavedChangesWarning(getState({}))).toBe(false);
       });
 
+      it("does not warn when the query builder switches an unlocked display", () => {
+        expect(
+          getShouldShowUnsavedChangesWarning(getState({ display: "scalar" })),
+        ).toBe(false);
+      });
+
       it.each<[string, Partial<Card>]>([
         [
           "the query",
@@ -624,7 +630,7 @@ describe("getShouldShowUnsavedChangesWarning", () => {
           },
         ],
         ["a variable", { dataset_query: tagQuery("number") }],
-        ["the display", { display: "bar" }],
+        ["the display", { display: "bar", displayIsLocked: true }],
         [
           "the visualization settings",
           { visualization_settings: { "table.pivot": true } },

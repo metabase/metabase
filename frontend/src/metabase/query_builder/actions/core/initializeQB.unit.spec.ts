@@ -596,7 +596,6 @@ describe("QB Actions > initializeQB", () => {
 
         expect(result.uiControls.metabotCardBaseline).toEqual({
           dataset_query: result.card.dataset_query,
-          display: result.card.display,
           visualization_settings: result.card.visualization_settings,
           parameters: result.card.parameters,
         });

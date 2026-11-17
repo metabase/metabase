@@ -644,14 +644,20 @@ export const isResultsMetadataDirty = createSelector(
  */
 export const getMetabotCardBaseline = (
   question: Question,
-): MetabotCardBaseline =>
-  _.pick(
-    question.card(),
+): MetabotCardBaseline => {
+  const card = question.card();
+  const baseline = _.pick(
+    card,
     "dataset_query",
-    "display",
     "visualization_settings",
     "parameters",
   );
+  // The query builder replaces an unlocked display to suit the results, and a
+  // display the user picks is locked, so only a locked one is the user's.
+  return card.displayIsLocked
+    ? { ...baseline, display: card.display }
+    : baseline;
+};
 
 export const getShouldShowUnsavedChangesWarning = createSelector(
   [
