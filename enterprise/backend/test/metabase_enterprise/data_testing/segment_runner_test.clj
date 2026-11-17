@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.data-testing.segment-runner-test
   "Runs of saved segment tests."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
@@ -96,8 +97,13 @@
                                                   :sql    (str "SELECT 1 AS " (field-name :id) ", 'Google' AS "
                                                                (field-name :source))})]
           (is (= ::data-testing.errors/query-failed error-type))
-          ;; The message also quotes the compiled SQL, which names every column; match the warehouse's own error.
-          (is (re-find #"(?i)column [\w.\"]*(name|email|address|city)" message) message))))))
+          ;; The message can also quote the compiled SQL, which names every column, so match only the warehouse's
+          ;; naming of the missing column: `column "ADDRESS"` (H2), `column people.address` (Postgres), `column
+          ;; 'people.address'` (MySQL), `Identifier 'test_data.people.address'` (ClickHouse), `column name 'ADDRESS'`
+          ;; (SQL Server, whose "column name" would otherwise match the NAME column).
+          (is (re-find #"(?i)(?:column|identifier)\s+['\"`\[]?(?:\w+\.)*(?:name|email|address|city)\b"
+                       (str/replace message #"(?i)column name" "column"))
+              message))))))
 
 (defn- validated-outcome!
   "What becomes of a test of a Segment with the attributes `segment`, `inputs` and `expectations`, started by crowberto:
