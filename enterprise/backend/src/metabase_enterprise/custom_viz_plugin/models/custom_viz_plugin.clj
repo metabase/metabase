@@ -65,7 +65,8 @@
   ([_model _pk]  (some? api/*current-user-id*)))
 
 ;; A bundled plugin on a read-only instance comes from the repository, so it can only change there. Dev-only plugins
-;; are never synced (see the remote-sync spec below) and stay writable.
+;; are never synced (see the remote-sync spec below), so existing ones stay writable, but `can-create?` refuses new
+;; ones too: a read-only instance registers no plugins.
 (defmethod mi/can-write? :model/CustomVizPlugin
   ([plugin]     (mi/can-write? :model/CustomVizPlugin (:id plugin)))
   ([_model pk]  (and api/*is-superuser?*
