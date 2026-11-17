@@ -3,6 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.channel.render.core :as channel.render]
+   [metabase.dynamic-goals.core :as dynamic-goals]
    [metabase.formatter.core :as formatter]
    [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp]
@@ -274,7 +275,7 @@
     (if (and (-> card :display keyword supported-png-display-types)
              (seq (get-in results [:data :rows])))
       {:type      :image
-       :content   (render-saved-card-png card results)
+       :content   (render-saved-card-png card (dynamic-goals/assoc-chart-goal-values results card nil))
        :card-name card-name}
       {:type      :table
        :content   (format-results-as-table-blocks results)

@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.channel.urls :as urls]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dynamic-goals.core :as dynamic-goals]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.notification.db :as notification.db]
@@ -179,7 +180,7 @@
   (-> (select-keys qp-result [:status :row_count :database_id :error
                               :notification/truncated? :data.rows-file-size])
       (assoc :data (select-keys (:data qp-result)
-                                [:cols :rows :viz-settings :results_metadata :insights :referenced_entities
+                                [:cols :rows :viz-settings :results_metadata :insights
                                  :results_timezone :format-rows? :pivot-export-options]))))
 
 (def cells-to-disk-threshold
@@ -256,7 +257,10 @@
                                                                         :card_id card-id
                                                                         :dashcard_id (u/the-id dashcard)})))))
                                                  fixup-viz-settings
-                                                 format-qp-result)}))
+                                                 format-qp-result
+                                                 ;; series cards draw no goals
+                                                 (cond-> (= card-id card_id)
+                                                   (dynamic-goals/assoc-chart-goal-values card dashcard :dashboard-id dashboard_id)))}))
                result         (result-fn card_id)
                series-results (mapv (comp result-fn :id) multi-cards)]
            (log/debugf "Dashcard has %d series" (count multi-cards))
@@ -416,7 +420,8 @@
                                                                         {:budget (new-spill-budget)}
                                                                         {:card-id card-id})))))
                      fixup-viz-settings
-                     format-qp-result))]
+                     format-qp-result
+                     (dynamic-goals/assoc-chart-goal-values card nil)))]
     (log/debugf "Result has %d rows" (:row_count result))
     {:card   card
      :result result
