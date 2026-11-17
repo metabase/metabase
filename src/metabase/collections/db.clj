@@ -221,11 +221,6 @@
   [pattern :- :string]
   (t2/select-pks-set :model/Collection :location [:like pattern] :archived false))
 
-(mu/defn not-yet-archived-collection-ids-with-location-like
-  "The IDs of the Collections whose location matches the SQL `pattern` and that are not marked archived."
-  [pattern :- :string]
-  (t2/select-pks-set :model/Collection :location [:like pattern] :archived [:not= true]))
-
 (mu/defn archived-collection-ids-in-operation-with-location-like
   "The IDs of the archived Collections of the archive operation with `archive-operation-id` whose location matches
   the SQL `pattern`."
@@ -439,11 +434,6 @@
   "Delete the Actions in the Collections with `collection-ids`, returning the number deleted."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/delete! :model/Action :collection_id [:in collection-ids]))
-
-(mu/defn documents-in-collections-not-archived-directly
-  "The Documents in the Collections with `collection-ids` that were not archived directly."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/Document :collection_id [:in collection-ids] :archived_directly false))
 
 (mu/defn delete-cards-in-collections!
   "Delete the Cards in the Collections with `collection-ids`, returning the number deleted."

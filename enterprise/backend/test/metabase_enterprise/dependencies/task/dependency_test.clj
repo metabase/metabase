@@ -1,13 +1,14 @@
 (ns metabase-enterprise.dependencies.task.dependency-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.dependencies.task.dependency-test]}}}}}}
   (:require
+   [metabase.events.core :as events]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :as env]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.db :as dependencies.db]
-   [metabase-enterprise.dependencies.hooks :as deps.hooks]
+   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.models.dependency :as dependencies.model]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.settings :as deps.settings]
@@ -16,7 +17,6 @@
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
-   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -355,7 +355,7 @@
           (forget-status! :card card2-id)
           (forget-status! :card card3-id)
           ;; token update triggers the async job, not synchronous processing
-          (dependencies.hooks/after-premium-token-update)
+          (events/publish-event! :event/premium-token-update {})
           (is (every? #(pending? :card %) [card1-id card2-id card3-id]))
           ;; manually run the backfill to verify it processes them
           (backfill-all-existing-entities!)
@@ -860,7 +860,7 @@
        (let [target {:type "table", :schema "Other", :name "test_table", :database (mt/id)}]
          (mt/with-temp [:model/Table     {table-id :id}     {:schema "Other", :db_id (mt/id), :name "test_table"}
                         :model/Transform {transform-id :id} {:target target}]
-           (deps.hooks/after-transform-run transform-id table-id)
+           (events/publish-event! :event/transform-run-complete {:object {:transform-id transform-id :table-id table-id}})
            (is (=? [{:from_entity_type :table
                      :from_entity_id table-id,
                      :to_entity_type :transform,
@@ -886,7 +886,7 @@
                         :model/Transform {transform-id :id} {:target target
                                                              :source source}]
            (testing "initial run"
-             (deps.hooks/after-transform-run transform-id table-id)
+             (events/publish-event! :event/transform-run-complete {:object {:transform-id transform-id :table-id table-id}})
              (is (=? [{:from_entity_type :table
                        :from_entity_id table-id,
                        :to_entity_type :transform,
@@ -918,7 +918,7 @@
                         :model/Table     {}                              {:schema "Other", :db_id (mt/id), :name "test_table2"}
                         :model/Transform {transform-id :id} {:target target :source source}]
            (testing "initial run"
-             (deps.hooks/after-transform-run transform-id table-id)
+             (events/publish-event! :event/transform-run-complete {:object {:transform-id transform-id :table-id table-id}})
              (is (=? [{:from_entity_type :table
                        :from_entity_id table-id,
                        :to_entity_type :transform,

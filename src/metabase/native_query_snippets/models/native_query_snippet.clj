@@ -11,7 +11,6 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -28,7 +27,7 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies)
+  (derive :hook/events)
   (derive :hook/change-log))
 
 ;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
@@ -110,11 +109,6 @@
   (collection/check-collection-for :model/NativeQuerySnippet snippet)
   (assoc snippet :template_tags (snippet-template-tags snippet (referenced-snippet-ids snippet))))
 
-(t2/define-after-insert :model/NativeQuerySnippet
-  [snippet]
-  (u/prog1 (t2.realize/realize snippet)
-    (events/publish-event! :event/snippet-create {:object <> :user-id api/*current-user-id*})))
-
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
   (let [changes (t2/changes snippet)]
@@ -125,16 +119,6 @@
     (cond-> snippet
       (contains? changes :archived) (assoc :archived_directly (mi/archived-directly snippet #(collection/archived? (:collection_id snippet))))
       (:content snippet)            (assoc :template_tags (snippet-template-tags snippet (referenced-snippet-ids snippet))))))
-
-(t2/define-after-update :model/NativeQuerySnippet
-  [snippet]
-  (u/prog1 (t2.realize/realize snippet)
-    (events/publish-event! :event/snippet-update {:object <> :user-id api/*current-user-id*})))
-
-(t2/define-before-delete :model/NativeQuerySnippet
-  [snippet]
-  (u/prog1 snippet
-    (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

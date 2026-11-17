@@ -46,7 +46,7 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
-  (derive :hook/dependencies))
+  (derive :hook/events))
 
 (t2.default-fields/define-default-fields :model/DataApp
   data-apps.db/non-blob-columns)

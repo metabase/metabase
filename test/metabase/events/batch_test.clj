@@ -73,6 +73,14 @@
     (is (= [:event/events-test-timeline-create] (topics)) (pr-str @received))
     (is (= "b" (:name (:object (:event (first @received))))))))
 
+(deftest create-collected-after-update-test
+  (testing "a creation whose own hooks write the row again is still a creation"
+    (let [creator (mt/user->id :rasta)]
+      (events/with-batched-events
+        (let [id (t2/insert-returning-pk! :model/EventsTestTimeline {:name "a" :icon "cake" :creator_id creator})]
+          (t2/update! :model/EventsTestTimeline :id id {:name "b"})))
+      (is (= [:event/events-test-timeline-create] (topics))))))
+
 (deftest batch-rollback-test
   (is (thrown? Exception
                (events/with-batched-events
@@ -84,7 +92,7 @@
   (let [calls (atom [])]
     (events/register-owned-consumer! ::owned
                                      (fn [{:keys [object]}] (:creator_id object))
-                                     (fn [owner events] (swap! calls conj [owner (count events)])))
+                                     (fn [owner events _all] (swap! calls conj [owner (count events)])))
     (try
       (let [creator (mt/user->id :rasta)]
         (events/with-batched-events

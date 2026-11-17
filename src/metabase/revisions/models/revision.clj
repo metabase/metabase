@@ -3,6 +3,7 @@
    [clojure.data :as data]
    [malli.core :as mc]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.explorations.schema]
    [metabase.measures.schema]
    [metabase.models.interface :as mi]
@@ -293,11 +294,6 @@
                                       :message      message})
       object)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *reverting?*
-  "Whether [[revert!]] is writing, which records its own Revision, so the hooks of the writes record none."
-  false)
-
 (mu/defn revert!
   "Revert `entity` with `id` to a given Revision."
   [info :- [:map {:closed true}
@@ -312,8 +308,9 @@
       (let [already-in-target-state? (= serialized-instance
                                         (revisions.db/latest-revision-object model-name id))]
         ;; Do the reversion of the object
-        (binding [*reverting?* true]
-          (revert-to-revision! entity id user-id serialized-instance))
+        (events/with-event-context {:reverting? true}
+          (events/with-batched-events
+            (revert-to-revision! entity id user-id serialized-instance)))
         ;; Push a new revision to record this change
         (let [last-revision (revisions.db/latest-revision model-name id)]
           (if already-in-target-state?

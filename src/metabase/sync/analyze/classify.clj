@@ -19,7 +19,7 @@
   (:require
    [clojure.data :as data]
    [metabase.analyze.core :as analyze]
-   [metabase.dependencies.hooks :as dependencies.hooks]
+   [metabase.events.core :as events]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.models.interface :as mi]
@@ -121,7 +121,7 @@
       (when-let [fields (fields-to-classify table)]
         (let [existing-name-field (sync.db/name-field-count-for-table table-id)
               {:keys [fields-failed]}
-              (dependencies.hooks/with-batched-writes
+              (events/with-batched-events
                 (reduce (fn [state field]
                           (let [result (classify! field state)]
                             (cond-> state

@@ -8,7 +8,6 @@
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
    [metabase.collections.core :as collections]
-   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
@@ -885,7 +884,9 @@
                    :model/Field       {field-id :id} {:table_id table-id}
                    :model/FieldValues {fv-id :id}    {:field_id field-id, :values [1 2 3 4]}]
       (let [deleted (atom #{})]
-        (mt/with-dynamic-fn-redefs [dependencies.hooks/before-delete (fn [_model row] (swap! deleted conj (:id row)))]
+        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
+                                                       (when (= :event/field-values-delete topic)
+                                                         (swap! deleted conj (:id (:object event)))))]
           (warehouse-schema-rest.db/delete-field-values-for-fields! #{field-id}))
         (is (contains? @deleted fv-id))))))
 

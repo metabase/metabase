@@ -550,9 +550,6 @@
             (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
                            "Superusers cannot be tenant users")
             (reset-magic-group-membership! id (:tenant_id changes)))
-          (events/publish-event! :event/user-update {:object (users-rest.db/user id)
-                                                     :previous-object user-before-update
-                                                     :user-id api/*current-user-id*})
           (maybe-update-user-personal-collection-name! user-before-update changes))
         ;; Handle is_data_analyst by updating Data Analysts group membership
         (when (and (contains? updatable :is_data_analyst) (contains? body :is_data_analyst))

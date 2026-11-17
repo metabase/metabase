@@ -17,6 +17,8 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
+   [metabase.events.hierarchy :as events.hierarchy]
+   [metabase.events.impl :as events.impl]
    [metabase.global-system.mutable-component :as mc]
    [metabase.global-system.system :as system]
    [metabase.internal-stats.core :as internal-stats]
@@ -722,6 +724,8 @@
     (log/info "Token is valid.")
     status))
 
+(events.hierarchy/derive! :event/premium-token-update :metabase/event)
+
 (defn -set-premium-embedding-token!
   "Setter for the [[metabase.premium-features.settings/token-status]] setting."
   [new-value]
@@ -732,7 +736,7 @@
       (setting/set-value-of-type! :string :premium-embedding-token new-value)
       (when status
         (install! (state-box) new-value status)))
-    ((requiring-resolve 'metabase.dependencies.hooks/after-premium-token-update))
+    (events.impl/publish-event! :event/premium-token-update {})
     (catch Throwable e
       (log/errorf "Error setting premium features token: %s" (ex-message e))
       ;; merge in error-details if present

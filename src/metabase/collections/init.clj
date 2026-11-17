@@ -1,3 +1,3 @@
 (ns metabase.collections.init
   (:require
-   [metabase.collections.hooks]))
+   [metabase.collections.events.personal-collection]))

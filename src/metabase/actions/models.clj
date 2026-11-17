@@ -6,6 +6,7 @@
    [metabase.actions.schema :as actions.schema]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.core]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -37,16 +38,16 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
-  (derive :hook/dependencies))
+  (derive :hook/events))
 
 (doseq [model action-sub-models]
   (derive model :metabase/model))
 
 (doto :model/QueryAction
   (derive :hook/search-index)
-  (derive :hook/dependencies))
+  (derive :hook/events))
 
-(derive :model/ImplicitAction :hook/dependencies)
+(derive :model/ImplicitAction :hook/events)
 
 (methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
 (methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])

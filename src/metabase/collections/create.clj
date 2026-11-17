@@ -17,7 +17,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
-(events/derive! :event/collection-create :metabase/event)
 
 (defn- write-check-authority-level
   "Check that a superuser is creating this collection if they are setting the authority level."
@@ -55,12 +54,11 @@
         (select-keys (malli.util/keys NewCollectionArguments)))))
 
 (mu/defn create-collection!
-  "Creates a Collection after its create check and publishes its create and touch events."
+  "Creates a Collection after its create check and publishes its touch event."
   [coll-data :- CreateCollectionArguments]
   (api/create-check :model/Collection coll-data)
   (u/prog1 (collections.db/insert-collection!
             (->> (-> (apply-defaults-to-collection coll-data)
                      write-check-authority-level)
                  (lib/normalize ::collections.schema/collection.update)))
-    (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*})
     (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))

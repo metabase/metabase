@@ -29,3 +29,5 @@
   event-schema
   object->metadata
   publish-event!])
+
+(metabase.events.batch/set-publisher! (fn [topic event] (publish-event! topic event)))

@@ -1,7 +1,7 @@
-(ns metabase.sync.hooks-test
+(ns metabase.sync.events.sync-database-test
   (:require
    [clojure.test :refer :all]
-   [metabase.sync.hooks :as sync.hooks]
+   [metabase.events.core :as events]
    [metabase.sync.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
@@ -17,12 +17,12 @@
                                   sync-metadata/sync-db-metadata! (fn [_] (swap! calls inc))]
         (testing "default (disable-auto-sync=false): a sync entry point is invoked"
           (reset! calls 0)
-          (sync.hooks/after-database-saved nil db)
+          (events/publish-event! :event/database-create {:object db :user-id (mt/user->id :crowberto)})
           (is (= 1 @calls)))
         (testing "with disable-auto-sync=true: no sync entry point is invoked"
           (reset! calls 0)
           (mt/with-temporary-setting-values [disable-auto-sync true]
-            (sync.hooks/after-database-saved nil db))
+            (events/publish-event! :event/database-create {:object db :user-id (mt/user->id :crowberto)}))
           (is (zero? @calls)))))))
 
 (deftest connected-stub-is-synced-test
@@ -35,13 +35,13 @@
                                   sync-metadata/sync-db-metadata! (fn [_] (swap! calls inc))]
         (testing "a stub that gets connected is synced"
           (reset! calls 0)
-          (sync.hooks/after-database-saved stub connected)
+          (events/publish-event! :event/database-update {:object connected :previous-object stub :user-id (mt/user->id :crowberto)})
           (is (= 1 @calls)))
         (testing "a stub that stays a stub is not synced"
           (reset! calls 0)
-          (sync.hooks/after-database-saved stub stub)
+          (events/publish-event! :event/database-update {:object stub :previous-object stub :user-id (mt/user->id :crowberto)})
           (is (zero? @calls)))
         (testing "a regular database update is not synced"
           (reset! calls 0)
-          (sync.hooks/after-database-saved db db)
+          (events/publish-event! :event/database-update {:object db :previous-object db :user-id (mt/user->id :crowberto)})
           (is (zero? @calls)))))))

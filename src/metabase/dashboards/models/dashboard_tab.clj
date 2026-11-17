@@ -6,6 +6,7 @@
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.events.core]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
@@ -24,8 +25,8 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies)
-  (derive :hook/revisions))
+  (derive :hook/events)
+  (derive :hook/events))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

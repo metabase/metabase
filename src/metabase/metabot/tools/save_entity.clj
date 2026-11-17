@@ -12,7 +12,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
-   [metabase.events.core :as events]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.curation :as curation]
@@ -26,7 +25,6 @@
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -270,8 +268,7 @@
                  :display                display
                  :visualization_settings {}
                  :collection_id          collection-id}
-                {:id api/*current-user-id*}
-                :delay-event)]
+                {:id api/*current-user-id*})]
       {:card             card
        :destination      {:type "collection" :id collection-id}
        :destination-name (collection-name collection-id)
@@ -294,8 +291,7 @@
                  :display                display
                  :visualization_settings {}
                  :dashboard_id           dashboard-id}
-                {:id api/*current-user-id*}
-                :delay-event)]
+                {:id api/*current-user-id*})]
       {:card             card
        :destination      {:type "dashboard" :id dashboard-id}
        :destination-name (metabot.db/dashboard-name dashboard-id)
@@ -319,23 +315,12 @@
                  :visualization_settings {}
                  :collection_id          (:collection_id document)
                  :document_id            document-id}
-                {:id api/*current-user-id*}
-                :delay-event)]
+                {:id api/*current-user-id*})]
       (documents/add-card-to-document! document-id (:id card) (:position destination))
       {:card             card
        :destination      {:type "document" :id document-id}
        :destination-name (:name document)
        :link             (str "metabase://document/" document-id)})))
-
-(defn publish-card-create!
-  "Publish the `:event/card-create` event for a card that has already been committed.
-  Log failures without throwing."
-  [card]
-  (try
-    (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})
-    (catch Exception e
-      ;; The agent may retry a failed call and save a second copy of the card.
-      (log/error e "Failed to publish the card-create event for a card saved by Metabot" {:card-id (:id card)}))))
 
 (def ^:private tool-description
   "Describe how to call `save_entity`."
@@ -405,7 +390,6 @@
                 (when-let [conversation-id (shared/current-conversation-id)]
                   (metabot.db/link-card-to-conversation! (:id (:card saved)) conversation-id chart_id))
                 saved)))
-          _ (publish-card-create! card)
           instruction-text (te/lines
                             (str "Saved \"" question-name "\" to " destination-name ".")
                             ""

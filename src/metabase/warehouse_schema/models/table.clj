@@ -6,6 +6,7 @@
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
+   [metabase.events.core]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -94,7 +95,7 @@
 (doto :model/Table
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/dependencies)
+  (derive :hook/events)
   (derive :hook/change-log)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would

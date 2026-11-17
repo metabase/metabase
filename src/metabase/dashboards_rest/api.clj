@@ -434,9 +434,6 @@
                                      same-collection?        (update :name #(str % " - " (tru "Duplicate")))
                                      (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
                                    @api/*current-user*
-                                   ;; creating cards from a transaction. wait until tx complete to signal event
-                                   true
-                                   ;; do not autoplace these cards. we will create the dashboard cards ourselves.
                                    false))]))
      :discarded  discard
      :referenced reference}))
@@ -553,7 +550,6 @@
                         :collection_id       collection_id
                         :collection_position collection_position
                         :width               (:width existing-dashboard)}
-        new-cards      (atom nil)
         dashboard      (t2/with-transaction [_conn]
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
@@ -567,7 +563,6 @@
 
                                id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
                                                 (duplicate-tabs dash existing-tabs))]
-                           (reset! new-cards (vals id->new-card))
                            (when-let [dashcards (seq (update-cards-for-copy (:dashcards existing-dashboard)
                                                                             id->new-card
                                                                             id->referenced-card
@@ -579,11 +574,6 @@
     (analytics/track-event! :snowplow/dashboard
                             {:event        :dashboard-created
                              :dashboard-id (u/the-id dashboard)})
-    ;; must signal event outside of tx so cards are visible from other threads
-    (when-let [newly-created-cards (seq @new-cards)]
-      (doseq [card newly-created-cards]
-        (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})))
-    (events/publish-event! :event/dashboard-create {:object (dissoc dashboard :uncopied) :user-id api/*current-user-id*})
     dashboard))
 
 ;;; --------------------------------------------- List public and embeddable dashboards ------------------------------
@@ -692,9 +682,8 @@
   This will remove also any questions/models/segments/metrics that use this database."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [dashboard (api/write-check :model/Dashboard id)]
-    (dashboards-rest.db/delete-dashboard! id)
-    (events/publish-event! :event/dashboard-delete {:object dashboard :user-id api/*current-user-id*}))
+  (api/write-check :model/Dashboard id)
+  (dashboards-rest.db/delete-dashboard! id)
   api/generic-204-no-content)
 
 (def ^:private UpdatedDashboardCard
@@ -900,9 +889,7 @@
    dashboard :- TransientDashboard]
   (api/create-check :model/Dashboard (assoc dashboard :collection_id parent-collection-id))
   (check-create-transient-dashboard-cards dashboard parent-collection-id)
-  (let [dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
-    (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
-    dashboard))
+  (dashboard/save-transient-dashboard! dashboard parent-collection-id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -920,7 +907,6 @@
                                       (dashboards-rest.db/personal-collection-for-user api/*current-user-id*)))))
         _         (check-create-transient-dashboard-cards dashboard parent-collection-id)
         dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
-    (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
     dashboard))
 
 ;;; ------------------------------------- Chain-filtering param value endpoints --------------------------------------

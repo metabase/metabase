@@ -10,11 +10,11 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
-   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1805,7 +1805,9 @@
                    :model/Field       {field-id :id} {:table_id table-id}
                    :model/FieldValues {fv-id :id}    {:field_id field-id, :values [1 2 3 4]}]
       (let [deleted (atom #{})]
-        (mt/with-dynamic-fn-redefs [dependencies.hooks/before-delete (fn [_model row] (swap! deleted conj (:id row)))]
+        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
+                                                       (when (= :event/field-values-delete topic)
+                                                         (swap! deleted conj (:id (:object event)))))]
           (warehouses-rest.db/delete-field-values-for-database! db-id))
         (is (contains? @deleted fv-id))))))
 

@@ -2,7 +2,6 @@
   (:require
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.content-diagnostics.hooks]
    [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
@@ -48,9 +47,8 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies)
-  (derive :hook/content-diagnostics)
-  (derive :hook/revisions))
+  (derive :hook/events)
+  (derive :hook/events))
 
 ;;; ---------- Hooks ---------------------------------------------------------------------------------------------
 
@@ -393,8 +391,7 @@
          vec)))
 
 (mu/defn create-document!
-  "Create a Document, clone any embedded cards the document doesn't own, publish
-  `:event/document-create`, and return the created document. Permission checks
+  "Create a Document, clone any embedded cards the document doesn't own, and return the created document. Permission checks
   (`api/create-check`) are the caller's job, run before this — the same split the REST
   `POST /api/document/` handler uses."
   [{:keys [name document collection_id collection_position cards]}
@@ -404,7 +401,7 @@
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]]]
-  (let [created-document (t2/with-transaction [_conn]
+  (let [created-document (events/with-batched-events
                            (when collection_position
                              (api/maybe-reconcile-collection-position! {:collection_id collection_id
                                                                         :collection_position collection_position}))
@@ -438,17 +435,12 @@
                              ;; warehouse data the body embeds, so a document the creator may not read must not
                              ;; come back rendered.
                              (get-document document-id)))]
-    ;; Publish event after successful creation
-    (events/publish-event! :event/document-create
-                           {:object created-document
-                            :user-id api/*current-user-id*})
     created-document))
 
 (mu/defn update-document!
   "Apply `body` (any of `:name`, `:document`, `:collection_id`, `:collection_position`,
   `:cards`, `:archived`) to `existing-document`, clone any newly-embedded cards the document
-  doesn't own, publish `:event/document-update` (or `:event/document-delete` when archiving),
-  and return the updated document. Permission checks (write-check, archived state,
+  doesn't own, and return the updated document. Permission checks (write-check, archived state,
   collection-move) are the caller's job, run before this — the same split the REST
   `PUT /api/document/:id` handler uses."
   [existing-document :- ::documents.schema/document
@@ -470,7 +462,7 @@
         target-collection-id (if (contains? body :collection_id)
                                collection_id
                                (:collection_id existing-document))]
-    (t2/with-transaction [_conn]
+    (events/with-batched-events
       (when collection_position
         (api/maybe-reconcile-collection-position! (select-keys existing-document [:collection_id :collection_position])
                                                   {:collection_id       target-collection-id
@@ -498,16 +490,7 @@
                                          (assoc :is_placeholder false)))
         (when (seq pairings)
           (card/carry-pairings-for-document! document-id pairings))))
-    (let [updated-document (hydrate-document document-id)]
-      ;; Publish appropriate events
-      (if (:archived document-updates)
-        (events/publish-event! :event/document-delete
-                               {:object updated-document
-                                :user-id api/*current-user-id*})
-        (events/publish-event! :event/document-update
-                               {:object updated-document
-                                :user-id api/*current-user-id*}))
-      updated-document)))
+    (hydrate-document document-id)))
 
 ;;; ---------- Serialization -------------------------------------------------------------------------------------
 

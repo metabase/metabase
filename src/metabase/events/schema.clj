@@ -1,6 +1,5 @@
 (ns metabase.events.schema
   (:require
-   [malli.util :as mut]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -48,32 +47,7 @@
    [:user-id  pos-int?]
    [:object   [:fn #(t2/instance-of? :model/Collection %)]]])
 
-;; collection write events
-
-(mr/def ::collection
-  [:map {:closed true}
-   [:user-id [:maybe pos-int?]]
-   [:object [:fn #(t2/instance-of? :model/Collection %)]]])
-
-(mr/def :event/collection-create ::collection)
-(mr/def :event/collection-update ::collection)
-
 ;; dashboard events
-
-(mr/def ::dashboard
-  [:map {:closed true}
-   [:user-id pos-int?]
-   [:object [:fn #(t2/instance-of? :model/Dashboard %)]]])
-
-(mr/def :event/dashboard-create ::dashboard)
-(mr/def :event/dashboard-delete ::dashboard)
-
-(mr/def ::dashboard-with-dashcards
-  (-> (event-schema ::dashboard)
-      (mut/assoc :dashcards [:sequential [:map [:id pos-int?]]])))
-
-(mr/def :event/dashboard-remove-cards ::dashboard-with-dashcards)
-(mr/def :event/dashboard-add-cards    ::dashboard-with-dashcards)
 
 (mr/def :event/dashboard-read
   [:map {:closed true}
@@ -125,17 +99,6 @@
                 [:email                       ms/Email]
                 [:first_name {:optional true} [:maybe :string]]]]]]])
 
-;; action events
-
-(mr/def ::action
-  [:map {:closed true}
-   [:user-id  [:maybe pos-int?]]
-   [:object   [:fn #(t2/instance-of? :model/Action %)]]])
-
-(mr/def :event/action-create ::action)
-(mr/def :event/action-update ::action)
-(mr/def :event/action-delete ::action)
-
 ;; session events
 
 (mr/def :event/session-revoked
@@ -161,56 +124,6 @@
               [:criteria  :map]
               [:count     ms/IntGreaterThanOrEqualToZero]
               [:remaining ms/IntGreaterThanOrEqualToZero]]]])
-
-;; segment events
-
-(mr/def ::segment
-  [:map {:closed true}
-   [:user-id  pos-int?]
-   [:object   [:fn #(t2/instance-of? :model/Segment %)]]])
-
-(mr/def :event/segment-create ::segment)
-
-(mr/def ::segment-with-message
-  [:merge
-   ::segment
-   [:map {:closed true}
-    [:revision-message {:optional true} :string]]])
-
-(mr/def :event/segment-update ::segment-with-message)
-(mr/def :event/segment-delete ::segment-with-message)
-
-;; measure events
-
-(mr/def ::measure
-  [:map {:closed true}
-   [:user-id  pos-int?]
-   [:object   [:fn #(t2/instance-of? :model/Measure %)]]])
-
-(mr/def :event/measure-create ::measure)
-
-(mr/def ::measure-with-message
-  [:merge
-   ::measure
-   [:map {:closed true}
-    [:revision-message {:optional true} :string]]])
-
-(mr/def :event/measure-update ::measure-with-message)
-(mr/def :event/measure-delete ::measure-with-message)
-
-;; database events
-
-(mr/def ::database
-  [:map {:closed true}
-   [:object [:fn #(t2/instance-of? :model/Database %)]]
-   [:previous-object {:optional true} [:fn #(t2/instance-of? :model/Database %)]]
-   [:details {:optional true} :map]
-   [:user-id pos-int?]
-   [:details-changed? {:optional true} [:maybe :boolean]]])
-
-(mr/def :event/database-create ::database)
-(mr/def :event/database-update ::database)
-(mr/def :event/database-delete ::database)
 
 ;; alert schemas
 
@@ -244,9 +157,6 @@
    [:user-id [:maybe pos-int?]]
    [:object [:fn #(t2/instance-of? :model/Table %)]]])
 
-(mr/def :event/table-create ::table)
-(mr/def :event/table-update ::table)
-(mr/def :event/table-delete ::table)
 (mr/def :event/table-publish ::table)
 (mr/def :event/table-unpublish ::table)
 
@@ -278,28 +188,6 @@
    [:version {:optional true} :string]
    [:message {:optional true} [:maybe :string]]])
 
-;; snippet events
-
-(mr/def ::snippet
-  [:map {:closed true}
-   [:user-id [:maybe pos-int?]]
-   [:object [:fn #(t2/instance-of? :model/NativeQuerySnippet %)]]])
-
-(mr/def :event/snippet-create ::snippet)
-(mr/def :event/snippet-update ::snippet)
-(mr/def :event/snippet-delete ::snippet)
-
-;; field events
-
-(mr/def ::field
-  [:map {:closed true}
-   [:user-id [:maybe pos-int?]]
-   [:object [:fn #(t2/instance-of? :model/Field %)]]])
-
-(mr/def :event/field-create ::field)
-(mr/def :event/field-update ::field)
-(mr/def :event/field-delete ::field)
-
 ;; security advisory events
 
 (mr/def :event/security-advisory-match
@@ -322,4 +210,6 @@
    [:user-id [:maybe pos-int?]]
    [:context {:optional true}
     [:map {:closed true}
-     [:revision-message {:optional true} [:maybe :string]]]]])
+     [:revision-message {:optional true} [:maybe :string]]
+     [:reverting? {:optional true} :boolean]
+     [:details {:optional true} [:fn map?]]]]])

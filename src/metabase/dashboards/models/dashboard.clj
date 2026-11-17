@@ -7,12 +7,10 @@
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
-   [metabase.content-diagnostics.hooks]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -22,7 +20,6 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
-   [metabase.pulse.hooks]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
@@ -55,10 +52,8 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies)
-  (derive :hook/content-diagnostics)
-  (derive :hook/pulse)
-  (derive :hook/revisions)
+  (derive :hook/events)
+  (derive :hook/events)
   (derive :hook/change-log))
 
 (methodical/defmethod change-log/ignored-columns :model/Dashboard [_model]
@@ -360,7 +355,7 @@
         dashboard-cards     (map (fn [dashcard]
                                    (-> (assoc dashcard :dashboard_id (u/the-id dashboard-or-id))
                                        (update :series #(filter identity (map u/the-id %))))) dashcards)]
-    (u/prog1 (dependencies.hooks/with-batched-writes (dashboard-card/create-dashboard-cards! dashboard-cards))
+    (u/prog1 (events/with-batched-events (dashboard-card/create-dashboard-cards! dashboard-cards))
       (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
         (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
 
@@ -387,7 +382,7 @@
       (throw (ex-info (tru "Dashboard {0} does not have a DashboardCard with ID {1}"
                            (u/the-id dashboard) (first only-new))
                       {:status-code 404})))
-    (dependencies.hooks/with-batched-writes
+    (events/with-batched-events
       (doseq [dashcard new-dashcards]
         (let [;; update-dashboard-card! requires series to be a sequence of card IDs
               old-dashcard       (-> (get id->old-dashcard (:id dashcard))
@@ -431,7 +426,6 @@
                                  :enable_embedding :embedding_params)
                          (assoc :creator_id api/*current-user-id*))
                      (lib/normalize ::queries.schema/card.update)))]
-      (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
       card)))
 
 (defn- check-dashcard-parameter-mapping-permissions

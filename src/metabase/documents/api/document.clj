@@ -59,16 +59,13 @@
   "Persist an embed for `card-id` into document `document-id`, re-reading the document inside the
   transaction so a concurrent edit cannot be overwritten. Returns the updated row, unchecked."
   [document-id card-id position extra-attrs]
-  (let [updated (t2/with-transaction [_conn]
+  (let [updated (events/with-batched-events
                   (let [document (api/check-404 (documents.db/document document-id))
                         updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
                         updates  (cond-> (select-keys updated [:document])
                                    (:is_placeholder document) (assoc :is_placeholder false))]
                     (documents.db/update-document! document-id updates)
                     (merge document updates)))]
-    (events/publish-event! :event/document-update
-                           {:object  updated
-                            :user-id api/*current-user-id*})
     updated))
 
 (defn add-card-to-document!
@@ -156,9 +153,6 @@
       (let [msg (tru "Document must be archived before it can be deleted.")]
         (throw (ex-info msg {:status-code 400, :errors {:archived msg}}))))
     (documents.db/delete-document! document-id)
-    (events/publish-event! :event/document-delete
-                           {:object document
-                            :user-id api/*current-user-id*})
     api/generic-204-no-content))
 
 ;;; ---------------------------------------------------- Copy --------------------------------------------------------
@@ -202,7 +196,7 @@
   `:collection_position`.
 
   Requires read permission on the source and create permission on the destination collection.
-  Publishes `:event/document-create`."
+  "
   [from-document-id {:keys [name collection_id collection_position]}]
   (api/create-check :model/Document {:collection_id collection_id})
   (let [existing-document (api/check-404
@@ -214,7 +208,7 @@
                        :creator_id          api/*current-user-id*
                        :collection_id       collection_id
                        :collection_position collection_position}
-        new-document (t2/with-transaction [_conn]
+        new-document (events/with-batched-events
                        (when collection_position
                          (api/maybe-reconcile-collection-position! (select-keys document-data [:collection_id :collection_position])))
                        (let [new-document-id (documents.db/insert-document! document-data)
@@ -226,9 +220,6 @@
                                                             :content_type (:content_type existing-document)}
                                                            card-id-map)))
                          (m.document/get-document new-document-id)))]
-    (events/publish-event! :event/document-create
-                           {:object new-document
-                            :user-id api/*current-user-id*})
     new-document))
 
 (api.macros/defendpoint :post "/:from-document-id/copy" :- [:map [:id ::documents.schema/document.id]]
@@ -270,8 +261,6 @@
         (documents.db/update-document! document-id
                                        {:public_uuid       (str (random-uuid))
                                         :made_public_by_id api/*current-user-id*})
-        ;; Always select after update to ensure we return what's actually stored
-        (events/publish-event! :event/document-update {:object (documents.db/document document-id)})
         {:uuid (documents.db/document-public-uuid document-id)}))))
 
 (api.macros/defendpoint :delete "/:document-id/public-link" :- ::api/generic-204-no-content
@@ -292,7 +281,6 @@
   (documents.db/update-document! document-id
                                  {:public_uuid       nil
                                   :made_public_by_id nil})
-  (events/publish-event! :event/document-update {:object (documents.db/document document-id)})
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/public" :- [:sequential [:map

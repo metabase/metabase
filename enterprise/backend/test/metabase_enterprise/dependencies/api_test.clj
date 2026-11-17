@@ -7,7 +7,7 @@
    [metabase-enterprise.dependencies.api :as deps.api]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.db :as dependencies.db]
-   [metabase-enterprise.dependencies.hooks :as deps.hooks]
+   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [personal-collection-id]]
@@ -448,7 +448,7 @@
                                                                      :name   "inactive_transform_table"}}]
           ;; Simulate the transform having been run: link it to its (now inactive) target table
           (t2/update! :model/Transform :id transform-id {:target_table_id table-id})
-          (deps.hooks/after-transform-run transform-id table-id)
+          (events/publish-event! :event/transform-run-complete {:object {:transform-id transform-id :table-id table-id}})
           (deps.test/synchronously-run-dependency-job!)
           (testing "GET /graph/dependents returns the inactive table as a child"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
@@ -1248,7 +1248,7 @@
           ;; Simulate the referenced transform having been run: link it to its target table
           ;; so the table→transform dep is visible in the dependency graph.
           (t2/update! :model/Transform :id referenced-transform-id {:target_table_id referenced-table-id})
-          (deps.hooks/after-transform-run referenced-transform-id referenced-table-id)
+          (events/publish-event! :event/transform-run-complete {:object {:transform-id referenced-transform-id :table-id referenced-table-id}})
           (deps.test/synchronously-run-dependency-job!)
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]
             (is (=? {:data [{:id unreffed-transform-id

@@ -1,5 +1,5 @@
-(ns metabase-enterprise.content-diagnostics.hooks-test
-  "Archiving or deleting a flagged entity invalidates its active findings through the hooks of its model, so it
+(ns metabase-enterprise.content-diagnostics.events-test
+  "Archiving or deleting a flagged entity invalidates its active findings through the events of its model, so it
   drops out of the served set without waiting for a rescan. Archiving a collection invalidates its subtree's
   collections and whatever currently lives in them; transforms are not archived with their collection and are left
   alone."

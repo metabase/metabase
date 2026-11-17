@@ -771,17 +771,6 @@
    archive?       :- :boolean]
   (apply t2/select :model/Document :exploration_id exploration-id (summary-document-conditions archive?)))
 
-(mu/defn summary-document-ids-following
-  "The IDs of the Summary Documents of [[summary-documents-following]]."
-  [exploration-id :- ms/PositiveInt
-   archive?       :- :boolean]
-  (mapv :id (summary-documents-following exploration-id archive?)))
-
-(mu/defn documents-by-ids
-  "The Documents with `document-ids`."
-  [document-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Document :id [:in document-ids]))
-
 (mu/defn move-summary-documents!
   "Move the Summary Documents of the Exploration with `exploration-id` to the Collection with `collection-id`,
   returning them as updated."

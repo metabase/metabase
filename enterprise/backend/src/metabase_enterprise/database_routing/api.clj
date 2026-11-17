@@ -9,8 +9,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.settings.core :as setting]
-   [metabase.sync.hooks :as sync.hooks]
-   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -58,7 +56,9 @@
                                        seq)]
       {:status 400
        :body (into {} invalid-destinations)}
-      (u/prog1 (database-routing.db/insert-databases!
+      (events/with-event-context {:details {:primary_db_name (:name router-db)
+                                            :primary_db_id   (:id router-db)}}
+        (database-routing.db/insert-databases!
                 (map (fn [{:keys [name details]}]
                        {:name               name
                         :engine             engine
@@ -69,14 +69,7 @@
                         :cache_ttl          nil
                         :router_database_id router_database_id
                         :creator_id         api/*current-user-id*})
-                     destinations))
-        (doseq [database <>]
-          (sync.hooks/after-database-saved nil database)
-          (events/publish-event! :event/database-create {:object database
-                                                         :user-id api/*current-user-id*
-                                                         :details {:slug name
-                                                                   :primary_db_name (:name router-db)
-                                                                   :primary_db_id (:id router-db)}}))))))
+                     destinations))))))
 
 (defn- delete-router!
   [db-id]

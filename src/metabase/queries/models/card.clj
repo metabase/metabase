@@ -13,7 +13,6 @@
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
-   [metabase.content-diagnostics.hooks]
    [metabase.content-verification.core :as moderation]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.embedding.settings :as embed.settings]
@@ -137,10 +136,8 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies)
-  (derive :hook/content-diagnostics)
-  (derive :hook/persisted-info)
-  (derive :hook/revisions)
+  (derive :hook/events)
+  (derive :hook/events)
   (derive :hook/change-log))
 
 (methodical/defmethod change-log/ignored-columns :model/Card [_model]
@@ -1493,13 +1490,9 @@
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
   the card will be saved without metadata and it will be saved to the card in the future when it is ready.
 
-  Dispatches the `:card-create` event unless `delay-event?` is true. Useful for when many cards are created in a
-  transaction and work in the `:card-create` event cannot proceed because the cards would not be visible outside of
-  the transaction yet. If you pass true here it is important to call the event after the cards are successfully
-  created."
-  ([card creator] (create-card! card creator false))
-  ([card creator delay-event?] (create-card! card creator delay-event? true))
-  ([{:keys [result_metadata parameters parameter_mappings type] :as input-card-data} creator delay-event? autoplace-dashboard-questions?]
+  The Card events are published by the write of the row."
+  ([card creator] (create-card! card creator true))
+  ([{:keys [result_metadata parameters parameter_mappings type] :as input-card-data} creator autoplace-dashboard-questions?]
    ;; you can't specify the dashboard_tab_id and not a dashboard_id
    (api/check-400 (not (and (:dashboard_tab_id input-card-data)
                             (not (:dashboard_id input-card-data)))))
@@ -1539,8 +1532,6 @@
      (let [{:keys [dashboard_id]} card]
        (when (and dashboard_id autoplace-dashboard-questions?)
          (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card (:size input-card-data))))
-     (when-not delay-event?
-       (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
      (when metadata-future
        (log/info "Metadata not available soon enough. Saving new card and asynchronously updating metadata")
        (card.metadata/save-metadata-async! metadata-future card))
@@ -1736,45 +1727,18 @@
         (log/errorf "Update of dependent card parameters failed!: %s" (ex-message e))))
     (queries.db/card (:id card-before-update))))
 
-(defn- changed-action-events
-  "The `[topic action]` pairs that announce how an update to a card changed its actions: `:event/action-delete` with
-  the old action for each of `actions-before` absent from `actions-after`, and `:event/action-update` with the new
-  action for each one that was archived, unarchived, or moved to another Collection while unarchived."
-  [actions-before actions-after]
-  (let [id->after (m/index-by :id actions-after)]
-    (for [before actions-before
-          :let   [after (id->after (:id before))]
-          :when  (or (nil? after)
-                     (not= (:archived after) (:archived before))
-                     (and (not= (:collection_id after) (:collection_id before))
-                          (not (and (:archived before) (:archived after)))))]
-      (if after
-        [:event/action-update after]
-        [:event/action-delete before]))))
-
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
-  included, otherwise the metadata will be saved to the database asynchronously. Publishes `:event/card-update`, plus
-  an action event for each action of the card that the update deletes, archives, unarchives, or moves."
+  included, otherwise the metadata will be saved to the database asynchronously."
   [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
-  ;; The card hooks delete, archive, or move a card's actions without events, so compare the actions before and after.
-  (let [actions-before (queries.db/actions-for-model (:id card-before-update))
-        notifications  (pulse/alerts-of-card-being-changed card-before-update card-updates)]
-    (update-card-in-db! card-before-update card-updates actor delete-old-dashcards?)
-    (when (seq actions-before)
-      (doseq [[topic action] (changed-action-events actions-before (queries.db/actions-for-model (:id card-before-update)))]
-        (events/publish-event! topic {:object action :user-id api/*current-user-id*})))
+  (let [notifications (pulse/alerts-of-card-being-changed card-before-update card-updates)]
+    (events/with-batched-events
+      (update-card-in-db! card-before-update card-updates actor delete-old-dashcards?))
     ;; Fetch the updated Card from the DB
     (let [card (queries.db/card (:id card-before-update))]
       ;;; TODO -- this should be triggered indirectly by `:event/card-update`
       (pulse/delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor
                                       :notifications notifications)
-      ;; skip publishing the event if it's just a change in its collection position
-      (when-not (= #{:collection_position}
-                   (set (keys card-updates)))
-        (events/publish-event! :event/card-update {:object card
-                                                   :previous-object card-before-update
-                                                   :user-id api/*current-user-id*}))
       card)))
 
 (defn sole-dashboard-id

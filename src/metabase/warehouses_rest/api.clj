@@ -22,7 +22,6 @@
    [metabase.secrets.core :as secret]
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
-   [metabase.sync.hooks :as sync.hooks]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
    [metabase.upload.core :as upload]
@@ -669,8 +668,6 @@
                                   (sync.schedules/schedule-map->cron-strings schedules))
                                 (when (some? auto_run_queries)
                                   {:auto_run_queries auto_run_queries}))))
-        (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
-        (sync.hooks/after-database-saved nil <>)
         (analytics/track-event! :snowplow/database
                                 {:event        :database-connection-successful
                                  :database     (u/qualified-name engine)
@@ -961,20 +958,11 @@
             (setting/validate-settable-for-db setting-kw pending-db driver-supports?)
             (catch Exception e
               (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e)))))
-        (warehouses-rest.db/update-database! id updates)
-        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
-        ;; with the advanced-config feature enabled.
-        (when (premium-features/enable-cache-granular-controls?)
-          (warehouses-rest.db/update-database! id {:cache_ttl cache_ttl}))
+        (events/with-batched-events
+          (warehouses-rest.db/update-database! id updates)
+          (when (premium-features/enable-cache-granular-controls?)
+            (warehouses-rest.db/update-database! id {:cache_ttl cache_ttl})))
         (let [db (warehouses-rest.db/database id)]
-          ;; the details in db and existing-database have been normalized so they are the same here
-          ;; we need to pass through details-changed? which is calculated before detail normalization
-          ;; to ensure the pool is invalidated and [[driver-api/secret-value-as-file!]] memoization is cleared
-          (events/publish-event! :event/database-update {:object           db
-                                                         :user-id          api/*current-user-id*
-                                                         :previous-object  existing-database
-                                                         :details-changed? details-changed?})
-          (sync.hooks/after-database-saved existing-database db)
           (-> db
               ;; return the DB with the expanded schedules back in place
               add-expanded-schedules
@@ -996,7 +984,7 @@
       (warehouses-rest.db/delete-destination-databases! id)
       (database-routing/delete-associated-database-router! id)
       (warehouses-rest.db/delete-database! id)
-      (events/publish-event! :event/database-delete {:object db :user-id api/*current-user-id*})))
+      nil))
   api/generic-204-no-content)
 
 ;;; ------------------------------------------ POST /api/database/:id/sync_schema -------------------------------------------

@@ -4,7 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.content-diagnostics.hooks]
+   [metabase.events.core]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -42,7 +42,7 @@
 
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
-(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/dependencies :hook/content-diagnostics :hook/revisions]]
+(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/events :hook/events]]
   (derive :model/Transform trait))
 
 (mu/defn transform-source-out :- ::transforms.schema/transform-source

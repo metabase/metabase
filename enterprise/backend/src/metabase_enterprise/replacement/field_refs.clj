@@ -3,7 +3,6 @@
    [metabase-enterprise.replacement.db :as replacement.db]
    [metabase-enterprise.replacement.util :as replacement.util]
    [metabase-enterprise.replacement.walk :as replacement.walk]
-   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
    [metabase.source-swap.core :as source-swap]))
@@ -80,9 +79,7 @@
       (let [query (:query source)
             query' (source-swap/upgrade-field-refs-in-query query)]
         (when (not= query query')
-          (replacement.db/update-transform! (:id transform) {:source (assoc source :query query')})
-          (events/publish-event! :event/update-transform
-                                 {:object (assoc transform :source (assoc source :query query'))}))))))
+          (replacement.db/update-transform! (:id transform) {:source (assoc source :query query')}))))))
 
 (defn- segment-upgrade-field-refs!
   "Upgrade field refs in `:definition` for a segment."

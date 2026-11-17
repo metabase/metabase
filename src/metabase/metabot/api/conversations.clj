@@ -10,7 +10,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.metabot.conversation-title :as conversation-title]
@@ -233,11 +232,8 @@
                                                    :dashboard_id :dashboard_tab_id])
                                 (update :display keyword)
                                 (update :visualization_settings #(or % {})))
-                            {:id api/*current-user-id*}
-                            :delay-event)
+                            {:id api/*current-user-id*})
                     (metabot.db/link-card-to-conversation! (:id <>) id chart_id)))]
-    (events/publish-event! :event/card-create
-                           {:object created :user-id api/*current-user-id*})
     (assoc created
            :metabot_conversation_id id
            :metabot_chart_id        chart_id)))

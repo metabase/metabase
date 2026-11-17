@@ -38,6 +38,7 @@
   (derive :hook/updated-at-timestamped?)
   (derive :hook/entity-id)
   (derive :hook/change-log)
+  (derive :hook/events)
   (derive ::mi/create-policy.superuser))
 
 (defn- stringify-keys-and-values
@@ -216,7 +217,7 @@
         (perms/allow-changing-all-external-users-group-members
          (perms/without-is-superuser-sync-on-add-to-admin-group
           (perms/add-user-to-groups! user-id (map u/the-id groups))))))
-    ((requiring-resolve 'metabase.collections.hooks/after-user-created) <>)))
+    <>))
 
 (t2/define-before-update :model/User
   [{:keys [id] :as user}]
@@ -234,11 +235,6 @@
     (when locale (validate-user-locale! locale))
     (handle-superuser-toggle! id superuser? in-admin-group?)
     (handle-user-archival! id active?)
-    (when (false? active?)
-      #_{:clj-kondo/ignore [:metabase/modules]}
-      ((requiring-resolve 'metabase.session.hooks/after-user-deactivated) id)
-      #_{:clj-kondo/ignore [:metabase/modules]}
-      ((requiring-resolve 'metabase.oauth-server.hooks/after-user-deactivated) id))
     (-> user
         (merge (normalize-user-fields (t2/changes user))
                (prepare-archival-timestamp active?))

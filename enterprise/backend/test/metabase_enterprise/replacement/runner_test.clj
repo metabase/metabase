@@ -3,7 +3,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.replacement.runner-test]}}}}}}
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.dependencies.hooks]
+   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.runner :as replacement.runner]

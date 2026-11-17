@@ -3,7 +3,7 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.audit-app.core :as audit-app]
-   [metabase.events.core :as events]
+   [metabase.events.core]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -28,7 +28,7 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
-  (derive :hook/revisions)
+  (derive :hook/events)
   (derive ::saved-test))
 
 (mu/defn json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
@@ -152,39 +152,32 @@
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
 (mu/defn create-transform-test! :- ::data-testing.schema/transform-test
-  "Insert the TransformTest `transform-test` and publish its create event as its creator, returning the inserted test."
+  "Insert the TransformTest `transform-test` returning the inserted test."
   [transform-test :- [:merge
                       ::data-testing.schema/transform-test.create
                       [:map {:closed true}
                        [:creator_id ::lib.schema.id/user]]]]
-  (u/prog1 (data-testing.db/insert-transform-test! transform-test)
-    (events/publish-event! :event/transform-test-create {:object <> :user-id (:creator_id <>)})))
+  (data-testing.db/insert-transform-test! transform-test))
 
 (mu/defn update-transform-test! :- :nil
-  "Apply `changes` to the TransformTest with `id` and publish its update event when a column changed."
+  "Apply `changes` to the TransformTest with `id`."
   [id      :- ms/PositiveInt
    changes :- ::data-testing.schema/transform-test.update]
-  (when (pos? (data-testing.db/update-transform-test! id changes))
-    (events/publish-event! :event/transform-test-update {:object (data-testing.db/transform-test id)}))
+  (data-testing.db/update-transform-test! id changes)
   nil)
 
 (mu/defn delete-transform-test! :- :nil
-  "Delete the TransformTest with `id` and publish its delete event."
+  "Delete the TransformTest with `id`."
   [id :- ms/PositiveInt]
-  (when-let [transform-test (data-testing.db/transform-test id)]
-    (data-testing.db/delete-transform-test! id)
-    (events/publish-event! :event/transform-test-delete {:object transform-test}))
+  (data-testing.db/delete-transform-test! id)
   nil)
 
 (defenterprise delete-transform-tests!
-  "Deletes the tests of the transform `transform-id` and publishes a delete event for each, whatever the token says,
+  "Deletes the tests of the transform `transform-id` whatever the token says,
   since the rows outlive the feature."
   :feature :none
   [transform-id]
-  (let [transform-tests (data-testing.db/transform-tests {:transform-id transform-id})]
-    (data-testing.db/delete-transform-tests! transform-id)
-    (doseq [transform-test transform-tests]
-      (events/publish-event! :event/transform-test-delete {:object transform-test}))))
+  (data-testing.db/delete-transform-tests! transform-id))
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 

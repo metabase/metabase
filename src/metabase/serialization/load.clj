@@ -3,7 +3,7 @@
   (:refer-clojure :exclude [import load])
   (:require
    [clojure.walk :as walk]
-   [metabase.dependencies.hooks :as dependencies.hooks]
+   [metabase.events.core :as events]
    [metabase.serialization.dependencies :as serialization.dependencies]
    [metabase.serialization.entity :as serialization.entity]
    [metabase.serialization.protocol :as protocol]
@@ -291,7 +291,7 @@
   "Calls `thunk`, which should do the whole import, in one transaction of the app DB (see [[with-import-transaction]]),
   marking the dependents of what it changes once at its end, and retrying it on a transient DB error."
   [thunk]
-  (protocol/transact protocol.app-db/store {:retries 3} #(dependencies.hooks/with-batched-writes (thunk))))
+  (protocol/transact protocol.app-db/store {:retries 3} #(events/with-batched-events (thunk))))
 
 (defmacro with-import-transaction
   "Runs `body`, which should do the whole import, in one transaction of the app DB, so it lands whole or not at all."

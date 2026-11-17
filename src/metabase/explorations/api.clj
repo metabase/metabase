@@ -61,17 +61,11 @@
   "Name for the auto-created Summary document on each exploration."
   "Summary")
 
-(defn- publish-document-updates!
-  "Publish `:event/document-update` for each of the Summary `documents` just updated."
-  [documents]
-  (doseq [document documents]
-    (events/publish-event! :event/document-update {:object document})))
-
 (defn- cascade-collection-id-to-documents!
   "Propagate an Exploration's new `collection_id` to its Summary document.
   Mirrors the dashboard-question cascade in `dashboards_rest/api.clj`."
   [exploration-id new-coll-id]
-  (publish-document-updates! (explorations.db/move-summary-documents! exploration-id new-coll-id)))
+  (explorations.db/move-summary-documents! exploration-id new-coll-id))
 
 (defn- insert-summary-document!
   "Insert the auto-created Summary document for a newly created exploration. Explore-further
@@ -800,15 +794,11 @@
         updates' (api/updates-without-collection-when-archiving existing allowed)]
     (api/update-check existing updates')
     (check-destination-collection-perms! existing updates')
-    (let [archived-document-ids (when (contains? updates' :archived)
-                                  (explorations.db/summary-document-ids-following id (boolean (:archived updates'))))]
-      (t2/with-transaction [_]
-        (when (seq updates')
-          (explorations.db/update-exploration! id updates')
-          (when (contains? updates' :collection_id)
-            (cascade-collection-id-to-documents! id (:collection_id updates')))))
-      (when (seq archived-document-ids)
-        (publish-document-updates! (explorations.db/documents-by-ids archived-document-ids))))
+    (events/with-batched-events
+      (when (seq updates')
+        (explorations.db/update-exploration! id updates')
+        (when (contains? updates' :collection_id)
+          (cascade-collection-id-to-documents! id (:collection_id updates')))))
     (let [updated (explorations.db/exploration id)]
       (hydrate-exploration updated))))
 

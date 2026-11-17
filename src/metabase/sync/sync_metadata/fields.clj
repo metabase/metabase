@@ -39,9 +39,9 @@
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
   (:require
-   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -94,7 +94,7 @@
    table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
   (let [db-metadata (limit-fields-to-sync table db-metadata)]
-    (dependencies.hooks/with-batched-writes
+    (events/with-batched-events
       (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
          ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
          ;; Re-fetch our metadata because there might be some things that have changed after calling

@@ -1593,7 +1593,7 @@
                          (api/check-not-archived current-dash))
                        (api/check (not (true? (:archived updates)))
                                   [400 "Can't modify dashcards while archiving the dashboard."]))
-        result       (t2/with-transaction [_conn]
+        _            (events/with-batched-events
                        (when (seq updates)
                          (agent-api.db/update-dashboard! id updates)
                          ;; Fire :event/collection-touch with the *target* collection id so the
@@ -1608,17 +1608,6 @@
                                                    :user-id       api/*current-user-id*})))
                        (when (seq mutations)
                          (apply-dashcard-mutations! id mutations)))]
-    ;; Publish dashcard events outside the transaction, matching the REST endpoint's ordering.
-    (when (seq (:added result))
-      (events/publish-event! :event/dashboard-add-cards
-                             {:object current-dash
-                              :user-id api/*current-user-id*
-                              :dashcards (:added result)}))
-    (when (seq (:removed result))
-      (events/publish-event! :event/dashboard-remove-cards
-                             {:object current-dash
-                              :user-id api/*current-user-id*
-                              :dashcards (:removed result)}))
     (let [updated (agent-api.db/dashboard id)]
       {:id              (:id updated)
        :name            (:name updated)

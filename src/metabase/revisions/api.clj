@@ -4,14 +4,12 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.config.core :as config]
-   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision :as revision]
-   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]
    [toucan2.core :as t2]
@@ -155,13 +153,11 @@
             (api/write-check (get id->dashboard dashboard-id)))))
       (check-new-revision-card-references model id revision))
     ;; ok, we're g2g
-    (u/prog1 (revision/revert!
-              {:entity      model
-               :id          id
-               :user-id     api/*current-user-id*
-               :revision-id revision-id})
-      (when (= model :model/Transform)
-        (events/publish-event! :event/update-transform {:object (revisions.db/entity model id)})))))
+    (revision/revert!
+     {:entity      model
+      :id          id
+      :user-id     api/*current-user-id*
+      :revision-id revision-id})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

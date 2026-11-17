@@ -6,7 +6,6 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
-   [metabase.revisions.hooks :as revisions.hooks]
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
@@ -17,13 +16,12 @@
    [toucan2.core :as t2]))
 
 (defn create-segment!
-  "Create-check and insert a new Segment; publishes `:event/segment-create` and returns the hydrated Segment."
+  "Create-check and insert a new Segment and return the hydrated Segment."
   [{:keys [name description definition], :as body}]
   (let [definition (lib-be/normalize-query definition)]
     (api/create-check :model/Segment (assoc body :definition definition))
     (let [segment (api/check-500
                    (segments.db/insert-segment! api/*current-user-id* name description definition))]
-      (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
       (t2/hydrate segment :creator))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -77,11 +75,10 @@
                      new-body)]
     (api/update-check existing new-body)
     (when changes
-      (revisions.hooks/with-revision-message revision_message (segments.db/update-segment! id (cond-> changes
-                                        (:definition changes) (update :definition lib-be/normalize-query)))))
-    (u/prog1 (hydrated-segment id)
-      (events/publish-event! :event/segment-update
-                             {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
+      (events/with-event-context {:revision-message revision_message}
+        (segments.db/update-segment! id (cond-> changes
+                                          (:definition changes) (update :definition lib-be/normalize-query)))))
+    (hydrated-segment id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

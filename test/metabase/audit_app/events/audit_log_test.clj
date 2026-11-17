@@ -67,8 +67,10 @@
         (mt/with-temp [:model/Card card {:name "My Cool Card", :type card-type}]
           (mt/with-test-user :rasta
             (let [old-card (assoc card :name "Old Name", :type :question)]
-              (is (= {:object card :previous-object old-card :user-id (mt/user->id :rasta)}
-                     (events/publish-event! :event/card-update {:object card :previous-object old-card :user-id (mt/user->id :rasta)})))
+              (is (= {:object card :previous-object old-card :changes {:name "My Cool Card"} :user-id (mt/user->id :rasta)}
+                     (events/publish-event! :event/card-update {:object card :previous-object old-card
+                                                                :changes {:name "My Cool Card"}
+                                                                :user-id (mt/user->id :rasta)})))
               (is (partial=
                    {:topic    :card-update
                     :user_id  (mt/user->id :rasta)
@@ -123,50 +125,44 @@
             :details  {:name "My Cool Dashboard", :description nil}}
            (mt/latest-audit-log-entry "dashboard-delete" (:id dashboard)))))))
 
+(defn- dashcard-details
+  [dashboard card dashcard]
+  {:name        (:name dashboard)
+   :description nil
+   :dashcards   [{:description (:description card)
+                  :name        (:name card)
+                  :id          (:id dashcard)
+                  :card_id     (:id card)}]})
+
 (deftest dashboard-add-cards-event-test
   (testing :dashboard-add-cards
-    (mt/with-temp [:model/Dashboard     dashboard {:name "My Cool Dashboard"}
-                   :model/Card          card {}
-                   :model/DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
-      (let [event {:object    dashboard
-                   :dashcards [dashcard]
-                   :user-id   (mt/user->id :rasta)}]
-        (is (= event
-               (events/publish-event! :event/dashboard-add-cards event)))
-        (is (partial=
-             {:topic    :dashboard-add-cards
-              :user_id  (mt/user->id :rasta)
-              :model    "Dashboard"
-              :model_id (:id dashboard)
-              :details  {:name        "My Cool Dashboard"
-                         :description nil
-                         :dashcards   [{:description (:description card)
-                                        :name        (:name card)
-                                        :id          (:id dashcard)
-                                        :card_id     (:id card)}]}}
-             (mt/latest-audit-log-entry "dashboard-add-cards" (:id dashboard))))))))
+    (mt/with-temp [:model/Dashboard dashboard {:name "My Cool Dashboard"}
+                   :model/Card      card {}]
+      (mt/with-test-user :rasta
+        (let [dashcard (t2/insert-returning-instance! :model/DashboardCard {:dashboard_id (:id dashboard)
+                                                                            :card_id      (:id card)
+                                                                            :row 0 :col 0 :size_x 4 :size_y 4})]
+          (is (partial=
+               {:topic    :dashboard-add-cards
+                :user_id  (mt/user->id :rasta)
+                :model    "Dashboard"
+                :model_id (:id dashboard)
+                :details  (dashcard-details dashboard card dashcard)}
+               (mt/latest-audit-log-entry "dashboard-add-cards" (:id dashboard)))))))))
 
 (deftest dashboard-remove-cards-event-test
   (testing :dashboard-remove-cards
     (mt/with-temp [:model/Dashboard     dashboard {:name "My Cool Dashboard"}
                    :model/Card          card {}
                    :model/DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
-      (let [event {:object    dashboard
-                   :dashcards [dashcard]
-                   :user-id   (mt/user->id :rasta)}]
-        (is (= event
-               (events/publish-event! :event/dashboard-remove-cards event)))
+      (mt/with-test-user :rasta
+        (t2/delete! :model/DashboardCard :id (:id dashcard))
         (is (partial=
-             {:topic       :dashboard-remove-cards
-              :user_id     (mt/user->id :rasta)
-              :model       "Dashboard"
-              :model_id    (:id dashboard)
-              :details     {:name        "My Cool Dashboard"
-                            :description nil
-                            :dashcards   [{:description (:description card)
-                                           :name        (:name card)
-                                           :id          (:id dashcard)
-                                           :card_id     (:id card)}]}}
+             {:topic    :dashboard-remove-cards
+              :user_id  (mt/user->id :rasta)
+              :model    "Dashboard"
+              :model_id (:id dashboard)
+              :details  (dashcard-details dashboard card dashcard)}
              (mt/latest-audit-log-entry "dashboard-remove-cards" (:id dashboard))))))))
 
 (deftest install-event-test
@@ -346,9 +342,10 @@
 (deftest segment-update-event-test
   (testing :segment-update
     (mt/with-temp [:model/Segment segment]
-      (let [event (-> {:object segment}
-                      (assoc :revision-message "update this mofo")
-                      (assoc :user-id (mt/user->id :rasta)))]
+      (let [event {:object  segment
+                   :changes {:name "renamed"}
+                   :context {:revision-message "update this mofo"}
+                   :user-id (mt/user->id :rasta)}]
         (is (= event
                (events/publish-event! :event/segment-update event)))
         (is (= {:topic       :segment-update
@@ -365,9 +362,9 @@
 (deftest segment-delete-event-test
   (testing :segment-delete
     (mt/with-temp [:model/Segment segment]
-      (let [event (assoc {:object segment}
-                         :revision-message "deleted"
-                         :user-id (mt/user->id :rasta))]
+      (let [event {:object  segment
+                   :context {:revision-message "deleted"}
+                   :user-id (mt/user->id :rasta)}]
         (is (= event
                (events/publish-event! :event/segment-delete event)))
         (is (= {:topic       :segment-delete
@@ -417,7 +414,9 @@
     (mt/with-current-user (mt/user->id :rasta)
       (let [user   (mt/fetch-user :lucky)
             event {:object          user
-                   :previous-object (assoc user :last_name "Charms")}]
+                   :previous-object (assoc user :last_name "Charms")
+                   :changes         {:last_name "Pigeon"}
+                   :user-id         (mt/user->id :rasta)}]
         (is (= event (events/publish-event! :event/user-update event)))
         (is (partial=
              {:model_id (mt/user->id :lucky)
@@ -548,8 +547,8 @@
      (mt/with-temp [:model/Document document {:name "Test Document"
                                               :collection_id nil}]
        (testing :event/document-create
-         (is (= {:object document}
-                (events/publish-event! :event/document-create {:object document})))
+         (is (= {:object document :user-id (mt/user->id :rasta)}
+                (events/publish-event! :event/document-create {:object document :user-id (mt/user->id :rasta)})))
          (is (= {:model_id (:id document)
                  :user_id (mt/user->id :rasta)
                  :details {:name "Test Document"
@@ -560,19 +559,23 @@
        (testing :event/document-update
          (let [updated-doc (assoc document :name "Updated Document")]
            (is (= {:object updated-doc
-                   :previous-object document}
+                   :previous-object document
+                   :changes {:name "Updated Document"}
+                   :user-id (mt/user->id :rasta)}
                   (events/publish-event! :event/document-update {:object updated-doc
-                                                                 :previous-object document})))
+                                                                 :previous-object document
+                                                                 :changes {:name "Updated Document"}
+                                                                 :user-id (mt/user->id :rasta)})))
            (is (= {:model_id (:id document)
                    :user_id (mt/user->id :rasta)
-                   :details {:previous {:name "Test Document"}
-                             :new {:name "Updated Document"}}
+                   :details {:name "Updated Document"
+                             :collection_id nil}
                    :topic :document-update
                    :model "Document"}
                   (mt/latest-audit-log-entry :document-update (:id document))))))
        (testing :event/document-delete
-         (is (= {:object document}
-                (events/publish-event! :event/document-delete {:object document})))
+         (is (= {:object document :user-id (mt/user->id :rasta)}
+                (events/publish-event! :event/document-delete {:object document :user-id (mt/user->id :rasta)})))
          (is (= {:model_id (:id document)
                  :user_id (mt/user->id :rasta)
                  :details {:name "Test Document"
@@ -630,8 +633,8 @@
      (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                 :description "Test description"}]
        (testing :event/transform-create
-         (is (= {:object transform}
-                (events/publish-event! :event/transform-create {:object transform})))
+         (is (= {:object transform :user-id (mt/user->id :rasta)}
+                (events/publish-event! :event/transform-create {:object transform :user-id (mt/user->id :rasta)})))
          (is (partial=
               {:model_id (:id transform)
                :user_id (mt/user->id :rasta)
@@ -654,8 +657,8 @@
                    :model "Transform"}
                   (mt/latest-audit-log-entry :update-transform (:id transform))))))
        (testing :event/transform-delete
-         (is (= {:object transform}
-                (events/publish-event! :event/transform-delete {:object transform})))
+         (is (= {:object transform :user-id (mt/user->id :rasta)}
+                (events/publish-event! :event/transform-delete {:object transform :user-id (mt/user->id :rasta)})))
          (is (partial=
               {:model_id (:id transform)
                :user_id (mt/user->id :rasta)

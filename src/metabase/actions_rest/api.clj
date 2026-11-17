@@ -10,12 +10,10 @@
    [metabase.api.macros :as api.macros]
    [metabase.data-apps.core :as data-apps]
    [metabase.eid-translation.core :as eid-translation]
-   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -66,8 +64,7 @@
                             {:event     :action-deleted
                              :type      (:type action)
                              :action_id action-id})
-    (actions-rest.db/delete-action! action-id)
-    (events/publish-event! :event/action-delete {:object action :user-id api/*current-user-id*}))
+    (actions-rest.db/delete-action! action-id))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/" :- ::actions.schema/action
@@ -87,8 +84,7 @@
                              :type           action-type
                              :action_id      action-id
                              :num_parameters (count parameters)})
-    (u/prog1 (actions/select-action :id action-id)
-      (events/publish-event! :event/action-create {:object <> :user-id api/*current-user-id*}))))
+    (actions/select-action :id action-id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -111,7 +107,6 @@
         (actions/check-action-databases-enabled merged)))
     (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
-    (events/publish-event! :event/action-update {:object action :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/action
                             {:event          :action-updated
                              :type           type

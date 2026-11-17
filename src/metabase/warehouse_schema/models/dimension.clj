@@ -4,6 +4,7 @@
   `metabase.query-processor.middleware.add-remaps`."
   (:require
    [metabase.api.common :as api]
+   [metabase.events.core]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -24,7 +25,7 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
-  (derive :hook/dependencies))
+  (derive :hook/events))
 
 (t2/deftransforms :model/Dimension
   {:type mi/transform-keyword})

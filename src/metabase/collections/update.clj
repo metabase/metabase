@@ -24,9 +24,6 @@
 
 (set! *warn-on-reflection* true)
 
-(events/derive! ::collection-event :metabase/event)
-(events/derive! :event/collection-update ::collection-event)
-
 (def UpdateCollectionArguments
   "The arguments to an update-collection call — what the public API surface accepts. Absent keys
   are left alone; `:archived` and `:parent_id` are acted on only when present."
@@ -59,13 +56,6 @@
   (doseq [[card notifications] stopped]
     (notification.card/notify-card-notifications-deleted! :card-archived actor card notifications)))
 
-(defn- publish-document-updates!
-  "Publishes `:event/document-update` for the Documents the archive state of the Collections with `collection-ids`
-  just carried over to."
-  [collection-ids]
-  (doseq [document (collections.db/documents-in-collections-not-archived-directly (vec collection-ids))]
-    (events/publish-event! :event/document-update {:object document})))
-
 (defn- check-can-restore
   "Throws unless the current user may restore `collection` and what its archive took down, into the Collection that
   `collection-updates` name or else the one it was in, which must not be archived."
@@ -97,22 +87,15 @@
 
 (defn- archive-or-restore!
   "Archives or restores the Collection, with what follows it, as `collection-updates` ask, checks permissions first, then
-  moves it for a restore into another parent. Publishes the events the archive carries along."
+  moves it for a restore into another parent."
   [collection-before-update collection-updates]
-  (let [id          (u/the-id collection-before-update)
-        archive?    (boolean (:archived collection-updates))
-        document-ids (cons id (if archive?
-                                (collections.db/not-yet-archived-collection-ids-with-location-like
-                                 (str (collection/children-location collection-before-update) "%"))
-                                (collections.db/archived-collection-ids-in-operation-with-location-like
-                                 (str (collection/children-location collection-before-update) "%")
-                                 (:archive_operation_id collection-before-update))))]
+  (let [id       (u/the-id collection-before-update)
+        archive? (boolean (:archived collection-updates))]
     (when-not archive?
       (check-can-restore collection-before-update collection-updates))
     (let [stopped (when archive? (stopped-alerts id))]
       (collections.db/update-collection! id {:archived archive?})
       (delete-stopped-alerts! stopped)
-      (publish-document-updates! document-ids)
       (when archive?
         (notify-stopped-alerts! stopped @api/*current-user*))
       (when-not archive?
@@ -142,12 +125,11 @@
                      (:authority_level collection-before-update)))
       (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
       (api/check-403 api/*is-superuser?*))
-    (t2/with-transaction [_conn]
+    (events/with-batched-events
       (when (seq updates)
         (collections.db/update-collection! id updates))
       (if archived-change?
         (archive-or-restore! collection-before-update collection-updates)
         (move-collection! collection-before-update collection-updates)))
     (u/prog1 (collections.db/collection id)
-      (events/publish-event! :event/collection-update {:object <> :user-id api/*current-user-id*})
       (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))))

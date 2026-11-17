@@ -8,6 +8,7 @@
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.pipeline :as t2.pipeline]
+   [toucan2.realize :as t2.realize]
    [toucan2.tools.before-delete :as t2.before-delete]))
 
 (set! *warn-on-reflection* true)
@@ -17,7 +18,7 @@
   (events.batch/collect! (merge {:model     model
                                  :operation operation
                                  :id        (first (vals (t2.model/primary-key-values-map row)))
-                                 :object    row
+                                 :object    (t2.realize/realize row)
                                  :user-id   (mi/current-user-id)}
                                 extra)))
 
@@ -30,7 +31,7 @@
   [instance]
   (let [changes (t2/changes instance)]
     (when (seq changes)
-      (collect! &model :update instance {:previous-object (t2/original instance)
+      (collect! &model :update instance {:previous-object (t2.realize/realize (t2/original instance))
                                          :changes         changes})))
   instance)
 
@@ -40,7 +41,7 @@
 
 (methodical/defmethod t2.before-delete/before-delete :before :hook/events
   [model instance]
-  (collect! model :delete instance {:previous-object instance})
+  (collect! model :delete instance {:previous-object (t2.realize/realize instance)})
   instance)
 
 (defmacro ^:private define-write-batch

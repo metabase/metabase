@@ -1,10 +1,11 @@
 (ns metabase-enterprise.dependencies.analysis-finding-test
   (:require
+   [metabase.events.core :as events]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
-   [metabase-enterprise.dependencies.hooks :as deps.hooks]
+   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as models.analysis-finding-error]
    [metabase-enterprise.dependencies.test-util :as deps.test]
@@ -480,7 +481,7 @@
                                                              :target {:schema "public" :name "sample" :type :table}}
                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
                                              :to_entity_type :transform :to_entity_id transform-id}]
-           (is (nil? (deps.hooks/after-transform-run transform-id nil)))))))))
+           (is (nil? (events/publish-event! :event/transform-run-complete {:object {:transform-id transform-id :table-id nil}})))))))))
 
 (deftest ^:synchronized transform-run-without-table-analyzes-nothing-test
   (deps.test/run-with-dependencies-setup!
@@ -496,7 +497,7 @@
                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
                                              :to_entity_type :transform :to_entity_id transform-id}]
            (analyzed-by-job!)
-           (deps.hooks/after-transform-run transform-id nil)
+           (events/publish-event! :event/transform-run-complete {:object {:transform-id transform-id :table-id nil}})
            (is (= #{}
                   (analyzed-among! [:card card-id] [:transform transform-id] [:card other-card-id])))))))))
 

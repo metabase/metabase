@@ -1,4 +1,4 @@
-(ns metabase.driver.hooks-test
+(ns metabase.driver.events.driver-notifications-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.driver :as driver]

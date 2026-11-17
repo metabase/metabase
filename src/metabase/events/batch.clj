@@ -52,9 +52,19 @@
 (defonce ^:private owned-consumers
   (atom {}))
 
+(defonce ^:private publisher
+  (atom events.impl/publish-event!))
+
+(mu/defn set-publisher!
+  "Have the events be delivered by `publish!`, a function of a topic and an event, which the event bus gives as its own
+  `publish-event!`."
+  [publish! :- ifn?]
+  (reset! publisher publish!)
+  nil)
+
 (mu/defn register-owned-consumer!
-  "Have `handle`, a function of an owner key and the vector of the events of that owner, called once per owner per
-  batch, where `owner` is a function of an event giving its owner key, nil when the consumer ignores the event."
+  "Have `handle`, a function of an owner key, the vector of the events of that owner and the vector of all the events of
+  the batch, called once per owner per batch, where `owner` is a function of an event giving its owner key, nil when the consumer ignores the event."
   [consumer-key :- :keyword
    owner        :- ifn?
    handle       :- ifn?]
@@ -69,27 +79,30 @@
   (events.schema/register-lifecycle-topic! topic))
 
 (defn- merge-events
-  "The one event that the `events` of one row, in order, amount to, or nil when the row came and went."
+  "The one event that the `events` of one row amount to, or nil when the row came and went. The insert of a row may
+  collect after the writes its own hooks make, so a creation is told by any of the events, not by the first."
   [events]
-  (let [fst  (first events)
-        lst  (peek events)
-        make (fn [operation extra]
-               (merge (dissoc lst :previous-object :changes)
-                      {:operation operation
-                       :user-id   (some :user-id (rseq events))
-                       :context   (apply merge (map :context events))}
-                      extra))]
+  (let [create  (first (filter #(= :create (:operation %)) events))
+        updates (remove #(#{:create :delete} (:operation %)) events)
+        fst     (first events)
+        lst     (peek events)
+        shared  {:user-id (some :user-id (rseq events))
+                 :context (apply merge (map :context events))}
+        changes (apply merge (map :changes updates))]
     (cond
-      (= :create (:operation fst))
-      (when-not (= :delete (:operation lst))
-        (make :create nil))
+      (and create (some #(= :delete (:operation %)) events))
+      nil
+
+      create
+      (merge create shared {:object (into (:object create) changes)})
 
       (= :delete (:operation lst))
-      (make :delete {:previous-object (:previous-object fst)})
+      (merge (dissoc lst :changes) shared {:previous-object (:previous-object fst)})
 
       :else
-      (make :update {:previous-object (:previous-object fst)
-                     :changes         (apply merge (map :changes events))}))))
+      (merge (dissoc lst :previous-object) shared {:operation       :update
+                                                   :previous-object (:previous-object fst)
+                                                   :changes         changes}))))
 
 (defn- compact
   "One event per row, in the order of the first write of the row."
@@ -109,12 +122,12 @@
   [events]
   (let [events (compact events)]
     (doseq [event events]
-      (events.impl/publish-event! (lifecycle-topic (:model event) (:operation event)) (payload event)))
+      (@publisher (lifecycle-topic (:model event) (:operation event)) (payload event)))
     (doseq [{:keys [owner handle]} (vals @owned-consumers)
             :let [by-owner (group-by owner events)]
             [owner-key owned] by-owner
             :when (some? owner-key)]
-      (handle owner-key owned))))
+      (handle owner-key owned events))))
 
 (defn- finish!
   "Deliver what the batch collected, and what the delivery makes it collect, until nothing is left."

@@ -5,9 +5,9 @@
    [clojure.set :as set]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -259,7 +259,7 @@
     (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance :model/Table table-metadata))))
   (let [field-order (some-> (:engine database) driver/default-field-order)]
-    (dependencies.hooks/with-batched-writes
+    (events/with-batched-events
       (mapv (fn [table-metadata]
               (insert-table! database (m/assoc-some table-metadata :field_order field-order) options))
             (sort-by (juxt :schema :name) new-table-metadatas)))))

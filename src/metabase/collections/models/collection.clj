@@ -14,7 +14,6 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config]
-   [metabase.content-diagnostics.hooks]
    [metabase.events.core :as events]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
@@ -333,7 +332,7 @@
 (doto :model/Collection
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/content-diagnostics))
+  (derive :hook/events))
 
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]

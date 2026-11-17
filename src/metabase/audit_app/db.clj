@@ -13,6 +13,11 @@
   [card-ids :- [:sequential [:maybe ::lib.schema.id/card]]]
   (t2/select :model/Card :id [:in card-ids]))
 
+(mu/defn dashboard
+  "The Dashboard with `dashboard-id`, or nil."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
+
 (mu/defn audit-log-topic-exists?
   "Whether an AuditLog entry with `topic` exists."
   [topic :- [:or :keyword :string]]

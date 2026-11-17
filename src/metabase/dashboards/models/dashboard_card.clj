@@ -5,13 +5,13 @@
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.events.core]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.pulse.hooks]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -29,9 +29,8 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies)
-  (derive :hook/pulse)
-  (derive :hook/revisions)
+  (derive :hook/events)
+  (derive :hook/events)
   ;; Disabled for performance reasons, see update-dashboard-card!-call-count-test
   #_(derive :hook/search-index))
 

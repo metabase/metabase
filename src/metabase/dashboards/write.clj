@@ -14,7 +14,6 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -91,7 +90,7 @@
 
 (mu/defn create-dashboard! :- :map
   "Creates a Dashboard owned by the current user after its create check, calls `:in-transaction`, when given, with the
-  inserted row inside the creating transaction, publishes `:event/dashboard-create` and returns the row."
+  inserted row inside the creating transaction and returns the row."
   ([attrs :- NewDashboard]
    (create-dashboard! attrs nil))
   ([{:keys [name description parameters cache_ttl collection_id collection_position
@@ -109,7 +108,7 @@
                           (some? auto_apply_filters) (assoc :auto_apply_filters auto_apply_filters))
          _              (api/create-check :model/Dashboard dashboard-data)
          _              (check-new-references (constantly no-references) {:parameters parameters})
-         dash           (dependencies.hooks/with-batched-writes (t2/with-transaction [_conn]
+         dash           (events/with-batched-events (t2/with-transaction [_conn]
                           ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                           ;; collection to change position, check that and fix up if needed
                           (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
@@ -118,7 +117,6 @@
                             (when in-transaction
                               (in-transaction dash))
                             dash)))]
-     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
      (analytics/track-event! :snowplow/dashboard
                              {:event        :dashboard-created
                               :dashboard-id (u/the-id dash)})
@@ -275,16 +273,11 @@
    [:position {:optional true} ::dashboards.schema/dashboard-tab.position]])
 
 (defn- track-dashcard-and-tab-events!
-  [{dashboard-id :id :as dashboard}
-   {:keys [created-dashcards deleted-dashcards
+  [{dashboard-id :id}
+   {:keys [created-dashcards
            created-tab-ids deleted-tab-ids total-num-tabs]}]
   ;; Dashcard events
-  (when (seq deleted-dashcards)
-    (events/publish-event! :event/dashboard-remove-cards
-                           {:object dashboard :user-id api/*current-user-id* :dashcards deleted-dashcards}))
   (when (seq created-dashcards)
-    (events/publish-event! :event/dashboard-add-cards
-                           {:object dashboard :user-id api/*current-user-id* :dashcards created-dashcards})
     (doseq [{:keys [card_id]} created-dashcards
             :when             (pos-int? card_id)]
       (analytics/track-event! :snowplow/dashboard
@@ -309,7 +302,7 @@
   "Update the Dashboard with `id` and return the saved row. `dash-updates` may carry
   dashboard attributes plus `:dashcards` and `:tabs`, which fully replace the current layout — entries
   with negative ids are created, missing entries are deleted. Requires write permission on the dashboard;
-  runs in one transaction. Publishes `:event/dashboard-update` and may notify owners of broken subscriptions."
+  runs in one transaction and may notify owners of broken subscriptions."
   [id {:keys [dashcards tabs parameters] :as dash-updates}]
   (span/with-span!
     {:name       "update-dashboard"
@@ -332,7 +325,7 @@
       (check-embedding-enabled current-dash dash-updates)
       (api/check-500
        (do
-         (dependencies.hooks/with-batched-writes (t2/with-transaction [_conn]
+         (events/with-batched-events (t2/with-transaction [_conn]
            ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
            ;; adjust the collection position of other dashboards in the collection
            (api/maybe-reconcile-collection-position! (select-keys current-dash [:collection_id :collection_position]) (select-keys dash-updates [:collection_id :collection_position]))
@@ -481,9 +474,6 @@
                                      same-collection?        (update :name #(str % " - " (tru "Duplicate")))
                                      (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
                                    @api/*current-user*
-                                   ;; creating cards from a transaction. wait until tx complete to signal event
-                                   true
-                                   ;; do not autoplace these cards. we will create the dashboard cards ourselves.
                                    false))]))
      :discarded  discard
      :referenced reference}))
@@ -582,8 +572,7 @@
   `:name`/`:description` and set `:collection_position`; `:is_deep_copy` also duplicates the dashboard's
   questions, which is mandatory when it holds Dashboard Questions.
 
-  Requires read permission on the source and create permission on the destination collection. Publishes
-  `:event/dashboard-create` and `:event/card-create` for each duplicated card."
+  Requires read permission on the source and create permission on the destination collection."
   [from-dashboard-id {:keys [name description collection_id collection_position is_deep_copy]}]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (api/create-check :model/Dashboard {:name name, :description description, :collection_id collection_id
@@ -600,8 +589,7 @@
                         :collection_id       collection_id
                         :collection_position collection_position
                         :width               (:width existing-dashboard)}
-        new-cards      (atom nil)
-        dashboard      (dependencies.hooks/with-batched-writes (t2/with-transaction [_conn]
+        dashboard      (events/with-batched-events (t2/with-transaction [_conn]
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
                          (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
@@ -614,7 +602,6 @@
 
                                id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
                                                 (duplicate-tabs dash existing-tabs))]
-                           (reset! new-cards (vals id->new-card))
                            (when-let [dashcards (seq (update-cards-for-copy (:dashcards existing-dashboard)
                                                                             id->new-card
                                                                             id->referenced-card
@@ -626,9 +613,4 @@
     (analytics/track-event! :snowplow/dashboard
                             {:event        :dashboard-created
                              :dashboard-id (u/the-id dashboard)})
-    ;; must signal event outside of tx so cards are visible from other threads
-    (when-let [newly-created-cards (seq @new-cards)]
-      (doseq [card newly-created-cards]
-        (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})))
-    (events/publish-event! :event/dashboard-create {:object (dissoc dashboard :uncopied) :user-id api/*current-user-id*})
     dashboard))

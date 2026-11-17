@@ -244,9 +244,6 @@
           newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
       (sync/sync-tables-in-background! newly-unhidden)
-      (doseq [table updated-tables]
-        (events/publish-event! :event/table-update {:object  table
-                                                    :user-id api/*current-user-id*}))
       updated-tables)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -385,9 +382,7 @@
             [:sequential ms/PositiveInt]
             [:map {:closed true} [:field_order [:sequential ms/PositiveInt]]]]]
   (let [field-order (if (map? body) (:field_order body) body)]
-    (-> (warehouse-schema-rest.db/table id) api/write-check (schema.table-user-settings/custom-order-fields! field-order))
-    (events/publish-event! :event/table-update {:object  (warehouse-schema-rest.db/table id)
-                                                :user-id api/*current-user-id*}))
+    (-> (warehouse-schema-rest.db/table id) api/write-check (schema.table-user-settings/custom-order-fields! field-order)))
   {:success true})
 
 (mu/defn- update-csv!

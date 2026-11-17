@@ -593,8 +593,6 @@
                                         :visualization_settings {}
                                         :dashboard_id           dashboard-id}
                                        {:id api/*current-user-id*}
-                                       :delay-event
-                                       ;; The ops place the card, so the save must not place it too.
                                        false)]
         (when conversation-id
           (metabot.db/link-card-to-conversation! (:id card) conversation-id chart-id))
@@ -849,9 +847,6 @@
             {saved :dashboard :keys [before saved-charts]}
             (save-entity/do-with-save-rejections
              #(do-with-op-errors dashboard_id (fn [] (save! dashboard attrs ops charts))))]
-        (doseq [{:keys [card]} saved-charts
-                :when card]
-          (save-entity/publish-card-create! card))
         (result saved (action before attrs) saved-charts profile-id)))))
 
 (def write-dashboard-tool

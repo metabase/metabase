@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.field-user-settings
   (:require
+   [metabase.events.core]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
@@ -29,7 +30,7 @@
 (doto :model/FieldUserSettings
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/dependencies)
+  (derive :hook/events)
   (derive :hook/change-log))
 
 (defn- with-set-flags

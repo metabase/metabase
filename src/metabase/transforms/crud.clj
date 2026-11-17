@@ -182,7 +182,7 @@
      (check-references definition (written-parts body))
      (check-target-table-free definition))
    (let [creator-id (or creator-id api/*current-user-id*)
-         transform  (t2/with-transaction [_]
+         transform  (events/with-batched-events
                       (let [tag-ids       (:tag_ids body)
                             ;; Set owner_user_id to current user if not explicitly provided
                             owner-user-id (when-not (:owner_email body)
@@ -197,7 +197,6 @@
                           (transform.model/update-transform-tags! (:id transform) tag-ids))
                         ;; Return with hydrated tag_ids
                         (t2/hydrate transform :transform_tag_ids :creator :owner :can_read :can_write :can_execute)))]
-     (events/publish-event! :event/transform-create {:object transform :user-id creator-id})
      transform)))
 
 (mu/defn update-transform! :- ::transforms.schema/transform
@@ -205,7 +204,7 @@
    Returns the updated transform with hydrated associations."
   [id   :- ::lib.schema.id/transform
    body :- ::transforms.schema/transform.create]
-  (let [transform (t2/with-transaction [_]
+  (let [transform (events/with-batched-events
                     (let [old           (api/read-check :model/Transform id)
                           new           (merge old body)
                           definition    (transforms.u/->definition new)
@@ -225,23 +224,19 @@
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))
                     (t2/hydrate (transforms.db/transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
-    (events/publish-event! :event/update-transform {:object transform})
     (-> transform
         transforms.u/add-source-readable)))
 
 (mu/defn publish-update-event! :- :nil
-  "Publishes the update event of `transform`, which the audit log records, for a write that skips [[update-transform!]]."
+  "Publishes the update event of `transform`, which the audit log records, for a moment that writes no row of it."
   [transform :- ::transforms.schema/transform]
   (events/publish-event! :event/update-transform {:object transform})
   nil)
 
 (mu/defn delete-transform! :- :nil
-  "Delete a transform and publish the delete event."
+  "Delete a transform."
   [transform :- ::transforms.schema/transform]
   (transforms.db/delete-transform! (:id transform))
-  (events/publish-event! :event/transform-delete
-                         {:object transform
-                          :user-id api/*current-user-id*})
   nil)
 
 (mu/defn delete-transforms-folder! :- :nil

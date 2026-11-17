@@ -8,7 +8,6 @@
    [java-time.api :as t]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.database-routing.core :as database-routing]
-   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -946,9 +945,9 @@
         (log/warnf "refresh-table-stats! failed for %s.%s: %s" (:schema target) (:name target) (ex-message t))))
     ;; Publish event after sync so the table exists in AppDB.
     (when publish-events?
-      (dependencies.hooks/after-transform-run (:id transform) (:id table))
       (events/publish-event! :event/transform-run-complete
                              {:object {:db-id          db-id
+                                       :table-id       (:id table)
                                        :transform-id   (:id transform)
                                        :transform-type (keyword (:type target))
                                        :output-schema  (:schema target)

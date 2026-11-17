@@ -663,14 +663,9 @@
   "Hard delete a Card. To soft delete, use `PUT /api/queries/:id`"
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [card    (api/write-check :model/Card id)
-        _       (api/check-403 (queries/can-delete? card))
-        ;; the database deletes the card's actions through the foreign key, with no events of their own
-        actions (queries-rest.db/actions-for-model id)]
-    (queries-rest.db/delete-card! id)
-    (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*})
-    (doseq [action actions]
-      (events/publish-event! :event/action-delete {:object action :user-id api/*current-user-id*})))
+  (let [card (api/write-check :model/Card id)]
+    (api/check-403 (queries/can-delete? card))
+    (queries-rest.db/delete-card! id))
   api/generic-204-no-content)
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
@@ -713,9 +708,7 @@
   (write-check-collection-or-root new-collection-id-or-nil)
   ;; for each affected card...
   (when (seq card-ids)
-    (let [cards  (queries-rest.db/cards-to-move-to-collection (set card-ids) new-collection-id-or-nil) ; poisioned NULLs = ick
-          ;; whole, as the update event's previous object: a listener reads a card's metadata from it
-          before (when (seq cards) (queries-rest.db/cards-by-id (map u/the-id cards)))]
+    (let [cards (queries-rest.db/cards-to-move-to-collection (set card-ids) new-collection-id-or-nil)] ; poisioned NULLs = ick
       ;; ...check that we have write permissions for it...
       (doseq [card (t2/hydrate (vec cards) :can_write)]
         (when-not (mi/can-update? card {:collection_id new-collection-id-or-nil})
@@ -738,10 +731,7 @@
         (doseq [card  cards
                 :when (not (:collection_position card))]
           (queries-rest.db/update-card! (u/the-id card) {:collection_id new-collection-id-or-nil})))
-      (doseq [card cards]
-        (events/publish-event! :event/card-update {:object          (queries-rest.db/card (u/the-id card))
-                                                   :previous-object (get before (u/the-id card))
-                                                   :user-id         api/*current-user-id*}))))
+      nil))
 
   (when new-collection-id-or-nil
     (events/publish-event! :event/collection-touch {:collection-id new-collection-id-or-nil :user-id api/*current-user-id*})))

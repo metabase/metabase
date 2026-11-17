@@ -1,8 +1,7 @@
-(ns metabase.session.hooks-test
+(ns metabase.session.events.revoke-on-deactivation-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.session.core :as session]
-   [metabase.session.hooks :as session.hooks]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -21,13 +20,13 @@
   (select-keys (t2/select-one :model/Session :id session-id) [:end_reason :ended_by_user_id :key_hashed]))
 
 (deftest after-user-deactivated-test
-  (testing "the hook ends the user's sessions, leaving other users' untouched"
-    (mt/with-temp [:model/User {victim :id}    {}
+  (testing "deactivating a user ends the user's sessions, leaving other users' untouched"
+    (mt/with-temp [:model/User {victim :id}    {:is_active true}
                    :model/User {bystander :id} {}]
       (let [victim-session    (insert-session! victim)
             bystander-session (insert-session! bystander)]
         (mt/with-current-user (mt/user->id :crowberto)
-          (session.hooks/after-user-deactivated victim))
+          (t2/update! :model/User :id victim {:is_active false}))
         (is (= {:end_reason "user-deactivated", :ended_by_user_id (mt/user->id :crowberto), :key_hashed nil}
                (ending victim-session))
             "victim's session is ended, attributed to the deactivating admin, and its key destroyed")

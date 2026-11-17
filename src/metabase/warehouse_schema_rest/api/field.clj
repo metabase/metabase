@@ -154,7 +154,6 @@
       (u/prog1 (-> updated
                    (t2/hydrate :dimensions :has_field_values)
                    (schema.field/hydrate-target-with-data-model-perms))
-        (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*})
         (when (not= effective-type (:effective_type field))
           (analytics/track-event! :snowplow/simple_event {:event "field_effective_type_change" :target_id id})
           ;; Run with admin perms to match behavior during normal sync.
@@ -205,8 +204,6 @@
         :type                    dimension-type
         :name                    dimension-name
         :human_readable_field_id human-readable-field-id})))
-  (events/publish-event! :event/field-update {:object  (warehouse-schema-rest.db/field id)
-                                              :user-id api/*current-user-id*})
   (warehouse-schema-rest.db/dimension-for-field id))
 
 (api.macros/defendpoint :delete "/:id/dimension" :- ::api/generic-204-no-content
@@ -215,8 +212,6 @@
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Field id)
   (warehouse-schema-rest.db/delete-dimensions-for-field! id)
-  (events/publish-event! :event/field-update {:object  (warehouse-schema-rest.db/field id)
-                                              :user-id api/*current-user-id*})
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.table-user-settings
   (:require
+   [metabase.events.core]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
@@ -37,7 +38,7 @@
 (doto :model/TableUserSettings
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/dependencies))
+  (derive :hook/events))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

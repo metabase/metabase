@@ -3,6 +3,7 @@
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require
    [metabase.collections.models.collection :as collection]
+   [metabase.events.core]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -33,8 +34,8 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies)
-  (derive :hook/revisions))
+  (derive :hook/events)
+  (derive :hook/events))
 
 (defn- definition-table-id
   "The id of the Table `definition`, a full query, is built on."

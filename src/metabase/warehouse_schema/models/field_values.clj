@@ -28,6 +28,7 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.database-routing.core :as database-routing]
+   [metabase.events.core]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -103,7 +104,7 @@
 (doto :model/FieldValues
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/dependencies))
+  (derive :hook/events))
 
 (t2/deftransforms :model/FieldValues
   {:human_readable_values mi/transform-json-no-keywordization

@@ -1,21 +1,34 @@
-(ns metabase.pulse.hooks
-  "Hooks that keep the subscriptions of a Dashboard in step with its dashcards, its name and its Collection. The
-  subscriptions follow the Cards of the dashcards, so Tabs and series do not matter."
+(ns metabase.pulse.events
+  "Handlers of the lifecycle events that keep the subscriptions of a Dashboard in step with its dashcards, its name and
+  its Collection, once per Dashboard for the writes of one batch. The subscriptions follow the Cards of the dashcards,
+  so Tabs and series do not matter."
   (:require
    [clojure.set :as set]
-   [metabase.models.interface :as mi]
+   [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-card :as pulse-card]
-   [metabase.util.write-batch :as write-batch]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+(defn- owner
+  "The id of the Dashboard whose subscriptions the `event` calls to sync, or nil."
+  [{:keys [model operation object changes]}]
+  (case model
+    :model/Dashboard     (when (and (= :update operation)
+                                    (or (contains? changes :name) (contains? changes :collection_id)))
+                           (:id object))
+    :model/DashboardCard (when (or (#{:create :delete} operation)
+                                   (contains? changes :card_id)
+                                   (contains? changes :dashboard_id))
+                           (:dashboard_id object))
+    nil))
+
 (defn- sync-subscriptions!
   "Update the names and Collection ids of the Pulses of the Dashboard `dashboard-id`, and sync their PulseCards with
   the dashcards the Dashboard has."
-  [dashboard-id _data]
+  [dashboard-id _events _all-events]
   (let [affected (pulse.db/pulse-card-pairs-for-dashboard dashboard-id)]
     (when-let [pulse-ids (seq (distinct (map :pulse-id affected)))]
       (when-let [dashboard (pulse.db/dashboard dashboard-id)]
@@ -39,35 +52,4 @@
                                                                    :collection_id (:collection_id dashboard)})
               (pulse-card/bulk-create! new-pulse-cards))))))))
 
-(defn- mark-dashboard!
-  "Have the subscriptions of the Dashboard `dashboard-id` synced once the batch of writes ends."
-  [dashboard-id]
-  (write-batch/mark! [::dashboard dashboard-id] (constantly nil) (partial sync-subscriptions! dashboard-id)))
-
-(defn after-insert
-  "Hook for `row` of `model` after it is inserted."
-  [model row]
-  (when (= model :model/DashboardCard)
-    (mark-dashboard! (:dashboard_id row))))
-
-(defn before-update
-  "Hook for `row` of `model` before it is updated."
-  [model row]
-  (let [changes (t2/changes row)]
-    (case model
-      :model/Dashboard     (when (or (contains? changes :name) (contains? changes :collection_id))
-                             (mark-dashboard! (:id row)))
-      :model/DashboardCard (when (or (contains? changes :card_id) (contains? changes :dashboard_id))
-                             (mark-dashboard! (:dashboard_id row)))
-      nil)))
-
-(defn before-delete
-  "Hook for `row` of `model` before it is deleted."
-  [model row]
-  (when (= model :model/DashboardCard)
-    (mark-dashboard! (:dashboard_id row))))
-
-(mi/define-hook-trait :hook/pulse
-  {:after-insert  after-insert
-   :before-update before-update
-   :before-delete before-delete})
+(events/register-owned-consumer! ::dashboard-subscriptions owner sync-subscriptions!)

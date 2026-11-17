@@ -1,4 +1,4 @@
-(ns metabase.pulse.hooks-test
+(ns metabase.pulse.events-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.test :as mt]

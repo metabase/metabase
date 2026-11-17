@@ -5,7 +5,7 @@
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.audit-app.core :as audit-app]
-   [metabase.events.core :as events]
+   [metabase.events.core]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -14,7 +14,6 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -26,7 +25,7 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
-  (derive :hook/revisions)
+  (derive :hook/events)
   (derive ::data-testing.models/saved-test))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/CardTest :card]
@@ -109,39 +108,32 @@
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
 (mu/defn create-card-test! :- ::data-testing.schema/card-test
-  "Insert the CardTest `card-test` and publish its create event as its creator, returning the inserted test."
+  "Insert the CardTest `card-test` returning the inserted test."
   [card-test :- [:merge
                  ::data-testing.schema/card-test.create
                  [:map {:closed true}
                   [:creator_id ::lib.schema.id/user]]]]
-  (u/prog1 (data-testing.db/insert-card-test! card-test)
-    (events/publish-event! :event/card-test-create {:object <> :user-id (:creator_id <>)})))
+  (data-testing.db/insert-card-test! card-test))
 
 (mu/defn update-card-test! :- :nil
-  "Apply `changes` to the CardTest with `id` and publish its update event when a column changed."
+  "Apply `changes` to the CardTest with `id`."
   [id      :- ms/PositiveInt
    changes :- ::data-testing.schema/card-test.update]
-  (when (pos? (data-testing.db/update-card-test! id changes))
-    (events/publish-event! :event/card-test-update {:object (data-testing.db/card-test id)}))
+  (data-testing.db/update-card-test! id changes)
   nil)
 
 (mu/defn delete-card-test! :- :nil
-  "Delete the CardTest with `id` and publish its delete event."
+  "Delete the CardTest with `id`."
   [id :- ms/PositiveInt]
-  (when-let [card-test (data-testing.db/card-test id)]
-    (data-testing.db/delete-card-test! id)
-    (events/publish-event! :event/card-test-delete {:object card-test}))
+  (data-testing.db/delete-card-test! id)
   nil)
 
 (defenterprise delete-card-tests!
-  "Deletes the tests of the card `card-id` and publishes a delete event for each, whatever the token says, since the
+  "Deletes the tests of the card `card-id` whatever the token says, since the
   rows outlive the feature."
   :feature :none
   [card-id]
-  (let [card-tests (data-testing.db/card-tests {:card-id card-id})]
-    (data-testing.db/delete-card-tests! card-id)
-    (doseq [card-test card-tests]
-      (events/publish-event! :event/card-test-delete {:object card-test}))))
+  (data-testing.db/delete-card-tests! card-id))
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 

@@ -1,14 +1,18 @@
-(ns metabase.model-persistence.hooks
-  "Hooks that have a model Card persisted when its database persists models."
+(ns metabase.model-persistence.events.persisted-info
+  "Handlers of the lifecycle events that have a model Card persisted when its database persists models."
   (:require
-   [metabase.api.common :as api]
+   [metabase.events.core :as events]
    [metabase.model-persistence.db :as model-persistence.db]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.model-persistence.settings :as model-persistence.settings]
    [metabase.util.log :as log]
-   [metabase.util.write-batch :as write-batch]))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
+
+(events/derive! ::event :metabase/event)
+(events/derive! :event/card-create ::event)
+(events/derive! :event/card-update ::event)
 
 (defn- turn-on-model!
   "Turn the persistence of the model Card `card-id` on for `user-id` when its database persists models and it has no
@@ -24,24 +28,7 @@
     (catch Throwable e
       (log/warnf "Failed to persist model %s: %s" card-id (ex-message e)))))
 
-(defn- mark-card!
-  "Have the model Card `row` persisted once the batch of writes ends."
-  [row]
-  (when (= (keyword (:type row)) :model)
-    (let [card-id (:id row)
-          user-id (or api/*current-user-id* (:creator_id row))]
-      (write-batch/mark! [::card card-id]
-                         (constantly user-id)
-                         (partial turn-on-model! card-id)))))
-
-(defn after-insert
-  "Hook for `row` of `model` after it is inserted."
-  [model row]
-  (when (= model :model/Card)
-    (mark-card! row)))
-
-(defn before-update
-  "Hook for `row` of `model` before it is updated."
-  [model row]
-  (when (= model :model/Card)
-    (mark-card! row)))
+(methodical/defmethod events/publish-event! ::event
+  [_topic {:keys [object user-id]}]
+  (when (= (keyword (:type object)) :model)
+    (turn-on-model! (:id object) (or user-id (:creator_id object)))))

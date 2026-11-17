@@ -1,6 +1,7 @@
 (ns metabase.dashboards.models.dashboard-card-series
   (:require
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.events.core]
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
@@ -12,7 +13,7 @@
 
 (doto :model/DashboardCardSeries
   (derive :metabase/model)
-  (derive :hook/dependencies))
+  (derive :hook/events))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

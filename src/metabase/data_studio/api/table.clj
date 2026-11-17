@@ -170,11 +170,7 @@
     (when (seq set-map)
       (schema.table-user-settings/upsert-table-user-settings-for-tables! table-ids set-map)
       (maybe-sync-unhidden-tables! existing-tables set-map)
-      ;; Publish update events for remote sync tracking
-      (let [updated-tables (data-studio.db/tables table-ids)]
-        (doseq [table updated-tables]
-          (events/publish-event! :event/table-update {:object  table
-                                                      :user-id api/*current-user-id*}))))
+      nil)
     {}))
 
 (api.macros/defendpoint :post "/selection" :- ::bulk-table-selection-info

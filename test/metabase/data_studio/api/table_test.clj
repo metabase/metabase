@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.data-studio.db :as data-studio.db]
-   [metabase.dependencies.hooks :as dependencies.hooks]
+   [metabase.events.core :as events]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -217,7 +217,9 @@
                    :model/Field       {field-id :id} {:table_id table-id}
                    :model/FieldValues {fv-id :id}    {:field_id field-id, :values [1 2 3 4]}]
       (let [deleted (atom #{})]
-        (mt/with-dynamic-fn-redefs [dependencies.hooks/before-delete (fn [_model row] (swap! deleted conj (:id row)))]
+        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
+                                                       (when (= :event/field-values-delete topic)
+                                                         (swap! deleted conj (:id (:object event)))))]
           (data-studio.db/delete-field-values-for-tables! [table-id]))
         (is (contains? @deleted fv-id))))))
 

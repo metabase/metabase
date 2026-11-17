@@ -1,21 +1,21 @@
-(ns metabase-enterprise.dependencies.hooks-test
+(ns metabase-enterprise.dependencies.events-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase-enterprise.dependencies.db :as dependencies.db]
-   [metabase-enterprise.dependencies.hooks]
+   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.batch-processing.core :as grouper]
-   [metabase.dependencies.hooks :as dependencies.hooks]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (comment
-  metabase-enterprise.dependencies.hooks/keep-me)
+  metabase-enterprise.dependencies.events/keep-me)
 
 (def ^:private table-query deps.test/table-query)
 
@@ -181,7 +181,7 @@
                 (reset! marks [])
                 (reset! submitted [])
                 (deps.test/do-with-immediate-hook-writes
-                 #(dependencies.hooks/with-batched-writes
+                 #(events/with-batched-events
                     (t2/update! :model/Field :id (mt/id :venues :price) {:position 0})
                     (t2/update! :model/Field :id (mt/id :venues :name) {:position 1})))
                 (is (= [[:table #{(mt/id :venues)}]] @marks))
@@ -293,20 +293,21 @@
                               {:statements (filterv (partial re-find #"(?i)\b(?:data_app|dependency_status)\b")
                                                     (deps.test/app-db-statements hook!))
                                :pending?   (pending? :data-app app-id)})
-                moved-to    (fn [from-collection-id to-collection-id]
-                              (assoc (t2/instance :model/Card (assoc (into {} card) :collection_id from-collection-id))
-                                     :collection_id to-collection-id))
                 one-update? {:statements [#"(?is)UPDATE\b.*"] :pending? true}]
             (testing "inserting a card"
-              (is (=? one-update? (marks #(dependencies.hooks/before-insert :model/Card card)))))
+              (is (=? one-update? (marks #(t2/insert! :model/Card {:name                   "inserted"
+                                                                   :type                   :question
+                                                                   :display                :table
+                                                                   :dataset_query          (table-query :products)
+                                                                   :visualization_settings {}
+                                                                   :creator_id             (mt/user->id :rasta)
+                                                                   :collection_id          collection-id})))))
             (testing "moving a card out"
-              (is (=? one-update? (marks #(dependencies.hooks/before-update
-                                           :model/Card (moved-to collection-id other-collection-id))))))
+              (is (=? one-update? (marks #(t2/update! :model/Card :id (:id card) {:collection_id other-collection-id})))))
             (testing "moving a card in"
-              (is (=? one-update? (marks #(dependencies.hooks/before-update
-                                           :model/Card (moved-to other-collection-id collection-id))))))
+              (is (=? one-update? (marks #(t2/update! :model/Card :id (:id card) {:collection_id collection-id})))))
             (testing "deleting a card"
-              (is (=? one-update? (marks #(dependencies.hooks/before-delete :model/Card card)))))))))))
+              (is (=? one-update? (marks #(t2/delete! :model/Card :id (:id card)))))))))))))
 
 (deftest entity-delete-test
   (testing "the dependency job drops the dependencies and status of a deleted entity"

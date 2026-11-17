@@ -9,7 +9,6 @@
    [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
-   [metabase.revisions.hooks :as revisions.hooks]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -35,13 +34,12 @@
    [:result_column_name  {:optional true} [:maybe :string]]])
 
 (defn create-measure!
-  "Create-check and insert a new Measure; publishes `:event/measure-create` and returns the hydrated Measure."
+  "Create-check and insert a new Measure and return the hydrated Measure."
   [{:keys [name description definition], :as body}]
   (let [definition (lib-be/normalize-query definition)]
     (api/create-check :model/Measure (assoc body :definition definition))
     (let [measure (api/check-500
                    (measures.db/insert-measure! api/*current-user-id* name description definition))]
-      (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
       (t2/hydrate measure :creator))))
 
 (api.macros/defendpoint :post "/" :- ::measure
@@ -102,10 +100,9 @@
                      new-body)]
     (api/update-check existing new-body)
     (when changes
-      (revisions.hooks/with-revision-message revision_message (measures.db/update-measure! id changes)))
-    (u/prog1 (hydrated-measure id false)
-      (events/publish-event! :event/measure-update
-                             {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
+      (events/with-event-context {:revision-message revision_message}
+        (measures.db/update-measure! id changes)))
+    (hydrated-measure id false)))
 
 (api.macros/defendpoint :put "/:id" :- ::measure
   "Update a `Measure` with ID."

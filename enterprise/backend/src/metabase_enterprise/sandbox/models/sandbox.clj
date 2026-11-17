@@ -12,6 +12,7 @@
    [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.events.core]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -42,7 +43,7 @@
   ;;; only admins can work with sandboxes
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser)
-  (derive :hook/dependencies))
+  (derive :hook/events))
 
 (t2/deftransforms :model/Sandbox
   {:attribute_remappings sandbox.schema/attribute-remappings-transform})

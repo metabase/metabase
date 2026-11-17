@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.core]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.schema]
    [metabase.models.interface :as mi]
@@ -46,7 +47,7 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/revisions))
+  (derive :hook/events))
 
 (defmethod mi/after-archived-change :model/Exploration
   [_model rows changes]
