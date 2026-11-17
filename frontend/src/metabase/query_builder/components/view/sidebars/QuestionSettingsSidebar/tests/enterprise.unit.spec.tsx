@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { TokenFeatures } from "metabase-types/api";
@@ -62,6 +63,37 @@ describe("QuestionSettingsSidebar", () => {
       );
       expect(await screen.findByText("Persist model data")).toBeInTheDocument();
       expect(await screen.findByLabelText("Persist model data")).toBeChecked();
+    });
+
+    it("should reflect the persisted state after toggling it without a reload (metabase#74449)", async () => {
+      await setupEnterprise(
+        { card: model },
+        {
+          cache_granular_controls: true,
+        },
+      );
+      const toggle = await screen.findByLabelText("Persist model data");
+      expect(toggle).toBeChecked();
+
+      await userEvent.click(toggle);
+      await waitFor(() =>
+        expect(screen.getByLabelText("Persist model data")).not.toBeChecked(),
+      );
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/persist/card/${model.id}/unpersist`,
+        ),
+      ).toHaveLength(1);
+
+      await userEvent.click(screen.getByLabelText("Persist model data"));
+      await waitFor(() =>
+        expect(screen.getByLabelText("Persist model data")).toBeChecked(),
+      );
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/persist/card/${model.id}/persist`,
+        ),
+      ).toHaveLength(1);
     });
 
     it("should show cache status when caching is enabled", async () => {
