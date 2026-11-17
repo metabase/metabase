@@ -18,11 +18,13 @@ import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { usePublicEndpoints } from "metabase/public/hooks/use-public-endpoints";
 import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
 import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
+import { fetchGoalValues, withGoalValues } from "metabase/querying/goal-values";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { useLocation, useParams } from "metabase/router";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { parseSearchQuery } from "metabase/utils/browser";
+import { getReferencedEntities } from "metabase/viz-core";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
@@ -131,19 +133,24 @@ export const PublicOrEmbeddedQuestion = () => {
       setResult(null);
 
       const runQuery = makePivotAwareQueryRunner(dispatch);
+      const goalSources = getReferencedEntities(card);
 
       let resultPromise: Promise<Dataset>;
       if (token) {
         // embeds apply parameter values server-side
-        resultPromise = runQuery(
-          embedApi.endpoints.getEmbedCardQuery,
-          question,
-          {
+        resultPromise = withGoalValues(
+          runQuery(embedApi.endpoints.getEmbedCardQuery, question, {
             token,
             parameters: JSON.stringify(
               getParameterValuesBySlug(parameters, parameterValues),
             ),
-          },
+          }),
+          fetchGoalValues(
+            dispatch,
+            embedApi.endpoints.getEmbedCardGoalValues,
+            { token },
+            { sources: goalSources },
+          ),
         );
       } else if (uuid) {
         // public links currently apply parameters client-side
@@ -154,13 +161,17 @@ export const PublicOrEmbeddedQuestion = () => {
           [],
           { sparse: true },
         );
-        resultPromise = runQuery(
-          publicApi.endpoints.getPublicCardQuery,
-          question,
-          {
+        resultPromise = withGoalValues(
+          runQuery(publicApi.endpoints.getPublicCardQuery, question, {
             uuid,
             parameters: JSON.stringify(datasetQuery.parameters),
-          },
+          }),
+          fetchGoalValues(
+            dispatch,
+            publicApi.endpoints.getPublicCardGoalValues,
+            { uuid },
+            { sources: goalSources },
+          ),
         );
       } else {
         throw { status: 404 };

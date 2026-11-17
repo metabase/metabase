@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { createAction } from "@reduxjs/toolkit";
 import { denormalize, normalize, schema } from "normalizr";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,6 +9,7 @@ import {
   automagicDashboardsApi,
   cardApi,
   dashboardApi,
+  dynamicGoalApi,
   embedApi,
   publicApi,
 } from "metabase/api";
@@ -41,6 +43,7 @@ import {
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
+import { fetchGoalValues, withGoalValues } from "metabase/querying/goal-values";
 import { runAdhocDatasetQuery } from "metabase/querying/run-query";
 import type {
   DashboardLinkTargets,
@@ -57,7 +60,7 @@ import { PERFORMANCE_MARKS, markOnce } from "metabase/utils/performance-marks";
 import { throwIfSignalAborted } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
 import { DEFAULT_VISUALIZER_DISPLAY } from "metabase/visualizer/constants";
-import { hasUnansweredGoalReferences } from "metabase/viz-core";
+import { getReferencedEntities } from "metabase/viz-core";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
@@ -72,6 +75,7 @@ import type {
   ParameterId,
   ParameterValuesMap,
   QuestionDashboardCard,
+  ReferencedEntitiesResults,
 } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
@@ -282,22 +286,9 @@ export const fetchCardDataAction = createAsyncThunk<
 
     const lastResult = dashcardData?.[dashcard.id]?.[card.id];
     if (!reload) {
-      const savedDashcard =
-        editingDashboard != null
-          ? editingDashboard.dashcards.find(({ id }) => id === dashcard.id)
-          : dashcard;
-      const savedGoalCard =
-        savedDashcard != null ? getSavedGoalCard(card, savedDashcard) : null;
-      // a failed query carries no goal answers, and a refetch would fail again
-      const isMissingGoalReferences =
-        savedGoalCard != null &&
-        lastResult?.status !== "failed" &&
-        hasUnansweredGoalReferences(savedGoalCard, lastResult?.data);
-
       // if reload not set, check to see if the last result has the same query dict and return that
       if (
         lastResult &&
-        !isMissingGoalReferences &&
         _.isEqual(
           getDatasetQueryParams(lastResult.json_query),
           getDatasetQueryParams(datasetQuery),
@@ -361,43 +352,57 @@ export const fetchCardDataAction = createAsyncThunk<
     const buildQuestion = selectQuestionFromCardBuilder(getState());
     const question = buildQuestion(card);
     const runQuery = makePivotAwareQueryRunner(dispatch, controller.signal);
+    const goalValues = fetchDashcardGoalValues(dispatch, card, dashcard, {
+      forceRefetch: Boolean(reload || ignoreCache),
+      ignoreCache,
+      signal: controller.signal,
+    });
 
     if (dashboardType === "public") {
       // Unjustified type cast. FIXME
       result = (await fetchDataOrError(
-        runQuery(publicApi.endpoints.getPublicDashcardQuery, question, {
-          // In public dashboards `dashboard_id` holds the public UUID string.
-          uuid: dashcard.dashboard_id as string,
-          dashcardId: dashcard.id,
-          cardId: card.id,
-          parameters: datasetQuery.parameters
-            ? JSON.stringify(datasetQuery.parameters)
-            : undefined,
-          ignore_cache: ignoreCache,
-        }),
+        withGoalValues(
+          runQuery(publicApi.endpoints.getPublicDashcardQuery, question, {
+            // In public dashboards `dashboard_id` holds the public UUID string.
+            uuid: dashcard.dashboard_id as string,
+            dashcardId: dashcard.id,
+            cardId: card.id,
+            parameters: datasetQuery.parameters
+              ? JSON.stringify(datasetQuery.parameters)
+              : undefined,
+            ignore_cache: ignoreCache,
+          }),
+          goalValues,
+        ),
       )) as Dataset | { error: unknown };
     } else if (dashboardType === "embed") {
       // Unjustified type cast. FIXME
       result = (await fetchDataOrError(
-        runQuery(embedApi.endpoints.getEmbedDashcardQuery, question, {
-          // In embedded dashboards `dashboard_id` holds the embed token string.
-          token: dashcard.dashboard_id as string,
-          dashcardId: dashcard.id,
-          cardId: card.id,
-          parameters: JSON.stringify(
-            getParameterValuesBySlug(dashboard.parameters, parameterValues),
-          ),
-          ignore_cache: ignoreCache,
-        }),
+        withGoalValues(
+          runQuery(embedApi.endpoints.getEmbedDashcardQuery, question, {
+            // In embedded dashboards `dashboard_id` holds the embed token string.
+            token: dashcard.dashboard_id as string,
+            dashcardId: dashcard.id,
+            cardId: card.id,
+            parameters: JSON.stringify(
+              getParameterValuesBySlug(dashboard.parameters, parameterValues),
+            ),
+            ignore_cache: ignoreCache,
+          }),
+          goalValues,
+        ),
       )) as Dataset | { error: unknown };
     } else if (dashboardType === "transient" || dashboardType === "inline") {
       // Unjustified type cast. FIXME
       result = (await fetchDataOrError(
-        runAdhocDatasetQuery(
-          dispatch,
-          question,
-          { ...datasetQuery, ignore_cache: ignoreCache },
-          controller.signal,
+        withGoalValues(
+          runAdhocDatasetQuery(
+            dispatch,
+            question,
+            { ...datasetQuery, ignore_cache: ignoreCache },
+            controller.signal,
+          ),
+          goalValues,
         ),
       )) as Dataset | { error: unknown };
     } else {
@@ -420,24 +425,30 @@ export const fetchCardDataAction = createAsyncThunk<
       if (shouldUseCardQueryEndpoint) {
         // Unjustified type cast. FIXME
         result = (await fetchDataOrError(
-          runQuery(cardApi.endpoints.getCardQuery, question, {
-            cardId: card.id,
-            dashboardId: dashcard.dashboard_id,
-            ignore_cache: ignoreCache,
-          }),
+          withGoalValues(
+            runQuery(cardApi.endpoints.getCardQuery, question, {
+              cardId: card.id,
+              dashboardId: dashcard.dashboard_id,
+              ignore_cache: ignoreCache,
+            }),
+            goalValues,
+          ),
         )) as Dataset | { error: unknown };
       } else {
         // Unjustified type cast. FIXME
         result = (await fetchDataOrError(
-          runQuery(dashboardApi.endpoints.getDashboardCardQuery, question, {
-            dashboardId: dashcard.dashboard_id,
-            dashcardId: dashcard.id,
-            cardId: card.id,
-            parameters: datasetQuery.parameters,
-            ignore_cache: ignoreCache,
-            dashboard_id: dashcard.dashboard_id,
-            dashboard_load_id: dashboardLoadId,
-          }),
+          withGoalValues(
+            runQuery(dashboardApi.endpoints.getDashboardCardQuery, question, {
+              dashboardId: dashcard.dashboard_id,
+              dashcardId: dashcard.id,
+              cardId: card.id,
+              parameters: datasetQuery.parameters,
+              ignore_cache: ignoreCache,
+              dashboard_id: dashcard.dashboard_id,
+              dashboard_load_id: dashboardLoadId,
+            }),
+            goalValues,
+          ),
         )) as Dataset | { error: unknown };
       }
     }
@@ -677,32 +688,94 @@ export const clearCardData = createAction(
   (cardId, dashcardId) => ({ payload: { cardId, dashcardId } }),
 );
 
-// keep in sync with `goal-scope` in dynamic_goals.clj, which picks the goals the backend answers
-function getSavedGoalCard(
+function fetchDashcardGoalValues(
+  dispatch: Dispatch,
   card: Card,
-  savedDashcard: DashboardCard,
+  dashcard: DashboardCard,
+  {
+    forceRefetch,
+    ignoreCache,
+    signal,
+  }: { forceRefetch: boolean; ignoreCache?: boolean; signal: AbortSignal },
+): Promise<ReferencedEntitiesResults | null> {
+  const goalCard = getDashcardGoalCard(card, dashcard);
+  const sources = goalCard != null ? getReferencedEntities(goalCard) : [];
+  const options = { sources, forceRefetch, signal };
+
+  return match(getDashboardType(dashcard.dashboard_id))
+    .with("public", () =>
+      fetchGoalValues(
+        dispatch,
+        publicApi.endpoints.getPublicDashcardGoalValues,
+        {
+          // `getDashboardType` matched the public UUID string `dashboard_id` holds
+          uuid: dashcard.dashboard_id as string,
+          dashcardId: dashcard.id,
+          cardId: card.id,
+        },
+        options,
+      ),
+    )
+    .with("embed", () =>
+      fetchGoalValues(
+        dispatch,
+        embedApi.endpoints.getEmbedDashcardGoalValues,
+        {
+          // `getDashboardType` matched the embed token string `dashboard_id` holds
+          token: dashcard.dashboard_id as string,
+          dashcardId: dashcard.id,
+          cardId: card.id,
+        },
+        options,
+      ),
+    )
+    .with("transient", "inline", () =>
+      fetchGoalValues(
+        dispatch,
+        dynamicGoalApi.endpoints.getGoalValues,
+        { sources, ...(ignoreCache && { ignore_cache: true }) },
+        options,
+      ),
+    )
+    .otherwise(() =>
+      fetchGoalValues(
+        dispatch,
+        dynamicGoalApi.endpoints.getGoalValues,
+        {
+          sources,
+          dashboard_id: dashcard.dashboard_id,
+          ...(ignoreCache && { ignore_cache: true }),
+        },
+        options,
+      ),
+    );
+}
+
+// keep in sync with `goal-scope` in dynamic_goals.clj, which picks the goals the backend answers
+function getDashcardGoalCard(
+  card: Card,
+  dashcard: DashboardCard,
 ): Pick<Card, "display" | "visualization_settings"> | null {
-  if (savedDashcard.card_id != null && card.id !== savedDashcard.card_id) {
+  if (dashcard.card_id != null && card.id !== dashcard.card_id) {
     return null;
   }
 
-  if (!isVisualizerDashboardCard(savedDashcard)) {
+  if (!isVisualizerDashboardCard(dashcard)) {
     return {
       display: card.display,
       visualization_settings: {
         ...card.visualization_settings,
-        ...savedDashcard.visualization_settings,
+        ...dashcard.visualization_settings,
       },
     };
   }
 
-  const { display, settings } =
-    savedDashcard.visualization_settings.visualization;
+  const { display, settings } = dashcard.visualization_settings.visualization;
   return {
     display: display ?? DEFAULT_VISUALIZER_DISPLAY,
     visualization_settings: {
       ...settings,
-      ..._.omit(savedDashcard.visualization_settings, "visualization"),
+      ..._.omit(dashcard.visualization_settings, "visualization"),
     },
   };
 }

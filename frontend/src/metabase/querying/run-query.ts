@@ -1,9 +1,9 @@
-import _ from "underscore";
-
 import { RTK_CACHE_KEY_PARAM } from "metabase/api/api";
 import { cardApi } from "metabase/api/card";
 import { dashboardApi } from "metabase/api/dashboard";
 import { datasetApi } from "metabase/api/dataset";
+import { dynamicGoalApi } from "metabase/api/dynamic-goal";
+import { embedApi } from "metabase/api/embed";
 import type { Dispatch } from "metabase/redux/store";
 import { getReferencedEntities } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
@@ -14,7 +14,7 @@ import type {
   DashboardCardQueryRequest,
   Dataset,
   JsonQuery,
-  ReferencedEntity,
+  ReferencedEntitiesResults,
 } from "metabase-types/api";
 
 import {
@@ -22,6 +22,7 @@ import {
   makePivotAwareQueryRunner,
   shouldUsePivotEndpoint,
 } from "./api/query-endpoints";
+import { fetchGoalValues, withGoalValues } from "./goal-values";
 
 type RunQuestionQueryOptions = {
   dispatch: Dispatch;
@@ -90,7 +91,6 @@ export function runAdhocDatasetQuery(
   question: Question,
   body: JsonQuery & {
     ignore_cache?: boolean;
-    referenced_entities?: ReferencedEntity[];
   },
   signal?: AbortSignal,
 ): Promise<Dataset> {
@@ -101,13 +101,7 @@ export function runAdhocDatasetQuery(
   // every co-subscribed caller. The key is stripped in `baseQuery` before
   // the request hits the server.
   const requestBody = {
-    ...(isPivot
-      ? {
-          // the pivot endpoint's request schema has no `referenced_entities`
-          ..._.omit(body, "referenced_entities"),
-          ...getPivotOptions(question),
-        }
-      : body),
+    ...(isPivot ? { ...body, ...getPivotOptions(question) } : body),
     [RTK_CACHE_KEY_PARAM]: ++adhocDatasetQueryCounter,
   };
   const endpoint = isPivot
@@ -195,38 +189,76 @@ export async function runQuestionQuery(
 
   if (canUseCardApiEndpoint) {
     return [
-      await handleQueryApiError(
-        runSavedCardQuery(
-          dispatch,
-          question,
-          {
-            parameters,
-            ignoreCache,
-            token,
-            queryParamsOverride,
-          },
-          signal,
+      await withGoalValues(
+        handleQueryApiError(
+          runSavedCardQuery(
+            dispatch,
+            question,
+            {
+              parameters,
+              ignoreCache,
+              token,
+              queryParamsOverride,
+            },
+            signal,
+          ),
         ),
+        fetchQuestionGoalValues(dispatch, question, {
+          ignoreCache,
+          signal,
+          token,
+        }),
       ),
     ];
   }
 
-  const referencedEntities = getReferencedEntities(question.card());
-
   return [
-    await handleQueryApiError(
-      runAdhocDatasetQuery(
-        dispatch,
-        question,
-        {
-          ...question.datasetQuery(),
-          parameters,
-          ...(referencedEntities.length > 0
-            ? { referenced_entities: referencedEntities }
-            : {}),
-        },
-        signal,
+    await withGoalValues(
+      handleQueryApiError(
+        runAdhocDatasetQuery(
+          dispatch,
+          question,
+          { ...question.datasetQuery(), parameters },
+          signal,
+        ),
       ),
+      fetchQuestionGoalValues(dispatch, question, { ignoreCache, signal }),
     ),
   ];
+}
+
+function fetchQuestionGoalValues(
+  dispatch: Dispatch,
+  question: Question,
+  {
+    ignoreCache,
+    signal,
+    token,
+  }: { ignoreCache: boolean; signal?: AbortSignal; token?: string | null },
+): Promise<ReferencedEntitiesResults | null> {
+  const sources = getReferencedEntities(question.card());
+  const options = { sources, forceRefetch: ignoreCache, signal };
+
+  // guest embeds can only read the goals saved on the card the token signs
+  if (token) {
+    return fetchGoalValues(
+      dispatch,
+      embedApi.endpoints.getEmbedCardGoalValues,
+      { token },
+      options,
+    );
+  }
+
+  const { dashboardId } = question.getDashboardProps();
+
+  return fetchGoalValues(
+    dispatch,
+    dynamicGoalApi.endpoints.getGoalValues,
+    {
+      sources,
+      ...(dashboardId != null && { dashboard_id: dashboardId }),
+      ...(ignoreCache && { ignore_cache: true }),
+    },
+    options,
+  );
 }

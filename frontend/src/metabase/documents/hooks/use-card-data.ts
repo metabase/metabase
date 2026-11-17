@@ -1,13 +1,20 @@
 import { useMemo } from "react";
 
-import { skipToken, useGetCardQuery, useGetCardQueryQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetCardQueryQuery,
+  useGetGoalValuesQuery,
+} from "metabase/api";
 import {
   useGetAdhocPivotQueryQuery,
   useGetAdhocQueryQuery,
 } from "metabase/api/dataset";
 import { useQuestionFromCardBuilder } from "metabase/metadata-store";
+import { useDatasetWithGoalValues } from "metabase/querying/goal-values";
 import { useSelector } from "metabase/redux";
 import type { UseCardDataResult } from "metabase/rich_text_editing/tiptap/EditorHost";
+import { getReferencedEntities } from "metabase/viz-core";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot-options";
 import type {
   Card,
@@ -157,12 +164,27 @@ export function useCardData({
         : skipToken,
     );
 
-  const dataset = selectDataset(
+  const goalSources = useMemo(
+    () => (cardToUse ? getReferencedEntities(cardToUse) : []),
+    [cardToUse],
+  );
+
+  const goalValuesQuery = useGetGoalValuesQuery(
+    goalSources.length > 0 && !skip ? { sources: goalSources } : skipToken,
+  );
+
+  const queryDataset = selectDataset(
     shouldUseDraftQuery,
     isPivotTable,
     regularDataset,
     draftDataset,
     draftPivotDataset,
+  );
+
+  const dataset = useDatasetWithGoalValues(
+    queryDataset,
+    goalSources,
+    goalValuesQuery,
   );
 
   const isLoadingDataset = selectIsLoadingDataset(
@@ -173,7 +195,8 @@ export function useCardData({
     isLoadingDraftPivotDataset,
   );
 
-  const isLoading = isLoadingCard || isLoadingDataset;
+  const isLoading =
+    isLoadingCard || isLoadingDataset || goalValuesQuery.isLoading;
 
   const hasDataForVisualization = cardToUse && dataset?.data;
   const series = hasDataForVisualization

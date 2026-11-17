@@ -443,14 +443,6 @@ function hasGoalReferencesWhere(
   );
 }
 
-// Skips failed references so dashboards don't re-run a failing query on every render.
-export function hasUnansweredGoalReferences(
-  card: GoalCard,
-  data: GoalData | undefined,
-): boolean {
-  return hasGoalReferencesWhere(card, data, isUnanswered);
-}
-
 // Includes failed references so a user action in the query builder retries them.
 export function hasUnresolvedGoalReferences(
   card: GoalCard,

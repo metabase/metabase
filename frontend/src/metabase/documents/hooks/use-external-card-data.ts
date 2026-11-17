@@ -1,6 +1,14 @@
-import { skipToken, useGetPublicDocumentCardQueryQuery } from "metabase/api";
+import { useMemo } from "react";
+
+import {
+  skipToken,
+  useGetPublicDocumentCardGoalValuesQuery,
+  useGetPublicDocumentCardQueryQuery,
+} from "metabase/api";
 import { useQuestionFromCard } from "metabase/metadata-store";
+import { useDatasetWithGoalValues } from "metabase/querying/goal-values";
 import type { UseCardDataResult } from "metabase/rich_text_editing/tiptap/EditorHost";
+import { getReferencedEntities } from "metabase/viz-core";
 import type { Card, CardId, Dataset, RawSeries } from "metabase-types/api";
 
 import { useExternalCardData } from "../components/editor-extensions/CardEmbed/ExternalCardDataContext";
@@ -27,11 +35,28 @@ export function useExternalCardDataLoader(
   const shouldSkip = skip || !cardId || !card || !documentUuid;
 
   const {
-    data: dataset,
+    data: queryDataset,
     isLoading: isLoadingDataset,
     error: datasetError,
   } = useGetPublicDocumentCardQueryQuery(
     shouldSkip ? skipToken : { uuid: documentUuid, cardId },
+  );
+
+  const goalSources = useMemo(
+    () => (card ? getReferencedEntities(card) : []),
+    [card],
+  );
+
+  const goalValuesQuery = useGetPublicDocumentCardGoalValuesQuery(
+    shouldSkip || goalSources.length === 0
+      ? skipToken
+      : { uuid: documentUuid, cardId },
+  );
+
+  const dataset = useDatasetWithGoalValues(
+    queryDataset,
+    goalSources,
+    goalValuesQuery,
   );
 
   const question = useQuestionFromCard(card);
@@ -44,7 +69,7 @@ export function useExternalCardDataLoader(
     };
   }
 
-  const isLoading = !card || isLoadingDataset;
+  const isLoading = !card || isLoadingDataset || goalValuesQuery.isLoading;
 
   const hasDataForVisualization = card && dataset?.data;
   const series = hasDataForVisualization ? buildSeries(card, dataset) : null;

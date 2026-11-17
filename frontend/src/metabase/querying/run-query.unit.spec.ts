@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 
 import { getMainStore } from "__support__/entities-store";
 import { createMockMetadataFromState } from "__support__/metadata";
+import { setupGoalValuesEndpoint } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { waitFor } from "__support__/ui";
@@ -17,6 +18,7 @@ import type {
 import {
   createMockCard,
   createMockDataset,
+  createMockReferencedEntitiesResults,
   createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -228,35 +230,97 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
       ],
     };
 
-    it("sends referenced_entities for an ad-hoc gauge", async () => {
+    const GOAL_VALUES = createMockReferencedEntitiesResults({
+      id: 7,
+      column: "total",
+      value: 250,
+    });
+
+    it("fetches the goal values of an ad-hoc gauge next to its query", async () => {
+      setupGoalValuesEndpoint(GOAL_VALUES);
       const question = createMockAdHocQuestion({
         display: "gauge",
         visualization_settings: DYNAMIC_SETTINGS,
       });
 
-      await setupRunQuestionQuery(question);
+      const { result } = await setupRunQuestionQuery(question);
 
-      const call = fetchMock.callHistory.lastCall("path:/api/dataset");
-      expect(await call?.request?.json()).toEqual({
+      const queryCall = fetchMock.callHistory.lastCall("path:/api/dataset");
+      expect(await queryCall?.request?.json()).toEqual({
         ...question.datasetQuery(),
         parameters: [],
-        referenced_entities: [{ type: "card", id: 7, columns: ["total"] }],
+      });
+      expect(await getLastGoalValuesRequestBody()).toEqual({
+        sources: [{ type: "card", id: 7, columns: ["total"] }],
+      });
+      expect(result[0].data.referenced_entities).toEqual(GOAL_VALUES);
+    });
+
+    it("fetches the goal values of a saved dashcard with its dashboard's cache settings", async () => {
+      setupGoalValuesEndpoint(GOAL_VALUES);
+      const question = createMockSavedQuestion({
+        dashboardId: 3,
+        dashcardId: 4,
+        display: "gauge",
+        visualization_settings: DYNAMIC_SETTINGS,
+      });
+
+      const { result } = await setupRunQuestionQuery(question);
+
+      expect(await getLastGoalValuesRequestBody()).toEqual({
+        sources: [{ type: "card", id: 7, columns: ["total"] }],
+        dashboard_id: 3,
+      });
+      expect(result[0].data.referenced_entities).toEqual(GOAL_VALUES);
+    });
+
+    it("skips the cache for the goal values when the query skips it", async () => {
+      setupGoalValuesEndpoint(GOAL_VALUES);
+      const question = createMockSavedQuestion({
+        display: "gauge",
+        visualization_settings: DYNAMIC_SETTINGS,
+      });
+      fetchMock.post(getQueryEndpointPath(question), createMockDataset());
+
+      await runQuestionQuery(question, {
+        dispatch: getRtkStore().dispatch,
+        ignoreCache: true,
+      });
+
+      expect(await getLastGoalValuesRequestBody()).toEqual({
+        sources: [{ type: "card", id: 7, columns: ["total"] }],
+        ignore_cache: true,
       });
     });
 
-    it("does not run goal references for a display without dynamic goals", async () => {
+    it("reports every goal source as failed when fetching the goal values fails", async () => {
+      setupGoalValuesEndpoint(500);
+      const question = createMockAdHocQuestion({
+        display: "gauge",
+        visualization_settings: DYNAMIC_SETTINGS,
+      });
+
+      const { result } = await setupRunQuestionQuery(question);
+
+      expect(result[0].data.referenced_entities).toEqual({
+        card: { 7: { status: "failed" } },
+        measure: {},
+      });
+    });
+
+    it("does not fetch goal values for a display without dynamic goals", async () => {
+      setupGoalValuesEndpoint(GOAL_VALUES);
       const question = createMockAdHocQuestion({
         display: "table",
         visualization_settings: DYNAMIC_SETTINGS,
       });
 
-      await setupRunQuestionQuery(question);
+      const { result } = await setupRunQuestionQuery(question);
 
-      const call = fetchMock.callHistory.lastCall("path:/api/dataset");
-      expect(await call?.request?.json()).toEqual({
-        ...question.datasetQuery(),
-        parameters: [],
-      });
+      expect(
+        fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+      ).toHaveLength(0);
+      expect(result[0].data.referenced_entities).toBeUndefined();
     });
   });
 
@@ -431,3 +495,8 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
     });
   });
 });
+
+async function getLastGoalValuesRequestBody(): Promise<unknown> {
+  const call = fetchMock.callHistory.lastCall("path:/api/dynamic-goal/values");
+  return call?.request?.json();
+}

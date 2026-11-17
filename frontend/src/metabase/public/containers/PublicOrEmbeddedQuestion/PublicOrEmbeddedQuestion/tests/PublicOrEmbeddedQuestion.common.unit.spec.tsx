@@ -1,9 +1,15 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
+import {
+  setupLastDownloadFormatEndpoints,
+  setupPublicCardGoalValuesEndpoint,
+} from "__support__/server-mocks";
 import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
-import { createMockParameter } from "metabase-types/api/mocks";
+import {
+  createMockParameter,
+  createMockReferencedEntitiesResults,
+} from "metabase-types/api/mocks";
 import { PRODUCTS } from "metabase-types/api/mocks/presets";
 
 import { type SetupOpts, setup } from "./setup";
@@ -28,6 +34,46 @@ describe("PublicOrEmbeddedQuestion", () => {
   it("should render data", async () => {
     await setupCommon();
     expect(await screen.findByText("John W.")).toBeInTheDocument();
+  });
+
+  it("should fetch the goal values of a card with dynamic goals and pass them to the visualization", async () => {
+    const goalValues = createMockReferencedEntitiesResults({
+      column: "total",
+      value: 250,
+    });
+    setupPublicCardGoalValuesEndpoint(FAKE_UUID, goalValues);
+
+    await setupCommon({
+      card: {
+        display: "gauge",
+        visualization_settings: {
+          "gauge.segments": [
+            {
+              min: 0,
+              max: { type: "card", id: 9, column: "total" },
+              color: "red",
+            },
+          ],
+        },
+      },
+    });
+
+    expect(await screen.findByTestId("goal-values")).toHaveTextContent(
+      JSON.stringify(goalValues),
+    );
+  });
+
+  it("should not fetch goal values for a card without dynamic goals", async () => {
+    setupPublicCardGoalValuesEndpoint(FAKE_UUID, {});
+
+    await setupCommon();
+
+    expect(await screen.findByText("John W.")).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.called(
+        `path:/api/public/card/${FAKE_UUID}/goal-values`,
+      ),
+    ).toBe(false);
   });
 
   it("should update card settings when visualization component changes them (metabase#37429)", async () => {

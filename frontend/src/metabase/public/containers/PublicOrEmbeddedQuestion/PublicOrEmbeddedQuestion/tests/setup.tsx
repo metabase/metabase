@@ -33,7 +33,7 @@ function VisualizationMock({
   const [
     {
       card,
-      data: { rows },
+      data: { referenced_entities, rows },
     },
   ] = rawSeries;
 
@@ -49,6 +49,7 @@ function VisualizationMock({
       <div data-testid="settings">
         {JSON.stringify(card.visualization_settings)}
       </div>
+      <div data-testid="goal-values">{JSON.stringify(referenced_entities)}</div>
       <button onClick={() => onUpdateVisualizationSettings({ foo: "bar" })}>
         update settings
       </button>
