@@ -48,6 +48,29 @@ describe("issue 26470", { tags: "@external" }, () => {
   });
 });
 
+describe("(metabase#45042)", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  // Jest covers the menu itself; only a browser applies the md breakpoint that
+  // swaps the tab list for the burger.
+  it("shows the navigation burger at a narrow viewport", () => {
+    cy.viewport(500, 750);
+    cy.visit("/admin");
+
+    cy.findByTestId("admin-navbar").within(() => {
+      cy.findByRole("button", { name: "Toggle navigation" })
+        .should("be.visible")
+        .click();
+      cy.findByRole("list", { name: "Navigation links" })
+        .findByRole("link", { name: "Settings" })
+        .should("be.visible");
+    });
+  });
+});
+
 describe("issue 41765", { tags: "@external" }, () => {
   // In this test we are testing the in-browser cache that metabase uses,
   // so we need to navigate by clicking trough the UI without reloading the page.
