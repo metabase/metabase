@@ -65,35 +65,16 @@
             (is (=? {:description "updated description" :description_set true}
                     (t2/select-one :model/FieldUserSettings :field_id field-id)))))))))
 
-(def ^:private comment-after-sync
-  (mt/dataset-definition "comment-after-sync"
-                         [["comment_after_sync"
-                           [{:field-name "comment_after_sync", :base-type :type/Text}]
-                           [["foo"]]]]))
-
 (deftest sync-comment-on-existing-field-test
-  (testing "test adding a comment to the source data that was initially empty, so we can check that the resync picks it up"
+  (testing "resync adds a source DB comment to an existing field that has no description"
     (mt/test-drivers (mt/normal-driver-select {:+features [::field-comments-sync]})
-      ;; modify the source DB to add the comment and resync. The easiest way to do this is just destroy the entire DB
-      ;; and re-create a modified version. As such, let the SQL JDBC driver know the DB is being "modified" so it can
-      ;; destroy its current connection pool
-      (mt/dataset comment-after-sync
-        (driver/notify-database-updated driver/*driver* (lib.metadata/database (mt/metadata-provider)))
-        (let [modified-dbdef (update
-                              comment-after-sync
-                              :table-definitions
-                              (fn [[tabledef]]
-                                [(update
-                                  tabledef
-                                  :field-definitions
-                                  (fn [[fielddef]]
-                                    [(assoc fielddef :field-comment "added comment")]))]))]
-          (tx/destroy-db! driver/*driver* modified-dbdef)
-          (tx/create-db! driver/*driver* modified-dbdef))
-        (sync/sync-table! (t2/select-one :model/Table :id (mt/id "comment_after_sync")))
-        (is (= #{{:name (mt/format-name "id"), :description nil}
-                 {:name (mt/format-name "comment_after_sync"), :description "added comment"}}
-               (db->fields (mt/db))))))))
+      (mt/dataset basic-field-comments
+        (mt/with-temp-copy-of-db
+          (let [field-id (mt/id "basic_field_comments" "with_comment")]
+            (t2/update! :model/Field :id field-id {:description nil})
+            (sync/sync-table! (t2/select-one :model/Table :id (mt/id "basic_field_comments")))
+            (is (= "comment"
+                   (t2/select-one-fn :description :model/Field :id field-id)))))))))
 
 (defn- basic-table [table-name comment]
   (tx/map->DatabaseDefinition {:database-name     (str table-name "_db")
