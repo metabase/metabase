@@ -17,8 +17,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.db :as sync.db]
-   [metabase.sync.metadata-sync.document :as document]
    [metabase.sync.metadata-sync.pages :as pages]
+   [metabase.sync.metadata-sync.tables :as tables]
    [metabase.sync.metadata-sync.wire :as wire]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -74,14 +74,14 @@
 ;;; ------------------------------------------------ Values ------------------------------------------------
 
 (def ^:private keyword-columns
-  "The columns whose values a document holds as strings and the app DB models expect as keywords."
+  "The columns whose values an entry holds as strings and the app DB models expect as keywords."
   #{:base_type :effective_type :coercion_strategy :semantic_type :visibility_type :has_field_values
     :data_sensitivity :entity_type :data_layer :data_source :data_authority :field_order})
 
 (defn- row-value
-  "The value of `column` in the document `doc-row`, as the app DB models expect it."
-  [doc-row column]
-  (let [value (get doc-row column)]
+  "The value of `column` in the entry `entry`, as the app DB models expect it."
+  [entry column]
+  (let [value (get entry column)]
     (cond
       (nil? value)              nil
       (keyword-columns column)  (keyword value)
@@ -89,7 +89,7 @@
       :else                     value)))
 
 (defn- table-defaults
-  "The values a new Table named `table-name` gets when the document has none: nil for any column not here."
+  "The values a new Table named `table-name` gets when the entry has none: nil for any column not here."
   [table-name]
   {:display_name            (humanization/name->human-readable-name table-name)
    :show_in_getting_started false
@@ -98,7 +98,7 @@
    :data_authority          :unconfigured})
 
 (defn- field-defaults
-  "The values a new Field named `field-name` with `base-type` gets when the document has none: nil for any column not
+  "The values a new Field named `field-name` with `base-type` gets when the entry has none: nil for any column not
   here. Without a coercion, `effective_type` is the base type."
   [field-name base-type]
   {:display_name               (humanization/name->human-readable-name field-name)
@@ -114,11 +114,11 @@
    :database_required          false})
 
 (defn- values-of
-  "The value of each of `columns` in `doc-row`, or its default in `defaults` when the document has none."
-  [columns doc-row defaults]
+  "The value of each of `columns` in `entry`, or its default in `defaults` when the entry has none."
+  [columns entry defaults]
   (into {}
         (map (fn [column]
-               (let [value (row-value doc-row column)]
+               (let [value (row-value entry column)]
                  [column (if (some? value) value (get defaults column))])))
         columns))
 
@@ -131,12 +131,12 @@
 
 (defn- tables-by-key
   "The Tables of the Database with `database-id` that have one of the `table-keys`, by [[unique-key]], active or not,
-  looked up [[document/query-batch-size]] names at a time: the one with the lowest id when there are several. With
+  looked up [[pages/query-batch-size]] names at a time: the one with the lowest id when there are several. With
   `:active-only?`, only active ones."
   [database-id table-keys & {:keys [active-only?]}]
   (let [wanted (into #{} (map (fn [[table-schema table-name]] (unique-key {:schema table-schema :name table-name})))
                      table-keys)]
-    (->> (document/in-batches #(sync.db/tables-named database-id %) (distinct (map second table-keys)))
+    (->> (pages/in-batches #(sync.db/tables-named database-id %) (distinct (map second table-keys)))
          (filter (comp wanted unique-key))
          (filter #(or (not active-only?) (:active %)))
          (sort-by :id)
@@ -177,44 +177,44 @@
   [database batch]
   (let [changes (into {}
                       (filter (fn [[column value]] (and (some? value) (nil? (get database column)))))
-                      (select-keys batch document/database-columns))]
+                      (select-keys batch wire/database-columns))]
     (when (seq changes)
       (sync.db/update-database! (:id database) changes))
     {:database_updated (if (seq changes) 1 0)}))
 
 (defn- insert-table!
-  "Insert the Table that `doc` describes into the Database with `database-id`, with its Fields, and return how many
+  "Insert the Table that `entry` describes into the Database with `database-id`, with its Fields, and return how many
   Fields it inserted. The Table counts as synced at once, since it has its metadata. A multi-row insert writes NULL
   for a column that a row leaves out, so each row has every column."
-  [database-id doc]
+  [database-id entry]
   (let [table-id (:id (sync.db/insert-table! (merge {:db_id               database-id
-                                                     :schema              (:schema doc)
-                                                     :name                (:name doc)
+                                                     :schema              (:schema entry)
+                                                     :name                (:name entry)
                                                      :active              true
                                                      :initial_sync_status "complete"}
                                                     (u/remove-nils
-                                                     (values-of (remove #{:schema :name} document/table-columns)
-                                                                doc
-                                                                (table-defaults (:name doc)))))))
-        rows     (for [{[field-name & more] :path :as doc-field} (:fields doc)
+                                                     (values-of (remove #{:schema :name} tables/table-columns)
+                                                                entry
+                                                                (table-defaults (:name entry)))))))
+        rows     (for [{[field-name & more] :path :as field-entry} (:fields entry)
                        :when (or (nil? more)
                                  (log/warnf "Not inserting a nested Field of Table %d" table-id))]
-                   (merge (values-of document/field-columns
-                                     doc-field
-                                     (field-defaults field-name (row-value doc-field :base_type)))
+                   (merge (values-of tables/field-columns
+                                     field-entry
+                                     (field-defaults field-name (row-value field-entry :base_type)))
                           {:table_id table-id :name field-name :active true}))]
-    (doseq [batch (partition-all document/query-batch-size rows)]
+    (doseq [batch (partition-all pages/query-batch-size rows)]
       (sync.db/insert-fields! (vec batch)))
     (count rows)))
 
-(defn- apply-objects!
+(defn- apply-tables!
   "Insert each Table of `batch` that the Database with `database-id` has no row for, active or not, once for each key."
   [database-id {:keys [tables]}]
-  (let [existing (tables-by-key database-id (map document/table-key tables))
-        new-docs (m/distinct-by unique-key (remove (comp existing unique-key) tables))]
-    {:tables_inserted (count new-docs)
+  (let [existing (tables-by-key database-id (map pages/table-key tables))
+        new-entries (m/distinct-by unique-key (remove (comp existing unique-key) tables))]
+    {:tables_inserted (count new-entries)
      :tables_existing (count (filter (comp existing unique-key) tables))
-     :fields_inserted (transduce (map #(insert-table! database-id %)) + 0 new-docs)}))
+     :fields_inserted (transduce (map #(insert-table! database-id %)) + 0 new-entries)}))
 
 (defn- target-key [{{table-schema :schema table-name :table} :target}]
   [table-schema table-name])
@@ -223,11 +223,11 @@
   "The FK targets, by Field id, that the links of `batch` set: for a Field whose FK target is empty, when the receiver
   has both the Field and its target. A link it cannot resolve is skipped and logged."
   [database-id {:keys [tables]}]
-  (let [fk-tables (tables-by-key database-id (map document/table-key tables) :active-only? true)
+  (let [fk-tables (tables-by-key database-id (map pages/table-key tables) :active-only? true)
         targets   (tables-by-key database-id (into [] (comp (mapcat :links) (map target-key)) tables)
                                  :active-only? true)
-        fields    (document/in-batches sync.db/link-fields-of-tables
-                                       (vec (distinct (map :id (concat (vals fk-tables) (vals targets))))))
+        fields    (pages/in-batches sync.db/link-fields-of-tables
+                                    (vec (distinct (map :id (concat (vals fk-tables) (vals targets))))))
         by-table  (field-index fields)]
     (into {}
           (for [{:keys [links] :as links-table} tables
@@ -275,11 +275,11 @@
 (defn- apply-stats!
   "Apply the stats of `batch` to the active Tables of the Database with `database-id` that have its keys."
   [database-id {:keys [tables]}]
-  (let [receiving  (tables-by-key database-id (map document/table-key tables) :active-only? true)
+  (let [receiving  (tables-by-key database-id (map pages/table-key tables) :active-only? true)
         table-ids  (mapv :id (vals receiving))
-        by-table   (field-index (document/in-batches sync.db/link-fields-of-tables table-ids))
+        by-table   (field-index (pages/in-batches sync.db/link-fields-of-tables table-ids))
         has-values (into #{} (mapcat sync.db/field-ids-with-field-values)
-                         (partition-all document/query-batch-size table-ids))]
+                         (partition-all pages/query-batch-size table-ids))]
     (transduce (keep (fn [entry]
                        (when-let [table (receiving (unique-key entry))]
                          (apply-table-stats! table entry by-table has-values))))
@@ -291,7 +291,7 @@
 
 (def ^:private known-batch-types
   "The batch types this version applies."
-  #{"database" "objects" "links" "stats"})
+  #{"database" "tables" "links" "stats"})
 
 (defn- refused [message error-code]
   (ex-info message {:status-code 422 :error-code error-code}))
@@ -300,9 +300,9 @@
   "Throw unless `response` is an answer this version can apply: of its format version, with batch types it knows, and
   of the right shape. The error says nothing of the answer's values: they are warehouse metadata."
   [response]
-  (when (not= document/format-version (:format_version response))
+  (when (not= wire/format-version (:format_version response))
     (throw (refused (tru "The other Metabase sends format version {0}, and this Metabase reads version {1}."
-                         (pr-str (:format_version response)) document/format-version)
+                         (pr-str (:format_version response)) wire/format-version)
                     "metadata-sync-format-version-differs")))
   (when-let [unknown (seq (into (sorted-set)
                                 (comp (filter map?) (keep :type) (remove known-batch-types) (map str))
@@ -320,7 +320,7 @@
   (merge no-counts
          (case (:type batch)
            "database" (apply-database! database batch)
-           "objects"  (apply-objects! (:id database) batch)
+           "tables"   (apply-tables! (:id database) batch)
            "links"    (apply-links! (:id database) batch)
            "stats"    (apply-stats! (:id database) batch))))
 

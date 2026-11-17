@@ -7,7 +7,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.db :as sync.db]
-   [metabase.sync.metadata-sync.document :as document]
+   [metabase.sync.metadata-sync.pages :as pages]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -45,10 +45,10 @@
 
 (mu/defn table-stats :- [:map-of ::lib.schema.id/table ::entry]
   "The stats entry of each of `tables`, which are rows from
-  [[metabase.sync.metadata-sync.document/described-tables]], by Table id. A Table with no row count and no field
+  [[metabase.sync.metadata-sync.tables/selection]], by Table id. A Table with no row count and no field
   values has no entry."
   [tables :- [:sequential ::sync.db/described-table]]
-  (let [field-values (latest-by-field (document/in-batches sync.db/full-field-values-of-tables (mapv :id tables)))]
+  (let [field-values (latest-by-field (pages/in-batches sync.db/full-field-values-of-tables (mapv :id tables)))]
     (into {}
           (keep (fn [{table-id :id row-count :estimated_row_count}]
                   (let [values (mapv field-values-entry (field-values table-id))]

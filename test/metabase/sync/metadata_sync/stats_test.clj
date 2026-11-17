@@ -1,8 +1,8 @@
 (ns metabase.sync.metadata-sync.stats-test
   (:require
    [clojure.test :refer :all]
-   [metabase.sync.metadata-sync.document :as document]
    [metabase.sync.metadata-sync.stats :as stats]
+   [metabase.sync.metadata-sync.tables :as tables]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -11,7 +11,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- tables [db-id]
-  (document/described-tables db-id nil))
+  (tables/selection db-id nil))
 
 (deftest row-count-test
   (mt/with-temp [:model/Database {db-id :id}  {}

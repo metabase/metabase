@@ -1,10 +1,10 @@
 (ns metabase.sync.metadata-sync.receive-test
   (:require
    [clojure.test :refer :all]
-   [metabase.sync.metadata-sync.document :as document]
    [metabase.sync.metadata-sync.pages :as pages]
    [metabase.sync.metadata-sync.receive :as receive]
    [metabase.sync.metadata-sync.send :as send]
+   [metabase.sync.metadata-sync.wire :as wire]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
@@ -145,7 +145,7 @@
 (deftest seed-in-many-rounds-test
   (do-with-sender-and-receiver!
    (fn [_tables sender-name receiver-id sender]
-     (with-redefs [pages/object-field-limit       1
+     (with-redefs [pages/table-field-limit       1
                    pages/link-limit               1
                    pages/stats-field-values-limit 1]
        (let [{:keys [rounds]} (seed! sender-name receiver-id)]
@@ -253,7 +253,7 @@
      (let [good (sender-answer sender-name (receive/request receiver-id nil))]
        (testing "another format version"
          (is (= {:status-code 422 :error-code "metadata-sync-format-version-differs"}
-                (refusal! receiver-id (assoc good :format_version (inc document/format-version))))))
+                (refusal! receiver-id (assoc good :format_version (inc wire/format-version))))))
        (testing "a batch type this version does not know, also after good batches"
          (is (= {:status-code 422 :error-code "metadata-sync-unknown-batch-type"}
                 (refusal! receiver-id (update good :batches conj {:type "remaps" :tables []})))))
@@ -273,12 +273,12 @@
 (deftest databases-that-cannot-receive-test
   (testing "no such Database"
     (is (= {:status-code 404 :error-code "metadata-sync-no-database"}
-           (refusal! Integer/MAX_VALUE {:format_version document/format-version :batches []}))))
+           (refusal! Integer/MAX_VALUE {:format_version wire/format-version :batches []}))))
   (testing "a stub Database and the audit Database"
     (doseq [values [{:is_stub true} {:is_audit true}]]
       (mt/with-temp [:model/Database {db-id :id} values]
         (is (= {:status-code 400 :error-code "metadata-sync-database-not-loadable"}
-               (refusal! db-id {:format_version document/format-version :batches []})))
+               (refusal! db-id {:format_version wire/format-version :batches []})))
         (is (thrown-with-msg? ExceptionInfo #"does not take" (receive/request db-id nil)))))))
 
 (deftest a-failure-while-applying-writes-nothing-test
@@ -310,7 +310,7 @@
   (mt/with-temp [:model/Database {receiver-id :id} {}]
     (let [doc      {:schema "PUBLIC" :name "twice" :fields [{:path ["id"] :base_type "type/Integer"
                                                              :database_type "INTEGER"}]}
-          response {:format_version document/format-version :batches [{:type "objects" :tables [doc doc]}]}]
+          response {:format_version wire/format-version :batches [{:type "tables" :tables [doc doc]}]}]
       (testing "a key that an answer has twice inserts one Table"
         (is (=? {:counts {:tables_inserted 1}} (receive/apply-response! receiver-id response)))
         (is (= 1 (t2/count :model/Table :db_id receiver-id :name "twice")))))))
@@ -320,6 +320,6 @@
                  :model/Table    _                 {:db_id receiver-id :schema "" :name "loose"}]
     (testing "a Table with no schema is the receiver's Table with an empty schema, as the unique index says"
       (is (=? {:counts {:tables_inserted 0 :tables_existing 1}}
-              (receive/apply-response! receiver-id {:format_version document/format-version
-                                                    :batches        [{:type   "objects"
+              (receive/apply-response! receiver-id {:format_version wire/format-version
+                                                    :batches        [{:type   "tables"
                                                                       :tables [{:name "loose" :fields []}]}]}))))))

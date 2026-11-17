@@ -7,7 +7,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.db :as sync.db]
-   [metabase.sync.metadata-sync.document :as document]
+   [metabase.sync.metadata-sync.pages :as pages]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -39,14 +39,14 @@
   "The FK links of the Tables with `table-ids`, as `[table-id link]`, whose target is in `tables-by-id`."
   [table-ids tables-by-id]
   (for [{:keys [table_id field_name target_table_id target_field_name]}
-        (document/in-batches sync.db/fk-links-of-tables table-ids)
+        (pages/in-batches sync.db/fk-links-of-tables table-ids)
         :let  [link-target (target tables-by-id target_table_id target_field_name)]
         :when link-target]
     [table_id {:kind "fk" :field [field_name] :target link-target}]))
 
 (mu/defn table-links :- [:map-of ::lib.schema.id/table [:sequential {:min 1} ::link]]
   "The links of each of `tables`, by Table id, in a fixed order: by Field path, then by kind. `tables` and `selection`
-  are rows from [[metabase.sync.metadata-sync.document/described-tables]]. A link whose target is not in a Table of
+  are rows from [[metabase.sync.metadata-sync.tables/selection]]. A link whose target is not in a Table of
   `selection`, or is not a described Field, is left out. A Table with no links is left out."
   [tables    :- [:sequential ::sync.db/described-table]
    selection :- [:sequential ::sync.db/described-table]]

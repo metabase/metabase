@@ -1,8 +1,8 @@
 (ns metabase.sync.api.metadata-sync-test
   (:require
    [clojure.test :refer :all]
-   [metabase.sync.metadata-sync.document :as document]
    [metabase.sync.metadata-sync.pages :as pages]
+   [metabase.sync.metadata-sync.wire :as wire]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -47,19 +47,19 @@
     (add-tables! db-id some-tables)
     (let [{:keys [batches] :as response} (mt/user-http-request :crowberto :post 200 changes-url (request db-name))]
       (testing "the answer names the format version, and has no cursor when nothing is left"
-        (is (= {:format_version document/format-version :batches ["database" "objects"]}
+        (is (= {:format_version wire/format-version :batches ["database" "tables"]}
                (update response :batches #(mapv :type %)))))
-      (testing "the objects are every Table, in key order"
+      (testing "the tables are every Table, in key order"
         (is (= [[nil "loose"] ["public" "orders"] ["public" "people"]]
                (mapv (juxt :schema :name) (:tables (second batches)))))))))
 
 (deftest cursor-test
   (mt/with-temp [:model/Database {db-id :id db-name :name} {:initial_sync_status "complete"}]
     (add-tables! db-id some-tables)
-    (with-redefs [pages/object-field-limit 1]
+    (with-redefs [pages/table-field-limit 1]
       (let [first-answer (mt/user-http-request :crowberto :post 200 changes-url (request db-name))]
         (testing "a cursor with a nil schema goes through JSON and back"
-          (is (= {:kind "objects" :key [nil "loose"]} (:next first-answer)))
+          (is (= {:kind "tables" :key [nil "loose"]} (:next first-answer)))
           (is (= [["public" "orders"]]
                  (->> (mt/user-http-request :crowberto :post 200 changes-url
                                             (request db-name {:after (:next first-answer)}))
@@ -77,7 +77,7 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 apply-url
                                    {:database_id db-id
-                                    :response    {:format_version document/format-version :batches []}}))))))
+                                    :response    {:format_version wire/format-version :batches []}}))))))
 
 (deftest open-source-test
   (mt/with-temp [:model/Database {db-name :name} {:initial_sync_status "complete"}]
@@ -123,12 +123,12 @@
     (testing "an answer of another format version gets 422, and nothing is written"
       (is (= [422 "metadata-sync-format-version-differs"]
              (error-code apply-url {:database_id db-id
-                                    :response    {:format_version (inc document/format-version) :batches []}}))))
+                                    :response    {:format_version (inc wire/format-version) :batches []}}))))
     (testing "a malformed answer gets 422"
       (is (= [422 "metadata-sync-malformed-response"]
              (error-code apply-url {:database_id db-id
-                                    :response    {:format_version document/format-version
-                                                  :batches        [{:type "objects" :tables "none"}]}}))))))
+                                    :response    {:format_version wire/format-version
+                                                  :batches        [{:type "tables" :tables "none"}]}}))))))
 
 (deftest seed-over-http-test
   (mt/with-temp [:model/Database {sender :id sender-name :name} {:initial_sync_status "complete"}
@@ -139,7 +139,7 @@
       (t2/update! :model/Field :id (field-id (tables "orders") "total")
                   {:fingerprint {:global {:distinct-count 2} :type {:type/Number {:min 1.0 :max 2.0}}}})
       (t2/insert! :model/FieldValues {:field_id (field-id (tables "orders") "total") :type :full :values [1 2]})
-      (with-redefs [pages/object-field-limit 1]
+      (with-redefs [pages/table-field-limit 1]
         (loop [after nil rounds 1]
           (let [req      (mt/user-http-request :crowberto :post 200 request-url
                                                (cond-> {:database_id receiver} after (assoc :after after)))

@@ -1,8 +1,8 @@
 (ns metabase.sync.metadata-sync.links-test
   (:require
    [clojure.test :refer :all]
-   [metabase.sync.metadata-sync.document :as document]
    [metabase.sync.metadata-sync.links :as links]
+   [metabase.sync.metadata-sync.tables :as tables]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -30,7 +30,7 @@
   "The links of the described Tables of the Database with `db-id`, by `[schema name]`, with `schema-filter`."
   ([db-id] (links-by-key db-id nil))
   ([db-id schema-filter]
-   (let [tables (document/described-tables db-id schema-filter)
+   (let [tables (tables/selection db-id schema-filter)
          by-id  (into {} (map (juxt :id (juxt :schema :name))) tables)]
      (update-keys (links/table-links tables tables) by-id))))
 
@@ -75,7 +75,7 @@
                                       :target {:schema "PUBLIC" :table "categories" :field ["id"]}}]}
                (links-by-key db-id)))))))
 
-(deftest links-of-fields-a-document-leaves-out-test
+(deftest links-of-fields-an-entry-leaves-out-test
   (mt/with-temp [:model/Database {db-id :id} {}]
     (let [people (add-table! db-id ["PUBLIC" "people"] ["id" "old_id" "parent"])
           orders (add-table! db-id ["PUBLIC" "orders"] ["user_id" "old_user_id" "nested_user_id" "retired_user_id"])]

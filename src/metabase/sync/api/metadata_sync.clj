@@ -20,8 +20,8 @@
 
 (api.macros/defendpoint :post "/metadata/changes" :- ::wire/response
   "The next page of the warehouse metadata of the Database named `database`, with the engine `engine`, from the
-  cursor `after`, or from the start without one. The first answer holds the database values, then the objects (Tables
-  and their Fields), the links (FK targets) and the stats (row counts and field values) follow, in that order, a page
+  cursor `after`, or from the start without one. The first answer holds the database values, then the tables (each
+  Table with its Fields), the links (FK targets) and the stats (row counts and field values) follow, in that order, a page
   at a time. Ask again with the answer's `next` while it has one. Needs a superuser.
 
   Errors, each with an `error-code` in the body, so that a caller can tell them from a 404 of a Metabase without this

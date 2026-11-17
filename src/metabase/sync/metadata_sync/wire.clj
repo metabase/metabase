@@ -3,12 +3,34 @@
   `[schema-or-nil name]` arrays, and string values. The sender and the receiver both use these schemas. A response
   decoded from JSON with keyword keys is in the form the receiver applies."
   (:require
-   [metabase.sync.metadata-sync.document :as document]
    [metabase.sync.metadata-sync.links :as links]
    [metabase.sync.metadata-sync.pages :as pages]
    [metabase.sync.metadata-sync.stats :as stats]
+   [metabase.sync.metadata-sync.tables :as tables]
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
+
+(def format-version
+  "The version of the shape of what one Metabase sends another. A receiver refuses another version."
+  1)
+
+(def database-columns
+  "The Database columns that are sent. `default_schema` is not one: it depends on the login, so each instance reads
+  its own."
+  [:dbms_version :timezone])
+
+(mr/def ::database
+  [:map {:closed true}
+   [:dbms_version {:optional true} [:map {::mr/deliberately-open true
+                                          :description           "the version a driver reports, in its shape"}]]
+   [:timezone     {:optional true} :string]])
+
+(mu/defn database-values :- ::database
+  "The values of `database`, a Database row, that are sent: each of [[database-columns]] that has one."
+  [database :- [:map {::mr/deliberately-open true :description "a Database row"}]]
+  (u/remove-nils (select-keys database database-columns)))
 
 (mr/def ::request
   [:map {::mr/deliberately-open true
@@ -16,19 +38,19 @@
                                      "know is ignored, so that a newer receiver is not refused")}
    [:database       ms/NonBlankString]
    [:engine         ms/NonBlankString]
-   [:schema_filters {:optional true} [:maybe ::document/schema-filter]]
+   [:schema_filters {:optional true} [:maybe ::tables/schema-filter]]
    [:after          {:optional true} [:maybe ::pages/cursor]]])
 
 (mr/def ::database-batch
   [:merge
    [:map {:closed true}
     [:type [:= "database"]]]
-   ::document/database])
+   ::database])
 
-(mr/def ::objects-batch
+(mr/def ::tables-batch
   [:map {:closed true}
-   [:type   [:= "objects"]]
-   [:tables [:sequential ::document/table]]])
+   [:type   [:= "tables"]]
+   [:tables [:sequential ::tables/table]]])
 
 (mr/def ::links-table
   [:map {:closed true}
@@ -56,7 +78,7 @@
 (mr/def ::batch
   [:multi {:dispatch :type}
    ["database" ::database-batch]
-   ["objects"  ::objects-batch]
+   ["tables"   ::tables-batch]
    ["links"    ::links-batch]
    ["stats"    ::stats-batch]])
 

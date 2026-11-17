@@ -749,7 +749,7 @@
   (t2/select :model/Table :id [:in table-ids]))
 
 (mu/defn- described-field-clause
-  "Honey SQL clause matching the Fields aliased `field-alias` that a metadata document describes: active, top-level and
+  "Honey SQL clause matching the Fields aliased `field-alias` that metadata sync sends: active, top-level and
   not retired."
   [field-alias :- :keyword]
   [:and
@@ -760,7 +760,7 @@
     [:not= (u/qualified-key field-alias :visibility_type) "retired"]]])
 
 (mu/defn described-fields :- [:sequential ::warehouse-schema.schema/field]
-  "The Fields of the Tables with `table-ids` that a metadata document describes: active, top-level and not retired."
+  "The Fields of the Tables with `table-ids` that metadata sync sends: active, top-level and not retired."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select :model/Field {:select   [:f.*]
                            :from     [[(t2/table-name :model/Field) :f]]
@@ -772,7 +772,7 @@
 (mu/defn described-field-counts :- [:sequential [:map {:closed true}
                                                  [:table_id    ::lib.schema.id/table]
                                                  [:field_count :int]]]
-  "The count of the Fields that a metadata document describes, for each Table of the Database with `database-id` that
+  "The count of the Fields that metadata sync sends, for each Table of the Database with `database-id` that
   has any."
   [database-id :- ::lib.schema.id/database]
   (t2/query {:select   [:f.table_id [[:count :*] :field_count]]

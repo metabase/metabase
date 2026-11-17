@@ -34,9 +34,9 @@
 
 (deftest ^:parallel next-cursor-test
   (testing "while a kind has more, the next answer goes on after the last Table of this one"
-    (is (= {:kind "objects" :key ["a" "x"]} (pages/next-cursor "objects" ["a" "x"] true))))
+    (is (= {:kind "tables" :key ["a" "x"]} (pages/next-cursor "tables" ["a" "x"] true))))
   (testing "a kind that is done is followed by the start of the next kind"
-    (is (= {:kind "links"} (pages/next-cursor "objects" ["b" "x"] false)))
+    (is (= {:kind "links"} (pages/next-cursor "tables" ["b" "x"] false)))
     (is (= {:kind "stats"} (pages/next-cursor "links" nil false))))
   (testing "after the last kind there is no next answer"
     (is (nil? (pages/next-cursor "stats" ["b" "x"] false)))))

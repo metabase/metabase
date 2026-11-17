@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.sync.db :as sync.db]
-   [metabase.sync.metadata-sync.document :as document]
    [metabase.sync.metadata-sync.pages :as pages]
    [metabase.sync.metadata-sync.send :as send]
    [metabase.sync.metadata-sync.wire :as wire]
@@ -92,15 +91,15 @@
     (let [responses (answers db-name)]
       (testing "each answer is valid, of this format version"
         (is (every? #(mr/validate ::wire/response %) responses))
-        (is (every? #(= document/format-version (:format_version %)) responses)))
-      (testing "the database values come first, then the objects, then the links, then the stats"
-        (is (= [["database" "objects"] ["links"] ["stats"]] (mapv types responses))))
+        (is (every? #(= wire/format-version (:format_version %)) responses)))
+      (testing "the database values come first, then the tables, then the links, then the stats"
+        (is (= [["database" "tables"] ["links"] ["stats"]] (mapv types responses))))
       (testing "the database batch holds the database values"
         (is (= {:type "database" :timezone "UTC" :dbms_version {:flavor "H2"}}
                (first (:batches (first responses))))))
-      (testing "the objects are every Table, in key order: a nil schema first"
+      (testing "the tables are every Table, in key order: a nil schema first"
         (is (= [[nil "loose"] ["PUBLIC" "orders"] ["PUBLIC" "people"] ["SALES" "leads"]]
-               (batch-keys "objects" responses))))
+               (batch-keys "tables" responses))))
       (testing "the links are the FK, by name"
         (is (= [{:schema "PUBLIC" :name "orders"
                  :links  [{:kind "fk" :field ["user_id"] :target {:schema "PUBLIC" :table "people" :field ["id"]}}]}]
@@ -114,20 +113,20 @@
       (testing "the cursors name the next kind"
         (is (= [{:kind "links"} {:kind "stats"} nil] (mapv :next responses)))))))
 
-(deftest objects-in-pages-test
+(deftest tables-in-pages-test
   (mt/with-temp [:model/Database {db-id :id db-name :name} {:initial_sync_status "complete"}]
     (add-tables! db-id some-tables)
-    (with-redefs [pages/object-field-limit 6]
+    (with-redefs [pages/table-field-limit 6]
       (let [responses (answers db-name)]
-        (testing "a small limit cuts the objects into several answers: a Table weighs its Fields and one more"
+        (testing "a small limit cuts the tables into several answers: a Table weighs its Fields and one more"
           (is (= [[[nil "loose"] ["PUBLIC" "orders"]] [["PUBLIC" "people"] ["SALES" "leads"]]]
-                 (mapv #(batch-keys "objects" [%]) responses))))
+                 (mapv #(batch-keys "tables" [%]) responses))))
         (testing "each Table is sent once, in key order"
           (is (= [[nil "loose"] ["PUBLIC" "orders"] ["PUBLIC" "people"] ["SALES" "leads"]]
-                 (batch-keys "objects" responses))))
+                 (batch-keys "tables" responses))))
         (testing "a cursor names the last Table that its answer covered"
-          (is (= {:kind "objects" :key ["PUBLIC" "orders"]} (:next (first responses)))))
-        (testing "the answer that ends the objects has no cursor, since no later kind has anything"
+          (is (= {:kind "tables" :key ["PUBLIC" "orders"]} (:next (first responses)))))
+        (testing "the answer that ends the tables has no cursor, since no later kind has anything"
           (is (nil? (:next (last responses)))))
         (testing "only the first answer has the database values"
           (is (= 1 (count (filter #{"database"} (mapcat types responses))))))))))
@@ -143,7 +142,7 @@
         (let [responses (answers db-name)]
           (testing "only the Tables that have links are sent as links, one page per limit"
             (is (= [["PUBLIC" "a"] ["PUBLIC" "b"]] (batch-keys "links" responses)))
-            (is (= [["database" "objects"] ["links"] ["links"]] (mapv types responses)))))))))
+            (is (= [["database" "tables"] ["links"] ["links"]] (mapv types responses)))))))))
 
 (deftest stats-in-pages-test
   (mt/with-temp [:model/Database {db-id :id db-name :name} {:initial_sync_status "complete"}]
@@ -168,7 +167,7 @@
   (testing "a Database with no links and no stats gets no empty batch"
     (mt/with-temp [:model/Database {db-id :id db-name :name} {:initial_sync_status "complete"}]
       (add-tables! db-id some-tables)
-      (is (= [["database" "objects"]] (mapv types (answers db-name)))))))
+      (is (= [["database" "tables"]] (mapv types (answers db-name)))))))
 
 (deftest link-out-of-the-selection-test
   (mt/with-temp [:model/Database {db-id :id db-name :name} {:initial_sync_status "complete"}]
@@ -177,7 +176,7 @@
                   {:fk_target_field_id (field-id (tables "people") "id")})
       (testing (str "a Table whose only FK points out of the selection is not sent as links; the sender only knows "
                     "that when it builds the links, so one answer has no batch")
-        (is (= [["database" "objects"] []]
+        (is (= [["database" "tables"] []]
                (mapv types (answers db-name {:schema_filters {:type "inclusion" :patterns "PUBLIC"}}))))))))
 
 (deftest what-is-never-sent-test
@@ -186,10 +185,10 @@
     (t2/update! :model/Table :db_id db-id :name "loose" {:active false})
     (testing "an inactive Table and a Table in a workspace's scratch schema are not sent"
       (is (= [["PUBLIC" "orders"] ["PUBLIC" "people"] ["SALES" "leads"]]
-             (batch-keys "objects" (answers db-name)))))
+             (batch-keys "tables" (answers db-name)))))
     (testing "a schema filter limits the Tables"
       (is (= [["SALES" "leads"]]
-             (batch-keys "objects" (answers db-name {:schema_filters {:type "inclusion" :patterns "SALES"}})))))))
+             (batch-keys "tables" (answers db-name {:schema_filters {:type "inclusion" :patterns "SALES"}})))))))
 
 (defn- error-data [database-name more]
   (try
@@ -231,7 +230,7 @@
       ;; a legacy duplicate has the key of another Table; H2's unique index refuses that, so only the flag is set here
       (t2/query-one {:update :metabase_table :set {:is_defective_duplicate true} :where [:= :id twin]})
       (testing "a Table marked as a defective duplicate is not sent, so a key is sent once"
-        (is (= [["PUBLIC" "orders"]] (batch-keys "objects" (answers db-name))))))))
+        (is (= [["PUBLIC" "orders"]] (batch-keys "tables" (answers db-name))))))))
 
 (deftest stats-cut-by-size-after-several-tables-test
   (mt/with-temp [:model/Database {db-id :id db-name :name} {:initial_sync_status "complete"}]

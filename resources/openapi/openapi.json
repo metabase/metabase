@@ -31767,88 +31767,6 @@
         "description" : "An identity provider's groups mapped to the Metabase group IDs that membership in them grants. The keys are the\n  provider's -- LDAP group DNs, SAML and JWT group names -- so the map is string-keyed on its way in; it is stored as a\n  JSON setting and read back through that setting's own decoder.",
         "type" : "object"
       },
-      "metabase.sync.metadata-sync.document.field" : {
-        "description" : "a Field's document: its name path, and each of `field-columns` that has a value",
-        "properties" : {
-          "base_type" : {
-            "description" : "value must be a non-blank string.",
-            "minLength" : 1,
-            "type" : "string"
-          },
-          "database_type" : {
-            "description" : "value must be a non-blank string.",
-            "minLength" : 1,
-            "type" : "string"
-          },
-          "last_analyzed" : {
-            "description" : "value must be a non-blank string.",
-            "minLength" : 1,
-            "type" : "string"
-          },
-          "path" : {
-            "items" : {
-              "description" : "value must be a non-blank string.",
-              "minLength" : 1,
-              "type" : "string"
-            },
-            "minItems" : 1,
-            "type" : "array"
-          }
-        },
-        "required" : [ "path", "base_type", "database_type" ],
-        "type" : "object"
-      },
-      "metabase.sync.metadata-sync.document.key" : {
-        "description" : "A Table's place in the order of a Database's Tables: its schema, nil first, then its name.",
-        "maxItems" : 2,
-        "minItems" : 2,
-        "prefixItems" : [ {
-          "anyOf" : [ {
-            "type" : "string"
-          }, {
-            "type" : "null"
-          } ]
-        }, {
-          "type" : "string"
-        } ],
-        "type" : "array"
-      },
-      "metabase.sync.metadata-sync.document.schema-filter" : {
-        "additionalProperties" : false,
-        "description" : "Which schemas of a Database to describe, in the form of a Database's own schema filters.",
-        "properties" : {
-          "patterns" : {
-            "type" : "string"
-          },
-          "type" : {
-            "enum" : [ "inclusion", "exclusion" ],
-            "type" : "string"
-          }
-        },
-        "required" : [ "type", "patterns" ],
-        "type" : "object"
-      },
-      "metabase.sync.metadata-sync.document.table" : {
-        "description" : "a Table's document: each of `table-columns` that has a value, and its Fields",
-        "properties" : {
-          "fields" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.document.field"
-            },
-            "type" : "array"
-          },
-          "name" : {
-            "description" : "value must be a non-blank string.",
-            "minLength" : 1,
-            "type" : "string"
-          },
-          "schema" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "name", "fields" ],
-        "type" : "object"
-      },
       "metabase.sync.metadata-sync.links.field-path" : {
         "description" : "A Field's name, after the names of its parents. Always one name today.",
         "items" : {
@@ -31904,18 +31822,33 @@
         "properties" : {
           "key" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.document.key"
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.pages.key"
             }, {
               "type" : "null"
             } ]
           },
           "kind" : {
-            "enum" : [ "objects", "links", "stats" ],
+            "enum" : [ "tables", "links", "stats" ],
             "type" : "string"
           }
         },
         "required" : [ "kind" ],
         "type" : "object"
+      },
+      "metabase.sync.metadata-sync.pages.key" : {
+        "description" : "A Table's place in the order of a Database's Tables: its schema, nil first, then its name.",
+        "maxItems" : 2,
+        "minItems" : 2,
+        "prefixItems" : [ {
+          "anyOf" : [ {
+            "type" : "string"
+          }, {
+            "type" : "null"
+          } ]
+        }, {
+          "type" : "string"
+        } ],
+        "type" : "array"
       },
       "metabase.sync.metadata-sync.receive.counts" : {
         "additionalProperties" : false,
@@ -32004,11 +31937,78 @@
         "required" : [ "field", "values", "has_more_values" ],
         "type" : "object"
       },
+      "metabase.sync.metadata-sync.tables.field" : {
+        "description" : "a Field's entry: its name path, and each of `field-columns` that has a value",
+        "properties" : {
+          "base_type" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "database_type" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "last_analyzed" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "path" : {
+            "items" : {
+              "description" : "value must be a non-blank string.",
+              "minLength" : 1,
+              "type" : "string"
+            },
+            "minItems" : 1,
+            "type" : "array"
+          }
+        },
+        "required" : [ "path", "base_type", "database_type" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.tables.schema-filter" : {
+        "additionalProperties" : false,
+        "description" : "Which schemas of a Database to send, in the form of a Database's own schema filters.",
+        "properties" : {
+          "patterns" : {
+            "type" : "string"
+          },
+          "type" : {
+            "enum" : [ "inclusion", "exclusion" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "type", "patterns" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.tables.table" : {
+        "description" : "a Table's entry: each of `table-columns` that has a value, and its Fields",
+        "properties" : {
+          "fields" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.tables.field"
+            },
+            "type" : "array"
+          },
+          "name" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "schema" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "fields" ],
+        "type" : "object"
+      },
       "metabase.sync.metadata-sync.wire.batch" : {
         "anyOf" : [ {
           "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.database-batch"
         }, {
-          "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.objects-batch"
+          "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.tables-batch"
         }, {
           "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.links-batch"
         }, {
@@ -32073,22 +32073,6 @@
         "required" : [ "schema", "name", "links" ],
         "type" : "object"
       },
-      "metabase.sync.metadata-sync.wire.objects-batch" : {
-        "additionalProperties" : false,
-        "properties" : {
-          "tables" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.document.table"
-            },
-            "type" : "array"
-          },
-          "type" : {
-            "const" : "objects"
-          }
-        },
-        "required" : [ "type", "tables" ],
-        "type" : "object"
-      },
       "metabase.sync.metadata-sync.wire.request" : {
         "description" : "a request for the metadata of one Database; a key that this version does not know is ignored, so that a newer receiver is not refused",
         "properties" : {
@@ -32111,7 +32095,7 @@
           },
           "schema_filters" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.document.schema-filter"
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.tables.schema-filter"
             }, {
               "type" : "null"
             } ]
@@ -32183,6 +32167,22 @@
           }
         },
         "required" : [ "schema", "name", "field_values" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.tables-batch" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "tables" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.tables.table"
+            },
+            "type" : "array"
+          },
+          "type" : {
+            "const" : "tables"
+          }
+        },
+        "required" : [ "type", "tables" ],
         "type" : "object"
       },
       "metabase.sync.schedules.ExpandedSchedulesMap" : {
@@ -83959,7 +83959,7 @@
     },
     "/api/warehouse/metadata/changes" : {
       "post" : {
-        "description" : "The next page of the warehouse metadata of the Database named `database`, with the engine `engine`, from the\n  cursor `after`, or from the start without one. The first answer holds the database values, then the objects (Tables\n  and their Fields), the links (FK targets) and the stats (row counts and field values) follow, in that order, a page\n  at a time. Ask again with the answer's `next` while it has one. Needs a superuser.\n\n  Errors, each with an `error-code` in the body, so that a caller can tell them from a 404 of a Metabase without this\n  endpoint:\n\n  - 404 `metadata-sync-database-not-found`: no Database has exactly this name and engine. Stub Databases and the\n    destination Databases of database routing are left out.\n  - 409 `metadata-sync-database-ambiguous`: several Databases have this name and engine.\n  - 422 `metadata-sync-database-not-ready`: the Database's first sync is not complete.",
+        "description" : "The next page of the warehouse metadata of the Database named `database`, with the engine `engine`, from the\n  cursor `after`, or from the start without one. The first answer holds the database values, then the tables (each\n  Table with its Fields), the links (FK targets) and the stats (row counts and field values) follow, in that order, a page\n  at a time. Ask again with the answer's `next` while it has one. Needs a superuser.\n\n  Errors, each with an `error-code` in the body, so that a caller can tell them from a 404 of a Metabase without this\n  endpoint:\n\n  - 404 `metadata-sync-database-not-found`: no Database has exactly this name and engine. Stub Databases and the\n    destination Databases of database routing are left out.\n  - 409 `metadata-sync-database-ambiguous`: several Databases have this name and engine.\n  - 422 `metadata-sync-database-not-ready`: the Database's first sync is not complete.",
         "operationId" : "post-api-warehouse-metadata-changes",
         "parameters" : [ ],
         "requestBody" : {
