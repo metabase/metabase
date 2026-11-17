@@ -4,6 +4,7 @@
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
+   [metabase-enterprise.data-complexity-score.settings :as settings]
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.api.common :as api]
@@ -20,23 +21,29 @@
   [:enum "low" "medium" "high"])
 
 (def ^:private Failure
-  "Sub-score that couldn't be computed; carries only the failure message.
+  "Sub-score that couldn't be computed; carries the failure message. A scored leaf whose computation
+  errored (only `:ambiguity :synonym :pairs` can) also carries `:score nil` so the nil cascades through its
+  parent's rollup — see the cascade contract in `complexity/synonym-block`.
   (Named `Failure` rather than `Error` to avoid shadowing `java.lang.Error`.)"
   [:map {:closed true}
-   [:error string?]])
+   [:error string?]
+   [:score {:optional true} :nil]])
 
 (def ^:private Leaf
-  "Computed leaf sub-score with a raw `:measurement` and its weighted `:score`."
+  "Computed (scored) leaf sub-score with a raw `:measurement` and its weighted `:score`. Both are
+  plain numbers — v2 measures include ratios and graph analytics, so scores can be fractional."
   [:map {:closed true}
    [:measurement  number?]
-   [:score        nat-int?]
+   [:score        number?]
    [:rating       [:maybe Rating]]
    [:rating_label [:maybe string?]]])
 
 (def ^:private Grouping
-  "Internal node whose `:score` is the rolled-up sum of its `:components` children."
+  "Internal node whose `:score` is the rolled-up sum of its `:components` children (possibly
+  fractional, or nil when an errored leaf cascaded up). `:score` is OPTIONAL because the level-0
+  empty catalog is `{:components {}}` with no `:score`."
   [:map {:closed true}
-   [:score        [:maybe nat-int?]]
+   [:score        {:optional true} [:maybe number?]]
    [:rating       [:maybe Rating]]
    [:rating_label [:maybe string?]]
    [:components   [:map-of :keyword [:ref ::node]]]])
@@ -66,6 +73,7 @@
      [:formula_version   pos-int?]
      [:format_version    pos-int?]
      [:synonym_threshold number?]
+     [:level             nat-int?]
      [:calculated_at {:optional true} some?]
      [:embedding_model {:optional true} EmbeddingModelMeta]]]])
 
@@ -93,7 +101,8 @@
     (let [fingerprint (task.complexity-score/current-fingerprint)
           result      (complexity/complexity-scores
                        (assoc (synonym-source/complexity-scores-opts)
-                              :metabot-scope (metabot-scope/internal-metabot-scope)))
+                              :metabot-scope (metabot-scope/internal-metabot-scope)
+                              :level         (settings/effective-level)))
           stored      (data-complexity-score/record-score! fingerprint "appdb" result)]
       (task.complexity-score/maybe-advance-last-fingerprint! fingerprint result)
       (m.util/deep-snake-keys (complexity/decorate-with-ratings (or stored result))))

@@ -1,0 +1,359 @@
+{:threshold 0.9,
+ :catalog :library,
+ :embeddings "names_arctic-l_1024d.json",
+ :name-count 253,
+ :degree-distribution {:min 0, :p25 0, :median 1, :p75 4, :max 22, :mean 2.687747035573123},
+ :connected-components
+ {:count 99,
+  :multi-member 29,
+  :top
+  [{:members
+    ["hi_timeline_event"
+     "hi_audit_log"
+     "hi_document"
+     "timeline_event"
+     "hi_notification_recipient"
+     "hi_report_card"
+     "hi_dashboard_tab"
+     "hi_task_history"
+     "hi_view_log"
+     "hi_timeline"
+     "hi_notification"
+     "hi_report_dashboard"
+     "hi_metric"
+     "hi_data_permission"
+     "hi_metabase_database"
+     "hi_persisted_info"
+     "website_page_view"
+     "hi_glossary"
+     "hi_model_index"
+     "hi_secret"
+     "hi_dashboard_bookmark"
+     "hi_collection_bookmark"
+     "hi_core_user"
+     "page_view_anonymous"
+     "hi_card_bookmark"
+     "hi_first_time_action"
+     "website_page_view_anonymous"
+     "hi_pulse_channel_recipient"
+     "hi_notification_subscription"
+     "hi_notification_card"
+     "... (51 total)"],
+    :size 51,
+    :density 0.1129411764705882,
+    :avg-sim 0.8576119909750267,
+    :min-sim 0.7088869204937467}
+   {:members
+    ["average number of metrics per instance"
+     "daily_instance_metrics"
+     "daily_instance_feature_stats"
+     "daily_instance_tracking_attributes"
+     "stg_selfhosted_daily_instance_metrics"
+     "daily_instance_feature_availability"
+     "monthly_instance_feature_stats"
+     "instance_events_monthly_usage"
+     "self_hosted_instance_monthly_usage"
+     "monthly_account_usage"
+     "self_hosted_daily_stats_ping_monthly_usage"
+     "monthly_account_subscription_status_and_usage"
+     "monthly_revenue"
+     "monthly_revenue_customer"
+     "monthly_account_subscription_status"
+     "monthly_revenue_change"
+     "monthly_metric"
+     "monthly_revenue_change_customer"],
+    :size 18,
+    :density 0.196078431372549,
+    :avg-sim 0.8596207302418373,
+    :min-sim 0.7655757754427427}
+   {:members
+    ["gh_pull_request_commit"
+     "gh_pull_request_review"
+     "gh_pull_request"
+     "gh_issue_comment"
+     "gh_issue_reaction"
+     "gh_issue"
+     "gh_project_issue"
+     "gh_milestone"
+     "gh_test_result"
+     "gh_issue_assignee"
+     "gh_issue_label_history"
+     "gh_issue_label"
+     "gh_issue_customer_mention"
+     "gh_user"
+     "gh_issue_enterprise_map"
+     "gh_test_summary"],
+    :size 16,
+    :density 0.3333333333333333,
+    :avg-sim 0.8878707577430041,
+    :min-sim 0.8196258725067861}
+   {:members
+    ["stripe_customer"
+     "stripe_product"
+     "stripe_charge"
+     "stripe_refund"
+     "stripe_price"
+     "stripe_subscription"
+     "stripe_subscription_item"
+     "stripe_price_tier"
+     "ms_stripe_charge"
+     "stripe_invoice"
+     "stripe_invoice_item"],
+    :size 11,
+    :density 0.5636363636363636,
+    :avg-sim 0.9017773461660353,
+    :min-sim 0.86613971765695}
+   {:members
+    ["ms_trial_up"
+     "ms_free_trial_response"
+     "ms_contact"
+     "contact"
+     "ms_product"
+     "ms_organization"
+     "ms_address"
+     "ms_contracted_product"],
+    :size 8,
+    :density 0.25,
+    :avg-sim 0.8681957667220598,
+    :min-sim 0.7877741771694167}
+   {:members
+    ["pylon_organization"
+     "pylon_ticket"
+     "pylon_ticket_tag"
+     "pylon_ticket_metric"
+     "pylon_ticket_product_area"
+     "pylon_ticket_reason"
+     "pylon_ticket_link"
+     "pylon_ticket_comment"],
+    :size 8,
+    :density 0.7857142857142857,
+    :avg-sim 0.928610272321392,
+    :min-sim 0.8589063408791882}
+   {:members
+    ["ms_hosted_instance_action"
+     "ms_hosted_instance_healthcheck"
+     "ms_hosted_instance"
+     "ms_hosted_instance_quota_usage"
+     "ms_hosted_instance_scheduled_maintenance"
+     "ms_hosting_scheduled_maintenance"
+     "ms_hosting_shared_resource"
+     "ms_hosting_customer_migration"],
+    :size 8,
+    :density 0.4642857142857143,
+    :avg-sim 0.8981713056378995,
+    :min-sim 0.8569258074687471}
+   {:members
+    ["salesforce_lead"
+     "salesforce_contact"
+     "salesforce_account"
+     "salesforce_email"
+     "salesforce_token"
+     "hackathon_salesforce_account"],
+    :size 6,
+    :density 0.4,
+    :avg-sim 0.884782798066311,
+    :min-sim 0.827129830356552}
+   {:members ["ms_token_check_deduped" "ms_token_check" "ms_first_token_check" "ms_latest_token_check" "ms_token"],
+    :size 5,
+    :density 0.9,
+    :avg-sim 0.9327555311486553,
+    :min-sim 0.8964441440268761}
+   {:members ["setup_event" "database_event" "setting_event" "simple_event"],
+    :size 4,
+    :density 0.5,
+    :avg-sim 0.8941247570823606,
+    :min-sim 0.875081092776557}
+   {:members ["linear_team_project" "linear_team" "linear_project_member" "linear_project"],
+    :size 4,
+    :density 1.0,
+    :avg-sim 0.930350063108552,
+    :min-sim 0.9000741046085712}
+   {:members ["pipedrive_deal" "pipedrive_lead" "pipedrive_deal_field_history" "pipedrive_person"],
+    :size 4,
+    :density 0.5,
+    :avg-sim 0.8801108265020418,
+    :min-sim 0.8328232930569592}
+   {:members ["gh_workflow_run" "gh_workflow_step" "gh_workflow_job"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9471245276600909,
+    :min-sim 0.9423023024182066}
+   {:members ["ms_subscription" "ms_subscription_history" "ms_subscription_version"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9402728070588998,
+    :min-sim 0.9312365348395911}
+   {:members ["ms_crm_article_feedback" "ms_crm_product_feedback" "ms_crm_contact_request"],
+    :size 3,
+    :density 0.6666666666666667,
+    :avg-sim 0.8934208616939405,
+    :min-sim 0.8595755169202101}]},
+ :greedy-cliques
+ {:count 182,
+  :multi-member 112,
+  :top
+  [{:members
+    ["pylon_ticket_tag"
+     "pylon_ticket_metric"
+     "pylon_ticket_product_area"
+     "pylon_ticket_reason"
+     "pylon_ticket_link"
+     "pylon_ticket_comment"
+     "pylon_ticket"],
+    :size 7,
+    :density 1.0,
+    :avg-sim 0.9443609720985422,
+    :min-sim 0.9040563437800672}
+   {:members
+    ["hi_document" "hi_dashboard_bookmark" "hi_core_user" "hi_report_card" "hi_view_log" "hi_first_time_action"],
+    :size 6,
+    :density 1.0,
+    :avg-sim 0.9288239681146486,
+    :min-sim 0.9030420599733014}
+   {:members
+    ["hi_document" "hi_dashboard_bookmark" "hi_report_card" "hi_metabase_database" "hi_view_log" "hi_timeline"],
+    :size 6,
+    :density 1.0,
+    :avg-sim 0.9184943086560933,
+    :min-sim 0.900601044145275}
+   {:members
+    ["gh_issue" "gh_issue_assignee" "gh_issue_comment" "gh_project_issue" "gh_issue_label" "gh_issue_reaction"],
+    :size 6,
+    :density 1.0,
+    :avg-sim 0.9257421761979209,
+    :min-sim 0.905166160520026}
+   {:members
+    ["hi_document" "hi_dashboard_bookmark" "hi_core_user" "page_view_anonymous" "hi_view_log" "hi_first_time_action"],
+    :size 6,
+    :density 1.0,
+    :avg-sim 0.9316053898152544,
+    :min-sim 0.9065336570994676}
+   {:members ["hi_document" "hi_dashboard_bookmark" "hi_core_user" "hi_report_card" "hi_view_log" "hi_card_bookmark"],
+    :size 6,
+    :density 1.0,
+    :avg-sim 0.9286802174341788,
+    :min-sim 0.9017883187519673}
+   {:members
+    ["hi_document"
+     "hi_dashboard_bookmark"
+     "hi_collection_bookmark"
+     "hi_core_user"
+     "page_view_anonymous"
+     "hi_view_log"],
+    :size 6,
+    :density 1.0,
+    :avg-sim 0.9348146925788936,
+    :min-sim 0.9107916909486552}
+   {:members ["hi_timeline_event" "hi_audit_log" "hi_document" "hi_report_card" "hi_view_log"],
+    :size 5,
+    :density 1.0,
+    :avg-sim 0.9203392249014903,
+    :min-sim 0.9009220944561862}
+   {:members ["stripe_product" "stripe_price_tier" "stripe_charge" "stripe_refund" "stripe_price"],
+    :size 5,
+    :density 1.0,
+    :avg-sim 0.9150741897353617,
+    :min-sim 0.9019428281326362}
+   {:members ["hi_dashboard_bookmark" "hi_report_dashboard" "hi_report_card" "hi_metabase_database" "hi_view_log"],
+    :size 5,
+    :density 1.0,
+    :avg-sim 0.9149659279155049,
+    :min-sim 0.9011175705589252}
+   {:members ["hi_document" "hi_dashboard_bookmark" "hi_report_card" "hi_dashboard_tab" "hi_view_log"],
+    :size 5,
+    :density 1.0,
+    :avg-sim 0.9256665109738321,
+    :min-sim 0.9009929808363777}
+   {:members ["stripe_product" "stripe_price_tier" "stripe_charge" "stripe_refund" "stripe_subscription_item"],
+    :size 5,
+    :density 1.0,
+    :avg-sim 0.9091559199859585,
+    :min-sim 0.9019428281326362}
+   {:members ["gh_issue" "gh_issue_comment" "gh_pull_request" "gh_project_issue" "gh_milestone"],
+    :size 5,
+    :density 1.0,
+    :avg-sim 0.9171207793215219,
+    :min-sim 0.901623902513515}
+   {:members ["stripe_product" "stripe_charge" "stripe_refund" "stripe_price" "stripe_customer"],
+    :size 5,
+    :density 1.0,
+    :avg-sim 0.9112161198924257,
+    :min-sim 0.9019428281326362}
+   {:members ["stripe_price_tier" "stripe_charge" "stripe_refund" "stripe_price" "stripe_subscription"],
+    :size 5,
+    :density 1.0,
+    :avg-sim 0.915939658342365,
+    :min-sim 0.905379245836103}]},
+ :avg-linkage-hac
+ {:count 149,
+  :multi-member 51,
+  :top
+  [{:size 7,
+    :members
+    ["gh_issue"
+     "gh_issue_assignee"
+     "gh_issue_comment"
+     "gh_issue_label_history"
+     "gh_project_issue"
+     "gh_issue_label"
+     "gh_issue_reaction"]}
+   {:size 7,
+    :members
+    ["pylon_ticket_tag"
+     "pylon_ticket_metric"
+     "pylon_ticket_product_area"
+     "pylon_ticket_reason"
+     "pylon_ticket_link"
+     "pylon_ticket_comment"
+     "pylon_ticket"]}
+   {:size 7,
+    :members
+    ["stripe_product"
+     "stripe_price_tier"
+     "stripe_refund"
+     "stripe_price"
+     "stripe_subscription"
+     "stripe_customer"
+     "stripe_subscription_item"]}
+   {:size 7,
+    :members
+    ["hi_document"
+     "hi_dashboard_bookmark"
+     "hi_collection_bookmark"
+     "hi_core_user"
+     "hi_view_log"
+     "hi_card_bookmark"
+     "hi_first_time_action"]}
+   {:size 6,
+    :members
+    ["ms_hosted_instance_healthcheck"
+     "ms_hosted_instance"
+     "ms_hosted_instance_action"
+     "ms_hosting_scheduled_maintenance"
+     "ms_hosted_instance_quota_usage"
+     "ms_hosted_instance_scheduled_maintenance"]}
+   {:size 5, :members ["hi_pulse" "hi_pulse_channel_recipient" "hi_channel" "hi_pulse_channel" "hi_pulse_card"]}
+   {:size 5,
+    :members
+    ["daily_instance_feature_stats"
+     "daily_instance_metrics"
+     "monthly_instance_feature_stats"
+     "daily_instance_tracking_attributes"
+     "daily_instance_feature_availability"]}
+   {:size 5,
+    :members ["ms_token_check" "ms_token_check_deduped" "ms_token" "ms_first_token_check" "ms_latest_token_check"]}
+   {:size 5,
+    :members
+    ["hi_notification_subscription"
+     "hi_notification_recipient"
+     "hi_notification_card"
+     "hi_notification_handler"
+     "hi_notification"]}
+   {:size 4,
+    :members ["website_page_view" "case_studies_page_views" "page_view_anonymous" "website_page_view_anonymous"]}
+   {:size 4, :members ["hi_metabase_field" "hi_metabase_field_values" "hi_metabase_database" "hi_metabase_table"]}
+   {:size 4,
+    :members ["monthly_revenue" "monthly_revenue_customer" "monthly_revenue_change" "monthly_revenue_change_customer"]}
+   {:size 4, :members ["hi_report_dashboard" "hi_report_card" "hi_dashboard_tab" "hi_report_dashboardcard"]}
+   {:size 4, :members ["linear_team" "linear_project_member" "linear_project" "linear_team_project"]}
+   {:size 3, :members ["gh_pull_request_review" "gh_pull_request" "gh_pull_request_commit"]}]}}

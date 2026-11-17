@@ -1,0 +1,692 @@
+{"0.50-0.60"
+ {:count 11,
+  :pairs
+  [{:a "salesforce_email", :b "hi_glossary", :similarity 5978}
+   {:a "stripe_subscription", :b "website_page_view", :similarity 5956}
+   {:a "website_page_view", :b "stripe_invoice_item", :similarity 5887}
+   {:a "salesforce_email", :b "lever_interview", :similarity 5869}
+   {:a "salesforce_lead", :b "website_page_view", :similarity 5846}
+   {:a "salesforce_email", :b "hi_timeline", :similarity 5831}
+   {:a "salesforce_email", :b "country", :similarity 5766}
+   {:a "website_page_view", :b "stripe_invoice", :similarity 5740}
+   {:a "salesforce_email", :b "website_page_view_anonymous", :similarity 5694}
+   {:a "website_page_view", :b "salesforce_token", :similarity 5657}
+   {:a "salesforce_email", :b "website_page_view", :similarity 5381}]},
+ "0.60-0.70"
+ {:count 100,
+  :pairs
+  [{:a "average number of metrics per instance", :b "pipedrive_person", :similarity 7000}
+   {:a "average customer lifetime (self-service accounts)", :b "gh_test_result", :similarity 7000}
+   {:a "new organization self-service signups", :b "salesforce_contact", :similarity 6998}
+   {:a "average customer lifetime (self-service accounts)", :b "arr", :similarity 6996}
+   {:a "average customer lifetime (self-service accounts)", :b "hi_pulse_channel", :similarity 6992}
+   {:a "average customer lifetime (self-service accounts)", :b "website_session_intent", :similarity 6989}
+   {:a "average customer lifetime (self-service accounts)", :b "cleanup_event", :similarity 6985}
+   {:a "average customer lifetime (self-service accounts)", :b "unified_instance_event", :similarity 6983}
+   {:a "average customer lifetime (self-service accounts)", :b "stripe_refund", :similarity 6983}
+   {:a "average customer lifetime (self-service accounts)", :b "hi_api_key", :similarity 6983}
+   {:a "average number of metrics per instance", :b "pipedrive_deal", :similarity 6980}
+   {:a "average number of metrics per instance", :b "pipedrive_deal_field_history", :similarity 6977}
+   {:a "new organization self-service signups", :b "stripe_subscription_item", :similarity 6975}
+   {:a "average customer lifetime (self-service accounts)", :b "search_event", :similarity 6968}
+   {:a "average customer lifetime (self-service accounts)", :b "hi_query_execution", :similarity 6967}
+   {:a "average customer lifetime (self-service accounts)", :b "hi_qrtz_triggers", :similarity 6966}
+   {:a "new organization self-service signups", :b "embed_flow_event", :similarity 6963}
+   {:a "new organization self-service signups", :b "stripe_customer", :similarity 6961}
+   {:a "new organization self-service signups", :b "hi_cache_config", :similarity 6960}
+   {:a "average customer lifetime (self-service accounts)", :b "lever_job", :similarity 6959}
+   {:a "average customer lifetime (self-service accounts)", :b "stripe_subscription_item", :similarity 6957}
+   {:a "average customer lifetime (self-service accounts)", :b "open p1 bugs", :similarity 6952}
+   {:a "new organization self-service signups", :b "pylon_user", :similarity 6949}
+   {:a "new organization self-service signups", :b "stripe_subscription", :similarity 6948}
+   {:a "new organization self-service signups", :b "stripe_refund", :similarity 6944}
+   {:a "new organization self-service signups", :b "metabase_version", :similarity 6939}
+   {:a "new organization self-service signups", :b "arr", :similarity 6935}
+   {:a "average customer lifetime (self-service accounts)", :b "stripe_subscription", :similarity 6929}
+   {:a "average number of metrics per instance", :b "salesforce_contact", :similarity 6920}
+   {:a "average customer lifetime (self-service accounts)", :b "ms_crm_contact_request", :similarity 6917}
+   {:a "average customer lifetime (self-service accounts)", :b "pipedrive_deal_field_history", :similarity 6913}
+   {:a "new organization self-service signups", :b "ms_metabase_version", :similarity 6911}
+   {:a "average customer lifetime (self-service accounts)", :b "hi_setting", :similarity 6909}
+   {:a "average customer lifetime (self-service accounts)", :b "setup_event", :similarity 6905}
+   {:a "average number of metrics per instance", :b "website_session_intent", :similarity 6903}
+   {:a "average number of metrics per instance", :b "salesforce_token", :similarity 6895}
+   {:a "average customer lifetime (self-service accounts)", :b "grain_recording", :similarity 6895}
+   {:a "average customer lifetime (self-service accounts)", :b "ms_hosted_instance", :similarity 6892}
+   {:a "average customer lifetime (self-service accounts)", :b "gh_test_flakiness", :similarity 6892}
+   {:a "average customer lifetime (self-service accounts)", :b "stripe_charge", :similarity 6888}
+   {:a "average customer lifetime (self-service accounts)", :b "gh_project_issue", :similarity 6881}
+   {:a "average customer lifetime (self-service accounts)", :b "embed_share_event", :similarity 6876}
+   {:a "new organization self-service signups", :b "stripe_charge", :similarity 6874}
+   {:a "average customer lifetime (self-service accounts)", :b "dashboard_event", :similarity 6874}
+   {:a "average customer lifetime (self-service accounts)", :b "open bugs", :similarity 6869}
+   {:a "average customer lifetime (self-service accounts)", :b "gh_workflow_step", :similarity 6869}
+   {:a "average number of metrics per instance", :b "stripe_invoice", :similarity 6865}
+   {:a "average customer lifetime (self-service accounts)", :b "hi_notification_handler", :similarity 6864}
+   {:a "new organization self-service signups", :b "pipedrive_lead", :similarity 6858}
+   {:a "average customer lifetime (self-service accounts)", :b "gh_issue", :similarity 6849}
+   {:a "average customer lifetime (self-service accounts)", :b "ms_audit_event", :similarity 6848}
+   {:a "average customer lifetime (self-service accounts)", :b "pipedrive_deal", :similarity 6844}
+   {:a "average customer lifetime (self-service accounts)", :b "embedding_homepage_event", :similarity 6841}
+   {:a "average customer lifetime (self-service accounts)", :b "pipedrive_lead", :similarity 6839}
+   {:a "average customer lifetime (self-service accounts)", :b "ms_token_check", :similarity 6838}
+   {:a "average customer lifetime (self-service accounts)", :b "linear_project", :similarity 6831}
+   {:a "new organization self-service signups", :b "salesforce_lead", :similarity 6823}
+   {:a "visitors to checkout funnel", :b "python_load20x100_in_1000x200_out", :similarity 6822}
+   {:a "new organization self-service signups", :b "win rate (enterprise)", :similarity 6818}
+   {:a "visitors to checkout funnel", :b "win rate (enterprise)", :similarity 6815}
+   {:a "new organization self-service signups", :b "salesforce_token", :similarity 6812}
+   {:a "new organization self-service signups", :b "pipedrive_deal", :similarity 6811}
+   {:a "average customer lifetime (self-service accounts)", :b "gh_pull_request_commit", :similarity 6810}
+   {:a "average customer lifetime (self-service accounts)", :b "action_event", :similarity 6800}
+   {:a "average number of metrics per instance", :b "csv_upload_event", :similarity 6796}
+   {:a "average customer lifetime (self-service accounts)", :b "gh_workflow_job", :similarity 6790}
+   {:a "average customer lifetime (self-service accounts)", :b "pipedrive_organization", :similarity 6785}
+   {:a "new organization self-service signups", :b "stripe_price_tier", :similarity 6780}
+   {:a "average customer lifetime (self-service accounts)", :b "pylon_user", :similarity 6779}
+   {:a "average customer lifetime (self-service accounts)", :b "hi_cache_config", :similarity 6770}
+   {:a "average number of metrics per instance", :b "stripe_invoice_item", :similarity 6762}
+   {:a "average customer lifetime (self-service accounts)", :b "metabase_version", :similarity 6759}
+   {:a "average customer lifetime (self-service accounts)", :b "database_event", :similarity 6759}
+   {:a "average customer lifetime (self-service accounts)", :b "ms_token", :similarity 6748}
+   {:a "average customer lifetime (self-service accounts)", :b "salesforce_lead", :similarity 6747}
+   {:a "average customer lifetime (self-service accounts)", :b "simple_event", :similarity 6735}
+   {:a "average customer lifetime (self-service accounts)", :b "serialization_event", :similarity 6709}
+   {:a "average customer lifetime (self-service accounts)", :b "salesforce_contact", :similarity 6705}
+   {:a "average number of metrics per instance", :b "salesforce_email", :similarity 6701}
+   {:a "new organization self-service signups", :b "pipedrive_deal_field_history", :similarity 6692}
+   {:a "new organization self-service signups", :b "stripe_price", :similarity 6675}
+   {:a "average customer lifetime (self-service accounts)", :b "model_event", :similarity 6673}
+   {:a "average customer lifetime (self-service accounts)", :b "setting_event", :similarity 6661}
+   {:a "average customer lifetime (self-service accounts)", :b "gh_workflow_run", :similarity 6644}
+   {:a "average customer lifetime (self-service accounts)", :b "ms_metabase_version", :similarity 6642}
+   {:a "average customer lifetime (self-service accounts)", :b "stripe_invoice", :similarity 6628}
+   {:a "new organization self-service signups", :b "csv_upload_event", :similarity 6621}
+   {:a "new organization self-service signups", :b "salesforce_email", :similarity 6615}
+   {:a "average customer lifetime (self-service accounts)", :b "stripe_invoice_item", :similarity 6599}
+   {:a "average customer lifetime (self-service accounts)", :b "embed_flow_event", :similarity 6589}
+   {:a "new organization self-service signups", :b "stripe_invoice", :similarity 6561}
+   {:a "average customer lifetime (self-service accounts)", :b "task_event", :similarity 6553}
+   {:a "new organization self-service signups", :b "python_load_transform_base", :similarity 6549}
+   {:a "new organization self-service signups", :b "pipedrive_person", :similarity 6537}
+   {:a "average customer lifetime (self-service accounts)", :b "salesforce_email", :similarity 6479}
+   {:a "new organization self-service signups", :b "stripe_invoice_item", :similarity 6439}
+   {:a "average customer lifetime (self-service accounts)", :b "python_load_transform_base", :similarity 6389}
+   {:a "average customer lifetime (self-service accounts)", :b "csv_upload_event", :similarity 6384}
+   {:a "new organization self-service signups", :b "python_load20x100_in_1000x200_out", :similarity 6326}
+   {:a "average customer lifetime (self-service accounts)",
+    :b "python_load20x100_in_1000x200_out",
+    :similarity 6035}]},
+ "0.70-0.75"
+ {:count 100,
+  :pairs
+  [{:a "visitors to checkout funnel", :b "hi_query_execution", :similarity 7499}
+   {:a "visitors to checkout funnel", :b "lever_job", :similarity 7495}
+   {:a "visitors to checkout funnel", :b "hi_metabase_table", :similarity 7493}
+   {:a "average number of metrics per instance", :b "pylon_organization", :similarity 7493}
+   {:a "visitors to checkout funnel", :b "linear_project_member", :similarity 7488}
+   {:a "average number of metrics per instance", :b "ms_audit_record_version", :similarity 7487}
+   {:a "average number of metrics per instance", :b "gh_issue", :similarity 7485}
+   {:a "visitors to checkout funnel", :b "metabot_event", :similarity 7479}
+   {:a "average number of metrics per instance", :b "ms_contracted_product", :similarity 7478}
+   {:a "average number of metrics per instance", :b "gh_issue_label_history", :similarity 7474}
+   {:a "visitors to checkout funnel", :b "hi_pulse", :similarity 7473}
+   {:a "average number of metrics per instance", :b "hi_cache_config", :similarity 7473}
+   {:a "average number of metrics per instance", :b "ms_user", :similarity 7469}
+   {:a "average number of metrics per instance", :b "new organization self-service signups", :similarity 7468}
+   {:a "visitors to checkout funnel", :b "lever_interview", :similarity 7465}
+   {:a "visitors to checkout funnel", :b "hi_notification_handler", :similarity 7461}
+   {:a "average number of metrics per instance", :b "arr", :similarity 7458}
+   {:a "visitors to checkout funnel", :b "salesforce_token", :similarity 7454}
+   {:a "visitors to checkout funnel", :b "hi_db_router", :similarity 7452}
+   {:a "visitors to checkout funnel", :b "arpa (self-service accounts)", :similarity 7448}
+   {:a "average number of metrics per instance", :b "metabase_version", :similarity 7444}
+   {:a "visitors to checkout funnel", :b "ms_hosted_instance_healthcheck", :similarity 7443}
+   {:a "visitors to checkout funnel", :b "stripe_invoice", :similarity 7443}
+   {:a "visitors to checkout funnel", :b "hi_segment", :similarity 7438}
+   {:a "average number of metrics per instance", :b "gh_workflow_step", :similarity 7433}
+   {:a "visitors to checkout funnel", :b "gh_issue_comment", :similarity 7432}
+   {:a "average number of metrics per instance", :b "arpa (self-service accounts)", :similarity 7430}
+   {:a "average number of metrics per instance", :b "gh_workflow_job", :similarity 7429}
+   {:a "average number of metrics per instance", :b "question_event", :similarity 7429}
+   {:a "average number of metrics per instance", :b "hi_collection", :similarity 7426}
+   {:a "average number of metrics per instance", :b "hi_notification_card", :similarity 7420}
+   {:a "visitors to checkout funnel", :b "ms_audit_event", :similarity 7413}
+   {:a "visitors to checkout funnel", :b "salesforce_lead", :similarity 7411}
+   {:a "visitors to checkout funnel", :b "lever_application_history", :similarity 7410}
+   {:a "visitors to checkout funnel", :b "ms_hosted_instance", :similarity 7407}
+   {:a "visitors to checkout funnel", :b "gh_stargazer", :similarity 7401}
+   {:a "visitors to checkout funnel", :b "hi_cache_config", :similarity 7400}
+   {:a "average number of metrics per instance", :b "setup_event", :similarity 7398}
+   {:a "average number of metrics per instance", :b "contact", :similarity 7398}
+   {:a "visitors to checkout funnel", :b "account_event", :similarity 7394}
+   {:a "average number of metrics per instance", :b "ms_token_check", :similarity 7394}
+   {:a "visitors to checkout funnel", :b "hi_pulse_channel", :similarity 7392}
+   {:a "visitors to checkout funnel", :b "gh_issue_label", :similarity 7377}
+   {:a "visitors to checkout funnel", :b "simple_event", :similarity 7376}
+   {:a "average number of metrics per instance", :b "stripe_price", :similarity 7376}
+   {:a "visitors to checkout funnel", :b "pipedrive_deal", :similarity 7374}
+   {:a "visitors to checkout funnel", :b "pipedrive_lead", :similarity 7372}
+   {:a "visitors to checkout funnel", :b "gh_issue_assignee", :similarity 7371}
+   {:a "average number of metrics per instance", :b "checkout funnel conversion rate", :similarity 7369}
+   {:a "visitors to checkout funnel", :b "pipedrive_organization", :similarity 7368}
+   {:a "visitors to checkout funnel", :b "linear_project", :similarity 7367}
+   {:a "visitors to checkout funnel", :b "hi_setting", :similarity 7365}
+   {:a "average number of metrics per instance", :b "hi_pulse_channel_recipient", :similarity 7364}
+   {:a "visitors to checkout funnel", :b "setting_event", :similarity 7363}
+   {:a "visitors to checkout funnel", :b "gh_issue_label_history", :similarity 7357}
+   {:a "average number of metrics per instance", :b "stripe_customer", :similarity 7356}
+   {:a "visitors to checkout funnel", :b "linear_team_project", :similarity 7355}
+   {:a "visitors to checkout funnel", :b "hi_task_history", :similarity 7351}
+   {:a "visitors to checkout funnel", :b "grain_recording", :similarity 7350}
+   {:a "visitors to checkout funnel", :b "pipedrive_deal_field_history", :similarity 7347}
+   {:a "visitors to checkout funnel", :b "stg_selfhosted_daily_instance_metrics", :similarity 7347}
+   {:a "average number of metrics per instance", :b "ms_hosting_shared_resource", :similarity 7341}
+   {:a "visitors to checkout funnel", :b "gh_project_issue", :similarity 7339}
+   {:a "visitors to checkout funnel", :b "gh_workflow_job", :similarity 7328}
+   {:a "visitors to checkout funnel", :b "large_table", :similarity 7319}
+   {:a "visitors to checkout funnel", :b "open p1 bugs", :similarity 7315}
+   {:a "average number of metrics per instance", :b "hi_pulse_card", :similarity 7312}
+   {:a "average number of metrics per instance", :b "salesforce_account", :similarity 7302}
+   {:a "visitors to checkout funnel", :b "gh_test_summary", :similarity 7301}
+   {:a "visitors to checkout funnel", :b "salesforce_opportunity_history", :similarity 7297}
+   {:a "average number of metrics per instance", :b "python_load_transform_base", :similarity 7296}
+   {:a "visitors to checkout funnel", :b "gh_issue", :similarity 7294}
+   {:a "visitors to checkout funnel", :b "metabase_version", :similarity 7284}
+   {:a "visitors to checkout funnel", :b "acv (enterprise)", :similarity 7278}
+   {:a "average number of metrics per instance", :b "ms_token", :similarity 7277}
+   {:a "average number of metrics per instance", :b "linear_team_project", :similarity 7270}
+   {:a "visitors to checkout funnel", :b "pipedrive_person", :similarity 7269}
+   {:a "average number of metrics per instance", :b "ms_cancellation_survey_response", :similarity 7266}
+   {:a "average number of metrics per instance", :b "stg_metabase_store_crm_survey_response", :similarity 7258}
+   {:a "visitors to checkout funnel", :b "new oss instances", :similarity 7250}
+   {:a "visitors to checkout funnel", :b "csv_upload_event", :similarity 7247}
+   {:a "visitors to checkout funnel", :b "ms_audit_record_version", :similarity 7246}
+   {:a "average number of metrics per instance", :b "stripe_product", :similarity 7241}
+   {:a "visitors to checkout funnel", :b "gh_test_flakiness", :similarity 7226}
+   {:a "visitors to checkout funnel", :b "serialization_event", :similarity 7222}
+   {:a "average number of metrics per instance", :b "salesforce_opportunity_history", :similarity 7212}
+   {:a "visitors to checkout funnel", :b "python_load_transform_base", :similarity 7184}
+   {:a "average number of metrics per instance", :b "stripe_refund", :similarity 7181}
+   {:a "visitors to checkout funnel", :b "ms_metabase_version", :similarity 7179}
+   {:a "average number of metrics per instance", :b "linear_project", :similarity 7179}
+   {:a "visitors to checkout funnel", :b "arr", :similarity 7178}
+   {:a "visitors to checkout funnel", :b "gh_issue_enterprise_map", :similarity 7167}
+   {:a "visitors to checkout funnel", :b "unified_instance_event", :similarity 7156}
+   {:a "average number of metrics per instance", :b "gh_workflow_run", :similarity 7156}
+   {:a "visitors to checkout funnel", :b "salesforce_email", :similarity 7136}
+   {:a "visitors to checkout funnel", :b "gh_workflow_run", :similarity 7123}
+   {:a "average number of metrics per instance", :b "pylon_user", :similarity 7089}
+   {:a "average number of metrics per instance", :b "salesforce_lead", :similarity 7078}
+   {:a "average number of metrics per instance", :b "stripe_subscription", :similarity 7074}
+   {:a "visitors to checkout funnel", :b "task_event", :similarity 7021}]},
+ "0.75-0.80"
+ {:count 100,
+  :pairs
+  [{:a "visitors to checkout funnel", :b "website_page_view_anonymous", :similarity 7999}
+   {:a "visitors to checkout funnel", :b "hi_permissions_group_membership", :similarity 7990}
+   {:a "visitors to checkout funnel", :b "stripe_price_tier", :similarity 7984}
+   {:a "visitors to checkout funnel", :b "usage_stats_anonymous_history", :similarity 7982}
+   {:a "visitors to checkout funnel", :b "stg_metabase_store_crm_survey_response", :similarity 7966}
+   {:a "visitors to checkout funnel", :b "active installs", :similarity 7953}
+   {:a "visitors to checkout funnel", :b "nps_survey_response", :similarity 7943}
+   {:a "visitors to checkout funnel", :b "timeline_event", :similarity 7931}
+   {:a "visitors to checkout funnel", :b "hi_view_log", :similarity 7929}
+   {:a "visitors to checkout funnel", :b "monthly_metric", :similarity 7928}
+   {:a "visitors to checkout funnel", :b "hi_report_dashboard", :similarity 7925}
+   {:a "visitors to checkout funnel", :b "hi_card_bookmark", :similarity 7920}
+   {:a "visitors to checkout funnel", :b "monthly_instance_feature_stats", :similarity 7914}
+   {:a "visitors to checkout funnel", :b "website_session_intent", :similarity 7903}
+   {:a "visitors to checkout funnel", :b "self-service trial activation rate", :similarity 7896}
+   {:a "visitors to checkout funnel", :b "instance_events_monthly_usage", :similarity 7883}
+   {:a "visitors to checkout funnel", :b "stripe_price", :similarity 7878}
+   {:a "visitors to checkout funnel", :b "stripe_credit_note", :similarity 7875}
+   {:a "visitors to checkout funnel", :b "hi_document", :similarity 7871}
+   {:a "visitors to checkout funnel", :b "ms_subscription_history", :similarity 7850}
+   {:a "visitors to checkout funnel", :b "hi_metabase_field_values", :similarity 7846}
+   {:a "visitors to checkout funnel", :b "hi_notification_card", :similarity 7830}
+   {:a "visitors to checkout funnel", :b "ms_crm_article_feedback", :similarity 7820}
+   {:a "visitors to checkout funnel", :b "ms_token_check_deduped", :similarity 7816}
+   {:a "visitors to checkout funnel", :b "paying_customers_by_us_city_(standardized)", :similarity 7815}
+   {:a "visitors to checkout funnel", :b "average customer lifetime (self-service accounts)", :similarity 7801}
+   {:a "visitors to checkout funnel", :b "ms_crm_product_feedback", :similarity 7801}
+   {:a "visitors to checkout funnel", :b "hi_notification", :similarity 7792}
+   {:a "visitors to checkout funnel", :b "ms_organization", :similarity 7790}
+   {:a "visitors to checkout funnel", :b "ms_first_token_check", :similarity 7789}
+   {:a "visitors to checkout funnel", :b "daily_instance_feature_stats", :similarity 7788}
+   {:a "visitors to checkout funnel", :b "stripe_subscription", :similarity 7786}
+   {:a "visitors to checkout funnel", :b "hi_collection", :similarity 7785}
+   {:a "visitors to checkout funnel", :b "hi_report_dashboardcard", :similarity 7781}
+   {:a "visitors to checkout funnel", :b "ms_free_trial_response", :similarity 7781}
+   {:a "visitors to checkout funnel", :b "hi_persisted_info", :similarity 7773}
+   {:a "visitors to checkout funnel", :b "daily_instance_metrics", :similarity 7771}
+   {:a "visitors to checkout funnel", :b "pylon_ticket_link", :similarity 7771}
+   {:a "visitors to checkout funnel", :b "hi_timeline_event", :similarity 7770}
+   {:a "visitors to checkout funnel", :b "ms_subscription_version", :similarity 7768}
+   {:a "visitors to checkout funnel", :b "ms_hosting_scheduled_maintenance", :similarity 7758}
+   {:a "visitors to checkout funnel", :b "hi_audit_log", :similarity 7755}
+   {:a "visitors to checkout funnel", :b "ms_cancellation_survey_response", :similarity 7750}
+   {:a "visitors to checkout funnel", :b "salesforce_account", :similarity 7748}
+   {:a "visitors to checkout funnel", :b "search_event", :similarity 7746}
+   {:a "visitors to checkout funnel", :b "hi_model_index", :similarity 7741}
+   {:a "visitors to checkout funnel", :b "hi_secret", :similarity 7736}
+   {:a "visitors to checkout funnel", :b "ms_user", :similarity 7735}
+   {:a "visitors to checkout funnel", :b "embedding_homepage_event", :similarity 7722}
+   {:a "visitors to checkout funnel", :b "hi_metabase_field", :similarity 7719}
+   {:a "visitors to checkout funnel", :b "gh_issue_customer_mention", :similarity 7711}
+   {:a "visitors to checkout funnel", :b "ms_token_check", :similarity 7707}
+   {:a "visitors to checkout funnel", :b "hi_query_execution_daily", :similarity 7706}
+   {:a "visitors to checkout funnel", :b "analytic_events", :similarity 7694}
+   {:a "visitors to checkout funnel", :b "ms_metabot_feedback", :similarity 7686}
+   {:a "visitors to checkout funnel", :b "ms_subscription", :similarity 7679}
+   {:a "visitors to checkout funnel", :b "pylon_ticket", :similarity 7675}
+   {:a "visitors to checkout funnel", :b "ms_contracted_product", :similarity 7673}
+   {:a "visitors to checkout funnel", :b "ms_crm_contact_request", :similarity 7671}
+   {:a "visitors to checkout funnel", :b "hi_first_time_action", :similarity 7668}
+   {:a "visitors to checkout funnel", :b "embed_share_event", :similarity 7665}
+   {:a "visitors to checkout funnel", :b "daily_instance_feature_availability", :similarity 7661}
+   {:a "visitors to checkout funnel", :b "website_page_view", :similarity 7658}
+   {:a "visitors to checkout funnel", :b "average number of metrics per instance", :similarity 7642}
+   {:a "visitors to checkout funnel", :b "monthly_infrastructure_cost_legacy", :similarity 7636}
+   {:a "visitors to checkout funnel", :b "hi_connection_impersonations", :similarity 7635}
+   {:a "visitors to checkout funnel", :b "action_event", :similarity 7635}
+   {:a "visitors to checkout funnel", :b "hi_pulse_channel_recipient", :similarity 7627}
+   {:a "visitors to checkout funnel", :b "ms_air_gapped_token", :similarity 7625}
+   {:a "visitors to checkout funnel", :b "gh_pull_request_commit", :similarity 7618}
+   {:a "visitors to checkout funnel", :b "setup_event", :similarity 7615}
+   {:a "visitors to checkout funnel", :b "hi_implicit_action", :similarity 7613}
+   {:a "visitors to checkout funnel", :b "aws_cost_line_item_legacy", :similarity 7606}
+   {:a "visitors to checkout funnel", :b "embed_flow_event", :similarity 7605}
+   {:a "visitors to checkout funnel", :b "question_event", :similarity 7604}
+   {:a "visitors to checkout funnel", :b "ms_utm", :similarity 7598}
+   {:a "visitors to checkout funnel", :b "pylon_ticket_tag", :similarity 7594}
+   {:a "visitors to checkout funnel", :b "hi_native_query_snippet", :similarity 7593}
+   {:a "visitors to checkout funnel", :b "hi_channel", :similarity 7589}
+   {:a "visitors to checkout funnel", :b "pylon_ticket_comment", :similarity 7586}
+   {:a "visitors to checkout funnel", :b "gh_test_result", :similarity 7581}
+   {:a "visitors to checkout funnel", :b "pylon_organization", :similarity 7576}
+   {:a "visitors to checkout funnel", :b "hi_pulse_card", :similarity 7572}
+   {:a "visitors to checkout funnel", :b "ms_trial_up", :similarity 7560}
+   {:a "visitors to checkout funnel", :b "ms_address", :similarity 7560}
+   {:a "visitors to checkout funnel", :b "gh_user", :similarity 7551}
+   {:a "visitors to checkout funnel", :b "upgrades from oss", :similarity 7544}
+   {:a "visitors to checkout funnel", :b "ms_contract", :similarity 7544}
+   {:a "visitors to checkout funnel", :b "ms_hosted_instance_scheduled_maintenance", :similarity 7543}
+   {:a "visitors to checkout funnel", :b "salesforce_contact", :similarity 7541}
+   {:a "visitors to checkout funnel", :b "hi_glossary", :similarity 7539}
+   {:a "visitors to checkout funnel", :b "new enterprise leads", :similarity 7535}
+   {:a "visitors to checkout funnel", :b "ms_hosting_shared_resource", :similarity 7533}
+   {:a "visitors to checkout funnel", :b "open bugs", :similarity 7530}
+   {:a "visitors to checkout funnel", :b "ms_hosted_instance_action", :similarity 7522}
+   {:a "visitors to checkout funnel", :b "gh_milestone", :similarity 7520}
+   {:a "visitors to checkout funnel", :b "pylon_user", :similarity 7519}
+   {:a "visitors to checkout funnel", :b "linear_team", :similarity 7514}
+   {:a "visitors to checkout funnel", :b "gh_workflow_step", :similarity 7511}
+   {:a "visitors to checkout funnel", :b "ms_token", :similarity 7506}]},
+ "0.80-0.85"
+ {:count 100,
+  :pairs
+  [{:a "self-service trial activation rate", :b "visitors to website", :similarity 8492}
+   {:a "visitors to checkout funnel", :b "monthly_revenue_customer", :similarity 8479}
+   {:a "average number of metrics per instance", :b "instance_events_monthly_usage", :similarity 8475}
+   {:a "average number of metrics per instance", :b "hi_metric", :similarity 8447}
+   {:a "visitors to checkout funnel", :b "monthly_revenue_change_customer", :similarity 8446}
+   {:a "average customer lifetime (self-service accounts)",
+    :b "monthly_account_subscription_status_and_usage",
+    :similarity 8444}
+   {:a "visitors to checkout funnel", :b "customer", :similarity 8411}
+   {:a "new organization self-service signups", :b "arpa (self-service accounts)", :similarity 8406}
+   {:a "average customer lifetime (self-service accounts)", :b "accounts", :similarity 8392}
+   {:a "visitors to checkout funnel", :b "monthly_revenue", :similarity 8380}
+   {:a "visitors to checkout funnel", :b "customer_interaction", :similarity 8377}
+   {:a "average number of metrics per instance", :b "daily_instance_feature_availability", :similarity 8374}
+   {:a "average number of metrics per instance", :b "stg_selfhosted_daily_instance_metrics", :similarity 8367}
+   {:a "self-service trial activation rate", :b "arpa (self-service accounts)", :similarity 8366}
+   {:a "new organization self-service signups", :b "visitors to website", :similarity 8353}
+   {:a "new organization self-service signups", :b "ms_organization", :similarity 8337}
+   {:a "average customer lifetime (self-service accounts)", :b "account", :similarity 8335}
+   {:a "average number of metrics per instance", :b "ms_hosted_instance_quota_usage", :similarity 8324}
+   {:a "average number of metrics per instance", :b "self_hosted_instance_monthly_usage", :similarity 8319}
+   {:a "average customer lifetime (self-service accounts)", :b "monthly_account_usage", :similarity 8310}
+   {:a "average number of metrics per instance", :b "cloud_unit_economic", :similarity 8293}
+   {:a "visitors to checkout funnel", :b "monthly_account_subscription_status_and_usage", :similarity 8288}
+   {:a "self-service trial activation rate", :b "retention_analysis", :similarity 8282}
+   {:a "visitors to checkout funnel", :b "customer_health_score", :similarity 8271}
+   {:a "new organization self-service signups", :b "account", :similarity 8268}
+   {:a "average number of metrics per instance", :b "daily_instance_tracking_attributes", :similarity 8255}
+   {:a "average number of metrics per instance", :b "usage_stats_anonymous", :similarity 8247}
+   {:a "average customer lifetime (self-service accounts)", :b "customer_interaction", :similarity 8247}
+   {:a "self-service trial activation rate", :b "monthly_account_subscription_status_and_usage", :similarity 8242}
+   {:a "average number of metrics per instance", :b "attribution_touchpoint", :similarity 8241}
+   {:a "visitors to checkout funnel", :b "monthly_revenue_change", :similarity 8239}
+   {:a "average number of metrics per instance", :b "retention_analysis", :similarity 8239}
+   {:a "visitors to checkout funnel", :b "stripe_product", :similarity 8238}
+   {:a "average number of metrics per instance", :b "ms_max_user_count", :similarity 8238}
+   {:a "visitors to checkout funnel", :b "retention_analysis", :similarity 8232}
+   {:a "visitors to checkout funnel", :b "account", :similarity 8214}
+   {:a "average number of metrics per instance", :b "monthly_metric", :similarity 8214}
+   {:a "visitors to checkout funnel", :b "monthly_account_subscription_status", :similarity 8203}
+   {:a "average customer lifetime (self-service accounts)", :b "customer_health_score", :similarity 8193}
+   {:a "visitors to checkout funnel", :b "self-service conversion rate", :similarity 8180}
+   {:a "average customer lifetime (self-service accounts)", :b "monthly_revenue_customer", :similarity 8176}
+   {:a "new organization self-service signups", :b "monthly_account_subscription_status_and_usage", :similarity 8169}
+   {:a "visitors to checkout funnel", :b "hi_notification_recipient", :similarity 8168}
+   {:a "visitors to checkout funnel", :b "accounts", :similarity 8161}
+   {:a "new organization self-service signups",
+    :b "average customer lifetime (self-service accounts)",
+    :similarity 8157}
+   {:a "visitors to checkout funnel", :b "stripe_customer", :similarity 8152}
+   {:a "average customer lifetime (self-service accounts)", :b "account_history", :similarity 8152}
+   {:a "new organization self-service signups", :b "hi_notification_subscription", :similarity 8147}
+   {:a "visitors to checkout funnel", :b "monthly_account_usage", :similarity 8142}
+   {:a "average number of metrics per instance", :b "self_hosted_daily_stats_ping_monthly_usage", :similarity 8140}
+   {:a "average number of metrics per instance", :b "new oss instances", :similarity 8139}
+   {:a "average customer lifetime (self-service accounts)", :b "visitors to website", :similarity 8137}
+   {:a "average customer lifetime (self-service accounts)", :b "customer", :similarity 8136}
+   {:a "self-service trial activation rate", :b "customer_health_score", :similarity 8136}
+   {:a "visitors to checkout funnel", :b "stripe_refund", :similarity 8119}
+   {:a "average customer lifetime (self-service accounts)", :b "customer_health_score_history", :similarity 8119}
+   {:a "visitors to checkout funnel", :b "page_view_anonymous", :similarity 8111}
+   {:a "new organization self-service signups", :b "accounts", :similarity 8109}
+   {:a "average customer lifetime (self-service accounts)", :b "monthly_revenue_change_customer", :similarity 8108}
+   {:a "average customer lifetime (self-service accounts)", :b "monthly_account_subscription_status", :similarity 8100}
+   {:a "average number of metrics per instance", :b "aws_aggregated_monthly_cost", :similarity 8097}
+   {:a "win rate (enterprise)", :b "acv (enterprise)", :similarity 8097}
+   {:a "visitors to checkout funnel", :b "contact", :similarity 8090}
+   {:a "visitors to checkout funnel", :b "hi_notification_subscription", :similarity 8090}
+   {:a "visitors to checkout funnel", :b "ms_hosting_customer_migration", :similarity 8089}
+   {:a "average number of metrics per instance", :b "unified_instance_event", :similarity 8089}
+   {:a "visitors to checkout funnel", :b "case_studies_page_views", :similarity 8083}
+   {:a "average customer lifetime (self-service accounts)", :b "customer_survey", :similarity 8080}
+   {:a "average number of metrics per instance", :b "hi_audit_log", :similarity 8076}
+   {:a "self-service trial activation rate", :b "usage_stats_anonymous", :similarity 8067}
+   {:a "average number of metrics per instance", :b "analytic_events", :similarity 8066}
+   {:a "visitors to checkout funnel", :b "hi_dashboard_tab", :similarity 8063}
+   {:a "visitors to checkout funnel", :b "hi_dashboard_bookmark", :similarity 8061}
+   {:a "average number of metrics per instance", :b "pylon_ticket_metric", :similarity 8060}
+   {:a "self-service trial activation rate", :b "case_studies_page_views", :similarity 8057}
+   {:a "visitors to checkout funnel", :b "ms_product", :similarity 8056}
+   {:a "average number of metrics per instance", :b "customer_health_score", :similarity 8056}
+   {:a "average number of metrics per instance", :b "customer_interaction", :similarity 8055}
+   {:a "average customer lifetime (self-service accounts)", :b "retention_analysis", :similarity 8053}
+   {:a "self-service trial activation rate", :b "nps_survey_response", :similarity 8052}
+   {:a "average customer lifetime (self-service accounts)",
+    :b "self_hosted_daily_stats_ping_monthly_usage",
+    :similarity 8051}
+   {:a "visitors to checkout funnel", :b "usage_stats_anonymous", :similarity 8044}
+   {:a "average number of metrics per instance", :b "hi_report_dashboard", :similarity 8044}
+   {:a "average number of metrics per instance", :b "aws_cost_line_item_legacy", :similarity 8042}
+   {:a "visitors to checkout funnel", :b "new organization self-service signups", :similarity 8038}
+   {:a "visitors to checkout funnel", :b "attribution_touchpoint", :similarity 8035}
+   {:a "average number of metrics per instance", :b "usage_stats_anonymous_history", :similarity 8035}
+   {:a "average number of metrics per instance", :b "ms_hosted_instance_scheduled_maintenance", :similarity 8033}
+   {:a "new organization self-service signups", :b "contact", :similarity 8025}
+   {:a "new organization self-service signups", :b "hi_notification_recipient", :similarity 8022}
+   {:a "visitors to checkout funnel", :b "hi_sandboxes", :similarity 8013}
+   {:a "average number of metrics per instance", :b "monthly_revenue_change", :similarity 8012}
+   {:a "visitors to checkout funnel", :b "ms_contact", :similarity 8011}
+   {:a "average number of metrics per instance", :b "monthly_account_usage", :similarity 8011}
+   {:a "average number of metrics per instance", :b "monthly_revenue", :similarity 8011}
+   {:a "new organization self-service signups", :b "ms_contact", :similarity 8009}
+   {:a "average number of metrics per instance", :b "hi_query_execution_daily", :similarity 8007}
+   {:a "new organization self-service signups", :b "hi_dashboard_bookmark", :similarity 8006}
+   {:a "new organization self-service signups", :b "hi_permissions_group_membership", :similarity 8006}
+   {:a "average number of metrics per instance", :b "self-service conversion rate", :similarity 8001}]},
+ "0.85-0.90"
+ {:count 100,
+  :pairs
+  [{:a "new oss instances", :b "upgrades from oss", :similarity 8986}
+   {:a "ms_trial_up", :b "ms_contact", :similarity 8979}
+   {:a "hi_timeline_event", :b "hi_report_dashboard", :similarity 8974}
+   {:a "hi_timeline_event", :b "hi_sandboxes", :similarity 8950}
+   {:a "hi_timeline_event", :b "hi_first_time_action", :similarity 8942}
+   {:a "visitors to checkout funnel", :b "visitors to website", :similarity 8930}
+   {:a "ms_trial_up", :b "ms_utm", :similarity 8921}
+   {:a "hi_timeline_event", :b "hi_persisted_info", :similarity 8921}
+   {:a "hi_timeline_event", :b "hi_dashboard_bookmark", :similarity 8911}
+   {:a "hi_timeline_event", :b "hi_pulse_card", :similarity 8901}
+   {:a "hi_timeline_event", :b "hi_setting", :similarity 8896}
+   {:a "visitors to website", :b "website_page_view_anonymous", :similarity 8890}
+   {:a "open p1 bugs", :b "open bugs", :similarity 8886}
+   {:a "hi_timeline_event", :b "hi_secret", :similarity 8886}
+   {:a "hi_timeline_event", :b "hi_glossary", :similarity 8885}
+   {:a "hi_cache_config", :b "hi_setting", :similarity 8884}
+   {:a "hi_timeline_event", :b "hi_collection", :similarity 8880}
+   {:a "hi_timeline_event", :b "hi_notification_subscription", :similarity 8877}
+   {:a "hi_cache_config", :b "hi_query_execution", :similarity 8872}
+   {:a "ms_trial_up", :b "ms_product", :similarity 8872}
+   {:a "hi_timeline_event", :b "hi_notification_card", :similarity 8863}
+   {:a "hi_cache_config", :b "hi_db_router", :similarity 8860}
+   {:a "hi_timeline_event", :b "hi_segment", :similarity 8859}
+   {:a "hi_cache_config", :b "hi_data_permission", :similarity 8854}
+   {:a "hi_timeline_event", :b "hi_implicit_action", :similarity 8852}
+   {:a "hi_timeline_event", :b "hi_pulse", :similarity 8844}
+   {:a "hi_cache_config", :b "hi_audit_log", :similarity 8837}
+   {:a "hi_cache_config", :b "hi_api_key", :similarity 8830}
+   {:a "hi_timeline_event", :b "hi_model_index", :similarity 8821}
+   {:a "ms_trial_up", :b "ms_organization", :similarity 8810}
+   {:a "visitors to website", :b "case_studies_page_views", :similarity 8804}
+   {:a "self-service conversion rate", :b "visitors to website", :similarity 8800}
+   {:a "ms_trial_up", :b "ms_contracted_product", :similarity 8798}
+   {:a "hi_timeline_event", :b "hi_pulse_channel", :similarity 8792}
+   {:a "visitors to website", :b "page_view_anonymous", :similarity 8770}
+   {:a "hi_timeline_event", :b "hi_card_bookmark", :similarity 8770}
+   {:a "average customer lifetime (self-service accounts)", :b "self-service conversion rate", :similarity 8764}
+   {:a "ms_trial_up", :b "hi_view_log", :similarity 8761}
+   {:a "hi_timeline_event", :b "hi_channel", :similarity 8751}
+   {:a "ms_trial_up", :b "hi_document", :similarity 8730}
+   {:a "ms_trial_up", :b "ms_experiment_entity", :similarity 8715}
+   {:a "hi_timeline_event", :b "gh_milestone", :similarity 8711}
+   {:a "hi_timeline_event", :b "hi_permissions_group_membership", :similarity 8706}
+   {:a "hi_timeline_event", :b "hi_connection_impersonations", :similarity 8704}
+   {:a "hi_timeline_event", :b "hi_query_execution", :similarity 8703}
+   {:a "average customer lifetime (self-service accounts)", :b "arpa (self-service accounts)", :similarity 8696}
+   {:a "ms_trial_up", :b "ms_address", :similarity 8691}
+   {:a "visitors to website", :b "contact", :similarity 8690}
+   {:a "ms_trial_up", :b "ms_contract", :similarity 8685}
+   {:a "hi_timeline_event", :b "hi_query_execution_monthly", :similarity 8683}
+   {:a "new organization self-service signups", :b "self-service conversion rate", :similarity 8675}
+   {:a "hi_timeline_event", :b "hi_qrtz_triggers", :similarity 8673}
+   {:a "hi_cache_config", :b "hi_metabase_table", :similarity 8670}
+   {:a "visitors to website", :b "country", :similarity 8662}
+   {:a "ms_trial_up", :b "hi_core_user", :similarity 8660}
+   {:a "visitors to website", :b "retention_analysis", :similarity 8659}
+   {:a "average number of metrics per instance", :b "daily_instance_feature_stats", :similarity 8658}
+   {:a "hi_timeline_event", :b "hi_pulse_channel_recipient", :similarity 8654}
+   {:a "visitors to website", :b "website_page_view", :similarity 8632}
+   {:a "hi_cache_config", :b "hi_notification", :similarity 8624}
+   {:a "visitors to website", :b "account", :similarity 8606}
+   {:a "new organization self-service signups", :b "self-service trial activation rate", :similarity 8605}
+   {:a "hi_cache_config", :b "hi_metabase_database", :similarity 8605}
+   {:a "hi_timeline_event", :b "hi_metabase_field", :similarity 8605}
+   {:a "hi_cache_config", :b "hi_remote_sync", :similarity 8604}
+   {:a "visitors to website", :b "usage_stats_anonymous", :similarity 8603}
+   {:a "average number of metrics per instance", :b "monthly_instance_feature_stats", :similarity 8602}
+   {:a "ms_trial_up", :b "ms_subscription_history", :similarity 8594}
+   {:a "hi_cache_config", :b "hi_action", :similarity 8593}
+   {:a "hi_cache_config", :b "hi_permissions_group_membership", :similarity 8590}
+   {:a "hi_timeline_event", :b "search_event", :similarity 8590}
+   {:a "hi_timeline_event", :b "hi_query_execution_daily", :similarity 8588}
+   {:a "ms_trial_up", :b "page_view_anonymous", :similarity 8578}
+   {:a "hi_timeline_event", :b "hi_report_dashboardcard", :similarity 8577}
+   {:a "hi_timeline_event", :b "usage_stats_anonymous_history", :similarity 8577}
+   {:a "visitors to website", :b "hi_dashboard_bookmark", :similarity 8568}
+   {:a "hi_cache_config", :b "hi_report_dashboard", :similarity 8565}
+   {:a "hi_cache_config", :b "hi_view_log", :similarity 8565}
+   {:a "visitors to website", :b "hi_document", :similarity 8564}
+   {:a "hi_cache_config", :b "hi_metabase_field", :similarity 8560}
+   {:a "hi_timeline_event", :b "gh_issue_reaction", :similarity 8556}
+   {:a "hi_timeline_event", :b "hi_notification_handler", :similarity 8541}
+   {:a "arpa (self-service accounts)", :b "accounts", :similarity 8539}
+   {:a "hi_timeline_event", :b "usage_stats_anonymous", :similarity 8538}
+   {:a "hi_timeline_event", :b "website_page_view_anonymous", :similarity 8538}
+   {:a "ms_trial_up", :b "ms_first_token_check", :similarity 8536}
+   {:a "hi_timeline_event", :b "hi_metabase_table", :similarity 8535}
+   {:a "hi_cache_config", :b "hi_notification_handler", :similarity 8533}
+   {:a "ms_trial_up", :b "hi_dashboard_bookmark", :similarity 8530}
+   {:a "visitors to website", :b "customer_survey", :similarity 8525}
+   {:a "ms_trial_up", :b "hi_first_time_action", :similarity 8521}
+   {:a "visitors to website", :b "hi_notification_recipient", :similarity 8514}
+   {:a "hi_cache_config", :b "hi_qrtz_triggers", :similarity 8514}
+   {:a "hi_cache_config", :b "hi_timeline_event", :similarity 8511}
+   {:a "visitors to website", :b "customer", :similarity 8510}
+   {:a "visitors to checkout funnel", :b "customer_survey", :similarity 8509}
+   {:a "hi_cache_config", :b "hi_secret", :similarity 8507}
+   {:a "average customer lifetime (self-service accounts)", :b "self-service trial activation rate", :similarity 8503}
+   {:a "hi_timeline_event", :b "analytic_events", :similarity 8503}
+   {:a "visitors to website", :b "hi_report_card", :similarity 8501}]},
+ "0.90-0.95"
+ {:count 100,
+  :pairs
+  [{:a "hi_notification_recipient", :b "hi_notification", :similarity 9493}
+   {:a "hi_timeline_event", :b "hi_timeline", :similarity 9481}
+   {:a "gh_workflow_run", :b "gh_workflow_job", :similarity 9470}
+   {:a "hi_report_dashboard", :b "hi_report_dashboardcard", :similarity 9461}
+   {:a "hi_dashboard_bookmark", :b "hi_collection_bookmark", :similarity 9456}
+   {:a "ms_token", :b "ms_token_check", :similarity 9437}
+   {:a "hi_notification_card", :b "hi_notification", :similarity 9435}
+   {:a "hi_audit_log", :b "hi_view_log", :similarity 9433}
+   {:a "gh_workflow_run", :b "gh_workflow_step", :similarity 9423}
+   {:a "hi_dashboard_bookmark", :b "hi_core_user", :similarity 9419}
+   {:a "hi_pulse_card", :b "hi_pulse", :similarity 9397}
+   {:a "hi_dashboard_bookmark", :b "hi_dashboard_tab", :similarity 9397}
+   {:a "hi_notification_recipient", :b "hi_notification_subscription", :similarity 9392}
+   {:a "ms_subscription_history", :b "ms_subscription_version", :similarity 9390}
+   {:a "hi_dashboard_bookmark", :b "hi_card_bookmark", :similarity 9387}
+   {:a "hi_dashboard_bookmark", :b "hi_view_log", :similarity 9381}
+   {:a "hi_pulse_card", :b "hi_notification_card", :similarity 9378}
+   {:a "hi_notification_card", :b "hi_notification_recipient", :similarity 9378}
+   {:a "hi_notification_card", :b "hi_notification_subscription", :similarity 9355}
+   {:a "self-service trial activation rate", :b "self-service conversion rate", :similarity 9344}
+   {:a "ms_token_check_deduped", :b "ms_latest_token_check", :similarity 9343}
+   {:a "ms_token_check_deduped", :b "ms_token_check", :similarity 9331}
+   {:a "hi_dashboard_bookmark", :b "hi_document", :similarity 9315}
+   {:a "ms_subscription", :b "ms_subscription_history", :similarity 9312}
+   {:a "ms_token_check_deduped", :b "ms_first_token_check", :similarity 9308}
+   {:a "gh_pull_request_commit", :b "gh_pull_request_review", :similarity 9295}
+   {:a "hi_report_dashboard", :b "hi_report_card", :similarity 9267}
+   {:a "hi_view_log", :b "hi_report_card", :similarity 9262}
+   {:a "hi_permissions_group_membership", :b "hi_data_permission", :similarity 9246}
+   {:a "hi_persisted_info", :b "hi_view_log", :similarity 9234}
+   {:a "hi_pulse_card", :b "hi_pulse_channel", :similarity 9231}
+   {:a "stripe_customer", :b "stripe_product", :similarity 9225}
+   {:a "hi_view_log", :b "hi_task_history", :similarity 9225}
+   {:a "hi_pulse_card", :b "hi_report_card", :similarity 9216}
+   {:a "hi_persisted_info", :b "hi_document", :similarity 9211}
+   {:a "visitors to checkout funnel", :b "checkout funnel conversion rate", :similarity 9210}
+   {:a "hi_dashboard_bookmark", :b "page_view_anonymous", :similarity 9205}
+   {:a "hi_timeline_event", :b "hi_view_log", :similarity 9186}
+   {:a "hi_view_log", :b "hi_metabase_database", :similarity 9178}
+   {:a "hi_notification_card", :b "hi_report_card", :similarity 9170}
+   {:a "hi_report_dashboard", :b "hi_audit_log", :similarity 9165}
+   {:a "stripe_subscription", :b "stripe_charge", :similarity 9163}
+   {:a "hi_report_dashboard", :b "hi_dashboard_bookmark", :similarity 9160}
+   {:a "hi_timeline_event", :b "hi_document", :similarity 9158}
+   {:a "hi_pulse_card", :b "hi_pulse_channel_recipient", :similarity 9157}
+   {:a "hi_view_log", :b "hi_timeline", :similarity 9155}
+   {:a "hi_notification_card", :b "hi_card_bookmark", :similarity 9146}
+   {:a "ms_address", :b "ms_contact", :similarity 9146}
+   {:a "hi_view_log", :b "hi_collection_bookmark", :similarity 9146}
+   {:a "hi_view_log", :b "hi_dashboard_tab", :similarity 9141}
+   {:a "instance_events_monthly_usage", :b "self_hosted_instance_monthly_usage", :similarity 9140}
+   {:a "hi_view_log", :b "hi_first_time_action", :similarity 9136}
+   {:a "hi_notification_recipient", :b "hi_pulse_channel_recipient", :similarity 9128}
+   {:a "hi_dashboard_bookmark", :b "website_page_view_anonymous", :similarity 9123}
+   {:a "hi_persisted_info", :b "hi_core_user", :similarity 9113}
+   {:a "hi_dashboard_bookmark", :b "hi_report_card", :similarity 9112}
+   {:a "instance_events_monthly_usage", :b "monthly_instance_feature_stats", :similarity 9111}
+   {:a "hi_collection", :b "hi_collection_bookmark", :similarity 9109}
+   {:a "stripe_customer", :b "stripe_price", :similarity 9109}
+   {:a "ms_crm_article_feedback", :b "ms_crm_product_feedback", :similarity 9096}
+   {:a "hi_dashboard_bookmark", :b "hi_first_time_action", :similarity 9095}
+   {:a "ms_token", :b "ms_latest_token_check", :similarity 9094}
+   {:a "hi_pulse_card", :b "hi_card_bookmark", :similarity 9091}
+   {:a "hi_timeline_event", :b "hi_task_history", :similarity 9088}
+   {:a "ms_token", :b "ms_first_token_check", :similarity 9085}
+   {:a "hi_sandboxes", :b "hi_secret", :similarity 9081}
+   {:a "stripe_subscription", :b "stripe_price_tier", :similarity 9073}
+   {:a "stripe_customer", :b "stripe_refund", :similarity 9066}
+   {:a "stripe_subscription", :b "stripe_refund", :similarity 9065}
+   {:a "stripe_customer", :b "stripe_charge", :similarity 9064}
+   {:a "stripe_subscription", :b "stripe_price", :similarity 9061}
+   {:a "hi_audit_log", :b "hi_report_card", :similarity 9060}
+   {:a "salesforce_lead", :b "salesforce_contact", :similarity 9057}
+   {:a "instance_events_monthly_usage", :b "monthly_account_usage", :similarity 9056}
+   {:a "hi_notification_recipient", :b "hi_document", :similarity 9054}
+   {:a "hi_persisted_info", :b "hi_metabase_database", :similarity 9052}
+   {:a "hi_audit_log", :b "hi_data_permission", :similarity 9050}
+   {:a "hi_timeline_event", :b "hi_audit_log", :similarity 9047}
+   {:a "hi_view_log", :b "activity_log", :similarity 9047}
+   {:a "hi_report_dashboard", :b "hi_view_log", :similarity 9044}
+   {:a "hi_dashboard_bookmark", :b "hi_metabase_database", :similarity 9042}
+   {:a "average number of metrics per instance", :b "daily_instance_metrics", :similarity 9025}
+   {:a "hi_sandboxes", :b "hi_report_card", :similarity 9023}
+   {:a "hi_audit_log", :b "hi_document", :similarity 9019}
+   {:a "ms_trial_up", :b "ms_free_trial_response", :similarity 9018}
+   {:a "hi_view_log", :b "hi_card_bookmark", :similarity 9018}
+   {:a "hi_dashboard_bookmark", :b "hi_timeline", :similarity 9016}
+   {:a "hi_audit_log", :b "hi_persisted_info", :similarity 9013}
+   {:a "hi_report_dashboard", :b "hi_metabase_database", :similarity 9011}
+   {:a "hi_timeline_event", :b "hi_report_card", :similarity 9009}
+   {:a "stripe_customer", :b "stripe_subscription", :similarity 9009}
+   {:a "hi_audit_log", :b "hi_metric", :similarity 9008}
+   {:a "hi_audit_log", :b "hi_metabase_database", :similarity 9006}
+   {:a "hi_timeline_event", :b "hi_notification_recipient", :similarity 9005}
+   {:a "hi_timeline_event", :b "hi_notification", :similarity 9005}
+   {:a "pylon_organization", :b "pylon_ticket", :similarity 9003}
+   {:a "hi_notification_recipient", :b "hi_view_log", :similarity 9003}
+   {:a "hi_view_log", :b "hi_secret", :similarity 9003}
+   {:a "hi_timeline_event", :b "hi_dashboard_tab", :similarity 9001}
+   {:a "stripe_customer", :b "stripe_subscription_item", :similarity 9000}]},
+ "0.95-1.01"
+ {:count 49,
+  :pairs
+  [{:a "pylon_ticket", :b "pylon_ticket_link", :similarity 9803}
+   {:a "website_page_view_anonymous", :b "page_view_anonymous", :similarity 9775}
+   {:a "monthly_account_subscription_status_and_usage", :b "monthly_account_subscription_status", :similarity 9727}
+   {:a "monthly_revenue_customer", :b "monthly_revenue_change_customer", :similarity 9717}
+   {:a "usage_stats_anonymous", :b "usage_stats_anonymous_history", :similarity 9713}
+   {:a "stripe_invoice", :b "stripe_invoice_item", :similarity 9689}
+   {:a "pylon_ticket", :b "pylon_ticket_comment", :similarity 9688}
+   {:a "gh_pull_request_commit", :b "gh_pull_request", :similarity 9681}
+   {:a "hi_metabase_field_values", :b "hi_metabase_field", :similarity 9679}
+   {:a "monthly_revenue_change_customer", :b "monthly_revenue_change", :similarity 9676}
+   {:a "customer_health_score", :b "customer_health_score_history", :similarity 9667}
+   {:a "pylon_ticket_comment", :b "pylon_ticket_link", :similarity 9658}
+   {:a "gh_pull_request_review", :b "gh_pull_request", :similarity 9654}
+   {:a "pylon_ticket", :b "pylon_ticket_tag", :similarity 9640}
+   {:a "pylon_ticket", :b "pylon_ticket_reason", :similarity 9629}
+   {:a "daily_instance_feature_stats", :b "daily_instance_feature_availability", :similarity 9624}
+   {:a "monthly_revenue_customer", :b "monthly_revenue", :similarity 9614}
+   {:a "gh_issue", :b "gh_project_issue", :similarity 9612}
+   {:a "stripe_subscription", :b "stripe_subscription_item", :similarity 9608}
+   {:a "gh_issue_label_history", :b "gh_issue_label", :similarity 9603}
+   {:a "monthly_revenue_change", :b "monthly_revenue", :similarity 9603}
+   {:a "hi_notification", :b "hi_notification_subscription", :similarity 9601}
+   {:a "ms_token_check", :b "ms_latest_token_check", :similarity 9600}
+   {:a "accounts", :b "account", :similarity 9598}
+   {:a "pylon_ticket_tag", :b "pylon_ticket_link", :similarity 9589}
+   {:a "hi_view_log", :b "hi_document", :similarity 9580}
+   {:a "pylon_ticket_link", :b "pylon_ticket_reason", :similarity 9574}
+   {:a "ms_first_token_check", :b "ms_latest_token_check", :similarity 9573}
+   {:a "hi_document", :b "hi_core_user", :similarity 9571}
+   {:a "website_page_view", :b "website_page_view_anonymous", :similarity 9558}
+   {:a "hi_view_log", :b "hi_core_user", :similarity 9553}
+   {:a "ms_hosted_instance_action", :b "ms_hosted_instance", :similarity 9551}
+   {:a "linear_team_project", :b "linear_team", :similarity 9549}
+   {:a "stripe_price", :b "stripe_price_tier", :similarity 9548}
+   {:a "gh_test_summary", :b "gh_test_result", :similarity 9543}
+   {:a "hi_report_dashboard", :b "hi_dashboard_tab", :similarity 9539}
+   {:a "ms_token_check", :b "ms_first_token_check", :similarity 9539}
+   {:a "daily_instance_feature_stats", :b "monthly_instance_feature_stats", :similarity 9536}
+   {:a "hi_card_bookmark", :b "hi_collection_bookmark", :similarity 9534}
+   {:a "hi_pulse_channel_recipient", :b "hi_pulse_channel", :similarity 9522}
+   {:a "gh_workflow_job", :b "gh_workflow_step", :similarity 9521}
+   {:a "hi_metabase_field", :b "hi_metabase_table", :similarity 9516}
+   {:a "hi_timeline_event", :b "timeline_event", :similarity 9512}
+   {:a "ms_hosting_scheduled_maintenance", :b "ms_hosted_instance_scheduled_maintenance", :similarity 9511}
+   {:a "metabase_version", :b "ms_metabase_version", :similarity 9507}
+   {:a "ms_subscription", :b "ms_subscription_version", :similarity 9506}
+   {:a "linear_team_project", :b "linear_project", :similarity 9506}
+   {:a "pylon_ticket_metric", :b "pylon_ticket_reason", :similarity 9503}
+   {:a "pylon_ticket_comment", :b "pylon_ticket_reason", :similarity 9501}]}}

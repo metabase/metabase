@@ -56,7 +56,7 @@
    :snowplow/simple_event     "1-0-0"
    :snowplow/cleanup          "1-0-0"
    :snowplow/ai_service_event "1-0-0"
-   :snowplow/data_complexity  "1-0-0"})
+   :snowplow/data_complexity  "1-0-1"})
 
 (def SnowplowSchema
   "Malli enum for valid Snowplow schemas"
@@ -197,7 +197,8 @@
      ["synonym_threshold" {:optional true} [:maybe number?]]
      ["weights"           {:optional true} [:maybe ms/OpaqueJSONObject]]
      ["embedding_model"   {:optional true} [:maybe ms/OpaqueJSONObject]]
-     ["text_variant"      {:optional true} [:maybe :string]]]]
+     ["text_variant"      {:optional true} [:maybe :string]]
+     ["level"             {:optional true} [:maybe :int]]]]
    [:catalog     {:optional true} :keyword]
    [:key         {:optional true} :string]
    [:score       {:optional true} number?]
