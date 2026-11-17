@@ -133,7 +133,9 @@ export function useSummaryFormulaBar({
             initialSource={draft.source}
             submitLabel={t`Add`}
             onEditorCreate={handleEditorCreate}
-            onNameChange={(name) => draftChipRef.current?.setName(name)}
+            onNameChange={(name, source) =>
+              draftChipRef.current?.setFormula(name, source)
+            }
             onSubmit={handleSubmit}
             onCancel={close}
           />

@@ -49,8 +49,8 @@ export function useFormulaEditor(props: FormulaEditorProps) {
   const formulaName = getDefaultFormulaName(source);
   const nameChangeRef = useLatest(onNameChange);
   useEffect(() => {
-    nameChangeRef.current?.(formulaName);
-  }, [formulaName, nameChangeRef]);
+    nameChangeRef.current?.(formulaName, source);
+  }, [formulaName, source, nameChangeRef]);
 
   const getExpression = (): NamedExpression | null => {
     if (!hasFormula) {

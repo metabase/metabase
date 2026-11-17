@@ -13,7 +13,7 @@ import {
 import S from "./DraftFormulaChip.module.css";
 
 export type DraftFormulaChipHandle = {
-  setName: (name: string) => void;
+  setFormula: (name: string, source: string) => void;
 };
 
 export type DraftFormulaChipProps = {
@@ -27,8 +27,12 @@ export function DraftFormulaChip({
   onFocus,
   onCancel,
 }: DraftFormulaChipProps) {
-  const [name, setName] = useState("");
-  useImperativeHandle(handleRef, () => ({ setName }), []);
+  const [{ name, source }, setFormula] = useState({ name: "", source: "" });
+  useImperativeHandle(
+    handleRef,
+    () => ({ setFormula: (name, source) => setFormula({ name, source }) }),
+    [],
+  );
 
   return (
     <Box className={S.root} data-testid="summary-well-draft-formula">
@@ -38,7 +42,14 @@ export function DraftFormulaChip({
         onClick={onFocus}
       >
         <FixedSizeIcon name="function" size={12} />
-        <Ellipsified fw="inherit">{name || t`New formula`}</Ellipsified>
+        <Ellipsified
+          fw="inherit"
+          tooltip={source}
+          alwaysShowTooltip={name.length > 0}
+          tooltipProps={{ multiline: true, maw: 360 }}
+        >
+          {name || t`New formula`}
+        </Ellipsified>
       </UnstyledButton>
       <ActionIcon
         className={S.remove}

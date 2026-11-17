@@ -2,7 +2,14 @@ import { completionStatus, startCompletion } from "@codemirror/autocomplete";
 import type { EditorView } from "@codemirror/view";
 import userEvent from "@testing-library/user-event";
 
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  act,
+  createMockClipboardData,
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import { defer } from "metabase/utils/promise";
 import * as Lib from "metabase-lib";
 import {
@@ -116,12 +123,30 @@ describe("FormulaEditor", () => {
     expect(view.state.doc.toString()).toBe("1 + 2");
   });
 
-  it("pastes a multiline formula as one line and commits it", async () => {
+  it("normalizes multiline and linewise pastes and preserves undo", async () => {
     const { view, onSubmit } = await setup();
     await userEvent.paste("coalesce(\r\n[Total],\r0\n)");
     expect(view.state.doc.toString()).toBe("coalesce( [Total], 0 )");
     await userEvent.click(screen.getByRole("button", { name: "Add column" }));
     expect(onSubmit).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(screen.getByRole("textbox", { name: "Formula" }));
+    const source = view.state.doc.toString();
+    const selection = view.state.selection;
+    expect(selection.main.empty).toBe(true);
+    const setData = jest.fn<void, [string, string]>();
+    fireEvent.copy(view.contentDOM, {
+      clipboardData: createMockClipboardData({
+        clearData: jest.fn<void, []>(),
+        setData,
+      }),
+    });
+    expect(setData).toHaveBeenCalledWith("text/plain", source);
+    await userEvent.paste(source);
+    expect(view.state.doc.toString()).toBe(`${source} ${source}`);
+    await userEvent.keyboard("{Control>}z{/Control}");
+    expect(view.state.doc.toString()).toBe(source);
+    expect(view.state.selection.eq(selection)).toBe(true);
   });
 
   describe("completion", () => {

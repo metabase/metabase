@@ -21,9 +21,26 @@ export function useFormulaKeymap(handlers: Handlers) {
       EditorView.clipboardInputFilter.of((text) =>
         text.replace(/\r\n?|\n/g, " "),
       ),
-      EditorState.transactionFilter.of((transaction) =>
-        transaction.newDoc.lines > 1 ? [] : transaction,
-      ),
+      EditorState.transactionFilter.of((transaction) => {
+        const { newDoc } = transaction;
+        if (newDoc.lines === 1) {
+          return transaction;
+        }
+        if (!transaction.isUserEvent("input.paste")) {
+          return [];
+        }
+        // CodeMirror appends a newline after clipboard filtering for linewise paste.
+        return [
+          transaction,
+          {
+            changes: Array.from({ length: newDoc.lines - 1 }, (_, index) => {
+              const from = newDoc.line(index + 1).to;
+              return { from, to: from + 1, insert: " " };
+            }),
+            sequential: true,
+          },
+        ];
+      }),
       EditorView.contentAttributes.of({ "aria-label": t`Formula` }),
       // DOM handlers cancel empty formulas before the editor's Tab keymaps.
       Prec.highest(

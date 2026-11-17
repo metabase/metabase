@@ -292,6 +292,7 @@ describe("summary formula handoff", () => {
   );
 
   it("shows the live draft in its well and lets the chip focus or cancel the editor", async () => {
+    const source = "Sum([Total]) + 100 + 100 + 100 + 100 + 100 + 100";
     const { onQueryChange } = await setup();
     const input = getInput("values");
     fireEvent.change(input, { target: { value: "=" } });
@@ -311,12 +312,25 @@ describe("summary formula handoff", () => {
     if (view) {
       await act(async () => {
         view.dispatch({
-          changes: { from: 0, insert: "Sum([Total])" },
+          changes: { from: 0, insert: source },
           userEvent: "input.type",
         });
       });
     }
-    expect(chip).toHaveTextContent("Sum(Total)");
+    expect(chip).toHaveTextContent(/Sum\(Total\).*…$/);
+    const label = within(chip).getByText(/^Sum\(Total\)/);
+    await userEvent.hover(label);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(source);
+    if (view) {
+      await act(async () => {
+        view.dispatch({
+          changes: { from: view.state.doc.length, insert: " + 1" },
+          userEvent: "input.type",
+        });
+      });
+    }
+    expect(screen.getByRole("tooltip")).toHaveTextContent(`${source} + 1`);
+    await userEvent.unhover(label);
     await userEvent.click(getInput("columns"));
     await userEvent.click(
       within(chip).getByRole("button", {
@@ -324,7 +338,7 @@ describe("summary formula handoff", () => {
       }),
     );
     expect(editor).toHaveFocus();
-    expect(getEditor()?.state.doc.toString()).toBe("Sum([Total])");
+    expect(getEditor()?.state.doc.toString()).toBe(`${source} + 1`);
 
     await userEvent.click(
       within(chip).getByRole("button", { name: "Cancel the new formula" }),
