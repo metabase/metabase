@@ -129,11 +129,11 @@
 
 (deftest validate-bundle-rejects-oversized-archive-test
   (testing "an archive over the upload limit is refused however it arrived, an import packs one from files"
-    (let [incompressible (doto (byte-array (inc cache/max-bundle-bytes))
-                           (->> (.nextBytes (java.util.Random. 1))))
-          bytes          (cvp.tu/make-tgz-bytes
-                          [["metabase-plugin.json" (json/encode {:name "big"})]
-                           ["dist/index.js" incompressible]])]
+    (let [incompressible (byte-array (inc cache/max-bundle-bytes))
+          _              (.nextBytes (java.util.Random. 1) incompressible)
+          bytes         (cvp.tu/make-tgz-bytes
+                         [["metabase-plugin.json" (json/encode {:name "big"})]
+                          ["dist/index.js" incompressible]])]
       (is (> (alength bytes) cache/max-bundle-bytes))
       (is (thrown-with-msg? Exception (re-pattern (format "Bundle must be less than %dMB" cache/max-bundle-mib))
                             (cache/validate-bundle! bytes))))))
