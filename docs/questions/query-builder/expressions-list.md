@@ -55,6 +55,7 @@ For an introduction to expressions, check out the [overview of custom expression
 
   - [String functions](#string-functions)
 
+    - [collate](#collate)
     - [concat](./expressions/concat.md)
     - [contains](#contains)
     - [date](#date)
@@ -94,6 +95,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [dayName](#dayname)
     - [hour](#hour)
     - [interval](#interval)
+    - [intervalStartingFrom](#intervalstartingfrom)
     - [minute](#minute)
     - [month](#month)
     - [monthName](#monthname)
@@ -438,6 +440,19 @@ Related: [power](#power).
 ## String functions
 
 String functions manipulate or validate string data.
+
+### collate
+
+> Only available for Snowflake.
+
+Applies a collation to a text value, which changes how the text is sorted and compared.
+
+Syntax: `collate(text, collation)`
+
+- `text`: The column or text to apply the collation to.
+- `collation`: A [Snowflake collation specification](https://docs.snowflake.com/en/sql-reference/collation), like `"en-ci"`.
+
+Example: `collate([Name], "en-ci")` would compare and sort `Name` values using English rules, ignoring case, so `"apple"` and `"Apple"` would be treated as equal.
 
 ### [concat](./expressions/concat.md)
 
@@ -854,7 +869,27 @@ Example: `interval([Created At], -1, "month")`
 
 The `number` must be an integer. You cannot use a fractional value.
 
-Related: [between](#between).
+Related: [between](#between), [intervalStartingFrom](#intervalstartingfrom).
+
+### intervalStartingFrom
+
+Checks a date column's values to see if they're within a relative range that's shifted by an offset.
+
+Syntax: `intervalStartingFrom(column, value, unit, offsetValue, offsetUnit)`
+
+- `column`: The date column to check.
+- `value`: The number of units in the range. Negative values go back in time.
+- `unit`: The unit of the range, like `"day"`, `"month"`, or `"year"`.
+- `offsetValue`: How far to shift the range. Negative values go back in time.
+- `offsetUnit`: The unit of the offset, like `"day"`, `"month"`, or `"year"`.
+
+`value` and `offsetValue` must be integers.
+
+The range covers complete units and doesn't include the current one. For example, `-3, "month"` means the three full months before the current month.
+
+Example: `intervalStartingFrom([Created At], -3, "month", -1, "year")` would return true for rows created in the three full months before the current month, one year ago. If today were November 17, 2026, that's August 1, 2025, through October 31, 2025.
+
+Related: [interval](#interval), [between](#between).
 
 ### minute
 
@@ -972,9 +1007,10 @@ Note that summarizing by week of year in the query builder uses a different mode
 
 Takes a datetime and returns an integer (1-7) with the number of the day of the week. Which day is `1` depends on your [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week) (Sunday by default).
 
-Syntax: `weekday(column)`
+Syntax: `weekday(column, mode)`
 
 - column: The datetime column.
+- mode: Optional. Set to `"iso"` to number the days from Monday (`1`) to Sunday (`7`), regardless of your first day of the week setting.
 
 Example (with Sunday as the first day of the week):
 
@@ -988,6 +1024,8 @@ case(
   weekday([Created At]) = 6, "Friday",
   weekday([Created At]) = 7, "Saturday")
 ```
+
+ISO example: `weekday("2021-03-25T12:52:37", "iso")` would return `4`, because March 25, 2021 was a Thursday.
 
 ### year
 
@@ -1078,6 +1116,8 @@ Limitations are noted for each aggregation and function above, and here they are
 **SQLite** (including Metabase Sample Database): `exp`, `log`, `Median`, `Percentile`, `power`, `regexExtract`, `StandardDeviation`, `sqrt`, `Variance`, `datetime`, `float`, `splitPart`.
 
 **Vertica**: `Median`, `Percentile`, `datetime`, `float`, `splitPart`.
+
+`collate` is only available for Snowflake.
 
 If you're using or maintaining a third-party database driver, check the [driver changelog](../../developers-guide/driver-changelog.md) to see how your driver might be impacted.
 

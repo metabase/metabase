@@ -482,7 +482,7 @@ const STRING = defineClauses(
         {
           name: t`collation`,
           type: "string",
-          description: t`The collation specification.`,
+          description: t`The collation specification, like \`"en-ci"\` for case-insensitive English.`,
           example: t`en-ci-ai`,
         },
       ],
@@ -1104,6 +1104,13 @@ const DATE = defineClauses(
           type: "datetime",
           description: t`The datetime column.`,
           example: dimension(t`Created At`),
+        },
+        {
+          name: t`mode`,
+          type: "string",
+          optional: true,
+          description: t`Optional. Set to \`"iso"\` to number the days from Monday (\`1\`) to Sunday (\`7\`), regardless of your localization settings.`,
+          example: "iso",
         },
       ],
     },
