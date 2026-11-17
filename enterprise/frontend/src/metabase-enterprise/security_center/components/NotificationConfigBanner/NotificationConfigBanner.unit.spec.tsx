@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
@@ -14,11 +16,13 @@ import { NotificationConfigBanner } from "./NotificationConfigBanner";
 interface SetupOpts {
   emailConfigured?: boolean;
   slackConfigured?: boolean;
+  openSettings?: () => void;
 }
 
 function setup({
   emailConfigured = false,
   slackConfigured = false,
+  openSettings = () => {},
 }: SetupOpts = {}) {
   const tokenFeatures = createMockTokenFeatures({
     advanced_permissions: true,
@@ -38,7 +42,10 @@ function setup({
   });
 
   renderWithProviders(
-    <Route path="*" element={<NotificationConfigBanner />} />,
+    <Route
+      path="*"
+      element={<NotificationConfigBanner openSettings={openSettings} />}
+    />,
     {
       initialRoute: "/",
       storeInitialState: state,
@@ -70,5 +77,14 @@ describe("NotificationConfigBanner", () => {
     expect(
       screen.queryByText(/Configure notifications/),
     ).not.toBeInTheDocument();
+  });
+  it(`has a Configure button`, async () => {
+    const openSettings = jest.fn();
+    setup({ openSettings });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Configure/i }),
+    );
+    expect(openSettings).toHaveBeenCalledTimes(1);
   });
 });
