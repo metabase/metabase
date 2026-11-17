@@ -23,7 +23,7 @@
 
 (def ^:private WorkspaceStatus
   [:enum {:decode/api keyword}
-   :unprovisioned :provisioning :provisioned :deprovisioning])
+   :unprovisioned :provisioning :provisioned :deprovisioning :teardown_failed :never_started])
 
 (def ^:private WorkspaceName
   "A workspace name that fits the `workspace.name` column, a `varchar(254)`. Postgres and MySQL count that limit in
@@ -144,13 +144,30 @@
   while a create or deprovision is running on any of its databases, meaning a row
   is `:provisioning` or `:deprovisioning` and any row of the workspace was last
   updated within the last 15 minutes. Once every row is older, such a row is
-  treated as left by a crashed instance and is torn down. A row whose teardown
-  succeeds is deleted. A row whose teardown fails is kept, the workspace is kept
-  with it, and the combined failure is the error, so the delete can be retried.
-  204 on success, no response body."
+  treated as left by a crashed instance and is torn down. A DELETE sets every
+  database `deprovisioning` before its first warehouse call, so a second DELETE
+  and the config download answer 409 while it runs. A `never_started` row is
+  deleted without a warehouse teardown: a create that failed before that
+  database's provisioning started left it, so the warehouse has nothing of its.
+  A row whose teardown succeeds is deleted. A row whose teardown fails is kept,
+  the workspace is kept with it, and the combined failure is the error, so the delete can be retried. Only a failure of the
+  warehouse teardown itself marks the row `teardown_failed`. A failure before the
+  warehouse call (a lock timeout, a failed connection lookup) leaves the row's
+  status as it was, and the next DELETE retries it. After a successful warehouse
+  teardown, a failed row delete or remapping cleanup also restores the row's
+  previous status, so a `provisioned` row can then name dropped objects until the
+  DELETE is retried. 204 on success, no response body.
+
+  `force=true` deletes `teardown_failed` rows without a warehouse teardown and
+  logs at WARN the identifiers of what may remain. It does so after the busy
+  check, so a 409 deletes nothing. Use it only when the warehouse is gone for
+  good. Other rows are torn down as without `force`."
   {:scope api-scope.workspace-manager/workspace-manager}
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   {:keys [force]} :- [:map {:closed true} [:force {:default false} ms/BooleanValue]]]
   (api/write-check :model/Workspace id)
+  (when force
+    (ws/abandon-teardown-failed-databases! id))
   (ws/delete-workspace! id)
   nil)
 
@@ -162,10 +179,12 @@
       [:headers [:map-of :string :string]]
       [:body    :string]]
   "Download the workspace's developer-instance config as a YAML file. 409 if any
-  of the workspace's databases is not `:provisioned`; retry later. 422 if a
-  database's connection settings need an admin to fix them, if any emitted
-  value contains `{{` or `[[`, or if the workspace has no databases; retrying
-  does not help.
+  of the workspace's databases is not `:provisioned`. The body does not say which
+  status; read `GET /:id`. Retry while a database is `provisioning` or
+  `deprovisioning`. In any other status, waiting does not clear the 409; delete
+  the workspace. 422 if a database's connection settings need an admin to fix
+  them, if any emitted value contains `{{` or `[[`, or if the workspace has no
+  databases; retrying does not help.
   A scoped credential (an `mb:workspace-manager` API key or token) gets 422 when any
   of the workspace's databases uses an SSH tunnel, because the config would need the
   parent's tunnel secrets; an unscoped admin credential gets them."

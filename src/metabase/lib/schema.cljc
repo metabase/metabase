@@ -735,6 +735,9 @@
    [:lib.convert/converted? {:optional true} :boolean]
    [:qp/compiled        {:optional true} [:ref ::compiled-native-query]]
    [:qp/compiled-inline {:optional true} [:ref ::compiled-native-query]]
+   ;; the MBQL stages a native-only query was compiled from, added by [[metabase.query-processor.execute]] when it
+   ;; hands a compiled query to a driver that supports `:mbql-5-native-query-execution`
+   [:qp/original-stages {:optional true} [:ref ::stages]]
    [:qp/source-card-id {:optional true} [:ref ::id/card]]
    [:qp/skip-result-metadata-persistence {:optional true} :boolean]
    [:qp/non-default-parameterized?       {:optional true} :boolean]
