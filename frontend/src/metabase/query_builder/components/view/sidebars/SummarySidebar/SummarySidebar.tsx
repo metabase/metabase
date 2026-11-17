@@ -6,6 +6,7 @@ import {
 } from "@dnd-kit/core";
 import { useId, useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useDndSensors } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
@@ -25,6 +26,8 @@ import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
 import {
   getNextRowKeys,
+  getPivotChange,
+  getPivotSplit,
   getRowAndColumnItems,
   getRowKeysAfterDrop,
 } from "./pivot-layout";
@@ -32,6 +35,7 @@ import type {
   SummaryDragItem,
   SummaryField,
   SummaryFieldSection,
+  SummaryPivotChange,
   SummaryQueryChangeOptions,
   SummaryWellId,
 } from "./types";
@@ -74,11 +78,18 @@ function getDropWellId(data: unknown): SummaryWellId | null {
     : null;
 }
 
+type SummarySidebarProps = Omit<UpdateQueryHookProps, "onQueryChange"> & {
+  onQueryChange: (
+    nextQuery: Lib.Query,
+    pivotChange?: SummaryPivotChange,
+  ) => void;
+};
+
 export function SummarySidebar({
   query,
   onQueryChange,
   stageIndex,
-}: UpdateQueryHookProps) {
+}: SummarySidebarProps) {
   const dispatch = useDispatch();
   const generatedExpressions = useSelector(getSummaryGeneratedExpressions);
   const [isPivotToggled, setIsPivotToggled] = useState(false);
@@ -86,6 +97,10 @@ export function SummarySidebar({
   const isPivotMode = isPivotToggled || rowKeys.length > 0;
   const { rowItems, columnItems } = useMemo(
     () => getRowAndColumnItems(query, stageIndex, rowKeys),
+    [query, stageIndex, rowKeys],
+  );
+  const pivotSplit = useMemo(
+    () => getPivotSplit(query, stageIndex, rowKeys),
     [query, stageIndex, rowKeys],
   );
   const handleQueryChange = (
@@ -105,16 +120,29 @@ export function SummarySidebar({
         summaryGeneratedExpressions: result.generatedExpressions,
       }),
     );
-    setRowKeys(
-      getNextRowKeys({
-        query,
-        nextQuery: result.query,
-        stageIndex,
-        rowKeys,
-        addedWellId,
-      }),
+    const nextRowKeys = getNextRowKeys({
+      query,
+      nextQuery: result.query,
+      stageIndex,
+      rowKeys,
+      addedWellId,
+    });
+    setRowKeys(nextRowKeys);
+    onQueryChange(
+      result.query,
+      getPivotChange(
+        pivotSplit,
+        getPivotSplit(result.query, stageIndex, nextRowKeys),
+      ),
     );
-    onQueryChange(result.query);
+  };
+
+  const handleRowKeysChange = (nextRowKeys: string[]) => {
+    setRowKeys(nextRowKeys);
+    const nextPivotSplit = getPivotSplit(query, stageIndex, nextRowKeys);
+    if (!_.isEqual(pivotSplit, nextPivotSplit)) {
+      onQueryChange(query, getPivotChange(pivotSplit, nextPivotSplit));
+    }
   };
   const tc = useTranslateContent();
   const sections = useMemo(
@@ -167,7 +195,7 @@ export function SummarySidebar({
 
   const handlePivotToggle = () => {
     setIsPivotToggled(!isPivotMode);
-    setRowKeys([]);
+    handleRowKeysChange([]);
   };
 
   const handleClearAll = () =>
@@ -188,7 +216,17 @@ export function SummarySidebar({
     if (drag == null || wellId == null) {
       return;
     }
-    setRowKeys(getRowKeysAfterDrop(query, stageIndex, drag, wellId, rowKeys));
+    const nextRowKeys = getRowKeysAfterDrop(
+      query,
+      stageIndex,
+      drag,
+      wellId,
+      rowKeys,
+    );
+    if (nextRowKeys !== rowKeys) {
+      handleRowKeysChange(nextRowKeys);
+      return;
+    }
     const nextQuery = dropOnWell(query, stageIndex, drag, wellId);
     if (nextQuery !== query) {
       handleWellAdd(nextQuery, wellId);
