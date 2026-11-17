@@ -238,3 +238,19 @@
                        {:level "info" :msg "message 9" :timestamp "1970-01-01T00:00:01.009Z" :fqns string?}
                        {:level "warn" :msg "warning 9" :timestamp "1970-01-01T00:00:01.009Z" :fqns string?}]
                       remaining-logs)))))))))
+
+(deftest status-must-be-known-test
+  (mt/with-model-cleanup [:model/TaskHistory]
+    (testing "inserting unknown status is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid task history status"
+                            (t2/insert! :model/TaskHistory {:task       "status-check-task"
+                                                            :started_at (t/instant)
+                                                            :status     :bogus})))
+      (is (not (t2/exists? :model/TaskHistory :task "status-check-task"))))
+    (mt/with-temp [:model/TaskHistory {id :id} {:status :started}]
+      (testing "changing status to unknown value is refused"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid task history status"
+                              (t2/update! :model/TaskHistory :id id {:status :bogus}))))
+      (testing "changing status to known value is accepted"
+        (t2/update! :model/TaskHistory :id id {:status :failed})
+        (is (= :failed (t2/select-one-fn :status :model/TaskHistory :id id)))))))

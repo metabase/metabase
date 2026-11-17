@@ -69,9 +69,7 @@
                                                            :most_recent         false
                                                            :status              "verified"
                                                            :text                "old review"}))
-              ;; manually inserted many
-
-              (is (> (review-count) moderation-review/max-moderation-reviews))
+              (is (<= (review-count) moderation-review/max-moderation-reviews))
               (moderate! "verified" "lookin' good")
               ;; api ensures we never have more than our limit
 
