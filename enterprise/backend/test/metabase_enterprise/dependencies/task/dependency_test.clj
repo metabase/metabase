@@ -1,7 +1,6 @@
 (ns metabase-enterprise.dependencies.task.dependency-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.dependencies.task.dependency-test]}}}}}}
   (:require
-   [metabase.events.core :as events]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :as env]
@@ -17,6 +16,7 @@
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

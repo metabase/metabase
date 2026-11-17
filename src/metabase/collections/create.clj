@@ -17,7 +17,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
-
 (defn- write-check-authority-level
   "Check that a superuser is creating this collection if they are setting the authority level."
   [{authority-level :authority_level :as coll}]

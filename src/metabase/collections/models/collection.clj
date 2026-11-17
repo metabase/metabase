@@ -2052,9 +2052,10 @@
   "Restores the Collections under `row` that its archive took down and the items in them that were archived along with
   them, along with `row`."
   [row]
-  (let [descendants (collections.db/archived-collection-ids-in-operation-with-location-like
-                     (str (children-location row) "%")
-                     (:archive_operation_id row))
+  (let [descendants (when-let [operation-id (:archive_operation_id row)]
+                      (collections.db/archived-collection-ids-in-operation-with-location-like
+                       (str (children-location row) "%")
+                       operation-id))
         ids         (vec (cons (:id row) descendants))]
     (when (seq descendants)
       (collections.db/restore-collections! (vec descendants)))

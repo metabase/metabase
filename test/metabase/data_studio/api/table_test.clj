@@ -218,8 +218,8 @@
                    :model/FieldValues {fv-id :id}    {:field_id field-id, :values [1 2 3 4]}]
       (let [deleted (atom #{})]
         (with-redefs [events/publish-event! (fn [topic event]
-                                                       (when (= :event/field-values-delete topic)
-                                                         (swap! deleted conj (:id (:object event)))))]
+                                              (when (= :event/field-values-delete topic)
+                                                (swap! deleted conj (:id (:object event)))))]
           (data-studio.db/delete-field-values-for-tables! [table-id]))
         (is (contains? @deleted fv-id))))))
 

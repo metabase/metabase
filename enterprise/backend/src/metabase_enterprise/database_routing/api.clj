@@ -59,17 +59,17 @@
       (events/with-event-context {:details {:primary_db_name (:name router-db)
                                             :primary_db_id   (:id router-db)}}
         (database-routing.db/insert-databases!
-                (map (fn [{:keys [name details]}]
-                       {:name               name
-                        :engine             engine
-                        :details            details
-                        :auto_run_queries   auto_run_queries
-                        :is_full_sync       false
-                        :is_on_demand       is_on_demand
-                        :cache_ttl          nil
-                        :router_database_id router_database_id
-                        :creator_id         api/*current-user-id*})
-                     destinations))))))
+         (map (fn [{:keys [name details]}]
+                {:name               name
+                 :engine             engine
+                 :details            details
+                 :auto_run_queries   auto_run_queries
+                 :is_full_sync       false
+                 :is_on_demand       is_on_demand
+                 :cache_ttl          nil
+                 :router_database_id router_database_id
+                 :creator_id         api/*current-user-id*})
+              destinations))))))
 
 (defn- delete-router!
   [db-id]

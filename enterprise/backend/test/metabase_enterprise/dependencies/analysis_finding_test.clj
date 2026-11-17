@@ -1,6 +1,5 @@
 (ns metabase-enterprise.dependencies.analysis-finding-test
   (:require
-   [metabase.events.core :as events]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
@@ -9,6 +8,7 @@
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as models.analysis-finding-error]
    [metabase-enterprise.dependencies.test-util :as deps.test]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

@@ -38,7 +38,7 @@
   (let [changes (t2/changes instance)]
     (when (seq changes)
       (collect! (model-of &model) :update instance {:previous-object (t2/instance (model-of &model) (t2.realize/realize (t2/original instance)))
-                                         :changes         changes})))
+                                                    :changes         changes})))
   instance)
 
 (t2/define-before-delete :hook/events

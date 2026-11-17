@@ -1,10 +1,10 @@
 (ns metabase-enterprise.dependencies.task.analysis-finding-test
   (:require
-   [metabase.events.core :as events]
    [clojure.test :refer [deftest is testing]]
    [environ.core :as env]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.util :as task.util]
+   [metabase.events.core :as events]
    [metabase.task.core :as task]
    [metabase.test :as mt])
   (:import

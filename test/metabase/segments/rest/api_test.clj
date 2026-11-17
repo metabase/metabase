@@ -86,7 +86,7 @@
                                    :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :id) 20)})))
     (mt/with-temp [:model/Segment {:keys [id]} {}]
       (is (contains? (:errors (mt/user-http-request :crowberto :put 400 (str "segment/" id)
-                                    {:name "   " :revision_message "blank"})) :name))
+                                                    {:name "   " :revision_message "blank"})) :name))
       (is (=? {:name "Renamed"}
               (mt/user-http-request :crowberto :put 200 (str "segment/" id)
                                     {:name "Renamed" :revision_message "rename"}))))))
