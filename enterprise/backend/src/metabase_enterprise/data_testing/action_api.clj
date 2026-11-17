@@ -99,9 +99,9 @@
   "Run an action test. Needs read access to the test, permission to run the action's query with the test's parameter
   values, and native query access to the database of that query.
   The action's SQL runs on the test's temp tables, in a transaction that is rolled back, so the tables the SQL names do
-  not change. The rollback does not undo a function that the SQL calls and that commits on a connection of its own;
-  the run refuses such functions only by name. The run is recorded in the test's run history and in the audit log as
-  an action-test run, not as an execution of the action.
+  not change. The rollback does not undo a change made outside the transaction, such as an advanced sequence or the
+  work of a function that commits on a connection of its own. The run is recorded in the test's run history and in
+  the audit log as an action-test run, not as an execution of the action.
 
   A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,
   including one that could not be evaluated, which comes back as that expectation's own `:error`.
