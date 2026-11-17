@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
@@ -7,12 +8,14 @@ import {
   createMockState,
 } from "__support__/state";
 import {
+  act,
   getIcon,
   queryIcon,
   renderWithProviders,
   screen,
   waitFor,
 } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   SAMPLE_PROVIDER,
@@ -22,6 +25,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
+  PRODUCTS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -137,6 +141,80 @@ function setup({ step = createMockNotebookStep() }: SetupOpts = {}) {
     getRecentAggregationClause,
     updateQuery,
   };
+}
+
+interface SetupWithQueryUpdatesOpts {
+  query: Lib.Query;
+}
+
+function setupWithQueryUpdates({ query }: SetupWithQueryUpdatesOpts) {
+  const onQueryChange = jest.fn<void, [Lib.Query]>();
+
+  setupDatabaseEndpoints(createSampleDatabase());
+
+  function AggregateStepWithQueryUpdates() {
+    const [currentQuery, setCurrentQuery] = useState(query);
+    const step = createMockNotebookStep({ query: currentQuery });
+
+    const handleUpdateQuery = async (nextQuery: Lib.Query) => {
+      setCurrentQuery(nextQuery);
+      onQueryChange(nextQuery);
+    };
+
+    return (
+      <AggregateStep
+        step={step}
+        stageIndex={step.stageIndex}
+        query={step.query}
+        color="core-summarize"
+        isLastOpened={false}
+        reportTimezone="UTC"
+        updateQuery={handleUpdateQuery}
+      />
+    );
+  }
+
+  renderWithProviders(<AggregateStepWithQueryUpdates />, {
+    storeInitialState: createMockState({
+      qb: createMockQueryBuilderState({
+        card: createMockCard(),
+      }),
+    }),
+  });
+
+  function getRecentAggregation() {
+    expect(onQueryChange).toHaveBeenCalled();
+    const [recentQuery] = checkNotNull(onQueryChange.mock.lastCall);
+    const aggregations = Lib.aggregations(recentQuery, 0);
+    expect(aggregations).toHaveLength(1);
+    const [aggregation] = aggregations;
+    return {
+      displayName: Lib.displayInfo(recentQuery, 0, aggregation).displayName,
+      parts: Lib.expressionParts(recentQuery, 0, aggregation),
+    };
+  }
+
+  return { getRecentAggregation };
+}
+
+async function enterCustomExpression({
+  formula,
+  name,
+}: {
+  formula: string;
+  name: string;
+}) {
+  const input = await screen.findByTestId("custom-expression-query-editor");
+  await waitFor(() => expect(input).toHaveProperty("readOnly", false));
+  await userEvent.clear(input);
+  await userEvent.type(input, formula);
+  await act(async () => {
+    input.blur();
+  });
+
+  const nameInput = screen.getByTestId("expression-name");
+  await userEvent.clear(nameInput);
+  await userEvent.type(nameInput, name);
 }
 
 describe("AggregateStep", () => {
@@ -259,6 +337,47 @@ describe("AggregateStep", () => {
         "[Revenue]",
       ),
     );
+  });
+
+  it("should update a named custom aggregation that uses `in` to use `notIn`", async () => {
+    const { getRecentAggregation } = setupWithQueryUpdates({
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+      }),
+    });
+
+    await userEvent.click(screen.getByText("Pick a function or metric"));
+    await userEvent.click(await screen.findByText("Custom Expression"));
+    await enterCustomExpression({
+      formula: "countIf(in([[ID], 1, 2))",
+      name: "CountIfIn",
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+    expect(await screen.findByText("CountIfIn")).toBeInTheDocument();
+    expect(getRecentAggregation()).toMatchObject({
+      displayName: "CountIfIn",
+      parts: {
+        operator: "count-where",
+        args: [{ operator: "in", args: [expect.anything(), 1, 2] }],
+      },
+    });
+
+    await userEvent.click(screen.getByText("CountIfIn"));
+    await enterCustomExpression({
+      formula: "countIf(notIn([[ID], 1, 2))",
+      name: "CountIfIn",
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Update" }));
+
+    expect(await screen.findByText("CountIfIn")).toBeInTheDocument();
+    expect(getRecentAggregation()).toMatchObject({
+      displayName: "CountIfIn",
+      parts: {
+        operator: "count-where",
+        args: [{ operator: "not-in", args: [expect.anything(), 1, 2] }],
+      },
+    });
   });
 
   describe("metrics", () => {

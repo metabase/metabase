@@ -1,11 +1,20 @@
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
-import { act, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   ORDERS_ID,
+  PRODUCTS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -49,6 +58,86 @@ function setup({
   );
 
   return { getRecentQuery };
+}
+
+interface SetupWithQueryUpdatesOpts {
+  query: Lib.Query;
+}
+
+function setupWithQueryUpdates({ query }: SetupWithQueryUpdatesOpts) {
+  const onQueryChange = jest.fn<void, [Lib.Query]>();
+
+  setupDatabaseEndpoints(createSampleDatabase());
+
+  function ExpressionStepWithQueryUpdates() {
+    const [currentQuery, setCurrentQuery] = useState(query);
+    const step = createMockNotebookStep({
+      type: "expression",
+      query: currentQuery,
+    });
+
+    const handleUpdateQuery = async (nextQuery: Lib.Query) => {
+      setCurrentQuery(nextQuery);
+      onQueryChange(nextQuery);
+    };
+
+    return (
+      <ExpressionStep
+        step={step}
+        color="text-disabled"
+        stageIndex={step.stageIndex}
+        query={step.query}
+        updateQuery={handleUpdateQuery}
+        isLastOpened={false}
+        reportTimezone="UTC"
+      />
+    );
+  }
+
+  renderWithProviders(<ExpressionStepWithQueryUpdates />);
+
+  function getRecentExpressionNames(): string[] {
+    expect(onQueryChange).toHaveBeenCalled();
+    const [recentQuery] = checkNotNull(onQueryChange.mock.lastCall);
+    return Lib.expressions(recentQuery, 0).map(
+      (expression) => Lib.displayInfo(recentQuery, 0, expression).displayName,
+    );
+  }
+
+  return { getRecentExpressionNames };
+}
+
+async function addExpression({
+  formula,
+  name,
+}: {
+  formula: string;
+  name: string;
+}) {
+  await userEvent.click(screen.getByRole("img", { name: "add icon" }));
+
+  const input = await screen.findByTestId("custom-expression-query-editor");
+  await userEvent.type(input, formula);
+  await act(async () => {
+    input.blur();
+  });
+
+  await userEvent.type(screen.getByTestId("expression-name"), `${name}{enter}`);
+}
+
+function createProductsQueryWithExpressionReferences() {
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: PRODUCTS_ID },
+        expressions: [
+          { name: "Foo", value: { type: "column", name: "PRICE" } },
+          { name: "Bar", value: { type: "column", name: "Foo" } },
+          { name: "Quu", value: { type: "column", name: "Bar" } },
+        ],
+      },
+    ],
+  });
 }
 
 describe("Notebook Editor > Expression Step", () => {
@@ -171,4 +260,49 @@ describe("Notebook Editor > Expression Step", () => {
       "Total (1)",
     );
   });
+
+  it("should append indexes to duplicate custom expression names (metabase#12104)", async () => {
+    const { getRecentExpressionNames } = setupWithQueryUpdates({
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+      }),
+    });
+
+    await addExpression({ formula: "[[Category]", name: "EXPR" });
+    expect(await screen.findByText("EXPR")).toBeInTheDocument();
+    expect(getRecentExpressionNames()).toEqual(["EXPR"]);
+
+    await addExpression({ formula: "[[Category]", name: "EXPR" });
+    expect(await screen.findByText("EXPR (1)")).toBeInTheDocument();
+    expect(getRecentExpressionNames()).toEqual(["EXPR", "EXPR (1)"]);
+
+    await addExpression({ formula: "[[Category]", name: "EXPR" });
+    expect(await screen.findByText("EXPR (2)")).toBeInTheDocument();
+    expect(screen.getByText("EXPR")).toBeInTheDocument();
+    expect(screen.getByText("EXPR (1)")).toBeInTheDocument();
+    expect(getRecentExpressionNames()).toEqual([
+      "EXPR",
+      "EXPR (1)",
+      "EXPR (2)",
+    ]);
+  });
+
+  it.each([
+    ["Foo", "[Price]"],
+    ["Bar", "[Foo]"],
+    ["Quu", "[Bar]"],
+  ])(
+    "should open the %s expression that references another column with its own formula",
+    async (expressionName, expectedFormula) => {
+      setup({ query: createProductsQueryWithExpressionReferences() });
+
+      await userEvent.click(screen.getByText(expressionName));
+
+      const editor = await screen.findByTestId(
+        "custom-expression-query-editor",
+      );
+      await waitFor(() => expect(editor).toHaveValue(expectedFormula));
+      expect(screen.getByTestId("expression-name")).toHaveValue(expressionName);
+    },
+  );
 });
