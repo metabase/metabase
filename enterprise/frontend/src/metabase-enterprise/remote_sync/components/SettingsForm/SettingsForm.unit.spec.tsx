@@ -7,6 +7,7 @@ import {
   setupRemoteSyncEndpoints,
   setupRemoteSyncSettingsEndpoint,
   setupRemoteSyncSettingsEndpointError,
+  setupRootCollectionItemsEndpoint,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -48,6 +49,18 @@ const SALES = createMockCollectionItem({
   name: "Sales",
   model: "collection",
 });
+const SECOND_TENANT_COLLECTION = createMockCollectionItem({
+  id: 40,
+  name: "Second Tenant Collection",
+  model: "collection",
+  namespace: "shared-tenant-collection",
+});
+const SYNCABLE_TENANT_COLLECTION = createMockCollectionItem({
+  id: 50,
+  name: "Syncable Tenant Collection",
+  model: "collection",
+  namespace: "shared-tenant-collection",
+});
 const UNSYNCED_DEPENDENCIES_ERROR =
   createMockRemoteSyncUnsyncedDependenciesErrorData({
     unsynced_dependencies: [
@@ -79,6 +92,7 @@ type SetupOpts = {
   url?: string;
   syncType?: RemoteSyncType;
   collections?: CollectionItem[];
+  tenantCollections?: CollectionItem[];
   settingsTaskId?: RemoteSyncTaskId;
   settingsError?: RemoteSyncUnsyncedDependenciesErrorData;
 };
@@ -88,10 +102,12 @@ function setup({
   url = "",
   syncType = "read-write",
   collections = [LIBRARY, MARKETING],
+  tenantCollections,
   settingsTaskId,
   settingsError,
 }: SetupOpts = {}) {
   const settings = createMockSettings({
+    "use-tenants": tenantCollections != null,
     "remote-sync-enabled": isEnabled,
     "remote-sync-url": url,
     "remote-sync-type": syncType,
@@ -111,10 +127,17 @@ function setup({
       ] as const
     ).map((key) => createMockSettingDefinition({ key, value: settings[key] })),
   );
-  setupCollectionItemsEndpoint({
-    collection: { id: "root" },
-    collectionItems: collections,
-  });
+  if (tenantCollections != null) {
+    setupRootCollectionItemsEndpoint({
+      rootCollectionItems: collections,
+      tenantRootItems: tenantCollections,
+    });
+  } else {
+    setupCollectionItemsEndpoint({
+      collection: { id: "root" },
+      collectionItems: collections,
+    });
+  }
   setupRemoteSyncEndpoints({ settingsTaskId });
   if (settingsError != null) {
     setupRemoteSyncSettingsEndpointError(settingsError);
@@ -195,6 +218,32 @@ describe("SettingsForm", () => {
     expect(await getSettingsRequestBody()).toMatchObject({
       "remote-sync-type": "read-only",
       collections: null,
+    });
+  });
+
+  it("lists shared tenant collections and syncs the chosen ones", async () => {
+    const { onSaved } = setup({
+      isEnabled: true,
+      url: "https://github.com/acme/metabase.git",
+      collections: [{ ...LIBRARY, is_remote_synced: true }, MARKETING],
+      tenantCollections: [SECOND_TENANT_COLLECTION, SYNCABLE_TENANT_COLLECTION],
+    });
+
+    expect(
+      await screen.findByText("Shared tenant collections to sync"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: "Second Tenant Collection" }),
+    ).not.toBeChecked();
+    await userEvent.click(
+      screen.getByRole("switch", { name: "Syncable Tenant Collection" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+    const body = await getSettingsRequestBody();
+    expect(body.collections).toEqual({
+      [SYNCABLE_TENANT_COLLECTION.id]: true,
     });
   });
 
