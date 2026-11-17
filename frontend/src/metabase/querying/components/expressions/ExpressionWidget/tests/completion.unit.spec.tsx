@@ -2,13 +2,20 @@ jest.unmock("@uiw/react-codemirror");
 
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadata } from "__support__/metadata";
 import { screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
+import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
+import {
+  ORDERS,
   ORDERS_ID,
   PRODUCTS_ID,
   REVIEWS_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import {
@@ -25,6 +32,49 @@ import {
   waitForCompletions,
   waitForValidationDebounce,
 } from "./setup";
+
+function createSavedQuestionQuery() {
+  const card = createMockCard({
+    id: 1,
+    name: "Base question",
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
+    }),
+    result_metadata: [
+      createMockColumn({
+        id: ORDERS.ID,
+        table_id: ORDERS_ID,
+        name: "ID",
+        display_name: "ID",
+        base_type: "type/BigInteger",
+        effective_type: "type/BigInteger",
+        semantic_type: "type/PK",
+        field_ref: ["field", ORDERS.ID, null],
+        source: "fields",
+      }),
+      createMockColumn({
+        id: ORDERS.CREATED_AT,
+        table_id: ORDERS_ID,
+        name: "CREATED_AT",
+        display_name: "Created At",
+        base_type: "type/DateTime",
+        effective_type: "type/DateTime",
+        semantic_type: "type/CreationTimestamp",
+        field_ref: ["field", ORDERS.CREATED_AT, null],
+        source: "fields",
+      }),
+    ],
+  });
+  const provider = createMetadataProvider({
+    metadata: createMockMetadata({
+      databases: [createSampleDatabase()],
+      questions: [card],
+    }),
+  });
+  return Lib.createTestQuery(provider, {
+    stages: [{ source: { type: "card", id: card.id } }],
+  });
+}
 
 function createOrdersQuery() {
   return Lib.createTestQuery(SAMPLE_PROVIDER, {
@@ -94,6 +144,38 @@ describe("ExpressionWidget > completion", () => {
 
     await pressKey("Tab");
     expect(await screen.findByText(/Unknown column/)).toBeInTheDocument();
+  });
+
+  it("should be possible to fill in snippet arguments after validation runs (metabase#55164)", async () => {
+    await setup({ query: createOrdersQuery() });
+
+    await typeText("coalesc");
+    await waitForCompletions();
+    await pressKey("Tab");
+    expect(getEditorValue()).toBe("coalesce(value1, value2)");
+
+    // validation runs while the snippet is active
+    await waitForValidationDebounce();
+
+    await typeText("[Tax]");
+    await pressKey("Tab");
+    await typeText("[User ID]");
+    expect(getEditorValue()).toBe("coalesce([Tax], [User ID])");
+  });
+
+  it("should not show the default period in a date column name of a saved question source (metabase#36631)", async () => {
+    await setup({ query: createSavedQuestionQuery() });
+
+    await typeText("[cre");
+    const labels = await waitForCompletions();
+    expect(labels).toContain("Created At");
+    expect(labels.filter((label) => /Default period/.test(label))).toEqual([]);
+    expect(
+      screen.getByTestId("custom-expression-editor-suggestions"),
+    ).toHaveTextContent("Created At");
+    expect(
+      screen.getByTestId("custom-expression-editor-suggestions"),
+    ).not.toHaveTextContent("Default period");
   });
 
   it("should suggest a custom column that renames another custom column", async () => {

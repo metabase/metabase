@@ -168,7 +168,17 @@ export async function typeText(text: string) {
  */
 export async function pressKey(
   key: string,
-  { shiftKey = false, times = 1 }: { shiftKey?: boolean; times?: number } = {},
+  {
+    shiftKey = false,
+    ctrlKey = false,
+    keyCode,
+    times = 1,
+  }: {
+    shiftKey?: boolean;
+    ctrlKey?: boolean;
+    keyCode?: number;
+    times?: number;
+  } = {},
 ): Promise<boolean> {
   let isNotPrevented = true;
   for (let index = 0; index < times; index++) {
@@ -176,6 +186,8 @@ export async function pressKey(
       isNotPrevented = fireEvent.keyDown(getEditorContent(), {
         key,
         shiftKey,
+        ctrlKey,
+        keyCode,
       });
     });
   }
