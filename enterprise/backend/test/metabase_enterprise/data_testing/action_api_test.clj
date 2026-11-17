@@ -39,16 +39,17 @@
   {:action_id action-id :name "My test" :parameters parameters :inputs (inputs) :expectations (expectations)})
 
 (defn- do-with-action!
-  "Call `f` with the id of a query action of a model in the collection `collection-id` (nil for the root), with actions
-  enabled on the Postgres test database. `action` is merged into the default query action."
+  "Call `f` with the id of a query action of a model in the collection `collection-id` (nil for the root), on a private
+  copy of the Postgres test data with actions enabled, so that a run that wrongly commits leaves the shared test data
+  alone. `action-fn`, called on the copy, returns what is merged into the default query action."
   ([collection-id f]
-   (do-with-action! collection-id {} f))
-  ([collection-id action f]
+   (do-with-action! collection-id (constantly {}) f))
+  ([collection-id action-fn f]
    (mt/test-driver :postgres
-     (mt/with-actions-enabled
+     (mt/with-actions-test-data-and-actions-enabled
        (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/categories-query)
                                               :collection_id collection-id}
-                         {:keys [action-id]} action]
+                         {:keys [action-id]} (action-fn)]
          (f action-id))))))
 
 (deftest premium-feature-test
@@ -122,7 +123,7 @@
                                  (is (= "action-test.actions-disabled"
                                         (:error-code (mt/user-http-request :crowberto :post 422 "ee/action-test" (body action-id)))))))
                              (testing "POST refuses a test of an implicit action"
-                               (do-with-action! nil {:type :implicit :kind "row/update"}
+                               (do-with-action! nil (constantly {:type :implicit :kind "row/update"})
                                                 (fn [implicit-action-id]
                                                   (is (= "action-test.unsupported-action"
                                                          (:error-code (mt/user-http-request :crowberto :post 422 "ee/action-test"
@@ -199,7 +200,7 @@
       (mt/test-driver :postgres
         (do-with-action!
          nil
-         (schema-qualified-action)
+         schema-qualified-action
          (fn [action-id]
            (do-in-workspace-mode!
             (fn []
@@ -280,52 +281,64 @@
                       (is (contains? listed run-id))
                       (is (not (contains? listed hidden-run-id)))))))))))))))
 
+(defn- action-including-card
+  "The default query action, with its SQL also reading the card `card-id` through a card tag."
+  [card-id]
+  (let [tag (str "#" card-id "-categories")]
+    {:dataset_query {:database (mt/id)
+                     :type     :native
+                     :native   {:query         (str "UPDATE categories\n"
+                                                    "SET name = concat([[{{name}}, ' ',]] 'Sh', 'op')\n"
+                                                    "WHERE id = {{id}} AND id IN (SELECT id FROM {{" tag "}} h)")
+                                :template-tags {"id"   {:name "id" :display-name "ID" :type :number :required true}
+                                                "name" {:name "name" :display-name "Name" :type :text :required false}
+                                                tag    {:name         tag
+                                                        :display-name tag
+                                                        :type         :card
+                                                        :id           (str (random-uuid))
+                                                        :card-id      card-id}}}}}))
+
 (deftest runs-of-an-action-including-an-unreadable-card-are-refused-test
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-non-admin-groups-no-root-collection-perms
       (perms.tu/with-no-data-perms-for-all-users!
-        (mt/test-driver :postgres
-          (mt/with-temp [:model/Collection {coll-id :id}        {}
-                         :model/Collection {hidden-coll-id :id} {}
-                         :model/Card       {hidden-id :id}      {:collection_id hidden-coll-id
-                                                                 :dataset_query (mt/native-query {:query "SELECT id FROM categories"})}]
-            (let [tag (str "#" hidden-id "-categories")]
-              (do-with-action!
-               coll-id
-               {:dataset_query {:database (mt/id)
-                                :type     :native
-                                :native   {:query         (str "UPDATE categories\n"
-                                                               "SET name = concat([[{{name}}, ' ',]] 'Sh', 'op')\n"
-                                                               "WHERE id = {{id}} AND id IN (SELECT id FROM {{" tag "}} h)")
-                                           :template-tags {"id"   {:name "id" :display-name "ID" :type :number :required true}
-                                                           "name" {:name "name" :display-name "Name" :type :text :required false}
-                                                           tag    {:name         tag
-                                                                   :display-name tag
-                                                                   :type         :card
-                                                                   :id           (str (random-uuid))
-                                                                   :card-id      hidden-id}}}}}
-               (fn [action-id]
-                 (mt/with-temp [:model/ActionTest {test-id :id} (assoc (body action-id) :created_at #t "2025-01-01T00:00:00Z")]
-                   (let [run-path (str "ee/action-test/" test-id "/run")]
-                     (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
-                     (try
-                       (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
-                                                                                     :perms/create-queries :query-builder-and-native}
-                         (testing "premise: the user can read the action, and cannot read the card its SQL includes"
-                           (is (= action-id (:id (mt/user-http-request :rasta :get 200 (str "action/" action-id)))))
-                           (mt/user-http-request :rasta :get 403 (str "card/" hidden-id)))
-                         (testing "a run by that user is refused"
-                           (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :post run-path))))
-                         (testing "a test whose parameter values do not fit the action is refused as for any user"
-                           (t2/update! :model/ActionTest test-id {:parameters {"colour" "red"}})
-                           (is (= "action-test.invalid-parameters"
-                                  (:error-code (mt/user-http-request :rasta :post 400 run-path))))
-                           (t2/update! :model/ActionTest test-id {:parameters parameters}))
-                         (perms/grant-collection-read-permissions! (perms-group/all-users) hidden-coll-id)
-                         (testing "once the included card is readable, the run passes"
-                           (is (= "passed" (:status (mt/user-http-request :rasta :post 200 run-path))))))
-                       (finally
-                         (t2/delete! :model/DataTestRun :test_type "action" :test_id test-id))))))))))))))
+        (mt/with-temp [:model/Collection {coll-id :id}        {}
+                       :model/Collection {hidden-coll-id :id} {}]
+          (do-with-action!
+           coll-id
+           ;; The hidden card reads the private copy of the test data the action runs on, so it is made there.
+           #(action-including-card (t2/insert-returning-pk! :model/Card
+                                                            {:name          "Hidden"
+                                                             :collection_id hidden-coll-id
+                                                             :creator_id    (mt/user->id :crowberto)
+                                                             :display       :table
+                                                             :database_id   (mt/id)
+                                                             :dataset_query (mt/native-query {:query "SELECT id FROM categories"})
+                                                             :visualization_settings {}}))
+           (fn [action-id]
+             (let [hidden-id (t2/select-one-pk :model/Card :collection_id hidden-coll-id)]
+               (mt/with-temp [:model/ActionTest {test-id :id} (assoc (body action-id) :created_at #t "2025-01-01T00:00:00Z")]
+                 (let [run-path (str "ee/action-test/" test-id "/run")]
+                   (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+                   (try
+                     (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                                   :perms/create-queries :query-builder-and-native}
+                       (testing "premise: the user can read the action, and cannot read the card its SQL includes"
+                         (is (= action-id (:id (mt/user-http-request :rasta :get 200 (str "action/" action-id)))))
+                         (mt/user-http-request :rasta :get 403 (str "card/" hidden-id)))
+                       (testing "a run by that user is refused"
+                         (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :post run-path))))
+                       (testing "a test whose parameter values do not fit the action is refused as for any user"
+                         (t2/update! :model/ActionTest test-id {:parameters {"colour" "red"}})
+                         (is (= "action-test.invalid-parameters"
+                                (:error-code (mt/user-http-request :rasta :post 400 run-path))))
+                         (t2/update! :model/ActionTest test-id {:parameters parameters}))
+                       (perms/grant-collection-read-permissions! (perms-group/all-users) hidden-coll-id)
+                       (testing "once the included card is readable, the run passes"
+                         (is (= "passed" (:status (mt/user-http-request :rasta :post 200 run-path))))))
+                     (finally
+                       (t2/delete! :model/DataTestRun :test_type "action" :test_id test-id)
+                       (t2/delete! :model/Card :id hidden-id)))))))))))))
 
 (deftest deleting-an-action-deletes-its-tests-test
   (mt/with-premium-features #{:transforms-testing}
