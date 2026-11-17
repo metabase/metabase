@@ -37,6 +37,8 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 - `->legacy-MBQL` has been removed from the `driver-api`. Converting queries to Legacy MBQL is no longer supported.
 
+- `driver-api/add-alias-info` now only supports MBQL 5 queries.
+
 ## Metabase 0.65.3
 
 - `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while
