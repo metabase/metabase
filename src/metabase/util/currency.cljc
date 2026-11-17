@@ -58,7 +58,7 @@
      [:BRL (make-currency "R$" "Brazilian Real" "R$" 2 0 "BRL" "Brazilian reals")]
      [:BTC (make-currency "₿" "Bitcoin" "BTC" 8 0 "BTC" "Bitcoins")]
      [:BWP (make-currency "BWP" "Botswanan Pula" "P" 2 0 "BWP" "Botswanan pulas")]
-     [:BYR (make-currency "BYR" "Belarusian Ruble" "BYR" 0 0 "BYR" "Belarusian rubles")]
+     [:BYR (make-currency "Br" "Belarusian Ruble" "руб." 2 0 "BYN" "Belarusian rubles")]
      [:BZD (make-currency "BZ$" "Belize Dollar" "$" 2 0 "BZD" "Belize dollars")]
      [:CDF (make-currency "CDF" "Congolese Franc" "FrCD" 2 0 "CDF" "Congolese francs")]
      [:CHF (make-currency "CHF" "Swiss Franc" "CHF" 2 0.05 "CHF" "Swiss francs")]
@@ -160,7 +160,7 @@
      [:XPF (make-currency "CFPF" "CFP Franc" "F" 0 0 "XPF" "CFP francs")]
      [:YER (make-currency "YR" "Yemeni Rial" "ر.ي.‏" 0 0 "YER" "Yemeni rials")]
      [:ZAR (make-currency "R" "South African Rand" "R" 2 0 "ZAR" "South African rand")]
-     [:ZMK (make-currency "ZK" "Zambian Kwacha" "ZK" 0 0 "ZMW" "Zambian kwachas")]])))
+     [:ZMK (make-currency "ZK" "Zambian Kwacha" "ZK" 2 0 "ZMW" "Zambian kwachas")]])))
 
 (def currency-map
   "The currencies as a Clojure map."
