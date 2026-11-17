@@ -184,6 +184,14 @@
                   (or (instance? java.util.Collection %) (instance? java.util.Map %)))
       :cljs (constantly false))])
 
+(mr/def ::driver-native-form
+  "A native query as a driver takes it: JSON-like data, in which a driver may also keep Java collections."
+  [:or
+   :string :boolean :keyword number?
+   ::java-collection
+   [:sequential [:maybe [:ref ::driver-native-form]]]
+   ::open-json.object])
+
 (mr/def ::database-details
   "Connection details for a Database; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseDetails]]."
   [:map {:closed false, :description "database connection details"}])
