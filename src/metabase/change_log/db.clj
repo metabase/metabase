@@ -3,8 +3,7 @@
   (:require
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline])
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection)))
 
@@ -65,20 +64,6 @@
    values     :- [:sequential [:or :int :string]]
    columns    :- [:sequential :keyword]]
   (t2/query {:select (vec (distinct columns)), :from [(keyword table-name)], :where [:in column values]}))
-
-(mu/defn rows-to-change
-  "The `columns` of the rows that a Toucan write to `model` will change, selected with the write's own `parsed-args`
-  and `resolved-query`."
-  [model             :- :keyword
-   select-query-type :- :keyword
-   parsed-args       :- [:map {:closed false, :description "the write's Toucan parsed args"}]
-   resolved-query    :- [:maybe [:fn {:description "the write's Toucan resolved query"} some?]]
-   columns           :- [:sequential :keyword]]
-  (t2.pipeline/transduce-query (t2.pipeline/default-rf select-query-type)
-                               select-query-type
-                               model
-                               (assoc (dissoc parsed-args :queryable :changes) :columns (vec (distinct columns)))
-                               resolved-query))
 
 (mu/defn delete-before-by-id-subquery!
   "Deletes up to `batch-size` entries created before `cutoff`, lowest ids first, and returns how many."

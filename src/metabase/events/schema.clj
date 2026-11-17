@@ -211,4 +211,4 @@
     [:map {:closed true}
      [:revision-message {:optional true} [:maybe :string]]
      [:reverting? {:optional true} :boolean]
-     [:details {:optional true} [:fn map?]]]]])
+     [:details {:optional true} [:map]]]]])

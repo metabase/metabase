@@ -44,7 +44,7 @@
    [:object    {:optional true} [:maybe [:map]]]
    [:previous-object {:optional true} [:maybe [:map]]]
    [:user-id   [:maybe :int]]
-   [:context   {:optional true} [:maybe [:fn map?]]]
+   [:context   {:optional true} [:maybe [:map]]]
    [:captures  {:optional true} [:maybe [:map]]]])
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}

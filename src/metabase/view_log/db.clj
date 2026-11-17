@@ -57,7 +57,7 @@
 
 (mu/defn update-dashboards-last-viewed-at!
   "Move `last_viewed_at` of each Dashboard in `dashboard-id->timestamp` forward to its timestamp, without touching
-  `updated_at`, via a raw update that bypasses Toucan 2 model hooks (specifically the :hook/search-index
+  `updated_at`, via a raw update that bypasses Toucan 2 model hooks (specifically the search index
   after-update; the search index can tolerate staleness on this field, catching up on the next re-index cycle or
   when the dashboard is edited)."
   [dashboard-id->timestamp :- [:map-of ms/PositiveInt ms/TemporalInstant]]
