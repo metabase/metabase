@@ -6,7 +6,8 @@ import type { DashboardId, Dataset } from "metabase-types/api";
 export function setupDashcardQueryEndpoints(
   dashboardId: DashboardId,
   dashcard: StoreDashcard,
-  dataset: Dataset,
+  // A promise holds the response until the test resolves it
+  dataset: Dataset | Promise<Dataset>,
   { delay }: { delay?: number } = {},
 ) {
   fetchMock.post(
