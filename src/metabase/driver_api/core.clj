@@ -162,7 +162,7 @@
  qp.util/default-query->remark
  qp.util/query->remark
  qp.util/query->remark-data
-  metabase.query-processor.util.nest-query/nest-expressions
+ metabase.query-processor.util.nest-query/nest-expressions
  qp.wrap-value-literals/wrap-value-literals-in-mbql5
  qp.writeback/execute-write-sql!
  qp/process-query
