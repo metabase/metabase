@@ -142,6 +142,21 @@ Add up all the values and group by a time period, generally by month.
 
 Clicking on a table cell will give you different options based on the data type and its values.
 
+## Copy cells from a table
+
+To copy results from a table, select the cells you want, then press **Cmd/Ctrl + C**. Metabase copies the values with their column headings, separated by tabs, so you can paste them into a spreadsheet.
+
+To select cells:
+
+- Click a cell to select it.
+- Click and drag to select a range of cells.
+- Shift + click a cell to select all the cells between the selected cell and that cell.
+- Cmd/Ctrl + click a cell to add it to (or remove it from) your selection.
+
+You can use the arrow keys to move the selection, and press **Esc** to clear it.
+
+Metabase copies the values as they're formatted in the table. To copy the raw, unformatted values instead, press **Cmd/Ctrl + Shift + C**.
+
 ## Detail views
 
 ![Detail view](../images/detail-view.png)
