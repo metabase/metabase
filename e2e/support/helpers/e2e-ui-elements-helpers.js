@@ -592,10 +592,6 @@ export function clickActionsPopover({ skipVisibilityCheck = false } = {}) {
   return popover({ testId: "click-actions-popover", skipVisibilityCheck });
 }
 
-export function segmentEditorPopover() {
-  return popover({ testId: "segment-popover" });
-}
-
 /**
  * @param {Object} params
  * @param {string[]} params.columns
