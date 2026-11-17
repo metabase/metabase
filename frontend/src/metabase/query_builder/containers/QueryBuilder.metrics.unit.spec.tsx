@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { getInstanceByDom } from "echarts/core";
 import fetchMock, { type CallLog } from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -11,18 +12,15 @@ import {
 } from "__support__/server-mocks";
 import {
   act,
+  fireEvent,
   mockGetBoundingClientRect,
   screen,
   waitFor,
   within,
 } from "__support__/ui";
 import { defer } from "metabase/utils/promise";
+import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type {
-  Visualization,
-  VisualizationProps,
-} from "metabase/visualizations/types/visualization";
-import { registerVisualization } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import {
   SAMPLE_PROVIDER,
@@ -31,7 +29,6 @@ import {
 import type {
   Card,
   CardQueryMetadata,
-  CustomVizDisplayType,
   Dataset,
   DatasetData,
 } from "metabase-types/api";
@@ -203,7 +200,8 @@ const DRILL_POINT = "2026-02-01T00:00:00Z";
 
 const BREAK_OUT_BY_SOURCE_STAGE = {
   aggregation: [metricClause(TIMESERIES_METRIC.id)],
-  filters: [["=", {}, CREATED_AT_MONTH_BREAKOUT, DRILL_POINT]],
+  // The chart reports the clicked month in the report time zone, without an offset.
+  filters: [["=", {}, CREATED_AT_MONTH_BREAKOUT, "2026-02-01T00:00:00"]],
   breakout: [
     [
       "field",
@@ -302,14 +300,8 @@ async function visualize() {
   return waitForDatasetRequest(previousCount);
 }
 
-const DRILL_DISPLAY: CustomVizDisplayType = "custom:metric-drill-viz";
-
-const DRILL_QUESTION = createMockCard({
-  ...QUESTION_WITH_TIMESERIES_METRIC,
-  display: DRILL_DISPLAY,
-});
-
 const CREATED_AT_COLUMN = createOrdersCreatedAtDatasetColumn({
+  display_name: "Created At: Month",
   source: "breakout",
   unit: "month",
   field_ref: ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
@@ -320,74 +312,47 @@ const TIMESERIES_METRIC_COLUMN = createAggregationColumn(
   "Count of orders over time",
 );
 
+const DRILL_COUNT = 20;
+
 const TIMESERIES_DATASET = createResultDataset({
   cols: [CREATED_AT_COLUMN, TIMESERIES_METRIC_COLUMN],
   rows: [
     ["2026-01-01T00:00:00Z", 10],
-    [DRILL_POINT, 20],
+    [DRILL_POINT, DRILL_COUNT],
     ["2026-03-01T00:00:00Z", 30],
   ],
 });
 
-function createPointClick(
-  point: DatasetData["rows"][number],
-  event: React.MouseEvent<HTMLButtonElement>,
-): Lib.ClickObject {
-  const [createdAt, count] = point;
-  return {
-    value: count,
-    column: TIMESERIES_METRIC_COLUMN,
-    event: event.nativeEvent,
-    element: event.currentTarget,
-    data: [
-      { col: CREATED_AT_COLUMN, value: createdAt },
-      { col: TIMESERIES_METRIC_COLUMN, value: count },
-    ],
-    dimensions: [{ column: CREATED_AT_COLUMN, value: createdAt }],
-  };
+async function findChart() {
+  return screen.findByTestId("chart-container");
 }
 
-/**
- * Stands in for the line chart, whose points jsdom cannot click: each button
- * clicks one point of the series.
- */
-function DrillVisualization({
-  rawSeries,
-  onVisualizationClick,
-}: VisualizationProps) {
-  const rows = rawSeries[0]?.data.rows ?? [];
-  return (
-    <div>
-      {rows.map((point) => (
-        <button
-          key={String(point[0])}
-          type="button"
-          onClick={(event) =>
-            onVisualizationClick?.(createPointClick(point, event))
-          }
-        >
-          {`Point ${String(point[0])}`}
-        </button>
-      ))}
-    </div>
+async function waitForChartText(text: string) {
+  await waitFor(async () =>
+    expect(within(await findChart()).getByText(text)).toBeInTheDocument(),
   );
 }
 
+/**
+ * Clicks a point of the rendered line chart. jsdom has no layout, so the
+ * point's position comes from the chart itself.
+ */
+async function clickChartPoint(point: [string, number]) {
+  const chart = await findChart();
+  const instance = checkNotNull(getInstanceByDom(chart));
+  const position = instance.convertToPixel({ seriesIndex: 0 }, point);
+  if (!Array.isArray(position)) {
+    throw new Error("The chart did not return the position of the point");
+  }
+  const [clientX, clientY] = position;
+  const root = instance.getZr().painter.getViewportRoot();
+  fireEvent.mouseMove(root, { clientX, clientY });
+  fireEvent.mouseDown(root, { clientX, clientY });
+  fireEvent.mouseUp(root, { clientX, clientY });
+  fireEvent.click(root, { clientX, clientY });
+}
+
 registerVisualizations();
-
-const DrillViz = Object.assign(DrillVisualization, {
-  identifier: DRILL_DISPLAY,
-  getUiName: () => "Metric drill viz",
-  settings: {},
-  checkRenderable: () => {},
-  noHeader: false,
-  canSavePng: false,
-  hidden: false,
-});
-
-// A Visualization is a component carrying static props, and Object.assign types
-// that intersection loosely, so the target is named explicitly.
-registerVisualization(DrillViz as unknown as Visualization);
 
 describe("query builder > metrics in questions", () => {
   it("should show the loading page until the question metadata is loaded (metabase#47058)", async () => {
@@ -500,6 +465,7 @@ describe("query builder > metrics in questions", () => {
       await screen.findByText("Expression by Created At: Month"),
     ).toBeInTheDocument();
     expect(await screen.findByText("Showing 2 rows")).toBeInTheDocument();
+    await waitForChartText("Expression");
   });
 
   it("should be able to change the temporal unit and then replace the breakout when consuming a timeseries metric", async () => {
@@ -531,7 +497,9 @@ describe("query builder > metrics in questions", () => {
       ),
     );
     const option = await screen.findByRole("option", { name: "Created At" });
-    await userEvent.click(within(option).getByLabelText("Temporal bucket"));
+    const bucketButton = within(option).getByLabelText("Temporal bucket");
+    expect(bucketButton).toHaveTextContent("by month");
+    await userEvent.click(bucketButton);
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Year" }),
     );
@@ -544,7 +512,10 @@ describe("query builder > metrics in questions", () => {
       PRODUCT_CATEGORY_STAGE,
       createResultDataset({
         cols: [
-          createProductsCategoryDatasetColumn({ source: "breakout" }),
+          createProductsCategoryDatasetColumn({
+            display_name: "Product → Category",
+            source: "breakout",
+          }),
           TIMESERIES_METRIC_COLUMN,
         ],
         rows: [
@@ -576,11 +547,12 @@ describe("query builder > metrics in questions", () => {
     expect(
       screen.getByText("Count of orders over time by Product → Category"),
     ).toBeInTheDocument();
+    await waitForChartText("Product → Category");
   });
 
   it("should be able to drill-thru with a metric by breaking out the point by another dimension, and go back", async () => {
     const { router } = await setup({
-      card: DRILL_QUESTION,
+      card: QUESTION_WITH_TIMESERIES_METRIC,
       dataset: TIMESERIES_DATASET,
       metadata: createMetricMetadata(TIMESERIES_METRIC),
     });
@@ -607,9 +579,9 @@ describe("query builder > metrics in questions", () => {
       within(header).getByText("Question with metric"),
     ).toBeInTheDocument();
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: `Point ${DRILL_POINT}` }),
-    );
+    await waitForChartText("Created At: Month");
+
+    await clickChartPoint([DRILL_POINT, DRILL_COUNT]);
     const clickActions = await screen.findByTestId("click-actions-view");
     await userEvent.click(within(clickActions).getByText("Break out by…"));
     await userEvent.click(await screen.findByText("Category"));
@@ -624,6 +596,7 @@ describe("query builder > metrics in questions", () => {
       ),
     ).toBeInTheDocument();
     expect(await screen.findByText("Showing 2 rows")).toBeInTheDocument();
+    await waitForChartText("User → Source");
 
     act(() => router.back());
 
@@ -634,6 +607,10 @@ describe("query builder > metrics in questions", () => {
       within(header).queryByText("Count of orders over time by User → Source"),
     ).not.toBeInTheDocument();
     expect(await screen.findByText("Showing 3 rows")).toBeInTheDocument();
+    await waitForChartText("Created At: Month");
+    expect(
+      within(await findChart()).queryByText("User → Source"),
+    ).not.toBeInTheDocument();
   });
 
   it("should log choosing a metric as a recent selection and offer custom column and join actions on it (metabase#79571)", async () => {
