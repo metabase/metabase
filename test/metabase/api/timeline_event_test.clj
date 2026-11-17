@@ -82,6 +82,45 @@
                                                  {:timeline_id tl-b}))))
       (is (= tl-b (t2/select-one-fn :timeline_id :model/TimelineEvent :id ev-id))))))
 
+(deftest move-timeline-event-permissions-test
+  (testing "PUT /api/timeline-event/:id needs write access to the timeline the event moves to"
+    (mt/with-temp [:model/Collection    {from-coll :id} {}
+                   :model/Collection    {to-coll :id}   {}
+                   :model/Timeline      {from-tl :id}   {:collection_id from-coll}
+                   :model/Timeline      {to-tl :id}     {:collection_id to-coll}
+                   :model/TimelineEvent {ev-id :id}     {:timeline_id from-tl}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) from-coll)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) from-coll)
+      (perms/revoke-collection-permissions! (perms-group/all-users) to-coll)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) to-coll)
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 (str "timeline-event/" ev-id) {:timeline_id to-tl})))
+      (is (= from-tl (t2/select-one-fn :timeline_id :model/TimelineEvent :id ev-id)))
+      (is (= "Renamed" (:name (mt/user-http-request :rasta :put 200 (str "timeline-event/" ev-id) {:name "Renamed"}))))
+      (testing "a missing destination timeline is not found"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :put 404 (str "timeline-event/" ev-id) {:timeline_id Integer/MAX_VALUE})))))))
+
+(deftest timeline-event-timezone-must-name-time-zone-test
+  (mt/with-temp [:model/Timeline      {tl-id :id} {}
+                 :model/TimelineEvent {id :id}    {:timeline_id tl-id}]
+    (testing "POST /api/timeline-event"
+      (is (= {:errors {:timezone "Invalid Timeline event timezone."}}
+             (-> (mt/user-http-request :rasta :post 400 "timeline-event"
+                                       {:name "RC1" :timestamp "2027-10-20" :timezone "Nowhere/Land" :timeline_id tl-id})
+                 (select-keys [:errors])))))
+    (testing "PUT /api/timeline-event/:id"
+      (is (= {:errors {:timezone "nullable Invalid Timeline event timezone."}}
+             (-> (mt/user-http-request :rasta :put 400 (str "timeline-event/" id) {:timezone "Nowhere/Land"})
+                 (select-keys [:errors])))))))
+
+(deftest create-timeline-event-defaults-test
+  (testing "POST /api/timeline-event gives an event without an icon the icon of its timeline"
+    (mt/with-temp [:model/Timeline {tl-id :id} {:icon "cake"}]
+      (let [id (:id (mt/user-http-request :crowberto :post 200 "timeline-event"
+                                          {:name "RC1" :timestamp "2027-10-20" :timezone "UTC" :time_matters false :timeline_id tl-id}))]
+        (is (= "cake" (t2/select-one-fn :icon :model/TimelineEvent :id id)))))))
+
 (deftest timeline-event-permissions-test
   (testing "read-only users cannot create or edit timeline events"
     (mt/with-temp [:model/Collection    {coll-id :id} {}

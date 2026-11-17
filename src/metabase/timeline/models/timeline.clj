@@ -1,6 +1,6 @@
 (ns metabase.timeline.models.timeline
   (:require
-   [metabase.api.common :as api]
+   [clojure.string :as str]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
@@ -9,8 +9,12 @@
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.timeline.schema :as timeline.schema]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+;;; ---------------------------------------------------- Setup -----------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Timeline  [_model] :timeline)
 
@@ -19,39 +23,6 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-;;;; permissions
-
-(defn- check-can-read-keys
-  "Throws unless `timeline` has the columns its `:can_read` and `:can_write` hydrations read."
-  [timeline]
-  (api/check-500 (contains? timeline :collection_id) "No :collection_id is set for a Timeline."))
-
-(methodical/defmethod t2/batched-hydrate [:model/Timeline :can_read]
-  "Whether the current user reads each of `timelines`, as the content of its Collection."
-  [_model _k timelines]
-  (run! #(when % (check-can-read-keys %)) timelines)
-  (let [readable (collection/content-readable-collection-ids (map :collection_id (remove nil? timelines))
-                                                             {:root-namespace nil, :audit-rules? false})]
-    (for [timeline timelines]
-      (when timeline
-        (vary-meta timeline assoc :can_read (contains? readable (:collection_id timeline)))))))
-
-(methodical/defmethod t2/batched-hydrate [:model/Timeline :can_write]
-  "Whether the current user writes each of `timelines`, as the content of its Collection."
-  [_model _k timelines]
-  (run! #(when % (check-can-read-keys %)) timelines)
-  (let [writable (collection/content-writable-collection-ids (map :collection_id (remove nil? timelines))
-                                                             {:root-namespace nil, :audit-rules? false})]
-    (for [timeline timelines]
-      (when timeline
-        (assoc timeline :can_write (contains? writable (:collection_id timeline)))))))
-
-(defmethod mi/can-create? :model/Timeline
-  [_model {collection-id :collection_id}]
-  (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
-
-;;;; transforms
-
 (t2/define-after-select :model/Timeline
   [timeline]
   ;; We used to have a "balloons" icon but we removed it.
@@ -59,15 +30,66 @@
   (update timeline :icon (fn [icon]
                            (if (= icon "balloons") timeline-event/default-icon icon))))
 
-(t2/define-before-insert :model/Timeline [model]
-  (collection/check-allowed-content :model/Timeline (:collection_id model))
-  model)
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(t2/define-before-update :model/Timeline [model]
-  (collection/check-allowed-content :model/Timeline (:collection_id (t2/changes model)))
-  model)
+(defn- check-columns
+  "Throws unless the `:name` and `:icon` among `columns`, the columns a Timeline is written with, are valid."
+  [columns]
+  (when (and (contains? columns :name) (str/blank? (:name columns)))
+    (throw (ex-info (tru "A Timeline needs a name.") {:status-code 400})))
+  (when (and (contains? columns :icon) (not (mr/validate timeline-event/Icon (:icon columns))))
+    (throw (ex-info (tru "Invalid Timeline icon.") {:status-code 400}))))
 
-;;;; functions
+(defmethod mi/after-archived-change! :model/Timeline
+  [_model rows changes]
+  (doseq [{:keys [id]} rows]
+    (timeline.db/set-timeline-events-archived! id (boolean (:archived changes)))))
+
+(t2/define-before-insert :model/Timeline
+  [row]
+  (collection/check-collection-for :model/Timeline row)
+  (let [row (cond-> row (nil? (:icon row)) (assoc :icon timeline-event/default-icon))]
+    (check-columns (assoc row :name (:name row)))
+    row))
+
+(t2/define-before-update :model/Timeline
+  [row]
+  (let [changes (t2/changes row)]
+    (when (contains? changes :collection_id)
+      (collection/check-collection-for :model/Timeline row))
+    (check-columns changes)
+    (cond-> row
+      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly row #(collection/archived? (:collection_id row)))))))
+
+(mi/define-update-in-transaction :model/Timeline)
+
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
+
+(methodical/defmethod t2/batched-hydrate [:model/Timeline :can_read]
+  "Whether the current user reads each of `timelines`, as the content of its Collection."
+  [_model _k timelines]
+  (collection/hydrate-content-can-read :model/Timeline timelines {:audit-rules? false}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Timeline :can_write]
+  "Whether the current user writes each of `timelines`, as the content of its Collection."
+  [_model _k timelines]
+  (collection/hydrate-content-can-write :model/Timeline timelines {:audit-rules? false}))
+
+(defn- collection-writable?
+  "Whether the current user can write the Collection with `collection-id`, nil for the root Collection."
+  [collection-id]
+  (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
+
+(defmethod mi/can-create? :model/Timeline
+  [_model {collection-id :collection_id}]
+  (collection-writable? collection-id))
+
+(defmethod mi/can-update? :model/Timeline
+  [timeline changes]
+  (and (mi/can-write? timeline)
+       (collection/can-move? timeline changes)))
+
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (defn timelines-for-collection
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
@@ -77,15 +99,15 @@
     (nil? collection-id) (->> (map collection.root/hydrate-root-collection))
     events? (timeline-event/include-events options)))
 
-;;;; serialization
+;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serialization/spec :model/Timeline [_]
   {:schema    ::timeline.schema/external-timeline
-   :copy      [:archived :default :description :entity_id :icon :name]
+   :copy      [:archived :archived_directly :default :description :entity_id :icon :name]
    :transform {:collection_id (serialization/fk-transform :model/Collection)
                :creator_id    serialization/user-transform}
    :children  {:events :model/TimelineEvent}
-   :defaults  {:archived false :default false}})
+   :defaults  {:archived false :archived_directly false :default false}})
 
 (defmethod serialization/import-dependencies :model/Timeline [_ entities]
   (mapv (fn [{:keys [collection_id]}]
@@ -98,6 +120,8 @@
           (when collection_id
             #{[:model/Collection collection_id]}))
         timelines))
+
+;;; ------------------------------------------------- Remote sync ----------------------------------------------------
 
 (defmethod remote-sync/spec :model/Timeline
   [_model]

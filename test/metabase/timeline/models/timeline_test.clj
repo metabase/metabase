@@ -2,6 +2,8 @@
   "Tests for the Timeline model."
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.timeline.models.timeline :as timeline]
    [metabase.timeline.models.timeline-event :as timeline-event]
@@ -38,8 +40,9 @@
 
 (deftest balloon-icon-migration-test
   (testing "timelines with icon=balloons should use the default icon instead when selected"
-    (mt/with-temp [:model/Timeline a {:icon "balloons"}
+    (mt/with-temp [:model/Timeline a {}
                    :model/Timeline b {:icon "cake"}]
+      (t2/query-one {:update :timeline :set {:icon "balloons"} :where [:= :id (u/the-id a)]})
       (is (= timeline-event/default-icon
              (t2/select-one-fn :icon :model/Timeline :id (u/the-id a))))
       (is (= "cake"
@@ -49,3 +52,57 @@
   (mt/with-temp [:model/Timeline      tl  {:name "tl-a"}
                  :model/TimelineEvent tle {:timeline_id (:id tl) :name "e-a"}]
     (is (= tl (:timeline (t2/hydrate tle :timeline))))))
+
+(deftest icon-test
+  (mt/with-temp [:model/Timeline {timeline-id :id} {}]
+    (testing "a Timeline without an icon gets the default icon"
+      (let [id (t2/insert-returning-pk! :model/Timeline {:name "Icons" :creator_id (mt/user->id :rasta)})]
+        (is (= timeline-event/default-icon (t2/select-one-fn :icon :model/Timeline :id id)))
+        (t2/delete! :model/Timeline :id id)))
+    (testing "an icon outside the allowed set is refused on insert and update"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Timeline icon"
+                            (t2/insert! :model/Timeline {:name "Icons" :icon "nope" :creator_id (mt/user->id :rasta)})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Timeline icon"
+                            (t2/update! :model/Timeline :id timeline-id {:icon "nope"})))
+      (is (= timeline-event/default-icon (t2/select-one-fn :icon :model/Timeline :id timeline-id))))
+    (testing "an allowed icon is accepted on update"
+      (t2/update! :model/Timeline :id timeline-id {:icon "cake"})
+      (is (= "cake" (t2/select-one-fn :icon :model/Timeline :id timeline-id))))))
+
+(deftest name-test
+  (mt/with-temp [:model/Timeline {timeline-id :id} {}]
+    (testing "a blank name is refused on insert and update"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Timeline needs a name"
+                            (t2/insert! :model/Timeline {:name "  " :creator_id (mt/user->id :rasta)})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Timeline needs a name"
+                            (t2/update! :model/Timeline :id timeline-id {:name ""}))))))
+
+(deftest collection-namespace-test
+  (mt/with-temp [:model/Collection {snippets-id :id} {:namespace :snippets}
+                 :model/Collection {other-id :id}    {}
+                 :model/Timeline   {timeline-id :id} {:collection_id other-id}]
+    (testing "a Timeline cannot go in a Collection of another namespace on insert"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
+                            (t2/insert! :model/Timeline {:name "T" :creator_id (mt/user->id :rasta) :collection_id snippets-id}))))
+    (testing "a Timeline cannot move to a Collection of another namespace"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
+                            (t2/update! :model/Timeline :id timeline-id {:collection_id snippets-id})))
+      (is (= other-id (t2/select-one-fn :collection_id :model/Timeline :id timeline-id))))))
+
+(deftest update-check-test
+  (mt/with-temp [:model/Collection {from-id :id}   {}
+                 :model/Collection {to-id :id}     {}
+                 :model/Timeline   {timeline-id :id} {:collection_id from-id}]
+    (perms/revoke-collection-permissions! (perms/all-users-group) from-id)
+    (perms/revoke-collection-permissions! (perms/all-users-group) to-id)
+    (perms/grant-collection-readwrite-permissions! (perms/all-users-group) from-id)
+    (let [timeline (t2/select-one :model/Timeline :id timeline-id)]
+      (mt/with-test-user :rasta
+        (testing "a move to a Collection the user cannot write is refused"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions"
+                                (api/update-check timeline {:collection_id to-id}))))
+        (testing "a change that keeps the Collection is allowed"
+          (is (some? (api/update-check timeline {:name "Renamed"}))))
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) to-id)
+        (testing "a move to a Collection the user can write is allowed"
+          (is (some? (api/update-check timeline {:collection_id to-id}))))))))
