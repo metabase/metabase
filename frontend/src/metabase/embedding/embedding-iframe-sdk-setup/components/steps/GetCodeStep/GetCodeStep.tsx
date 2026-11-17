@@ -1,3 +1,6 @@
+import cx from "classnames";
+
+import CS from "metabase/css/core/index.css";
 import { useUpdateSettingsMutation } from "metabase/settings";
 import { Stack } from "metabase/ui";
 import type { SettingKey } from "metabase-types/api";
@@ -6,6 +9,8 @@ import { trackEmbedWizardCodeCopied } from "../../../analytics";
 import { useSdkIframeEmbedSetupContext } from "../../../context";
 import { useSdkIframeEmbedServerSnippet } from "../../../hooks/use-sdk-iframe-embed-server-snippet";
 import { useSdkIframeEmbedSnippet } from "../../../hooks/use-sdk-iframe-embed-snippet";
+import { DataAppEnableEmbeddingCard } from "../../Common/DataAppEnableEmbeddingCard";
+import { SetupSsoAlert } from "../../Common/SetupSsoAlert";
 import { PublishQuestionEmptyState } from "../../GetCode/PublishQuestionEmptyState";
 
 import { EmbedCodeCard } from "./EmbedCodeCard";
@@ -13,7 +18,14 @@ import { MetabaseAccountCard } from "./MetabaseAccountCard";
 import { ServerCodeCard } from "./ServerCodeCard";
 
 export const GetCodeStep = () => {
-  const { experience, resource, settings } = useSdkIframeEmbedSetupContext();
+  const {
+    allowPreviewAndNavigation,
+    experience,
+    isFirstStep,
+    isSsoEnabledAndConfigured,
+    resource,
+    settings,
+  } = useSdkIframeEmbedSetupContext();
   const [updateInstanceSettings] = useUpdateSettingsMutation();
 
   const isGuestEmbed = !!settings.isGuest;
@@ -49,12 +61,28 @@ export const GetCodeStep = () => {
 
   const showCode = !isGuestEmbed || resource?.enable_embedding;
 
+  // Embedding a data app from Data Studio starts on this step, so it must
+  // show the setup the experience step would otherwise show for data apps.
+  const showDataAppSetup = experience === "data-app" && isFirstStep;
+
+  const isDimmed = showDataAppSetup && !allowPreviewAndNavigation;
+  const dimmedProps = {
+    opacity: isDimmed ? 0.5 : 1,
+    className: cx(isDimmed && CS.pointerEventsNone),
+  };
+
   return (
     <Stack gap="lg" flex={1}>
+      {showDataAppSetup && !isSsoEnabledAndConfigured && (
+        <SetupSsoAlert variant="data-app" />
+      )}
+
+      {showDataAppSetup && <DataAppEnableEmbeddingCard />}
+
       {!isGuestEmbed && experience !== "data-app" && <MetabaseAccountCard />}
 
       {showCode ? (
-        <>
+        <Stack gap="lg" {...dimmedProps}>
           <EmbedCodeCard
             snippet={snippet}
             onCopy={handleFrontendSnippetCopied}
@@ -66,7 +94,7 @@ export const GetCodeStep = () => {
               onCopy={handleServerSnippetCopied}
             />
           )}
-        </>
+        </Stack>
       ) : (
         <PublishQuestionEmptyState />
       )}
