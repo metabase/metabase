@@ -377,7 +377,9 @@
                               :internal))]
            (testing "the result names the filter the replaced card is no longer connected to"
              (is (str/includes? (:output result)
-                                (str "The \"Category\" filter is no longer connected to dashcard " dashcard-id "."))))))))))
+                                (str "The \"Category\" filter is no longer connected to dashcard "
+                                     dashcard-id
+                                     "."))))))))))
 
 (deftest ^:parallel dropped-connections-text-test
   (testing "a series that lost its connection is named apart, without the advice to wire it again"

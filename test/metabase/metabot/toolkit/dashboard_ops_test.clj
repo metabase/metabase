@@ -1445,31 +1445,36 @@
   [current ops]
   (dynamic-redefs/with-dynamic-fn-redefs [mapping-targets/target-for-field (fn [_card _param field-id]
                                                                              [:dimension [:field field-id nil]])]
-    (:dropped-connections (dashboard-ops/effects (compile-with-stub-cards current ops {9 a-card, 99 a-card})))))
+    (:dropped-connections (dashboard-ops/effects (compile-with-stub-cards current ops {9 a-card})))))
+
+(defn- p1-mapping
+  "A mapping of `p1` onto `card-id`."
+  [card-id]
+  {:parameter_id "p1", :card_id card-id, :target [:dimension [:field card-id nil]]})
 
 (def ^:private series-connected-dashcard
   "[[a-dashcard]] with its own card and its series card both connected to `p1`."
-  (assoc a-dashcard :parameter_mappings [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 1 nil]]}
-                                         {:parameter_id "p1" :card_id 11 :target [:dimension [:field 2 nil]]}]))
+  (assoc a-dashcard :parameter_mappings [(p1-mapping 9) (p1-mapping 11)]))
 
 (deftest dropped-connections-test
   (testing "a replaced card that isn't connected again is reported under the card it shows now"
-    (is (= [{:parameter_id "p1" :dashcard_id 7 :card_id 99 :series false}]
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 99, :series false}]
            (dropped-connections (p1-dash a-dashcard) [{:op "replace_card" :dashcard_id 7 :card_id 99}]))))
-  (testing "a series card promoted by replace_card is reported once, in the dashcard's own slot"
-    (is (= [{:parameter_id "p1" :dashcard_id 7 :card_id 11 :series false}]
-           (dropped-connections (p1-dash series-connected-dashcard) [{:op "replace_card" :dashcard_id 7 :card_id 11}]))))
-  (testing "a promoted series card that was the only one connected is reported"
-    (is (= [{:parameter_id "p1" :dashcard_id 7 :card_id 11 :series false}]
-           (dropped-connections (p1-dash (update series-connected-dashcard :parameter_mappings (partial filterv (comp #{11} :card_id))))
-                                [{:op "replace_card" :dashcard_id 7 :card_id 11}]))))
   (testing "a replaced card connected again in the same call reports nothing"
     (is (= []
            (dropped-connections (p1-dash a-dashcard)
                                 [{:op "replace_card" :dashcard_id 7 :card_id 99}
                                  {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}]))))
+  (testing "a series card promoted by replace_card is reported once, in the dashcard's own slot"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 11, :series false}]
+           (dropped-connections (p1-dash series-connected-dashcard)
+                                [{:op "replace_card" :dashcard_id 7 :card_id 11}]))))
+  (testing "a promoted series card that was the only one connected is reported"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 11, :series false}]
+           (dropped-connections (p1-dash (assoc a-dashcard :parameter_mappings [(p1-mapping 11)]))
+                                [{:op "replace_card" :dashcard_id 7 :card_id 11}]))))
   (testing "wiring a card replaces its series card's connection to the filter, which is reported"
-    (is (= [{:parameter_id "p1" :dashcard_id 7 :card_id 11 :series true}]
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 11, :series true}]
            (dropped-connections (p1-dash series-connected-dashcard)
                                 [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}]))))
   (testing "a call that removes the card, series card or filter, or unwires it, reports nothing"
@@ -1480,4 +1485,13 @@
                  [{:op "set_series" :dashcard_id 7 :card_ids []}]
                  [{:op "resize" :dashcard_id 7 :size {:size_x 6 :size_y 6}}]]]
       (testing (pr-str ops)
-        (is (= [] (dropped-connections (p1-dash series-connected-dashcard) ops)))))))
+        (is (= [] (dropped-connections (p1-dash series-connected-dashcard) ops))))))
+  (testing "removing a tab reports nothing for the cards on it"
+    (is (= []
+           (dropped-connections (assoc (p1-dash (assoc series-connected-dashcard :dashboard_tab_id 5))
+                                       :tabs [{:id 5 :name "One"} {:id 6 :name "Two"}])
+                                [{:op "remove_tab" :tab_id 5}]))))
+  (testing "a stored mapping onto a card the dashcard doesn't show is not reported"
+    (is (= []
+           (dropped-connections (p1-dash (assoc a-dashcard :parameter_mappings [(p1-mapping 77)]))
+                                [{:op "replace_card" :dashcard_id 7 :card_id 99}])))))

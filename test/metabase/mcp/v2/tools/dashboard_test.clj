@@ -244,21 +244,27 @@
   (mt/with-temp [:model/Card          old  {:name "Old revenue"}
                  :model/Card          new  {:name "New revenue"}
                  :model/Dashboard     dash {:name       "Sales"
-                                            :parameters [{:id "cat", :name "Category", :slug "category"
+                                            :parameters [{:id   "cat"
+                                                          :name "Category"
+                                                          :slug "category"
                                                           :type "category"}]}
                  :model/DashboardCard dc   {:dashboard_id       (:id dash)
                                             :card_id            (:id old)
                                             :parameter_mappings [{:parameter_id "cat"
                                                                   :card_id      (:id old)
                                                                   :target       [:dimension
-                                                                                 [:field (mt/id :venues :category_id) nil]]}]}]
-    (let [args {:method "update" :id (:id dash)
-                :ops    [{:op "replace_card" :dashcard_id (:id dc) :card_id (:id new)}]}]
+                                                                                 [:field (mt/id :venues :category_id)
+                                                                                  nil]]}]}]
+    (let [args {:method "update"
+                :id     (:id dash)
+                :ops    [{:op "replace_card", :dashcard_id (:id dc), :card_id (:id new)}]}]
       (doseq [validate-only? [true false]]
         (testing (if validate-only? "dry run" "save")
-          (is (= [{:parameter_id "cat" :dashcard_id (:id dc) :card_id (:id new) :series false}]
-                 (:dropped_connections (tool-result (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
-                                                                (wire (assoc args :validate_only validate-only?))))))))))))
+          (is (= [{:parameter_id "cat", :dashcard_id (:id dc), :card_id (:id new), :series false}]
+                 (-> (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
+                                 (wire (assoc args :validate_only validate-only?)))
+                     tool-result
+                     :dropped_connections))))))))
 
 (deftest validate-only-reports-the-replacement-card-test
   (testing "a dry run of replace_card must name the NEW card: the projection prefers the hydrated `:card` over
