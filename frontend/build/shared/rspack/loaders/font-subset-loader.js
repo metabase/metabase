@@ -12,18 +12,16 @@ const {
   subsetFace,
 } = require("../fonts");
 
-// A face with nothing outside latin still subsets to a small valid font. Below
-// this it carries no real glyphs, and declaring it would add a request that
-// renders nothing.
-const MIN_USEFUL_CHUNK_BYTES = 3000;
-
 // Chunks are cached under the hash of their source, so everything else that
-// decides their contents belongs in that hash too.
-const RECIPE = JSON.stringify([
-  LATIN_UNICODE_RANGE,
-  REST_UNICODE_RANGE,
-  SUBSET_OPTIONS,
-]);
+// decides their contents belongs in that hash too. The subsetter goes in as the
+// file on disk, which is what tells a patched copy from an unpatched one.
+const RECIPE = crypto
+  .createHash("sha1")
+  .update(
+    JSON.stringify([LATIN_UNICODE_RANGE, REST_UNICODE_RANGE, SUBSET_OPTIONS]),
+  )
+  .update(fs.readFileSync(require.resolve("subset-font")))
+  .digest("hex");
 
 /**
  * Builds the bundled `@font-face` rules, then splits each face into a latin
@@ -56,6 +54,7 @@ async function rewrite(loader) {
   // Nothing here comes from the module's own resource, so everything it is
   // built from has to invalidate it explicitly.
   loader.addDependency(require.resolve("../fonts"));
+  loader.addContextDependency(fontsDir);
   const css = await buildFontFaces(fontsDir, (file) =>
     loader.addDependency(file),
   );
@@ -83,12 +82,7 @@ async function rewrite(loader) {
       const chunkRel = path.join(dir, `${base}.${key}.${name}.woff2`);
       const chunkPath = path.join(outputDir, chunkRel);
       if (!fs.existsSync(chunkPath)) {
-        const subset = await subsetFace(buf, characters);
-        if (name === "rest" && subset.length < MIN_USEFUL_CHUNK_BYTES) {
-          made.rest = undefined;
-          continue;
-        }
-        writeAtomic(chunkPath, subset);
+        writeAtomic(chunkPath, await subsetFace(buf, characters));
       }
       made[name] = chunkRel;
     }
@@ -97,8 +91,8 @@ async function rewrite(loader) {
 
   const splitFace = async (block) => {
     const urls = [...block.matchAll(/url\("~fonts\/([^"]+\.woff2)"\)/g)];
-    // A face that is not a single woff2, such as the legacy Lato fallbacks,
-    // passes through untouched.
+    // Only the woff2 of a face is split. Its other formats stay whole in both
+    // rules, for a browser that cannot read woff2.
     if (urls.length !== 1) {
       return block;
     }
@@ -108,10 +102,6 @@ async function rewrite(loader) {
     }
 
     const { latin, rest } = await chunksFor(rel);
-    if (!rest) {
-      // Nothing outside latin, so a second request would render nothing.
-      return block.replace(urls[0][0], `url("~generated-fonts/${latin}")`);
-    }
 
     const withChunk = (face, chunkRel, range) =>
       face
