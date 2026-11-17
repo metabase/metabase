@@ -101,7 +101,7 @@
   [driver cache field]
   (reduce-kv (fn [m k v]
                (assoc m k (normalize-value driver cache k v)))
-             {}
+             field
              field))
 
 (defn- normalize-field
