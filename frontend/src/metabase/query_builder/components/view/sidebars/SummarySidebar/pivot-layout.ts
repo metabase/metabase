@@ -1,8 +1,12 @@
-import _ from "underscore";
-
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import type { ColumnNameColumnSplitSetting } from "metabase-types/api";
 
-import type { SummaryDragItem, SummaryWellId } from "./types";
+import type {
+  SummaryDragItem,
+  SummaryPivotChange,
+  SummaryWellId,
+} from "./types";
 import {
   canDropOnWell,
   getDimensionItems,
@@ -14,11 +18,46 @@ export function getRowAndColumnItems(
   stageIndex: number,
   rowKeys: string[],
 ) {
-  const [rowItems, columnItems] = _.partition(
-    getDimensionItems(query, stageIndex),
-    (item) => rowKeys.includes(item.key),
-  );
+  const items = getDimensionItems(query, stageIndex);
+  const rowItems = rowKeys
+    .map((key) => items.find((item) => item.key === key))
+    .filter(isNotNull);
+  const columnItems = items.filter((item) => !rowKeys.includes(item.key));
   return { rowItems, columnItems };
+}
+
+/**
+ * The column split of the pivot table that the wells define, or `null` when they define none.
+ * A pivot table needs a value and a grouping in Rows.
+ */
+export function getPivotSplit(
+  query: Lib.Query,
+  stageIndex: number,
+  rowKeys: string[],
+): ColumnNameColumnSplitSetting | null {
+  const { breakoutNames, aggregationNames } = getResultColumnNames(
+    query,
+    stageIndex,
+  );
+  const rows = rowKeys.filter((key) => breakoutNames.includes(key));
+  if (rows.length === 0 || aggregationNames.length === 0) {
+    return null;
+  }
+  return {
+    rows,
+    columns: breakoutNames.filter((name) => !rows.includes(name)),
+    values: aggregationNames,
+  };
+}
+
+export function getPivotChange(
+  pivotSplit: ColumnNameColumnSplitSetting | null,
+  nextPivotSplit: ColumnNameColumnSplitSetting | null,
+): SummaryPivotChange | undefined {
+  if (nextPivotSplit) {
+    return { type: "show", columnSplit: nextPivotSplit };
+  }
+  return pivotSplit ? { type: "hide" } : undefined;
 }
 
 type Grouping = {
@@ -44,10 +83,10 @@ type NextRowKeysOpts = {
 };
 
 /**
- * The keys of the Rows groupings after `query` becomes `nextQuery`. Keys are result column names,
- * which shift when another grouping of the same column goes away, so groupings are matched by
- * the UUIDs of their clauses. A grouping that is changed in place gets a new UUID, and stays in
- * the well it was in.
+ * The keys of the Rows groupings after `query` becomes `nextQuery`, in the order they had. Keys
+ * are result column names, which shift when another grouping of the same column goes away, so
+ * groupings are matched by the UUIDs of their clauses. A grouping that is changed in place gets
+ * a new UUID, and stays in the well it was in.
  */
 export function getNextRowKeys({
   query,
@@ -61,24 +100,35 @@ export function getNextRowKeys({
   }
   const groupings = getGroupings(query, stageIndex);
   const nextGroupings = getGroupings(nextQuery, stageIndex);
-  const isRowByUuid = new Map(
-    groupings.map(({ key, uuid }) => [uuid, rowKeys.includes(key)]),
-  );
+  const uuids = new Set(groupings.map(({ uuid }) => uuid));
   const isChangedInPlace =
     addedWellId === undefined && groupings.length === nextGroupings.length;
 
-  return nextGroupings
-    .filter(({ uuid }, index) => {
-      const wasRow = isRowByUuid.get(uuid);
-      if (wasRow !== undefined) {
-        return wasRow;
-      }
-      if (isChangedInPlace) {
-        return rowKeys.includes(groupings[index].key);
-      }
-      return addedWellId === "rows";
-    })
-    .map(({ key }) => key);
+  const getNextKey = (key: string) => {
+    const index = groupings.findIndex((grouping) => grouping.key === key);
+    if (index === -1) {
+      return undefined;
+    }
+    const { uuid } = groupings[index];
+    const sameGrouping = nextGroupings.find(
+      (grouping) => grouping.uuid === uuid,
+    );
+    if (sameGrouping) {
+      return sameGrouping.key;
+    }
+    const replacement = nextGroupings[index];
+    return isChangedInPlace && !uuids.has(replacement.uuid)
+      ? replacement.key
+      : undefined;
+  };
+
+  const addedKeys =
+    addedWellId === "rows"
+      ? nextGroupings
+          .filter(({ uuid }) => !uuids.has(uuid))
+          .map(({ key }) => key)
+      : [];
+  return [...rowKeys.map(getNextKey).filter(isNotNull), ...addedKeys];
 }
 
 /**

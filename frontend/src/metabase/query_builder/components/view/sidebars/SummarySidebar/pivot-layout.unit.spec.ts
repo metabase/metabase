@@ -3,7 +3,12 @@ import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { TestBreakoutSpec } from "metabase-types/api";
 import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
 
-import { getNextRowKeys, getRowKeysAfterDrop } from "./pivot-layout";
+import {
+  getNextRowKeys,
+  getPivotSplit,
+  getRowAndColumnItems,
+  getRowKeysAfterDrop,
+} from "./pivot-layout";
 import type { SummaryDimensionWellId, SummaryDragItem } from "./types";
 import {
   addField,
@@ -157,6 +162,61 @@ describe("getNextRowKeys", () => {
         rowKeys: ["CREATED_AT"],
       }),
     ).toEqual([]);
+  });
+});
+
+describe("row order", () => {
+  it("lists the Rows items in the order of their keys", () => {
+    const query = createQuery([CATEGORY, CREATED_AT_MONTH]);
+
+    const { rowItems, columnItems } = getRowAndColumnItems(query, STAGE_INDEX, [
+      "CREATED_AT",
+      "CATEGORY",
+    ]);
+
+    expect(rowItems.map(({ key }) => key)).toEqual(["CREATED_AT", "CATEGORY"]);
+    expect(columnItems).toEqual([]);
+  });
+
+  it("keeps the order of the Rows groupings and puts an added one last", () => {
+    const query = createQuery([CATEGORY, CREATED_AT_MONTH]);
+    const nextQuery = addColumn(query, "rows", "Vendor");
+
+    expect(
+      getNextRowKeys({
+        query,
+        nextQuery,
+        stageIndex: STAGE_INDEX,
+        rowKeys: ["CREATED_AT", "CATEGORY"],
+        addedWellId: "rows",
+      }),
+    ).toEqual(["CREATED_AT", "CATEGORY", "VENDOR"]);
+  });
+});
+
+describe("getPivotSplit", () => {
+  const query = createQuery([CATEGORY, CREATED_AT_MONTH]);
+
+  it("splits the groupings between rows and columns, with every value", () => {
+    expect(getPivotSplit(query, STAGE_INDEX, ["CREATED_AT"])).toEqual({
+      rows: ["CREATED_AT"],
+      columns: ["CATEGORY"],
+      values: ["count"],
+    });
+  });
+
+  it("needs a grouping in Rows", () => {
+    expect(getPivotSplit(query, STAGE_INDEX, [])).toBeNull();
+    expect(getPivotSplit(query, STAGE_INDEX, ["UNKNOWN"])).toBeNull();
+  });
+
+  it("needs a value", () => {
+    const [count] = Lib.aggregations(query, STAGE_INDEX);
+    const withoutValues = Lib.removeClause(query, STAGE_INDEX, count);
+
+    expect(
+      getPivotSplit(withoutValues, STAGE_INDEX, ["CREATED_AT"]),
+    ).toBeNull();
   });
 });
 

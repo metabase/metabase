@@ -25,7 +25,11 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import { SummarySidebar } from "./SummarySidebar";
-import type { SummaryDragItem, SummaryWellId } from "./types";
+import type {
+  SummaryDragItem,
+  SummaryPivotChange,
+  SummaryWellId,
+} from "./types";
 import { getDimensionItems, getFieldSections, getValueItems } from "./utils";
 
 const STAGE_INDEX = -1;
@@ -150,7 +154,7 @@ function setup({
     DEFAULT_TEST_QUERY,
   ),
 }: SetupOpts = {}) {
-  const onQueryChange = jest.fn<void, [Lib.Query]>();
+  const onQueryChange = jest.fn<void, [Lib.Query, SummaryPivotChange?]>();
 
   function Wrapper() {
     const [query, setQuery] = useState(initialQuery);
@@ -158,9 +162,9 @@ function setup({
       <SummarySidebar
         query={query}
         stageIndex={STAGE_INDEX}
-        onQueryChange={(nextQuery) => {
+        onQueryChange={(nextQuery, pivotChange) => {
           setQuery(nextQuery);
-          onQueryChange(nextQuery);
+          onQueryChange(nextQuery, pivotChange);
         }}
       />
     );
@@ -179,7 +183,13 @@ function setup({
     };
   }
 
-  return { onQueryChange, getLastQuery };
+  function getLastPivotChange() {
+    const [lastCall] = onQueryChange.mock.calls.slice(-1);
+    const [, pivotChange] = lastCall;
+    return pivotChange;
+  }
+
+  return { onQueryChange, getLastQuery, getLastPivotChange };
 }
 
 function createQueryWithMetric() {
@@ -704,7 +714,7 @@ describe("SummarySidebar", () => {
       });
 
       it("moves a grouping chip between Columns and Rows without a change of the query", async () => {
-        const { onQueryChange } = setup({ query });
+        const { onQueryChange, getLastPivotChange } = setup({ query });
         await userEvent.click(
           screen.getByRole("button", { name: "Pivot into rows and columns" }),
         );
@@ -712,11 +722,18 @@ describe("SummarySidebar", () => {
         drop({ kind: "dimension", item: createdAt, wellId: "columns" }, "rows");
         expect(getChipLabels("columns")).toEqual([]);
         expect(getChipLabels("rows")).toEqual(["Created At: Month"]);
+        expect(getLastPivotChange()).toEqual({
+          type: "show",
+          columnSplit: { rows: ["CREATED_AT"], columns: [], values: ["count"] },
+        });
 
         drop({ kind: "dimension", item: createdAt, wellId: "rows" }, "columns");
         expect(getChipLabels("columns")).toEqual(["Created At: Month"]);
         expect(getChipLabels("rows")).toEqual([]);
-        expect(onQueryChange).not.toHaveBeenCalled();
+        expect(getLastPivotChange()).toEqual({ type: "hide" });
+        expect(
+          onQueryChange.mock.calls.every(([nextQuery]) => nextQuery === query),
+        ).toBe(true);
       });
 
       it("shows which wells take the dragged item, Rows included", async () => {
@@ -795,14 +812,41 @@ describe("SummarySidebar", () => {
         screen.getByRole("button", { name: "Pivot into rows and columns" }),
       );
       await pickInRows("categ", "Category");
-      onQueryChange.mockClear();
+      const [[queryWithRows]] = onQueryChange.mock.calls.slice(-1);
 
       await userEvent.click(
         screen.getByRole("button", { name: "Back to breakouts" }),
       );
 
       expect(getChipLabels("columns")).toEqual(["Product → Category"]);
-      expect(onQueryChange).not.toHaveBeenCalled();
+      expect(onQueryChange).toHaveBeenLastCalledWith(queryWithRows, {
+        type: "hide",
+      });
+    });
+
+    it("shows a pivot table while Values and Rows have items", async () => {
+      const { getLastPivotChange } = setup();
+      await userEvent.click(getFieldButton("Product", "Vendor"));
+      expect(getLastPivotChange()).toBeUndefined();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Pivot into rows and columns" }),
+      );
+      await pickInRows("categ", "Category");
+      expect(getLastPivotChange()).toEqual({
+        type: "show",
+        columnSplit: {
+          rows: ["CATEGORY"],
+          columns: ["VENDOR"],
+          values: ["count"],
+        },
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Remove Count" }),
+      );
+      expect(getLastPivotChange()).toEqual({ type: "hide" });
+      expect(getChipLabels("rows")).toEqual(["Product → Category"]);
     });
   });
 
