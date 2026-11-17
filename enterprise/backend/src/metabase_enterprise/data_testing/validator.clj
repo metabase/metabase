@@ -14,10 +14,9 @@
     and every expectation that carries the author's own SQL.
 
   The parser reports the table an INSERT, UPDATE or DELETE writes among the tables a query reads, so both guards cover
-  the tables a subject modifies. The exception is a bare target named like a CTE of the same statement: the parser
-  takes it for the CTE, and the database writes the table. The parser sees no table inside a procedure or a function,
-  so [[ensure-single-write]] admits only one INSERT, UPDATE or DELETE, and refuses the functions it knows to run SQL
-  text or act outside the statement. A write made inside any other function goes unseen.
+  the tables a subject modifies. The parser sees no table inside a procedure or a function, so [[ensure-single-write]]
+  admits only one INSERT, UPDATE or DELETE, and refuses the functions it knows to run SQL text or act outside the
+  statement. A write made inside any other function goes unseen.
 
   [[table-label]] is here too, and is not validation: it is the one way this module renders a table in a message."
   (:require
@@ -201,27 +200,34 @@
 
 (mu/defn ensure-single-write :- :string
   "`sql` as SQLGlot rebuilt it, the string the run executes, when it is one INSERT, UPDATE or DELETE statement in
-  `driver`'s dialect that hides no SQL from the parser and calls no function the check refuses: one that runs SQL
-  text, takes a lock, waits, changes the session or reaches outside the database. Throws
-  `::data-testing.errors/not-a-single-write` when it is not, `::data-testing.errors/unparseable-source` when it does
-  not parse, and `::data-testing.errors/uncheckable-write` when the dialect is unknown or a literal list is too long
-  to parse.
+  `driver`'s dialect that returns no rows, hides no SQL from the parser and calls no function the check refuses: one
+  that runs SQL text, takes a lock, waits, changes the session, reaches outside the database, or writes outside the
+  tables the statement names, such as `nextval` and `setval`. Throws `::data-testing.errors/write-returns-rows` when
+  it has a RETURNING clause, `::data-testing.errors/not-a-single-write` when it is otherwise not such a statement,
+  `::data-testing.errors/unparseable-source` when it does not parse, and `::data-testing.errors/uncheckable-write`
+  when the dialect is unknown or a literal list is too long to parse.
 
-  Any other function passes, one known to write included: `nextval` and `setval` change a sequence."
+  Any other function passes, one that writes included when the check does not know it."
   [driver :- :keyword
    sql    :- :string]
-  (let [{:keys [verdict error reason detail] checked :sql} (sql-tools/validate-executable-stmt driver sql "write")]
+  (let [{:keys [verdict error reason detail] checked :sql}
+        (sql-tools/validate-executable-stmt driver sql "confined-write")]
     (case verdict
       :allowed
       checked
 
       :disallowed
-      (throw (data-testing.errors/ex
-              ::data-testing.errors/not-a-single-write
-              (tru "The SQL under test must be one INSERT, UPDATE or DELETE statement that hides no SQL from the parser and calls no function that runs SQL text, takes a lock, waits, changes the session or reaches outside the database.")
-              (cond-> {}
-                reason (assoc :reason reason)
-                detail (assoc :detail detail))))
+      (if (= reason "returning")
+        (throw (data-testing.errors/ex
+                ::data-testing.errors/write-returns-rows
+                (tru "The SQL under test has a RETURNING clause, so it returns rows. A write under test must return none: remove the RETURNING clause.")
+                {}))
+        (throw (data-testing.errors/ex
+                ::data-testing.errors/not-a-single-write
+                (tru "The SQL under test must be one INSERT, UPDATE or DELETE statement that hides no SQL from the parser and calls no function that runs SQL text, takes a lock, waits, changes the session, reaches outside the database, or writes outside the tables the statement names, as `nextval` does.")
+                (cond-> {}
+                  reason (assoc :reason reason)
+                  detail (assoc :detail detail)))))
 
       :unknown
       (if error

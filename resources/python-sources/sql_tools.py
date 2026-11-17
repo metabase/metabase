@@ -105,8 +105,22 @@ def table_parts(table):
         return None
     return (table.catalog or None, table.db or None, temp_table_prefix(table) + name)
 
-def shadowing_cte_names(node):
-    """The CTE names that shadow a table at `node`: those declared by a query `node` sits inside."""
+def write_target(node):
+    """Whether the table `node` is the table an INSERT, UPDATE, DELETE or MERGE writes."""
+    parent = node.parent
+    # An INSERT with a column list keeps its target inside a Schema node: `INSERT INTO t (a, b)`.
+    if isinstance(parent, exp.Schema) and parent.this is node:
+        node, parent = parent, parent.parent
+    return isinstance(parent, (exp.Insert, exp.Update, exp.Delete, exp.Merge)) and parent.this is node
+
+
+def shadowing_cte_names(node, dialect=None):
+    """The CTE names that shadow a table at `node`: those declared by a query `node` sits inside.
+
+    None shadows the table an INSERT, UPDATE, DELETE or MERGE writes, except in T-SQL: Postgres, MySQL and the rest
+    write the real table of that name, and T-SQL writes through the CTE to the table it reads."""
+    if dialect != "tsql" and write_target(node):
+        return set()
     names = set()
     own = set()
     current = node
@@ -141,17 +155,18 @@ def _nonempty_statements(stmts):
     return [s for s in stmts if s is not None and not isinstance(s, exp.Semicolon)]
 
 
-def table_references(ast):
+def table_references(ast, dialect=None):
     """Every table the statement `ast` names, as sqlglot Table nodes.
 
     A CTE reference, a derived table, a VALUES clause and a table function are not tables and are left out; the
-    table a statement writes -- an INSERT, UPDATE, DELETE or MERGE target -- is one, and is included. This is the
-    walk `replace_names` rewrites by, so what a caller is told a query reads is what a rewrite would replace.
+    table a statement writes -- an INSERT, UPDATE, DELETE or MERGE target -- is one, and is included, even when a CTE
+    of the statement has its name (see `shadowing_cte_names`). This is the walk `replace_names` rewrites by, so what
+    a caller is told a query reads is what a rewrite would replace.
     """
     for table in ast.find_all(exp.Table):
         if table_parts(table) is None:
             continue
-        if not table.db and not table.catalog and table.name.lower() in shadowing_cte_names(table):
+        if not table.db and not table.catalog and table.name.lower() in shadowing_cte_names(table, dialect):
             continue
         yield table
 
@@ -180,7 +195,7 @@ def referenced_tables(sql: str, dialect: str = "postgres") -> str:
     """
     tables = {table_parts(table)
               for ast in statements(sql, dialect)
-              for table in table_references(ast)}
+              for table in table_references(ast, dialect)}
     # Sort for deterministic output (nulls sort first via empty string)
     return json.dumps(sorted(tables, key=lambda x: (x[0] or "", x[1] or "", x[2])))
 
@@ -779,7 +794,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                 # A CTE name shadows a real table of the same name, so an unqualified reference to one declared in an
                 # enclosing query names the CTE and must be left alone — renaming it would point the query at the
                 # replacement table and silently skip the CTE.
-                if not db and not schema and table.lower() in shadowing_cte_names(node):
+                if not db and not schema and table.lower() in shadowing_cte_names(node, dialect):
                     return node
                 replacement = find_table_replacement(db, schema, table, quoted_parts(node, "this"))
                 if replacement:
@@ -2117,6 +2132,20 @@ def _writes_or_locks(node: exp.Expression) -> bool:
 # names the built-in ones known to matter, and no list of names can be complete. Grants on the database credential
 # are what keep such a function from writing. The read-only flag on the QP's connection does not on every driver:
 # the Postgres driver applies it only to a transaction, and the QP runs a read under autocommit.
+def _write_function(stmt: exp.Expression):
+    """The name of the first function in `stmt` that is one of `_WRITE_FUNCTIONS`, or advances a sequence in another
+    spelling (`NEXT VALUE FOR s`, `s.nextval`), or None."""
+    for node in stmt.walk():
+        if isinstance(node, exp.NextValueFor):
+            return "next value for"
+        if isinstance(node, exp.Column) and node.table and node.name.lower() == "nextval":
+            return "nextval"
+        name = _function_name(node)
+        if name in _WRITE_FUNCTIONS:
+            return name
+    return None
+
+
 def _read_only(stmt: exp.Expression) -> bool:
     return not any(_writes_or_locks(node) for node in stmt.walk())
 
@@ -2225,8 +2254,10 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
 
     Every mode applies the checks the statement types share.
     `stmt_type` "read-only" is stricter than "read": the SELECT must also hold nothing that writes or locks anywhere in
-    its tree, and statements holding only a comment after the last semicolon are not counted. When the statement is
-    refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
+    its tree, and statements holding only a comment after the last semicolon are not counted. "confined-write" is
+    stricter than "write": the statement must also call none of `_WRITE_FUNCTIONS`, which write outside the table the
+    statement names (a sequence, a large object), and must return no rows (no RETURNING or OUTPUT clause). When the
+    statement is refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
@@ -2240,6 +2271,12 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
             problem = _not_read_only_reason(stmts, sql, dialect)
         elif len(stmts) == 1:
             problem = _statement_reason(stmts[0], sql, dialect)
+            if problem is None and stmt_type == "confined-write":
+                function = _write_function(stmts[0])
+                if function is not None:
+                    problem = ("write-function", function)
+                elif stmts[0].args.get("returning") is not None:
+                    problem = ("returning", None)
         else:
             problem = None
         if problem is not None:
