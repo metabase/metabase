@@ -1,2 +1,3 @@
-export { SegmentList } from "./SegmentList";
-export { SegmentTree, type SegmentListUrls } from "./SegmentTree";
+export { SegmentList, type SegmentListUrls } from "./SegmentList";
+export { SegmentTree } from "./SegmentTree";
+export { SimpleSegmentList } from "./SimpleSegmentList";

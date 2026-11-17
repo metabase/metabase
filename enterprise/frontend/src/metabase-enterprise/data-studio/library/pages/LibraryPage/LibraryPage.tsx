@@ -35,6 +35,7 @@ import type {
 } from "metabase-types/api";
 
 import { LibraryEmptyState } from "../../components/LibraryEmptyState";
+import { PublishedDataTabs } from "../../components/PublishedDataTabs";
 import { LIBRARY_COLLECTION_PICKER_OPTIONS } from "../../constants";
 import { useCollectionItemsTree } from "../../hooks/use-collection-items-tree";
 import { useHasDataSubfolders } from "../../hooks/use-has-data-subfolders";
@@ -183,6 +184,17 @@ function LibrarySectionPage({ section }: { section: LibrarySectionPageType }) {
   );
 
   const getEmptyAction = (): ReactNode => {
+    if (isDataSection) {
+      return (
+        <Button
+          component={ForwardRefLink}
+          to={Urls.dataStudioSuggestedTables()}
+          variant="filled"
+        >
+          {t`See suggested tables`}
+        </Button>
+      );
+    }
     return newMetricUrl != null ? (
       <Button
         component={ForwardRefLink}
@@ -198,6 +210,7 @@ function LibrarySectionPage({ section }: { section: LibrarySectionPageType }) {
   return (
     <LibraryTreePage
       title={isDataSection ? t`Data` : t`Metrics`}
+      tabs={isDataSection ? <PublishedDataTabs /> : undefined}
       tree={isSearchActive ? searchItems : (sectionItems ?? NO_ITEMS)}
       isLoading={isLoadingCollections || isLoadingItems || isSearchLoading}
       isSearchActive={isSearchActive}

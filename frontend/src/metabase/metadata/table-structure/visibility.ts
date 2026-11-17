@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { DataLayer } from "metabase/metadata/data-layers";
 import type { Table } from "metabase-types/api";
 
 import { type TableRole, getTableRoleLabel } from "./roles";
@@ -19,12 +20,17 @@ const ROLES_HIDDEN_BY_DEFAULT: TableRole[] = [
 export function getTableHiddenReason({
   table,
   role,
+  dataLayer,
 }: {
   table: Pick<Table, "visibility_type">;
   role: TableRole | null;
+  dataLayer: DataLayer | undefined;
 }): string | null {
   if (table.visibility_type != null) {
     return t`Hidden in the table's settings`;
+  }
+  if (dataLayer?.visibility === "hidden") {
+    return t`In the ${dataLayer.name} data layer, which is hidden`;
   }
   if (role != null && ROLES_HIDDEN_BY_DEFAULT.includes(role)) {
     return t`${getTableRoleLabel(role)} tables are hidden by default`;

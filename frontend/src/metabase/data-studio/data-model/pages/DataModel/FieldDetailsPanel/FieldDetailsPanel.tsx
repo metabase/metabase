@@ -24,6 +24,8 @@ interface FieldDetailsPanelProps {
   defaultWidth: number;
   onWidthChange: (width: number) => void;
   getFieldHref: (fieldId: FieldId) => string;
+  /** Where the field's hierarchies are listed; without it they don't link */
+  hierarchiesHref?: string;
   onClose: () => void;
   onPreviewClick: () => void;
 }
@@ -38,6 +40,7 @@ export function FieldDetailsPanel({
   defaultWidth,
   onWidthChange,
   getFieldHref,
+  hierarchiesHref,
   onClose,
   onPreviewClick,
 }: FieldDetailsPanelProps) {
@@ -77,6 +80,7 @@ export function FieldDetailsPanel({
           field={field}
           table={table}
           getFieldHref={getFieldHref}
+          hierarchiesHref={hierarchiesHref}
         />
       ) : (
         <LoadingAndErrorWrapper error={t`Not found.`} />

@@ -34,6 +34,7 @@ export function PublishedTableNewSegmentPage() {
       getSuccessUrl={(segment) =>
         Urls.dataStudioPublishedTableSegment(tableId, segment.id)
       }
+      cancelUrl={Urls.dataStudioTableSegments(tableId)}
     />
   );
 }

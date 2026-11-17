@@ -3,6 +3,16 @@ import type { ComponentType } from "react";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Route } from "metabase/router";
 
+const publishedDataPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-library" */ "../pages/LibraryPage"
+  ).then(({ PublishedDataPage }) => ({ Component: PublishedDataPage }));
+
+const suggestedTablesPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-library" */ "../pages/SuggestedTablesPage"
+  ).then(({ SuggestedTablesPage }) => ({ Component: SuggestedTablesPage }));
+
 /**
  * The Data Studio library table pages, in one chunk. Every loader names it, so
  * moving between a table's overview, fields, segments and measures tabs does
@@ -15,11 +25,6 @@ import { Route } from "metabase/router";
  * The admin guard stays eager: it has to decide before there is anything to
  * show.
  */
-const publishedDataPage = () =>
-  import(
-    /* webpackChunkName: "data-studio-library" */ "../pages/LibraryPage"
-  ).then(({ PublishedDataPage }) => ({ Component: PublishedDataPage }));
-
 const tableOverviewPage = () =>
   import(
     /* webpackChunkName: "data-studio-tables" */ "./pages/TableOverviewPage"
@@ -44,6 +49,16 @@ const tableHistoryPage = () =>
   import(
     /* webpackChunkName: "data-studio-tables" */ "./pages/TableHistoryPage"
   ).then(({ TableHistoryPage }) => ({ Component: TableHistoryPage }));
+
+const tableHierarchiesPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-tables" */ "./pages/TableHierarchiesPage"
+  ).then(({ TableHierarchiesPage }) => ({ Component: TableHierarchiesPage }));
+
+const tableHierarchyPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-tables" */ "./pages/TableHierarchyPage"
+  ).then(({ TableHierarchyPage }) => ({ Component: TableHierarchyPage }));
 
 const tableSegmentsPage = () =>
   import(
@@ -141,11 +156,20 @@ export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
   return (
     <Route path="tables">
       <Route index lazy={publishedDataPage} />
+      <Route path="suggested" lazy={suggestedTablesPage} />
       <Route path=":tableId" lazy={tableOverviewPage} />
       <Route path=":tableId/metadata" lazy={tableMetadataPage} />
       <Route path=":tableId/fields" lazy={tableFieldsPage} />
       <Route path=":tableId/fields/:fieldId" lazy={tableFieldsPage} />
       <Route path=":tableId/properties" lazy={tablePropertiesPage} />
+      <Route path=":tableId/hierarchies" lazy={tableHierarchiesPage} />
+      <Route path=":tableId/hierarchies/new" element={<IsAdmin />}>
+        <Route index lazy={tableHierarchyPage} />
+      </Route>
+      <Route
+        path=":tableId/hierarchies/:hierarchyId"
+        lazy={tableHierarchyPage}
+      />
       <Route path=":tableId/history" lazy={tableHistoryPage} />
       <Route path=":tableId/segments" lazy={tableSegmentsPage} />
       <Route path=":tableId/segments/new" element={<IsAdmin />}>

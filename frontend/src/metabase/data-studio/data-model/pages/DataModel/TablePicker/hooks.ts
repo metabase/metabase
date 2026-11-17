@@ -24,15 +24,17 @@ import { expandPath, merge, node, rootNode, toKey } from "./utils";
 /**
  * Returns a state object that indicates which nodes are expanded in the tree.
  * State directly stores expanded status: true = expanded, false = collapsed.
- * Keys not in state fall back to defaultExpanded.
+ * Keys not in state fall back to defaultExpanded. With a `storageKey`, the
+ * state is remembered across visits.
  */
 export function useExpandedState(
   path: TreePath,
-  options: { defaultExpanded?: boolean } = {},
+  options: { defaultExpanded?: boolean; storageKey?: string } = {},
 ) {
   const defaultExpanded = options.defaultExpanded ?? false;
+  const { storageKey } = options;
   const [state, setState] = useState<Record<string, boolean>>(() =>
-    expandPath({}, path),
+    expandPath(readExpandedState(storageKey), path),
   );
 
   const { databaseId, schemaName, tableId } = path;
@@ -40,6 +42,12 @@ export function useExpandedState(
   useEffect(() => {
     setState((state) => expandPath(state, { databaseId, schemaName, tableId }));
   }, [databaseId, schemaName, tableId]);
+
+  useEffect(() => {
+    if (storageKey != null) {
+      window.localStorage.setItem(storageKey, JSON.stringify(state));
+    }
+  }, [storageKey, state]);
 
   const isExpanded = useCallback(
     (path: string | TreePath) => {
@@ -63,6 +71,30 @@ export function useExpandedState(
     isExpanded,
     toggle,
   };
+}
+
+/** What was left expanded and collapsed last time; nothing for bad data */
+function readExpandedState(
+  storageKey: string | undefined,
+): Record<string, boolean> {
+  if (storageKey == null) {
+    return {};
+  }
+  try {
+    const value: unknown = JSON.parse(
+      window.localStorage.getItem(storageKey) ?? "{}",
+    );
+    return _.isObject(value) && !Array.isArray(value)
+      ? Object.fromEntries(
+          Object.entries(value).filter(
+            (entry): entry is [string, boolean] =>
+              typeof entry[1] === "boolean",
+          ),
+        )
+      : {};
+  } catch {
+    return {};
+  }
 }
 
 /**

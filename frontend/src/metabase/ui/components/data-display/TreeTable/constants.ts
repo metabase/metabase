@@ -1,5 +1,6 @@
 export const DEFAULT_ROW_HEIGHT = 44;
-export const DEFAULT_INDENT_WIDTH = 20;
+// Lines a child's icon up with its parent's name, past the parent's icon
+export const DEFAULT_INDENT_WIDTH = 24;
 export const DEFAULT_OVERSCAN = 5;
 export const CHECKBOX_COLUMN_WIDTH = 32;
 export const EXPAND_BUTTON_WIDTH = 24;

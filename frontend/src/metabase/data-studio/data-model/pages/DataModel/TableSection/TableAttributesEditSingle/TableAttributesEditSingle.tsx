@@ -9,23 +9,16 @@ import {
 } from "metabase/common/components/DetailSidebar";
 import { Link } from "metabase/common/components/Link";
 import { useMetadataToasts } from "metabase/common/hooks";
-import {
-  DataSourceInput,
-  LayerInput,
-  UserInput,
-} from "metabase/metadata/components";
-import { Box, Icon, Text } from "metabase/ui";
+import { DataSourceInput, UserInput } from "metabase/metadata/components";
+import { DATA_LAYER_VISIBILITY_ICONS } from "metabase/metadata/data-layers";
+import { Box, Icon, Select, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type {
-  Table,
-  TableDataLayer,
-  TableDataSource,
-  UserId,
-} from "metabase-types/api";
+import type { Table, TableDataSource, UserId } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
 
 import S from "./TableAttributesEditSingle.module.css";
+import { useTableDataLayerSelect } from "./use-table-data-layer-select";
 
 interface Props {
   table: Table;
@@ -90,33 +83,6 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
     }
   };
 
-  const handleLayerChange = async (dataLayer: TableDataLayer | null) => {
-    if (dataLayer == null) {
-      return; // should never happen as the input is not clearable here
-    }
-
-    const { error } = await updateTable({
-      id: table.id,
-      data_layer: dataLayer,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update table visibility layer`);
-    } else {
-      onUpdate();
-      sendSuccessToast(t`Table visibility layer updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          data_layer: table.data_layer,
-        });
-        if (!error) {
-          onUpdate();
-        }
-        sendUndoToast(error);
-      });
-    }
-  };
-
   const handleDataSourceChange = async (
     dataSource: TableDataSource | "unknown" | null,
   ) => {
@@ -172,20 +138,7 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
           }
         />
 
-        <DetailsRow
-          label={t`Visibility layer`}
-          fillValue
-          value={
-            <LayerInput
-              value={table.data_layer ?? "hidden"}
-              label={undefined}
-              aria-label={t`Visibility layer`}
-              disabled={readOnly}
-              onChange={handleLayerChange}
-              classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
-            />
-          }
-        />
+        <TableDataLayerRow table={table} disabled={readOnly} />
 
         <DetailsRow
           label={t`Source`}
@@ -210,6 +163,49 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
         )}
       </DetailsTable>
     </SidebarSection>
+  );
+}
+
+/** The table's data layer, its schema's unless it overrides it */
+function TableDataLayerRow({
+  table,
+  disabled,
+}: {
+  table: Table;
+  disabled: boolean;
+}) {
+  const { layer, isInherited, options, value, onChange } =
+    useTableDataLayerSelect(table);
+
+  return (
+    <DetailsRow
+      label={t`Data layer`}
+      fillValue
+      labelNote={
+        !isInherited && (
+          <Text size="sm" c="text-secondary">
+            {t`Overrides the ${table.schema} schema's layer`}
+          </Text>
+        )
+      }
+      value={
+        <Select
+          aria-label={t`Data layer`}
+          data={options}
+          value={value}
+          allowDeselect={false}
+          leftSection={
+            layer && (
+              <Icon name={DATA_LAYER_VISIBILITY_ICONS[layer.visibility]} />
+            )
+          }
+          disabled={disabled}
+          classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+          onChange={onChange}
+          data-testid="table-data-layer-input"
+        />
+      }
+    />
   );
 }
 

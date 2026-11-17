@@ -20,6 +20,7 @@ import { TableHeader } from "../../components/TableHeader";
 import S from "./TableMetadataPage.module.css";
 import { TableStructureSections } from "./TableStructureSections";
 import { TableSubjectFields } from "./TableSubjectFields";
+import { TableVisibilityFields } from "./TableVisibilityFields";
 
 type TableMetadataPageParams = {
   tableId: string;
@@ -48,6 +49,7 @@ export function TableMetadataPage() {
     <PageContainer data-testid="table-metadata-page" gap="lg" px={0} pb={0}>
       <TableHeader table={table} px="3.5rem" />
       <Box className={S.body} flex={1} px="3.5rem" py="xxl">
+        {/* Full width, like the Fields and Properties tabs' lists */}
         <Stack gap="xxxl">
           <SettingsSection title={t`What this table is`}>
             <SettingsCard>
@@ -59,6 +61,14 @@ export function TableMetadataPage() {
             <SettingsCard>
               <TableDefaultSegment table={table} readOnly={readOnly} />
               <TableRequiredFilter table={table} readOnly={readOnly} />
+            </SettingsCard>
+          </SettingsSection>
+          <SettingsSection
+            title={t`Visibility`}
+            description={t`The data layer decides who can find this table. Some roles and data layers hide a table from people browsing data.`}
+          >
+            <SettingsCard>
+              <TableVisibilityFields table={table} readOnly={readOnly} />
             </SettingsCard>
           </SettingsSection>
         </Stack>

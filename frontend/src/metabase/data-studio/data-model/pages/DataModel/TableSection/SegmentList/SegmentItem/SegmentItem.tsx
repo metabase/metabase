@@ -1,8 +1,19 @@
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import { Badge, Card, Ellipsified, Flex, Icon, Stack, Text } from "metabase/ui";
+import {
+  Badge,
+  Card,
+  Ellipsified,
+  Flex,
+  Icon,
+  Stack,
+  Text,
+  rem,
+} from "metabase/ui";
 import type { Segment } from "metabase-types/api";
+
+import { ClausePills, type QueryClause } from "../../ClausePills";
 
 import S from "./SegmentItem.module.css";
 
@@ -11,9 +22,16 @@ type SegmentItemProps = {
   href: string;
   /** The table's questions start from this segment */
   isDefault?: boolean;
+  /** Its definition's clauses, one pill each; else the server's description */
+  clauses?: QueryClause[];
 };
 
-export function SegmentItem({ segment, href, isDefault }: SegmentItemProps) {
+export function SegmentItem({
+  segment,
+  href,
+  isDefault,
+  clauses,
+}: SegmentItemProps) {
   return (
     <Card
       className={S.card}
@@ -22,10 +40,12 @@ export function SegmentItem({ segment, href, isDefault }: SegmentItemProps) {
       aria-label={segment.name}
       role="listitem"
       px="lg"
-      py="0.75rem"
+      py={rem(12)}
+      radius="lg"
+      shadow="none"
       withBorder
     >
-      <Stack gap="xxs">
+      <Stack gap="xs">
         <Flex align="center" gap="sm">
           <Icon name="segment" c="core-brand" />
           <Ellipsified lines={1} tooltip={segment.name}>
@@ -34,10 +54,14 @@ export function SegmentItem({ segment, href, isDefault }: SegmentItemProps) {
           {isDefault && <DefaultSegmentBadge />}
         </Flex>
 
-        {segment.definition_description && (
-          <Text data-testid="list-item-description">
-            {segment.definition_description}
-          </Text>
+        {clauses != null && clauses.length > 0 ? (
+          <ClausePills clauses={clauses} />
+        ) : (
+          segment.definition_description && (
+            <Text lh="lg" data-testid="list-item-description">
+              {segment.definition_description}
+            </Text>
+          )
         )}
       </Stack>
     </Card>
