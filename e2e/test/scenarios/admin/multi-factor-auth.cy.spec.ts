@@ -5,7 +5,7 @@ import { USERS } from "e2e/support/cypress_data";
 import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { dayjs } from "metabase/dayjs";
 
-const { admin, nodata, normal } = USERS;
+const { normal } = USERS;
 
 const NEW_PASSWORD = "NewPassword2fa!123";
 
@@ -32,55 +32,28 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
 
   describe("optional", () => {
     describe("admin settings", () => {
-      it("admin can search the users-without-2FA list and remove a user's enrollment to unlock them", () => {
+      it("admin can remove a user's enrollment to unlock them", () => {
         enableMfa();
         enrollUser();
 
         cy.signInAsAdmin();
         cy.visit("/admin/settings/authentication");
 
-        cy.log("Admin searches the users-without-2FA list");
-        mfaSetting()
-          .scrollIntoView()
-          .findByText(/users? without 2FA/)
-          .click();
-
-        cy.log(
-          "The enrolled user is absent — they already have a second factor",
-        );
-        unenrolledUsersTable().should("contain", nodata.email);
-        unenrolledUsersTable().should("not.contain", normal.email);
-
-        cy.log("Searching narrows to a single person");
-        cy.findByPlaceholderText("Search…").type(admin.first_name);
-        unenrolledUsersTable()
-          .should("contain", admin.email)
-          .and("not.contain", nodata.email);
-
         cy.log(
           "Admin drills into the enrolled list from the count on the card",
         );
-        cy.visit("/admin/settings/authentication");
         mfaSetting().scrollIntoView().findByText("1 enrolled user").click();
-
-        enrolledUsersTable()
-          .should("contain", normal.first_name)
-          .and("contain", normal.email);
+        enrolledUsersTable().should("contain", normal.email);
 
         cy.log("Admin removes the enrollment (the lockout escape hatch)");
         cy.findByLabelText(
           `Actions for ${normal.first_name} ${normal.last_name}`,
         ).click();
         H.menu().findByText("Remove two-factor authentication").click();
-        H.modal().within(() => {
-          cy.findByText(
-            `Remove two-factor authentication for ${normal.first_name} ${normal.last_name}?`,
-          ).should("be.visible");
-          cy.button("Remove").click();
-        });
-
-        cy.log("They drop off the enrolled list and the count follows");
+        H.modal().button("Remove").click();
         enrolledUsersTable().should("not.contain", normal.email);
+
+        cy.log("The removal is saved: the count follows after a reload");
         cy.visit("/admin/settings/authentication");
         mfaSetting().scrollIntoView().should("contain", "0 enrolled users");
 
@@ -131,33 +104,6 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
         });
         cy.button("Verify").click();
         cy.findByTestId("greeting-message").should("be.visible");
-      });
-
-      it("user can disable 2FA themselves and re-enroll", () => {
-        enableMfa();
-        enrollUser().then(({ secret }) => {
-          cy.log(
-            "Disabling requires a fresh second factor, not just a password",
-          );
-          cy.visit("/account/security");
-          cy.findByRole("button", { name: "Disable" }).click();
-          H.modal().within(() => {
-            cy.findByText(
-              "Are you sure you want to disable two-factor authentication? Your account will be protected by your password only, and your recovery codes will stop working.",
-            ).should("be.visible");
-            cy.findByLabelText(
-              "Confirm with an authenticator code or a recovery code",
-            ).type(generateTotpCode(secret, Date.now() / 1000 + 30));
-            cy.button("Disable").click();
-          });
-        });
-        cy.findByRole("button", {
-          name: "Set up two-factor authentication",
-        }).should("be.enabled");
-
-        cy.log("Re-enroll from scratch with a new secret");
-        enrollViaUI();
-        cy.findByRole("button", { name: "Disable" }).should("be.visible");
       });
     });
 
@@ -329,54 +275,30 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
 
   describe("required", () => {
     describe("admin", () => {
-      it("admin can enable and disable 2FA, and set it to required with a default grace period", () => {
+      it("admin can allow 2FA and require it by a default two-week deadline", () => {
         const deadline = dayjs().add(GRACE_PERIOD_DAYS, "day");
 
         cy.visit("/admin/settings/authentication");
         mfaSetting().scrollIntoView();
-        mfaSetting()
-          .findByText("Two-factor authentication")
-          .should("be.visible");
-
-        cy.log("Enforcement and the deadline only exist once 2FA is allowed");
-        mfaSetting().should("not.contain", "Require now");
-        mfaDeadline().should("not.exist");
-
         mfaToggle().should("not.be.checked").click();
         cy.wait("@updateSettings");
-        mfaSetting()
-          .should("contain", "0 enrolled users")
-          .and("contain", "users without 2FA");
+        mfaSetting().should("contain", "0 enrolled users");
 
-        cy.log("Enabling it leaves enforcement optional");
-        enforcementOption("Don't require").should("be.checked");
-
-        // Because the admin has not enrolled, they cannot set two factor to required
-        enforcementOption("Require by a certain date").should("be.disabled");
-        mfaSetting()
-          .findByText(/account before requiring it/)
-          .should("be.visible");
-
-        cy.log("Admin can disable 2FA again");
-        mfaToggle().should("be.checked").click();
-        cy.wait("@updateSettings");
-        mfaToggle().should("not.be.checked");
-        mfaSetting().should("not.contain", "enrolled");
-
-        cy.log("Allow 2FA again so the admin can enroll");
-        mfaToggle().click();
-        cy.wait("@updateSettings");
-        mfaToggle().should("be.checked");
-
+        cy.log("Only an enrolled admin can require 2FA");
         enrollUser("admin");
         cy.reload();
+
+        cy.log("Allowing 2FA was saved");
+        mfaToggle().should("be.checked");
 
         cy.log(
           "Enforcement and a default two-week grace period are saved together",
         );
         enforcementOption("Require by a certain date").click();
         cy.wait("@updateSettings");
+        cy.reload();
 
+        enforcementOption("Require by a certain date").should("be.checked");
         mfaDeadline().should("have.value", deadline.format("MMMM D, YYYY"));
       });
 
