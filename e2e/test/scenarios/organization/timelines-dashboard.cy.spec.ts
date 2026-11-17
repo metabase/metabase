@@ -321,7 +321,7 @@ describe("scenarios > organization > timelines > dashboard", () => {
       createQuestionAndDashboardWithEvents();
     });
 
-    it("should show only saved events read-only on a public dashboard for anonymous and signed-in viewers, and none once the timeline is archived", () => {
+    it("should show only saved events read-only on a public dashboard for anonymous and signed-in viewers and on a static embed, and none once the timeline is archived", () => {
       cy.get<DashboardId>("@dashboardId").then((id) =>
         H.visitPublicDashboard(id),
       );
@@ -334,11 +334,21 @@ describe("scenarios > organization > timelines > dashboard", () => {
 
       expectSharedDashboardEvents();
 
+      cy.log("a static embed of the same dashboard shows the same events");
+      cy.get<DashboardId>("@dashboardId").then((id) =>
+        H.visitEmbeddedPage({ resource: { dashboard: id }, params: {} }),
+      );
+
+      expectSharedDashboardEvents();
+
       cy.log("archiving the timeline removes its events");
+      cy.signInAsAdmin();
       cy.get<TimelineId>("@timelineId").then((id) =>
         cy.request("PUT", `/api/timeline/${id}`, { archived: true }),
       );
-      cy.reload();
+      cy.get<DashboardId>("@dashboardId").then((id) =>
+        H.visitPublicDashboard(id),
+      );
 
       expectChartWithoutEvents();
     });
