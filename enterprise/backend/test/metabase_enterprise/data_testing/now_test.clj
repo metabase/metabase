@@ -15,6 +15,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -83,6 +84,8 @@
         (assert (empty? more))
         (:status expectation))
       (catch ExceptionInfo e
+        ;; The error type is what the tests compare; the message carries the database's own words, for a failure.
+        (log/warnf "The data test was refused (%s): %s" (:error-type (ex-data e)) (ex-message e))
         (:error-type (ex-data e))))))
 
 (defn- run-card-test!
