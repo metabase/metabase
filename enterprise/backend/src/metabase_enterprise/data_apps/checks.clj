@@ -115,16 +115,23 @@
 
 (defenterprise-schema goal-source-refusals :- [:map-of [:tuple :string :int] :string]
   "Refusal messages for the dynamic goal `sources` that `data-app` may not run, keyed by `[type id]`: a dev preview runs
-  no card, an app only the cards in its collection. Measures aren't refused."
+  no card, an app only the cards in its collection and no measure, as in [[check-adhoc-query]]."
   :feature :data-apps
   [data-app :- ::data-apps.schema/data-app-info
    sources  :- [:sequential [:map [:type :string] [:id :int]]]]
-  (let [{card-ids true, invalid-ids false} (group-by pos-int? (keep #(when (= "card" (:type %)) (:id %)) sources))
+  (let [ids-of   (fn [source-type] (keep #(when (= source-type (:type %)) (:id %)) sources))
+        {card-ids true, invalid-ids false} (group-by pos-int? (ids-of "card"))
         external (if (preview? data-app)
                    card-ids
                    (some->> (not-empty (set card-ids))
-                            (data-apps.db/external-card-ids (app-collection-id data-app))))]
-    (into {} (map (fn [card-id] [["card" card-id] (card-refusal data-app card-id)])) (concat invalid-ids external))))
+                            (data-apps.db/external-card-ids (app-collection-id data-app))))
+        measures (when-not (preview? data-app) (ids-of "measure"))]
+    (into {}
+          (concat (map (fn [card-id] [["card" card-id] (card-refusal data-app card-id)]) (concat invalid-ids external))
+                  (map (fn [measure-id]
+                         [["measure" measure-id]
+                          (tru "A data app cannot use measures, not the measure {0}." (str measure-id))])
+                       measures)))))
 
 (defenterprise-schema check-action :- :nil
   "Throws a 400 unless `data-app` is an app and the action with `action-id` is in its collection, after a read check of
