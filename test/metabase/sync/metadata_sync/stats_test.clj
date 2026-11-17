@@ -1,17 +1,17 @@
 (ns metabase.sync.metadata-sync.stats-test
   (:require
    [clojure.test :refer :all]
+   [metabase.sync.metadata-sync.document :as document]
    [metabase.sync.metadata-sync.stats :as stats]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- tables [db-id]
-  (t2/select :model/Table :db_id db-id {:order-by [:name]}))
+  (document/described-tables db-id nil))
 
 (deftest row-count-test
   (mt/with-temp [:model/Database {db-id :id}  {}

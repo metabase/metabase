@@ -146,8 +146,10 @@
                 response (mt/user-http-request :crowberto :post 200 changes-url (assoc req :database sender-name))
                 {:keys [next]} (mt/user-http-request :crowberto :post 200 apply-url
                                                      {:database_id receiver :response response})]
-            (when (and next (< rounds 20))
-              (recur next (inc rounds))))))
+            (cond
+              (nil? next)   nil
+              (> rounds 20) (throw (ex-info "the seed does not end" {:rounds rounds}))
+              :else         (recur next (inc rounds))))))
       (let [orders   (t2/select-one :model/Table :db_id receiver :name "orders")
             people   (t2/select-one :model/Table :db_id receiver :name "people")
             total    (t2/select-one :model/Field :table_id (:id orders) :name "total")

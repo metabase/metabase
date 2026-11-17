@@ -12,8 +12,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.time.temporal Temporal)))
 
@@ -66,6 +65,7 @@
          :description           "a Field's document: its name path, and each of `field-columns` that has a value"}
    [:path          [:sequential {:min 1} ms/NonBlankString]]
    [:base_type     ms/NonBlankString]
+   [:database_type ms/NonBlankString]
    [:last_analyzed {:optional true} ms/NonBlankString]])
 
 (mr/def ::table
@@ -133,8 +133,8 @@
        (driver.s/include-schema? inclusion-patterns exclusion-patterns schema)))
 
 (def query-batch-size
-  "The most Table ids one app DB query takes. Some queries use each id three times, and Postgres allows 65,535
-  parameters in a statement."
+  "The most ids or names one app DB query takes, well below the 65,535 parameters that Postgres allows in a
+  statement."
   1000)
 
 (defn in-batches
@@ -147,11 +147,11 @@
   [{table-schema :schema table-name :name}]
   [table-schema table-name])
 
-(mu/defn described-tables :- [:sequential ::warehouse-schema.schema/table]
-  "The Tables of the Database with `database-id` that documents describe: the active ones in the schemas
-  `schema-filter` allows, or in every schema when it is nil, and never one in a workspace's own schema. A Database
-  whose driver has no schemas ignores the filter. They are in key order: by schema, nil first, then by name, compared
-  in Clojure and not by the app DB's collation."
+(mu/defn described-tables :- [:sequential ::sync.db/described-table]
+  "The Tables of the Database with `database-id` that documents describe, as `id`, `schema`, `name` and
+  `estimated_row_count`: the active ones in the schemas `schema-filter` allows, or in every schema when it is nil, and
+  never one in a workspace's own schema. A Database whose driver has no schemas ignores the filter. They are in key
+  order: by schema, nil first, then by name, compared in Clojure and not by the app DB's collation."
   [database-id   :- ::lib.schema.id/database
    schema-filter :- [:maybe ::schema-filter]]
   (let [database    (sync.db/database database-id)
@@ -165,8 +165,12 @@
 (mu/defn table-documents :- [:sequential ::table]
   "The documents of `tables`, which are rows from [[described-tables]], in the same order. A nested Field is not part
   of a document."
-  [tables :- [:sequential ::warehouse-schema.schema/table]]
-  (let [fields-by-table (group-by :table_id (in-batches sync.db/described-fields (mapv :id tables)))]
-    (mapv (fn [{table-id :id :as table}]
-            (table-document table (mapv field-document (fields-by-table table-id []))))
+  [tables :- [:sequential ::sync.db/described-table]]
+  (let [table-ids       (mapv :id tables)
+        rows            (into {} (map (juxt :id identity)) (in-batches sync.db/tables-with-ids table-ids))
+        fields-by-table (group-by :table_id (in-batches sync.db/described-fields table-ids))]
+    (into []
+          (keep (fn [{table-id :id}]
+                  (when-let [table (rows table-id)]
+                    (table-document table (mapv field-document (fields-by-table table-id []))))))
           tables)))

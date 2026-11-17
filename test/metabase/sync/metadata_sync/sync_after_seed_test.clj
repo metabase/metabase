@@ -22,8 +22,10 @@
     (let [request  (assoc (receive/request receiver-id after) :database sender-name)
           response (through-json (send/changes-response (through-json request)))
           {:keys [next]} (receive/apply-response! receiver-id response)]
-      (when (and next (< rounds 100))
-        (recur next (inc rounds))))))
+      (cond
+        (nil? next)    nil
+        (> rounds 100) (throw (ex-info "the seed does not end" {:rounds rounds}))
+        :else          (recur next (inc rounds))))))
 
 (defn- field-state
   "The active Fields of the Database with `db-id`, by `[table-name field-name]`, with what a sync could change."

@@ -1121,7 +1121,7 @@
                   (let [{:keys [statuses error counts]} (seed!)]
                     (is (nil? error))
                     (is (every? #{200} statuses))
-                    (is (=? {:tables-inserted pos-int?} counts)))
+                    (is (=? {:tables_inserted pos-int?} counts)))
                   (is (some? (table receiver src-name)))
                   (is (some? (:fingerprint (field sender src-name "v"))))
                   (is (= (:fingerprint (field sender src-name "v")) (:fingerprint (field receiver src-name "v"))))
@@ -1131,7 +1131,7 @@
                 (testing "only the Tables of the workspace's input schemas: the request sends its schema filter"
                   (is (= #{tbl-schema} (t2/select-fn-set :schema :model/Table :db_id receiver :active true))))
                 (testing "a second seed writes nothing"
-                  (is (=? {:counts {:tables-inserted 0 :fields-inserted 0 :fks-set 0}} (seed!))))
+                  (is (=? {:counts {:tables_inserted 0 :fields_inserted 0 :fks_set 0}} (seed!))))
                 (mt/with-db (t2/select-one :model/Database :id receiver)
                   (let [mp (mt/metadata-provider)]
                     (mt/with-temp [:model/Transform transform

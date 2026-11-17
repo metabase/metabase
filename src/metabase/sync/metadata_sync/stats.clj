@@ -11,8 +11,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -48,7 +47,7 @@
   "The stats entry of each of `tables`, which are rows from
   [[metabase.sync.metadata-sync.document/described-tables]], by Table id. A Table with no row count and no field
   values has no entry."
-  [tables :- [:sequential ::warehouse-schema.schema/table]]
+  [tables :- [:sequential ::sync.db/described-table]]
   (let [field-values (latest-by-field (document/in-batches sync.db/full-field-values-of-tables (mapv :id tables)))]
     (into {}
           (keep (fn [{table-id :id row-count :estimated_row_count}]

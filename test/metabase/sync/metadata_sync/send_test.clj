@@ -224,3 +224,32 @@
       (mt/with-dynamic-fn-redefs [sync.db/databases-named (fn [_database-name] [database])]
         (is (= {:status-code 404 :error-code "metadata-sync-database-not-found"} (error-data "bird sightings" {})))
         (is (nil? (error-data "Bird Sightings" {})))))))
+
+(deftest defective-duplicates-are-not-sent-test
+  (mt/with-temp [:model/Database {db-id :id db-name :name} {:initial_sync_status "complete"}]
+    (let [{twin "orders_twin"} (add-tables! db-id [["PUBLIC" "orders" ["id"]] ["PUBLIC" "orders_twin" ["id"]]])]
+      ;; a legacy duplicate has the key of another Table; H2's unique index refuses that, so only the flag is set here
+      (t2/query-one {:update :metabase_table :set {:is_defective_duplicate true} :where [:= :id twin]})
+      (testing "a Table marked as a defective duplicate is not sent, so a key is sent once"
+        (is (= [["PUBLIC" "orders"]] (batch-keys "objects" (answers db-name))))))))
+
+(deftest stats-cut-by-size-after-several-tables-test
+  (mt/with-temp [:model/Database {db-id :id db-name :name} {:initial_sync_status "complete"}]
+    (let [tables (add-tables! db-id [["PUBLIC" "a" []] ["PUBLIC" "b" []] ["PUBLIC" "c" []] ["PUBLIC" "d" []]])]
+      (doseq [[table-name row-count] [["a" 1] ["b" 2] ["c" 3] ["d" 4]]]
+        (t2/update! :model/Table :id (tables table-name) {:estimated_row_count row-count}))
+      (let [size  (count (json/encode {:schema "PUBLIC" :name "a" :estimated_row_count 1 :field_values []}))
+            reads (atom [])
+            query (mt/original-fn #'sync.db/full-field-values-of-tables)]
+        (mt/with-dynamic-fn-redefs [sync.db/full-field-values-of-tables (fn [table-ids]
+                                                                          (swap! reads into table-ids)
+                                                                          (query table-ids))]
+          (with-redefs [pages/stats-byte-limit (* 2 size)
+                        pages/stats-read-tables 1]
+            (let [stats-answers (filter (comp #{["stats"]} types) (answers db-name))]
+              (testing "a cut after two Tables goes on after the last Table it kept"
+                (is (= [[["PUBLIC" "a"] ["PUBLIC" "b"]] [["PUBLIC" "c"] ["PUBLIC" "d"]]]
+                       (mapv #(batch-keys "stats" [%]) stats-answers))))
+              (testing (str "a page stops reading once the stats pass the limit: read one Table at a time, only the "
+                            "Table that did not fit is read again, by the next page")
+                (is (= {(tables "a") 1 (tables "b") 1 (tables "c") 2 (tables "d") 1} (frequencies @reads)))))))))))

@@ -130,13 +130,13 @@
        (testing "and the database values"
          (is (=? {:timezone "UTC" :dbms_version {:flavor "H2"}} (t2/select-one :model/Database :id receiver-id))))
        (testing "the counts say what it wrote"
-         (is (= {:database-updated      1
-                 :tables-inserted       3
-                 :tables-existing       0
-                 :fields-inserted       7
-                 :fks-set               1
-                 :row-counts-set        1
-                 :field-values-inserted 1}
+         (is (= {:database_updated      1
+                 :tables_inserted       3
+                 :tables_existing       0
+                 :fields_inserted       7
+                 :fks_set               1
+                 :row_counts_set        1
+                 :field_values_inserted 1}
                 counts)))
        (testing "the Database and its Tables count as synced"
          (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id receiver-id)))
@@ -169,8 +169,8 @@
      (let [before (metadata receiver-id)
            {:keys [counts]} (seed! sender-name receiver-id)]
        (testing "a second seed only finds the Tables it has"
-         (is (= {:database-updated 0 :tables-inserted 0 :tables-existing 3 :fields-inserted 0 :fks-set 0
-                 :row-counts-set 0 :field-values-inserted 0}
+         (is (= {:database_updated 0 :tables_inserted 0 :tables_existing 3 :fields_inserted 0 :fks_set 0
+                 :row_counts_set 0 :field_values_inserted 0}
                 counts))
          (is (= before (metadata receiver-id))))))))
 
@@ -185,8 +185,8 @@
        (t2/insert! :model/FieldValues {:field_id (field-id (mine "orders") "total") :type :full :values ["mine"]})
        (let [{:keys [counts]} (seed! sender-name receiver-id)]
          (testing "a Table the receiver has, active or not, is not written: not its columns, Fields or stats"
-           (is (=? {:tables-inserted 0 :tables-existing 3 :fields-inserted 0 :row-counts-set 0
-                    :field-values-inserted 0}
+           (is (=? {:tables_inserted 0 :tables_existing 3 :fields_inserted 0 :row_counts_set 0
+                    :field_values_inserted 0}
                    counts))
            (is (=? {:description "Mine" :estimated_row_count 99} (t2/select-one :model/Table :id (mine "orders"))))
            (is (= #{"total" "local_column"} (t2/select-fn-set :name :model/Field :table_id (mine "orders"))))
@@ -200,7 +200,7 @@
                                                       ["PUBLIC" "people" ["id" "name"]]])
            {:keys [counts]} (seed! sender-name receiver-id)]
        (testing "an existing Table with no row count, FK or field values gets the sender's"
-         (is (=? {:tables-inserted 1 :tables-existing 2 :fks-set 1 :row-counts-set 1 :field-values-inserted 1}
+         (is (=? {:tables_inserted 1 :tables_existing 2 :fks_set 1 :row_counts_set 1 :field_values_inserted 1}
                  counts))
          (is (= 3 (t2/select-one-fn :estimated_row_count :model/Table :id (mine "orders"))))
          (is (= (field-id (mine "people") "id")
@@ -212,7 +212,7 @@
      (let [mine (add-tables! receiver-id [["PUBLIC" "orders" ["user_id"]] ["PUBLIC" "people" ["id" "name"]]])]
        (t2/update! :model/Field :id (field-id (mine "orders") "user_id")
                    {:fk_target_field_id (field-id (mine "people") "name")})
-       (is (=? {:fks-set 0} (:counts (seed! sender-name receiver-id))))
+       (is (=? {:fks_set 0} (:counts (seed! sender-name receiver-id))))
        (is (= (field-id (mine "people") "name")
               (t2/select-one-fn :fk_target_field_id :model/Field :id (field-id (mine "orders") "user_id"))))))))
 
@@ -221,13 +221,13 @@
    (fn [_tables sender-name receiver-id _sender]
      (add-tables! receiver-id [["PUBLIC" "orders" ["user_id"]] ["PUBLIC" "people" ["name"]]])
      (testing "an FK whose target the receiver does not have is skipped, and the seed goes on"
-       (is (=? {:fks-set 0 :tables-inserted 1} (:counts (seed! sender-name receiver-id))))))))
+       (is (=? {:fks_set 0 :tables_inserted 1} (:counts (seed! sender-name receiver-id))))))))
 
 (deftest a-field-matches-case-insensitively-test
   (do-with-sender-and-receiver!
    (fn [_tables sender-name receiver-id _sender]
      (let [mine (add-tables! receiver-id [["PUBLIC" "orders" ["USER_ID"]] ["PUBLIC" "people" ["ID"]]])]
-       (is (=? {:fks-set 1} (:counts (seed! sender-name receiver-id))))
+       (is (=? {:fks_set 1} (:counts (seed! sender-name receiver-id))))
        (is (= (field-id (mine "people") "ID")
               (t2/select-one-fn :fk_target_field_id :model/Field :id (field-id (mine "orders") "USER_ID"))))))))
 
@@ -280,3 +280,46 @@
         (is (= {:status-code 400 :error-code "metadata-sync-database-not-loadable"}
                (refusal! db-id {:format_version document/format-version :batches []})))
         (is (thrown-with-msg? ExceptionInfo #"does not take" (receive/request db-id nil)))))))
+
+(deftest a-failure-while-applying-writes-nothing-test
+  (do-with-sender-and-receiver!
+   (fn [_tables sender-name receiver-id _sender]
+     (let [good (sender-answer sender-name (receive/request receiver-id nil))
+           bad  (assoc-in good [:batches 1 :tables 0 :fields 0 :last_analyzed] "not a time")]
+       (testing "a value that only the write rejects refuses the whole answer, with its own code"
+         (is (= {:status-code 422 :error-code "metadata-sync-apply-failed"} (refusal! receiver-id bad))))
+       (testing "and nothing of it is written: not the database values of its first batch, and no Table"
+         (is (=? {:timezone nil :dbms_version nil} (t2/select-one :model/Database :id receiver-id)))
+         (is (= {} (metadata receiver-id))))
+       (testing "the message says nothing of the answer's values"
+         (is (not (re-find #"not a time" (try (receive/apply-response! receiver-id bad)
+                                              ""
+                                              (catch ExceptionInfo e (ex-message e)))))))))))
+
+(deftest other-field-values-are-left-alone-test
+  (do-with-sender-and-receiver!
+   (fn [_tables sender-name receiver-id _sender]
+     (let [mine  (add-tables! receiver-id [["PUBLIC" "orders" ["id" "total" "user_id"]]])
+           total (field-id (mine "orders") "total")]
+       (t2/insert! :model/FieldValues {:field_id total :type :sandbox :hash_key "abc" :values ["mine"]})
+       (testing "a Field with FieldValues of another type gets no :full row, so its other rows stay"
+         (is (=? {:field_values_inserted 0} (:counts (seed! sender-name receiver-id))))
+         (is (= [:sandbox] (t2/select-fn-vec :type :model/FieldValues :field_id total))))))))
+
+(deftest one-key-twice-in-a-batch-test
+  (mt/with-temp [:model/Database {receiver-id :id} {}]
+    (let [doc      {:schema "PUBLIC" :name "twice" :fields [{:path ["id"] :base_type "type/Integer"
+                                                             :database_type "INTEGER"}]}
+          response {:format_version document/format-version :batches [{:type "objects" :tables [doc doc]}]}]
+      (testing "a key that an answer has twice inserts one Table"
+        (is (=? {:counts {:tables_inserted 1}} (receive/apply-response! receiver-id response)))
+        (is (= 1 (t2/count :model/Table :db_id receiver-id :name "twice")))))))
+
+(deftest an-empty-schema-and-no-schema-are-one-key-test
+  (mt/with-temp [:model/Database {receiver-id :id} {}
+                 :model/Table    _                 {:db_id receiver-id :schema "" :name "loose"}]
+    (testing "a Table with no schema is the receiver's Table with an empty schema, as the unique index says"
+      (is (=? {:counts {:tables_inserted 0 :tables_existing 1}}
+              (receive/apply-response! receiver-id {:format_version document/format-version
+                                                    :batches        [{:type   "objects"
+                                                                      :tables [{:name "loose" :fields []}]}]}))))))

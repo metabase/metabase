@@ -55,12 +55,15 @@
   "Apply `response`, the other Metabase's answer to a request from `POST /api/warehouse/metadata/request`, to the
   Database with `database_id`. A seed only adds: it inserts the Tables the Database has no row for, with their Fields,
   and fills FK targets, row counts and field values that are empty. Returns the cursor of the next request, `next`,
-  when there is one, and counts of what it did. After the last answer the Database counts as synced. Needs a
-  superuser.
+  when there is one, and counts of what it did. Each inserted Table counts as synced at once, and after the last
+  answer the Database does too, also when that answer has no batches. Needs a superuser.
 
-  Errors: the ones of `POST /api/warehouse/metadata/request`, and 422 for an answer it does not apply, before any
-  write: `metadata-sync-format-version-differs`, `metadata-sync-unknown-batch-type` or
-  `metadata-sync-malformed-response`."
+  An answer is applied in one transaction, so a refused answer writes nothing and can be sent again. Do not run a sync
+  of the Database during a seed: both insert Tables, and the second insert of one key fails.
+
+  Errors: the ones of `POST /api/warehouse/metadata/request`, and 422 for an answer it does not apply:
+  `metadata-sync-format-version-differs`, `metadata-sync-unknown-batch-type` and `metadata-sync-malformed-response`
+  before any write, and `metadata-sync-apply-failed` for a write that failed. No message holds the answer's values."
   [_route-params
    _query-params
    {:keys [database_id response]} :- [:map {:closed true}

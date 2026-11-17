@@ -10,8 +10,7 @@
    [metabase.sync.metadata-sync.document :as document]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -49,8 +48,8 @@
   "The links of each of `tables`, by Table id, in a fixed order: by Field path, then by kind. `tables` and `selection`
   are rows from [[metabase.sync.metadata-sync.document/described-tables]]. A link whose target is not in a Table of
   `selection`, or is not a described Field, is left out. A Table with no links is left out."
-  [tables    :- [:sequential ::warehouse-schema.schema/table]
-   selection :- [:sequential ::warehouse-schema.schema/table]]
+  [tables    :- [:sequential ::sync.db/described-table]
+   selection :- [:sequential ::sync.db/described-table]]
   (let [tables-by-id (into {} (map (juxt :id identity)) selection)
         table-ids    (mapv :id tables)]
     (update-vals (group-by first (fk-links table-ids tables-by-id))

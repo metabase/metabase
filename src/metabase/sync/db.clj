@@ -723,12 +723,30 @@
                                          [:= :router_database_id nil]]
                               :order-by [[:id :asc]]}))
 
-(mu/defn described-tables :- [:sequential ::warehouse-schema.schema/table]
-  "The active Tables of the Database with `database-id`, hidden ones included."
+(mr/def ::described-table
+  "The columns of a Table that the pages of metadata are made from."
+  [:map {:closed true}
+   [:id                  ::lib.schema.id/table]
+   [:schema              [:maybe :string]]
+   [:name                :string]
+   [:estimated_row_count [:maybe :int]]])
+
+(mu/defn described-tables :- [:sequential ::described-table]
+  "The `id`, `schema`, `name` and `estimated_row_count` of the active Tables of the Database with `database-id`, hidden
+  ones included, except the defective duplicates: legacy rows with the key of another Table, which the unique index
+  on Tables leaves out."
   [database-id :- ::lib.schema.id/database]
-  (t2/select :model/Table {:where [:and
-                                   [:= :db_id [:auto/param database-id]]
-                                   [:= :active true]]}))
+  (t2/query {:select [:id :schema :name :estimated_row_count]
+             :from   [(t2/table-name :model/Table)]
+             :where  [:and
+                      [:= :db_id [:auto/param database-id]]
+                      [:= :active true]
+                      [:= :is_defective_duplicate false]]}))
+
+(mu/defn tables-with-ids :- [:sequential ::warehouse-schema.schema/table]
+  "The Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select :model/Table :id [:in table-ids]))
 
 (mu/defn- described-field-clause
   "Honey SQL clause matching the Fields aliased `field-alias` that a metadata document describes: active, top-level and
@@ -860,20 +878,19 @@
                       [:in :f.table_id table-ids]
                       (described-field-clause :f)]}))
 
-(mu/defn field-ids-with-full-field-values :- [:set ::lib.schema.id/field]
-  "The ids of the Fields of the Tables with `table-ids` that have FieldValues of type `:full`."
+(mu/defn field-ids-with-field-values :- [:set ::lib.schema.id/field]
+  "The ids of the Fields of the Tables with `table-ids` that have FieldValues of any type."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (into #{}
         (map :field_id)
-        (t2/query {:select [:v.field_id]
-                   :from   [[(t2/table-name :model/FieldValues) :v]]
-                   :join   [[(t2/table-name :model/Field) :f] [:= :f.id :v.field_id]]
-                   :where  [:and
-                            [:in :f.table_id table-ids]
-                            [:= :v.type "full"]]})))
+        (t2/query {:select-distinct [:v.field_id]
+                   :from            [[(t2/table-name :model/FieldValues) :v]]
+                   :join            [[(t2/table-name :model/Field) :f] [:= :f.id :v.field_id]]
+                   :where           [:in :f.table_id table-ids]})))
 
 (mu/defn insert-full-field-values!
-  "Insert a FieldValues row of type `:full` for the Field with `field-id`, through the model, so its hooks run."
+  "Insert a FieldValues row of type `:full` for the Field with `field-id`, through the model, so its hooks run. The
+  model's hooks delete the Field's FieldValues rows of other types."
   [field-id :- ::lib.schema.id/field
    values   :- [:map {:closed true}
                 [:values          ms/FieldValues]

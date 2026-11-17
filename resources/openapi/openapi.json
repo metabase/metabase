@@ -31775,6 +31775,11 @@
             "minLength" : 1,
             "type" : "string"
           },
+          "database_type" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
           "last_analyzed" : {
             "description" : "value must be a non-blank string.",
             "minLength" : 1,
@@ -31790,7 +31795,7 @@
             "type" : "array"
           }
         },
-        "required" : [ "path", "base_type" ],
+        "required" : [ "path", "base_type", "database_type" ],
         "type" : "object"
       },
       "metabase.sync.metadata-sync.document.key" : {
@@ -31914,30 +31919,31 @@
       },
       "metabase.sync.metadata-sync.receive.counts" : {
         "additionalProperties" : false,
+        "description" : "What an apply did. The keys are snake_case: the counts are part of an API response.",
         "properties" : {
-          "database-updated" : {
+          "database_updated" : {
             "type" : "integer"
           },
-          "field-values-inserted" : {
+          "field_values_inserted" : {
             "type" : "integer"
           },
-          "fields-inserted" : {
+          "fields_inserted" : {
             "type" : "integer"
           },
-          "fks-set" : {
+          "fks_set" : {
             "type" : "integer"
           },
-          "row-counts-set" : {
+          "row_counts_set" : {
             "type" : "integer"
           },
-          "tables-existing" : {
+          "tables_existing" : {
             "type" : "integer"
           },
-          "tables-inserted" : {
+          "tables_inserted" : {
             "type" : "integer"
           }
         },
-        "required" : [ "database-updated", "tables-inserted", "tables-existing", "fields-inserted", "fks-set", "row-counts-set", "field-values-inserted" ],
+        "required" : [ "database_updated", "tables_inserted", "tables_existing", "fields_inserted", "fks_set", "row_counts_set", "field_values_inserted" ],
         "type" : "object"
       },
       "metabase.sync.metadata-sync.receive.result" : {
@@ -83905,7 +83911,7 @@
     },
     "/api/warehouse/metadata/apply" : {
       "post" : {
-        "description" : "Apply `response`, the other Metabase's answer to a request from `POST /api/warehouse/metadata/request`, to the\n  Database with `database_id`. A seed only adds: it inserts the Tables the Database has no row for, with their Fields,\n  and fills FK targets, row counts and field values that are empty. Returns the cursor of the next request, `next`,\n  when there is one, and counts of what it did. After the last answer the Database counts as synced. Needs a\n  superuser.\n\n  Errors: the ones of `POST /api/warehouse/metadata/request`, and 422 for an answer it does not apply, before any\n  write: `metadata-sync-format-version-differs`, `metadata-sync-unknown-batch-type` or\n  `metadata-sync-malformed-response`.",
+        "description" : "Apply `response`, the other Metabase's answer to a request from `POST /api/warehouse/metadata/request`, to the\n  Database with `database_id`. A seed only adds: it inserts the Tables the Database has no row for, with their Fields,\n  and fills FK targets, row counts and field values that are empty. Returns the cursor of the next request, `next`,\n  when there is one, and counts of what it did. Each inserted Table counts as synced at once, and after the last\n  answer the Database does too, also when that answer has no batches. Needs a superuser.\n\n  An answer is applied in one transaction, so a refused answer writes nothing and can be sent again. Do not run a sync\n  of the Database during a seed: both insert Tables, and the second insert of one key fails.\n\n  Errors: the ones of `POST /api/warehouse/metadata/request`, and 422 for an answer it does not apply:\n  `metadata-sync-format-version-differs`, `metadata-sync-unknown-batch-type` and `metadata-sync-malformed-response`\n  before any write, and `metadata-sync-apply-failed` for a write that failed. No message holds the answer's values.",
         "operationId" : "post-api-warehouse-metadata-apply",
         "parameters" : [ ],
         "requestBody" : {

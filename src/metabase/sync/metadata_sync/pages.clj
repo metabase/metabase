@@ -28,13 +28,19 @@
   20000)
 
 (def link-limit
-  "The soft limit of the FK links in one answer."
-  20000)
+  "The soft limit of the FK links in one answer. The receiver writes each FK through the Field model, as sync does, so
+  this also bounds the statements of one apply."
+  2000)
 
 (def stats-field-values-limit
   "The soft limit of the FieldValues rows whose stats one answer reads. A Table with a row count and no FieldValues
   weighs one. Stats are also cut by size, see [[stats-byte-limit]]."
   2000)
+
+(def stats-read-tables
+  "The most Tables whose stats one read of the sender's app DB loads. A page stops reading once its stats pass
+  [[stats-byte-limit]], so it reads at most this many Tables that it does not send."
+  50)
 
 (def stats-byte-limit
   "The soft limit of the size of the stats in one answer, in bytes as JSON: about the size of an answer of objects."

@@ -13,8 +13,7 @@
    [metabase.sync.metadata-sync.wire :as wire]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -64,42 +63,52 @@
                 :weight #(max 1 (value-counts (:id %) 0))
                 :limit  pages/stats-field-values-limit}}))
 
-(defn- objects-batch [taken _tables]
-  (when (seq taken)
-    {:type "objects" :tables (document/table-documents taken)}))
+(defn- objects-batch
+  "`[batch covered cut?]`: the objects batch of the Tables `taken`, all of which it covers."
+  [taken _tables]
+  [(when (seq taken)
+     {:type "objects" :tables (document/table-documents taken)})
+   taken
+   false])
 
 (defn- links-batch
-  "The links batch of the Tables `taken`, with link targets in `tables`. A Table whose FKs all point out of the
-  selection has no links, and is not in the batch."
+  "`[batch covered cut?]`: the links batch of the Tables `taken`, with link targets in `tables`, which covers all of
+  `taken`. A Table whose FKs all point out of the selection has no links, and is not in the batch."
   [taken tables]
-  (let [table-links (links/table-links taken tables)]
-    (when-let [entries (seq (for [{table-id :id :as table} taken
-                                  :let  [table-links (table-links table-id)]
-                                  :when table-links]
-                              {:schema (:schema table) :name (:name table) :links table-links}))]
-      {:type "links" :tables (vec entries)})))
+  (let [table-links (links/table-links taken tables)
+        entries     (vec (for [{table-id :id :as table} taken
+                               :let  [table-links (table-links table-id)]
+                               :when table-links]
+                           {:schema (:schema table) :name (:name table) :links table-links}))]
+    [(when (seq entries) {:type "links" :tables entries}) taken false]))
 
-(defn- stats-batch [taken _tables]
-  (let [table-stats (stats/table-stats taken)]
-    (when-let [entries (seq (for [{table-id :id :as table} taken
-                                  :let  [entry (table-stats table-id)]
-                                  :when entry]
-                              (merge {:schema (:schema table) :name (:name table)} entry)))]
-      {:type "stats" :tables (vec entries)})))
+(defn- add-stats
+  "`acc` with the stats of the Tables of `group`, in order, while their size fits in [[pages/stats-byte-limit]], and
+  `:cut` when one did not fit. The first entry of a batch always fits, so each page moves on."
+  [acc group]
+  (let [table-stats (stats/table-stats group)]
+    (reduce (fn [{:keys [entries size covered] :as acc} {table-id :id :as table}]
+              (if-let [entry (some->> (table-stats table-id) (merge {:schema (:schema table) :name (:name table)}))]
+                (let [size (+ size (stats/stats-size entry))]
+                  (if (and (seq entries) (> size pages/stats-byte-limit))
+                    (reduced (assoc acc :cut true))
+                    (assoc acc :entries (conj entries entry) :size size :covered (conj covered table))))
+                (assoc acc :covered (conj covered table))))
+            acc
+            group)))
 
-(defn- cut-by-size
-  "`[batch taken cut?]`: a stats `batch` and its page's Tables `taken`, cut after the Table where the size of the
-  stats passes [[pages/stats-byte-limit]], and whether it was cut. Other batches are returned as they are."
-  [batch taken]
-  (if (not= "stats" (:type batch))
-    [batch taken false]
-    (let [{kept :tables cut :more} (pages/page (:tables batch) stats/stats-size nil pages/stats-byte-limit)
-          last-kept                (document/table-key (peek kept))]
-      [(assoc batch :tables kept)
-       (if cut
-         (filterv #(not (pos? (compare (document/table-key %) last-kept))) taken)
-         taken)
-       cut])))
+(defn- stats-batch
+  "`[batch covered cut?]`: the stats batch of the first of the Tables `taken` whose stats fit in
+  [[pages/stats-byte-limit]], the Tables it covers, and whether it stopped before the end of `taken`. The stats are
+  read [[pages/stats-read-tables]] Tables at a time, so a page reads at most one group of Tables that it does not
+  send."
+  [taken _tables]
+  (let [{:keys [entries covered cut]} (reduce (fn [acc group]
+                                                (let [acc (add-stats acc group)]
+                                                  (cond-> acc (:cut acc) reduced)))
+                                              {:entries [] :size 0 :covered []}
+                                              (partition-all pages/stats-read-tables taken))]
+    [(when (seq entries) {:type "stats" :tables entries}) covered (boolean cut)]))
 
 (def ^:private build-batch
   {"objects" objects-batch
@@ -111,9 +120,9 @@
   last Table it covered, and whether Tables of `kind` are left."
   [{:keys [tables weight limit]} kind after all-tables]
   (let [{taken :tables more :more} (pages/page tables weight after limit)
-        [batch taken cut]          (cut-by-size ((build-batch kind) taken all-tables) taken)]
+        [batch covered cut]        ((build-batch kind) (vec taken) all-tables)]
     {:batch batch
-     :last  (some-> (peek taken) document/table-key)
+     :last  (some-> (peek covered) document/table-key)
      :more  (or more cut)}))
 
 (defn- past-empty-kinds
@@ -131,7 +140,7 @@
   "The first page from the cursor `after` that has something to send, and the cursor after it, past the kinds that
   have no Tables to page."
   [database-id :- ::lib.schema.id/database
-   tables      :- [:sequential ::warehouse-schema.schema/table]
+   tables      :- [:sequential ::sync.db/described-table]
    after       :- [:maybe ::pages/cursor]]
   (let [by-kind (candidates database-id tables)]
     (loop [cursor (past-empty-kinds (or after {:kind (first pages/kinds)}) by-kind)]

@@ -124,18 +124,24 @@
 
 ;;; ------------------------------------------------ Lookups ------------------------------------------------
 
+(defn- unique-key
+  "The key of a Table as the unique index on Tables compares it: a nil schema is the empty schema."
+  [{table-schema :schema table-name :name}]
+  [(or table-schema "") table-name])
+
 (defn- tables-by-key
-  "The Tables of the Database with `database-id` that have one of the `table-keys`, by key, active or not, looked up
-  [[document/query-batch-size]] names at a time. With `:active-only?`, only active ones, and the one with the lowest id
-  when there are several."
+  "The Tables of the Database with `database-id` that have one of the `table-keys`, by [[unique-key]], active or not,
+  looked up [[document/query-batch-size]] names at a time: the one with the lowest id when there are several. With
+  `:active-only?`, only active ones."
   [database-id table-keys & {:keys [active-only?]}]
-  (let [wanted (set table-keys)]
+  (let [wanted (into #{} (map (fn [[table-schema table-name]] (unique-key {:schema table-schema :name table-name})))
+                     table-keys)]
     (->> (document/in-batches #(sync.db/tables-named database-id %) (distinct (map second table-keys)))
-         (filter (comp wanted document/table-key))
+         (filter (comp wanted unique-key))
          (filter #(or (not active-only?) (:active %)))
          (sort-by :id)
          reverse
-         (into {} (map (juxt document/table-key identity))))))
+         (into {} (map (juxt unique-key identity))))))
 
 (defn- field-index
   "The Fields of `fields` by Table id, each as a function of a name to its Field. A name that has no exact match
@@ -155,19 +161,16 @@
     (when-let [lookup (fields-by-table table-id)]
       (lookup field-name))))
 
-(defn- key-of [{table-schema :schema table-name :name}]
-  [table-schema table-name])
-
 ;;; ------------------------------------------------ Batches ------------------------------------------------
 
 (def ^:private no-counts
-  {:database-updated      0
-   :tables-inserted       0
-   :tables-existing       0
-   :fields-inserted       0
-   :fks-set               0
-   :row-counts-set        0
-   :field-values-inserted 0})
+  {:database_updated      0
+   :tables_inserted       0
+   :tables_existing       0
+   :fields_inserted       0
+   :fks_set               0
+   :row_counts_set        0
+   :field_values_inserted 0})
 
 (defn- apply-database!
   "Set the database values of `batch` that the Database `database` has none of."
@@ -177,12 +180,12 @@
                       (select-keys batch document/database-columns))]
     (when (seq changes)
       (sync.db/update-database! (:id database) changes))
-    {:database-updated (if (seq changes) 1 0)}))
+    {:database_updated (if (seq changes) 1 0)}))
 
 (defn- insert-table!
   "Insert the Table that `doc` describes into the Database with `database-id`, with its Fields, and return how many
-  Fields it inserted. A multi-row insert writes NULL for a column that a row leaves out, so each row has every
-  column."
+  Fields it inserted. The Table counts as synced at once, since it has its metadata. A multi-row insert writes NULL
+  for a column that a row leaves out, so each row has every column."
   [database-id doc]
   (let [table-id (:id (sync.db/insert-table! (merge {:db_id               database-id
                                                      :schema              (:schema doc)
@@ -205,78 +208,83 @@
     (count rows)))
 
 (defn- apply-objects!
-  "Insert each Table of `batch` that the Database with `database-id` has no row for, active or not."
+  "Insert each Table of `batch` that the Database with `database-id` has no row for, active or not, once for each key."
   [database-id {:keys [tables]}]
-  (let [existing (tables-by-key database-id (map key-of tables))
-        new-docs (remove (comp existing key-of) tables)]
-    {:tables-inserted (count new-docs)
-     :tables-existing (- (count tables) (count new-docs))
-     :fields-inserted (transduce (map #(insert-table! database-id %)) + 0 new-docs)}))
+  (let [existing (tables-by-key database-id (map document/table-key tables))
+        new-docs (m/distinct-by unique-key (remove (comp existing unique-key) tables))]
+    {:tables_inserted (count new-docs)
+     :tables_existing (count (filter (comp existing unique-key) tables))
+     :fields_inserted (transduce (map #(insert-table! database-id %)) + 0 new-docs)}))
 
 (defn- target-key [{{table-schema :schema table-name :table} :target}]
   [table-schema table-name])
 
 (defn- fk-changes
   "The FK targets, by Field id, that the links of `batch` set: for a Field whose FK target is empty, when the receiver
-  has both its Field and its target. A link it cannot resolve is skipped and logged."
+  has both the Field and its target. A link it cannot resolve is skipped and logged."
   [database-id {:keys [tables]}]
-  (let [sources  (tables-by-key database-id (map key-of tables) :active-only? true)
-        targets  (tables-by-key database-id (into [] (comp (mapcat :links) (map target-key)) tables)
-                                :active-only? true)
-        fields   (document/in-batches sync.db/link-fields-of-tables
-                                      (vec (distinct (map :id (concat (vals sources) (vals targets))))))
-        by-table (field-index fields)]
+  (let [fk-tables (tables-by-key database-id (map document/table-key tables) :active-only? true)
+        targets   (tables-by-key database-id (into [] (comp (mapcat :links) (map target-key)) tables)
+                                 :active-only? true)
+        fields    (document/in-batches sync.db/link-fields-of-tables
+                                       (vec (distinct (map :id (concat (vals fk-tables) (vals targets))))))
+        by-table  (field-index fields)]
     (into {}
           (for [{:keys [links] :as links-table} tables
-                :let  [source-id (:id (sources (key-of links-table)))]
-                :when source-id
-                {:keys [field target] :as link} links
-                :let  [source-field (resolve-field by-table source-id field)
-                       target-field (resolve-field by-table (:id (targets (target-key link))) (:field target))]
-                :when (or (and source-field target-field)
+                :let  [table-id (:id (fk-tables (unique-key links-table)))]
+                :when table-id
+                {:keys [field target]} links
+                :let  [fk-field     (resolve-field by-table table-id field)
+                       target-field (resolve-field by-table
+                                                   (:id (targets (unique-key {:schema (:schema target)
+                                                                              :name   (:table target)})))
+                                                   (:field target))]
+                :when (or (and fk-field target-field)
                           (log/warnf "Skipping an FK link of Table %d: this Metabase does not have %s"
-                                     source-id (if source-field "its target" "its Field")))
-                :when (nil? (:fk_target_field_id source-field))]
-            [(:id source-field) (:id target-field)]))))
+                                     table-id (if fk-field "its target" "its Field")))
+                :when (nil? (:fk_target_field_id fk-field))]
+            [(:id fk-field) (:id target-field)]))))
 
 (defn- apply-links!
-  "Set the FK targets that the links of `batch` give and that are empty."
+  "Set the FK targets that the links of `batch` give and that are empty, one Field at a time through the model, as
+  sync does."
   [database-id batch]
   (let [changes (fk-changes database-id batch)]
     (doseq [[field-id target-id] changes]
       (sync.db/update-field! field-id {:fk_target_field_id target-id}))
-    {:fks-set (count changes)}))
+    {:fks_set (count changes)}))
 
 (defn- apply-table-stats!
   "Set the row count of `table` when it is empty, and insert a `:full` FieldValues row, through the model, for each
-  Field of the stats `entry` that has none. Returns the counts."
-  [{table-id :id :as table} {:keys [estimated_row_count field_values]} by-table has-full]
+  Field of the stats `entry` that has no FieldValues row of any type: the model's hooks would delete the others.
+  Returns the counts."
+  [{table-id :id :as table} {:keys [estimated_row_count field_values]} by-table has-values]
   (let [row-count? (and (some? estimated_row_count) (nil? (:estimated_row_count table)))
         inserted   (into []
                          (keep (fn [{:keys [field values has_more_values]}]
                                  (when-let [{field-id :id} (resolve-field by-table table-id field)]
-                                   (when-not (has-full field-id)
+                                   (when-not (has-values field-id)
                                      (sync.db/insert-full-field-values! field-id {:values          values
                                                                                   :has_more_values has_more_values})))))
                          field_values)]
     (when row-count?
       (sync.db/update-table! table-id {:estimated_row_count estimated_row_count}))
-    {:row-counts-set        (if row-count? 1 0)
-     :field-values-inserted (count inserted)}))
+    {:row_counts_set        (if row-count? 1 0)
+     :field_values_inserted (count inserted)}))
 
 (defn- apply-stats!
   "Apply the stats of `batch` to the active Tables of the Database with `database-id` that have its keys."
   [database-id {:keys [tables]}]
-  (let [receiving (tables-by-key database-id (map key-of tables) :active-only? true)
-        table-ids (mapv :id (vals receiving))
-        by-table  (field-index (document/in-batches sync.db/link-fields-of-tables table-ids))
-        has-full  (into #{} (mapcat sync.db/field-ids-with-full-field-values)
-                        (partition-all document/query-batch-size table-ids))]
+  (let [receiving  (tables-by-key database-id (map document/table-key tables) :active-only? true)
+        table-ids  (mapv :id (vals receiving))
+        by-table   (field-index (document/in-batches sync.db/link-fields-of-tables table-ids))
+        has-values (into #{} (mapcat sync.db/field-ids-with-field-values)
+                         (partition-all document/query-batch-size table-ids))]
     (transduce (keep (fn [entry]
-                       (when-let [table (receiving (key-of entry))]
-                         (apply-table-stats! table entry by-table has-full))))
+                       (when-let [table (receiving (unique-key entry))]
+                         (apply-table-stats! table entry by-table has-values))))
                (completing (partial merge-with +))
-               {:row-counts-set 0 :field-values-inserted 0}
+               {:row_counts_set 0 :field_values_inserted 0}
                tables)))
 
 ;;; ------------------------------------------------ Response ------------------------------------------------
@@ -290,8 +298,7 @@
 
 (defn- check-response!
   "Throw unless `response` is an answer this version can apply: of its format version, with batch types it knows, and
-  of the right shape. Nothing is written before this check. The error says nothing of the answer's values: they are
-  warehouse metadata."
+  of the right shape. The error says nothing of the answer's values: they are warehouse metadata."
   [response]
   (when (not= document/format-version (:format_version response))
     (throw (refused (tru "The other Metabase sends format version {0}, and this Metabase reads version {1}."
@@ -308,25 +315,38 @@
                     "metadata-sync-malformed-response"))))
 
 (defn- apply-batch!
-  "Apply one `batch` to the Database `database`, in one transaction, and return the counts."
+  "Apply one `batch` to the Database `database`, and return the counts."
   [database batch]
-  (t2/with-transaction [_conn]
-    (merge no-counts
-           (case (:type batch)
-             "database" (apply-database! database batch)
-             "objects"  (apply-objects! (:id database) batch)
-             "links"    (apply-links! (:id database) batch)
-             "stats"    (apply-stats! (:id database) batch)))))
+  (merge no-counts
+         (case (:type batch)
+           "database" (apply-database! database batch)
+           "objects"  (apply-objects! (:id database) batch)
+           "links"    (apply-links! (:id database) batch)
+           "stats"    (apply-stats! (:id database) batch))))
+
+(defn- apply-batches!
+  "Apply the `batches` of an answer to the Database `database` in one transaction, and return the summed counts. A
+  write that fails rolls back the whole answer, and is refused with a code of its own and a message with none of the
+  answer's values; the cause stays on the exception."
+  [database batches]
+  (try
+    (t2/with-transaction [_conn]
+      (reduce (fn [counts batch] (merge-with + counts (apply-batch! database batch))) no-counts batches))
+    (catch Throwable e
+      (throw (ex-info (tru "The answer of the other Metabase could not be applied, and nothing of it was written.")
+                      {:status-code 422 :error-code "metadata-sync-apply-failed"}
+                      e)))))
 
 (mr/def ::counts
+  "What an apply did. The keys are snake_case: the counts are part of an API response."
   [:map {:closed true}
-   [:database-updated      :int]
-   [:tables-inserted       :int]
-   [:tables-existing       :int]
-   [:fields-inserted       :int]
-   [:fks-set               :int]
-   [:row-counts-set        :int]
-   [:field-values-inserted :int]])
+   [:database_updated      :int]
+   [:tables_inserted       :int]
+   [:tables_existing       :int]
+   [:fields_inserted       :int]
+   [:fks_set               :int]
+   [:row_counts_set        :int]
+   [:field_values_inserted :int]])
 
 (mr/def ::result
   [:map {:closed true}
@@ -338,16 +358,19 @@
   the next request (`:next`), when there is one, and counts of what it did.
 
   Before any write it refuses, with an `:error-code` in the ex-data, an answer of another format version, one with a
-  batch type it does not know, and a malformed one. Each batch is applied in one transaction. Once an answer has no
-  next cursor, the Database and its Tables count as synced."
+  batch type it does not know, and a malformed one. An answer is applied in one transaction, so one that fails while
+  it is written writes nothing (`metadata-sync-apply-failed`), and can be sent again. Each Table a seed inserts counts
+  as synced at once; once an answer has no next cursor, the Database counts as synced too. An answer with no batches
+  and no cursor therefore marks the Database as synced, also when it has no Tables.
+
+  A seed and a sync of the same Database must not run at the same time: both insert Tables, and the unique index on
+  Tables refuses the second insert of one key. A seed's answer that fails that way can be sent again."
   [database-id :- ::lib.schema.id/database
    response    :- [:map {::mr/deliberately-open true
                          :description           "the other Metabase's answer, decoded from JSON, which this checks"}]]
   (let [database (receiving-database database-id)]
     (check-response! response)
-    (let [counts (reduce (fn [counts batch] (merge-with + counts (apply-batch! database batch)))
-                         no-counts
-                         (:batches response))]
+    (let [counts (apply-batches! database (:batches response))]
       (when-not (:next response)
         (sync-util/set-initial-table-sync-complete-for-db! database)
         (sync-util/set-initial-database-sync-complete! database))
