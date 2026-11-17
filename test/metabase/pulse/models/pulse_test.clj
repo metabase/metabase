@@ -52,6 +52,7 @@
    :dashboard_id        nil
    :skip_if_empty       false
    :archived            false
+   :archived_directly   false
    :parameters          []
    :disable_links       false})
 
@@ -59,8 +60,7 @@
   (testing "this should cover all the basic Pulse attributes"
     (mt/with-temp [:model/Pulse        {pulse-id :id}   {:name "Lodi Dodi"}
                    :model/PulseChannel {channel-id :id} {:pulse_id pulse-id
-                                                         :details  {:other  "stuff"
-                                                                    :emails ["foo@bar.com"]}}
+                                                         :details  {:emails ["user@example.com"]}}
                    :model/Card         {card-id :id}    {:name "Test Card"}]
       (t2/insert! :model/PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
       (t2/insert! :model/PulseChannelRecipient, :pulse_channel_id channel-id, :user_id (mt/user->id :rasta))
@@ -85,8 +85,7 @@
                                    {:schedule_type :daily
                                     :schedule_hour 15
                                     :channel_type  :email
-                                    :details       {:other "stuff"}
-                                    :recipients    [{:email "foo@bar.com"}
+                                    :recipients    [{:email "user@example.com"}
                                                     (dissoc (user-details :rasta) :is_superuser :is_qbnewb :is_data_analyst)]})]})
              (-> (dissoc (models.pulse/retrieve-pulse pulse-id) :id :pulse_id :created_at :updated_at)
                  (update :creator  dissoc :date_joined :last_login :tenant_id)
@@ -405,6 +404,74 @@
         (is (false? (t2/exists? :model/PulseChannel :id pc-id)))
         (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id)))))))
 
+(defn- status-code
+  "The `:status-code` of the exception `thunk` throws, or nil when it throws none."
+  [thunk]
+  (try
+    (thunk)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (:status-code (ex-data e)))))
+
+(defn- insert-pulse!
+  "Insert a Pulse made of the defaults of one and `overrides`, and return its id."
+  [overrides]
+  (t2/insert-returning-pk! :model/Pulse (merge (mt/with-temp-defaults :model/Pulse) overrides)))
+
+(deftest dashboard-subscription-collection-is-derived-on-insert-test
+  (mt/with-temp [:model/Collection {collection-id :id}       {}
+                 :model/Collection {other-collection-id :id} {}
+                 :model/Dashboard  {dashboard-id :id}        {:collection_id collection-id}
+                 :model/Dashboard  {other-dashboard-id :id}  {:collection_id other-collection-id}]
+    (mt/with-model-cleanup [:model/Pulse]
+      (testing "a dashboard subscription goes in the collection of its dashboard, whatever the row names"
+        (let [pulse-id (insert-pulse! {:dashboard_id dashboard-id :collection_id other-collection-id})]
+          (is (= collection-id (t2/select-one-fn :collection_id :model/Pulse :id pulse-id)))))
+      (testing "one INSERT of several dashboard subscriptions files each with its own dashboard"
+        (let [ids (t2/insert-returning-pks! :model/Pulse
+                                            [(merge (mt/with-temp-defaults :model/Pulse) {:dashboard_id dashboard-id})
+                                             (merge (mt/with-temp-defaults :model/Pulse) {:dashboard_id other-dashboard-id})])]
+          (is (= [collection-id other-collection-id]
+                 (mapv #(t2/select-one-fn :collection_id :model/Pulse :id %) ids)))))
+      (testing "a pulse without a dashboard keeps the collection of the row"
+        (let [pulse-id (insert-pulse! {:collection_id other-collection-id})]
+          (is (= other-collection-id (t2/select-one-fn :collection_id :model/Pulse :id pulse-id))))))))
+
+(deftest dashboard-subscription-shape-test
+  (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+    (mt/with-model-cleanup [:model/Pulse]
+      (testing "a dashboard subscription has none of the columns of an alert, or a collection position"
+        (doseq [overrides [{:alert_condition "rows"}
+                           {:alert_first_only false}
+                           {:alert_above_goal true}
+                           {:collection_position 1}]]
+          (testing (pr-str overrides)
+            (is (= 400 (status-code #(insert-pulse! (assoc overrides :dashboard_id dashboard-id))))))))
+      (testing "the columns of an alert and a collection position are fine without a dashboard"
+        (is (some? (insert-pulse! {:alert_condition "rows" :alert_first_only false :collection_position 1}))))
+      (testing "an update cannot give a dashboard subscription them either"
+        (let [pulse-id (insert-pulse! {:dashboard_id dashboard-id})]
+          (doseq [changes [{:alert_condition "rows"}
+                           {:alert_first_only false}
+                           {:alert_above_goal true}
+                           {:collection_position 1}]]
+            (testing (pr-str changes)
+              (is (= 400 (status-code #(t2/update! :model/Pulse :id pulse-id changes))))))
+          (is (=? {:alert_condition nil :collection_position nil}
+                  (t2/select-one :model/Pulse :id pulse-id)))
+          (testing "while a name goes through"
+            (is (= 1 (t2/update! :model/Pulse :id pulse-id {:name "Renamed"})))))))))
+
+(deftest pulse-parameters-shape-test
+  (mt/with-model-cleanup [:model/Pulse]
+    (testing "parameters are a sequence of maps with an id"
+      (is (= 400 (status-code #(insert-pulse! {:parameters [{:value 1}]}))))
+      (is (some? (insert-pulse! {:parameters [{:id "abc" :value 1}]}))))
+    (testing "an update with other parameters is held to the same"
+      (let [pulse-id (insert-pulse! {})]
+        (is (= 400 (status-code #(t2/update! :model/Pulse :id pulse-id {:parameters [{:value 1}]}))))
+        (is (= 1 (t2/update! :model/Pulse :id pulse-id {:parameters [{:id "abc" :value 1}]})))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Pulse Collections Permissions Tests                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -496,6 +563,21 @@
                                                   :creator_id    (mt/user->id :crowberto)}]
           (is (not (mi/can-read? (t2/hydrate subscription :can_read))))
           (is (not (mi/can-write? (t2/hydrate subscription :can_write)))))))))
+
+(deftest update-permissions-test
+  (with-dashboard-subscription-in-collection! [_ collection _ subscription]
+    (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+    (testing "the creator may update their dashboard subscription"
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (mi/can-update? (t2/hydrate subscription :can_write) {:name "Renamed"}))))
+    (testing "an admin may update any dashboard subscription"
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (mi/can-update? (t2/hydrate subscription :can_write) {:name "Renamed"}))))
+    (testing "another user may not"
+      (mt/with-current-user (mt/user->id :lucky)
+        (is (not (mi/can-update? (t2/hydrate subscription :can_write) {:name "Renamed"})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions"
+                              (api/update-check subscription {:name "Renamed"})))))))
 
 (deftest create-permissions-test
   (when config/ee-available?

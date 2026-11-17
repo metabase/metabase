@@ -54,28 +54,43 @@
            (progress? display))
        (< 1 (count (lib/breakouts query)))))
 
-(defn delete-alert-and-notify!
-  "Removes all of the alerts and notifies all of the email recipients of the alerts change."
-  [topic actor card]
-  (when-let [card-notifications (seq (models.notification/notifications-for-card (:id card)))]
-    (pulse.db/delete-notifications! (map :id card-notifications))
-    (events/publish-event! topic {:card          card
-                                  :actor         actor
-                                  :notifications card-notifications})))
+(defn- card-change-broke-alert?
+  "Whether the change from `old-card` to `new-card` invalidates the alerts on the card."
+  [old-card new-card]
+  (or (display-change-broke-alert? old-card new-card)
+      (goal-missing? old-card new-card)
+      (multiple-breakouts? new-card)))
 
-;;; TODO -- consider whether this should be triggered indirectly by an event e.g. `:event/card-update`
+(def ^:private alert-affecting-columns
+  "The columns of a Card an update of which can delete the alerts of the Card."
+  [:archived :display :visualization_settings :dataset_query])
+
+(defn alerts-of-card-being-changed
+  "The notifications of the alerts of `card`, which `card-updates` may delete through the Card hooks, read before the
+  update so that their recipients can be told after it, or nil when the updates leave the alerts alone."
+  [card card-updates]
+  (when (some #(contains? card-updates %) alert-affecting-columns)
+    (seq (models.notification/notifications-for-card (:id card)))))
+
 (defn delete-alerts-if-needed!
-  "Delete alerts if the card has been changed in a way that invalidates the alert"
-  [& {:keys [old-card new-card actor]}]
-  (cond
-    (card-archived? old-card new-card)
-    (delete-alert-and-notify! :event/card-update.notification-deleted.card-archived actor new-card)
+  "Tells the recipients of `notifications`, which [[alerts-of-card-being-changed]] read before the update, that the alerts
+  were deleted when the change from `old-card` to `new-card` archives the Card or invalidates its alerts, as the Card
+  hooks have then deleted them."
+  [& {:keys [old-card new-card actor notifications]}]
+  (when (seq notifications)
+    (cond
+      (card-archived? old-card new-card)
+      (events/publish-event! :event/card-update.notification-deleted.card-archived
+                             {:card new-card :actor actor :notifications notifications})
 
-    (or (display-change-broke-alert? old-card new-card)
-        (goal-missing? old-card new-card)
-        (multiple-breakouts? new-card))
-    (delete-alert-and-notify! :event/card-update.notification-deleted.card-changed actor new-card)
+      (card-change-broke-alert? old-card new-card)
+      (events/publish-event! :event/card-update.notification-deleted.card-changed
+                             {:card new-card :actor actor :notifications notifications}))))
 
-    ;; The change doesn't invalidate the alert, do nothing
-    :else
-    nil))
+(defn delete-alerts-if-card-changed!
+  "Deletes the alerts of `new-card` if the change from `old-card`, other than archiving it, invalidates them."
+  [& {:keys [old-card new-card]}]
+  (when (and (not (card-archived? old-card new-card))
+             (card-change-broke-alert? old-card new-card))
+    (when-let [notification-ids (seq (map :id (models.notification/notifications-for-card (:id new-card))))]
+      (pulse.db/delete-notifications! notification-ids))))

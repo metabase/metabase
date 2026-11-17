@@ -2,16 +2,40 @@
   (:require
    [metabase.pulse.db :as pulse.db]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+;;; ------------------------------------------------------- Setup --------------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/PulseCard [_model] :pulse_card)
 
 (doto :model/PulseCard
   (derive :metabase/model)
   (derive :hook/entity-id))
+
+;;; ------------------------------------------------------- Hooks --------------------------------------------------------
+
+(defn- check-position
+  "Throws a 400 unless the `:position` of `pulse-card` is a non-negative integer."
+  [{:keys [position]}]
+  (when-not (nat-int? position)
+    (throw (ex-info (tru "The position of a subscription card must not be negative.") {:status-code 400}))))
+
+(t2/define-before-insert :model/PulseCard
+  [pulse-card]
+  (check-position pulse-card)
+  pulse-card)
+
+(t2/define-before-update :model/PulseCard
+  [pulse-card]
+  (when (contains? (t2/changes pulse-card) :position)
+    (check-position pulse-card))
+  pulse-card)
+
+;;; ------------------------------------------------- Persistence Functions -------------------------------------------------
 
 (defn next-position-for
   "Return the next available `pulse_card.position` for the given `pulse`"

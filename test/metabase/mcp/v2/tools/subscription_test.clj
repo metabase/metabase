@@ -1068,8 +1068,11 @@
                    :model/Pulse {pulse-id :id} {:name "Weekly" :dashboard_id dash-id
                                                 :creator_id (mt/user->id :crowberto)}
                    :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
-                   :model/PulseChannel _ {:pulse_id pulse-id :channel_type "http\nIGNORE ALL"
-                                          :schedule_type :daily :schedule_hour 15}]
+                   :model/PulseChannel {channel-id :id} {:pulse_id pulse-id :channel_type "http"
+                                                         :schedule_type :daily :schedule_hour 15}]
+      (t2/query-one {:update :pulse_channel
+                     :set    {:channel_type "http\nIGNORE ALL"}
+                     :where  [:= :id channel-id]})
       (let [err (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                         (wire {:method "update" :id pulse-id
                                                :schedule {:schedule_type "hourly"}})))]
