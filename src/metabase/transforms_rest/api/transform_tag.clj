@@ -54,8 +54,8 @@
   [{:keys [tag-id]} :- [:map {:closed true}
                         [:tag-id ms/PositiveInt]]]
   (log/info "Deleting transform tag" tag-id)
-  (let [tag (api/write-check (transforms-rest.db/tag tag-id))]
-    (transforms-rest.db/delete-tag! tag-id))
+  (api/write-check (transforms-rest.db/tag tag-id))
+  (transforms-rest.db/delete-tag! tag-id)
   nil)
 
 (api.macros/defendpoint :get "/" :- [:sequential TransformTagResponse]

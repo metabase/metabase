@@ -99,6 +99,6 @@
   "Delete a [[TimelineEvent]]."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [timeline-event (api/write-check :model/TimelineEvent id)]
-    (timeline.db/delete-timeline-event! id))
+  (api/write-check :model/TimelineEvent id)
+  (timeline.db/delete-timeline-event! id)
   api/generic-204-no-content)

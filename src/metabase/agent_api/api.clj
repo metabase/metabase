@@ -1607,18 +1607,18 @@
                                                   {:collection-id (:collection_id updates)
                                                    :user-id       api/*current-user-id*})))
                        (when (seq mutations)
-                         (apply-dashcard-mutations! id mutations)))]
-    (let [updated (agent-api.db/dashboard id)]
-      {:id              (:id updated)
-       :name            (:name updated)
-       :collection_id   (:collection_id updated)
-       :collection_path (collection-path (:collection_id updated))
-       :description     (:description updated)
-       :archived        (boolean (:archived updated))
-       ;; select-fn-vec returns nil, not [], when there are no rows
-       :dashcard_ids    (or (agent-api.db/dashcard-ids-in-layout-order id)
-                            [])
-       :tabs            (dashboard-tabs id)})))
+                         (apply-dashcard-mutations! id mutations)))
+        updated      (agent-api.db/dashboard id)]
+    {:id              (:id updated)
+     :name            (:name updated)
+     :collection_id   (:collection_id updated)
+     :collection_path (collection-path (:collection_id updated))
+     :description     (:description updated)
+     :archived        (boolean (:archived updated))
+     ;; select-fn-vec returns nil, not [], when there are no rows
+     :dashcard_ids    (or (agent-api.db/dashcard-ids-in-layout-order id)
+                          [])
+     :tabs            (dashboard-tabs id)}))
 
 ;;; ------------------------------------------------ Create Collection -----------------------------------------------
 

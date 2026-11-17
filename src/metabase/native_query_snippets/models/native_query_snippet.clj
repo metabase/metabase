@@ -14,8 +14,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 

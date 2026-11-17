@@ -504,7 +504,7 @@
                 :model    "Channel"}
                (mt/latest-audit-log-entry :channel-create (:id channel)))))
       (testing :event/channel-update
-        (t2/update! :model/Channel (:id channel) {:name "New Name"})
+        (t2/update! :model/Channel :id (:id channel) {:name "New Name"})
         (is (= {:model_id (:id channel)
                 :user_id  (mt/user->id :rasta)
                 :details  {:previous {:name "Test channel"}
