@@ -228,7 +228,9 @@
                                  ;; Skip collection filtering to avoid blocking tables where the user
                                  ;; has data permissions but no collection access.
                                  [:= [:inline 1] [:inline 1]]
-                                 (search.permissions/permitted-collections-clause search-ctx collection-id-col))
+                                 (search.permissions/permitted-collections-clause
+                                  search-ctx collection-id-col
+                                  (if (= model "search-index") :search_index.model (h2x/literal (or model "")))))
         personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
     (-> honeysql-query
         (sql.helpers/where permitted-clause)

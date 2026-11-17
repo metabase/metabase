@@ -2,7 +2,7 @@
   (:require
    [metabase.data-apps.core :as data-apps]
    [metabase.permissions.core :as perms]
-   [metabase.search.config :refer [SearchContext]]
+   [metabase.search.config :as search.config :refer [SearchContext]]
    [metabase.util.malli :as mu]))
 
 (defn sandboxed-impersonated-or-routed-user?
@@ -16,9 +16,27 @@
             (false? is-sandboxed-user?)
             (false? is-routed-user?))))
 
+(def ^:private card-models
+  "The search models stored as cards."
+  ["card" "dataset" "metric"])
+
+(defn- analytics-cards-clause
+  "Clause dropping cards in the `analytics` namespace, or nil when `context` is one of
+  [[search.config/analytics-card-contexts]]. `model-expr` is the HoneySQL expression for each row's search model."
+  [context model-expr]
+  (when-not (contains? search.config/analytics-card-contexts (search.config/normalized-context context))
+    [:or
+     [:not-in model-expr card-models]
+     [:= :collection.namespace nil]
+     [:not= :collection.namespace "analytics"]]))
+
 (mu/defn permitted-collections-clause
-  "Build the WHERE clause corresponding to which collections the given user has access to."
-  [{:keys [archived current-user-id is-superuser? is-data-analyst?]} :- SearchContext collection-id-col :- :keyword]
+  "Build the WHERE clause corresponding to which collections the given user has access to.
+  `model-expr` is the HoneySQL expression for each row's search model; outside broad search, it drops the audit app's
+  analytics cards (see [[search.config/analytics-card-contexts]])."
+  [{:keys [archived context current-user-id is-superuser? is-data-analyst?]} :- SearchContext
+   collection-id-col :- :keyword
+   model-expr        :- [:or :keyword vector?]]
   [:and
    (perms/visible-collections-filter-clause collection-id-col {:user-id          current-user-id
                                                                :is-superuser?    (boolean is-superuser?)
@@ -30,7 +48,8 @@
    ;; legacy search so it performs the same on MySQL
    ;; TODO(edpaget 2025-12-04): this should be a default value of the search context and then search can be restricted
    ;; to different namespaces via parameters.
-   (perms/namespace-clause :collection.namespace nil true)])
+   (perms/namespace-clause :collection.namespace nil true)
+   (analytics-cards-clause context model-expr)])
 
 (mu/defn permitted-tables-clause
   "The WHERE clause keeping the Tables the user of `search-ctx` can query, by `table-id-col`."
