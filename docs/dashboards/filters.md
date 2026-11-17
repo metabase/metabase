@@ -9,11 +9,11 @@ redirect_from:
 
 ![Dashboard Filters](./images/filters.png)
 
-Filter widgets let people change _what_ data a dashboard displays (filter the data), and parameter widgets let people change _how_ the dashboard displays it (parameterize the data).
+Filter widgets change _what_ data a dashboard shows. Parameter widgets change _how_ the dashboard shows that data.
 
 ## Filter and parameter widgets
 
-There are two basic types of widgets you can add: filters or parameters. The type of filter or parameter widget you choose determines how the widget works, including which fields you can connect to the widget.
+The type of filter or parameter widget you choose determines how the widget works, including which fields you can connect to the widget.
 
 ### Filter widgets
 

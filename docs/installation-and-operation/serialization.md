@@ -9,7 +9,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Serialization" %}
 
-Serialization is useful when you run multiple Metabases, like separate instances for testing and production, or a Metabase per office or region.
+Serialization has two operations:
 
 - **Export** will serialize the contents of your source Metabase as YAML files.
 - **Import** will read those exported YAML files and create or update those serialized items in the target Metabase.

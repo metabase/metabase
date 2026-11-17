@@ -9,11 +9,11 @@ summary: Control who can use Metabot and which MCP tools each group can use, and
 
 _Admin > AI > Usage controls_
 
-Before you can set usage controls, you need to connect an AI provider (see [AI settings](./settings.md)). To choose which MCP tools each group can use, you also need to [turn on the MCP server](./mcp.md#turn-on-the-mcp-server).
-
 - [AI feature access](#ai-feature-access): which groups can use Metabot, and which of its tools.
 - [MCP tools access](#mcp-tools-access): which MCP tools each group's AI clients can use.
 - [AI usage limits](#ai-usage-limits): token or message caps by instance, group, or tenant.
+
+Before you can set usage controls, you need to connect an AI provider (see [AI settings](./settings.md)). To choose which MCP tools each group can use, you also need to [turn on the MCP server](./mcp.md#turn-on-the-mcp-server).
 
 ## AI feature access
 

@@ -14,7 +14,7 @@ _Data Studio > Data actions_
 
 You can use data actions to add a product, update a customer's address, or mark an order as refunded.
 
-Each data action does one job: it inserts, updates, or deletes rows. An admin sets up the action once, and people can only make the changes that the action allows.
+Each data action does one job. An admin sets up the action once, and people can only make the changes that the action allows.
 
 You can run data actions in two ways:
 

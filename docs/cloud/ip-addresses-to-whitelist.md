@@ -13,8 +13,6 @@ redirect_from:
 
 # IP addresses to whitelist
 
-Here are the IP addresses we use in each region.
-
 ## United States (North Virginia) - `us-east-1`
 
 ```sh

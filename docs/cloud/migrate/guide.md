@@ -19,7 +19,7 @@ redirect_from:
 
 > If you're running Metabase 49 or lower, see [this guide](https://www.metabase.com/docs/latest/cloud/migrate/guide-pre-50)
 
-Don't stress. You won't lose any of your work, and if you get stuck, we're here to help.
+If you get stuck, we're here to help.
 
 ## How to migrate to Metabase Cloud
 

@@ -9,7 +9,7 @@ summary: Build a custom app on your Metabase data with an AI coding agent, with 
 
 {% include plans-blockquote.html feature="Data apps" is_plural=true %}
 
-Like dashboards, data apps show your data from your semantic layer. A data app runs with the permissions of the person who opens it, so people see only the Metabase data that they're allowed to see.
+A data app runs with the permissions of the person who opens it, so people see only the Metabase data that they're allowed to see.
 
 ## [Getting started with data apps](./getting-started.md)
 

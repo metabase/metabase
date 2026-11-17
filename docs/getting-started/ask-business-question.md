@@ -7,8 +7,6 @@ summary: "Start exploring your data and finding answers to your business questio
 
 > Prefer to learn with an AI agent? Check out the [Learn Metabase Claude skill](https://www.metabase.com/learn/cheat-sheets/claude-skill-learn-metabase).
 
-This guide will walk you through how to answer questions using existing materials in Metabase.
-
 Metabase gives you access to your company's data, ready for you to use. Someone on your data team has connected your databases to Metabase and built metrics, questions, and dashboards.
 
 Knowing how to ask questions about data means knowing where to look and how to phrase your question. This article covers both the general question-asking and the specific places where to look in Metabase. It consists of the following sections:

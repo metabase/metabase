@@ -7,7 +7,7 @@ redirect_from:
 
 # Permissions introduction
 
-If you're wondering what data Metabase the company can see, check out our page on [data privacy and security](https://www.metabase.com/security).
+> Looking for the data that Metabase the company can see? Check out [data privacy and security](https://www.metabase.com/security).
 
 ## Key points regarding permissions
 

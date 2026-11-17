@@ -9,7 +9,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Authenticated embeds" sdk=true is_plural=true%}
 
-You can set up SSO with JWT or SAML. If you're developing locally, you can also set up authentication with [API keys](#authenticating-locally-with-api-keys).
+Use SSO in production. If you're developing locally, you can authenticate with [API keys](#authenticating-locally-with-api-keys) instead.
 
 ## Setting up JWT SSO
 

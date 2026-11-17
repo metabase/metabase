@@ -10,13 +10,11 @@ redirect_from:
 
 ![SQL snippet](../images/sql-snippets.png)
 
-Anyone with permissions to the [native editor](./writing-sql.md) can create and edit snippets, which are then available for all native query authors.
-
-For example, if you frequently write queries that involve multiple tables, you can save the SQL code that joins those tables as a snippet so that you (and others in your organization) can reuse that code in multiple questions.
+If you frequently write queries that involve multiple tables, you can save the SQL code that joins those tables as a snippet so that you (and others in your organization) can reuse that code in multiple questions.
 
 You can use snippets to define standardized KPIs and filters using SQL, just like you do with [metrics](../../data-modeling/semantic-layer/metrics.md) and [segments](../../data-modeling/semantic-layer/segments.md) in the query builder. For example, you may want to store exactly how you calculate revenue, or what constitutes an active user.
 
-You can also use snippets to define a set of reusable filters for SQL questions.
+Anyone with permissions to the [native editor](./writing-sql.md) can create and edit snippets, which are then available for all native query authors.
 
 ## Create a snippet
 
