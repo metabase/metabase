@@ -145,6 +145,10 @@ describe("scenarios > admin > databases > writable connection", () => {
 
       createWritableConnection(DEFAULT_USER);
       refreshModelPersistenceAndAwaitSuccess(model.id);
+
+      cy.visit(`/model/${model.id}`);
+      H.openQuestionActions("Edit settings");
+      cy.findByLabelText("Persist model data").should("be.checked");
     });
   });
 
