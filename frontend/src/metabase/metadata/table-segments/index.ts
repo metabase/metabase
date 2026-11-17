@@ -1,4 +1,5 @@
 export {
+  type CohortProposal,
   type Confidence,
   CONDITION_SEGMENT_ROLES,
   type CurrentVersionBinding,
@@ -13,6 +14,8 @@ export {
   SYSTEM_SEGMENT_ROLES,
   type SystemSegmentInference,
   type SystemSegmentRole,
+  getMilestoneCohortProposals,
+  getStatusCohortProposals,
   getSystemSegmentDescription,
   getSystemSegmentLabel,
   getSystemSegmentRoleLabel,

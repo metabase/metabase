@@ -1,5 +1,11 @@
 import { t } from "ttag";
 
+import {
+  type OrderedValue,
+  VALUE_BUCKETS,
+  getValueBucketLabel,
+  isMilestoneField,
+} from "metabase/metadata/lifecycle";
 import { isBoolean, isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, SegmentId, Table } from "metabase-types/api";
 
@@ -31,6 +37,8 @@ export type Confidence = "high" | "low";
  */
 export type FieldCondition =
   | { fieldId: FieldId; operator: "="; value: boolean | string }
+  /** Any of several values, like a status bucket's */
+  | { fieldId: FieldId; operator: "in"; values: string[] }
   | { fieldId: FieldId; operator: "is-null" | "not-null" }
   | { fieldId: FieldId; operator: "last-days"; days: number }
   /** The latest complete period at the column's grain */
@@ -69,6 +77,17 @@ export type RequiredFilterInference = {
   condition: FieldCondition | null;
   signal: string;
   confidence: Confidence;
+};
+
+/** A comparison group sync proposes; an admin accepts or dismisses it */
+export type CohortProposal = {
+  /** Stable across syncs, so a dismissal sticks */
+  key: string;
+  /** A status column's bucket, or a milestone date that's set */
+  kind: "status" | "milestone";
+  name: string;
+  condition: FieldCondition;
+  signal: string;
 };
 
 export function getSystemSegmentLabel(role: SystemSegmentRole): string {
@@ -410,4 +429,58 @@ export function inferRequiredFilter(
         confidence: "low",
       };
   }
+}
+
+const MILESTONE_DATE_SUFFIX_RE = /_(at|on|date|time)$/;
+
+const humanize = (words: string) => {
+  const text = words.replace(/_/g, " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
+
+/**
+ * PROTOTYPE: mocked. Cohorts from milestones: rows whose milestone date is
+ * set (MilestoneTimestamp is not null). Proposed, never applied by default.
+ */
+export function getMilestoneCohortProposals(fields: Field[]): CohortProposal[] {
+  return fields.filter(isMilestoneField).map((field) => ({
+    key: `milestone:${idOf(field)}`,
+    kind: "milestone",
+    name: humanize(nameOf(field).replace(MILESTONE_DATE_SUFFIX_RE, "")),
+    condition: { fieldId: idOf(field), operator: "not-null" },
+    signal: t`${field.display_name} is a milestone date`,
+  }));
+}
+
+/**
+ * PROTOTYPE: mocked. Cohorts from a status column: one per bucket of its value
+ * order (Open, Won, Lost, Cancelled), each the bucket's values. Values still in
+ * Other make no cohort. Proposed, never applied by default.
+ */
+export function getStatusCohortProposals(
+  table: Pick<Table, "display_name">,
+  statusField: Field,
+  orderedValues: OrderedValue[],
+): CohortProposal[] {
+  const rows = table.display_name.toLowerCase();
+  return VALUE_BUCKETS.filter((bucket) => bucket !== "other").flatMap(
+    (bucket): CohortProposal[] => {
+      const values = orderedValues
+        .filter((value) => value.bucket === bucket)
+        .map(({ value }) => value);
+      if (values.length === 0) {
+        return [];
+      }
+      const bucketLabel = getValueBucketLabel(bucket);
+      return [
+        {
+          key: `status:${idOf(statusField)}:${bucket}`,
+          kind: "status",
+          name: t`${bucketLabel} ${rows}`,
+          condition: { fieldId: idOf(statusField), operator: "in", values },
+          signal: t`${statusField.display_name} values in its ${bucketLabel} bucket`,
+        },
+      ];
+    },
+  );
 }

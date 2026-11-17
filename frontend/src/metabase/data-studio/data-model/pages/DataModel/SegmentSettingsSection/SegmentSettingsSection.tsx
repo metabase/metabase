@@ -84,7 +84,7 @@ export function SegmentSettingsSection({
           value={
             <Switch
               py="xs"
-              label={t`Build system segments`}
+              label={t`Build system segments and propose cohorts`}
               checked={settings.generateSegments.value}
               onChange={(event) => {
                 const generateSegments = event.target.checked;

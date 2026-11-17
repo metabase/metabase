@@ -6,6 +6,7 @@ import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { TableHeader } from "../../components/TableHeader";
+import { TableListBody } from "../../components/TableListBody";
 
 import { TableSegments } from "./TableSegments";
 
@@ -27,9 +28,11 @@ export function TableSegmentsPage() {
   }
 
   return (
-    <PageContainer data-testid="table-segments-page">
-      <TableHeader table={table} />
-      <TableSegments table={table} />
+    <PageContainer data-testid="table-segments-page" gap="lg" px={0} pb={0}>
+      <TableHeader table={table} px="3.5rem" />
+      <TableListBody hasPageBackground>
+        <TableSegments table={table} />
+      </TableListBody>
     </PageContainer>
   );
 }

@@ -9,9 +9,11 @@ import S from "./SegmentItem.module.css";
 type SegmentItemProps = {
   segment: Segment;
   href: string;
+  /** The table's questions start from this segment */
+  isDefault?: boolean;
 };
 
-export function SegmentItem({ segment, href }: SegmentItemProps) {
+export function SegmentItem({ segment, href, isDefault }: SegmentItemProps) {
   return (
     <Card
       className={S.card}
@@ -29,6 +31,7 @@ export function SegmentItem({ segment, href }: SegmentItemProps) {
           <Ellipsified lines={1} tooltip={segment.name}>
             <Text fw="bold">{segment.name}</Text>
           </Ellipsified>
+          {isDefault && <DefaultSegmentBadge />}
         </Flex>
 
         {segment.definition_description && (

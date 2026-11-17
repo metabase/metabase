@@ -1,14 +1,18 @@
+import { t } from "ttag";
+
 import { Flex, Group, Icon, Pill } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
-/** A group's members on its card, in order */
+/** A group's members on its card, in order, with Other last and muted */
 export function GroupMemberPills({
   labels,
   icon,
+  hasOther = false,
 }: {
   labels: string[];
   /** What each member is, shown in its pill like a clause pill's icon */
   icon?: IconName;
+  hasOther?: boolean;
 }) {
   return (
     <Group gap="xs" wrap="wrap">
@@ -24,6 +28,11 @@ export function GroupMemberPills({
           )}
         </Pill>
       ))}
+      {hasOther && (
+        <Pill bdrs="xl" c="text-secondary">
+          {t`Other`}
+        </Pill>
+      )}
     </Group>
   );
 }
