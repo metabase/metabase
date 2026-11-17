@@ -1,4 +1,3 @@
-import fetchMock from "fetch-mock";
 import type { ComponentProps } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
@@ -10,6 +9,7 @@ import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupSettingEndpoint,
+  setupStatefulBookmarksEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -30,6 +30,7 @@ import * as iframeUtils from "metabase/utils/iframe";
 import type {
   Bookmark,
   Card,
+  Collection,
   Dashboard,
   DashboardId,
   ModelResult,
@@ -73,11 +74,13 @@ export type SetupOpts = {
   hasEmbeddingFeature?: boolean;
   applicationName?: string;
   activeUsersCount?: number;
+  trashCollection?: Collection;
+  extraCollections?: Collection[];
 };
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
   id: 1,
-  name: "'Your personal collection",
+  name: "John Doe Personal Collection",
   originalName: "John's Personal Collection",
 });
 
@@ -114,6 +117,8 @@ export async function setup({
   hasWhitelabelToken,
   hasEmbeddingFeature,
   applicationName = "Metabase",
+  trashCollection,
+  extraCollections = [],
 }: SetupOpts = {}) {
   if (isEmbeddingIframe) {
     jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
@@ -163,10 +168,16 @@ export async function setup({
   setupCollectionsEndpoints({
     collections,
     rootCollection: OUR_ANALYTICS,
+    trashCollection,
     currentUserId: user?.id,
   });
   setupCollectionByIdEndpoint({
-    collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION, NESTED_COLLECTION],
+    collections: [
+      PERSONAL_COLLECTION_BASE,
+      TEST_COLLECTION,
+      NESTED_COLLECTION,
+      ...extraCollections,
+    ],
   });
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints(models);
@@ -180,7 +191,7 @@ export async function setup({
     settingValue: {},
   });
 
-  fetchMock.get("path:/api/bookmark", bookmarks);
+  setupStatefulBookmarksEndpoints(bookmarks);
 
   if (openQuestionCard) {
     setupCardsEndpoints([openQuestionCard]);
@@ -231,7 +242,7 @@ export async function setup({
     });
   }
 
-  renderWithProviders(
+  const { router } = renderWithProviders(
     <Route
       path={route}
       element={<RoutedMainNavbar isOpen dashboard={storeDashboard} />}
@@ -246,6 +257,8 @@ export async function setup({
 
   await waitForLoaderToBeRemoved();
   await waitForLoaderToBeRemoved(); // tests will fail without the 2nd call
+
+  return { router };
 }
 
 export async function setupCollectionPage({

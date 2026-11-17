@@ -110,7 +110,7 @@ const dataAppDevConfig = {
   externalsType: "module",
   output: {
     path: SDK_DIST_PATH,
-    filename: "data-app-dev.config.js",
+    filename: "data-app-dev.config.mjs",
     library: { type: "module" },
   },
   experiments: { outputModule: true },

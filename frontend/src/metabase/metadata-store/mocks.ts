@@ -7,7 +7,7 @@ import type {
   Field,
   Measure,
   NativeQuerySnippet,
-  SavedQuestionDatabase,
+  NormalizedMetric,
   Schema,
   Segment,
   Table,
@@ -27,12 +27,13 @@ import {
 } from "./schema";
 
 export interface EntitiesStateOpts {
-  databases?: (Database | SavedQuestionDatabase)[];
+  databases?: Database[];
   schemas?: Schema[];
   tables?: Table[];
   fields?: Field[];
   segments?: Segment[];
   measures?: Measure[];
+  metrics?: NormalizedMetric[];
   snippets?: NativeQuerySnippet[];
   users?: User[];
   questions?: Card[];

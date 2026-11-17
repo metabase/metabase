@@ -1,5 +1,6 @@
 ---
 title: Languages and localization
+summary: Set the default language, report timezone, first day of the week, and date, number, and currency formats.
 redirect_from:
   - /docs/latest/administration-guide/localization
 ---

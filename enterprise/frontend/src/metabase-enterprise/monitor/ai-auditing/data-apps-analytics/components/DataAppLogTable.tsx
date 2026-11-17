@@ -145,9 +145,7 @@ function useDataAppNames(): DataAppNames {
 
   return useMemo(
     () =>
-      new Map(
-        (dataApps ?? []).map((dataApp) => [dataApp.name, dataApp.display_name]),
-      ),
+      new Map((dataApps ?? []).map((dataApp) => [dataApp.slug, dataApp.name])),
     [dataApps],
   );
 }
@@ -343,6 +341,7 @@ function DataAppLogTableContent({
       <LoadingOverlay visible={isFetching} />
       <TreeTable
         instance={instance}
+        static
         hierarchical={false}
         ariaLabel={t`Data app activity`}
         emptyState={<MonitorEmptyState label={t`No activity found`} />}

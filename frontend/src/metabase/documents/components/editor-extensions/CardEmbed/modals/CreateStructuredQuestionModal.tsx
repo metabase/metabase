@@ -2,14 +2,17 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { selectQuestionFromCard } from "metabase/metadata-store";
+import {
+  selectQuestionFromCard,
+  selectQuestionFromOptsBuilder,
+} from "metabase/metadata-store";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { getSetting } from "metabase/settings";
 import { Box, Button, Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 
 import S from "./CreateStructuredQuestionModal.module.css";
 
@@ -27,7 +30,7 @@ export const CreateStructuredQuestionModal = ({
   const host = useEditorHost();
 
   const [modifiedQuestion, setModifiedQuestion] = useState<Question>(() =>
-    Question.create(),
+    selectQuestionFromOptsBuilder(store.getState())({}),
   );
 
   const reportTimezone = useSelector((state) =>

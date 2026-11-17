@@ -25,6 +25,7 @@ import { Api } from "./api";
 import {
   idTag,
   invalidateTags,
+  listTag,
   provideMetricDimensionListTags,
   provideMetricDimensionValuesTags,
   provideMetricListTags,
@@ -41,6 +42,7 @@ function metricDimensionInvalidationTags(metricId: MetricId) {
     "metric-dimension" as const,
     idTag("metric-dimension", metricId),
     idTag("card", metricId),
+    listTag("card"),
   ];
 }
 

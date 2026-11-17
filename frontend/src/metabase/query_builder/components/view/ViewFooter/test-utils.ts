@@ -5,21 +5,18 @@ import {
   createMockState,
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDataset,
-  createMockStructuredDatasetQuery,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
 const testDatasetQuery = () =>
-  createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: { "source-table": ORDERS_ID },
-  });
+  Lib.toJsQuery(Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY));
 
 export const TABLE_CARD = createMockCard({
   display: "table",

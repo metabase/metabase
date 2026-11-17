@@ -410,9 +410,7 @@
 
 (def ^:private pk-columns
   "Models whose primary key is not `:id`, mirroring their `t2/primary-keys` methods."
-  {:model/FieldUserSettings :field_id
-   :model/TableUserSettings :table_id
-   :model/Setting           :key
+  {:model/Setting           :key
    :model/QueryCache        :query_hash
    :model/QueryAction       :action_id
    :model/ImplicitAction    :action_id})
@@ -461,7 +459,6 @@
               :message (format "Application database query calls like `%s` must live in metabase[-enterprise].<module>.db (or metabase.driver.<driver>.db) namespaces"
                                (hooks/sexpr fn-node))
               :type :metabase/t2-query-namespace))))
-  ((requiring-resolve 'hooks.metabase.warehouse-schema-overlay.table-or-field-query/lint-read) input)
   (when (and ns
              (db-namespace? (modules/config input) ns)
              (not (test-file? filename))

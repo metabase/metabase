@@ -29,7 +29,6 @@ import {
 const SECTION_TYPE: Record<LibrarySection, CollectionType | null> = {
   data: "library-data",
   metrics: "library-metrics",
-  dashboards: "library-dashboards",
   snippets: null,
   actions: null,
 };
@@ -37,7 +36,6 @@ const SECTION_TYPE: Record<LibrarySection, CollectionType | null> = {
 const SECTION_NAMESPACE: Record<LibrarySection, CollectionNamespace> = {
   data: null,
   metrics: null,
-  dashboards: null,
   snippets: "snippets",
   actions: "data-actions",
 };
@@ -73,24 +71,6 @@ function metricItem(
     data: createMockCollectionItem({
       id,
       model: "metric",
-      collection_id: opts.collectionId ?? null,
-      can_write: true,
-    }),
-  };
-}
-
-function dashboardItem(
-  id: number,
-  opts: { collectionId?: number | null } = {},
-): TreeItem {
-  return {
-    id: `dashboard:${id}`,
-    name: `Dashboard ${id}`,
-    icon: "dashboard",
-    model: "dashboard",
-    data: createMockCollectionItem({
-      id,
-      model: "dashboard",
       collection_id: opts.collectionId ?? null,
       can_write: true,
     }),
@@ -203,11 +183,9 @@ describe("library-bulk-selection.utils", () => {
     it("derives the section from model and collection type/namespace", () => {
       expect(getItemSection(tableItem(1))).toBe("data");
       expect(getItemSection(metricItem(1))).toBe("metrics");
-      expect(getItemSection(dashboardItem(1))).toBe("dashboards");
       expect(getItemSection(snippetItem(1))).toBe("snippets");
       expect(getItemSection(subCollection(2, "data"))).toBe("data");
       expect(getItemSection(subCollection(3, "metrics"))).toBe("metrics");
-      expect(getItemSection(subCollection(5, "dashboards"))).toBe("dashboards");
       expect(getItemSection(subCollection(4, "snippets"))).toBe("snippets");
       expect(getItemSection(actionItem(1))).toBe("actions");
       expect(getItemSection(subCollection(6, "actions"))).toBe("actions");
@@ -270,19 +248,19 @@ describe("library-bulk-selection.utils", () => {
     });
 
     it("adds the missing items when only some are selected", () => {
-      const d1 = dashboardItem(1);
-      const d2 = dashboardItem(2);
-      expect(ids(toggleItems([d1], [d1, d2]))).toEqual([
-        "dashboard:1",
-        "dashboard:2",
+      const m1 = metricItem(1);
+      const m2 = metricItem(2);
+      expect(ids(toggleItems([m1], [m1, m2]))).toEqual([
+        "metric:1",
+        "metric:2",
       ]);
     });
 
     it("keeps selected items that are not being toggled when deselecting", () => {
-      const d1 = dashboardItem(1);
-      const d2 = dashboardItem(2);
-      const d3 = dashboardItem(3);
-      expect(ids(toggleItems([d1, d2, d3], [d1, d2]))).toEqual(["dashboard:3"]);
+      const m1 = metricItem(1);
+      const m2 = metricItem(2);
+      const m3 = metricItem(3);
+      expect(ids(toggleItems([m1, m2, m3], [m1, m2]))).toEqual(["metric:3"]);
     });
 
     it("replaces a selection from another section", () => {
@@ -360,21 +338,6 @@ describe("library-bulk-selection.utils", () => {
           section: "data",
           entityId: 5,
           sourceCollectionId: 10,
-          canWrite: true,
-        },
-      ]);
-    });
-
-    it("reads dashboard rows into the dashboards section", () => {
-      expect(
-        deriveSelectedItems([dashboardItem(7, { collectionId: 12 })]),
-      ).toEqual([
-        {
-          key: "dashboard:7",
-          model: "dashboard",
-          section: "dashboards",
-          entityId: 7,
-          sourceCollectionId: 12,
           canWrite: true,
         },
       ]);

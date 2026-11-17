@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { ComponentType, Dispatch, SetStateAction } from "react";
 import { t } from "ttag";
 import type { AnySchema } from "yup";

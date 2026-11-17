@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { useUpdateFieldMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { ColumnSettings } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/viz-core";
 import { isCurrency } from "metabase-lib/v1/types/utils/isa";
@@ -26,7 +25,7 @@ const FormattingSectionBase = ({
   disabled,
   onTrackMetadataChange,
 }: Props) => {
-  const id = getRawTableFieldId(field);
+  const id = field.id;
   const [updateField] = useUpdateFieldMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();

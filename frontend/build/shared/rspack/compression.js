@@ -36,8 +36,8 @@ function getCompressionConfig() {
       filename: "[path][base].br",
       compressionOptions: {
         params: {
-          [zlib.constants.BROTLI_PARAM_QUALITY]:
-            zlib.constants.BROTLI_MAX_QUALITY,
+          // Quality 11 is ~2.5x slower than 10 for ~1.5% smaller output.
+          [zlib.constants.BROTLI_PARAM_QUALITY]: 10,
         },
       },
     }),

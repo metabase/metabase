@@ -1,5 +1,6 @@
 ---
 title: Linked filters
+summary: Link dashboard filters so picking a value in one narrows the options in another, like showing only the cities in a selected state.
 ---
 
 # Linked filters

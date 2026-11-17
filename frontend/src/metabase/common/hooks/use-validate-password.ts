@@ -1,7 +1,7 @@
-import { getIn } from "icepick";
 import { useCallback } from "react";
 
 import { useCheckPasswordMutation } from "metabase/api";
+import { getAtPath } from "metabase/utils/get-at-path";
 import { passwordComplexityDescription } from "metabase/utils/password";
 
 export const useValidatePassword = () => {
@@ -17,7 +17,8 @@ export const useValidatePassword = () => {
       try {
         await checkPassword({ password }).unwrap();
       } catch (error) {
-        return getIn(error, ["data", "errors", "password"]);
+        const message = getAtPath(error, ["data", "errors", "password"]);
+        return typeof message === "string" ? message : undefined;
       }
     },
     [checkPassword],

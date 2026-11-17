@@ -1,5 +1,6 @@
 ---
 title: Metabase Cloud
+summary: Metabase Cloud is Metabase's hosted service, with uptime, backups, and upgrades handled for you. Covers storage, settings, limitations, migrations, and billing.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true
@@ -28,6 +29,7 @@ Manage your Metabase Cloud instance, subscription, and billing via the [Metabase
 ### Metabase Cloud settings
 
 - [Changing which region your Metabase is hosted in](https://www.metabase.com/docs/latest/cloud/change-region)
+- [Connecting Metabase Cloud to your database](https://www.metabase.com/docs/latest/cloud/connecting-to-your-database)
 - [IP addresses to whitelist](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist)
 - [IP allowlist](https://www.metabase.com/docs/latest/cloud/ip-allowlist)
 - [Changing your domain name](https://www.metabase.com/docs/latest/cloud/custom-domain)

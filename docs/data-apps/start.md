@@ -1,14 +1,23 @@
 ---
 title: Data apps overview
+summary: Build a custom app on your Metabase data with an AI coding agent, with its own pages and layout, and let people add and edit data from it.
 ---
 
 # Data apps overview
 
-Data apps are custom apps that you build on your Metabase data with an AI coding agent. Like dashboards, data apps show your data from your semantic layer. But an app can have any layout and its own pages, and people can add, edit, and delete data from the app. A data app runs with the permissions of the person who opens it, so people see only the data that they're allowed to see.
+> **Beta:** Data apps are in beta.
+
+{% include plans-blockquote.html feature="Data apps" is_plural=true %}
+
+Data apps are custom apps that you build on your Metabase data with an AI coding agent. Like dashboards, data apps show your data from your semantic layer. But an app can have any layout and its own pages, and people can add, edit, and delete data from the app. A data app runs with the permissions of the person who opens it, so people see only the Metabase data that they're allowed to see.
+
+## [Getting started with data apps](./getting-started.md)
+
+Build your first app, step by step. You need only your production Metabase.
 
 ## [Build a data app](./build.md)
 
-What you need to build an app, how an AI coding agent builds and changes it with the Metabase CLI, where to keep the app's source code, and how to ship the app to production with Remote Sync.
+What you need to build an app, how an AI coding agent builds and changes it with the Metabase CLI, where to keep the app's source code, and how to ship the app to production with Git.
 
 ## [Manage data apps](./manage.md)
 

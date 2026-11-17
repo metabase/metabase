@@ -3,11 +3,11 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.serialization.core :as serialization]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -177,29 +177,29 @@
              (t2/hydrate :pk_field)
              :pk_field))))
 
-;;; ------------------------------------------ visible-filter-clause tests ------------------------------------------
+;;; --------------------------------------- visible-tables-filter-clause tests ---------------------------------------
 
 (defn- fetch-visible-table-ids
-  "Fetches visible table IDs using `visible-filter-clause` with the new `:clause/:with` return structure."
+  "Fetches visible table IDs using `perms/visible-tables-filter-clause`."
   [db-id user-info permission-mapping table-id-field]
-  (let [{:keys [clause with]} (mi/visible-filter-clause :model/Table table-id-field user-info permission-mapping)]
-    (t2/select-pks-set [:model/Table]
-                       (cond-> {:where [:and [:= :db_id db-id] clause]}
-                         with (assoc :with with)))))
+  (t2/select-pks-set [:model/Table]
+                     {:where [:and [:= :db_id db-id]
+                              (perms/visible-tables-filter-clause table-id-field user-info permission-mapping
+                                                                  {:active-only? false, :include-published-via-collection? false})]}))
 
 (defn- superuser-info
   "Returns user-info map for a superuser."
   [user-id]
   {:user-id       user-id
-   :is-superuser? true})
+   :is-superuser? true :is-data-analyst? false})
 
 (defn- regular-user-info
   "Returns user-info map for a non-superuser."
   [user-id]
   {:user-id       user-id
-   :is-superuser? false})
+   :is-superuser? false :is-data-analyst? false})
 
-(deftest visible-filter-clause-superuser-sees-all-tables-test
+(deftest visible-tables-filter-clause-superuser-sees-all-tables-test
   (testing "Superuser should see all tables regardless of permissions"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database         {db-id :id}    {}
@@ -218,7 +218,7 @@
                                          :perms/create-queries :query-builder}
                                         :id)))))))
 
-(deftest visible-filter-clause-filters-by-view-and-query-perms-test
+(deftest visible-tables-filter-clause-filters-by-view-and-query-perms-test
   (testing "Non-superuser sees only tables where they have both view and query permissions"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database         {db-id :id}       {}
@@ -243,7 +243,7 @@
                                          :perms/create-queries :query-builder}
                                         :id)))))))
 
-(deftest visible-filter-clause-coalesce-expression-test
+(deftest visible-tables-filter-clause-coalesce-expression-test
   (testing "Filter clause works with coalesce expression for table ID"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database         {db-id :id}   {}
@@ -265,7 +265,7 @@
                                          :perms/create-queries :query-builder}
                                         [:coalesce :id :metabase_table.id])))))))
 
-(deftest visible-filter-clause-qualified-keyword-test
+(deftest visible-tables-filter-clause-qualified-keyword-test
   (testing "Filter clause works with qualified keyword for table ID"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database         {db-id :id}   {}
@@ -287,7 +287,7 @@
                                          :perms/create-queries :query-builder}
                                         :metabase_table.id)))))))
 
-(deftest visible-filter-clause-view-data-only-test
+(deftest visible-tables-filter-clause-view-data-only-test
   (testing "Non-superuser requiring only :view-data :unrestricted sees tables with that permission"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database         {db-id :id}       {}
@@ -312,7 +312,7 @@
                                          :perms/create-queries :no}
                                         :id)))))))
 
-(deftest visible-filter-clause-legacy-no-self-service-test
+(deftest visible-tables-filter-clause-legacy-no-self-service-test
   (testing "Non-superuser requiring :view-data :legacy-no-self-service sees tables at that level or above"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database         {db-id :id}       {}
@@ -340,7 +340,7 @@
                                          :perms/create-queries :no}
                                         :id)))))))
 
-(deftest visible-filter-clause-blocked-level-sees-all-test
+(deftest visible-tables-filter-clause-blocked-level-sees-all-test
   (testing "Non-superuser requiring :view-data :blocked sees all tables since all values are more permissive"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database         {db-id :id}       {}
@@ -368,7 +368,7 @@
                                          :perms/create-queries :no}
                                         :id)))))))
 
-(deftest visible-filter-clause-blocked-takes-precedence-test
+(deftest visible-tables-filter-clause-blocked-takes-precedence-test
   (testing "Blocked permission takes precedence over legacy-no-self-service across groups"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database         {db-id :id}       {}
@@ -403,7 +403,7 @@
 
 ;;; ---------------------------------------- DB-level permissions tests ----------------------------------------
 
-(deftest visible-filter-clause-db-level-superuser-test
+(deftest visible-tables-filter-clause-db-level-superuser-test
   (testing "Superuser sees all tables with DB-level permissions"
     (mt/with-temp [:model/Database {db-id :id}    {}
                    :model/Table    {table-1 :id}  {:db_id db-id :name "Table1"}
@@ -418,7 +418,7 @@
                                        :perms/create-queries :query-builder}
                                       :id))))))
 
-(deftest visible-filter-clause-db-level-no-query-perms-test
+(deftest visible-tables-filter-clause-db-level-no-query-perms-test
   (testing "Non-superuser with DB-level view but no query perms sees no tables when both are required"
     (mt/with-temp [:model/Database {db-id :id}   {}
                    :model/Table    {_table-1 :id} {:db_id db-id :name "Table1"}
@@ -432,7 +432,7 @@
                                             :perms/create-queries :query-builder}
                                            :id))))))
 
-(deftest visible-filter-clause-db-level-coalesce-test
+(deftest visible-tables-filter-clause-db-level-coalesce-test
   (testing "Filter clause with coalesce works for DB-level permissions"
     (mt/with-temp [:model/Database {db-id :id}   {}
                    :model/Table    {_table-1 :id} {:db_id db-id :name "Table1"}
@@ -445,7 +445,7 @@
                                             :perms/create-queries :query-builder}
                                            [:coalesce :id :metabase_table.id]))))))
 
-(deftest visible-filter-clause-db-level-qualified-keyword-test
+(deftest visible-tables-filter-clause-db-level-qualified-keyword-test
   (testing "Filter clause with qualified keyword works for DB-level permissions"
     (mt/with-temp [:model/Database {db-id :id}   {}
                    :model/Table    {_table-1 :id} {:db_id db-id :name "Table1"}
@@ -458,7 +458,7 @@
                                             :perms/create-queries :query-builder}
                                            :metabase_table.id))))))
 
-(deftest visible-filter-clause-db-level-view-only-test
+(deftest visible-tables-filter-clause-db-level-view-only-test
   (testing "Non-superuser requiring only :view-data :unrestricted sees all tables with DB-level unrestricted"
     (mt/with-temp [:model/Database {db-id :id}   {}
                    :model/Table    {table-1 :id} {:db_id db-id :name "Table1"}
@@ -473,7 +473,7 @@
                                        :perms/create-queries :no}
                                       :id))))))
 
-(deftest visible-filter-clause-db-level-blocked-test
+(deftest visible-tables-filter-clause-db-level-blocked-test
   (testing "Non-superuser requiring :blocked sees all tables since all values are more permissive"
     (mt/with-temp [:model/Database {db-id :id}   {}
                    :model/Table    {table-1 :id} {:db_id db-id :name "Table1"}
@@ -596,7 +596,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? (t2/select-one :model/Table :id table-id))))))))
+        (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Table :id table-id) :can_read))))))))
 
 (deftest table-can-read?-with-view-data-permission-test
   (testing "User with view-data and create-queries permission can read table"
@@ -609,7 +609,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (mt/with-test-user :rasta
-        (is (false? (boolean (mi/can-read? (t2/select-one :model/Table :id table-id)))))))))
+        (is (false? (boolean (mi/can-read? (t2/hydrate (t2/select-one :model/Table :id table-id) :can_read)))))))))
 
 (deftest table-can-read?-with-manage-table-metadata-permission-test
   (testing "User with manage-table-metadata permission can read table"
@@ -622,7 +622,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-table-permission! pg table-id :perms/manage-table-metadata :yes)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? (t2/select-one :model/Table :id table-id))))))))
+        (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Table :id table-id) :can_read))))))))
 
 (deftest table-can-read?-without-permissions-test
   (testing "User with neither permission cannot read table"
@@ -634,7 +634,7 @@
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (mt/with-test-user :rasta
-        (is (false? (mi/can-read? (t2/select-one :model/Table :id table-id))))))))
+        (is (false? (mi/can-read? (t2/hydrate (t2/select-one :model/Table :id table-id) :can_read))))))))
 
 ;;; ---------------------------------------- can-query? permission tests ----------------------------------------
 
@@ -650,11 +650,11 @@
       ;; Only view-data - not enough
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (mt/with-test-user :rasta
-        (is (false? (mi/can-query? (t2/select-one :model/Table :id table-id)))))
+        (is (false? (mi/can-query? (t2/hydrate (t2/select-one :model/Table :id table-id) :can_query)))))
       ;; Add create-queries - now can query
       (data-perms/set-table-permission! pg table-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-query? (t2/select-one :model/Table :id table-id))))))))
+        (is (true? (mi/can-query? (t2/hydrate (t2/select-one :model/Table :id table-id) :can_query))))))))
 
 (deftest table-can-query?-manage-table-metadata-does-not-grant-query-access-test
   (testing "manage-table-metadata alone does NOT grant query access"
@@ -667,7 +667,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-table-permission! pg table-id :perms/manage-table-metadata :yes)
       (mt/with-test-user :rasta
-        (is (false? (mi/can-query? (t2/select-one :model/Table :id table-id))))))))
+        (is (false? (mi/can-query? (t2/hydrate (t2/select-one :model/Table :id table-id) :can_query))))))))
 
 ;;; ---------------------------------------- can_query hydration test ----------------------------------------
 
@@ -685,62 +685,20 @@
           (is (contains? hydrated :can_query))
           (is (boolean? (:can_query hydrated))))))))
 
-(deftest serdes-descendants-includes-fields-and-segments-test
-  (testing "Table descendants includes Fields and Segments"
-    (mt/with-temp [:model/Database {db-id :id}      {:name "Test DB"}
-                   :model/Table    {table-id :id}   {:name "Test Table" :db_id db-id}
-                   :model/Field    {field1-id :id}  {:name "Field 1" :table_id table-id :base_type :type/Integer}
-                   :model/Field    {field2-id :id}  {:name "Field 2" :table_id table-id :base_type :type/Text}
-                   :model/Segment  {segment-id :id} {:name "Test Segment" :table_id table-id :definition {}}]
-      (let [descendants (serdes/descendants "Table" table-id {})]
-        (testing "Fields are included"
-          (is (contains? descendants ["Field" field1-id]))
-          (is (contains? descendants ["Field" field2-id])))
-        (testing "Segments are included"
-          (is (contains? descendants ["Segment" segment-id]))))))
-  (testing "Table with no fields or segments returns empty map"
-    (mt/with-temp [:model/Database {db-id :id}    {:name "Test DB"}
-                   :model/Table    {table-id :id} {:name "Empty Table" :db_id db-id}]
-      (is (= {} (serdes/descendants "Table" table-id {}))))))
-
-(deftest serdes-descendants-skip-archived-segments-test
-  (testing "Table descendants respects skip-archived option for Segments"
-    (mt/with-temp [:model/Database {db-id :id}           {:name "Test DB"}
-                   :model/Table    {table-id :id}        {:name "Test Table" :db_id db-id}
-                   :model/Field    {field-id :id}        {:name "Test Field" :table_id table-id :base_type :type/Integer}
-                   :model/Segment  {active-seg-id :id}   {:name "Active Segment" :table_id table-id :definition {} :archived false}
-                   :model/Segment  {archived-seg-id :id} {:name "Archived Segment" :table_id table-id :definition {} :archived true}]
-      (testing "archived segments are excluded when skip-archived: true"
-        (let [descendants (serdes/descendants "Table" table-id {:skip-archived true})]
-          (is (contains? descendants ["Field" field-id])
-              "Fields are still included")
-          (is (contains? descendants ["Segment" active-seg-id])
-              "Active segments are included")
-          (is (not (contains? descendants ["Segment" archived-seg-id]))
-              "Archived segments are excluded")))
-      (testing "archived segments are included when skip-archived: false"
-        (let [descendants (serdes/descendants "Table" table-id {:skip-archived false})]
-          (is (contains? descendants ["Segment" active-seg-id]))
-          (is (contains? descendants ["Segment" archived-seg-id]))))
-      (testing "archived segments are included when skip-archived is not specified"
-        (let [descendants (serdes/descendants "Table" table-id {})]
-          (is (contains? descendants ["Segment" active-seg-id]))
-          (is (contains? descendants ["Segment" archived-seg-id])))))))
-
 (deftest data-layer-legacy-serdes-round-trip-test
   (testing "Importing a v58 serialization export with legacy medallion data_layer values maps them to current values"
     (mt/with-temp [:model/Database {db-id :id} {:name "Test DB"}
                    :model/Table {table-id :id} {:db_id db-id}]
       (let [table      (t2/select-one :model/Table :id table-id)
-            extracted  (serdes/extract-one "Table" {} table)]
+            extracted  (first (serialization/export-batch :model/Table [table]))]
         (doseq [[legacy-value expected] {"copper" "hidden"
                                          "bronze" "final"
                                          "silver" "final"
                                          "gold"   "final"}]
           (testing (format "legacy data_layer %s -> %s" legacy-value expected)
             ;; simulate a v58 export by substituting the legacy value
-            (let [ingested (assoc extracted :data_layer legacy-value)]
-              (serdes/load-one! ingested table)
+            (let [entity (assoc extracted :data_layer legacy-value)]
+              (serialization/load :model/Table [entity])
               (is (= (keyword expected)
                      (t2/select-one-fn :data_layer :model/Table :id table-id))))))))))
 

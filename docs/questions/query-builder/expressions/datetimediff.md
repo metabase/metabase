@@ -1,5 +1,6 @@
 ---
 title: DatetimeDiff
+summary: Get the amount of time between two datetimes in whole units, like working out someone's age.
 ---
 
 # DatetimeDiff
