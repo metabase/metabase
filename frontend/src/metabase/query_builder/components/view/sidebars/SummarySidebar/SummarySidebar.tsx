@@ -23,6 +23,7 @@ import { SummaryFieldList } from "./SummaryFieldList";
 import { useSummaryFormulaBar } from "./SummaryFormulaBar";
 import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
+import { getNextRowKeys, getRowAndColumnItems } from "./pivot-layout";
 import type {
   SummaryDragItem,
   SummaryField,
@@ -74,9 +75,16 @@ export function SummarySidebar({
 }: UpdateQueryHookProps) {
   const dispatch = useDispatch();
   const generatedExpressions = useSelector(getSummaryGeneratedExpressions);
+  const [isPivotMode, setIsPivotMode] = useState(false);
+  const [rowKeys, setRowKeys] = useState<string[]>([]);
+  const { rowItems, columnItems } = useMemo(
+    () => getRowAndColumnItems(query, stageIndex, rowKeys),
+    [query, stageIndex, rowKeys],
+  );
   const handleQueryChange = (
     nextQuery: Lib.Query,
     options?: SummaryQueryChangeOptions,
+    addedWellId?: SummaryWellId,
   ) => {
     const result = updateSummaryFormula({
       query,
@@ -88,6 +96,15 @@ export function SummarySidebar({
     dispatch(
       setUIControls({
         summaryGeneratedExpressions: result.generatedExpressions,
+      }),
+    );
+    setRowKeys(
+      getNextRowKeys({
+        query,
+        nextQuery: result.query,
+        stageIndex,
+        rowKeys,
+        addedWellId,
       }),
     );
     onQueryChange(result.query);
@@ -113,7 +130,7 @@ export function SummarySidebar({
       ? Lib.aggregateByCount(nextQuery, stageIndex)
       : nextQuery;
     if (!areQueriesEqual(query, nextSummary)) {
-      handleQueryChange(nextSummary, { isFormulaCreated });
+      handleQueryChange(nextSummary, { isFormulaCreated }, wellId);
     }
   };
 
@@ -139,6 +156,11 @@ export function SummarySidebar({
       replaceWellWithField(query, stageIndex, wellId, field),
       wellId,
     );
+  };
+
+  const handlePivotToggle = () => {
+    setIsPivotMode(!isPivotMode);
+    setRowKeys([]);
   };
 
   const handleClearAll = () =>
@@ -190,6 +212,10 @@ export function SummarySidebar({
             formulaInputs={formulaInputs}
             draftFormula={draftFormula}
             editingFormulaClause={editingFormulaClause}
+            isPivotMode={isPivotMode}
+            rowItems={rowItems}
+            columnItems={columnItems}
+            onPivotToggle={handlePivotToggle}
             onPick={handleAdd}
             onChange={handleQueryChange}
           />

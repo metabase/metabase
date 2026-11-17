@@ -12,6 +12,7 @@ import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { TestQuerySpec } from "metabase-types/api";
 import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
 
+import { getRowAndColumnItems } from "../pivot-layout";
 import type {
   SummaryField,
   SummaryQueryChangeOptions,
@@ -42,18 +43,34 @@ const SUMMARIZED_QUERY: TestQuerySpec = {
 
 type SetupOpts = {
   spec?: TestQuerySpec;
+  isPivotMode?: boolean;
+  rowKeys?: string[];
 };
 
-function setup({ spec = SUMMARIZED_QUERY }: SetupOpts = {}) {
+function setup({
+  spec = SUMMARIZED_QUERY,
+  isPivotMode = false,
+  rowKeys = [],
+}: SetupOpts = {}) {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, spec);
   const onPick = jest.fn<void, [SummaryWellId, SummaryField]>();
   const onChange = jest.fn<void, [Lib.Query, SummaryQueryChangeOptions?]>();
+  const onPivotToggle = jest.fn();
+  const { rowItems, columnItems } = getRowAndColumnItems(
+    query,
+    STAGE_INDEX,
+    rowKeys,
+  );
   renderWithProviders(
     <SummaryWells
       query={query}
       stageIndex={STAGE_INDEX}
       sections={getFieldSections(query, STAGE_INDEX)}
       draggedItem={null}
+      isPivotMode={isPivotMode}
+      rowItems={rowItems}
+      columnItems={columnItems}
+      onPivotToggle={onPivotToggle}
       onPick={onPick}
       onChange={onChange}
     />,
@@ -70,7 +87,7 @@ function setup({ spec = SUMMARIZED_QUERY }: SetupOpts = {}) {
     };
   }
 
-  return { onPick, onChange, getLastChange };
+  return { onPick, onChange, onPivotToggle, getLastChange };
 }
 
 function getChipLabels(wellId: SummaryWellId) {
@@ -520,30 +537,95 @@ describe("SummaryWells", () => {
     expect(getChipLabels("columns")).toEqual(["Product → Category"]);
   });
 
-  it("switches to the Values, Columns, and Rows wells from the pivot toggle, and back", async () => {
-    const { onChange } = setup();
-    const getWell = (wellId: string) =>
-      within(screen.getByTestId(`summary-well-${wellId}`));
+  describe("pivot mode", () => {
+    const PIVOT_QUERY: TestQuerySpec = {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count" }],
+          breakouts: [
+            { type: "column", name: "CREATED_AT", unit: "month" },
+            {
+              type: "column",
+              sourceFieldId: ORDERS.PRODUCT_ID,
+              name: "CATEGORY",
+            },
+          ],
+        },
+      ],
+    };
+    const getRowsField = () => screen.getByLabelText("Add a row by name");
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Pivot into rows and columns" }),
-    );
+    it("has no Rows well outside pivot mode", () => {
+      setup({ spec: PIVOT_QUERY, rowKeys: [] });
 
-    expect(getWell("values").getByText("Values")).toBeInTheDocument();
-    expect(getWell("columns").getByText("Columns")).toBeInTheDocument();
-    expect(getWell("rows").getByText("Rows")).toBeInTheDocument();
-    expect(
-      getWell("rows").getByLabelText("Add a row by name"),
-    ).toBeInTheDocument();
+      expect(screen.queryByTestId("summary-well-rows")).not.toBeInTheDocument();
+      expect(getChipLabels("columns")).toEqual([
+        "Created At: Month",
+        "Product → Category",
+      ]);
+    });
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Back to breakouts" }),
-    );
+    it("asks to switch the pivot mode from the toggle", async () => {
+      const { onPivotToggle, onChange } = setup();
 
-    expect(getWell("values").getByText("Summarize by")).toBeInTheDocument();
-    expect(getWell("columns").getByText("Group by")).toBeInTheDocument();
-    expect(screen.queryByTestId("summary-well-rows")).not.toBeInTheDocument();
-    expect(onChange).not.toHaveBeenCalled();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Pivot into rows and columns" }),
+      );
+
+      expect(onPivotToggle).toHaveBeenCalledTimes(1);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("splits the groupings between Columns and Rows", () => {
+      setup({ spec: PIVOT_QUERY, isPivotMode: true, rowKeys: ["CATEGORY"] });
+
+      expect(getChipLabels("columns")).toEqual(["Created At: Month"]);
+      expect(getChipLabels("rows")).toEqual(["Product → Category"]);
+    });
+
+    it("picks a grouping from the Rows typeahead", async () => {
+      const { onPick, onChange } = setup({ isPivotMode: true });
+
+      await userEvent.type(getRowsField(), "categ");
+      await userEvent.click(await findOption("Category"));
+
+      expect(onPick).toHaveBeenCalledTimes(1);
+      const [wellId, field] = onPick.mock.calls[0];
+      expect(wellId).toBe("rows");
+      expect(field.kind).toBe("column");
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("takes a Rows chip off from its remove button", async () => {
+      const { getLastChange } = setup({
+        spec: PIVOT_QUERY,
+        isPivotMode: true,
+        rowKeys: ["CATEGORY"],
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Remove Product → Category" }),
+      );
+
+      expect(getLastChange().dimensions).toEqual(["Created At: Month"]);
+    });
+
+    it("takes off the last chip of the well on Backspace in an empty field", async () => {
+      const { getLastChange } = setup({
+        spec: PIVOT_QUERY,
+        isPivotMode: true,
+        rowKeys: ["CREATED_AT"],
+      });
+
+      await userEvent.click(getGroupingField());
+      await userEvent.keyboard("{Backspace}");
+      expect(getLastChange().dimensions).toEqual(["Created At: Month"]);
+
+      await userEvent.click(getRowsField());
+      await userEvent.keyboard("{Backspace}");
+      expect(getLastChange().dimensions).toEqual(["Product → Category"]);
+    });
   });
 
   describe("renaming", () => {

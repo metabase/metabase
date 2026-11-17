@@ -561,6 +561,115 @@ describe("SummarySidebar", () => {
     });
   });
 
+  describe("pivot mode", () => {
+    const getWell = (wellId: SummaryWellId) =>
+      within(screen.getByTestId(`summary-well-${wellId}`));
+
+    async function pickOption(name: string) {
+      const options = await screen.findAllByRole("option");
+      const option = options.find((option) => option.textContent === name);
+      expect(option).toBeDefined();
+      if (option) {
+        await userEvent.click(option);
+      }
+    }
+
+    async function pickInRows(searchText: string, name: string) {
+      await userEvent.type(
+        screen.getByLabelText("Add a row by name"),
+        searchText,
+      );
+      await pickOption(name);
+    }
+
+    it("switches to the Values, Columns, and Rows wells from the pivot toggle, and back", async () => {
+      const { onQueryChange } = setup();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Pivot into rows and columns" }),
+      );
+
+      expect(getWell("values").getByText("Values")).toBeInTheDocument();
+      expect(getWell("columns").getByText("Columns")).toBeInTheDocument();
+      expect(getWell("rows").getByText("Rows")).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Back to breakouts" }),
+      );
+
+      expect(getWell("values").getByText("Summarize by")).toBeInTheDocument();
+      expect(getWell("columns").getByText("Group by")).toBeInTheDocument();
+      expect(screen.queryByTestId("summary-well-rows")).not.toBeInTheDocument();
+      expect(onQueryChange).not.toHaveBeenCalled();
+    });
+
+    it("puts a grouping that is picked in Rows in the Rows well", async () => {
+      const { getLastQuery } = setup();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Pivot into rows and columns" }),
+      );
+
+      await pickInRows("categ", "Category");
+
+      expect(getLastQuery()).toEqual({
+        values: ["Count"],
+        dimensions: ["Product → Category"],
+      });
+      expect(getChipLabels("rows")).toEqual(["Product → Category"]);
+      expect(getChipLabels("columns")).toEqual([]);
+
+      fireEvent.click(getFieldButton("Product", "Vendor"), { altKey: true });
+
+      expect(getChipLabels("rows")).toEqual(["Product → Category"]);
+      expect(getChipLabels("columns")).toEqual(["Product → Vendor"]);
+    });
+
+    it("keeps a Rows grouping in Rows when an earlier grouping of its column is removed", async () => {
+      setup({
+        query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count" }],
+              breakouts: [
+                { type: "column", name: "CREATED_AT", unit: "month" },
+              ],
+            },
+          ],
+        }),
+      });
+      await userEvent.click(
+        screen.getByRole("button", { name: "Pivot into rows and columns" }),
+      );
+      await pickInRows("created", "Created At");
+      expect(getChipLabels("columns")).toEqual(["Created At: Month"]);
+      expect(getChipLabels("rows")).toEqual(["Created At: Quarter"]);
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Remove Created At: Month" }),
+      );
+
+      expect(getChipLabels("columns")).toEqual([]);
+      expect(getChipLabels("rows")).toEqual(["Created At: Quarter"]);
+    });
+
+    it("moves the Rows groupings to Group by when the pivot mode ends", async () => {
+      const { onQueryChange } = setup();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Pivot into rows and columns" }),
+      );
+      await pickInRows("categ", "Category");
+      onQueryChange.mockClear();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Back to breakouts" }),
+      );
+
+      expect(getChipLabels("columns")).toEqual(["Product → Category"]);
+      expect(onQueryChange).not.toHaveBeenCalled();
+    });
+  });
+
   it("hides and shows the field list from the footer button", async () => {
     setup();
     const drawer = screen.getByTestId("summary-field-list-drawer");
