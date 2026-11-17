@@ -116,10 +116,10 @@
              (vals (:tables (run-write! (refund-1) ["refunded" 1] [(people-rows)] [(reading refunded-only-1)]))))))
     (testing "the write statement names the input's temp table, not the real table"
       (let [executed (atom [])
-            execute! data-testing.executor/execute!]
-        (with-redefs [data-testing.executor/execute! (fn [driver conn query]
-                                                       (swap! executed conj (:query query))
-                                                       (execute! driver conn query))]
+            execute! (mt/original-fn #'data-testing.executor/execute!)]
+        (mt/with-dynamic-fn-redefs [data-testing.executor/execute! (fn [driver conn query]
+                                                                     (swap! executed conj (:query query))
+                                                                     (execute! driver conn query))]
           (let [[temp-table] (keys (:tables (run-write! (refund-1) ["refunded" 1] [(people-rows)]
                                                         [(reading refunded-only-1)])))
                 [statement :as statements] @executed]
@@ -205,14 +205,14 @@
   (mt/test-drivers (drivers-that-write)
     (let [created     (atom [])
           dropped     (atom [])
-          orig-create data-testing.executor/create-temp-table!
-          orig-drop   data-testing.executor/drop-temp-table!]
-      (with-redefs [data-testing.executor/create-temp-table! (fn [driver conn table query]
-                                                               (swap! created conj table)
-                                                               (orig-create driver conn table query))
-                    data-testing.executor/drop-temp-table!   (fn [driver conn table]
-                                                               (swap! dropped conj table)
-                                                               (orig-drop driver conn table))]
+          orig-create (mt/original-fn #'data-testing.executor/create-temp-table!)
+          orig-drop   (mt/original-fn #'data-testing.executor/drop-temp-table!)]
+      (mt/with-dynamic-fn-redefs [data-testing.executor/create-temp-table! (fn [driver conn table query]
+                                                                             (swap! created conj table)
+                                                                             (orig-create driver conn table query))
+                                  data-testing.executor/drop-temp-table!   (fn [driver conn table]
+                                                                             (swap! dropped conj table)
+                                                                             (orig-drop driver conn table))]
         (testing "premise: the write is refused as a failed query"
           (is (= ::data-testing.errors/query-failed
                  (try (fail-to-write!)
